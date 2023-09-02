@@ -227,10 +227,9 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_csharp" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
-</dd></dl>
+    <dd>BETA FEATURE - Options to configure the Helm Release resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -244,8 +243,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
-</dd></dl>
+    <dd>BETA FEATURE - Options to configure the Helm Release resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -257,10 +255,9 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_java" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
-</dd></dl>
+    <dd>BETA FEATURE - Options to configure the Helm Release resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -272,10 +269,9 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_nodejs" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
-</dd></dl>
+    <dd>BETA FEATURE - Options to configure the Helm Release resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -289,8 +285,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
-</dd></dl>
+    <dd>BETA FEATURE - Options to configure the Helm Release resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -304,8 +299,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Property Map</a></span>
     </dt>
-    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
-</dd></dl>
+    <dd>BETA FEATURE - Options to configure the Helm Release resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -326,8 +320,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -341,8 +334,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -356,8 +348,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -371,8 +362,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -386,8 +376,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -401,8 +390,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -416,7 +404,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="helmreleasesettings">Helm<wbr>Release<wbr>Settings</h4>
+<h4 id="helmreleasesettings">
+Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go" class="inline">, Helm<wbr>Release<wbr>Settings<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -428,8 +418,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -437,8 +426,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -446,8 +434,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -461,8 +448,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -470,8 +456,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -479,8 +464,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -494,8 +478,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_java" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -503,8 +486,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_java" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -512,8 +494,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -527,8 +508,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -536,8 +516,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -545,8 +524,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -560,8 +538,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -569,8 +546,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="plugins_path_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
@@ -578,8 +554,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -593,8 +568,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_yaml" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -602,8 +576,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_yaml" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -611,8 +584,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 

@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -34,13 +35,13 @@ func newPolicyRmCmd() *cobra.Command {
 		Short: "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			policyPack, err := requirePolicyPack(ctx, args[0])
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			var version *string
@@ -54,8 +55,7 @@ func newPolicyRmCmd() *cobra.Command {
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
 			if !yes && !confirmPrompt(prompt, args[0], opts) {
-				fmt.Println("confirmation declined")
-				return result.Bail()
+				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
 			// Attempt to remove the Policy Pack.
@@ -63,7 +63,7 @@ func newPolicyRmCmd() *cobra.Command {
 				VersionTag: version, Scopes: backend.CancellationScopes,
 			})
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			return nil

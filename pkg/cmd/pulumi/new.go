@@ -132,6 +132,14 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	// Ensure the project doesn't already exist.
+	if args.name != "" {
+		// There is no --org flag at the moment. The backend determines the orgName value if it is "".
+		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, opts); err != nil {
+			return err
+		}
+	}
+
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
@@ -183,27 +191,24 @@ func runNew(ctx context.Context, args newArgs) error {
 
 		// Set the org name for future use.
 		orgName = parts[0]
-
 		projectName := parts[1]
-		if err := validateProjectName(ctx, b, orgName, projectName, args.generateOnly, opts); err != nil {
-			return err
-		}
 
 		stackName, err := buildStackName(args.stack)
 		if err != nil {
 			return err
 		}
-		existingStack, existingName, existingDesc, err := getStack(ctx, b, stackName, opts)
+
+		existingStack, _, existingDesc, err := getStack(ctx, b, stackName, opts)
 		if err != nil {
 			return err
 		}
-		s = existingStack
-		if args.name == "" {
-			args.name = existingName
+		if existingStack != nil {
+			s = existingStack
+			if args.description == "" {
+				args.description = existingDesc
+			}
 		}
-		if args.description == "" {
-			args.description = existingDesc
-		}
+		args.name = projectName
 	}
 
 	// Show instructions, if we're going to show at least one prompt.
@@ -238,11 +243,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		validate := func(s string) error { return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts) }
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
-			return err
-		}
-	} else {
-		// Ensure the project doesn't already exist.
-		if err := validateProjectName(ctx, b, orgName, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
 	}
@@ -443,7 +443,14 @@ func newNewCmd() *cobra.Command {
 			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
 			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
 			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
-			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
+			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n" +
+			"\n" +
+			"To use a private repository as a template source, provide an HTTPS or SSH URL with relevant credentials.\n" +
+			"Ensure your SSH agent has the correct identity (ssh-add) or you may be prompted for your key's passphrase.\n" +
+			"* `pulumi new git@github.com:<user>/<private-repo>`\n" +
+			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
+			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
+			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
@@ -1013,7 +1020,7 @@ func promptForValue(
 			var prompt string
 			if defaultValue == "" {
 				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
+					fmt.Sprintf("%s%s%s", colors.SpecPrompt, valueType, colors.Reset))
 			} else {
 				defaultValuePrompt := defaultValue
 				if secret {
@@ -1021,19 +1028,18 @@ func promptForValue(
 				}
 
 				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
+					fmt.Sprintf("%s%s%s (%s)", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
 			}
-			fmt.Print(prompt)
 
 			// Read the value.
 			var err error
 			if secret {
-				value, err = cmdutil.ReadConsoleNoEcho("")
+				value, err = cmdutil.ReadConsoleNoEcho(prompt)
 				if err != nil {
 					return "", err
 				}
 			} else {
-				value, err = cmdutil.ReadConsole("")
+				value, err = cmdutil.ReadConsole(prompt)
 				if err != nil {
 					return "", err
 				}

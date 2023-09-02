@@ -21,6 +21,9 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 var archiveType = reflect.TypeOf((*Archive)(nil)).Elem()
@@ -36,6 +39,12 @@ type ArchiveInput interface {
 // ElementType returns the element type of this Input (Archive).
 func (*archive) ElementType() reflect.Type {
 	return archiveType
+}
+
+func (in *archive) ToOutput(ctx context.Context) pulumix.Output[Archive] {
+	return pulumix.Output[Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
 }
 
 func (in *archive) ToArchiveOutput() ArchiveOutput {
@@ -59,6 +68,12 @@ type ArchiveOutput struct{ *OutputState }
 
 func (ArchiveOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveOutput) ToOutput(ctx context.Context) pulumix.Output[Archive] {
+	return pulumix.Output[Archive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (Archive).
@@ -102,6 +117,12 @@ func (ArchiveArray) ElementType() reflect.Type {
 	return archiveArrayType
 }
 
+func (in ArchiveArray) ToOutput(ctx context.Context) pulumix.Output[[]Archive] {
+	return pulumix.Output[[]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArchiveArray) ToArchiveArrayOutput() ArchiveArrayOutput {
 	return ToOutput(in).(ArchiveArrayOutput)
 }
@@ -115,6 +136,12 @@ type ArchiveArrayOutput struct{ *OutputState }
 
 func (ArchiveArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Archive] {
+	return pulumix.Output[[]Archive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]Archive).
@@ -178,6 +205,12 @@ func (ArchiveMap) ElementType() reflect.Type {
 	return archiveMapType
 }
 
+func (in ArchiveMap) ToOutput(ctx context.Context) pulumix.Output[map[string]Archive] {
+	return pulumix.Output[map[string]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArchiveMap) ToArchiveMapOutput() ArchiveMapOutput {
 	return ToOutput(in).(ArchiveMapOutput)
 }
@@ -191,6 +224,12 @@ type ArchiveMapOutput struct{ *OutputState }
 
 func (ArchiveMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]Archive] {
+	return pulumix.Output[map[string]Archive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]Archive).
@@ -247,6 +286,12 @@ func (ArchiveArrayMap) ElementType() reflect.Type {
 	return archiveArrayMapType
 }
 
+func (in ArchiveArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]Archive] {
+	return pulumix.Output[map[string][]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArchiveArrayMap) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
 	return ToOutput(in).(ArchiveArrayMapOutput)
 }
@@ -260,6 +305,12 @@ type ArchiveArrayMapOutput struct{ *OutputState }
 
 func (ArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]Archive] {
+	return pulumix.Output[map[string][]Archive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]Archive).
@@ -316,6 +367,12 @@ func (ArchiveMapArray) ElementType() reflect.Type {
 	return archiveMapArrayType
 }
 
+func (in ArchiveMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Archive] {
+	return pulumix.Output[[]map[string]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArchiveMapArray) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
 	return ToOutput(in).(ArchiveMapArrayOutput)
 }
@@ -329,6 +386,12 @@ type ArchiveMapArrayOutput struct{ *OutputState }
 
 func (ArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Archive] {
+	return pulumix.Output[[]map[string]Archive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]Archive).
@@ -392,6 +455,12 @@ func (ArchiveMapMap) ElementType() reflect.Type {
 	return archiveMapMapType
 }
 
+func (in ArchiveMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Archive] {
+	return pulumix.Output[map[string]map[string]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArchiveMapMap) ToArchiveMapMapOutput() ArchiveMapMapOutput {
 	return ToOutput(in).(ArchiveMapMapOutput)
 }
@@ -405,6 +474,12 @@ type ArchiveMapMapOutput struct{ *OutputState }
 
 func (ArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Archive] {
+	return pulumix.Output[map[string]map[string]Archive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]Archive).
@@ -461,6 +536,12 @@ func (ArchiveArrayArray) ElementType() reflect.Type {
 	return archiveArrayArrayType
 }
 
+func (in ArchiveArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]Archive] {
+	return pulumix.Output[[][]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArchiveArrayArray) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
 	return ToOutput(in).(ArchiveArrayArrayOutput)
 }
@@ -474,6 +555,12 @@ type ArchiveArrayArrayOutput struct{ *OutputState }
 
 func (ArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]Archive] {
+	return pulumix.Output[[][]Archive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]Archive).
@@ -534,6 +621,12 @@ func (*asset) ElementType() reflect.Type {
 	return assetType
 }
 
+func (in *asset) ToOutput(ctx context.Context) pulumix.Output[Asset] {
+	return pulumix.Output[Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in *asset) ToAssetOutput() AssetOutput {
 	return ToOutput(in).(AssetOutput)
 }
@@ -555,6 +648,12 @@ type AssetOutput struct{ *OutputState }
 
 func (AssetOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOutput) ToOutput(ctx context.Context) pulumix.Output[Asset] {
+	return pulumix.Output[Asset]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (Asset).
@@ -598,6 +697,12 @@ func (AssetArray) ElementType() reflect.Type {
 	return assetArrayType
 }
 
+func (in AssetArray) ToOutput(ctx context.Context) pulumix.Output[[]Asset] {
+	return pulumix.Output[[]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetArray) ToAssetArrayOutput() AssetArrayOutput {
 	return ToOutput(in).(AssetArrayOutput)
 }
@@ -611,6 +716,12 @@ type AssetArrayOutput struct{ *OutputState }
 
 func (AssetArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Asset] {
+	return pulumix.Output[[]Asset]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]Asset).
@@ -674,6 +785,12 @@ func (AssetMap) ElementType() reflect.Type {
 	return assetMapType
 }
 
+func (in AssetMap) ToOutput(ctx context.Context) pulumix.Output[map[string]Asset] {
+	return pulumix.Output[map[string]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetMap) ToAssetMapOutput() AssetMapOutput {
 	return ToOutput(in).(AssetMapOutput)
 }
@@ -687,6 +804,12 @@ type AssetMapOutput struct{ *OutputState }
 
 func (AssetMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]Asset] {
+	return pulumix.Output[map[string]Asset]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]Asset).
@@ -743,6 +866,12 @@ func (AssetArrayMap) ElementType() reflect.Type {
 	return assetArrayMapType
 }
 
+func (in AssetArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]Asset] {
+	return pulumix.Output[map[string][]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetArrayMap) ToAssetArrayMapOutput() AssetArrayMapOutput {
 	return ToOutput(in).(AssetArrayMapOutput)
 }
@@ -756,6 +885,12 @@ type AssetArrayMapOutput struct{ *OutputState }
 
 func (AssetArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]Asset] {
+	return pulumix.Output[map[string][]Asset]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]Asset).
@@ -812,6 +947,12 @@ func (AssetMapArray) ElementType() reflect.Type {
 	return assetMapArrayType
 }
 
+func (in AssetMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Asset] {
+	return pulumix.Output[[]map[string]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetMapArray) ToAssetMapArrayOutput() AssetMapArrayOutput {
 	return ToOutput(in).(AssetMapArrayOutput)
 }
@@ -825,6 +966,12 @@ type AssetMapArrayOutput struct{ *OutputState }
 
 func (AssetMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Asset] {
+	return pulumix.Output[[]map[string]Asset]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]Asset).
@@ -888,6 +1035,12 @@ func (AssetMapMap) ElementType() reflect.Type {
 	return assetMapMapType
 }
 
+func (in AssetMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Asset] {
+	return pulumix.Output[map[string]map[string]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetMapMap) ToAssetMapMapOutput() AssetMapMapOutput {
 	return ToOutput(in).(AssetMapMapOutput)
 }
@@ -901,6 +1054,12 @@ type AssetMapMapOutput struct{ *OutputState }
 
 func (AssetMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Asset] {
+	return pulumix.Output[map[string]map[string]Asset]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]Asset).
@@ -957,6 +1116,12 @@ func (AssetArrayArray) ElementType() reflect.Type {
 	return assetArrayArrayType
 }
 
+func (in AssetArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]Asset] {
+	return pulumix.Output[[][]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetArrayArray) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
 	return ToOutput(in).(AssetArrayArrayOutput)
 }
@@ -970,6 +1135,12 @@ type AssetArrayArrayOutput struct{ *OutputState }
 
 func (AssetArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]Asset] {
+	return pulumix.Output[[][]Asset]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]Asset).
@@ -1032,6 +1203,12 @@ func (AssetOrArchiveOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
 
+func (o AssetOrArchiveOutput) ToOutput(ctx context.Context) pulumix.Output[AssetOrArchive] {
+	return pulumix.Output[AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
 // ElementType returns the element type of this Output (AssetOrArchive).
 func (AssetOrArchiveOutput) ElementType() reflect.Type {
 	return assetOrArchiveType
@@ -1063,6 +1240,12 @@ func (AssetOrArchiveArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayType
 }
 
+func (in AssetOrArchiveArray) ToOutput(ctx context.Context) pulumix.Output[[]AssetOrArchive] {
+	return pulumix.Output[[]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
 	return ToOutput(in).(AssetOrArchiveArrayOutput)
 }
@@ -1076,6 +1259,12 @@ type AssetOrArchiveArrayOutput struct{ *OutputState }
 
 func (AssetOrArchiveArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]AssetOrArchive] {
+	return pulumix.Output[[]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]AssetOrArchive).
@@ -1123,6 +1312,12 @@ func (AssetOrArchiveMap) ElementType() reflect.Type {
 	return assetOrArchiveMapType
 }
 
+func (in AssetOrArchiveMap) ToOutput(ctx context.Context) pulumix.Output[map[string]AssetOrArchive] {
+	return pulumix.Output[map[string]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
 	return ToOutput(in).(AssetOrArchiveMapOutput)
 }
@@ -1136,6 +1331,12 @@ type AssetOrArchiveMapOutput struct{ *OutputState }
 
 func (AssetOrArchiveMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]AssetOrArchive] {
+	return pulumix.Output[map[string]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]AssetOrArchive).
@@ -1176,6 +1377,12 @@ func (AssetOrArchiveArrayMap) ElementType() reflect.Type {
 	return assetOrArchiveArrayMapType
 }
 
+func (in AssetOrArchiveArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]AssetOrArchive] {
+	return pulumix.Output[map[string][]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
 	return ToOutput(in).(AssetOrArchiveArrayMapOutput)
 }
@@ -1189,6 +1396,12 @@ type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
 func (AssetOrArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]AssetOrArchive] {
+	return pulumix.Output[map[string][]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]AssetOrArchive).
@@ -1229,6 +1442,12 @@ func (AssetOrArchiveMapArray) ElementType() reflect.Type {
 	return assetOrArchiveMapArrayType
 }
 
+func (in AssetOrArchiveMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]AssetOrArchive] {
+	return pulumix.Output[[]map[string]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
 	return ToOutput(in).(AssetOrArchiveMapArrayOutput)
 }
@@ -1242,6 +1461,12 @@ type AssetOrArchiveMapArrayOutput struct{ *OutputState }
 
 func (AssetOrArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]AssetOrArchive] {
+	return pulumix.Output[[]map[string]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]AssetOrArchive).
@@ -1289,6 +1514,12 @@ func (AssetOrArchiveMapMap) ElementType() reflect.Type {
 	return assetOrArchiveMapMapType
 }
 
+func (in AssetOrArchiveMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]AssetOrArchive] {
+	return pulumix.Output[map[string]map[string]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
 	return ToOutput(in).(AssetOrArchiveMapMapOutput)
 }
@@ -1302,6 +1533,12 @@ type AssetOrArchiveMapMapOutput struct{ *OutputState }
 
 func (AssetOrArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]AssetOrArchive] {
+	return pulumix.Output[map[string]map[string]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]AssetOrArchive).
@@ -1342,6 +1579,12 @@ func (AssetOrArchiveArrayArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayArrayType
 }
 
+func (in AssetOrArchiveArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]AssetOrArchive] {
+	return pulumix.Output[[][]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
 	return ToOutput(in).(AssetOrArchiveArrayArrayOutput)
 }
@@ -1355,6 +1598,12 @@ type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
 
 func (AssetOrArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]AssetOrArchive] {
+	return pulumix.Output[[][]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]AssetOrArchive).
@@ -1405,6 +1654,12 @@ func (Bool) ElementType() reflect.Type {
 	return boolType
 }
 
+func (in Bool) ToOutput(ctx context.Context) pulumix.Output[bool] {
+	return pulumix.Output[bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Bool) ToBoolOutput() BoolOutput {
 	return ToOutput(in).(BoolOutput)
 }
@@ -1426,6 +1681,12 @@ type BoolOutput struct{ *OutputState }
 
 func (BoolOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolOutput) ToOutput(ctx context.Context) pulumix.Output[bool] {
+	return pulumix.Output[bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (bool).
@@ -1479,6 +1740,12 @@ func (*boolPtr) ElementType() reflect.Type {
 	return boolPtrType
 }
 
+func (in *boolPtr) ToOutput(ctx context.Context) pulumix.Output[*bool] {
+	return pulumix.Output[*bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in *boolPtr) ToBoolPtrOutput() BoolPtrOutput {
 	return ToOutput(in).(BoolPtrOutput)
 }
@@ -1492,6 +1759,12 @@ type BoolPtrOutput struct{ *OutputState }
 
 func (BoolPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*bool] {
+	return pulumix.Output[*bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (*bool).
@@ -1536,6 +1809,12 @@ func (BoolArray) ElementType() reflect.Type {
 	return boolArrayType
 }
 
+func (in BoolArray) ToOutput(ctx context.Context) pulumix.Output[[]bool] {
+	return pulumix.Output[[]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in BoolArray) ToBoolArrayOutput() BoolArrayOutput {
 	return ToOutput(in).(BoolArrayOutput)
 }
@@ -1549,6 +1828,12 @@ type BoolArrayOutput struct{ *OutputState }
 
 func (BoolArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]bool] {
+	return pulumix.Output[[]bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]bool).
@@ -1612,6 +1897,12 @@ func (BoolMap) ElementType() reflect.Type {
 	return boolMapType
 }
 
+func (in BoolMap) ToOutput(ctx context.Context) pulumix.Output[map[string]bool] {
+	return pulumix.Output[map[string]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in BoolMap) ToBoolMapOutput() BoolMapOutput {
 	return ToOutput(in).(BoolMapOutput)
 }
@@ -1625,6 +1916,12 @@ type BoolMapOutput struct{ *OutputState }
 
 func (BoolMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]bool] {
+	return pulumix.Output[map[string]bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]bool).
@@ -1681,6 +1978,12 @@ func (BoolArrayMap) ElementType() reflect.Type {
 	return boolArrayMapType
 }
 
+func (in BoolArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]bool] {
+	return pulumix.Output[map[string][]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in BoolArrayMap) ToBoolArrayMapOutput() BoolArrayMapOutput {
 	return ToOutput(in).(BoolArrayMapOutput)
 }
@@ -1694,6 +1997,12 @@ type BoolArrayMapOutput struct{ *OutputState }
 
 func (BoolArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]bool] {
+	return pulumix.Output[map[string][]bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]bool).
@@ -1750,6 +2059,12 @@ func (BoolMapArray) ElementType() reflect.Type {
 	return boolMapArrayType
 }
 
+func (in BoolMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]bool] {
+	return pulumix.Output[[]map[string]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in BoolMapArray) ToBoolMapArrayOutput() BoolMapArrayOutput {
 	return ToOutput(in).(BoolMapArrayOutput)
 }
@@ -1763,6 +2078,12 @@ type BoolMapArrayOutput struct{ *OutputState }
 
 func (BoolMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]bool] {
+	return pulumix.Output[[]map[string]bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]bool).
@@ -1826,6 +2147,12 @@ func (BoolMapMap) ElementType() reflect.Type {
 	return boolMapMapType
 }
 
+func (in BoolMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]bool] {
+	return pulumix.Output[map[string]map[string]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in BoolMapMap) ToBoolMapMapOutput() BoolMapMapOutput {
 	return ToOutput(in).(BoolMapMapOutput)
 }
@@ -1839,6 +2166,12 @@ type BoolMapMapOutput struct{ *OutputState }
 
 func (BoolMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]bool] {
+	return pulumix.Output[map[string]map[string]bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]bool).
@@ -1895,6 +2228,12 @@ func (BoolArrayArray) ElementType() reflect.Type {
 	return boolArrayArrayType
 }
 
+func (in BoolArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]bool] {
+	return pulumix.Output[[][]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in BoolArrayArray) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
 	return ToOutput(in).(BoolArrayArrayOutput)
 }
@@ -1908,6 +2247,12 @@ type BoolArrayArrayOutput struct{ *OutputState }
 
 func (BoolArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]bool] {
+	return pulumix.Output[[][]bool]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]bool).
@@ -1974,6 +2319,12 @@ func (Float64) ElementType() reflect.Type {
 	return float64Type
 }
 
+func (in Float64) ToOutput(ctx context.Context) pulumix.Output[float64] {
+	return pulumix.Output[float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Float64) ToFloat64Output() Float64Output {
 	return ToOutput(in).(Float64Output)
 }
@@ -1995,6 +2346,12 @@ type Float64Output struct{ *OutputState }
 
 func (Float64Output) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64Output) ToOutput(ctx context.Context) pulumix.Output[float64] {
+	return pulumix.Output[float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (float64).
@@ -2048,6 +2405,12 @@ func (*float64Ptr) ElementType() reflect.Type {
 	return float64PtrType
 }
 
+func (in *float64Ptr) ToOutput(ctx context.Context) pulumix.Output[*float64] {
+	return pulumix.Output[*float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in *float64Ptr) ToFloat64PtrOutput() Float64PtrOutput {
 	return ToOutput(in).(Float64PtrOutput)
 }
@@ -2061,6 +2424,12 @@ type Float64PtrOutput struct{ *OutputState }
 
 func (Float64PtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64PtrOutput) ToOutput(ctx context.Context) pulumix.Output[*float64] {
+	return pulumix.Output[*float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (*float64).
@@ -2105,6 +2474,12 @@ func (Float64Array) ElementType() reflect.Type {
 	return float64ArrayType
 }
 
+func (in Float64Array) ToOutput(ctx context.Context) pulumix.Output[[]float64] {
+	return pulumix.Output[[]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Float64Array) ToFloat64ArrayOutput() Float64ArrayOutput {
 	return ToOutput(in).(Float64ArrayOutput)
 }
@@ -2118,6 +2493,12 @@ type Float64ArrayOutput struct{ *OutputState }
 
 func (Float64ArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64ArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]float64] {
+	return pulumix.Output[[]float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]float64).
@@ -2181,6 +2562,12 @@ func (Float64Map) ElementType() reflect.Type {
 	return float64MapType
 }
 
+func (in Float64Map) ToOutput(ctx context.Context) pulumix.Output[map[string]float64] {
+	return pulumix.Output[map[string]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Float64Map) ToFloat64MapOutput() Float64MapOutput {
 	return ToOutput(in).(Float64MapOutput)
 }
@@ -2194,6 +2581,12 @@ type Float64MapOutput struct{ *OutputState }
 
 func (Float64MapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64MapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]float64] {
+	return pulumix.Output[map[string]float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]float64).
@@ -2250,6 +2643,12 @@ func (Float64ArrayMap) ElementType() reflect.Type {
 	return float64ArrayMapType
 }
 
+func (in Float64ArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]float64] {
+	return pulumix.Output[map[string][]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Float64ArrayMap) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
 	return ToOutput(in).(Float64ArrayMapOutput)
 }
@@ -2263,6 +2662,12 @@ type Float64ArrayMapOutput struct{ *OutputState }
 
 func (Float64ArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64ArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]float64] {
+	return pulumix.Output[map[string][]float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]float64).
@@ -2319,6 +2724,12 @@ func (Float64MapArray) ElementType() reflect.Type {
 	return float64MapArrayType
 }
 
+func (in Float64MapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]float64] {
+	return pulumix.Output[[]map[string]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Float64MapArray) ToFloat64MapArrayOutput() Float64MapArrayOutput {
 	return ToOutput(in).(Float64MapArrayOutput)
 }
@@ -2332,6 +2743,12 @@ type Float64MapArrayOutput struct{ *OutputState }
 
 func (Float64MapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64MapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]float64] {
+	return pulumix.Output[[]map[string]float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]float64).
@@ -2395,6 +2812,12 @@ func (Float64MapMap) ElementType() reflect.Type {
 	return float64MapMapType
 }
 
+func (in Float64MapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]float64] {
+	return pulumix.Output[map[string]map[string]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Float64MapMap) ToFloat64MapMapOutput() Float64MapMapOutput {
 	return ToOutput(in).(Float64MapMapOutput)
 }
@@ -2408,6 +2831,12 @@ type Float64MapMapOutput struct{ *OutputState }
 
 func (Float64MapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64MapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]float64] {
+	return pulumix.Output[map[string]map[string]float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]float64).
@@ -2464,6 +2893,12 @@ func (Float64ArrayArray) ElementType() reflect.Type {
 	return float64ArrayArrayType
 }
 
+func (in Float64ArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]float64] {
+	return pulumix.Output[[][]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Float64ArrayArray) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
 	return ToOutput(in).(Float64ArrayArrayOutput)
 }
@@ -2477,6 +2912,12 @@ type Float64ArrayArrayOutput struct{ *OutputState }
 
 func (Float64ArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64ArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]float64] {
+	return pulumix.Output[[][]float64]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]float64).
@@ -2540,6 +2981,12 @@ func (ID) ElementType() reflect.Type {
 	return idType
 }
 
+func (in ID) ToOutput(ctx context.Context) pulumix.Output[ID] {
+	return pulumix.Output[ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ID) ToIDOutput() IDOutput {
 	return ToOutput(in).(IDOutput)
 }
@@ -2569,6 +3016,12 @@ type IDOutput struct{ *OutputState }
 
 func (IDOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDOutput) ToOutput(ctx context.Context) pulumix.Output[ID] {
+	return pulumix.Output[ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (ID).
@@ -2632,6 +3085,12 @@ func (*idPtr) ElementType() reflect.Type {
 	return iDPtrType
 }
 
+func (in *idPtr) ToOutput(ctx context.Context) pulumix.Output[*ID] {
+	return pulumix.Output[*ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in *idPtr) ToIDPtrOutput() IDPtrOutput {
 	return ToOutput(in).(IDPtrOutput)
 }
@@ -2645,6 +3104,12 @@ type IDPtrOutput struct{ *OutputState }
 
 func (IDPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ID] {
+	return pulumix.Output[*ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (*ID).
@@ -2689,6 +3154,12 @@ func (IDArray) ElementType() reflect.Type {
 	return iDArrayType
 }
 
+func (in IDArray) ToOutput(ctx context.Context) pulumix.Output[[]ID] {
+	return pulumix.Output[[]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IDArray) ToIDArrayOutput() IDArrayOutput {
 	return ToOutput(in).(IDArrayOutput)
 }
@@ -2702,6 +3173,12 @@ type IDArrayOutput struct{ *OutputState }
 
 func (IDArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ID] {
+	return pulumix.Output[[]ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]ID).
@@ -2765,6 +3242,12 @@ func (IDMap) ElementType() reflect.Type {
 	return iDMapType
 }
 
+func (in IDMap) ToOutput(ctx context.Context) pulumix.Output[map[string]ID] {
+	return pulumix.Output[map[string]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IDMap) ToIDMapOutput() IDMapOutput {
 	return ToOutput(in).(IDMapOutput)
 }
@@ -2778,6 +3261,12 @@ type IDMapOutput struct{ *OutputState }
 
 func (IDMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]ID] {
+	return pulumix.Output[map[string]ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]ID).
@@ -2834,6 +3323,12 @@ func (IDArrayMap) ElementType() reflect.Type {
 	return iDArrayMapType
 }
 
+func (in IDArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]ID] {
+	return pulumix.Output[map[string][]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IDArrayMap) ToIDArrayMapOutput() IDArrayMapOutput {
 	return ToOutput(in).(IDArrayMapOutput)
 }
@@ -2847,6 +3342,12 @@ type IDArrayMapOutput struct{ *OutputState }
 
 func (IDArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]ID] {
+	return pulumix.Output[map[string][]ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]ID).
@@ -2903,6 +3404,12 @@ func (IDMapArray) ElementType() reflect.Type {
 	return iDMapArrayType
 }
 
+func (in IDMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]ID] {
+	return pulumix.Output[[]map[string]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IDMapArray) ToIDMapArrayOutput() IDMapArrayOutput {
 	return ToOutput(in).(IDMapArrayOutput)
 }
@@ -2916,6 +3423,12 @@ type IDMapArrayOutput struct{ *OutputState }
 
 func (IDMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]ID] {
+	return pulumix.Output[[]map[string]ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]ID).
@@ -2979,6 +3492,12 @@ func (IDMapMap) ElementType() reflect.Type {
 	return iDMapMapType
 }
 
+func (in IDMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]ID] {
+	return pulumix.Output[map[string]map[string]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IDMapMap) ToIDMapMapOutput() IDMapMapOutput {
 	return ToOutput(in).(IDMapMapOutput)
 }
@@ -2992,6 +3511,12 @@ type IDMapMapOutput struct{ *OutputState }
 
 func (IDMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]ID] {
+	return pulumix.Output[map[string]map[string]ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]ID).
@@ -3048,6 +3573,12 @@ func (IDArrayArray) ElementType() reflect.Type {
 	return iDArrayArrayType
 }
 
+func (in IDArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]ID] {
+	return pulumix.Output[[][]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IDArrayArray) ToIDArrayArrayOutput() IDArrayArrayOutput {
 	return ToOutput(in).(IDArrayArrayOutput)
 }
@@ -3061,6 +3592,12 @@ type IDArrayArrayOutput struct{ *OutputState }
 
 func (IDArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IDArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]ID] {
+	return pulumix.Output[[][]ID]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]ID).
@@ -3124,6 +3661,12 @@ func (Array) ElementType() reflect.Type {
 	return arrayType
 }
 
+func (in Array) ToOutput(ctx context.Context) pulumix.Output[[]interface{}] {
+	return pulumix.Output[[]interface{}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Array) ToArrayOutput() ArrayOutput {
 	return ToOutput(in).(ArrayOutput)
 }
@@ -3137,6 +3680,12 @@ type ArrayOutput struct{ *OutputState }
 
 func (ArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]interface{}] {
+	return pulumix.Output[[]interface{}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]interface{}).
@@ -3200,6 +3749,12 @@ func (Map) ElementType() reflect.Type {
 	return mapType
 }
 
+func (in Map) ToOutput(ctx context.Context) pulumix.Output[map[string]interface{}] {
+	return pulumix.Output[map[string]interface{}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Map) ToMapOutput() MapOutput {
 	return ToOutput(in).(MapOutput)
 }
@@ -3213,6 +3768,12 @@ type MapOutput struct{ *OutputState }
 
 func (MapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o MapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]interface{}] {
+	return pulumix.Output[map[string]interface{}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]interface{}).
@@ -3269,6 +3830,12 @@ func (ArrayMap) ElementType() reflect.Type {
 	return arrayMapType
 }
 
+func (in ArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]interface{}] {
+	return pulumix.Output[map[string][]interface{}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArrayMap) ToArrayMapOutput() ArrayMapOutput {
 	return ToOutput(in).(ArrayMapOutput)
 }
@@ -3282,6 +3849,12 @@ type ArrayMapOutput struct{ *OutputState }
 
 func (ArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]interface{}] {
+	return pulumix.Output[map[string][]interface{}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]interface{}).
@@ -3338,6 +3911,12 @@ func (MapArray) ElementType() reflect.Type {
 	return mapArrayType
 }
 
+func (in MapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]interface{}] {
+	return pulumix.Output[[]map[string]interface{}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in MapArray) ToMapArrayOutput() MapArrayOutput {
 	return ToOutput(in).(MapArrayOutput)
 }
@@ -3351,6 +3930,12 @@ type MapArrayOutput struct{ *OutputState }
 
 func (MapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o MapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]interface{}] {
+	return pulumix.Output[[]map[string]interface{}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]interface{}).
@@ -3414,6 +3999,12 @@ func (MapMap) ElementType() reflect.Type {
 	return mapMapType
 }
 
+func (in MapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]interface{}] {
+	return pulumix.Output[map[string]map[string]interface{}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in MapMap) ToMapMapOutput() MapMapOutput {
 	return ToOutput(in).(MapMapOutput)
 }
@@ -3427,6 +4018,12 @@ type MapMapOutput struct{ *OutputState }
 
 func (MapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o MapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]interface{}] {
+	return pulumix.Output[map[string]map[string]interface{}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]interface{}).
@@ -3483,6 +4080,12 @@ func (ArrayArray) ElementType() reflect.Type {
 	return arrayArrayType
 }
 
+func (in ArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]interface{}] {
+	return pulumix.Output[[][]interface{}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArrayArray) ToArrayArrayOutput() ArrayArrayOutput {
 	return ToOutput(in).(ArrayArrayOutput)
 }
@@ -3496,6 +4099,12 @@ type ArrayArrayOutput struct{ *OutputState }
 
 func (ArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]interface{}] {
+	return pulumix.Output[[][]interface{}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]interface{}).
@@ -3559,6 +4168,12 @@ func (ArrayArrayMap) ElementType() reflect.Type {
 	return arrayArrayMapType
 }
 
+func (in ArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]interface{}] {
+	return pulumix.Output[map[string][][]interface{}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in ArrayArrayMap) ToArrayArrayMapOutput() ArrayArrayMapOutput {
 	return ToOutput(in).(ArrayArrayMapOutput)
 }
@@ -3572,6 +4187,12 @@ type ArrayArrayMapOutput struct{ *OutputState }
 
 func (ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o ArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]interface{}] {
+	return pulumix.Output[map[string][][]interface{}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][][]interface{}).
@@ -3631,6 +4252,12 @@ func (Int) ElementType() reflect.Type {
 	return intType
 }
 
+func (in Int) ToOutput(ctx context.Context) pulumix.Output[int] {
+	return pulumix.Output[int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in Int) ToIntOutput() IntOutput {
 	return ToOutput(in).(IntOutput)
 }
@@ -3652,6 +4279,12 @@ type IntOutput struct{ *OutputState }
 
 func (IntOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntOutput) ToOutput(ctx context.Context) pulumix.Output[int] {
+	return pulumix.Output[int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (int).
@@ -3705,6 +4338,12 @@ func (*intPtr) ElementType() reflect.Type {
 	return intPtrType
 }
 
+func (in *intPtr) ToOutput(ctx context.Context) pulumix.Output[*int] {
+	return pulumix.Output[*int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in *intPtr) ToIntPtrOutput() IntPtrOutput {
 	return ToOutput(in).(IntPtrOutput)
 }
@@ -3718,6 +4357,12 @@ type IntPtrOutput struct{ *OutputState }
 
 func (IntPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*int] {
+	return pulumix.Output[*int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (*int).
@@ -3762,6 +4407,12 @@ func (IntArray) ElementType() reflect.Type {
 	return intArrayType
 }
 
+func (in IntArray) ToOutput(ctx context.Context) pulumix.Output[[]int] {
+	return pulumix.Output[[]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IntArray) ToIntArrayOutput() IntArrayOutput {
 	return ToOutput(in).(IntArrayOutput)
 }
@@ -3775,6 +4426,12 @@ type IntArrayOutput struct{ *OutputState }
 
 func (IntArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]int] {
+	return pulumix.Output[[]int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]int).
@@ -3838,6 +4495,12 @@ func (IntMap) ElementType() reflect.Type {
 	return intMapType
 }
 
+func (in IntMap) ToOutput(ctx context.Context) pulumix.Output[map[string]int] {
+	return pulumix.Output[map[string]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IntMap) ToIntMapOutput() IntMapOutput {
 	return ToOutput(in).(IntMapOutput)
 }
@@ -3851,6 +4514,12 @@ type IntMapOutput struct{ *OutputState }
 
 func (IntMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]int] {
+	return pulumix.Output[map[string]int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]int).
@@ -3907,6 +4576,12 @@ func (IntArrayMap) ElementType() reflect.Type {
 	return intArrayMapType
 }
 
+func (in IntArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]int] {
+	return pulumix.Output[map[string][]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IntArrayMap) ToIntArrayMapOutput() IntArrayMapOutput {
 	return ToOutput(in).(IntArrayMapOutput)
 }
@@ -3920,6 +4595,12 @@ type IntArrayMapOutput struct{ *OutputState }
 
 func (IntArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]int] {
+	return pulumix.Output[map[string][]int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]int).
@@ -3976,6 +4657,12 @@ func (IntMapArray) ElementType() reflect.Type {
 	return intMapArrayType
 }
 
+func (in IntMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]int] {
+	return pulumix.Output[[]map[string]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IntMapArray) ToIntMapArrayOutput() IntMapArrayOutput {
 	return ToOutput(in).(IntMapArrayOutput)
 }
@@ -3989,6 +4676,12 @@ type IntMapArrayOutput struct{ *OutputState }
 
 func (IntMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]int] {
+	return pulumix.Output[[]map[string]int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]int).
@@ -4052,6 +4745,12 @@ func (IntMapMap) ElementType() reflect.Type {
 	return intMapMapType
 }
 
+func (in IntMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]int] {
+	return pulumix.Output[map[string]map[string]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IntMapMap) ToIntMapMapOutput() IntMapMapOutput {
 	return ToOutput(in).(IntMapMapOutput)
 }
@@ -4065,6 +4764,12 @@ type IntMapMapOutput struct{ *OutputState }
 
 func (IntMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]int] {
+	return pulumix.Output[map[string]map[string]int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]int).
@@ -4121,6 +4826,12 @@ func (IntArrayArray) ElementType() reflect.Type {
 	return intArrayArrayType
 }
 
+func (in IntArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]int] {
+	return pulumix.Output[[][]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in IntArrayArray) ToIntArrayArrayOutput() IntArrayArrayOutput {
 	return ToOutput(in).(IntArrayArrayOutput)
 }
@@ -4134,6 +4845,12 @@ type IntArrayArrayOutput struct{ *OutputState }
 
 func (IntArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o IntArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]int] {
+	return pulumix.Output[[][]int]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]int).
@@ -4200,6 +4917,12 @@ func (String) ElementType() reflect.Type {
 	return stringType
 }
 
+func (in String) ToOutput(ctx context.Context) pulumix.Output[string] {
+	return pulumix.Output[string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in String) ToStringOutput() StringOutput {
 	return ToOutput(in).(StringOutput)
 }
@@ -4221,6 +4944,12 @@ type StringOutput struct{ *OutputState }
 
 func (StringOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringOutput) ToOutput(ctx context.Context) pulumix.Output[string] {
+	return pulumix.Output[string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (string).
@@ -4274,6 +5003,12 @@ func (*stringPtr) ElementType() reflect.Type {
 	return stringPtrType
 }
 
+func (in *stringPtr) ToOutput(ctx context.Context) pulumix.Output[*string] {
+	return pulumix.Output[*string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in *stringPtr) ToStringPtrOutput() StringPtrOutput {
 	return ToOutput(in).(StringPtrOutput)
 }
@@ -4287,6 +5022,12 @@ type StringPtrOutput struct{ *OutputState }
 
 func (StringPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*string] {
+	return pulumix.Output[*string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (*string).
@@ -4331,6 +5072,12 @@ func (StringArray) ElementType() reflect.Type {
 	return stringArrayType
 }
 
+func (in StringArray) ToOutput(ctx context.Context) pulumix.Output[[]string] {
+	return pulumix.Output[[]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in StringArray) ToStringArrayOutput() StringArrayOutput {
 	return ToOutput(in).(StringArrayOutput)
 }
@@ -4344,6 +5091,12 @@ type StringArrayOutput struct{ *OutputState }
 
 func (StringArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]string] {
+	return pulumix.Output[[]string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]string).
@@ -4407,6 +5160,12 @@ func (StringMap) ElementType() reflect.Type {
 	return stringMapType
 }
 
+func (in StringMap) ToOutput(ctx context.Context) pulumix.Output[map[string]string] {
+	return pulumix.Output[map[string]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in StringMap) ToStringMapOutput() StringMapOutput {
 	return ToOutput(in).(StringMapOutput)
 }
@@ -4420,6 +5179,12 @@ type StringMapOutput struct{ *OutputState }
 
 func (StringMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]string] {
+	return pulumix.Output[map[string]string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]string).
@@ -4476,6 +5241,12 @@ func (StringArrayMap) ElementType() reflect.Type {
 	return stringArrayMapType
 }
 
+func (in StringArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]string] {
+	return pulumix.Output[map[string][]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in StringArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
 	return ToOutput(in).(StringArrayMapOutput)
 }
@@ -4489,6 +5260,12 @@ type StringArrayMapOutput struct{ *OutputState }
 
 func (StringArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]string] {
+	return pulumix.Output[map[string][]string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]string).
@@ -4545,6 +5322,12 @@ func (StringMapArray) ElementType() reflect.Type {
 	return stringMapArrayType
 }
 
+func (in StringMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]string] {
+	return pulumix.Output[[]map[string]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in StringMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
 	return ToOutput(in).(StringMapArrayOutput)
 }
@@ -4558,6 +5341,12 @@ type StringMapArrayOutput struct{ *OutputState }
 
 func (StringMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]string] {
+	return pulumix.Output[[]map[string]string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]string).
@@ -4621,6 +5410,12 @@ func (StringMapMap) ElementType() reflect.Type {
 	return stringMapMapType
 }
 
+func (in StringMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]string] {
+	return pulumix.Output[map[string]map[string]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in StringMapMap) ToStringMapMapOutput() StringMapMapOutput {
 	return ToOutput(in).(StringMapMapOutput)
 }
@@ -4634,6 +5429,12 @@ type StringMapMapOutput struct{ *OutputState }
 
 func (StringMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]string] {
+	return pulumix.Output[map[string]map[string]string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]string).
@@ -4690,6 +5491,12 @@ func (StringArrayArray) ElementType() reflect.Type {
 	return stringArrayArrayType
 }
 
+func (in StringArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]string] {
+	return pulumix.Output[[][]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in StringArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
 	return ToOutput(in).(StringArrayArrayOutput)
 }
@@ -4703,6 +5510,12 @@ type StringArrayArrayOutput struct{ *OutputState }
 
 func (StringArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o StringArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]string] {
+	return pulumix.Output[[][]string]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]string).
@@ -4766,6 +5579,12 @@ func (URN) ElementType() reflect.Type {
 	return urnType
 }
 
+func (in URN) ToOutput(ctx context.Context) pulumix.Output[URN] {
+	return pulumix.Output[URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in URN) ToURNOutput() URNOutput {
 	return ToOutput(in).(URNOutput)
 }
@@ -4795,6 +5614,12 @@ type URNOutput struct{ *OutputState }
 
 func (URNOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNOutput) ToOutput(ctx context.Context) pulumix.Output[URN] {
+	return pulumix.Output[URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (URN).
@@ -4858,6 +5683,12 @@ func (*urnPtr) ElementType() reflect.Type {
 	return uRNPtrType
 }
 
+func (in *urnPtr) ToOutput(ctx context.Context) pulumix.Output[*URN] {
+	return pulumix.Output[*URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in *urnPtr) ToURNPtrOutput() URNPtrOutput {
 	return ToOutput(in).(URNPtrOutput)
 }
@@ -4871,6 +5702,12 @@ type URNPtrOutput struct{ *OutputState }
 
 func (URNPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*URN] {
+	return pulumix.Output[*URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (*URN).
@@ -4915,6 +5752,12 @@ func (URNArray) ElementType() reflect.Type {
 	return uRNArrayType
 }
 
+func (in URNArray) ToOutput(ctx context.Context) pulumix.Output[[]URN] {
+	return pulumix.Output[[]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in URNArray) ToURNArrayOutput() URNArrayOutput {
 	return ToOutput(in).(URNArrayOutput)
 }
@@ -4928,6 +5771,12 @@ type URNArrayOutput struct{ *OutputState }
 
 func (URNArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]URN] {
+	return pulumix.Output[[]URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]URN).
@@ -4991,6 +5840,12 @@ func (URNMap) ElementType() reflect.Type {
 	return uRNMapType
 }
 
+func (in URNMap) ToOutput(ctx context.Context) pulumix.Output[map[string]URN] {
+	return pulumix.Output[map[string]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in URNMap) ToURNMapOutput() URNMapOutput {
 	return ToOutput(in).(URNMapOutput)
 }
@@ -5004,6 +5859,12 @@ type URNMapOutput struct{ *OutputState }
 
 func (URNMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]URN] {
+	return pulumix.Output[map[string]URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]URN).
@@ -5060,6 +5921,12 @@ func (URNArrayMap) ElementType() reflect.Type {
 	return uRNArrayMapType
 }
 
+func (in URNArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]URN] {
+	return pulumix.Output[map[string][]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in URNArrayMap) ToURNArrayMapOutput() URNArrayMapOutput {
 	return ToOutput(in).(URNArrayMapOutput)
 }
@@ -5073,6 +5940,12 @@ type URNArrayMapOutput struct{ *OutputState }
 
 func (URNArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]URN] {
+	return pulumix.Output[map[string][]URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string][]URN).
@@ -5129,6 +6002,12 @@ func (URNMapArray) ElementType() reflect.Type {
 	return uRNMapArrayType
 }
 
+func (in URNMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]URN] {
+	return pulumix.Output[[]map[string]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in URNMapArray) ToURNMapArrayOutput() URNMapArrayOutput {
 	return ToOutput(in).(URNMapArrayOutput)
 }
@@ -5142,6 +6021,12 @@ type URNMapArrayOutput struct{ *OutputState }
 
 func (URNMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]URN] {
+	return pulumix.Output[[]map[string]URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([]map[string]URN).
@@ -5205,6 +6090,12 @@ func (URNMapMap) ElementType() reflect.Type {
 	return uRNMapMapType
 }
 
+func (in URNMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]URN] {
+	return pulumix.Output[map[string]map[string]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in URNMapMap) ToURNMapMapOutput() URNMapMapOutput {
 	return ToOutput(in).(URNMapMapOutput)
 }
@@ -5218,6 +6109,12 @@ type URNMapMapOutput struct{ *OutputState }
 
 func (URNMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]URN] {
+	return pulumix.Output[map[string]map[string]URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output (map[string]map[string]URN).
@@ -5274,6 +6171,12 @@ func (URNArrayArray) ElementType() reflect.Type {
 	return uRNArrayArrayType
 }
 
+func (in URNArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]URN] {
+	return pulumix.Output[[][]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in URNArrayArray) ToURNArrayArrayOutput() URNArrayArrayOutput {
 	return ToOutput(in).(URNArrayArrayOutput)
 }
@@ -5287,6 +6190,12 @@ type URNArrayArrayOutput struct{ *OutputState }
 
 func (URNArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o URNArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]URN] {
+	return pulumix.Output[[][]URN]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ([][]URN).
@@ -5332,13 +6241,9 @@ func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
 	return a.ToURNArrayArrayOutput()
 }
 
-func getResolvedValue(input Input) (reflect.Value, bool) {
-	switch input := input.(type) {
-	case *asset, *archive:
-		return reflect.ValueOf(input), true
-	default:
-		return reflect.Value{}, false
-	}
+func init() {
+	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
+	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
 }
 
 // AsArchiveOutput asserts that the type of the AnyOutput's underlying interface{} value is

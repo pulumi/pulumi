@@ -33,8 +33,9 @@ builds:
 - <<: *pulumibin
   id: pulumi-language-python
   binary: pulumi-language-python
-  dir: sdk
-  main: ./python/cmd/pulumi-language-python
+  dir: sdk/python/cmd/pulumi-language-python
+  main: ./
+  gobinary: ../../../../scripts/go-wrapper.sh
 
 archives:
 - id: pulumi

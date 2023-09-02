@@ -110,6 +110,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
 		MapperTarget: req.MapperTarget,
+		Args:         req.Args,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -140,6 +141,7 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
 		MapperTarget:    req.MapperTarget,
+		LoaderTarget:    req.LoaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

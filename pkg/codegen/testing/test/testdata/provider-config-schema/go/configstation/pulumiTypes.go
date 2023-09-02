@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"internal"
 )
 
@@ -46,6 +47,12 @@ func (i ChildArgs) ToChildOutputWithContext(ctx context.Context) ChildOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ChildOutput)
 }
 
+func (i ChildArgs) ToOutput(ctx context.Context) pulumix.Output[Child] {
+	return pulumix.Output[Child]{
+		OutputState: i.ToChildOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ChildOutput struct{ *pulumi.OutputState }
 
 func (ChildOutput) ElementType() reflect.Type {
@@ -58,6 +65,12 @@ func (o ChildOutput) ToChildOutput() ChildOutput {
 
 func (o ChildOutput) ToChildOutputWithContext(ctx context.Context) ChildOutput {
 	return o
+}
+
+func (o ChildOutput) ToOutput(ctx context.Context) pulumix.Output[Child] {
+	return pulumix.Output[Child]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ChildOutput) Age() pulumi.IntPtrOutput {

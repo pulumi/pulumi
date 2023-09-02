@@ -166,7 +166,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -183,7 +186,26 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
-	// Build the pacakge.json
+	// The local dependencies map is a map of package name to the path to the package, the path could be
+	// absolute or a relative path but we want to ensure we emit relative paths in the package.json.
+	for k, v := range localDependencies {
+		absPath := v
+		if !filepath.IsAbs(v) {
+			absPath, err = filepath.Abs(v)
+			if err != nil {
+				return fmt.Errorf("absolute path of %s: %w", v, err)
+			}
+		}
+
+		relPath, err := filepath.Rel(directory, absPath)
+		if err != nil {
+			return fmt.Errorf("relative path of %s from %s: %w", absPath, directory, err)
+		}
+
+		localDependencies[k] = relPath
+	}
+
+	// Build the package.json
 	var packageJSON bytes.Buffer
 	fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
@@ -192,7 +214,14 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",
-		"@pulumi/pulumi": "^3.0.0"`, project.Name.String())
+		`, project.Name.String())
+
+	// Check if pulumi is a local dependency, else add it as a normal range dependency
+	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "%s"`, pulumiArtifact)
+	} else {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "^3.0.0"`)
+	}
 
 	// For each package add a dependency line
 	packages, err := program.CollectNestedPackageSnapshots()
@@ -218,11 +247,16 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 				packageName = nodeInfo.PackageName
 			}
 		}
+
 		dependencyTemplate := ",\n		\"%s\": \"%s\""
-		if p.Version != nil {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+		if path, has := localDependencies[p.Name]; has {
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
 		} else {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			if p.Version != nil {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			}
 		}
 	}
 	packageJSON.WriteString(`

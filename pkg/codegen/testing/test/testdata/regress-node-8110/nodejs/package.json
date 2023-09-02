@@ -2,8 +2,7 @@
     "name": "@pulumi/my8110",
     "version": "${VERSION}",
     "scripts": {
-        "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource my8110 ${VERSION}"
+        "build": "tsc"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.42.0"

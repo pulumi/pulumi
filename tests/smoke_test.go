@@ -10,6 +10,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,6 +51,38 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e.RunCommand("pulumi", "destroy", "--yes")
 		})
 	}
+}
+
+// Quick sanity tests that YAML convert works.
+func TestYamlConvertSmoke(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	e.ImportDirectory("testdata/random_yaml")
+
+	// Make sure random is installed
+	out, _ := e.RunCommand("pulumi", "plugin", "ls")
+	if !strings.Contains(out, "random  resource  4.13.0") {
+		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+	}
+
+	e.RunCommand(
+		"pulumi", "convert", "--strict",
+		"--language", "pcl", "--from", "yaml", "--out", "out")
+
+	actualPcl, err := os.ReadFile(filepath.Join(e.RootPath, "out", "program.pp"))
+	require.NoError(t, err)
+	assert.Equal(t, `resource pet "random:index/randomPet:RandomPet" {
+	__logicalName = "pet"
+}
+
+output name {
+	__logicalName = "name"
+	value = pet.id
+}
+`, string(actualPcl))
 }
 
 // Quick sanity tests for each downstream language to check that convert works.

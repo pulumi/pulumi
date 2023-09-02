@@ -80,6 +80,11 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.GeneratePackageResponse,
     ]
     """GeneratePackage generates a given pulumi package into a package for this language."""
+    Pack: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.PackRequest,
+        pulumi.language_pb2.PackResponse,
+    ]
+    """Pack packs a package into a language specific artifact."""
 
 class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
@@ -156,5 +161,12 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.language_pb2.GeneratePackageResponse:
         """GeneratePackage generates a given pulumi package into a package for this language."""
+    
+    def Pack(
+        self,
+        request: pulumi.language_pb2.PackRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.PackResponse:
+        """Pack packs a package into a language specific artifact."""
 
 def add_LanguageRuntimeServicer_to_server(servicer: LanguageRuntimeServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

@@ -1,0 +1,8 @@
+name: random_yaml
+runtime: yaml
+resources:
+  pet:
+    type: random:RandomPet
+    options: {}
+outputs:
+  name: ${pet.id}

@@ -109,10 +109,21 @@ var pypiDev = regexp.MustCompile("^dev[0-9]+$")
 // A valid post tag for pypi
 var pypiPost = regexp.MustCompile("^post[0-9]+$")
 
+// Transforms 0.0.1-alpha.18 to 0.0.1-alpha18; our users want to be able to use the previous form but semver.Version
+// parses it into two Pre segments ["alpha", "18"] which trips up translation. The same treatment is given beta and rc
+// versions.
+func normPypiVersion(v semver.Version) semver.Version {
+	s := v.String()
+	s = regexp.MustCompile(`(alpha|beta|rc)[.](\d+)`).ReplaceAllString(s, `$1$2`)
+	return semver.MustParse(s)
+}
+
 // pypiVersion translates semver 2.0 into pypi's versioning scheme:
 // Details can be found here: https://www.python.org/dev/peps/pep-0440/#version-scheme
 // [N!]N(.N)*[{a|b|rc}N][.postN][.devN]
 func pypiVersion(v semver.Version) string {
+	v = normPypiVersion(v)
+
 	localList := slice.Prealloc[string](len(pypiReleaseTranslations))
 
 	getRelease := func(maybeRelease string) string {

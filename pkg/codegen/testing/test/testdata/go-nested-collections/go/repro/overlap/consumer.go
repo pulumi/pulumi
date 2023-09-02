@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"go-nested-collections/repro/internal"
 )
 
@@ -88,6 +89,12 @@ func (i *Consumer) ToConsumerOutputWithContext(ctx context.Context) ConsumerOutp
 	return pulumi.ToOutputWithContext(ctx, i).(ConsumerOutput)
 }
 
+func (i *Consumer) ToOutput(ctx context.Context) pulumix.Output[*Consumer] {
+	return pulumix.Output[*Consumer]{
+		OutputState: i.ToConsumerOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ConsumerArrayInput is an input type that accepts ConsumerArray and ConsumerArrayOutput values.
 // You can construct a concrete instance of `ConsumerArrayInput` via:
 //
@@ -111,6 +118,12 @@ func (i ConsumerArray) ToConsumerArrayOutput() ConsumerArrayOutput {
 
 func (i ConsumerArray) ToConsumerArrayOutputWithContext(ctx context.Context) ConsumerArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ConsumerArrayOutput)
+}
+
+func (i ConsumerArray) ToOutput(ctx context.Context) pulumix.Output[[]*Consumer] {
+	return pulumix.Output[[]*Consumer]{
+		OutputState: i.ToConsumerArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // ConsumerMapInput is an input type that accepts ConsumerMap and ConsumerMapOutput values.
@@ -138,6 +151,12 @@ func (i ConsumerMap) ToConsumerMapOutputWithContext(ctx context.Context) Consume
 	return pulumi.ToOutputWithContext(ctx, i).(ConsumerMapOutput)
 }
 
+func (i ConsumerMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*Consumer] {
+	return pulumix.Output[map[string]*Consumer]{
+		OutputState: i.ToConsumerMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ConsumerOutput struct{ *pulumi.OutputState }
 
 func (ConsumerOutput) ElementType() reflect.Type {
@@ -152,6 +171,12 @@ func (o ConsumerOutput) ToConsumerOutputWithContext(ctx context.Context) Consume
 	return o
 }
 
+func (o ConsumerOutput) ToOutput(ctx context.Context) pulumix.Output[*Consumer] {
+	return pulumix.Output[*Consumer]{
+		OutputState: o.OutputState,
+	}
+}
+
 type ConsumerArrayOutput struct{ *pulumi.OutputState }
 
 func (ConsumerArrayOutput) ElementType() reflect.Type {
@@ -164,6 +189,12 @@ func (o ConsumerArrayOutput) ToConsumerArrayOutput() ConsumerArrayOutput {
 
 func (o ConsumerArrayOutput) ToConsumerArrayOutputWithContext(ctx context.Context) ConsumerArrayOutput {
 	return o
+}
+
+func (o ConsumerArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*Consumer] {
+	return pulumix.Output[[]*Consumer]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ConsumerArrayOutput) Index(i pulumi.IntInput) ConsumerOutput {
@@ -184,6 +215,12 @@ func (o ConsumerMapOutput) ToConsumerMapOutput() ConsumerMapOutput {
 
 func (o ConsumerMapOutput) ToConsumerMapOutputWithContext(ctx context.Context) ConsumerMapOutput {
 	return o
+}
+
+func (o ConsumerMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*Consumer] {
+	return pulumix.Output[map[string]*Consumer]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ConsumerMapOutput) MapIndex(k pulumi.StringInput) ConsumerOutput {

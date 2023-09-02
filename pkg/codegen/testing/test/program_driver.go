@@ -53,6 +53,17 @@ func ProgramTestBatch(k, n int) []ProgramTest {
 	return PulumiPulumiProgramTests[start:end]
 }
 
+// Useful when debugging a single test case.
+func SingleTestCase(directoryName string) []ProgramTest {
+	output := make([]ProgramTest, 0)
+	for _, t := range PulumiPulumiProgramTests {
+		if t.Directory == directoryName {
+			output = append(output, t)
+		}
+	}
+	return output
+}
+
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "assets-archives",
@@ -126,8 +137,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "azure-native",
 		Description: "Azure Native",
-		Skip:        codegen.NewStringSet("go"),
-		// Blocked on TODO[pulumi/pulumi#8123]
 		SkipCompile: codegen.NewStringSet("go", "nodejs", "dotnet"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8072]
@@ -350,6 +359,22 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Tests that interpolated string keys are supported in maps. ",
 		Skip:        allProgLanguages.Except("nodejs").Except("python"),
 	},
+	{
+		Directory:   "regress-node-12507",
+		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
+		Skip:        allProgLanguages.Except("nodejs"),
+		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
+	},
+	{
+		Directory:   "csharp-plain-lists",
+		Description: "Tests that plain lists are supported in C#",
+		Skip:        allProgLanguages.Except("dotnet"),
+	},
+	{
+		Directory:   "csharp-typed-for-expressions",
+		Description: "Testing for expressions with typed target expressions in csharp",
+		Skip:        allProgLanguages.Except("dotnet"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
@@ -450,7 +475,10 @@ type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 // Generates a project from a pcl.Program
-type GenProject = func(directory string, project workspace.Project, program *pcl.Program) error
+type GenProject = func(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error
 
 type ProgramCodegenOptions struct {
 	Language   string
@@ -577,7 +605,7 @@ func TestProgramCodegen(
 					Name:    "test",
 					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
 				}
-				err = testcase.GenProject(testDir, project, program)
+				err = testcase.GenProject(testDir, project, program, nil /*localDependencies*/)
 				assert.NoError(t, err)
 
 				depFilePath := filepath.Join(testDir, testcase.DependencyFile)

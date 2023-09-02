@@ -36,6 +36,9 @@ service Converter {
 message ConvertStateRequest {
     // the gRPC target of the mapper service.
     string mapper_target = 1;
+    // the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
+    // import from.
+    repeated string args = 2;
 }
 
 // A ResourceImport specifies a resource to import.
@@ -65,6 +68,8 @@ message ConvertProgramRequest {
     string target_directory = 2;
     // the gRPC target of the mapper service.
     string mapper_target = 3;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 4;
 }
 
 message ConvertProgramResponse {

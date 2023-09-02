@@ -24,7 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -35,6 +35,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -50,7 +52,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -170,11 +171,12 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
+		cancel() // deregister handler so we don't catch another interrupt
 		close(cancelChannel)
 	}()
 	err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
@@ -1011,7 +1013,7 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	extraOptions := make([]pcl.BindOption, 0)
+	var extraOptions []pcl.BindOption
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -1021,11 +1023,7 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
-
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
 		return &pulumirpc.GenerateProjectResponse{
 			Diagnostics: rpcDiagnostics,
@@ -1040,7 +1038,7 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -1071,17 +1069,13 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
 	if err != nil {
 		return nil, err
 	}
 
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range pdiags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
-
-	if pdiags.HasErrors() {
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+	if diags.HasErrors() {
 		return &pulumirpc.GenerateProgramResponse{
 			Diagnostics: rpcDiagnostics,
 		}, nil
@@ -1094,10 +1088,7 @@ func (host *goLanguageHost) GenerateProgram(
 	if err != nil {
 		return nil, err
 	}
-
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
+	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
 		Source:      files,
@@ -1136,7 +1127,7 @@ func (host *goLanguageHost) GeneratePackage(
 	}
 
 	for filename, data := range files {
-		outPath := path.Join(req.Directory, filename)
+		outPath := filepath.Join(req.Directory, filename)
 
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {
@@ -1150,4 +1141,8 @@ func (host *goLanguageHost) GeneratePackage(
 	}
 
 	return &pulumirpc.GeneratePackageResponse{}, nil
+}
+
+func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pack not implemented")
 }

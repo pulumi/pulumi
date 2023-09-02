@@ -119,8 +119,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;Filterable<wbr>Property&gt;&gt;</span>
     </dt>
-    <dd><p>Dictionary of filterable properties on product family.</p>
-</dd><dt class="property-optional"
+    <dd>Dictionary of filterable properties on product family.</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_csharp" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
@@ -128,8 +127,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
-</dd><dt class="property-optional"
+    <dd>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_csharp" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -137,8 +135,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
-</dd><dt class="property-optional"
+    <dd>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_csharp" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
@@ -146,8 +143,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
-</dd></dl>
+    <dd>$skipToken is supported on list of product families, which provides the next page in the list of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -161,8 +157,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">map[string][]Filterable<wbr>Property</span>
     </dt>
-    <dd><p>Dictionary of filterable properties on product family.</p>
-</dd><dt class="property-optional"
+    <dd>Dictionary of filterable properties on product family.</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_go" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
@@ -170,8 +165,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
-</dd><dt class="property-optional"
+    <dd>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_go" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -179,8 +173,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
-</dd><dt class="property-optional"
+    <dd>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_go" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
@@ -188,8 +181,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
-</dd></dl>
+    <dd>$skipToken is supported on list of product families, which provides the next page in the list of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -203,8 +195,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,List&lt;Filterable<wbr>Property&gt;&gt;</span>
     </dt>
-    <dd><p>Dictionary of filterable properties on product family.</p>
-</dd><dt class="property-optional"
+    <dd>Dictionary of filterable properties on product family.</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_java" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
@@ -212,8 +203,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
-</dd><dt class="property-optional"
+    <dd>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_java" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -221,8 +211,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
-</dd><dt class="property-optional"
+    <dd>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_java" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
@@ -230,8 +219,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
-</dd></dl>
+    <dd>$skipToken is supported on list of product families, which provides the next page in the list of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -245,8 +233,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Filterable<wbr>Property[]}</span>
     </dt>
-    <dd><p>Dictionary of filterable properties on product family.</p>
-</dd><dt class="property-optional"
+    <dd>Dictionary of filterable properties on product family.</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_nodejs" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
@@ -254,8 +241,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
-</dd><dt class="property-optional"
+    <dd>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_nodejs" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -263,8 +249,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
-</dd><dt class="property-optional"
+    <dd>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_nodejs" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
@@ -272,8 +257,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
-</dd></dl>
+    <dd>$skipToken is supported on list of product families, which provides the next page in the list of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -287,8 +271,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Sequence[Filterable<wbr>Property]]</span>
     </dt>
-    <dd><p>Dictionary of filterable properties on product family.</p>
-</dd><dt class="property-optional"
+    <dd>Dictionary of filterable properties on product family.</dd><dt class="property-optional"
             title="Optional">
         <span id="customer_subscription_details_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customer_subscription_details_python" style="color: inherit; text-decoration: inherit;">customer_<wbr>subscription_<wbr>details</a>
@@ -296,8 +279,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
-</dd><dt class="property-optional"
+    <dd>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_python" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -305,8 +287,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
-</dd><dt class="property-optional"
+    <dd>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</dd><dt class="property-optional"
             title="Optional">
         <span id="skip_token_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skip_token_python" style="color: inherit; text-decoration: inherit;">skip_<wbr>token</a>
@@ -314,8 +295,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
-</dd></dl>
+    <dd>$skipToken is supported on list of product families, which provides the next page in the list of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -329,8 +309,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;List&lt;Property Map&gt;&gt;</span>
     </dt>
-    <dd><p>Dictionary of filterable properties on product family.</p>
-</dd><dt class="property-optional"
+    <dd>Dictionary of filterable properties on product family.</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_yaml" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
@@ -338,8 +317,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Property Map</a></span>
     </dt>
-    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
-</dd><dt class="property-optional"
+    <dd>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_yaml" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -347,8 +325,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
-</dd><dt class="property-optional"
+    <dd>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_yaml" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
@@ -356,8 +333,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
-</dd></dl>
+    <dd>$skipToken is supported on list of product families, which provides the next page in the list of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -380,8 +356,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">List&lt;Product<wbr>Family<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of product families.</p>
-</dd><dt class="property-"
+    <dd>List of product families.</dd><dt class="property-"
             title="">
         <span id="nextlink_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_csharp" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
@@ -389,8 +364,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Link for the next set of product families.</p>
-</dd></dl>
+    <dd>Link for the next set of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -404,8 +378,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">[]Product<wbr>Family<wbr>Response</a></span>
     </dt>
-    <dd><p>List of product families.</p>
-</dd><dt class="property-"
+    <dd>List of product families.</dd><dt class="property-"
             title="">
         <span id="nextlink_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_go" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
@@ -413,8 +386,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Link for the next set of product families.</p>
-</dd></dl>
+    <dd>Link for the next set of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -428,8 +400,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">List&lt;Product<wbr>Family<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of product families.</p>
-</dd><dt class="property-"
+    <dd>List of product families.</dd><dt class="property-"
             title="">
         <span id="nextlink_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
@@ -437,8 +408,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Link for the next set of product families.</p>
-</dd></dl>
+    <dd>Link for the next set of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -452,8 +422,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">Product<wbr>Family<wbr>Response[]</a></span>
     </dt>
-    <dd><p>List of product families.</p>
-</dd><dt class="property-"
+    <dd>List of product families.</dd><dt class="property-"
             title="">
         <span id="nextlink_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_nodejs" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
@@ -461,8 +430,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Link for the next set of product families.</p>
-</dd></dl>
+    <dd>Link for the next set of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -476,8 +444,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">Sequence[Product<wbr>Family<wbr>Response]</a></span>
     </dt>
-    <dd><p>List of product families.</p>
-</dd><dt class="property-"
+    <dd>List of product families.</dd><dt class="property-"
             title="">
         <span id="next_link_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#next_link_python" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
@@ -485,8 +452,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Link for the next set of product families.</p>
-</dd></dl>
+    <dd>Link for the next set of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -500,8 +466,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>List of product families.</p>
-</dd><dt class="property-"
+    <dd>List of product families.</dd><dt class="property-"
             title="">
         <span id="nextlink_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
@@ -509,8 +474,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Link for the next set of product families.</p>
-</dd></dl>
+    <dd>Link for the next set of product families.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -534,8 +498,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Current availability stage of the product. Availability stage</p>
-</dd><dt class="property-required"
+    <dd>Current availability stage of the product. Availability stage</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_csharp" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
@@ -543,8 +506,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reason why the product is disabled.</p>
-</dd><dt class="property-required"
+    <dd>Reason why the product is disabled.</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_csharp" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
@@ -552,8 +514,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Message for why the product is disabled.</p>
-</dd></dl>
+    <dd>Message for why the product is disabled.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -567,8 +528,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Current availability stage of the product. Availability stage</p>
-</dd><dt class="property-required"
+    <dd>Current availability stage of the product. Availability stage</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_go" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
@@ -576,8 +536,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reason why the product is disabled.</p>
-</dd><dt class="property-required"
+    <dd>Reason why the product is disabled.</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_go" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
@@ -585,8 +544,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Message for why the product is disabled.</p>
-</dd></dl>
+    <dd>Message for why the product is disabled.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -600,8 +558,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Current availability stage of the product. Availability stage</p>
-</dd><dt class="property-required"
+    <dd>Current availability stage of the product. Availability stage</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_java" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
@@ -609,8 +566,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Reason why the product is disabled.</p>
-</dd><dt class="property-required"
+    <dd>Reason why the product is disabled.</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_java" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
@@ -618,8 +574,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Message for why the product is disabled.</p>
-</dd></dl>
+    <dd>Message for why the product is disabled.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -633,8 +588,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Current availability stage of the product. Availability stage</p>
-</dd><dt class="property-required"
+    <dd>Current availability stage of the product. Availability stage</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_nodejs" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
@@ -642,8 +596,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reason why the product is disabled.</p>
-</dd><dt class="property-required"
+    <dd>Reason why the product is disabled.</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_nodejs" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
@@ -651,8 +604,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Message for why the product is disabled.</p>
-</dd></dl>
+    <dd>Message for why the product is disabled.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -666,8 +618,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Current availability stage of the product. Availability stage</p>
-</dd><dt class="property-required"
+    <dd>Current availability stage of the product. Availability stage</dd><dt class="property-required"
             title="Required">
         <span id="disabled_reason_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_python" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason</a>
@@ -675,8 +626,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Reason why the product is disabled.</p>
-</dd><dt class="property-required"
+    <dd>Reason why the product is disabled.</dd><dt class="property-required"
             title="Required">
         <span id="disabled_reason_message_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_message_python" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason_<wbr>message</a>
@@ -684,8 +634,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Message for why the product is disabled.</p>
-</dd></dl>
+    <dd>Message for why the product is disabled.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -699,8 +648,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Current availability stage of the product. Availability stage</p>
-</dd><dt class="property-required"
+    <dd>Current availability stage of the product. Availability stage</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_yaml" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
@@ -708,8 +656,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Reason why the product is disabled.</p>
-</dd><dt class="property-required"
+    <dd>Reason why the product is disabled.</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_yaml" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
@@ -717,8 +664,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Message for why the product is disabled.</p>
-</dd></dl>
+    <dd>Message for why the product is disabled.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -736,8 +682,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Frequency of recurrence</p>
-</dd><dt class="property-required"
+    <dd>Frequency of recurrence</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_csharp" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
@@ -745,8 +690,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd><p>Represents MeterDetails</p>
-</dd><dt class="property-required"
+    <dd>Represents MeterDetails</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_csharp" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
@@ -754,8 +698,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
-</dd><dt class="property-required"
+    <dd>Represents Metering type (eg one-time or recurrent)</dd><dt class="property-required"
             title="Required">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -763,8 +706,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents Billing type name</p>
-</dd></dl>
+    <dd>Represents Billing type name</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -778,8 +720,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Frequency of recurrence</p>
-</dd><dt class="property-required"
+    <dd>Frequency of recurrence</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_go" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
@@ -787,8 +728,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd><p>Represents MeterDetails</p>
-</dd><dt class="property-required"
+    <dd>Represents MeterDetails</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_go" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
@@ -796,8 +736,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
-</dd><dt class="property-required"
+    <dd>Represents Metering type (eg one-time or recurrent)</dd><dt class="property-required"
             title="Required">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -805,8 +744,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents Billing type name</p>
-</dd></dl>
+    <dd>Represents Billing type name</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -820,8 +758,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Frequency of recurrence</p>
-</dd><dt class="property-required"
+    <dd>Frequency of recurrence</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_java" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
@@ -829,8 +766,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd><p>Represents MeterDetails</p>
-</dd><dt class="property-required"
+    <dd>Represents MeterDetails</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_java" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
@@ -838,8 +774,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
-</dd><dt class="property-required"
+    <dd>Represents Metering type (eg one-time or recurrent)</dd><dt class="property-required"
             title="Required">
         <span id="name_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
@@ -847,8 +782,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents Billing type name</p>
-</dd></dl>
+    <dd>Represents Billing type name</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -862,8 +796,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Frequency of recurrence</p>
-</dd><dt class="property-required"
+    <dd>Frequency of recurrence</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_nodejs" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
@@ -871,8 +804,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd><p>Represents MeterDetails</p>
-</dd><dt class="property-required"
+    <dd>Represents MeterDetails</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_nodejs" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
@@ -880,8 +812,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
-</dd><dt class="property-required"
+    <dd>Represents Metering type (eg one-time or recurrent)</dd><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -889,8 +820,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents Billing type name</p>
-</dd></dl>
+    <dd>Represents Billing type name</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -904,8 +834,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Frequency of recurrence</p>
-</dd><dt class="property-required"
+    <dd>Frequency of recurrence</dd><dt class="property-required"
             title="Required">
         <span id="meter_details_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_details_python" style="color: inherit; text-decoration: inherit;">meter_<wbr>details</a>
@@ -913,8 +842,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd><p>Represents MeterDetails</p>
-</dd><dt class="property-required"
+    <dd>Represents MeterDetails</dd><dt class="property-required"
             title="Required">
         <span id="metering_type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metering_type_python" style="color: inherit; text-decoration: inherit;">metering_<wbr>type</a>
@@ -922,8 +850,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
-</dd><dt class="property-required"
+    <dd>Represents Metering type (eg one-time or recurrent)</dd><dt class="property-required"
             title="Required">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -931,8 +858,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Represents Billing type name</p>
-</dd></dl>
+    <dd>Represents Billing type name</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -946,8 +872,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Frequency of recurrence</p>
-</dd><dt class="property-required"
+    <dd>Frequency of recurrence</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_yaml" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
@@ -955,8 +880,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Property Map</a> | <a href="#purchasemeterdetailsresponse">Property Map</a></span>
     </dt>
-    <dd><p>Represents MeterDetails</p>
-</dd><dt class="property-required"
+    <dd>Represents MeterDetails</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_yaml" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
@@ -964,8 +888,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
-</dd><dt class="property-required"
+    <dd>Represents Metering type (eg one-time or recurrent)</dd><dt class="property-required"
             title="Required">
         <span id="name_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
@@ -973,8 +896,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents Billing type name</p>
-</dd></dl>
+    <dd>Represents Billing type name</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -992,8 +914,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -1001,8 +922,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -1010,8 +930,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_csharp" style="color: inherit; text-decoration: inherit;">Dimensions</a>
@@ -1019,8 +938,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd><p>Dimensions of the configuration</p>
-</dd><dt class="property-required"
+    <dd>Dimensions of the configuration</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -1028,8 +946,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -1037,8 +954,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -1046,8 +962,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -1055,8 +970,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="specifications_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_csharp" style="color: inherit; text-decoration: inherit;">Specifications</a>
@@ -1064,8 +978,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">List&lt;Specification<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Specifications of the configuration</p>
-</dd></dl>
+    <dd>Specifications of the configuration</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1079,8 +992,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -1088,8 +1000,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -1097,8 +1008,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_go" style="color: inherit; text-decoration: inherit;">Dimensions</a>
@@ -1106,8 +1016,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd><p>Dimensions of the configuration</p>
-</dd><dt class="property-required"
+    <dd>Dimensions of the configuration</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -1115,8 +1024,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -1124,8 +1032,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -1133,8 +1040,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -1142,8 +1048,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="specifications_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_go" style="color: inherit; text-decoration: inherit;">Specifications</a>
@@ -1151,8 +1056,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">[]Specification<wbr>Response</a></span>
     </dt>
-    <dd><p>Specifications of the configuration</p>
-</dd></dl>
+    <dd>Specifications of the configuration</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1166,8 +1070,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_java" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -1175,8 +1078,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
@@ -1184,8 +1086,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_java" style="color: inherit; text-decoration: inherit;">dimensions</a>
@@ -1193,8 +1094,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd><p>Dimensions of the configuration</p>
-</dd><dt class="property-required"
+    <dd>Dimensions of the configuration</dd><dt class="property-required"
             title="Required">
         <span id="displayname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_java" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -1202,8 +1102,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -1211,8 +1110,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -1220,8 +1118,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -1229,8 +1126,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="specifications_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_java" style="color: inherit; text-decoration: inherit;">specifications</a>
@@ -1238,8 +1134,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">List&lt;Specification<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Specifications of the configuration</p>
-</dd></dl>
+    <dd>Specifications of the configuration</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1253,8 +1148,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -1262,8 +1156,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -1271,8 +1164,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_nodejs" style="color: inherit; text-decoration: inherit;">dimensions</a>
@@ -1280,8 +1172,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd><p>Dimensions of the configuration</p>
-</dd><dt class="property-required"
+    <dd>Dimensions of the configuration</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -1289,8 +1180,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -1298,8 +1188,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -1307,8 +1196,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -1316,8 +1204,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="specifications_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_nodejs" style="color: inherit; text-decoration: inherit;">specifications</a>
@@ -1325,8 +1212,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">Specification<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Specifications of the configuration</p>
-</dd></dl>
+    <dd>Specifications of the configuration</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1340,8 +1226,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -1349,8 +1234,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -1358,8 +1242,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_python" style="color: inherit; text-decoration: inherit;">dimensions</a>
@@ -1367,8 +1250,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd><p>Dimensions of the configuration</p>
-</dd><dt class="property-required"
+    <dd>Dimensions of the configuration</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -1376,8 +1258,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -1385,8 +1266,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -1394,8 +1274,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -1403,8 +1282,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="specifications_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_python" style="color: inherit; text-decoration: inherit;">specifications</a>
@@ -1412,8 +1290,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">Sequence[Specification<wbr>Response]</a></span>
     </dt>
-    <dd><p>Specifications of the configuration</p>
-</dd></dl>
+    <dd>Specifications of the configuration</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1427,8 +1304,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_yaml" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -1436,8 +1312,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
@@ -1445,8 +1320,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Property Map</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_yaml" style="color: inherit; text-decoration: inherit;">dimensions</a>
@@ -1454,8 +1328,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Property Map</a></span>
     </dt>
-    <dd><p>Dimensions of the configuration</p>
-</dd><dt class="property-required"
+    <dd>Dimensions of the configuration</dd><dt class="property-required"
             title="Required">
         <span id="displayname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_yaml" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -1463,8 +1336,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -1472,8 +1344,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -1481,8 +1352,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -1490,8 +1360,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="specifications_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_yaml" style="color: inherit; text-decoration: inherit;">specifications</a>
@@ -1499,8 +1368,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Specifications of the configuration</p>
-</dd></dl>
+    <dd>Specifications of the configuration</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1518,8 +1386,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default url to display billing information</p>
-</dd><dt class="property-required"
+    <dd>Default url to display billing information</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_csharp" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
@@ -1527,8 +1394,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Details on the various billing aspects for the product system.</p>
-</dd></dl>
+    <dd>Details on the various billing aspects for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1542,8 +1408,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default url to display billing information</p>
-</dd><dt class="property-required"
+    <dd>Default url to display billing information</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_go" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
@@ -1551,8 +1416,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">[]Billing<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd><p>Details on the various billing aspects for the product system.</p>
-</dd></dl>
+    <dd>Details on the various billing aspects for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1566,8 +1430,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Default url to display billing information</p>
-</dd><dt class="property-required"
+    <dd>Default url to display billing information</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_java" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
@@ -1575,8 +1438,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Details on the various billing aspects for the product system.</p>
-</dd></dl>
+    <dd>Details on the various billing aspects for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1590,8 +1452,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default url to display billing information</p>
-</dd><dt class="property-required"
+    <dd>Default url to display billing information</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_nodejs" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
@@ -1599,8 +1460,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">Billing<wbr>Meter<wbr>Details<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Details on the various billing aspects for the product system.</p>
-</dd></dl>
+    <dd>Details on the various billing aspects for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1614,8 +1474,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Default url to display billing information</p>
-</dd><dt class="property-required"
+    <dd>Default url to display billing information</dd><dt class="property-required"
             title="Required">
         <span id="billing_meter_details_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billing_meter_details_python" style="color: inherit; text-decoration: inherit;">billing_<wbr>meter_<wbr>details</a>
@@ -1623,8 +1482,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">Sequence[Billing<wbr>Meter<wbr>Details<wbr>Response]</a></span>
     </dt>
-    <dd><p>Details on the various billing aspects for the product system.</p>
-</dd></dl>
+    <dd>Details on the various billing aspects for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1638,8 +1496,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Default url to display billing information</p>
-</dd><dt class="property-required"
+    <dd>Default url to display billing information</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_yaml" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
@@ -1647,8 +1504,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Details on the various billing aspects for the product system.</p>
-</dd></dl>
+    <dd>Details on the various billing aspects for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1666,8 +1522,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Quota ID of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Quota ID of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_csharp" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
@@ -1675,8 +1530,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Location placement Id of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Location placement Id of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_csharp" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
@@ -1684,8 +1538,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
     </dt>
-    <dd><p>List of registered feature flags for subscription</p>
-</dd></dl>
+    <dd>List of registered feature flags for subscription</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1699,8 +1552,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Quota ID of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Quota ID of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_go" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
@@ -1708,8 +1560,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Location placement Id of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Location placement Id of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_go" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
@@ -1717,8 +1568,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">[]Customer<wbr>Subscription<wbr>Registered<wbr>Features</a></span>
     </dt>
-    <dd><p>List of registered feature flags for subscription</p>
-</dd></dl>
+    <dd>List of registered feature flags for subscription</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1732,8 +1582,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Quota ID of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Quota ID of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_java" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
@@ -1741,8 +1590,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Location placement Id of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Location placement Id of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_java" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
@@ -1750,8 +1598,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
     </dt>
-    <dd><p>List of registered feature flags for subscription</p>
-</dd></dl>
+    <dd>List of registered feature flags for subscription</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1765,8 +1612,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Quota ID of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Quota ID of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_nodejs" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
@@ -1774,8 +1620,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Location placement Id of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Location placement Id of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_nodejs" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
@@ -1783,8 +1628,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">Customer<wbr>Subscription<wbr>Registered<wbr>Features[]</a></span>
     </dt>
-    <dd><p>List of registered feature flags for subscription</p>
-</dd></dl>
+    <dd>List of registered feature flags for subscription</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1798,8 +1642,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Quota ID of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Quota ID of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="location_placement_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#location_placement_id_python" style="color: inherit; text-decoration: inherit;">location_<wbr>placement_<wbr>id</a>
@@ -1807,8 +1650,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Location placement Id of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Location placement Id of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="registered_features_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registered_features_python" style="color: inherit; text-decoration: inherit;">registered_<wbr>features</a>
@@ -1816,8 +1658,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">Sequence[Customer<wbr>Subscription<wbr>Registered<wbr>Features]</a></span>
     </dt>
-    <dd><p>List of registered feature flags for subscription</p>
-</dd></dl>
+    <dd>List of registered feature flags for subscription</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1831,8 +1672,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Quota ID of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Quota ID of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_yaml" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
@@ -1840,8 +1680,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Location placement Id of a subscription</p>
-</dd><dt class="property-optional"
+    <dd>Location placement Id of a subscription</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_yaml" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
@@ -1849,8 +1688,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>List of registered feature flags for subscription</p>
-</dd></dl>
+    <dd>List of registered feature flags for subscription</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1868,8 +1706,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of subscription registered feature</p>
-</dd><dt class="property-optional"
+    <dd>Name of subscription registered feature</dd><dt class="property-optional"
             title="Optional">
         <span id="state_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_csharp" style="color: inherit; text-decoration: inherit;">State</a>
@@ -1877,8 +1714,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>State of subscription registered feature</p>
-</dd></dl>
+    <dd>State of subscription registered feature</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1892,8 +1728,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of subscription registered feature</p>
-</dd><dt class="property-optional"
+    <dd>Name of subscription registered feature</dd><dt class="property-optional"
             title="Optional">
         <span id="state_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_go" style="color: inherit; text-decoration: inherit;">State</a>
@@ -1901,8 +1736,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>State of subscription registered feature</p>
-</dd></dl>
+    <dd>State of subscription registered feature</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1916,8 +1750,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Name of subscription registered feature</p>
-</dd><dt class="property-optional"
+    <dd>Name of subscription registered feature</dd><dt class="property-optional"
             title="Optional">
         <span id="state_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_java" style="color: inherit; text-decoration: inherit;">state</a>
@@ -1925,8 +1758,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>State of subscription registered feature</p>
-</dd></dl>
+    <dd>State of subscription registered feature</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1940,8 +1772,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of subscription registered feature</p>
-</dd><dt class="property-optional"
+    <dd>Name of subscription registered feature</dd><dt class="property-optional"
             title="Optional">
         <span id="state_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_nodejs" style="color: inherit; text-decoration: inherit;">state</a>
@@ -1949,8 +1780,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>State of subscription registered feature</p>
-</dd></dl>
+    <dd>State of subscription registered feature</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1964,8 +1794,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Name of subscription registered feature</p>
-</dd><dt class="property-optional"
+    <dd>Name of subscription registered feature</dd><dt class="property-optional"
             title="Optional">
         <span id="state_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_python" style="color: inherit; text-decoration: inherit;">state</a>
@@ -1973,8 +1802,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>State of subscription registered feature</p>
-</dd></dl>
+    <dd>State of subscription registered feature</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1988,8 +1816,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Name of subscription registered feature</p>
-</dd><dt class="property-optional"
+    <dd>Name of subscription registered feature</dd><dt class="property-optional"
             title="Optional">
         <span id="state_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_yaml" style="color: inherit; text-decoration: inherit;">state</a>
@@ -1997,8 +1824,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>State of subscription registered feature</p>
-</dd></dl>
+    <dd>State of subscription registered feature</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2016,8 +1842,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd><p>Attributes for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Attributes for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_csharp" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
@@ -2025,8 +1850,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of description.</p>
-</dd><dt class="property-required"
+    <dd>Type of description.</dd><dt class="property-required"
             title="Required">
         <span id="keywords_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_csharp" style="color: inherit; text-decoration: inherit;">Keywords</a>
@@ -2034,8 +1858,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd><p>Keywords for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Keywords for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="links_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_csharp" style="color: inherit; text-decoration: inherit;">Links</a>
@@ -2043,8 +1866,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">List&lt;Link<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Links for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Links for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_csharp" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
@@ -2052,8 +1874,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Long description of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Long description of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_csharp" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
@@ -2061,8 +1882,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Short description of the product system.</p>
-</dd></dl>
+    <dd>Short description of the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2076,8 +1896,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd><p>Attributes for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Attributes for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_go" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
@@ -2085,8 +1904,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of description.</p>
-</dd><dt class="property-required"
+    <dd>Type of description.</dd><dt class="property-required"
             title="Required">
         <span id="keywords_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_go" style="color: inherit; text-decoration: inherit;">Keywords</a>
@@ -2094,8 +1912,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd><p>Keywords for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Keywords for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="links_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_go" style="color: inherit; text-decoration: inherit;">Links</a>
@@ -2103,8 +1920,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">[]Link<wbr>Response</a></span>
     </dt>
-    <dd><p>Links for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Links for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_go" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
@@ -2112,8 +1928,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Long description of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Long description of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_go" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
@@ -2121,8 +1936,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Short description of the product system.</p>
-</dd></dl>
+    <dd>Short description of the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2136,8 +1950,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Attributes for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Attributes for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_java" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
@@ -2145,8 +1958,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of description.</p>
-</dd><dt class="property-required"
+    <dd>Type of description.</dd><dt class="property-required"
             title="Required">
         <span id="keywords_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_java" style="color: inherit; text-decoration: inherit;">keywords</a>
@@ -2154,8 +1966,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Keywords for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Keywords for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="links_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_java" style="color: inherit; text-decoration: inherit;">links</a>
@@ -2163,8 +1974,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">List&lt;Link<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Links for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Links for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_java" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
@@ -2172,8 +1982,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Long description of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Long description of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_java" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
@@ -2181,8 +1990,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Short description of the product system.</p>
-</dd></dl>
+    <dd>Short description of the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2196,8 +2004,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd><p>Attributes for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Attributes for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_nodejs" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
@@ -2205,8 +2012,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of description.</p>
-</dd><dt class="property-required"
+    <dd>Type of description.</dd><dt class="property-required"
             title="Required">
         <span id="keywords_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_nodejs" style="color: inherit; text-decoration: inherit;">keywords</a>
@@ -2214,8 +2020,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd><p>Keywords for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Keywords for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="links_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_nodejs" style="color: inherit; text-decoration: inherit;">links</a>
@@ -2223,8 +2028,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">Link<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Links for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Links for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_nodejs" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
@@ -2232,8 +2036,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Long description of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Long description of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_nodejs" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
@@ -2241,8 +2044,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Short description of the product system.</p>
-</dd></dl>
+    <dd>Short description of the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2256,8 +2058,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd><p>Attributes for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Attributes for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_type_python" style="color: inherit; text-decoration: inherit;">description_<wbr>type</a>
@@ -2265,8 +2066,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Type of description.</p>
-</dd><dt class="property-required"
+    <dd>Type of description.</dd><dt class="property-required"
             title="Required">
         <span id="keywords_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_python" style="color: inherit; text-decoration: inherit;">keywords</a>
@@ -2274,8 +2074,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd><p>Keywords for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Keywords for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="links_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_python" style="color: inherit; text-decoration: inherit;">links</a>
@@ -2283,8 +2082,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">Sequence[Link<wbr>Response]</a></span>
     </dt>
-    <dd><p>Links for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Links for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="long_description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#long_description_python" style="color: inherit; text-decoration: inherit;">long_<wbr>description</a>
@@ -2292,8 +2090,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Long description of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Long description of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="short_description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#short_description_python" style="color: inherit; text-decoration: inherit;">short_<wbr>description</a>
@@ -2301,8 +2098,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Short description of the product system.</p>
-</dd></dl>
+    <dd>Short description of the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2316,8 +2112,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Attributes for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Attributes for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_yaml" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
@@ -2325,8 +2120,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of description.</p>
-</dd><dt class="property-required"
+    <dd>Type of description.</dd><dt class="property-required"
             title="Required">
         <span id="keywords_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_yaml" style="color: inherit; text-decoration: inherit;">keywords</a>
@@ -2334,8 +2128,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Keywords for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Keywords for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="links_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_yaml" style="color: inherit; text-decoration: inherit;">links</a>
@@ -2343,8 +2136,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Links for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Links for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_yaml" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
@@ -2352,8 +2144,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Long description of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Long description of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_yaml" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
@@ -2361,8 +2152,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Short description of the product system.</p>
-</dd></dl>
+    <dd>Short description of the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2380,8 +2170,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Depth of the device.</p>
-</dd><dt class="property-required"
+    <dd>Depth of the device.</dd><dt class="property-required"
             title="Required">
         <span id="height_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_csharp" style="color: inherit; text-decoration: inherit;">Height</a>
@@ -2389,8 +2178,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Height of the device.</p>
-</dd><dt class="property-required"
+    <dd>Height of the device.</dd><dt class="property-required"
             title="Required">
         <span id="length_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_csharp" style="color: inherit; text-decoration: inherit;">Length</a>
@@ -2398,8 +2186,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Length of the device.</p>
-</dd><dt class="property-required"
+    <dd>Length of the device.</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_csharp" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
@@ -2407,8 +2194,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Unit for the dimensions of length, height and width.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of length, height and width.</dd><dt class="property-required"
             title="Required">
         <span id="weight_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_csharp" style="color: inherit; text-decoration: inherit;">Weight</a>
@@ -2416,8 +2202,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Weight of the device.</p>
-</dd><dt class="property-required"
+    <dd>Weight of the device.</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_csharp" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
@@ -2425,8 +2210,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Unit for the dimensions of weight.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of weight.</dd><dt class="property-required"
             title="Required">
         <span id="width_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_csharp" style="color: inherit; text-decoration: inherit;">Width</a>
@@ -2434,8 +2218,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Width of the device.</p>
-</dd></dl>
+    <dd>Width of the device.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2449,8 +2232,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Depth of the device.</p>
-</dd><dt class="property-required"
+    <dd>Depth of the device.</dd><dt class="property-required"
             title="Required">
         <span id="height_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_go" style="color: inherit; text-decoration: inherit;">Height</a>
@@ -2458,8 +2240,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Height of the device.</p>
-</dd><dt class="property-required"
+    <dd>Height of the device.</dd><dt class="property-required"
             title="Required">
         <span id="length_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_go" style="color: inherit; text-decoration: inherit;">Length</a>
@@ -2467,8 +2248,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Length of the device.</p>
-</dd><dt class="property-required"
+    <dd>Length of the device.</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_go" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
@@ -2476,8 +2256,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Unit for the dimensions of length, height and width.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of length, height and width.</dd><dt class="property-required"
             title="Required">
         <span id="weight_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_go" style="color: inherit; text-decoration: inherit;">Weight</a>
@@ -2485,8 +2264,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Weight of the device.</p>
-</dd><dt class="property-required"
+    <dd>Weight of the device.</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_go" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
@@ -2494,8 +2272,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Unit for the dimensions of weight.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of weight.</dd><dt class="property-required"
             title="Required">
         <span id="width_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_go" style="color: inherit; text-decoration: inherit;">Width</a>
@@ -2503,8 +2280,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Width of the device.</p>
-</dd></dl>
+    <dd>Width of the device.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2518,8 +2294,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Depth of the device.</p>
-</dd><dt class="property-required"
+    <dd>Depth of the device.</dd><dt class="property-required"
             title="Required">
         <span id="height_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_java" style="color: inherit; text-decoration: inherit;">height</a>
@@ -2527,8 +2302,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Height of the device.</p>
-</dd><dt class="property-required"
+    <dd>Height of the device.</dd><dt class="property-required"
             title="Required">
         <span id="length_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_java" style="color: inherit; text-decoration: inherit;">length</a>
@@ -2536,8 +2310,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Length of the device.</p>
-</dd><dt class="property-required"
+    <dd>Length of the device.</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_java" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
@@ -2545,8 +2318,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Unit for the dimensions of length, height and width.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of length, height and width.</dd><dt class="property-required"
             title="Required">
         <span id="weight_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_java" style="color: inherit; text-decoration: inherit;">weight</a>
@@ -2554,8 +2326,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Weight of the device.</p>
-</dd><dt class="property-required"
+    <dd>Weight of the device.</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_java" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
@@ -2563,8 +2334,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Unit for the dimensions of weight.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of weight.</dd><dt class="property-required"
             title="Required">
         <span id="width_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_java" style="color: inherit; text-decoration: inherit;">width</a>
@@ -2572,8 +2342,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Width of the device.</p>
-</dd></dl>
+    <dd>Width of the device.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2587,8 +2356,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Depth of the device.</p>
-</dd><dt class="property-required"
+    <dd>Depth of the device.</dd><dt class="property-required"
             title="Required">
         <span id="height_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_nodejs" style="color: inherit; text-decoration: inherit;">height</a>
@@ -2596,8 +2364,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Height of the device.</p>
-</dd><dt class="property-required"
+    <dd>Height of the device.</dd><dt class="property-required"
             title="Required">
         <span id="length_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_nodejs" style="color: inherit; text-decoration: inherit;">length</a>
@@ -2605,8 +2372,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Length of the device.</p>
-</dd><dt class="property-required"
+    <dd>Length of the device.</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_nodejs" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
@@ -2614,8 +2380,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Unit for the dimensions of length, height and width.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of length, height and width.</dd><dt class="property-required"
             title="Required">
         <span id="weight_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_nodejs" style="color: inherit; text-decoration: inherit;">weight</a>
@@ -2623,8 +2388,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Weight of the device.</p>
-</dd><dt class="property-required"
+    <dd>Weight of the device.</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_nodejs" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
@@ -2632,8 +2396,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Unit for the dimensions of weight.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of weight.</dd><dt class="property-required"
             title="Required">
         <span id="width_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_nodejs" style="color: inherit; text-decoration: inherit;">width</a>
@@ -2641,8 +2404,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Width of the device.</p>
-</dd></dl>
+    <dd>Width of the device.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2656,8 +2418,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Depth of the device.</p>
-</dd><dt class="property-required"
+    <dd>Depth of the device.</dd><dt class="property-required"
             title="Required">
         <span id="height_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_python" style="color: inherit; text-decoration: inherit;">height</a>
@@ -2665,8 +2426,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Height of the device.</p>
-</dd><dt class="property-required"
+    <dd>Height of the device.</dd><dt class="property-required"
             title="Required">
         <span id="length_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_python" style="color: inherit; text-decoration: inherit;">length</a>
@@ -2674,8 +2434,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Length of the device.</p>
-</dd><dt class="property-required"
+    <dd>Length of the device.</dd><dt class="property-required"
             title="Required">
         <span id="length_height_unit_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_height_unit_python" style="color: inherit; text-decoration: inherit;">length_<wbr>height_<wbr>unit</a>
@@ -2683,8 +2442,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Unit for the dimensions of length, height and width.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of length, height and width.</dd><dt class="property-required"
             title="Required">
         <span id="weight_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_python" style="color: inherit; text-decoration: inherit;">weight</a>
@@ -2692,8 +2450,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Weight of the device.</p>
-</dd><dt class="property-required"
+    <dd>Weight of the device.</dd><dt class="property-required"
             title="Required">
         <span id="weight_unit_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_unit_python" style="color: inherit; text-decoration: inherit;">weight_<wbr>unit</a>
@@ -2701,8 +2458,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Unit for the dimensions of weight.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of weight.</dd><dt class="property-required"
             title="Required">
         <span id="width_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_python" style="color: inherit; text-decoration: inherit;">width</a>
@@ -2710,8 +2466,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Width of the device.</p>
-</dd></dl>
+    <dd>Width of the device.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2725,8 +2480,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Depth of the device.</p>
-</dd><dt class="property-required"
+    <dd>Depth of the device.</dd><dt class="property-required"
             title="Required">
         <span id="height_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_yaml" style="color: inherit; text-decoration: inherit;">height</a>
@@ -2734,8 +2488,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Height of the device.</p>
-</dd><dt class="property-required"
+    <dd>Height of the device.</dd><dt class="property-required"
             title="Required">
         <span id="length_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_yaml" style="color: inherit; text-decoration: inherit;">length</a>
@@ -2743,8 +2496,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Length of the device.</p>
-</dd><dt class="property-required"
+    <dd>Length of the device.</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_yaml" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
@@ -2752,8 +2504,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Unit for the dimensions of length, height and width.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of length, height and width.</dd><dt class="property-required"
             title="Required">
         <span id="weight_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_yaml" style="color: inherit; text-decoration: inherit;">weight</a>
@@ -2761,8 +2512,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Weight of the device.</p>
-</dd><dt class="property-required"
+    <dd>Weight of the device.</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_yaml" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
@@ -2770,8 +2520,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Unit for the dimensions of weight.</p>
-</dd><dt class="property-required"
+    <dd>Unit for the dimensions of weight.</dd><dt class="property-required"
             title="Required">
         <span id="width_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_yaml" style="color: inherit; text-decoration: inherit;">width</a>
@@ -2779,8 +2528,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Width of the device.</p>
-</dd></dl>
+    <dd>Width of the device.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2798,8 +2546,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -2807,8 +2554,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#supportedfiltertypes">Pulumi.<wbr>Myedgeorder.<wbr>Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2822,8 +2568,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -2831,8 +2576,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2846,8 +2590,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java" style="color: inherit; text-decoration: inherit;">type</a>
@@ -2855,8 +2598,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2870,8 +2612,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
@@ -2879,8 +2620,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2894,8 +2634,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
@@ -2903,8 +2642,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2918,8 +2656,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
@@ -2927,8 +2664,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String | <a href="#supportedfiltertypes">&#34;Ship<wbr>To<wbr>Countries&#34; | &#34;Double<wbr>Encryption<wbr>Status&#34;</a></span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2946,8 +2682,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -2955,8 +2690,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2970,8 +2704,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -2979,8 +2712,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2994,8 +2726,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java" style="color: inherit; text-decoration: inherit;">type</a>
@@ -3003,8 +2734,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3018,8 +2748,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
@@ -3027,8 +2756,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3042,8 +2770,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
@@ -3051,8 +2778,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3066,8 +2792,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
     </dt>
-    <dd><p>Values to be filtered.</p>
-</dd><dt class="property-required"
+    <dd>Values to be filtered.</dd><dt class="property-required"
             title="Required">
         <span id="type_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
@@ -3075,8 +2800,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of product filter.</p>
-</dd></dl>
+    <dd>Type of product filter.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3094,8 +2818,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents configuration name that uniquely identifies configuration</p>
-</dd><dt class="property-optional"
+    <dd>Represents configuration name that uniquely identifies configuration</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
@@ -3103,8 +2826,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product family name that uniquely identifies product family</p>
-</dd><dt class="property-optional"
+    <dd>Represents product family name that uniquely identifies product family</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
@@ -3112,8 +2834,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product line name that uniquely identifies product line</p>
-</dd><dt class="property-optional"
+    <dd>Represents product line name that uniquely identifies product line</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
@@ -3121,8 +2842,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product name that uniquely identifies product</p>
-</dd></dl>
+    <dd>Represents product name that uniquely identifies product</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3136,8 +2856,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents configuration name that uniquely identifies configuration</p>
-</dd><dt class="property-optional"
+    <dd>Represents configuration name that uniquely identifies configuration</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
@@ -3145,8 +2864,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product family name that uniquely identifies product family</p>
-</dd><dt class="property-optional"
+    <dd>Represents product family name that uniquely identifies product family</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
@@ -3154,8 +2872,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product line name that uniquely identifies product line</p>
-</dd><dt class="property-optional"
+    <dd>Represents product line name that uniquely identifies product line</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
@@ -3163,8 +2880,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product name that uniquely identifies product</p>
-</dd></dl>
+    <dd>Represents product name that uniquely identifies product</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3178,8 +2894,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents configuration name that uniquely identifies configuration</p>
-</dd><dt class="property-optional"
+    <dd>Represents configuration name that uniquely identifies configuration</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
@@ -3187,8 +2902,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents product family name that uniquely identifies product family</p>
-</dd><dt class="property-optional"
+    <dd>Represents product family name that uniquely identifies product family</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_java" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
@@ -3196,8 +2910,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents product line name that uniquely identifies product line</p>
-</dd><dt class="property-optional"
+    <dd>Represents product line name that uniquely identifies product line</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
@@ -3205,8 +2918,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents product name that uniquely identifies product</p>
-</dd></dl>
+    <dd>Represents product name that uniquely identifies product</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3220,8 +2932,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents configuration name that uniquely identifies configuration</p>
-</dd><dt class="property-optional"
+    <dd>Represents configuration name that uniquely identifies configuration</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
@@ -3229,8 +2940,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product family name that uniquely identifies product family</p>
-</dd><dt class="property-optional"
+    <dd>Represents product family name that uniquely identifies product family</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
@@ -3238,8 +2948,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product line name that uniquely identifies product line</p>
-</dd><dt class="property-optional"
+    <dd>Represents product line name that uniquely identifies product line</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
@@ -3247,8 +2956,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Represents product name that uniquely identifies product</p>
-</dd></dl>
+    <dd>Represents product name that uniquely identifies product</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3262,8 +2970,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Represents configuration name that uniquely identifies configuration</p>
-</dd><dt class="property-optional"
+    <dd>Represents configuration name that uniquely identifies configuration</dd><dt class="property-optional"
             title="Optional">
         <span id="product_family_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_family_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>family_<wbr>name</a>
@@ -3271,8 +2978,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Represents product family name that uniquely identifies product family</p>
-</dd><dt class="property-optional"
+    <dd>Represents product family name that uniquely identifies product family</dd><dt class="property-optional"
             title="Optional">
         <span id="product_line_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_line_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>line_<wbr>name</a>
@@ -3280,8 +2986,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Represents product line name that uniquely identifies product line</p>
-</dd><dt class="property-optional"
+    <dd>Represents product line name that uniquely identifies product line</dd><dt class="property-optional"
             title="Optional">
         <span id="product_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>name</a>
@@ -3289,8 +2994,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Represents product name that uniquely identifies product</p>
-</dd></dl>
+    <dd>Represents product name that uniquely identifies product</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3304,8 +3008,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents configuration name that uniquely identifies configuration</p>
-</dd><dt class="property-optional"
+    <dd>Represents configuration name that uniquely identifies configuration</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
@@ -3313,8 +3016,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents product family name that uniquely identifies product family</p>
-</dd><dt class="property-optional"
+    <dd>Represents product family name that uniquely identifies product family</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
@@ -3322,8 +3024,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents product line name that uniquely identifies product line</p>
-</dd><dt class="property-optional"
+    <dd>Represents product line name that uniquely identifies product line</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
@@ -3331,8 +3032,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Represents product name that uniquely identifies product</p>
-</dd></dl>
+    <dd>Represents product name that uniquely identifies product</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3350,8 +3050,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of the image</p>
-</dd><dt class="property-required"
+    <dd>Type of the image</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
@@ -3359,8 +3058,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Url of the image</p>
-</dd></dl>
+    <dd>Url of the image</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3374,8 +3072,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of the image</p>
-</dd><dt class="property-required"
+    <dd>Type of the image</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
@@ -3383,8 +3080,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Url of the image</p>
-</dd></dl>
+    <dd>Url of the image</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3398,8 +3094,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of the image</p>
-</dd><dt class="property-required"
+    <dd>Type of the image</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_java" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
@@ -3407,8 +3102,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Url of the image</p>
-</dd></dl>
+    <dd>Url of the image</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3422,8 +3116,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of the image</p>
-</dd><dt class="property-required"
+    <dd>Type of the image</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
@@ -3431,8 +3124,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Url of the image</p>
-</dd></dl>
+    <dd>Url of the image</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3446,8 +3138,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Type of the image</p>
-</dd><dt class="property-required"
+    <dd>Type of the image</dd><dt class="property-required"
             title="Required">
         <span id="image_url_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_url_python" style="color: inherit; text-decoration: inherit;">image_<wbr>url</a>
@@ -3455,8 +3146,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Url of the image</p>
-</dd></dl>
+    <dd>Url of the image</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3470,8 +3160,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of the image</p>
-</dd><dt class="property-required"
+    <dd>Type of the image</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
@@ -3479,8 +3168,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Url of the image</p>
-</dd></dl>
+    <dd>Url of the image</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3498,8 +3186,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of link</p>
-</dd><dt class="property-required"
+    <dd>Type of link</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_csharp" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
@@ -3507,8 +3194,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Url of the link</p>
-</dd></dl>
+    <dd>Url of the link</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3522,8 +3208,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of link</p>
-</dd><dt class="property-required"
+    <dd>Type of link</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_go" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
@@ -3531,8 +3216,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Url of the link</p>
-</dd></dl>
+    <dd>Url of the link</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3546,8 +3230,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of link</p>
-</dd><dt class="property-required"
+    <dd>Type of link</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_java" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
@@ -3555,8 +3238,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Url of the link</p>
-</dd></dl>
+    <dd>Url of the link</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3570,8 +3252,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Type of link</p>
-</dd><dt class="property-required"
+    <dd>Type of link</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_nodejs" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
@@ -3579,8 +3260,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Url of the link</p>
-</dd></dl>
+    <dd>Url of the link</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3594,8 +3274,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Type of link</p>
-</dd><dt class="property-required"
+    <dd>Type of link</dd><dt class="property-required"
             title="Required">
         <span id="link_url_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#link_url_python" style="color: inherit; text-decoration: inherit;">link_<wbr>url</a>
@@ -3603,8 +3282,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Url of the link</p>
-</dd></dl>
+    <dd>Url of the link</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3618,8 +3296,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Type of link</p>
-</dd><dt class="property-required"
+    <dd>Type of link</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_yaml" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
@@ -3627,8 +3304,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Url of the link</p>
-</dd></dl>
+    <dd>Url of the link</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3646,8 +3322,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_csharp" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
@@ -3655,8 +3330,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Validation status of requested data center and transport.</p>
-</dd><dt class="property-required"
+    <dd>Validation status of requested data center and transport.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -3664,8 +3338,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd></dl>
+    <dd>Billing unit applicable for Pav2 billing</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3679,8 +3352,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_go" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
@@ -3688,8 +3360,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Validation status of requested data center and transport.</p>
-</dd><dt class="property-required"
+    <dd>Validation status of requested data center and transport.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -3697,8 +3368,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd></dl>
+    <dd>Billing unit applicable for Pav2 billing</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3712,8 +3382,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_java" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
@@ -3721,8 +3390,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Validation status of requested data center and transport.</p>
-</dd><dt class="property-required"
+    <dd>Validation status of requested data center and transport.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -3730,8 +3398,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd></dl>
+    <dd>Billing unit applicable for Pav2 billing</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3745,8 +3412,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_nodejs" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
@@ -3754,8 +3420,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Validation status of requested data center and transport.</p>
-</dd><dt class="property-required"
+    <dd>Validation status of requested data center and transport.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -3763,8 +3428,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd></dl>
+    <dd>Billing unit applicable for Pav2 billing</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3778,8 +3442,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="meter_guid_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_guid_python" style="color: inherit; text-decoration: inherit;">meter_<wbr>guid</a>
@@ -3787,8 +3450,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Validation status of requested data center and transport.</p>
-</dd><dt class="property-required"
+    <dd>Validation status of requested data center and transport.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -3796,8 +3458,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd></dl>
+    <dd>Billing unit applicable for Pav2 billing</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3811,8 +3472,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_yaml" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
@@ -3820,8 +3480,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Validation status of requested data center and transport.</p>
-</dd><dt class="property-required"
+    <dd>Validation status of requested data center and transport.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -3829,8 +3488,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd></dl>
+    <dd>Billing unit applicable for Pav2 billing</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3848,8 +3506,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -3857,8 +3514,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -3866,8 +3522,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -3875,8 +3530,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -3884,8 +3538,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -3893,8 +3546,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -3902,8 +3554,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="productlines_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Lines</a>
@@ -3911,8 +3562,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">List&lt;Product<wbr>Line<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of product lines supported in the product family</p>
-</dd></dl>
+    <dd>List of product lines supported in the product family</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3926,8 +3576,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -3935,8 +3584,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -3944,8 +3592,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -3953,8 +3600,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -3962,8 +3608,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -3971,8 +3616,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -3980,8 +3624,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="productlines_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Lines</a>
@@ -3989,8 +3632,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">[]Product<wbr>Line<wbr>Response</a></span>
     </dt>
-    <dd><p>List of product lines supported in the product family</p>
-</dd></dl>
+    <dd>List of product lines supported in the product family</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4004,8 +3646,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_java" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -4013,8 +3654,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4022,8 +3662,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_java" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -4031,8 +3670,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -4040,8 +3678,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -4049,8 +3686,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -4058,8 +3694,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="productlines_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_java" style="color: inherit; text-decoration: inherit;">product<wbr>Lines</a>
@@ -4067,8 +3702,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">List&lt;Product<wbr>Line<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of product lines supported in the product family</p>
-</dd></dl>
+    <dd>List of product lines supported in the product family</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4082,8 +3716,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -4091,8 +3724,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4100,8 +3732,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -4109,8 +3740,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -4118,8 +3748,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -4127,8 +3756,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -4136,8 +3764,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="productlines_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Lines</a>
@@ -4145,8 +3772,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">Product<wbr>Line<wbr>Response[]</a></span>
     </dt>
-    <dd><p>List of product lines supported in the product family</p>
-</dd></dl>
+    <dd>List of product lines supported in the product family</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4160,8 +3786,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -4169,8 +3794,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4178,8 +3802,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -4187,8 +3810,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -4196,8 +3818,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -4205,8 +3826,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -4214,8 +3834,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="product_lines_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_lines_python" style="color: inherit; text-decoration: inherit;">product_<wbr>lines</a>
@@ -4223,8 +3842,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">Sequence[Product<wbr>Line<wbr>Response]</a></span>
     </dt>
-    <dd><p>List of product lines supported in the product family</p>
-</dd></dl>
+    <dd>List of product lines supported in the product family</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4238,8 +3856,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_yaml" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -4247,8 +3864,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4256,8 +3872,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Property Map</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_yaml" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -4265,8 +3880,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -4274,8 +3888,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -4283,8 +3896,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -4292,8 +3904,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="productlines_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Lines</a>
@@ -4301,8 +3912,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>List of product lines supported in the product family</p>
-</dd></dl>
+    <dd>List of product lines supported in the product family</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4320,8 +3930,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -4329,8 +3938,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -4338,8 +3946,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -4347,8 +3954,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -4356,8 +3962,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -4365,8 +3970,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -4374,8 +3978,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="products_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_csharp" style="color: inherit; text-decoration: inherit;">Products</a>
@@ -4383,8 +3986,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">List&lt;Product<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of products in the product line</p>
-</dd></dl>
+    <dd>List of products in the product line</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4398,8 +4000,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -4407,8 +4008,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -4416,8 +4016,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -4425,8 +4024,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -4434,8 +4032,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -4443,8 +4040,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -4452,8 +4048,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="products_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_go" style="color: inherit; text-decoration: inherit;">Products</a>
@@ -4461,8 +4056,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">[]Product<wbr>Response</a></span>
     </dt>
-    <dd><p>List of products in the product line</p>
-</dd></dl>
+    <dd>List of products in the product line</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4476,8 +4070,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_java" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -4485,8 +4078,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4494,8 +4086,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_java" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -4503,8 +4094,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -4512,8 +4102,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -4521,8 +4110,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -4530,8 +4118,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="products_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_java" style="color: inherit; text-decoration: inherit;">products</a>
@@ -4539,8 +4126,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">List&lt;Product<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of products in the product line</p>
-</dd></dl>
+    <dd>List of products in the product line</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4554,8 +4140,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -4563,8 +4148,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4572,8 +4156,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -4581,8 +4164,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -4590,8 +4172,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -4599,8 +4180,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -4608,8 +4188,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="products_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_nodejs" style="color: inherit; text-decoration: inherit;">products</a>
@@ -4617,8 +4196,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">Product<wbr>Response[]</a></span>
     </dt>
-    <dd><p>List of products in the product line</p>
-</dd></dl>
+    <dd>List of products in the product line</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4632,8 +4210,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -4641,8 +4218,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4650,8 +4226,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -4659,8 +4234,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -4668,8 +4242,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -4677,8 +4250,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -4686,8 +4258,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="products_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_python" style="color: inherit; text-decoration: inherit;">products</a>
@@ -4695,8 +4266,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">Sequence[Product<wbr>Response]</a></span>
     </dt>
-    <dd><p>List of products in the product line</p>
-</dd></dl>
+    <dd>List of products in the product line</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4710,8 +4280,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_yaml" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -4719,8 +4288,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4728,8 +4296,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Property Map</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_yaml" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -4737,8 +4304,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -4746,8 +4312,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -4755,8 +4320,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -4764,8 +4328,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Image information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="products_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_yaml" style="color: inherit; text-decoration: inherit;">products</a>
@@ -4773,8 +4336,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>List of products in the product line</p>
-</dd></dl>
+    <dd>List of products in the product line</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4792,8 +4354,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="configurations_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_csharp" style="color: inherit; text-decoration: inherit;">Configurations</a>
@@ -4801,8 +4362,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">List&lt;Configuration<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of configurations for the product</p>
-</dd><dt class="property-required"
+    <dd>List of configurations for the product</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -4810,8 +4370,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -4819,8 +4378,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -4828,8 +4386,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -4837,8 +4394,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -4846,8 +4402,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -4855,8 +4410,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd></dl>
+    <dd>Image information for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4870,8 +4424,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="configurations_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_go" style="color: inherit; text-decoration: inherit;">Configurations</a>
@@ -4879,8 +4432,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">[]Configuration<wbr>Response</a></span>
     </dt>
-    <dd><p>List of configurations for the product</p>
-</dd><dt class="property-required"
+    <dd>List of configurations for the product</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -4888,8 +4440,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -4897,8 +4448,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -4906,8 +4456,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -4915,8 +4464,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -4924,8 +4472,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -4933,8 +4480,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd></dl>
+    <dd>Image information for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -4948,8 +4494,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="configurations_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_java" style="color: inherit; text-decoration: inherit;">configurations</a>
@@ -4957,8 +4502,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">List&lt;Configuration<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>List of configurations for the product</p>
-</dd><dt class="property-required"
+    <dd>List of configurations for the product</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_java" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -4966,8 +4510,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
@@ -4975,8 +4518,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_java" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -4984,8 +4526,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -4993,8 +4534,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -5002,8 +4542,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -5011,8 +4550,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd></dl>
+    <dd>Image information for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5026,8 +4564,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="configurations_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_nodejs" style="color: inherit; text-decoration: inherit;">configurations</a>
@@ -5035,8 +4572,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">Configuration<wbr>Response[]</a></span>
     </dt>
-    <dd><p>List of configurations for the product</p>
-</dd><dt class="property-required"
+    <dd>List of configurations for the product</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -5044,8 +4580,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -5053,8 +4588,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -5062,8 +4596,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -5071,8 +4604,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -5080,8 +4612,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -5089,8 +4620,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd></dl>
+    <dd>Image information for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5104,8 +4634,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="configurations_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_python" style="color: inherit; text-decoration: inherit;">configurations</a>
@@ -5113,8 +4642,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">Sequence[Configuration<wbr>Response]</a></span>
     </dt>
-    <dd><p>List of configurations for the product</p>
-</dd><dt class="property-required"
+    <dd>List of configurations for the product</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -5122,8 +4650,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -5131,8 +4658,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -5140,8 +4666,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -5149,8 +4674,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -5158,8 +4682,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -5167,8 +4690,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd></dl>
+    <dd>Image information for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5182,8 +4704,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Availability information of the product system.</p>
-</dd><dt class="property-required"
+    <dd>Availability information of the product system.</dd><dt class="property-required"
             title="Required">
         <span id="configurations_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_yaml" style="color: inherit; text-decoration: inherit;">configurations</a>
@@ -5191,8 +4712,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>List of configurations for the product</p>
-</dd><dt class="property-required"
+    <dd>List of configurations for the product</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_yaml" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -5200,8 +4720,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Cost information for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Cost information for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="description_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
@@ -5209,8 +4728,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Property Map</a></span>
     </dt>
-    <dd><p>Description related to the product system.</p>
-</dd><dt class="property-required"
+    <dd>Description related to the product system.</dd><dt class="property-required"
             title="Required">
         <span id="displayname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_yaml" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -5218,8 +4736,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Display Name for the product system.</p>
-</dd><dt class="property-required"
+    <dd>Display Name for the product system.</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -5227,8 +4744,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>list of filters supported for a product</p>
-</dd><dt class="property-required"
+    <dd>list of filters supported for a product</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -5236,8 +4752,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Property Map</a></span>
     </dt>
-    <dd><p>Hierarchy information of a product.</p>
-</dd><dt class="property-required"
+    <dd>Hierarchy information of a product.</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -5245,8 +4760,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Image information for the product system.</p>
-</dd></dl>
+    <dd>Image information for the product system.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5264,8 +4778,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -5273,8 +4786,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd><dt class="property-required"
+    <dd>Billing unit applicable for Pav2 billing</dd><dt class="property-required"
             title="Required">
         <span id="productid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
@@ -5282,8 +4794,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Product Id</p>
-</dd><dt class="property-required"
+    <dd>Product Id</dd><dt class="property-required"
             title="Required">
         <span id="skuid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_csharp" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
@@ -5291,8 +4802,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Sku Id</p>
-</dd><dt class="property-required"
+    <dd>Sku Id</dd><dt class="property-required"
             title="Required">
         <span id="termid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_csharp" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
@@ -5300,8 +4810,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Term Id</p>
-</dd></dl>
+    <dd>Term Id</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5315,8 +4824,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -5324,8 +4832,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd><dt class="property-required"
+    <dd>Billing unit applicable for Pav2 billing</dd><dt class="property-required"
             title="Required">
         <span id="productid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
@@ -5333,8 +4840,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Product Id</p>
-</dd><dt class="property-required"
+    <dd>Product Id</dd><dt class="property-required"
             title="Required">
         <span id="skuid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_go" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
@@ -5342,8 +4848,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Sku Id</p>
-</dd><dt class="property-required"
+    <dd>Sku Id</dd><dt class="property-required"
             title="Required">
         <span id="termid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_go" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
@@ -5351,8 +4856,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Term Id</p>
-</dd></dl>
+    <dd>Term Id</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5366,8 +4870,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -5375,8 +4878,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd><dt class="property-required"
+    <dd>Billing unit applicable for Pav2 billing</dd><dt class="property-required"
             title="Required">
         <span id="productid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_java" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
@@ -5384,8 +4886,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Product Id</p>
-</dd><dt class="property-required"
+    <dd>Product Id</dd><dt class="property-required"
             title="Required">
         <span id="skuid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_java" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
@@ -5393,8 +4894,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Sku Id</p>
-</dd><dt class="property-required"
+    <dd>Sku Id</dd><dt class="property-required"
             title="Required">
         <span id="termid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_java" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
@@ -5402,8 +4902,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Term Id</p>
-</dd></dl>
+    <dd>Term Id</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5417,8 +4916,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -5426,8 +4924,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd><dt class="property-required"
+    <dd>Billing unit applicable for Pav2 billing</dd><dt class="property-required"
             title="Required">
         <span id="productid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
@@ -5435,8 +4932,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Product Id</p>
-</dd><dt class="property-required"
+    <dd>Product Id</dd><dt class="property-required"
             title="Required">
         <span id="skuid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_nodejs" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
@@ -5444,8 +4940,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Sku Id</p>
-</dd><dt class="property-required"
+    <dd>Sku Id</dd><dt class="property-required"
             title="Required">
         <span id="termid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_nodejs" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
@@ -5453,8 +4948,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Term Id</p>
-</dd></dl>
+    <dd>Term Id</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5468,8 +4962,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -5477,8 +4970,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd><dt class="property-required"
+    <dd>Billing unit applicable for Pav2 billing</dd><dt class="property-required"
             title="Required">
         <span id="product_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_id_python" style="color: inherit; text-decoration: inherit;">product_<wbr>id</a>
@@ -5486,8 +4978,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Product Id</p>
-</dd><dt class="property-required"
+    <dd>Product Id</dd><dt class="property-required"
             title="Required">
         <span id="sku_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sku_id_python" style="color: inherit; text-decoration: inherit;">sku_<wbr>id</a>
@@ -5495,8 +4986,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Sku Id</p>
-</dd><dt class="property-required"
+    <dd>Sku Id</dd><dt class="property-required"
             title="Required">
         <span id="term_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#term_id_python" style="color: inherit; text-decoration: inherit;">term_<wbr>id</a>
@@ -5504,8 +4994,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Term Id</p>
-</dd></dl>
+    <dd>Term Id</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5519,8 +5008,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Charging type.</p>
-</dd><dt class="property-required"
+    <dd>Charging type.</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -5528,8 +5016,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Billing unit applicable for Pav2 billing</p>
-</dd><dt class="property-required"
+    <dd>Billing unit applicable for Pav2 billing</dd><dt class="property-required"
             title="Required">
         <span id="productid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
@@ -5537,8 +5024,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Product Id</p>
-</dd><dt class="property-required"
+    <dd>Product Id</dd><dt class="property-required"
             title="Required">
         <span id="skuid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_yaml" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
@@ -5546,8 +5032,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Sku Id</p>
-</dd><dt class="property-required"
+    <dd>Sku Id</dd><dt class="property-required"
             title="Required">
         <span id="termid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_yaml" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
@@ -5555,8 +5040,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Term Id</p>
-</dd></dl>
+    <dd>Term Id</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5574,8 +5058,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of the specification</p>
-</dd><dt class="property-required"
+    <dd>Name of the specification</dd><dt class="property-required"
             title="Required">
         <span id="value_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -5583,8 +5066,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Value of the specification</p>
-</dd></dl>
+    <dd>Value of the specification</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5598,8 +5080,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of the specification</p>
-</dd><dt class="property-required"
+    <dd>Name of the specification</dd><dt class="property-required"
             title="Required">
         <span id="value_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -5607,8 +5088,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Value of the specification</p>
-</dd></dl>
+    <dd>Value of the specification</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5622,8 +5102,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Name of the specification</p>
-</dd><dt class="property-required"
+    <dd>Name of the specification</dd><dt class="property-required"
             title="Required">
         <span id="value_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
@@ -5631,8 +5110,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Value of the specification</p>
-</dd></dl>
+    <dd>Value of the specification</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5646,8 +5124,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of the specification</p>
-</dd><dt class="property-required"
+    <dd>Name of the specification</dd><dt class="property-required"
             title="Required">
         <span id="value_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
@@ -5655,8 +5132,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Value of the specification</p>
-</dd></dl>
+    <dd>Value of the specification</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5670,8 +5146,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Name of the specification</p>
-</dd><dt class="property-required"
+    <dd>Name of the specification</dd><dt class="property-required"
             title="Required">
         <span id="value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
@@ -5679,8 +5154,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Value of the specification</p>
-</dd></dl>
+    <dd>Value of the specification</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -5694,8 +5168,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Name of the specification</p>
-</dd><dt class="property-required"
+    <dd>Name of the specification</dd><dt class="property-required"
             title="Required">
         <span id="value_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
@@ -5703,8 +5176,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Value of the specification</p>
-</dd></dl>
+    <dd>Value of the specification</dd></dl>
 </pulumi-choosable>
 </div>
 

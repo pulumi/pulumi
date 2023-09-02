@@ -234,7 +234,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_csharp" style="color: inherit; text-decoration: inherit;">Pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">List&lt;Pet<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#pet">List&lt;Pet&gt;</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -278,7 +278,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_java" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">List&lt;Pet<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#pet">List&lt;Pet&gt;</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -300,7 +300,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_nodejs" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args[]</a></span>
+        <span class="property-type"><a href="#pet">Pet[]</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -367,8 +367,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -382,8 +381,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -397,8 +395,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -412,8 +409,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -427,8 +423,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -442,8 +437,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -457,7 +451,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="pet">Pet</h4>
+<h4 id="pet">
+Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

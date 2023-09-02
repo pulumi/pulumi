@@ -91,6 +91,9 @@ func TestMakePyPiVersion(t *testing.T) {
 		{"1.2.3-dev321", "1.2.3.dev321"},
 		{"1.2.3-post456", "1.2.3.post456"},
 		{"1.2.3-posttt456", "1.2.3+posttt456"},
+		{"0.0.1-alpha.18", "0.0.1a18"},
+		{"0.0.1-beta.18", "0.0.1b18"},
+		{"0.0.1-rc.18", "0.0.1rc18"},
 	}
 	for _, tt := range tests {
 		tt := tt

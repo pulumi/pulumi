@@ -99,8 +99,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The Name of the FeatureGroup.</p>
-</dd></dl>
+    <dd>The Name of the FeatureGroup.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -114,8 +113,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The Name of the FeatureGroup.</p>
-</dd></dl>
+    <dd>The Name of the FeatureGroup.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -129,8 +127,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The Name of the FeatureGroup.</p>
-</dd></dl>
+    <dd>The Name of the FeatureGroup.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -144,8 +141,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The Name of the FeatureGroup.</p>
-</dd></dl>
+    <dd>The Name of the FeatureGroup.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -159,8 +155,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The Name of the FeatureGroup.</p>
-</dd></dl>
+    <dd>The Name of the FeatureGroup.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -174,8 +169,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The Name of the FeatureGroup.</p>
-</dd></dl>
+    <dd>The Name of the FeatureGroup.</dd></dl>
 </pulumi-choosable>
 </div>
 

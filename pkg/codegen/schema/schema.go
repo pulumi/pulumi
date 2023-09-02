@@ -1311,7 +1311,7 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 
 		return TypeSpec{
 			Type: defaultType,
-			Ref:  t.Token,
+			Ref:  pkg.marshalTypeRef(pkg.Reference(), "types", t.Token),
 		}
 	default:
 		switch t {

@@ -225,7 +225,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_csharp" style="color: inherit; text-decoration: inherit;">Thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Inputs.<wbr>Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type"><a href="#toplevel">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Inputs.<wbr>Top<wbr>Level</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -253,7 +253,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_java" style="color: inherit; text-decoration: inherit;">thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type"><a href="#toplevel">Top<wbr>Level</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -267,7 +267,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_nodejs" style="color: inherit; text-decoration: inherit;">thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type"><a href="#toplevel">Top<wbr>Level</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -318,8 +318,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -333,8 +332,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -348,8 +346,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -363,8 +360,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -378,8 +374,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -393,8 +388,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -408,7 +402,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="toplevel">Top<wbr>Level</h4>
+<h4 id="toplevel">
+Top<wbr>Level<pulumi-choosable type="language" values="python,go" class="inline">, Top<wbr>Level<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

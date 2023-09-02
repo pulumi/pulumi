@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
 	"github.com/spf13/cobra"
 )
@@ -142,7 +141,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
 		Args:    cmdutil.MaximumNArgs(2),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
 
@@ -166,27 +165,27 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					},
 				)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 			case 1: // We got the urn but not the name
 				urn = resource.URN(args[0])
 				if !urn.IsValid() {
-					return result.Error("The provided input URN is not valid")
+					return errors.New("The provided input URN is not valid")
 				}
 				var err error
 				newResourceName, err = getNewResourceName()
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 			case 2: // We got the URN and the name.
 				urn = resource.URN(args[0])
 				if !urn.IsValid() {
-					return result.Error("The provided input URN is not valid")
+					return errors.New("The provided input URN is not valid")
 				}
 				rName := args[1]
 				if !tokens.IsQName(rName) {
 					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
-					return result.Errorf("invalid name %q: %s", rName, reason)
+					return fmt.Errorf("invalid name %q: %s", rName, reason)
 				}
 				newResourceName = tokens.QName(rName)
 			}
@@ -194,15 +193,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			res := runTotalStateEdit(ctx, stack, showPrompt,
+			err := runTotalStateEdit(ctx, stack, showPrompt,
 				func(opts display.Options, snap *deploy.Snapshot) error {
 					return stateRenameOperation(urn, newResourceName, opts, snap)
 				})
-
-			if res != nil {
+			if err != nil {
 				// an error occurred
 				// return it
-				return res
+				return err
 			}
 
 			fmt.Println("Resource renamed")

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"strconv"
@@ -1134,6 +1135,40 @@ func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesRes
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying capabilities failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func getSearchPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/search/resources", url.PathEscape(orgName))
+}
+
+func getNaturalLanguageSearchPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/search/resources/parse", url.PathEscape(orgName))
+}
+
+// Pulumi Cloud Search Functions
+func (pc *Client) GetSearchQueryResults(
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
+) (*apitype.ResourceSearchResponse, error) {
+	var resp apitype.ResourceSearchResponse
+	err := pc.restCall(ctx, http.MethodGet, getSearchPath(orgName), queryParams, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("querying search failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func (pc *Client) GetNaturalLanguageQueryResults(
+	ctx context.Context, orgName string, queryString string,
+) (*apitype.PulumiQueryResponse, error) {
+	var resp apitype.PulumiQueryResponse
+	queryParamObject := apitype.PulumiQueryRequest{
+		Query: queryString,
+	}
+	err := pc.restCall(ctx, http.MethodGet, getNaturalLanguageSearchPath(orgName), queryParamObject, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("querying search failed: %w", err)
 	}
 	return &resp, nil
 }

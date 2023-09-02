@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"go-nested-collections/repro/internal"
 )
 
@@ -84,6 +85,12 @@ func (i *SomeType) ToSomeTypeOutputWithContext(ctx context.Context) SomeTypeOutp
 	return pulumi.ToOutputWithContext(ctx, i).(SomeTypeOutput)
 }
 
+func (i *SomeType) ToOutput(ctx context.Context) pulumix.Output[*SomeType] {
+	return pulumix.Output[*SomeType]{
+		OutputState: i.ToSomeTypeOutputWithContext(ctx).OutputState,
+	}
+}
+
 // SomeTypeArrayInput is an input type that accepts SomeTypeArray and SomeTypeArrayOutput values.
 // You can construct a concrete instance of `SomeTypeArrayInput` via:
 //
@@ -107,6 +114,12 @@ func (i SomeTypeArray) ToSomeTypeArrayOutput() SomeTypeArrayOutput {
 
 func (i SomeTypeArray) ToSomeTypeArrayOutputWithContext(ctx context.Context) SomeTypeArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SomeTypeArrayOutput)
+}
+
+func (i SomeTypeArray) ToOutput(ctx context.Context) pulumix.Output[[]*SomeType] {
+	return pulumix.Output[[]*SomeType]{
+		OutputState: i.ToSomeTypeArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // SomeTypeMapInput is an input type that accepts SomeTypeMap and SomeTypeMapOutput values.
@@ -134,6 +147,12 @@ func (i SomeTypeMap) ToSomeTypeMapOutputWithContext(ctx context.Context) SomeTyp
 	return pulumi.ToOutputWithContext(ctx, i).(SomeTypeMapOutput)
 }
 
+func (i SomeTypeMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*SomeType] {
+	return pulumix.Output[map[string]*SomeType]{
+		OutputState: i.ToSomeTypeMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 type SomeTypeOutput struct{ *pulumi.OutputState }
 
 func (SomeTypeOutput) ElementType() reflect.Type {
@@ -148,6 +167,12 @@ func (o SomeTypeOutput) ToSomeTypeOutputWithContext(ctx context.Context) SomeTyp
 	return o
 }
 
+func (o SomeTypeOutput) ToOutput(ctx context.Context) pulumix.Output[*SomeType] {
+	return pulumix.Output[*SomeType]{
+		OutputState: o.OutputState,
+	}
+}
+
 type SomeTypeArrayOutput struct{ *pulumi.OutputState }
 
 func (SomeTypeArrayOutput) ElementType() reflect.Type {
@@ -160,6 +185,12 @@ func (o SomeTypeArrayOutput) ToSomeTypeArrayOutput() SomeTypeArrayOutput {
 
 func (o SomeTypeArrayOutput) ToSomeTypeArrayOutputWithContext(ctx context.Context) SomeTypeArrayOutput {
 	return o
+}
+
+func (o SomeTypeArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*SomeType] {
+	return pulumix.Output[[]*SomeType]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o SomeTypeArrayOutput) Index(i pulumi.IntInput) SomeTypeOutput {
@@ -180,6 +211,12 @@ func (o SomeTypeMapOutput) ToSomeTypeMapOutput() SomeTypeMapOutput {
 
 func (o SomeTypeMapOutput) ToSomeTypeMapOutputWithContext(ctx context.Context) SomeTypeMapOutput {
 	return o
+}
+
+func (o SomeTypeMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*SomeType] {
+	return pulumix.Output[map[string]*SomeType]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o SomeTypeMapOutput) MapIndex(k pulumi.StringInput) SomeTypeOutput {

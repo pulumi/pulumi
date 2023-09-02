@@ -113,6 +113,12 @@ type Backend interface {
 
 	RunDeployment(ctx context.Context, stackRef backend.StackReference, req apitype.CreateDeploymentRequest,
 		opts display.Options) error
+
+	// Queries the backend for resources based on the given query parameters.
+	Search(
+		ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
+	) (*apitype.ResourceSearchResponse, error)
+	NaturalLanguageSearch(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
 }
 
 type cloudBackend struct {
@@ -1016,6 +1022,27 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
 	return b.query(ctx, op, nil /*events*/)
+}
+
+func (b *cloudBackend) Search(
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
+) (*apitype.ResourceSearchResponse, error) {
+	return b.Client().GetSearchQueryResults(ctx, orgName, queryParams)
+}
+
+func (b *cloudBackend) NaturalLanguageSearch(
+	ctx context.Context, orgName string, queryString string,
+) (*apitype.ResourceSearchResponse, error) {
+	parsedResults, err := b.Client().GetNaturalLanguageQueryResults(ctx, orgName, queryString)
+	if err != nil {
+		return nil, err
+	}
+	requestBody := apitype.PulumiQueryRequest{Query: parsedResults.Query}
+	results, err := b.Client().GetSearchQueryResults(ctx, orgName, &requestBody)
+	if err != nil {
+		return nil, err
+	}
+	return results, err
 }
 
 type updateMetadata struct {

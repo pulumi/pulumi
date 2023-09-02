@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"replace-on-change/example/internal"
 )
 
@@ -97,6 +98,12 @@ func (i *ToyStore) ToToyStoreOutputWithContext(ctx context.Context) ToyStoreOutp
 	return pulumi.ToOutputWithContext(ctx, i).(ToyStoreOutput)
 }
 
+func (i *ToyStore) ToOutput(ctx context.Context) pulumix.Output[*ToyStore] {
+	return pulumix.Output[*ToyStore]{
+		OutputState: i.ToToyStoreOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ToyStoreArrayInput is an input type that accepts ToyStoreArray and ToyStoreArrayOutput values.
 // You can construct a concrete instance of `ToyStoreArrayInput` via:
 //
@@ -120,6 +127,12 @@ func (i ToyStoreArray) ToToyStoreArrayOutput() ToyStoreArrayOutput {
 
 func (i ToyStoreArray) ToToyStoreArrayOutputWithContext(ctx context.Context) ToyStoreArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ToyStoreArrayOutput)
+}
+
+func (i ToyStoreArray) ToOutput(ctx context.Context) pulumix.Output[[]*ToyStore] {
+	return pulumix.Output[[]*ToyStore]{
+		OutputState: i.ToToyStoreArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // ToyStoreMapInput is an input type that accepts ToyStoreMap and ToyStoreMapOutput values.
@@ -147,6 +160,12 @@ func (i ToyStoreMap) ToToyStoreMapOutputWithContext(ctx context.Context) ToyStor
 	return pulumi.ToOutputWithContext(ctx, i).(ToyStoreMapOutput)
 }
 
+func (i ToyStoreMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*ToyStore] {
+	return pulumix.Output[map[string]*ToyStore]{
+		OutputState: i.ToToyStoreMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ToyStoreOutput struct{ *pulumi.OutputState }
 
 func (ToyStoreOutput) ElementType() reflect.Type {
@@ -159,6 +178,12 @@ func (o ToyStoreOutput) ToToyStoreOutput() ToyStoreOutput {
 
 func (o ToyStoreOutput) ToToyStoreOutputWithContext(ctx context.Context) ToyStoreOutput {
 	return o
+}
+
+func (o ToyStoreOutput) ToOutput(ctx context.Context) pulumix.Output[*ToyStore] {
+	return pulumix.Output[*ToyStore]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ToyStoreOutput) Chew() ChewPtrOutput {
@@ -191,6 +216,12 @@ func (o ToyStoreArrayOutput) ToToyStoreArrayOutputWithContext(ctx context.Contex
 	return o
 }
 
+func (o ToyStoreArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*ToyStore] {
+	return pulumix.Output[[]*ToyStore]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o ToyStoreArrayOutput) Index(i pulumi.IntInput) ToyStoreOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *ToyStore {
 		return vs[0].([]*ToyStore)[vs[1].(int)]
@@ -209,6 +240,12 @@ func (o ToyStoreMapOutput) ToToyStoreMapOutput() ToyStoreMapOutput {
 
 func (o ToyStoreMapOutput) ToToyStoreMapOutputWithContext(ctx context.Context) ToyStoreMapOutput {
 	return o
+}
+
+func (o ToyStoreMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*ToyStore] {
+	return pulumix.Output[map[string]*ToyStore]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ToyStoreMapOutput) MapIndex(k pulumi.StringInput) ToyStoreOutput {

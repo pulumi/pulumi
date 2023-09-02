@@ -32,6 +32,7 @@ type ResourceImport struct {
 
 type ConvertStateRequest struct {
 	MapperTarget string
+	Args         []string
 }
 
 type ConvertStateResponse struct {
@@ -42,6 +43,7 @@ type ConvertProgramRequest struct {
 	SourceDirectory string
 	TargetDirectory string
 	MapperTarget    string
+	LoaderTarget    string
 }
 
 type ConvertProgramResponse struct {

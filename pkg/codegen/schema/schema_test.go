@@ -76,6 +76,26 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	assert.Empty(t, diags)
 }
 
+func TestRoundtripLocalTypeRef(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/13671
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("localref-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Try and bind again
+	_, diags, err = BindSpec(*newSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+}
+
 func TestImportSpec(t *testing.T) {
 	t.Parallel()
 

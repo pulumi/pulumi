@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"naming-collisions/example/internal"
 )
 
@@ -84,6 +85,12 @@ func (i *MainComponent) ToMainComponentOutputWithContext(ctx context.Context) Ma
 	return pulumi.ToOutputWithContext(ctx, i).(MainComponentOutput)
 }
 
+func (i *MainComponent) ToOutput(ctx context.Context) pulumix.Output[*MainComponent] {
+	return pulumix.Output[*MainComponent]{
+		OutputState: i.ToMainComponentOutputWithContext(ctx).OutputState,
+	}
+}
+
 type MainComponentOutput struct{ *pulumi.OutputState }
 
 func (MainComponentOutput) ElementType() reflect.Type {
@@ -96,6 +103,12 @@ func (o MainComponentOutput) ToMainComponentOutput() MainComponentOutput {
 
 func (o MainComponentOutput) ToMainComponentOutputWithContext(ctx context.Context) MainComponentOutput {
 	return o
+}
+
+func (o MainComponentOutput) ToOutput(ctx context.Context) pulumix.Output[*MainComponent] {
+	return pulumix.Output[*MainComponent]{
+		OutputState: o.OutputState,
+	}
 }
 
 func init() {

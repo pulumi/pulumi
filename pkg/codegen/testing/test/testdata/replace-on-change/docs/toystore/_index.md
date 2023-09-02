@@ -269,8 +269,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="chew_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chew_csharp" style="color: inherit; text-decoration: inherit;">Chew</a>
@@ -316,8 +315,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="chew_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chew_go" style="color: inherit; text-decoration: inherit;">Chew</a>
@@ -363,8 +361,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="chew_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chew_java" style="color: inherit; text-decoration: inherit;">chew</a>
@@ -410,8 +407,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="chew_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chew_nodejs" style="color: inherit; text-decoration: inherit;">chew</a>
@@ -457,8 +453,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="chew_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chew_python" style="color: inherit; text-decoration: inherit;">chew</a>
@@ -504,8 +499,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="chew_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chew_yaml" style="color: inherit; text-decoration: inherit;">chew</a>
@@ -551,7 +545,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="chew">Chew</h4>
+<h4 id="chew">
+Chew<pulumi-choosable type="language" values="python,go" class="inline">, Chew<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -637,7 +633,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="laser">Laser</h4>
+<h4 id="laser">
+Laser<pulumi-choosable type="language" values="python,go" class="inline">, Laser<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -819,7 +817,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="toy">Toy</h4>
+<h4 id="toy">
+Toy<pulumi-choosable type="language" values="python,go" class="inline">, Toy<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
