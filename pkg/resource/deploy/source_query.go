@@ -347,6 +347,7 @@ func (rm *queryResmon) Invoke(
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
+			KeepIntegers:  true,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
@@ -452,6 +453,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
+			KeepIntegers:  true,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
@@ -481,6 +483,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepIntegers:  true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal return: %w", err)

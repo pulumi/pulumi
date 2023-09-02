@@ -108,6 +108,7 @@ func (p *componentProvider) Configure(ctx context.Context,
 		SupportsPreview: true,
 		AcceptResources: true,
 		AcceptOutputs:   true,
+		AcceptIntegers:  true,
 	}, nil
 }
 

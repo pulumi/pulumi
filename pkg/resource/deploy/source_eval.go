@@ -700,6 +700,9 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "deletedWith":
 		hasSupport = true
+	case "integers":
+		// TODO: THIS IS ONLY HERE FOR PROTOTYPE WORK! THIS SHOULD BE MOVED TO A V2 METHOD SEE ABOVE
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -730,6 +733,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
+			KeepIntegers:  true,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
@@ -755,6 +759,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: keepResources,
+		KeepIntegers:  req.AcceptIntegers,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
@@ -793,6 +798,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 			// To initially scope the use of this new feature, we only keep output values when unmarshaling
 			// properties for RegisterResource (when remote is true for multi-lang components) and Call.
 			KeepOutputValues: true,
+			KeepIntegers:     true,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
@@ -835,6 +841,9 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		// Call doesn't have a field to indicate that it can accept integers so we have to always discard
+		// them.
+		KeepIntegers: false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
@@ -880,6 +889,7 @@ func (rm *resmon) StreamInvoke(
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
+			KeepIntegers:  true,
 		})
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
@@ -893,6 +903,7 @@ func (rm *resmon) StreamInvoke(
 			Label:         label,
 			KeepUnknowns:  true,
 			KeepResources: req.GetAcceptResources(),
+			KeepIntegers:  req.AcceptIntegers,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to marshal return: %w", err)
@@ -966,6 +977,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepIntegers:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -1010,6 +1022,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		KeepUnknowns:  true,
 		KeepSecrets:   req.GetAcceptSecrets(),
 		KeepResources: req.GetAcceptResources(),
+		KeepIntegers:  req.GetAcceptIntegers(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %s return state: %w", result.State.URN, err)
@@ -1288,6 +1301,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			// To initially scope the use of this new feature, we only keep output values when unmarshaling
 			// properties for RegisterResource (when remote is true for multi-lang components) and Call.
 			KeepOutputValues: remote,
+			KeepIntegers:     true,
 		})
 	if err != nil {
 		return nil, err
@@ -1564,6 +1578,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		KeepUnknowns:  true,
 		KeepSecrets:   req.GetAcceptSecrets(),
 		KeepResources: req.GetAcceptResources(),
+		KeepIntegers:  req.GetAcceptIntegers(),
 	})
 	if err != nil {
 		return nil, err
@@ -1606,6 +1621,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 			ComputeAssetHashes: true,
 			KeepSecrets:        true,
 			KeepResources:      true,
+			KeepIntegers:       true,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)

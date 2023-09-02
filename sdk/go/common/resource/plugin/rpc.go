@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
@@ -40,6 +41,7 @@ type MarshalOptions struct {
 	KeepResources      bool   // true if we are keeping resoures (otherwise we return raw urn).
 	SkipInternalKeys   bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
 	KeepOutputValues   bool   // true if we are keeping output values.
+	KeepIntegers       bool   // true if we are keeping integer values, else they are marshalled to floats.
 }
 
 const (
@@ -210,6 +212,30 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			m["packageVersion"] = resource.NewStringProperty(ref.PackageVersion)
 		}
 		return MarshalPropertyValue(key, resource.NewObjectProperty(m), opts)
+	} else if v.IsInteger() {
+		if !opts.KeepIntegers {
+			logging.V(5).Infof("marshalling resource value as float as opts.KeepIntegers is false")
+			return &structpb.Value{
+				Kind: &structpb.Value_NumberValue{
+					NumberValue: float64(v.IntegerValue()),
+				},
+			}, nil
+		}
+		// If we can safely store the integer in a float64 do so, else cast to string
+		var value resource.PropertyValue
+		i := v.IntegerValue()
+		if i >= -(2<<53) && i <= (2<<53) {
+			value = resource.NewNumberProperty(float64(i))
+		} else {
+			value = resource.NewStringProperty(fmt.Sprint(i))
+		}
+
+		integer := resource.NewObjectProperty(resource.PropertyMap{
+			resource.SigKey: resource.NewStringProperty(resource.IntegerValueSig),
+			"value":         value,
+		})
+		return MarshalPropertyValue(key, integer, opts)
+
 	}
 
 	contract.Failf("Unrecognized property value in RPC[%s] for %q: %v (type=%v)",
@@ -234,6 +260,10 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 		return MarshalString(UnknownArchiveValue, opts)
 	} else if elem.IsObject() {
 		return MarshalString(UnknownObjectValue, opts)
+	} else if elem.IsInteger() {
+		// Just reusing UnknownNumberValue here as everything ends up marshaled as UnknownStringValue across
+		// the languages anyway.
+		return MarshalString(UnknownNumberValue, opts)
 	}
 
 	// If for some reason we end up with a recursive computed/output, just keep digging.
@@ -493,6 +523,28 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				Dependencies: dependencies,
 			})
 			return &output, nil
+		case resource.IntegerValueSig:
+			valueProp, ok := obj["value"]
+			if !ok {
+				return nil, fmt.Errorf("malformed integer value for %q: missing value", key)
+			}
+			var i int64
+			if valueProp.IsString() {
+				i, err = strconv.ParseInt(valueProp.StringValue(), 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("malformed integer value for %q: %w", key, err)
+				}
+			} else if valueProp.IsNumber() {
+				i = int64(valueProp.NumberValue())
+			} else {
+				return nil, fmt.Errorf("malformed integer value for %q: value not a string", key)
+			}
+			if opts.KeepIntegers {
+				integer := resource.NewIntegerProperty(i)
+				return &integer, nil
+			}
+			number := resource.NewNumberProperty(float64(i))
+			return &number, nil
 		default:
 			return nil, fmt.Errorf("unrecognized signature '%v' in property map for %q", sig, key)
 		}

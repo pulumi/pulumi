@@ -90,6 +90,7 @@ class ConfigureRequest(google.protobuf.message.Message):
     ACCEPTSECRETS_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_FIELD_NUMBER: builtins.int
+    ACCEPT_INTEGERS_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """a map of configuration keys to values."""
@@ -102,6 +103,8 @@ class ConfigureRequest(google.protobuf.message.Message):
     """when true, operations should return resources as strongly typed values to the provider."""
     sends_old_inputs: builtins.bool
     """when true, diff and update will be called with the old outputs and the old inputs."""
+    accept_integers: builtins.bool
+    """when true, operations should return integers as strongly typed."""
     def __init__(
         self,
         *,
@@ -110,9 +113,10 @@ class ConfigureRequest(google.protobuf.message.Message):
         acceptSecrets: builtins.bool = ...,
         acceptResources: builtins.bool = ...,
         sends_old_inputs: builtins.bool = ...,
+        accept_integers: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "variables", b"variables"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "accept_integers", b"accept_integers", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "variables", b"variables"]) -> None: ...
 
 global___ConfigureRequest = ConfigureRequest
 
@@ -124,6 +128,7 @@ class ConfigureResponse(google.protobuf.message.Message):
     SUPPORTSPREVIEW_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     ACCEPTOUTPUTS_FIELD_NUMBER: builtins.int
+    ACCEPT_INTEGERS_FIELD_NUMBER: builtins.int
     acceptSecrets: builtins.bool
     """when true, the engine should pass secrets as strongly typed values to the provider."""
     supportsPreview: builtins.bool
@@ -132,6 +137,8 @@ class ConfigureResponse(google.protobuf.message.Message):
     """when true, the engine should pass resources as strongly typed values to the provider."""
     acceptOutputs: builtins.bool
     """when true, the engine should pass output values to the provider."""
+    accept_integers: builtins.bool
+    """when true, the engine should pass integers as strongly typed values to the provider."""
     def __init__(
         self,
         *,
@@ -139,8 +146,9 @@ class ConfigureResponse(google.protobuf.message.Message):
         supportsPreview: builtins.bool = ...,
         acceptResources: builtins.bool = ...,
         acceptOutputs: builtins.bool = ...,
+        accept_integers: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptOutputs", b"acceptOutputs", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "supportsPreview", b"supportsPreview"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptOutputs", b"acceptOutputs", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "accept_integers", b"accept_integers", "supportsPreview", b"supportsPreview"]) -> None: ...
 
 global___ConfigureResponse = ConfigureResponse
 

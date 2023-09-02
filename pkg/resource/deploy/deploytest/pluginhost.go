@@ -72,14 +72,19 @@ func WithPath(path string) func(p *PluginLoader) {
 	}
 }
 
+func RejectIntegers(p *PluginLoader) {
+	p.rejectIntegers = true
+}
+
 type PluginLoader struct {
-	kind         workspace.PluginKind
-	name         string
-	version      semver.Version
-	load         LoadPluginFunc
-	loadWithHost LoadPluginWithHostFunc
-	path         string
-	useGRPC      bool
+	kind           workspace.PluginKind
+	name           string
+	version        semver.Version
+	load           LoadPluginFunc
+	loadWithHost   LoadPluginWithHostFunc
+	path           string
+	useGRPC        bool
+	rejectIntegers bool
 }
 
 type (
@@ -164,12 +169,12 @@ func (w *grpcWrapper) Close() error {
 	return nil
 }
 
-func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
+func wrapProviderWithGrpc(provider plugin.Provider, rejectIntegers bool) (plugin.Provider, io.Closer, error) {
 	wrapper := &grpcWrapper{stop: make(chan bool)}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: wrapper.stop,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
+			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider, rejectIntegers))
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
@@ -325,7 +330,7 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 
 	closer := nopCloser
 	if best.useGRPC {
-		plug, closer, err = wrapProviderWithGrpc(plug.(plugin.Provider))
+		plug, closer, err = wrapProviderWithGrpc(plug.(plugin.Provider), best.rejectIntegers)
 		if err != nil {
 			return nil, err
 		}

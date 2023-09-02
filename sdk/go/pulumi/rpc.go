@@ -663,22 +663,31 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.SetBool(v.BoolValue())
 		return false, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if !v.IsNumber() {
+		if v.IsNumber() {
+			dest.SetInt(int64(v.NumberValue()))
+		} else if v.IsInteger() {
+			dest.SetInt(v.IntegerValue())
+		} else {
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
-		dest.SetInt(int64(v.NumberValue()))
 		return false, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if !v.IsNumber() {
+		if v.IsNumber() {
+			dest.SetUint(uint64(v.NumberValue()))
+		} else if v.IsInteger() {
+			dest.SetUint(uint64(v.IntegerValue()))
+		} else {
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
-		dest.SetUint(uint64(v.NumberValue()))
 		return false, nil
 	case reflect.Float32, reflect.Float64:
-		if !v.IsNumber() {
+		if v.IsNumber() {
+			dest.SetFloat(v.NumberValue())
+		} else if v.IsInteger() {
+			dest.SetFloat(float64(v.IntegerValue()))
+		} else {
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
-		dest.SetFloat(v.NumberValue())
 		return false, nil
 	case reflect.String:
 		switch {

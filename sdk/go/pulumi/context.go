@@ -691,6 +691,7 @@ func (ctx *Context) ReadResource(
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
+			AcceptIntegers:          true,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
 		})
@@ -948,6 +949,7 @@ func (ctx *Context) registerResource(
 				Aliases:                 aliases,
 				AcceptSecrets:           true,
 				AcceptResources:         !disableResourceReferences,
+				AcceptIntegers:          true,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
 				PluginDownloadURL:       inputs.pluginDownloadURL,

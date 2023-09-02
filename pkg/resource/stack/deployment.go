@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -684,6 +685,23 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
 					}
 					return resource.MakeComponentResourceReference(urn, packageVersion), nil
+				case resource.IntegerValueSig:
+					value, ok := objmap["value"]
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed integer: missing value")
+					}
+
+					valueStr, ok := value.(string)
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed integer: value not a string")
+					}
+
+					integer, err := strconv.ParseInt(valueStr, 10, 64)
+					if err != nil {
+						return resource.PropertyValue{}, fmt.Errorf("malformed integer: %w", err)
+					}
+
+					return resource.NewIntegerProperty(integer), nil
 				default:
 					return resource.PropertyValue{}, fmt.Errorf("unrecognized signature '%v' in property map", sig)
 				}

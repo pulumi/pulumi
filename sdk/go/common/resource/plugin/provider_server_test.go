@@ -27,7 +27,7 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 			return nil
 		},
 	}
-	srv := NewProviderServer(&provider)
+	srv := NewProviderServer(&provider, false /* rejectIntegers */)
 
 	ctx := context.Background()
 	_, err := srv.Configure(ctx, &pulumirpc.ConfigureRequest{
@@ -92,7 +92,7 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 		},
 	}
 	secret := "supersecretpassword"
-	srv := NewProviderServer(&provider)
+	srv := NewProviderServer(&provider, false /* rejectIntegers */)
 	resp, err := srv.Read(ctx, &pulumirpc.ReadRequest{
 		Urn: "urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
 		Id:  secret,

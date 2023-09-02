@@ -62,6 +62,7 @@ message ReadResourceRequest {
     string provider = 7;                   // an optional reference to the provider to use for this read.
     string version = 8;                    // the version of the provider to use when servicing this request.
     bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
+    bool accept_integers = 15;             // when true operations should return integers as strongly typed.
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
 
     // We used to declare an alias field here, but nothing ever used it. But to ensure we don't confuse any
@@ -73,6 +74,7 @@ message ReadResourceRequest {
     string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
 
     SourcePosition sourcePosition = 14;    // the optional source position of the user code that initiated the read.
+
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -107,6 +109,7 @@ message RegisterResourceRequest {
     string version = 11;                                        // the version of the provider to use when servicing this request.
     repeated string ignoreChanges = 12;                         // a list of property selectors to ignore during updates.
     bool acceptSecrets = 13;                                    // when true operations should return secrets as strongly typed.
+    bool accept_integers = 30;                                  // when true operations should return integers as strongly typed.
     repeated string additionalSecretOutputs = 14;               // a list of output properties that should also be treated as secret, in addition to ones we detect.
     repeated string aliasURNs = 15;                             // a list of additional URNs that should be considered the same.
     string importId = 16;                                       // if set, this resource's state should be imported from the given ID.
@@ -163,6 +166,7 @@ message ResourceInvokeRequest {
     string version = 4;              // the version of the provider to use when servicing this request.
     bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
+    bool accept_integers = 8;        // when true operations should return integers as strongly typed.
 
     SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
 }

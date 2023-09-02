@@ -364,19 +364,31 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				dest.Set(result)
 				return nil
 			case reflect.Int:
-				if !v.IsNumber() {
+				var i int64
+				if v.IsNumber() {
+					i = int64(v.NumberValue())
+				} else if v.IsInteger() {
+					i = v.IntegerValue()
+				} else {
 					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
 				}
+
 				result := reflect.New(inputType).Elem()
-				result.SetInt(int64(v.NumberValue()))
+				result.SetInt(i)
 				dest.Set(result)
 				return nil
 			case reflect.Float64:
-				if !v.IsNumber() {
+				var f float64
+				if v.IsNumber() {
+					f = v.NumberValue()
+				} else if v.IsInteger() {
+					f = float64(v.IntegerValue())
+				} else {
 					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
 				}
+
 				result := reflect.New(inputType).Elem()
-				result.SetFloat(v.NumberValue())
+				result.SetFloat(f)
 				dest.Set(result)
 				return nil
 			case reflect.String:

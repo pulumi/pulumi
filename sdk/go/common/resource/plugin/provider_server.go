@@ -35,10 +35,14 @@ type providerServer struct {
 	provider      Provider
 	keepSecrets   bool
 	keepResources bool
+	keepIntegers  bool
+
+	// We want to default this to false, but for testing we sometimes turn it on.
+	rejectIntegers bool
 }
 
-func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
-	return &providerServer{provider: provider}
+func NewProviderServer(provider Provider, rejectIntegers bool) pulumirpc.ResourceProviderServer {
+	return &providerServer{provider: provider, rejectIntegers: rejectIntegers}
 }
 
 func (p *providerServer) unmarshalOptions(label string) MarshalOptions {
@@ -47,6 +51,7 @@ func (p *providerServer) unmarshalOptions(label string) MarshalOptions {
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepIntegers:  true,
 	}
 }
 
@@ -56,6 +61,7 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 		KeepUnknowns:  true,
 		KeepSecrets:   p.keepSecrets,
 		KeepResources: p.keepResources,
+		KeepIntegers:  p.keepIntegers,
 	}
 }
 
@@ -257,7 +263,13 @@ func (p *providerServer) Configure(ctx context.Context,
 
 	p.keepSecrets = req.GetAcceptSecrets()
 	p.keepResources = req.GetAcceptResources()
-	return &pulumirpc.ConfigureResponse{AcceptSecrets: true, SupportsPreview: true, AcceptResources: true}, nil
+	p.keepIntegers = req.GetAcceptIntegers()
+	return &pulumirpc.ConfigureResponse{
+		AcceptSecrets:   true,
+		SupportsPreview: true,
+		AcceptResources: true,
+		AcceptIntegers:  !p.rejectIntegers,
+	}, nil
 }
 
 func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {

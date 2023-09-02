@@ -85,6 +85,7 @@ type pluginConfig struct {
 	acceptSecrets   bool // true if this plugin accepts strongly-typed secrets.
 	acceptResources bool // true if this plugin accepts strongly-typed resource refs.
 	acceptOutputs   bool // true if this plugin accepts output values.
+	acceptIntegers  bool // true if this plugin accepts integer values.
 	supportsPreview bool // true if this plugin supports previews for Create and Update.
 }
 
@@ -591,6 +592,8 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 		return v.OutputValue()
 	case v.IsSecret():
 		return removeSecrets(v.SecretValue().Element)
+	case v.IsInteger():
+		return v.IntegerValue()
 	default:
 		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 		obj := map[string]interface{}{}
@@ -619,6 +622,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 				known:           false,
 				acceptSecrets:   false,
 				acceptResources: false,
+				acceptIntegers:  false,
 			}, nil)
 			return nil
 		}
@@ -657,6 +661,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
 			AcceptSecrets:   true,
 			AcceptResources: true,
+			AcceptIntegers:  true,
 			SendsOldInputs:  true,
 			Variables:       config,
 			Args:            minputs,
@@ -673,6 +678,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			acceptResources: resp.GetAcceptResources(),
 			supportsPreview: resp.GetSupportsPreview(),
 			acceptOutputs:   resp.GetAcceptOutputs(),
+			acceptIntegers:  resp.GetAcceptIntegers(),
 		}, err)
 	}()
 
@@ -705,6 +711,7 @@ func (p *provider) Check(urn resource.URN,
 		KeepUnknowns:  allowUnknowns,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		KeepIntegers:  pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -714,6 +721,7 @@ func (p *provider) Check(urn resource.URN,
 		KeepUnknowns:  allowUnknowns,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		KeepIntegers:  pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -740,6 +748,7 @@ func (p *provider) Check(urn resource.URN,
 			RejectUnknowns: !allowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			KeepIntegers:   true,
 		})
 		if err != nil {
 			return nil, nil, err
@@ -801,6 +810,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		KeepUnknowns:       allowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		KeepIntegers:       pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -812,6 +822,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		KeepUnknowns:       allowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		KeepIntegers:       pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -823,6 +834,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		KeepUnknowns:       allowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		KeepIntegers:       pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -919,6 +931,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 		KeepUnknowns:  preview,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		KeepIntegers:  pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return "", nil, resource.StatusOK, err
@@ -958,6 +971,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 		KeepUnknowns:   preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		KeepIntegers:   true,
 	})
 	if err != nil {
 		return "", nil, resourceStatus, err
@@ -1011,6 +1025,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 			ElideAssetContents: true,
 			KeepSecrets:        pcfg.acceptSecrets,
 			KeepResources:      pcfg.acceptResources,
+			KeepIntegers:       pcfg.acceptIntegers,
 		})
 		if err != nil {
 			return ReadResult{}, resource.StatusUnknown, err
@@ -1022,6 +1037,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		KeepIntegers:       pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
@@ -1064,6 +1080,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		KeepIntegers:   true,
 	})
 	if err != nil {
 		return ReadResult{}, resourceStatus, err
@@ -1076,6 +1093,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			KeepIntegers:   true,
 		})
 		if err != nil {
 			return ReadResult{}, resourceStatus, err
@@ -1151,6 +1169,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		KeepIntegers:       pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
@@ -1160,6 +1179,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		KeepIntegers:       pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
@@ -1169,6 +1189,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		KeepUnknowns:  preview,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		KeepIntegers:  pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
@@ -1205,6 +1226,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		KeepUnknowns:   preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		KeepIntegers:   true,
 	})
 	if err != nil {
 		return nil, resourceStatus, err
@@ -1249,6 +1271,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		KeepIntegers:       pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return resource.StatusOK, err
@@ -1311,6 +1334,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: pcfg.acceptOutputs,
+		KeepIntegers:     pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1390,6 +1414,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		KeepUnknowns:  info.DryRun,
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepIntegers:  true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1437,6 +1462,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		Label:         fmt.Sprintf("%s.args", label),
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		KeepIntegers:  pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -1458,6 +1484,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		KeepIntegers:   true,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -1501,6 +1528,7 @@ func (p *provider) StreamInvoke(
 		Label:         fmt.Sprintf("%s.args", label),
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		KeepIntegers:  pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return nil, err
@@ -1532,6 +1560,7 @@ func (p *provider) StreamInvoke(
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			KeepIntegers:   true,
 		})
 		if err != nil {
 			return nil, err
@@ -1583,6 +1612,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: pcfg.acceptOutputs,
+		KeepIntegers:     true,
 	})
 	if err != nil {
 		return CallResult{}, err

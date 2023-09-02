@@ -226,6 +226,41 @@
                 }
             },
             "required": ["4dabf18193072939515e22adb298388d", "urn"]
+        },
+        {
+            "title": "Integer Property Values",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Integer signature",
+                    "const": "7eb310220ed6211bd6f147f2a75bfbb6"
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d"],
+            "oneOf": [
+                {
+                    "title": "String encoded integer",
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "description": "The integer value as a string",
+                            "type": "string"
+                        }
+                    },
+                    "required": ["value"]
+                },
+                {
+                    "title": "Number encoded integer",
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "description": "The integer value as a JSON number",
+                            "type": "number"
+                        }
+                    },
+                    "required": ["value"]
+                }
+            ]
         }
     ]
 }

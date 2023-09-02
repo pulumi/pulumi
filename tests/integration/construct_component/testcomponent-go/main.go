@@ -205,6 +205,7 @@ func (p *Provider) Configure(ctx context.Context,
 		AcceptSecrets:   true,
 		SupportsPreview: true,
 		AcceptResources: true,
+		AcceptIntegers:  true,
 	}, nil
 }
 

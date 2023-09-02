@@ -1029,7 +1029,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 				"bar": 42,
 			})),
 			args:          &NestedArgs{},
-			expectedError: "unmarshaling value: expected a string, got a number",
+			expectedError: "unmarshaling value: expected a string, got a integer",
 		},
 		{
 			name: "destination must be typed as input or output for secret value",

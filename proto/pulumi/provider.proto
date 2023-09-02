@@ -99,6 +99,7 @@ message ConfigureRequest {
     bool acceptSecrets  = 3;           // when true, operations should return secrets as strongly typed.
     bool acceptResources = 4;          // when true, operations should return resources as strongly typed values to the provider.
     bool sends_old_inputs = 5;         // when true, diff and update will be called with the old outputs and the old inputs.
+    bool accept_integers = 6;          // when true, operations should return integers as strongly typed.
 }
 
 message ConfigureResponse {
@@ -106,6 +107,7 @@ message ConfigureResponse {
     bool supportsPreview = 2; // when true, the engine should invoke create and update with preview=true during previews.
     bool acceptResources = 3; // when true, the engine should pass resources as strongly typed values to the provider.
     bool acceptOutputs = 4;   // when true, the engine should pass output values to the provider.
+    bool accept_integers = 5; // when true, the engine should pass integers as strongly typed values to the provider.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
