@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.80.0 (2023-08-31)
+
+
+### Features
+
+- [sdk/go] Add sdk/go/pulumix package with type-safe generics-based APIs to interact with Pulumi's core functionality.
+  [#13509](https://github.com/pulumi/pulumi/pull/13509)
+
+- [sdk/go] Built-in Pulumi types all satisfy `pulumix.Input[T]` for their underlying types.
+  [#13509](https://github.com/pulumi/pulumi/pull/13509)
+
+- [sdkgen/go] Generate types that are compatible with sdk/go/pulumix's type-safe APIs.
+  [#13510](https://github.com/pulumi/pulumi/pull/13510)
+
+- [sdkgen/{nodejs,python}] NodeJS and Python packages no longer running plugin install scripts on package install.
+  [#13800](https://github.com/pulumi/pulumi/pull/13800)
+
+
+### Bug Fixes
+
+- [cli/new] Fix regression where `pulumi new -s org/project/stack` would fail if the project already exists.
+  [#13786](https://github.com/pulumi/pulumi/pull/13786)
+
+- [sdk/nodejs] Fix provider used for resource methods
+  [#13796](https://github.com/pulumi/pulumi/pull/13796)
+
+
+### Miscellaneous
+
+- [cli] Some CLI prompts now support backspace, arrow keys, etc.
+  [#13815](https://github.com/pulumi/pulumi/pull/13815)
+
+- [sdk/go] Add cmdutil.TerminateProcessGroup to terminate processes gracefully.
+  [#13792](https://github.com/pulumi/pulumi/pull/13792)
+
+- [sdk/{go,nodejs,python}] Language plugins now clean up resources and exit cleanly on receiving SIGINT or CTRL_BREAK signals.
+  [#13809](https://github.com/pulumi/pulumi/pull/13809)
+
 ## 3.79.0 (2023-08-25)
 
 

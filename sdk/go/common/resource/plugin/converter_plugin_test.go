@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -35,6 +36,9 @@ type testConverterClient struct {
 func (c *testConverterClient) ConvertState(
 	ctx context.Context, req *pulumirpc.ConvertStateRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.ConvertStateResponse, error) {
+	if !reflect.DeepEqual(req.Args, []string{"arg1", "arg2"}) {
+		return nil, fmt.Errorf("unexpected Args: %v", req.Args)
+	}
 	if req.MapperTarget != "localhost:1234" {
 		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
@@ -78,6 +82,7 @@ func TestConverterPlugin_State(t *testing.T) {
 	}
 
 	resp, err := plugin.ConvertState(context.Background(), &ConvertStateRequest{
+		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
 	})
 

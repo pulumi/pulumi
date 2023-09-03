@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/nodejs,python
-  description: NodeJS and Python packages no longer running plugin install scripts on package install.

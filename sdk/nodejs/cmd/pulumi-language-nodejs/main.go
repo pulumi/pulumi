@@ -547,9 +547,9 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	// Channel producing the final response we want to issue to our caller. Will get the result of
 	// the actual nodejs process we launch, or any results caused by errors in our server/pipes.
 	responseChannel := make(chan *pulumirpc.RunResponse)
-	defer close(responseChannel)
 	// now, launch the nodejs process and actually run the user code in it.
 	go func() {
+		defer close(responseChannel)
 		responseChannel <- host.execNodejs(
 			ctx, req, nodeBin, runPath,
 			fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
