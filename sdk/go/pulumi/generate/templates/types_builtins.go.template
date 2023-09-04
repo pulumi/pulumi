@@ -23,7 +23,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
