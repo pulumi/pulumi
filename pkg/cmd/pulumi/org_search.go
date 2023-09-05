@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -36,6 +37,7 @@ import (
 type searchCmd struct {
 	orgName     string
 	queryParams []string
+	openWeb     bool
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -97,6 +99,12 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("table rendering error: %s", err)
 	}
+	if cmd.openWeb {
+		err = browser.OpenURL(res.URL)
+		if err != nil {
+			return fmt.Errorf("failed to open URL: %s", err)
+		}
+	}
 	return nil
 }
 
@@ -128,6 +136,10 @@ func newSearchCmd() *cobra.Command {
 		"Key-value pairs to use as query parameters. "+
 			"Must be formatted like: -q key1=value1 -q key2=value2. "+
 			"Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&scmd.openWeb, "web", false,
+		"Open the search results in a web browser.",
 	)
 
 	return cmd
