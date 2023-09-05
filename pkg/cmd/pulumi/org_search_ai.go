@@ -75,14 +75,19 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return err
+	}
 	userName, orgs, err := cloudBackend.CurrentUser()
 	if err != nil {
 		return err
 	}
-	var filterName string
-	if cmd.orgName == "" {
-		filterName = userName
-	} else {
+	if defaultOrg != "" && cmd.orgName == "" {
+		cmd.orgName = defaultOrg
+	}
+	filterName := userName
+	if cmd.orgName != "" {
 		filterName = cmd.orgName
 	}
 	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
