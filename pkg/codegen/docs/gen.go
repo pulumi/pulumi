@@ -2103,7 +2103,7 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 		visitObjects(r)
 	}
 
-	glog.V(3).Infoln("scanning resources")
+	glog.V(3).Infoln("scanning resources test!!")
 	if isKubernetesPackage(pkg.Reference()) {
 		scanK8SResource(pkg.Provider)
 		for _, r := range pkg.Resources {
@@ -2115,7 +2115,7 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 			scanResource(r)
 		}
 	}
-	glog.V(3).Infoln("done scanning resources")
+	glog.V(3).Infoln("done scanning resources test!!")
 
 	for _, f := range pkg.Functions {
 		if !f.IsMethod {
