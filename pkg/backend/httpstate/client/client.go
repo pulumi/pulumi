@@ -1147,6 +1147,10 @@ func getNaturalLanguageSearchPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/search/resources/parse", url.PathEscape(orgName))
 }
 
+func getPulumiOrgSearchPath(orgName string) string {
+	return fmt.Sprintf("https://app.pulumi.com/%s/resources", url.PathEscape(orgName))
+}
+
 // Pulumi Cloud Search Functions
 func (pc *Client) GetSearchQueryResults(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
@@ -1156,6 +1160,7 @@ func (pc *Client) GetSearchQueryResults(
 	if err != nil {
 		return nil, fmt.Errorf("querying search failed: %w", err)
 	}
+	resp.URL = fmt.Sprintf("%s?query=%s", getPulumiOrgSearchPath(orgName), url.QueryEscape(queryParams.Query))
 	return &resp, nil
 }
 

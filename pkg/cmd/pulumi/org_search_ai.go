@@ -83,7 +83,11 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
+	err = cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
+	}
+	return nil
 }
 
 func newSearchAICmd() *cobra.Command {
