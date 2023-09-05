@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -93,6 +94,8 @@ type searchCmd struct {
 	orgName      string
 	csvDelimiter Delimiter
 	outputFormat
+	queryParams []string
+	openWeb     bool
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -163,6 +166,12 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("table rendering error: %s", err)
 	}
+	if cmd.openWeb {
+		err = browser.OpenURL(res.URL)
+		if err != nil {
+			return fmt.Errorf("failed to open URL: %s", err)
+		}
+	}
 	return nil
 }
 
@@ -199,6 +208,10 @@ func newSearchCmd() *cobra.Command {
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&scmd.openWeb, "web", false,
+		"Open the search results in a web browser.",
 	)
 
 	return cmd

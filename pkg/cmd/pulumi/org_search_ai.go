@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -31,6 +32,7 @@ import (
 type searchAICmd struct {
 	searchCmd
 	queryString string
+	openWeb     bool
 }
 
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
@@ -87,6 +89,12 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
 	}
+	if cmd.openWeb {
+		err = browser.OpenURL(res.URL)
+		if err != nil {
+			return fmt.Errorf("failed to open URL: %s", err)
+		}
+	}
 	return nil
 }
 
@@ -118,6 +126,10 @@ func newSearchAICmd() *cobra.Command {
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&scmd.openWeb, "web", false,
+		"Open the search results in a web browser.",
 	)
 
 	return cmd
