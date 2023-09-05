@@ -93,7 +93,7 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.RenderTable(res.Resources)
+	err = cmd.RenderTable(res)
 	if err != nil {
 		return fmt.Errorf("table rendering error: %s", err)
 	}
@@ -142,10 +142,11 @@ func sliceContains(slice []string, search string) bool {
 	return false
 }
 
-func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
+func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) error {
+	urlInfo := "Results are also visible in Pulumi Cloud:"
 	table := auto_table.New("utf8-heavy")
 	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
-	for _, r := range results {
+	for _, r := range results.Resources {
 		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
 	}
 	var err error
@@ -155,9 +156,18 @@ func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
 		}
 		return err
 	}
-	return table.RenderTo(w)
+	err = table.RenderTo(w)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte(urlInfo + "\n"))
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte(results.URL))
+	return err
 }
 
-func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
+func (cmd *searchCmd) RenderTable(results *apitype.ResourceSearchResponse) error {
 	return renderSearchTable(cmd.Stdout, results)
 }

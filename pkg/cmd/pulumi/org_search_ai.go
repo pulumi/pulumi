@@ -91,7 +91,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.RenderTable(res.Resources)
+	err = cmd.RenderTable(res)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
 	}
@@ -123,6 +123,6 @@ func newSearchAICmd() *cobra.Command {
 	return cmd
 }
 
-func (cmd *searchAICmd) RenderTable(results []apitype.ResourceResult) error {
+func (cmd *searchAICmd) RenderTable(results *apitype.ResourceSearchResponse) error {
 	return renderSearchTable(cmd.Stdout, results)
 }
