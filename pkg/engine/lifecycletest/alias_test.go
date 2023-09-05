@@ -1221,6 +1221,99 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[1].URN)
 }
 
+func TestCorrectResourceChosen(t *testing.T) {
+	t.Parallel()
+
+	// This is a test for https://github.com/pulumi/pulumi/issues/13848
+	// to check that a resource's URN is used first when looking for old resources in the state
+	// rather than aliases, and that we don't end up with a corrupt state after an update.
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	mode := 0
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		switch mode {
+		case 0:
+			// Default case, make "resA", "resB with resA as its parent", and "resB with no parent".
+			aURN, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resB",
+				true,
+				deploytest.ResourceOptions{Parent: aURN})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resB",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+		case 1:
+			// Next case, make "resA" and "resB with no parent and alias to have resA as its parent".
+			aURN, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resB",
+				true,
+				deploytest.ResourceOptions{Aliases: []resource.Alias{{Parent: aURN}}})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update for initial state with "resA", "resB with resA as its parent", and "resB with no parent".
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[3].URN)
+
+	// Run the next case, with "resA" and "resB with no parent and alias to have resA as its parent".
+	mode = 1
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
+	assert.Len(t, snap.Resources[2].Aliases, 0)
+}
+
 func TestComponentToCustomUpdate(t *testing.T) {
 	// Test for https://github.com/pulumi/pulumi/issues/12550, check that if we change a component resource
 	// into a custom resource the engine handles that best it can. This depends on the provider being able to

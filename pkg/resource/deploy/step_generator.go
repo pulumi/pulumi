@@ -427,26 +427,36 @@ func (sg *stepGenerator) inheritedChildAlias(
 		aliasName)
 }
 
-func (sg *stepGenerator) generateAliases(goal *resource.Goal) map[resource.URN]struct{} {
+func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
+	var result []resource.URN
 	aliases := make(map[resource.URN]struct{}, 0)
+
+	addAlias := func(alias resource.URN) {
+		if _, has := aliases[alias]; !has {
+			aliases[alias] = struct{}{}
+			result = append(result, alias)
+		}
+	}
+
 	for _, alias := range goal.Aliases {
 		urn := sg.collapseAliasToUrn(goal, alias)
-		aliases[urn] = struct{}{}
+		addAlias(urn)
 	}
 	// Now multiply out any aliases our parent had.
 	if goal.Parent != "" {
 		if parentAlias, has := sg.aliases[goal.Parent]; has {
-			aliases[sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias)] = struct{}{}
+			addAlias(sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
 			for _, alias := range goal.Aliases {
 				childAlias := sg.collapseAliasToUrn(goal, alias)
 				aliasedChildType := childAlias.Type()
 				aliasedChildName := childAlias.Name()
 				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
-				aliases[inheritedAlias] = struct{}{}
+				addAlias(inheritedAlias)
 			}
 		}
 	}
-	return aliases
+
+	return result
 }
 
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
@@ -484,8 +494,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var hasOld bool
 	var alias []resource.Alias
 	var createdAt, modifiedAt *time.Time
-	aliases[urn] = struct{}{}
-	for urnOrAlias := range aliases {
+	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
 			oldInputs = old.Inputs
