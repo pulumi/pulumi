@@ -370,6 +370,14 @@ func NewPulumiCmd() *cobra.Command {
 				newReplayEventsCmd(),
 			},
 		},
+		// AI Commands relating to specifically the Pulumi AI service
+		//     and its related features
+		{
+			Name: "AI Commands",
+			Commands: []*cobra.Command{
+				newAICommand(),
+			},
+		},
 	})
 
 	cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
