@@ -18,40 +18,40 @@ __all__ = ['RubberTreeArgs', 'RubberTree']
 @pulumi.input_type
 class RubberTreeArgs:
     def __init__(__self__, *,
-                 diameter: pulumi.Input['Diameter'],
-                 type: pulumi.Input['RubberTreeVariety'],
+                 diameter: Optional[pulumi.Input['Diameter']] = None,
+                 type: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  container: Optional[pulumi.Input['_root_inputs.ContainerArgs']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
                  size: Optional[pulumi.Input['TreeSize']] = None):
         """
         The set of arguments for constructing a RubberTree resource.
         """
-        if diameter is None:
-            diameter = 6
         if diameter is not None:
             warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
             pulumi.log.warn("""diameter is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+        if diameter is None:
+            diameter = 6
         pulumi.set(__self__, "diameter", diameter)
-        if type is None:
-            type = 'Burgundy'
         if type is not None:
             warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
             pulumi.log.warn("""type is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+        if type is None:
+            type = 'Burgundy'
         pulumi.set(__self__, "type", type)
         if container is not None:
             pulumi.set(__self__, "container", container)
-        if farm is None:
-            farm = '(unknown)'
         if farm is not None:
             warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
             pulumi.log.warn("""farm is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+        if farm is None:
+            farm = '(unknown)'
         if farm is not None:
             pulumi.set(__self__, "farm", farm)
-        if size is None:
-            size = 'medium'
         if size is not None:
             warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
             pulumi.log.warn("""size is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+        if size is None:
+            size = 'medium'
         if size is not None:
             pulumi.set(__self__, "size", size)
 
@@ -189,29 +189,17 @@ class RubberTree(pulumi.CustomResource):
             __props__ = RubberTreeArgs.__new__(RubberTreeArgs)
 
             __props__.__dict__["container"] = container
-            if diameter is not None and not opts.urn:
-                warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-                pulumi.log.warn("""diameter is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
             if diameter is None:
                 diameter = 6
             if diameter is None and not opts.urn:
                 raise TypeError("Missing required property 'diameter'")
             __props__.__dict__["diameter"] = diameter
-            if farm is not None and not opts.urn:
-                warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-                pulumi.log.warn("""farm is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
             if farm is None:
                 farm = '(unknown)'
             __props__.__dict__["farm"] = farm
-            if size is not None and not opts.urn:
-                warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-                pulumi.log.warn("""size is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
             if size is None:
                 size = 'medium'
             __props__.__dict__["size"] = size
-            if type is not None and not opts.urn:
-                warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-                pulumi.log.warn("""type is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
             if type is None:
                 type = 'Burgundy'
             if type is None and not opts.urn:

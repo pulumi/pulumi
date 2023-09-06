@@ -17,7 +17,7 @@ __all__ = [
 @pulumi.input_type
 class ContainerArgs:
     def __init__(__self__, *,
-                 size: pulumi.Input['ContainerSize'],
+                 size: Optional[pulumi.Input['ContainerSize']] = None,
                  brightness: Optional[pulumi.Input['ContainerBrightness']] = None,
                  color: Optional[pulumi.Input[Union['ContainerColor', str]]] = None,
                  material: Optional[pulumi.Input[str]] = None):
