@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/browser"
@@ -176,6 +177,16 @@ func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) err
 		return err
 	}
 	err = table.RenderTo(w)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(
+		[]byte(
+			fmt.Sprintf(
+				"Displaying %s of %s total results.\n",
+				strconv.Itoa(len(results.Resources)),
+				strconv.FormatInt(*results.Total, 10))),
+	)
 	if err != nil {
 		return err
 	}
