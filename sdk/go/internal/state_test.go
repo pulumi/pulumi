@@ -112,16 +112,22 @@ func TestOutputDependencies(t *testing.T) {
 	t.Run("nonempty", func(t *testing.T) {
 		t.Parallel()
 
-		deps := []Resource{&ResourceState{}, &ResourceState{}}
+		type MyResource struct {
+			ResourceState
+
+			value int
+		}
+
+		res1 := &MyResource{value: 1}
+		res2 := &MyResource{value: 2}
+
+		deps := []Resource{res1, res2}
 
 		out := NewOutput(nil, reflect.TypeOf(intOutput{}))
 		ResolveOutput(out, 42, true, false, deps)
 
 		gotDeps := OutputDependencies(out)
-		assert.Len(t, gotDeps, 2)
-		for i, dep := range deps {
-			assert.Same(t, dep, gotDeps[i])
-		}
+		assert.ElementsMatch(t, deps, gotDeps)
 	})
 }
 

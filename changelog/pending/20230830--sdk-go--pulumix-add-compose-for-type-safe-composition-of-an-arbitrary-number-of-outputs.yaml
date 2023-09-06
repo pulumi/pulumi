@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: "pulumix: Add Compose for type-safe composition of an arbitrary number of outputs."

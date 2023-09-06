@@ -15,9 +15,27 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"sync"
 )
+
+type workGroupKey struct{}
+
+// WithWorkGroup returns a new context
+// with the given work group attached to it.
+func WithWorkGroup(ctx context.Context, wg *WorkGroup) context.Context {
+	return context.WithValue(ctx, workGroupKey{}, wg)
+}
+
+// GetOrCreateWorkGroup returns the work group attached to the given context
+// or a new one if none is attached.
+func GetOrCreateWorkGroup(ctx context.Context) *WorkGroup {
+	if wg, ok := ctx.Value(workGroupKey{}).(*WorkGroup); ok {
+		return wg
+	}
+	return &WorkGroup{}
+}
 
 // WorkGroup mimicks the interface of `sync.WaitGroup` but does not panic in
 // case of races between `Wait` and `Add` with a positive delta in the
