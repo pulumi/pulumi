@@ -38,6 +38,7 @@ func TestSearch_cmd(t *testing.T) {
 	pack := "pack1"
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
+	total := int64(32)
 	cmd := searchCmd{
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
@@ -55,6 +56,7 @@ func TestSearch_cmd(t *testing.T) {
 								Modified: &modified,
 							},
 						},
+						Total: &total,
 					}, nil
 				},
 				CurrentUserF: func() (string, []string, error) {
