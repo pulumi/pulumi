@@ -20,9 +20,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
 
-// JoinContext unpacks an Output stored inside another input,
+// FlattenContext unpacks an Output stored inside another input,
 // returning an output containing the underlying value.
-func JoinContext[A any, I Input[A]](ctx context.Context, i Input[I]) Output[A] {
+func FlattenContext[A any, I Input[A]](ctx context.Context, i Input[I]) Output[A] {
 	outputOutputA := i.ToOutput(ctx)
 	stateOutputOutputA := internal.GetOutputState(outputOutputA)
 
@@ -47,13 +47,13 @@ func JoinContext[A any, I Input[A]](ctx context.Context, i Input[I]) Output[A] {
 	return Output[A]{OutputState: stateA}
 }
 
-// Join unpacks the Output stored inside another input,
+// Flatten unpacks the Output stored inside another input,
 // returning an output containing the underlying value.
 //
-// This is a variant of JoinContext
+// This is a variant of FlattenContext
 // that uses the background context.
-func Join[A any, I Input[A]](i Input[I]) Output[A] {
-	return JoinContext[A, I](context.Background(), i)
+func Flatten[A any, I Input[A]](i Input[I]) Output[A] {
+	return FlattenContext[A, I](context.Background(), i)
 }
 
 // All combines multiple inputs into a single output

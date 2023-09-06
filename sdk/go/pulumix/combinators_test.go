@@ -27,10 +27,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJoin(t *testing.T) {
+func TestFlatten(t *testing.T) {
 	t.Parallel()
 
-	o := pulumix.Join[string, pulumix.Output[string]](pulumix.Val(pulumix.Val("a")))
+	o := pulumix.Flatten[string, pulumix.Output[string]](pulumix.Val(pulumix.Val("a")))
 	v, known, secret, deps, err := internal.AwaitOutput(context.Background(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
@@ -39,10 +39,10 @@ func TestJoin(t *testing.T) {
 	assert.Equal(t, "a", v)
 }
 
-func TestJoin_secret(t *testing.T) {
+func TestFlatten_secret(t *testing.T) {
 	t.Parallel()
 
-	o := pulumix.Join[string, pulumi.StringOutput](
+	o := pulumix.Flatten[string, pulumi.StringOutput](
 		pulumix.Val(
 			pulumi.ToSecret(pulumi.String("a")).(pulumi.StringOutput),
 		),
@@ -56,7 +56,7 @@ func TestJoin_secret(t *testing.T) {
 	assert.Equal(t, "a", v)
 }
 
-func TestJoin_failedOutput(t *testing.T) {
+func TestFlatten_failedOutput(t *testing.T) {
 	t.Parallel()
 
 	in := pulumix.Output[pulumix.Output[string]]{
@@ -66,7 +66,7 @@ func TestJoin_failedOutput(t *testing.T) {
 	giveErr := errors.New("great sadness")
 	internal.RejectOutput(in, giveErr)
 
-	o := pulumix.Join[string, pulumix.Output[string]](in)
+	o := pulumix.Flatten[string, pulumix.Output[string]](in)
 	_, _, _, _, err := internal.AwaitOutput(context.Background(), o)
 	assert.ErrorIs(t, err, giveErr)
 }
