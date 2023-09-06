@@ -198,6 +198,48 @@
     "@babel/helper-validator-identifier" "^7.19.1"
     to-fast-properties "^2.0.0"
 
+"@biomejs/biome@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@biomejs/biome/-/biome-1.0.0.tgz#bf00263afe77532fbfd626430bd4611ef06dad26"
+  integrity sha512-Y5CND1QZ5pF6hc4dFw5ItDutv9KJO91ksLdBIFyvHL7LmXN0UomqyyRWryvrqq+YlA8Q58cR6sqjjQuMp9E2Ig==
+  optionalDependencies:
+    "@biomejs/cli-darwin-arm64" "1.0.0"
+    "@biomejs/cli-darwin-x64" "1.0.0"
+    "@biomejs/cli-linux-arm64" "1.0.0"
+    "@biomejs/cli-linux-x64" "1.0.0"
+    "@biomejs/cli-win32-arm64" "1.0.0"
+    "@biomejs/cli-win32-x64" "1.0.0"
+
+"@biomejs/cli-darwin-arm64@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@biomejs/cli-darwin-arm64/-/cli-darwin-arm64-1.0.0.tgz#215ef7d880dfd6e2ef3af2da85b222ff7ef60950"
+  integrity sha512-3v7kEyxkf3D246esH+q/lDK5wWn+xLCXZpHCuc1itAmC35GkEc6S7um6C1VD3XKXLx6N0sJR/rTmjKiRGV32Ig==
+
+"@biomejs/cli-darwin-x64@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@biomejs/cli-darwin-x64/-/cli-darwin-x64-1.0.0.tgz#aeba83a254a2a6f27844c9b3b42f0125f373fafd"
+  integrity sha512-uxIMt/X7TQWicjsImkqMvUUEqaFZTOJJrtEhlHl/eIaETWJmK3uAR7ihIWctpGJnN16sUgpLgwczc7FETqu/PQ==
+
+"@biomejs/cli-linux-arm64@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@biomejs/cli-linux-arm64/-/cli-linux-arm64-1.0.0.tgz#eb778af8215720de3e70066d8d994d07e46310b1"
+  integrity sha512-kJWtu3Xr4MdHV2Yn4U+eZudAGPgv0kRCjWAyzLRewJiqE5TLPrX08imB9SU1n3+VxNO8e2JJ0tWWBHo4J+aSEg==
+
+"@biomejs/cli-linux-x64@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@biomejs/cli-linux-x64/-/cli-linux-x64-1.0.0.tgz#9ce1fc2cf36035b9a0d75786b587e8f4c8a00b75"
+  integrity sha512-FK6hYZ0Lkk39eXYx1+2ZWtLkApc0RdOpcjDVM96JbvI0bxqvNnm193BPXuxh5A/fCl6N28RNUvcKnZ5LbgZ0Yw==
+
+"@biomejs/cli-win32-arm64@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@biomejs/cli-win32-arm64/-/cli-win32-arm64-1.0.0.tgz#db2f1672850daacfa1f504c274befa83d4872b6b"
+  integrity sha512-kE+OY2isEJHBodiLPMlybZckHkl3CQWsvXuJEvSxkoMhLbGDPEV3yZ/0lEph3BlxP3KP5vUO3hOFGaTvHFOuqQ==
+
+"@biomejs/cli-win32-x64@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@biomejs/cli-win32-x64/-/cli-win32-x64-1.0.0.tgz#25a667363afe16dea036a911c90f168952317185"
+  integrity sha512-Ko6ZsbmbScPMEnh/xz4mwDSCZIUCAEjbbbnUVApgAAL2+1Hoe7Vnhh2RiwYRqy3tHrBIMDwXkSxj0vlf1G3EHg==
+
 "@eslint/eslintrc@^0.4.3":
   version "0.4.3"
   resolved "https://registry.yarnpkg.com/@eslint/eslintrc/-/eslintrc-0.4.3.tgz#9e42981ef035beb3dd49add17acb96e8ff6f394c"
@@ -488,36 +530,6 @@
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/@pulumi/query/-/query-0.3.0.tgz#f496608e86a18c3dd31b6c533408e2441c29071d"
   integrity sha512-xfo+yLRM2zVjVEA4p23IjQWzyWl1ZhWOGobsBqRpIarzLvwNH/RAGaoehdxlhx4X92302DrpdIFgTICMN4P38w==
-
-"@rometools/cli-darwin-arm64@12.1.0":
-  version "12.1.0"
-  resolved "https://registry.yarnpkg.com/@rometools/cli-darwin-arm64/-/cli-darwin-arm64-12.1.0.tgz#3a52e43ab2379b79b8565afced391b009b3b7531"
-  integrity sha512-U9trIXqE+WVsPUQRE8vooh97jNcyC1cvhNO91Q31FfWgccfbiJbfiQzPewpQ1+UseyJIdpWFAYLs8VFykhAl3g==
-
-"@rometools/cli-darwin-x64@12.1.0":
-  version "12.1.0"
-  resolved "https://registry.yarnpkg.com/@rometools/cli-darwin-x64/-/cli-darwin-x64-12.1.0.tgz#424f0bf209fb45d0417f4e7547dbb1bd9dcd157a"
-  integrity sha512-ePyRJwprT+POsGue1gdqPYOHojXfDz/OJI18renU0NI2CHeeeMhnquu+MZJaiBGyBd1ezIgWZWiQ4DhLFOaCUg==
-
-"@rometools/cli-linux-arm64@12.1.0":
-  version "12.1.0"
-  resolved "https://registry.yarnpkg.com/@rometools/cli-linux-arm64/-/cli-linux-arm64-12.1.0.tgz#13cf086641b42297ed48ca8978c9c8e10fa703b6"
-  integrity sha512-j/pF6pF+lKihw7CIvwQZqQG9gpaUy2FyO9+nu5dvCChblXNEaA2zMnpLnDlCue0B7xY0jZkk1EZdF49ztEZZFA==
-
-"@rometools/cli-linux-x64@12.1.0":
-  version "12.1.0"
-  resolved "https://registry.yarnpkg.com/@rometools/cli-linux-x64/-/cli-linux-x64-12.1.0.tgz#9271c9e955b84ac51608c0ad14b374ad2cc629eb"
-  integrity sha512-zh6tW0JumP/rQkFDdsg6FEDBv0ZPvPLFirfHqzJA8VDNRBHkOTq27oVCbTJIGyUCGm9VvIzG8sJFVKkYpxkl2g==
-
-"@rometools/cli-win32-arm64@12.1.0":
-  version "12.1.0"
-  resolved "https://registry.yarnpkg.com/@rometools/cli-win32-arm64/-/cli-win32-arm64-12.1.0.tgz#43c6c575d4b8614338f006f1c04116be77651672"
-  integrity sha512-ggug6gUWFnO2QK0KC5XsYRhuZ22jeLksebdHMnkaHzZBtxXnKMC7yXnYwU/Lg2fGAwmMsluIbaqFYgen4+c8RA==
-
-"@rometools/cli-win32-x64@12.1.0":
-  version "12.1.0"
-  resolved "https://registry.yarnpkg.com/@rometools/cli-win32-x64/-/cli-win32-x64-12.1.0.tgz#703783a238a867713555c74bfb8f4b2cfcd47185"
-  integrity sha512-TnurdnlzBwcvRSsgmNz9Gorffnjr5cS8TdHo9w+3pT4GdSsrLZqvd1IV2tj4uRKkNn6OJtSqW3tZ5SiTrf0LuA==
 
 "@sinonjs/commons@^1.6.0", "@sinonjs/commons@^1.7.0", "@sinonjs/commons@^1.8.3":
   version "1.8.3"
@@ -2739,18 +2751,6 @@ rimraf@^3.0.0, rimraf@^3.0.2:
   integrity sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==
   dependencies:
     glob "^7.1.3"
-
-rome@^12.1.0:
-  version "12.1.0"
-  resolved "https://registry.yarnpkg.com/rome/-/rome-12.1.0.tgz#be218acf21d86b5368205ce6917c1c2b62f9698c"
-  integrity sha512-inIBYc2/Das6LDXcw8IQp7yeXth6Rhmj9y8sS/Y/0g5/29Lyzr785SjCmKyiN2No4MNsaP3YJNm2QZAs2UpR2w==
-  optionalDependencies:
-    "@rometools/cli-darwin-arm64" "12.1.0"
-    "@rometools/cli-darwin-x64" "12.1.0"
-    "@rometools/cli-linux-arm64" "12.1.0"
-    "@rometools/cli-linux-x64" "12.1.0"
-    "@rometools/cli-win32-arm64" "12.1.0"
-    "@rometools/cli-win32-x64" "12.1.0"
 
 run-parallel@^1.1.9:
   version "1.2.0"

@@ -1,5 +1,5 @@
 {
-    "$schema": "./node_modules/rome/configuration_schema.json",
+    "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
     "organizeImports": {
         "enabled": false
     },
