@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: `pulumi policy new` now injects `PULUMI_ACCESS_TOKEN` when necessary to support downloading Premium Policies.

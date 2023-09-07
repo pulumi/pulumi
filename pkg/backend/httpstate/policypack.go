@@ -289,6 +289,23 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
 	}
 
+	// Support Premium Policies.
+	if cloudURL, err := workspace.GetCurrentCloudURL(
+		// Set Project to nil to keep it from overriding Cloud URL for policy install.
+		nil,
+	); err == nil {
+		_, hasAccessToken := os.LookupEnv("PULUMI_ACCESS_TOKEN")
+		if !hasAccessToken {
+			account, err := workspace.GetAccount(
+				ValueOrDefaultURL(cloudURL),
+			)
+
+			contract.Ignore(err) // We can set access token to "" (string zero value) and be in the same situation.
+			os.Setenv("PULUMI_ACCESS_TOKEN", account.AccessToken)
+			defer os.Unsetenv("PULUMI_ACCESS_TOKEN")
+		}
+	}
+
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		if err := completeNodeJSInstall(ctx, finalDir); err != nil {
