@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.81.0 (2023-09-06)
+
+
+### Features
+
+- [cli] Adds Pulumi AI and Pulumi AI Web commands
+  [#13808](https://github.com/pulumi/pulumi/pull/13808)
+
+- [cli] Pass args from import to state converters.
+  [#13862](https://github.com/pulumi/pulumi/pull/13862)
+
+- [cli/config] Removes PULUMI_DEV flag for org search
+  [#13888](https://github.com/pulumi/pulumi/pull/13888)
+
+- [sdkgen/python] Opting into pyproject.toml SDK generation no longer generates setup.py, but instead generates a standalone pyproject.toml that can be built with `python -m build .`
+  [#13812](https://github.com/pulumi/pulumi/pull/13812)
+
+
+### Bug Fixes
+
+- [engine] Check for old resources first by URN and then aliases
+  [#13883](https://github.com/pulumi/pulumi/pull/13883)
+
+- [sdk/nodejs] Fix a possible panic in running NodeJS programs.
+  [#13689](https://github.com/pulumi/pulumi/pull/13689)
+
+
+### Miscellaneous
+
+- [sdk/go] Support multi-errors built from errors.Join for RunFunc, Exit, and friends.
+  [#13813](https://github.com/pulumi/pulumi/pull/13813)
+
+- [sdk/go] Rename Join in pulumix to Flatten.
+  [#13882](https://github.com/pulumi/pulumi/pull/13882)
+
 ## 3.80.0 (2023-08-31)
 
 
