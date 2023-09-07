@@ -348,19 +348,19 @@ func TestGenerateAliases(t *testing.T) {
 		name         string
 		parentAlias  *resource.URN
 		childAliases []resource.Alias
-		expected     map[resource.URN]struct{}
+		expected     []resource.URN
 	}{
 		{
 			name:     "no aliases",
-			expected: map[resource.URN]struct{}{},
+			expected: nil,
 		},
 		{
 			name: "child alias (type), no parent aliases",
 			childAliases: []resource.Alias{
 				{Type: "test:resource:child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child",
 			},
 		},
 		{
@@ -368,8 +368,8 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{Name: "child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2",
 			},
 		},
 		{
@@ -380,8 +380,8 @@ func TestGenerateAliases(t *testing.T) {
 					NoParent: true,
 				},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:child2::myres-child": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:child2::myres-child",
 			},
 		},
 		{
@@ -392,8 +392,8 @@ func TestGenerateAliases(t *testing.T) {
 					Parent: resource.CreateURN("originalparent", "test:resource:original", "", project, stack),
 				},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:original$test:resource:child2::myres-child": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:original$test:resource:child2::myres-child",
 			},
 		},
 		{
@@ -402,10 +402,10 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{Name: "myres-child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2":  {},
-				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child":  {},
-				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child2": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child",
+				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child2",
 			},
 		},
 		{
@@ -414,10 +414,10 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{Name: "myres-child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2":  {},
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child":  {},
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
 			},
 		},
 	}

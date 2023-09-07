@@ -48,6 +48,7 @@ var resourceProviders = map[string]resourceProvider{
 	"testprovider:index:Random":        &randomResourceProvider{},
 	"testprovider:index:Echo":          &echoResourceProvider{},
 	"testprovider:index:FailsOnDelete": &failsOnDeleteResourceProvider{},
+	"testprovider:index:FailsOnCreate": &failsOnCreateResourceProvider{},
 }
 
 func providerForURN(urn string) (resourceProvider, string, bool) {

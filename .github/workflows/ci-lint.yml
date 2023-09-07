@@ -71,6 +71,27 @@ jobs:
             exit 1
           fi
 
+  gen:
+    name: Generate Go SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+      - name: Run make gen
+        run: cd sdk/go && make gen
+      - name: Fail if there are changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error Running 'make gen' in sdk/go resulted in changes"
+            echo "::error Please run 'make gen' in sdk/go and commit the changes"
+            exit 1
+          fi
+
   protobuf-lint:
     name: Lint Protobufs
     runs-on: ubuntu-latest

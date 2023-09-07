@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/python
+  description: Opting into pyproject.toml SDK generation no longer generates setup.py, but instead generates a standalone pyproject.toml that can be built with `python -m build .`
