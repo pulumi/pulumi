@@ -38,30 +38,32 @@ func TestSearch_cmd(t *testing.T) {
 	pack := "pack1"
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
-	cmd := searchCmd{
-		Stdout:       &buff,
-		outputFormat: outputFormatTable,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-			return &stubHTTPBackend{
-				SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
-					return &apitype.ResourceSearchResponse{
-						Resources: []apitype.ResourceResult{
-							{
-								Name:     &name,
-								Type:     &typ,
-								Program:  &program,
-								Stack:    &stack,
-								Package:  &pack,
-								Module:   &mod,
-								Modified: &modified,
+	cmd := orgSearchCmd{
+		searchCmd: searchCmd{
+			Stdout:       &buff,
+			outputFormat: outputFormatTable,
+			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+				return &stubHTTPBackend{
+					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+						return &apitype.ResourceSearchResponse{
+							Resources: []apitype.ResourceResult{
+								{
+									Name:     &name,
+									Type:     &typ,
+									Program:  &program,
+									Stack:    &stack,
+									Package:  &pack,
+									Module:   &mod,
+									Modified: &modified,
+								},
 							},
-						},
-					}, nil
-				},
-				CurrentUserF: func() (string, []string, error) {
-					return "user", []string{"org1", "org2"}, nil
-				},
-			}, nil
+						}, nil
+					},
+					CurrentUserF: func() (string, []string, error) {
+						return "user", []string{"org1", "org2"}, nil
+					},
+				}, nil
+			},
 		},
 	}
 

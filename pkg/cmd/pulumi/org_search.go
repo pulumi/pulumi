@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
-	"go.uber.org/multierr"
 	"gopkg.in/yaml.v3"
 )
 
@@ -44,15 +43,15 @@ const (
 )
 
 // String is used both by fmt.Print and by Cobra in help text
-func (e *outputFormat) String() string {
-	return string(*e)
+func (o *outputFormat) String() string {
+	return string(*o)
 }
 
 // Set must have pointer receiver so it doesn't change the value of a copy
-func (e *outputFormat) Set(v string) error {
+func (o *outputFormat) Set(v string) error {
 	switch v {
 	case "table", "json", "yaml":
-		*e = outputFormat(v)
+		*o = outputFormat(v)
 		return nil
 	default:
 		return errors.New(`must be one of "table", "json", or "yaml"`)
@@ -60,14 +59,13 @@ func (e *outputFormat) Set(v string) error {
 }
 
 // Type is only used in help text
-func (e *outputFormat) Type() string {
+func (o *outputFormat) Type() string {
 	return "outputFormat"
 }
 
 type searchCmd struct {
-	orgName     string
-	queryParams []string
-	outputFormat
+	orgName      string
+	outputFormat outputFormat
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -76,8 +74,17 @@ type searchCmd struct {
 	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
-func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
+type orgSearchCmd struct {
+	searchCmd
+	queryParams []string
+}
+
+func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
+
+	if cmd.outputFormat == "" {
+		cmd.outputFormat = outputFormatTable
+	}
 
 	if cmd.Stdout == nil {
 		cmd.Stdout = os.Stdout
@@ -125,22 +132,11 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	switch cmd.outputFormat {
-	case outputFormatJSON:
-		err = cmd.RenderJSON(res.Resources)
-	case outputFormatTable:
-		err = cmd.RenderTable(res.Resources)
-	case outputFormatYAML:
-		err = cmd.RenderYAML(res.Resources)
-	}
-	if err != nil {
-		return fmt.Errorf("table rendering error: %s", err)
-	}
-	return nil
+	return cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
 }
 
 func newSearchCmd() *cobra.Command {
-	var scmd searchCmd
+	var scmd orgSearchCmd
 	cmd := &cobra.Command{
 		Use:   "search",
 		Short: "Search for resources in Pulumi Cloud",
@@ -191,12 +187,8 @@ func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
 	for _, r := range results {
 		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
 	}
-	var err error
 	if errs := table.Errors(); errs != nil {
-		for _, tableErr := range errs {
-			err = multierr.Append(err, tableErr)
-		}
-		return err
+		return errors.Join(errs...)
 	}
 	return table.RenderTo(w)
 }
@@ -212,6 +204,19 @@ func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
 	}
 	_, err = w.Write(output)
 	return err
+}
+
+func (o *outputFormat) Render(cmd *searchCmd, results []apitype.ResourceResult) error {
+	switch *o {
+	case outputFormatJSON:
+		return cmd.RenderJSON(results)
+	case outputFormatTable:
+		return cmd.RenderTable(results)
+	case outputFormatYAML:
+		return cmd.RenderYAML(results)
+	default:
+		return fmt.Errorf("unknown output format %q", *o)
+	}
 }
 
 func (cmd *searchCmd) RenderJSON(results []apitype.ResourceResult) error {

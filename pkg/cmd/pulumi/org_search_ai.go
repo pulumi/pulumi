@@ -18,28 +18,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
 type searchAICmd struct {
-	orgName     string
+	searchCmd
 	queryString string
-	outputFormat
-
-	Stdout io.Writer // defaults to os.Stdout
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
@@ -92,18 +83,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	switch cmd.outputFormat {
-	case outputFormatTable:
-		err = cmd.RenderTable(res.Resources)
-	case outputFormatJSON:
-		err = cmd.RenderJSON(res.Resources)
-	case outputFormatYAML:
-		err = cmd.RenderYAML(res.Resources)
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
-	}
-	return nil
+	return cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
 }
 
 func newSearchAICmd() *cobra.Command {
@@ -133,16 +113,4 @@ func newSearchAICmd() *cobra.Command {
 	)
 
 	return cmd
-}
-
-func (cmd *searchAICmd) RenderTable(results []apitype.ResourceResult) error {
-	return renderSearchTable(cmd.Stdout, results)
-}
-
-func (cmd *searchAICmd) RenderJSON(results []apitype.ResourceResult) error {
-	return renderSearchJSON(cmd.Stdout, results)
-}
-
-func (cmd *searchAICmd) RenderYAML(results []apitype.ResourceResult) error {
-	return renderSearchYAML(cmd.Stdout, results)
 }

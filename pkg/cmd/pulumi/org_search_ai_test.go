@@ -58,11 +58,13 @@ func TestSearchAI_cmd(t *testing.T) {
 		},
 	}
 	cmd := searchAICmd{
-		Stdout: &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-			return b, nil
+		searchCmd: searchCmd{
+			Stdout: &buff,
+			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+				return b, nil
+			},
+			outputFormat: outputFormatTable,
 		},
-		outputFormat: outputFormatTable,
 	}
 
 	err := cmd.Run(context.Background(), nil /* args */)
