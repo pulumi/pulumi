@@ -39,16 +39,12 @@ type newPolicyArgs struct {
 	dir               string
 	force             bool
 	generateOnly      bool
-	interactive       bool
 	offline           bool
 	templateNameOrURL string
-	yes               bool
 }
 
 func newPolicyNewCmd() *cobra.Command {
-	args := newPolicyArgs{
-		interactive: cmdutil.Interactive(),
-	}
+	args := newPolicyArgs{}
 
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
@@ -89,14 +85,10 @@ func newPolicyNewCmd() *cobra.Command {
 }
 
 func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
-	if !args.interactive && !args.yes {
-		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
-	}
-
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
-		IsInteractive: args.interactive,
+		IsInteractive: cmdutil.Interactive(),
 	}
 
 	// Get the current working directory.
@@ -141,6 +133,8 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		return errors.New("no templates")
 	} else if len(templates) == 1 {
 		template = templates[0]
+	} else if !opts.IsInteractive {
+		return fmt.Errorf("a template must be provided when running in non-interactive mode")
 	} else {
 		if template, err = choosePolicyPackTemplate(templates, opts); err != nil {
 			return err
