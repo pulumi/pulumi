@@ -154,7 +154,7 @@ func main() {
 
 // locateModule resolves a node module name to a file path that can be loaded
 func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
-	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
+	args := []string{"repl", "-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		"locateModule",
@@ -528,7 +528,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	nodeBin, err := exec.LookPath("node")
+	nodeBin, err := exec.LookPath("bun")
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not find node on the $PATH: %w", err))
 	}
@@ -676,11 +676,22 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 func (host *nodeLanguageHost) constructArguments(
 	req *pulumirpc.RunRequest, runPath, address, pipesDirectory string,
 ) []string {
-	args := []string{runPath}
+	args := []string{}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
 			args = append(args, "--"+k, v)
 		}
+	}
+
+	args = append(args, "run")
+
+	// bun expects program first not last...
+	if req.GetProgram() == "" {
+		// If the program path is empty, just use "."; this will cause Node to try to load the default module
+		// file, by default ./index.js, but possibly overridden in the "main" element inside of package.json.
+		args = append(args, ".")
+	} else {
+		args = append(args, req.GetProgram())
 	}
 
 	maybeAppendArg("monitor", address)
@@ -697,13 +708,6 @@ func (host *nodeLanguageHost) constructArguments(
 	maybeAppendArg("query-mode", fmt.Sprint(req.GetQueryMode()))
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendArg("tracing", host.tracing)
-	if req.GetProgram() == "" {
-		// If the program path is empty, just use "."; this will cause Node to try to load the default module
-		// file, by default ./index.js, but possibly overridden in the "main" element inside of package.json.
-		args = append(args, ".")
-	} else {
-		args = append(args, req.GetProgram())
-	}
 
 	args = append(args, req.GetArgs()...)
 	return args
