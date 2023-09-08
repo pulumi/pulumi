@@ -40,6 +40,7 @@ func TestSearch_cmd(t *testing.T) {
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
 	searchURL := "https://app.pulumi.com/pulumi/resources?foo=bar"
+	total := int64(132)
 	cmd := searchCmd{
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
@@ -57,7 +58,8 @@ func TestSearch_cmd(t *testing.T) {
 								Modified: &modified,
 							},
 						},
-						URL: searchURL,
+						URL:   searchURL,
+						Total: &total,
 					}, nil
 				},
 				CurrentUserF: func() (string, []string, error) {
@@ -74,6 +76,7 @@ func TestSearch_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), typ)
 	assert.Contains(t, buff.String(), program)
 	assert.Contains(t, buff.String(), fmt.Sprintf("Results are also visible in Pulumi Cloud:\n%s", searchURL))
+	assert.Contains(t, buff.String(), fmt.Sprint(total))
 }
 
 type stubHTTPBackend struct {
