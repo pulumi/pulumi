@@ -287,7 +287,7 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 	label := fmt.Sprintf("%s.Transform(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 	mprops, err := MarshalProperties(props,
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 	if err != nil {
 		return nil, err
 	}
@@ -311,25 +311,39 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 		return nil, rpcError
 	}
 
-	/*
-		if tURN := resp.GetUrn(); tURN != "" && tURN != string(urn) {
-			return nil, errors.Wrap(err, "expected transformed URN to match input URN")
+	var results []TransformResult
+	for _, t := range resp.GetTransforms() {
+		tURN := resource.URN(t.GetUrn())
+		if tURN == "" {
+			tURN = urn
+		} else if tURN != urn {
+			return nil,
+				errors.Wrapf(err, "expected transformed URN (%s) to match input URN (%s)", tURN, urn)
 		}
-	*/
 
-	rprops, err := UnmarshalProperties(resp.GetProperties(),
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
-	if err != nil {
-		return nil, err
+		tprops, err := UnmarshalProperties(t.GetProperties(),
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, TransformResult{
+			TransformName:     t.GetTransformName(),
+			Description:       t.GetDescription(),
+			PolicyPackName:    t.GetPolicyPackName(),
+			PolicyPackVersion: t.GetPolicyPackVersion(),
+			URN:               tURN,
+			Properties:        tprops,
+		})
 	}
 
-	logging.V(7).Infof("%s success: #returns=%d", label, len(rprops))
-	return rprops, nil
+	logging.V(7).Infof("%s success: #trasnforms=%d", label, len(results))
+	return results, nil
 }
 
 // TransformStack is given the opportunity to transfom all resources in the stack, and returns the
 // resulting rewritten properties in a map indexed by resource URN.
-func (a *analyzer) TransformStack(resources []AnalyzerStackResource) (map[resource.URN][]TransformResult, error) {
+func (a *analyzer) TransformStack(resources []AnalyzerStackResource) ([]TransformResult, error) {
 	logging.V(7).Infof("%s.TransformStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
@@ -378,31 +392,31 @@ func (a *analyzer) TransformStack(resources []AnalyzerStackResource) (map[resour
 		Resources: protoResources,
 	})
 	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		// Handle the case where we the policy pack doesn't implement a recent enough
-		// AnalyzerService to support the AnalyzeStack method. Ignore the error as it
-		// just means the analyzer isn't capable of this specific type of check.
-		if rpcError.Code() == codes.Unimplemented {
-			logging.V(7).Infof("%s.TransformStack(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
-			return nil, nil
-		}
-
-		logging.V(7).Infof("%s.TransformStack(...) failed: err=%v", a.label(), rpcError)
-		return nil, rpcError
+		return nil, err
 	}
 
-	transforms := resp.GetTransforms()
-	logging.V(7).Infof("%s.TransformStack(...) success: transforms=#%d", a.label(), len(transforms))
+	var results []TransformResult
+	for _, t := range resp.GetTransforms() {
+		tURN := resource.URN(t.GetUrn())
 
-	results := make(map[resource.URN]resource.PropertyMap)
-	for _, transform := range transforms {
-		props, err := UnmarshalProperties(transform.GetProperties(),
+		// TODO: validate that this URN is correct.
+
+		tprops, err := UnmarshalProperties(t.GetProperties(),
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
 			return nil, err
 		}
-		results[resource.URN(transform.GetUrn())] = props
+
+		results = append(results, TransformResult{
+			TransformName:     t.GetTransformName(),
+			Description:       t.GetDescription(),
+			PolicyPackName:    t.GetPolicyPackName(),
+			PolicyPackVersion: t.GetPolicyPackVersion(),
+			URN:               tURN,
+			Properties:        tprops,
+		})
 	}
+
 	return results, nil
 }
 

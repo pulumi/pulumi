@@ -38,7 +38,7 @@ class AnalyzerStub(object):
         self.TransformStack = channel.unary_unary(
                 '/pulumirpc.Analyzer/TransformStack',
                 request_serializer=pulumi_dot_analyzer__pb2.AnalyzeStackRequest.SerializeToString,
-                response_deserializer=pulumi_dot_analyzer__pb2.TransformStackResponse.FromString,
+                response_deserializer=pulumi_dot_analyzer__pb2.TransformResponse.FromString,
                 )
         self.GetAnalyzerInfo = channel.unary_unary(
                 '/pulumirpc.Analyzer/GetAnalyzerInfo',
@@ -139,7 +139,7 @@ def add_AnalyzerServicer_to_server(servicer, server):
             'TransformStack': grpc.unary_unary_rpc_method_handler(
                     servicer.TransformStack,
                     request_deserializer=pulumi_dot_analyzer__pb2.AnalyzeStackRequest.FromString,
-                    response_serializer=pulumi_dot_analyzer__pb2.TransformStackResponse.SerializeToString,
+                    response_serializer=pulumi_dot_analyzer__pb2.TransformResponse.SerializeToString,
             ),
             'GetAnalyzerInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAnalyzerInfo,
@@ -234,7 +234,7 @@ class Analyzer(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/TransformStack',
             pulumi_dot_analyzer__pb2.AnalyzeStackRequest.SerializeToString,
-            pulumi_dot_analyzer__pb2.TransformStackResponse.FromString,
+            pulumi_dot_analyzer__pb2.TransformResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

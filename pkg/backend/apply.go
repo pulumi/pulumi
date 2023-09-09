@@ -93,12 +93,12 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 	var events []engine.Event
 	go func() {
-		// pull the events from the channel and store them locally
+		// Pull out relevant events we will want to display in the confirmation below.
 		for e := range eventsChannel {
 			if e.Type == engine.ResourcePreEvent ||
 				e.Type == engine.ResourceOutputsEvent ||
+				e.Type == engine.PolicyTransformEvent ||
 				e.Type == engine.SummaryEvent {
-
 				events = append(events, e)
 			}
 		}
@@ -312,26 +312,51 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	displayOpts.SummaryDiff = true
 
-	var outputEventsDiff []string
+	outputEventsDiff := make([]string, 0)
+	transformEventsDiff := make([]string, 0)
 	for _, e := range events {
 		if e.Type == engine.SummaryEvent {
 			continue
 		}
+
 		msg := display.RenderDiffEvent(e, seen, displayOpts)
 		if msg == "" {
 			continue
 		}
-		// display output events last
+
+		// Keep track of output and transforms events separately, since we print them after the
+		// ordinary resource diff information.
 		if e.Type == engine.ResourceOutputsEvent {
 			outputEventsDiff = append(outputEventsDiff, msg)
 			continue
+		} else if e.Type == engine.PolicyTransformEvent {
+			transformEventsDiff = append(transformEventsDiff, msg)
+			continue
 		}
+
 		_, err := buff.WriteString(msg)
 		contract.IgnoreError(err)
 	}
-	for _, msg := range outputEventsDiff {
-		_, err := buff.WriteString(msg)
+
+	// Print resource outputs next.
+	if len(outputEventsDiff) > 0 {
+		_, err := buff.WriteString("\n")
 		contract.IgnoreError(err)
+		for _, msg := range outputEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	// Print policy transformations last.
+	if len(transformEventsDiff) > 0 {
+		_, err := buff.WriteString(displayOpts.Color.Colorize(
+			fmt.Sprintf("\n%s  Policy Transforms:%s\n", colors.SpecHeadline, colors.Reset)))
+		contract.IgnoreError(err)
+		for _, msg := range transformEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
 	}
 
 	return strings.TrimSpace(buff.String())

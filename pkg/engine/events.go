@@ -124,9 +124,11 @@ type PolicyTransformEventPayload struct {
 	ResourceURN       resource.URN
 	Message           string
 	Color             colors.Colorization
-	PolicyName        string
+	TransformName     string
 	PolicyPackName    string
 	PolicyPackVersion string
+	Before            resource.PropertyMap
+	After             resource.PropertyMap
 	Prefix            string
 }
 
@@ -474,40 +476,18 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	}))
 }
 
-func (e *eventEmitter) policyTransformEvent(urn resource.URN, policyName, policyPackName, policyPackVersion string, diffProps []string) {
+func (e *eventEmitter) policyTransformEvent(urn resource.URN, t plugin.TransformResult,
+	before resource.PropertyMap, after resource.PropertyMap) {
 	contract.Requiref(e != nil, "e", "!= nil")
-
-	// Write prefix.
-	var prefix bytes.Buffer
-	prefix.WriteString(colors.SpecInfo)
-
-	// Write the message itself.
-	var buffer bytes.Buffer
-	buffer.WriteString(colors.SpecNote)
-
-	if len(diffProps) == 0 {
-		buffer.WriteString("this resource was transformed, but it was not possible to determine a diff")
-	} else {
-		buffer.WriteString("this resource's properties were transformed: ")
-		for i, diffProp := range diffProps {
-			if i > 0 {
-				buffer.WriteString(", ")
-			}
-			buffer.WriteString(diffProp)
-		}
-	}
-
-	buffer.WriteString(colors.Reset)
-	buffer.WriteRune('\n')
 
 	e.sendEvent(NewEvent(PolicyTransformEvent, PolicyTransformEventPayload{
 		ResourceURN:       urn,
-		Message:           logging.FilterString(buffer.String()),
 		Color:             colors.Raw,
-		PolicyName:        policyName,
-		PolicyPackName:    policyPackName,
-		PolicyPackVersion: policyPackVersion,
-		Prefix:            logging.FilterString(prefix.String()),
+		TransformName:     t.TransformName,
+		PolicyPackName:    t.PolicyPackName,
+		PolicyPackVersion: t.PolicyPackVersion,
+		Before:            before,
+		After:             after,
 	}))
 }
 

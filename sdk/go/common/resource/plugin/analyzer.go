@@ -40,7 +40,7 @@ type Analyzer interface {
 	// Transform is given the opportunity to optionally transform a single resource's properties.
 	Transform(r AnalyzerResource) ([]TransformResult, error)
 	// TransformStack is given the opportunity to optionally transform an entire stack of resources.
-	TransformStack(resources []AnalyzerStackResource) (map[resource.URN][]TransformResult, error)
+	TransformStack(resources []AnalyzerStackResource) ([]TransformResult, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
@@ -103,9 +103,9 @@ type AnalyzeDiagnostic struct {
 // properties and associated metadata.
 type TransformResult struct {
 	TransformName     string
+	Description       string
 	PolicyPackName    string
 	PolicyPackVersion string
-	Description       string
 	URN               resource.URN
 	Properties        resource.PropertyMap
 }

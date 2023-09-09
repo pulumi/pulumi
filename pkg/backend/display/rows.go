@@ -60,9 +60,11 @@ type ResourceRow interface {
 
 	DiagInfo() *DiagInfo
 	PolicyPayloads() []engine.PolicyViolationEventPayload
+	PolicyTransformPayloads() []engine.PolicyTransformEventPayload
 
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
+	RecordPolicyTransformEvent(diagEvent engine.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -126,8 +128,9 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
-	diagInfo       *DiagInfo
-	policyPayloads []engine.PolicyViolationEventPayload
+	diagInfo                *DiagInfo
+	policyPayloads          []engine.PolicyViolationEventPayload
+	policyTransformPayloads []engine.PolicyTransformEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -228,6 +231,17 @@ func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPaylo
 func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
 	pePayload := event.Payload().(engine.PolicyViolationEventPayload)
 	data.policyPayloads = append(data.policyPayloads, pePayload)
+}
+
+// PolicyTransformPayloads returns all policy transformation event payloads that have been registered.
+func (data *resourceRowData) PolicyTransformPayloads() []engine.PolicyTransformEventPayload {
+	return data.policyTransformPayloads
+}
+
+// RecordPolicyTransformEvent records a policy transformation with the resourceRowData.
+func (data *resourceRowData) RecordPolicyTransformEvent(event engine.Event) {
+	tPayload := event.Payload().(engine.PolicyTransformEventPayload)
+	data.policyTransformPayloads = append(data.policyTransformPayloads, tPayload)
 }
 
 type column int
@@ -457,45 +471,49 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		recordMetadataDiff("protect",
 			resource.NewBoolProperty(step.Old.Protect), resource.NewBoolProperty(step.New.Protect))
 
-		if diff != nil {
-			writeString(changesBuf, "diff: ")
-
-			updates := make(resource.PropertyMap)
-			for k := range diff.Updates {
-				updates[k] = resource.PropertyValue{}
-			}
-
-			filteredKeys := func(m resource.PropertyMap) []string {
-				keys := slice.Prealloc[string](len(m))
-				for k := range m {
-					keys = append(keys, string(k))
-				}
-				return keys
-			}
-			if include := step.Diffs; len(include) > 0 {
-				includeSet := make(map[resource.PropertyKey]bool)
-				for _, k := range include {
-					includeSet[k] = true
-				}
-				filteredKeys = func(m resource.PropertyMap) []string {
-					var filteredKeys []string
-					for k := range m {
-						if includeSet[k] {
-							filteredKeys = append(filteredKeys, string(k))
-						}
-					}
-					return filteredKeys
-				}
-			}
-
-			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
-			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
-			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
-		}
+		writeShortDiff(changesBuf, diff, step.Diffs)
 	}
 
 	fprintIgnoreError(changesBuf, colors.Reset)
 	return changesBuf.String()
+}
+
+func writeShortDiff(changesBuf io.StringWriter, diff *resource.ObjectDiff, include []resource.PropertyKey) {
+	if diff != nil {
+		writeString(changesBuf, "diff: ")
+
+		updates := make(resource.PropertyMap)
+		for k := range diff.Updates {
+			updates[k] = resource.PropertyValue{}
+		}
+
+		filteredKeys := func(m resource.PropertyMap) []string {
+			keys := make([]string, 0, len(m))
+			for k := range m {
+				keys = append(keys, string(k))
+			}
+			return keys
+		}
+		if len(include) > 0 {
+			includeSet := make(map[resource.PropertyKey]bool)
+			for _, k := range include {
+				includeSet[k] = true
+			}
+			filteredKeys = func(m resource.PropertyMap) []string {
+				var filteredKeys []string
+				for k := range m {
+					if includeSet[k] {
+						filteredKeys = append(filteredKeys, string(k))
+					}
+				}
+				return filteredKeys
+			}
+		}
+
+		writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
+		writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
+		writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
+	}
 }
 
 func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {

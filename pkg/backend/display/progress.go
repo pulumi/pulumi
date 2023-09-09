@@ -171,6 +171,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return payload.Metadata.URN, &payload.Metadata
 	case engine.DiagEvent:
 		return event.Payload().(engine.DiagEventPayload).URN, nil
+	case engine.PolicyTransformEvent:
+		return event.Payload().(engine.PolicyTransformEventPayload).ResourceURN, nil
 	case engine.PolicyViolationEvent:
 		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
 	default:
@@ -462,8 +464,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	display.renderer.done(display)
 
 	// Render several "sections" of output based on available data as applicable.
-	display.println("")
 	hasError := display.printDiagnostics()
+	display.printPolicyTransforms()
 	wroteMandatoryPolicyViolations := display.printPolicyViolations()
 	display.printOutputs()
 	// If no mandatory policies violated, print policy packs applied.
@@ -547,6 +549,60 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 	return hasError
 }
 
+// printPolicyTransforms prints a new "Policy Transforms:" section with all of the transformations
+// grouped by policy pack. If no policy transformations were encountered, prints nothing.
+func (display *ProgressDisplay) printPolicyTransforms() {
+	// Loop through every resource and gather up all policy transforms encountered.
+	var transformEvents []engine.PolicyTransformEventPayload
+	for _, row := range display.eventUrnToResourceRow {
+		transformPayloads := row.PolicyTransformPayloads()
+		if len(transformPayloads) == 0 {
+			continue
+		}
+		transformEvents = append(transformEvents, transformPayloads...)
+	}
+	if len(transformEvents) == 0 {
+		return
+	}
+
+	// Sort policy events by: policy pack name, policy pack version,
+	// transform name, and finally the URN of the resource.
+	// TODO: sort them in the order applied?
+	sort.SliceStable(transformEvents, func(i, j int) bool {
+		eventI, eventJ := transformEvents[i], transformEvents[j]
+		if packNameCmp := strings.Compare(
+			eventI.PolicyPackName,
+			eventJ.PolicyPackName); packNameCmp != 0 {
+			return packNameCmp < 0
+		}
+		if packVerCmp := strings.Compare(
+			eventI.PolicyPackVersion,
+			eventJ.PolicyPackVersion); packVerCmp != 0 {
+			return packVerCmp < 0
+		}
+		if transformNameCmp := strings.Compare(
+			eventI.TransformName,
+			eventJ.TransformName); transformNameCmp != 0 {
+			return transformNameCmp < 0
+		}
+		urnCmp := strings.Compare(
+			string(eventI.ResourceURN),
+			string(eventJ.ResourceURN))
+		return urnCmp < 0
+	})
+
+	// Print every policy violation, printing a new header when necessary.
+	display.println(display.opts.Color.Colorize(colors.SpecHeadline + "Policy Transforms:" + colors.Reset))
+
+	for _, transformEvent := range transformEvents {
+		// Print the individual policy event.
+		transformLine := renderDiffPolicyTransformEvent(transformEvent, false, display.opts)
+		display.println(transformLine)
+	}
+
+	display.println("")
+}
+
 // printPolicyViolations prints a new "Policy Violation:" section with all of the violations
 // grouped by policy pack. If no policy violations were encountered, prints nothing.
 func (display *ProgressDisplay) printPolicyViolations() bool {
@@ -616,6 +672,9 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 		messageLine := fmt.Sprintf("    %s", message)
 		display.println(messageLine)
 	}
+
+	display.println("")
+
 	return hasMandatoryPolicyViolations(policyEvents)
 }
 
@@ -877,6 +936,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else if event.Type == engine.PolicyViolationEvent {
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
+	} else if event.Type == engine.PolicyTransformEvent {
+		// record this transformation so we print it at the end.
+		row.RecordPolicyTransformEvent(event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}

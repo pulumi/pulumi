@@ -752,29 +752,25 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			}
 
 			if transform {
-				transformed, err := analyzer.Transform(r)
+				// During the first pass, perform transformations. This ensures subsequent analyzers run
+				// against the transformed properties, ensuring nothing circumvents the analysis checks.
+				tresults, err := analyzer.Transform(r)
 				if err != nil {
 					return nil, result.FromError(err)
-				} else if transformed != nil && len(transformed) > 0 {
-					// Emit a nice message so users know what was transformed.
-					info, err := analyzer.GetAnalyzerInfo()
-					if err != nil {
-						return nil, result.FromError(err)
+				} else if tresults != nil && len(tresults) > 0 {
+					for _, tresult := range tresults {
+						if tresult.Properties != nil {
+							// Emit a nice message so users know what was transformed.
+							sg.opts.Events.OnPolicyTransform(new.URN, tresult, inputs, tresult.Properties)
+							// Use the transformed inputs rather than the old ones from this point onwards.
+							inputs = tresult.Properties
+							new.Inputs = tresult.Properties
+						}
 					}
-					transNew := *new
-					transNew.Inputs = transformed
-					diff, err := sg.diff(urn, new, &transNew, oldInputs, oldOutputs, transformed, prov, allowUnknowns, goal.IgnoreChanges)
-					if err != nil {
-						sg.opts.Events.OnPolicyTransform(new.URN, x, y, z, nil)
-					} else if diff.Changes == plugin.DiffSome {
-						sg.opts.Events.OnPolicyTransform(new.URN, x, y, z, nil)
-					}
-
-					// Finally, use the transformed inputs rather than the old ones from this point onwards.
-					inputs = transformed
-					new.Inputs = transformed
 				}
 			} else {
+				// During the second pass, perform analysis. This happens after transformations so that
+				// analyzers see properties as they were after the transformations have occurred.
 				diagnostics, err := analyzer.Analyze(r)
 				if err != nil {
 					return nil, result.FromError(err)

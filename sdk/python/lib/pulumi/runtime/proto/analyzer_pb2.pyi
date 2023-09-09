@@ -374,13 +374,25 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
 global___AnalyzeDiagnostic = AnalyzeDiagnostic
 
 @typing_extensions.final
-class TransformResponse(google.protobuf.message.Message):
-    """TransformResponse is a single resource's transformation."""
+class TransformResult(google.protobuf.message.Message):
+    """TransformResult is a single resource's transformation."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    TRANSFORMNAME_FIELD_NUMBER: builtins.int
+    POLICYPACKNAME_FIELD_NUMBER: builtins.int
+    POLICYPACKVERSION_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
     URN_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
+    transformName: builtins.str
+    """Name of the transform itself."""
+    policyPackName: builtins.str
+    """Name of the policy pack the transform is in."""
+    policyPackVersion: builtins.str
+    """Version of the policy pack."""
+    description: builtins.str
+    """Description of transform rule. e.g., "auto-tag resources." """
     urn: builtins.str
     """the URN for the transformed resource."""
     @property
@@ -389,32 +401,36 @@ class TransformResponse(google.protobuf.message.Message):
     def __init__(
         self,
         *,
+        transformName: builtins.str = ...,
+        policyPackName: builtins.str = ...,
+        policyPackVersion: builtins.str = ...,
+        description: builtins.str = ...,
         urn: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["properties", b"properties", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties", "transformName", b"transformName", "urn", b"urn"]) -> None: ...
 
-global___TransformResponse = TransformResponse
+global___TransformResult = TransformResult
 
 @typing_extensions.final
-class TransformStackResponse(google.protobuf.message.Message):
-    """TransformStackResponse is an entire stack's transformation across all resources."""
+class TransformResponse(google.protobuf.message.Message):
+    """TransformResponse contains a sequence of transforms applied, in order."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     TRANSFORMS_FIELD_NUMBER: builtins.int
     @property
-    def transforms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___TransformResponse]:
+    def transforms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___TransformResult]:
         """the set of transforms to apply."""
     def __init__(
         self,
         *,
-        transforms: collections.abc.Iterable[global___TransformResponse] | None = ...,
+        transforms: collections.abc.Iterable[global___TransformResult] | None = ...,
     ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["transforms", b"transforms"]) -> None: ...
 
-global___TransformStackResponse = TransformStackResponse
+global___TransformResponse = TransformResponse
 
 @typing_extensions.final
 class AnalyzerInfo(google.protobuf.message.Message):

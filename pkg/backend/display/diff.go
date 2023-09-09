@@ -118,6 +118,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
+	case engine.PolicyTransformEvent:
+		return renderDiffPolicyTransformEvent(event.Payload().(engine.PolicyTransformEventPayload), true, opts)
 	case engine.PolicyViolationEvent:
 		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), opts)
 
@@ -132,6 +134,33 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
+}
+
+func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload, detailed bool, opts Options) string {
+	// Print the individual policy event.
+	transformLine := fmt.Sprintf("    %s%s v%s %s%s (%s: %s)",
+		colors.SpecInfo,
+		payload.PolicyPackName,
+		payload.PolicyPackVersion,
+		colors.Reset,
+		payload.TransformName,
+		payload.ResourceURN.Type(),
+		payload.ResourceURN.Name(),
+	)
+
+	// Print a short diff summary, similar to what is show for an update row.
+	var b bytes.Buffer
+	if diff := payload.Before.Diff(payload.After); diff != nil {
+		if detailed {
+			PrintObjectDiff(&b, *diff, nil, false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
+			transformLine = fmt.Sprintf("%s\n%s", transformLine, b.String())
+		} else {
+			writeShortDiff(&b, diff, nil)
+			transformLine = fmt.Sprintf("%s [%s]", transformLine, b.String())
+		}
+	}
+
+	return opts.Color.Colorize(transformLine)
 }
 
 func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload, opts Options) string {

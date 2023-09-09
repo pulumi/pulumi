@@ -634,8 +634,9 @@ func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeD
 	acts.Opts.Events.policyViolationEvent(urn, d)
 }
 
-func (acts *updateActions) OnPolicyTransform(urn resource.URN, policyName, policyPackName, policypackVersion string, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyTransformEvent(urn, policyName, policyPackName, policyPackVersion, d)
+func (acts *updateActions) OnPolicyTransform(urn resource.URN, t plugin.TransformResult,
+	before resource.PropertyMap, after resource.PropertyMap) {
+	acts.Opts.Events.policyTransformEvent(urn, t, before, after)
 }
 
 func (acts *updateActions) MaybeCorrupt() bool {
@@ -756,8 +757,9 @@ func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.Analyze
 	acts.Opts.Events.policyViolationEvent(urn, d)
 }
 
-func (acts *previewActions) OnPolicyTransform(urn resource.URN, policyName, policyPackName, policyPackVersion string, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyViolationEvent(urn, policyName, policyPackName, policyPackVersion, d)
+func (acts *previewActions) OnPolicyTransform(urn resource.URN, t plugin.TransformResult,
+	before resource.PropertyMap, after resource.PropertyMap) {
+	acts.Opts.Events.policyTransformEvent(urn, t, before, after)
 }
 
 func (acts *previewActions) MaybeCorrupt() bool {

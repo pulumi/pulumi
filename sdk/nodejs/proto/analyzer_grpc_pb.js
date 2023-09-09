@@ -110,17 +110,6 @@ function deserialize_pulumirpc_TransformResponse(buffer_arg) {
   return pulumi_analyzer_pb.TransformResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_TransformStackResponse(arg) {
-  if (!(arg instanceof pulumi_analyzer_pb.TransformStackResponse)) {
-    throw new Error('Expected argument of type pulumirpc.TransformStackResponse');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_TransformStackResponse(buffer_arg) {
-  return pulumi_analyzer_pb.TransformStackResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 
 // Analyzer provides a pluggable interface for checking resource definitions against some number of
 // resource policies. It is intentionally open-ended, allowing for implementations that check
@@ -174,11 +163,11 @@ transformStack: {
     requestStream: false,
     responseStream: false,
     requestType: pulumi_analyzer_pb.AnalyzeStackRequest,
-    responseType: pulumi_analyzer_pb.TransformStackResponse,
+    responseType: pulumi_analyzer_pb.TransformResponse,
     requestSerialize: serialize_pulumirpc_AnalyzeStackRequest,
     requestDeserialize: deserialize_pulumirpc_AnalyzeStackRequest,
-    responseSerialize: serialize_pulumirpc_TransformStackResponse,
-    responseDeserialize: deserialize_pulumirpc_TransformStackResponse,
+    responseSerialize: serialize_pulumirpc_TransformResponse,
+    responseDeserialize: deserialize_pulumirpc_TransformResponse,
   },
   // GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 getAnalyzerInfo: {
