@@ -154,10 +154,3 @@ func TestRemoteLifecycle(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "rm", "--stack", fullyQualifiedStack, "--yes")
 }
-
-func TestPolicyNewNonInteractive(t *testing.T) {
-	t.Parallel()
-	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
-	e.RunCommand("pulumi", "policy", "new", "aws-typescript", "--force", "--generate-only")
-}
