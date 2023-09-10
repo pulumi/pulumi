@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
@@ -38,6 +39,7 @@ type searchCmd struct {
 	orgName     string
 	queryParams []string
 	openWeb     bool
+	client      string
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -91,7 +93,7 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	parsedQueryParams := apitype.ParseQueryParams(cmd.queryParams)
-	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
+	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams, cmd.client)
 	if err != nil {
 		return err
 	}
@@ -102,7 +104,7 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
 		if err != nil {
-			return fmt.Errorf("failed to open URL: %s", err)
+			logging.Warningf("failed to open URL: %s", err)
 		}
 	}
 	return nil
@@ -117,6 +119,9 @@ func newSearchCmd() *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
+			if len(scmd.queryParams) == 0 {
+				return cmd.Help()
+			}
 			return scmd.Run(ctx, args)
 		},
 		),
@@ -135,12 +140,18 @@ func newSearchCmd() *cobra.Command {
 		&scmd.queryParams, "query", "q", nil,
 		"Key-value pairs to use as query parameters. "+
 			"Must be formatted like: -q key1=value1 -q key2=value2. "+
-			"Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
+			"Alternately, each parameter provided here can be in raw Pulumi query syntax form. "+
+			"At least one query parameter must be provided.",
 	)
 	cmd.PersistentFlags().BoolVar(
 		&scmd.openWeb, "web", false,
 		"Open the search results in a web browser.",
 	)
+	cmd.PersistentFlags().StringVar(
+		&scmd.client, "client", "https://app.pulumi.com",
+		"The base URL of the Pulumi Cloud service to direct to. This defaults to https://app.pulumi.com.",
+	)
+	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	return cmd
 }

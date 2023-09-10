@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -38,6 +39,7 @@ func TestSearch_cmd(t *testing.T) {
 	pack := "pack1"
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
+	searchURL := "https://app.pulumi.com/pulumi/resources?foo=bar"
 	cmd := searchCmd{
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
@@ -55,6 +57,7 @@ func TestSearch_cmd(t *testing.T) {
 								Modified: &modified,
 							},
 						},
+						URL: searchURL,
 					}, nil
 				},
 				CurrentUserF: func() (string, []string, error) {
@@ -70,6 +73,7 @@ func TestSearch_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), name)
 	assert.Contains(t, buff.String(), typ)
 	assert.Contains(t, buff.String(), program)
+	assert.Contains(t, buff.String(), fmt.Sprintf("Results are also visible in Pulumi Cloud:\n%s", searchURL))
 }
 
 type stubHTTPBackend struct {
@@ -85,13 +89,13 @@ type stubHTTPBackend struct {
 var _ httpstate.Backend = (*stubHTTPBackend)(nil)
 
 func (f *stubHTTPBackend) Search(
-	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, _ string,
 ) (*apitype.ResourceSearchResponse, error) {
 	return f.SearchF(ctx, orgName, queryParams)
 }
 
 func (f *stubHTTPBackend) NaturalLanguageSearch(
-	ctx context.Context, orgName, query string,
+	ctx context.Context, orgName, query string, _ string,
 ) (*apitype.ResourceSearchResponse, error) {
 	return f.NaturalLanguageSearchF(ctx, orgName, query)
 }

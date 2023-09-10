@@ -35,6 +35,7 @@ type searchAICmd struct {
 	orgName     string
 	queryString string
 	openWeb     bool
+	client      string
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -89,7 +90,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
 	}
 
-	res, err := cloudBackend.NaturalLanguageSearch(ctx, filterName, cmd.queryString)
+	res, err := cloudBackend.NaturalLanguageSearch(ctx, filterName, cmd.queryString, cmd.client)
 	if err != nil {
 		return err
 	}
@@ -131,7 +132,9 @@ func newSearchAICmd() *cobra.Command {
 		&scmd.openWeb, "web", false,
 		"Open the search results in a web browser.",
 	)
-
+	cmd.PersistentFlags().StringVar(
+		&scmd.client, "client", "https://app.pulumi.com", "The base URL of the Pulumi Cloud service to direct to.")
+	_ = cmd.PersistentFlags().MarkHidden("client")
 	return cmd
 }
 
