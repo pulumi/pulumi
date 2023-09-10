@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -147,9 +148,16 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return err
+	}
 	userName, orgs, err := cloudBackend.CurrentUser()
 	if err != nil {
 		return err
+	}
+	if defaultOrg != "" && cmd.orgName == "" {
+		cmd.orgName = defaultOrg
 	}
 	filterName := userName
 	if cmd.orgName != "" {
@@ -248,6 +256,16 @@ func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) err
 		return errors.Join(errs...)
 	}
 	err := table.RenderTo(w)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(
+		[]byte(
+			fmt.Sprintf(
+				"Displaying %s of %s total results.\n",
+				strconv.Itoa(len(results.Resources)),
+				strconv.FormatInt(*results.Total, 10))),
+	)
 	if err != nil {
 		return err
 	}
