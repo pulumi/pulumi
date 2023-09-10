@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"plain-object-disable-defaults/example/internal"
 	"plain-object-disable-defaults/example/mod1"
 )
@@ -89,6 +90,12 @@ func (i *ModuleTest) ToModuleTestOutputWithContext(ctx context.Context) ModuleTe
 	return pulumi.ToOutputWithContext(ctx, i).(ModuleTestOutput)
 }
 
+func (i *ModuleTest) ToOutput(ctx context.Context) pulumix.Output[*ModuleTest] {
+	return pulumix.Output[*ModuleTest]{
+		OutputState: i.ToModuleTestOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ModuleTestOutput struct{ *pulumi.OutputState }
 
 func (ModuleTestOutput) ElementType() reflect.Type {
@@ -101,6 +108,12 @@ func (o ModuleTestOutput) ToModuleTestOutput() ModuleTestOutput {
 
 func (o ModuleTestOutput) ToModuleTestOutputWithContext(ctx context.Context) ModuleTestOutput {
 	return o
+}
+
+func (o ModuleTestOutput) ToOutput(ctx context.Context) pulumix.Output[*ModuleTest] {
+	return pulumix.Output[*ModuleTest]{
+		OutputState: o.OutputState,
+	}
 }
 
 func init() {

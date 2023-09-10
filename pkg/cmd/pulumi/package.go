@@ -51,6 +51,7 @@ Subcommands of this command are useful to package authors during development.`,
 		newExtractMappingCommand(),
 		newGenSdkCommand(),
 		newPackagePublishCmd(),
+		newPackagePackCmd(),
 	)
 	return cmd
 }

@@ -165,14 +165,15 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 			}
 			version = &sv
 		}
-		if !workspace.IsPluginKind(info.GetKind()) {
-			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
+		if !workspace.IsPluginKind(info.Kind) {
+			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
-			Name:              info.GetName(),
-			Kind:              workspace.PluginKind(info.GetKind()),
+			Name:              info.Name,
+			Kind:              workspace.PluginKind(info.Kind),
 			Version:           version,
-			PluginDownloadURL: info.GetServer(),
+			PluginDownloadURL: info.Server,
+			Checksums:         info.Checksums,
 		})
 	}
 
@@ -422,15 +423,17 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 }
 
 func (h *langhost) GenerateProject(
-	sourceDirectory, targetDirectory, project string, strict bool, loaderTarget string,
+	sourceDirectory, targetDirectory, project string, strict bool,
+	loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
 	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
-		SourceDirectory: sourceDirectory,
-		TargetDirectory: targetDirectory,
-		Project:         project,
-		Strict:          strict,
-		LoaderTarget:    loaderTarget,
+		SourceDirectory:   sourceDirectory,
+		TargetDirectory:   targetDirectory,
+		Project:           project,
+		Strict:            strict,
+		LoaderTarget:      loaderTarget,
+		LocalDependencies: localDependencies,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -489,4 +492,35 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 
 	logging.V(7).Infof("langhost[%v].GenerateProgram() success", h.runtime)
 	return resp.Source, diags, nil
+}
+
+func (h *langhost) Pack(
+	packageDirectory string, version semver.Version, destinationDirectory string,
+) (string, error) {
+	label := fmt.Sprintf("langhost[%v].Pack(%s, %s, %s)", h.runtime, packageDirectory, version, destinationDirectory)
+	logging.V(7).Infof("%s executing", label)
+
+	// Always send absolute paths to the plugin, as it may be running in a different working directory.
+	packageDirectory, err := filepath.Abs(packageDirectory)
+	if err != nil {
+		return "", err
+	}
+	destinationDirectory, err = filepath.Abs(destinationDirectory)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := h.client.Pack(h.ctx.Request(), &pulumirpc.PackRequest{
+		PackageDirectory:     packageDirectory,
+		Version:              version.String(),
+		DestinationDirectory: destinationDirectory,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return "", rpcError
+	}
+
+	logging.V(7).Infof("%s success: artifactPath=%s", label, req.ArtifactPath)
+	return req.ArtifactPath, nil
 }

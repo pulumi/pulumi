@@ -39,7 +39,7 @@ goog.exportSymbol('proto.pulumirpc.ResourceImport', null, global);
  * @constructor
  */
 proto.pulumirpc.ConvertStateRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ConvertStateRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ConvertStateRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -134,6 +134,13 @@ if (goog.DEBUG && !COMPILED) {
   proto.pulumirpc.ConvertProgramResponse.displayName = 'proto.pulumirpc.ConvertProgramResponse';
 }
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ConvertStateRequest.repeatedFields_ = [2];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -165,7 +172,8 @@ proto.pulumirpc.ConvertStateRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ConvertStateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, "")
+    mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    argsList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -206,6 +214,10 @@ proto.pulumirpc.ConvertStateRequest.deserializeBinaryFromReader = function(msg, 
       var value = /** @type {string} */ (reader.readString());
       msg.setMapperTarget(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addArgs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -242,6 +254,13 @@ proto.pulumirpc.ConvertStateRequest.serializeBinaryToWriter = function(message, 
       f
     );
   }
+  f = message.getArgsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -260,6 +279,43 @@ proto.pulumirpc.ConvertStateRequest.prototype.getMapperTarget = function() {
  */
 proto.pulumirpc.ConvertStateRequest.prototype.setMapperTarget = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * repeated string args = 2;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.getArgsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ConvertStateRequest} returns this
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.setArgsList = function(value) {
+  return jspb.Message.setField(this, 2, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ConvertStateRequest} returns this
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.addArgs = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConvertStateRequest} returns this
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.clearArgsList = function() {
+  return this.setArgsList([]);
 };
 
 
@@ -707,7 +763,8 @@ proto.pulumirpc.ConvertProgramRequest.toObject = function(includeInstance, msg) 
   var f, obj = {
     sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, "")
+    mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -756,6 +813,10 @@ proto.pulumirpc.ConvertProgramRequest.deserializeBinaryFromReader = function(msg
       var value = /** @type {string} */ (reader.readString());
       msg.setMapperTarget(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -803,6 +864,13 @@ proto.pulumirpc.ConvertProgramRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getLoaderTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -860,6 +928,24 @@ proto.pulumirpc.ConvertProgramRequest.prototype.getMapperTarget = function() {
  */
 proto.pulumirpc.ConvertProgramRequest.prototype.setMapperTarget = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string loader_target = 4;
+ * @return {string}
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

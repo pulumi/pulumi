@@ -26,41 +26,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
-
-func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
-	contract.Assertf(from.Kind() == reflect.Struct, "from must be a struct type, got %v (%v)", from, from.Kind())
-	contract.Assertf(to.Kind() == reflect.Struct, "to must be a struct type, got %v (%v)", to, to.Kind())
-
-	if from == to {
-		return func(v reflect.Value, i int) (reflect.StructField, reflect.Value) {
-			if !v.IsValid() {
-				return to.Field(i), reflect.Value{}
-			}
-			return to.Field(i), v.Field(i)
-		}
-	}
-
-	nameToIndex := map[string]int{}
-	numFields := to.NumField()
-	for i := 0; i < numFields; i++ {
-		nameToIndex[to.Field(i).Name] = i
-	}
-
-	return func(v reflect.Value, i int) (reflect.StructField, reflect.Value) {
-		fieldName := from.Field(i).Name
-		j, ok := nameToIndex[fieldName]
-		if !ok {
-			panic(fmt.Errorf("unknown field %v when marshaling inputs of type %v to %v", fieldName, from, to))
-		}
-
-		field := to.Field(j)
-		if !v.IsValid() {
-			return field, reflect.Value{}
-		}
-		return field, v.Field(j)
-	}
-}
 
 // addDependency adds a dependency on the given resource to the set of deps.
 //
@@ -182,7 +149,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		if rt.Kind() == reflect.Ptr {
 			rt = rt.Elem()
 		}
-		getMappedField := mapStructTypes(pt, rt)
+		getMappedField := internal.MapStructTypes(pt, rt)
 		// Now, marshal each field in the input.
 		numFields := pt.NumField()
 		for i := 0; i < numFields; i++ {
@@ -255,7 +222,7 @@ func marshalInputImpl(v interface{},
 			// If the element type of the input is not identical to the type of the destination and the destination is
 			// not the any type (i.e. interface{}), attempt to convert the input to an appropriately-typed output.
 			if valueType != destType && destType != anyType {
-				if newOutput, ok := callToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
+				if newOutput, ok := internal.CallToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
 					// We were able to convert the input. Use the result as the new input value.
 					input, valueType = newOutput, destType
 				} else if !valueType.AssignableTo(destType) {
@@ -273,7 +240,7 @@ func marshalInputImpl(v interface{},
 				}
 
 				// Await the output.
-				ov, known, secret, outputDeps, err := output.getState().await(context.TODO())
+				ov, known, secret, outputDeps, err := awaitWithContext(context.TODO(), output)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
@@ -477,7 +444,7 @@ func marshalInputImpl(v interface{},
 		case reflect.Struct:
 			obj := resource.PropertyMap{}
 			typ := rv.Type()
-			getMappedField := mapStructTypes(typ, destType)
+			getMappedField := internal.MapStructTypes(typ, destType)
 			for i := 0; i < typ.NumField(); i++ {
 				destField, _ := getMappedField(reflect.Value{}, i)
 				tag := destField.Tag.Get("pulumi")

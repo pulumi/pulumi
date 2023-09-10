@@ -7,12 +7,7 @@ permissions:
   id-token: write
 
 on:
-  push:
-    branches:
-      - staging
-      - trying
-    tags-ignore:
-      - "*"
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -48,7 +43,6 @@ jobs:
 
   prepare-release:
     name: prepare
-    if: ${{ github.ref_name == 'staging' }} # only on real merges
     needs: [info, ci]
     uses: ./.github/workflows/ci-prepare-release.yml
     permissions:
@@ -62,10 +56,17 @@ jobs:
       project: ${{ github.repository }}
     secrets: inherit
 
-  bors-ok:
-    name: bors-ok
-    needs: [prepare-release]
+  ci-ok:
+    name: ci-ok
+    needs: [ci, prepare-release]
+    if: always() # always report a status
     runs-on: ubuntu-latest
     steps:
+      - name: CI failed
+        if: ${{ needs.ci.result != 'success' }}
+        run: exit 1
+      - name: Release failed
+        if: ${{ needs.prepare-release.result != 'success' }}
+        run: exit 1
       - name: CI succeeded
         run: exit 0

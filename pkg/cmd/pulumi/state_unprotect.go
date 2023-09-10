@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
 	"github.com/spf13/cobra"
 )
@@ -43,7 +42,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
@@ -62,7 +61,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				var err error
 				urn, err = getURNFromState(ctx, stack, nil, "Select a resource to unprotect:")
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 			} else {
 				urn = resource.URN(args[0])
@@ -80,8 +79,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 	return cmd
 }
 
-func unprotectAllResources(ctx context.Context, stackName string, showPrompt bool) result.Result {
-	res := runTotalStateEdit(ctx, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+func unprotectAllResources(ctx context.Context, stackName string, showPrompt bool) error {
+	err := runTotalStateEdit(ctx, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 		// Protects against Panic when a user tries to unprotect non-existing resources
 		if snap == nil {
 			return fmt.Errorf("no resources found to unprotect")
@@ -94,18 +93,17 @@ func unprotectAllResources(ctx context.Context, stackName string, showPrompt boo
 
 		return nil
 	})
-
-	if res != nil {
-		return res
+	if err != nil {
+		return err
 	}
 	fmt.Println("All resources unprotected")
 	return nil
 }
 
-func unprotectResource(ctx context.Context, stackName string, urn resource.URN, showPrompt bool) result.Result {
-	res := runStateEdit(ctx, stackName, showPrompt, urn, edit.UnprotectResource)
-	if res != nil {
-		return res
+func unprotectResource(ctx context.Context, stackName string, urn resource.URN, showPrompt bool) error {
+	err := runStateEdit(ctx, stackName, showPrompt, urn, edit.UnprotectResource)
+	if err != nil {
+		return err
 	}
 	fmt.Println("Resource unprotected")
 	return nil

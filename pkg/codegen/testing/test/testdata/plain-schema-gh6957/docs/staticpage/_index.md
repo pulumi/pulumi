@@ -228,14 +228,13 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The HTML content for index.html.</p>
-</dd><dt class="property-optional"
+    <dd>The HTML content for index.html.</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -251,8 +250,7 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The HTML content for index.html.</p>
-</dd><dt class="property-optional"
+    <dd>The HTML content for index.html.</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
@@ -274,14 +272,13 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The HTML content for index.html.</p>
-</dd><dt class="property-optional"
+    <dd>The HTML content for index.html.</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -297,14 +294,13 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The HTML content for index.html.</p>
-</dd><dt class="property-optional"
+    <dd>The HTML content for index.html.</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -320,8 +316,7 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The HTML content for index.html.</p>
-</dd><dt class="property-optional"
+    <dd>The HTML content for index.html.</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
@@ -343,8 +338,7 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The HTML content for index.html.</p>
-</dd><dt class="property-optional"
+    <dd>The HTML content for index.html.</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
@@ -373,8 +367,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Aws.<wbr>S3.<wbr>Bucket</span>
     </dt>
-    <dd><p>The bucket resource.</p>
-</dd><dt class="property-"
+    <dd>The bucket resource.</dd><dt class="property-"
             title="">
         <span id="websiteurl_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_csharp" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
@@ -382,8 +375,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The website URL.</p>
-</dd></dl>
+    <dd>The website URL.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -397,8 +389,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
     </dt>
-    <dd><p>The bucket resource.</p>
-</dd><dt class="property-"
+    <dd>The bucket resource.</dd><dt class="property-"
             title="">
         <span id="websiteurl_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_go" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
@@ -406,8 +397,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The website URL.</p>
-</dd></dl>
+    <dd>The website URL.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -421,8 +411,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
     </dt>
-    <dd><p>The bucket resource.</p>
-</dd><dt class="property-"
+    <dd>The bucket resource.</dd><dt class="property-"
             title="">
         <span id="websiteurl_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_java" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
@@ -430,8 +419,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The website URL.</p>
-</dd></dl>
+    <dd>The website URL.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -445,8 +433,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Awss3Bucket</span>
     </dt>
-    <dd><p>The bucket resource.</p>
-</dd><dt class="property-"
+    <dd>The bucket resource.</dd><dt class="property-"
             title="">
         <span id="websiteurl_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_nodejs" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
@@ -454,8 +441,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The website URL.</p>
-</dd></dl>
+    <dd>The website URL.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -469,8 +455,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
     </dt>
-    <dd><p>The bucket resource.</p>
-</dd><dt class="property-"
+    <dd>The bucket resource.</dd><dt class="property-"
             title="">
         <span id="website_url_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#website_url_python" style="color: inherit; text-decoration: inherit;">website_<wbr>url</a>
@@ -478,8 +463,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The website URL.</p>
-</dd></dl>
+    <dd>The website URL.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -493,8 +477,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">aws:s3:Bucket</span>
     </dt>
-    <dd><p>The bucket resource.</p>
-</dd><dt class="property-"
+    <dd>The bucket resource.</dd><dt class="property-"
             title="">
         <span id="websiteurl_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_yaml" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
@@ -502,8 +485,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The website URL.</p>
-</dd></dl>
+    <dd>The website URL.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -517,7 +499,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="foo">Foo</h4>
+<h4 id="foo">
+Foo<pulumi-choosable type="language" values="python,go" class="inline">, Foo<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

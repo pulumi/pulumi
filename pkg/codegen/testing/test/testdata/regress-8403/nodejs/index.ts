@@ -7,7 +7,8 @@ import * as utilities from "./utilities";
 // Export members:
 export { GetCustomDbRolesArgs, GetCustomDbRolesResult } from "./getCustomDbRoles";
 export const getCustomDbRoles: typeof import("./getCustomDbRoles").getCustomDbRoles = null as any;
-utilities.lazyLoad(exports, ["getCustomDbRoles"], () => require("./getCustomDbRoles"));
+export const getCustomDbRolesOutput: typeof import("./getCustomDbRoles").getCustomDbRolesOutput = null as any;
+utilities.lazyLoad(exports, ["getCustomDbRoles","getCustomDbRolesOutput"], () => require("./getCustomDbRoles"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;

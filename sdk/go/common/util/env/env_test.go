@@ -12,9 +12,10 @@ func init() {
 		"PULUMI_FOO": "1",
 		// "PULUMI_NOT_SET": explicitly not set
 		"FOO":           "bar",
-		"UNSET":         "SET",
-		"PULUMI_SET":    "SET",
 		"PULUMI_MY_INT": "3",
+		"PULUMI_SECRET": "hidden",
+		"PULUMI_SET":    "SET",
+		"UNSET":         "SET",
 	}
 }
 
@@ -22,6 +23,7 @@ var (
 	SomeBool    = env.Bool("FOO", "A bool used for testing")
 	SomeFalse   = env.Bool("NOT_SET", "a falsy value")
 	SomeString  = env.String("FOO", "A bool used for testing", env.NoPrefix)
+	SomeSecret  = env.String("SECRET", "A secret that shouldn't be displayed", env.Secret)
 	UnsetString = env.String("PULUMI_UNSET", "Should be unset", env.Needs(SomeFalse))
 	SetString   = env.String("SET", "Should be set", env.Needs(SomeBool))
 	AnInt       = env.Int("MY_INT", "Should be 3")
@@ -44,6 +46,12 @@ func TestBool(t *testing.T) {
 func TestString(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "bar", SomeString.Value())
+}
+
+func TestSecret(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "hidden", SomeSecret.Value())
+	assert.Equal(t, "[secret]", SomeSecret.String())
 }
 
 func TestNeeds(t *testing.T) {

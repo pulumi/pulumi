@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/python
-  description: Fixes python external enum types missing the import reference to the external package.

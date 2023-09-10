@@ -14,7 +14,6 @@
     "listStorageAccountKeys.ts",
     "package.json",
     "provider.ts",
-    "scripts/install-pulumi-plugin.js",
     "tsconfig.json",
     "types/index.ts",
     "types/input.ts",

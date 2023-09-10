@@ -52,6 +52,9 @@ service LanguageRuntime {
 
     // GeneratePackage generates a given pulumi package into a package for this language.
     rpc GeneratePackage(GeneratePackageRequest) returns (GeneratePackageResponse) {}
+
+    // Pack packs a package into a language specific artifact.
+    rpc Pack(PackRequest) returns (PackResponse) {}
 }
 
 // AboutResponse returns runtime information about the language.
@@ -164,6 +167,9 @@ message GenerateProjectRequest {
     bool strict = 4;
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 5;
+    // local dependencies to use instead of using the package system. This is a map of package name to a local
+    // path of a language specific artifact to use for the SDK for that package.
+    map<string, string> local_dependencies = 6;
 }
 
 message GenerateProjectResponse {
@@ -183,4 +189,18 @@ message GeneratePackageRequest {
 }
 
 message GeneratePackageResponse {
+}
+
+message PackRequest {
+    // the directory of a package to pack.
+    string package_directory = 1;
+    // the version to tag the artifact with.
+    string version = 2;
+    // the directory to write the packed artifact to.
+    string destination_directory = 3;
+}
+
+message PackResponse {
+    // the full path of the packed artifact.
+    string artifact_path = 1;
 }

@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"plain-schema-gh6957/xyz/internal"
 )
 
@@ -42,6 +43,12 @@ func (i FooArgs) ToFooOutput() FooOutput {
 
 func (i FooArgs) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FooOutput)
+}
+
+func (i FooArgs) ToOutput(ctx context.Context) pulumix.Output[Foo] {
+	return pulumix.Output[Foo]{
+		OutputState: i.ToFooOutputWithContext(ctx).OutputState,
+	}
 }
 
 func (i FooArgs) ToFooPtrOutput() FooPtrOutput {
@@ -85,6 +92,12 @@ func (i *fooPtrType) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(FooPtrOutput)
 }
 
+func (i *fooPtrType) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
+	return pulumix.Output[*Foo]{
+		OutputState: i.ToFooPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
@@ -109,6 +122,12 @@ func (o FooOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 	}).(FooPtrOutput)
 }
 
+func (o FooOutput) ToOutput(ctx context.Context) pulumix.Output[Foo] {
+	return pulumix.Output[Foo]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o FooOutput) A() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v Foo) *bool { return v.A }).(pulumi.BoolPtrOutput)
 }
@@ -125,6 +144,12 @@ func (o FooPtrOutput) ToFooPtrOutput() FooPtrOutput {
 
 func (o FooPtrOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 	return o
+}
+
+func (o FooPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
+	return pulumix.Output[*Foo]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FooPtrOutput) Elem() FooOutput {

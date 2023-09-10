@@ -13,6 +13,7 @@ import (
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/meta/v1"
 	storagev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/storage/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"internal"
 )
 
@@ -114,6 +115,12 @@ func (i *Component) ToComponentOutputWithContext(ctx context.Context) ComponentO
 	return pulumi.ToOutputWithContext(ctx, i).(ComponentOutput)
 }
 
+func (i *Component) ToOutput(ctx context.Context) pulumix.Output[*Component] {
+	return pulumix.Output[*Component]{
+		OutputState: i.ToComponentOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ComponentArrayInput is an input type that accepts ComponentArray and ComponentArrayOutput values.
 // You can construct a concrete instance of `ComponentArrayInput` via:
 //
@@ -137,6 +144,12 @@ func (i ComponentArray) ToComponentArrayOutput() ComponentArrayOutput {
 
 func (i ComponentArray) ToComponentArrayOutputWithContext(ctx context.Context) ComponentArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ComponentArrayOutput)
+}
+
+func (i ComponentArray) ToOutput(ctx context.Context) pulumix.Output[[]*Component] {
+	return pulumix.Output[[]*Component]{
+		OutputState: i.ToComponentArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // ComponentMapInput is an input type that accepts ComponentMap and ComponentMapOutput values.
@@ -164,6 +177,12 @@ func (i ComponentMap) ToComponentMapOutputWithContext(ctx context.Context) Compo
 	return pulumi.ToOutputWithContext(ctx, i).(ComponentMapOutput)
 }
 
+func (i ComponentMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*Component] {
+	return pulumix.Output[map[string]*Component]{
+		OutputState: i.ToComponentMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ComponentOutput struct{ *pulumi.OutputState }
 
 func (ComponentOutput) ElementType() reflect.Type {
@@ -176,6 +195,12 @@ func (o ComponentOutput) ToComponentOutput() ComponentOutput {
 
 func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) ComponentOutput {
 	return o
+}
+
+func (o ComponentOutput) ToOutput(ctx context.Context) pulumix.Output[*Component] {
+	return pulumix.Output[*Component]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ComponentOutput) Provider() kubernetes.ProviderOutput {
@@ -204,6 +229,12 @@ func (o ComponentArrayOutput) ToComponentArrayOutputWithContext(ctx context.Cont
 	return o
 }
 
+func (o ComponentArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*Component] {
+	return pulumix.Output[[]*Component]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o ComponentArrayOutput) Index(i pulumi.IntInput) ComponentOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Component {
 		return vs[0].([]*Component)[vs[1].(int)]
@@ -222,6 +253,12 @@ func (o ComponentMapOutput) ToComponentMapOutput() ComponentMapOutput {
 
 func (o ComponentMapOutput) ToComponentMapOutputWithContext(ctx context.Context) ComponentMapOutput {
 	return o
+}
+
+func (o ComponentMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*Component] {
+	return pulumix.Output[map[string]*Component]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ComponentMapOutput) MapIndex(k pulumi.StringInput) ComponentOutput {

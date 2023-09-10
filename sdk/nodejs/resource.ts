@@ -257,7 +257,9 @@ export abstract class Resource {
     private readonly __providers: Record<string, ProviderResource>;
 
     /**
-     * The specified provider or provider determined from the parent for custom resources.
+     * The specified provider or provider determined from the parent for custom or remote resources.
+     * It is passed along in the `Call` gRPC request for resource method calls (when set) so that the
+     * call goes to the same provider as the resource.
      * @internal
      */
     // Note: This is deliberately not named `__provider` as that conflicts with the property
@@ -439,12 +441,13 @@ export abstract class Resource {
             ...convertToProvidersMap(opts.provider ? [opts.provider] : {}),
         };
 
+        const pkg = pkgFromType(t);
+
         // provider is the first option that does not return none
         // 1. opts.provider
         // 2. a matching provider in opts.providers
         // 3. a matching provider inherited from opts.parent
         if ((custom || remote) && opts.provider === undefined) {
-            const pkg = pkgFromType(t);
             const parentProvider = parent?.getProvider(t);
 
             if (pkg && pkg in this.__providers) {
@@ -454,8 +457,22 @@ export abstract class Resource {
             }
         }
 
+        // Custom and remote resources have a backing provider. If this is a custom or
+        // remote resource and a provider has been specified that has the same package
+        // as the resource's package, save it in `__prov`.
+        // If the provider's package isn't the same as the resource's package, don't
+        // save it in `__prov` because the user specified `provider: someProvider` as
+        // shorthand for `providers: [someProvider]`, which is a provider intended for
+        // the component's children and not for this resource itself.
+        // `__prov` is passed along in `Call` gRPC requests for resource method calls
+        // (when set) so that the call goes to the same provider as the resource.
+        if ((custom || remote) && opts.provider) {
+            if (pkg && pkg === opts.provider.getPackage()) {
+                this.__prov = opts.provider;
+            }
+        }
+
         this.__protect = !!opts.protect;
-        this.__prov = custom || remote ? opts.provider : undefined;
         this.__version = opts.version;
         this.__pluginDownloadURL = opts.pluginDownloadURL;
 

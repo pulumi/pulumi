@@ -29,8 +29,8 @@ and package management that you already know and love.
 For example, create three web servers:
 
 ```typescript
-let aws = require("@pulumi/aws");
-let sg = new aws.ec2.SecurityGroup("web-sg", {
+const aws = require("@pulumi/aws");
+const sg = new aws.ec2.SecurityGroup("web-sg", {
     ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] }],
 });
 for (let i = 0; i < 3; i++) {

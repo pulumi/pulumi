@@ -37,16 +37,16 @@ func Global() env.Env {
 //
 // This is our standard gate for an existing feature that's not quite ready to be stable
 // and publicly consumed.
-var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and commands")
+var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and commands.")
 
-var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi")
+var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi.")
 
-var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself")
+var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 
 var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Experimental flag to skip saving state "+
-	"checkpoints and only save the final deployment. See #10668", env.Needs(Experimental))
+	"checkpoints and only save the final deployment. See #10668.", env.Needs(Experimental))
 
-var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself")
+var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself.")
 
 var EnableLegacyDiff = env.Bool("ENABLE_LEGACY_DIFF", "")
 
@@ -57,7 +57,7 @@ var DisableResourceReferences = env.Bool("DISABLE_RESOURCE_REFERENCES", "")
 var DisableOutputValues = env.Bool("DISABLE_OUTPUT_VALUES", "")
 
 var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
-	"Discover additional plugins by examining the $PATH")
+	"Discover additional plugins by examining $PATH.")
 
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
@@ -68,6 +68,9 @@ fail without a --force parameter.`)
 
 var DebugGRPC = env.String("DEBUG_GRPC", `Enables debug tracing of Pulumi gRPC internals.
 The variable should be set to the log file to which gRPC debug traces will be sent.`)
+
+var GitSSHPassphrase = env.String("GITSSH_PASSPHRASE",
+	"The passphrase to use with Git operations that use SSH.", env.Secret)
 
 // Environment variables that affect the self-managed backend.
 var (

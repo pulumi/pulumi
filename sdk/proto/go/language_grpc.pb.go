@@ -43,6 +43,8 @@ type LanguageRuntimeClient interface {
 	GenerateProject(ctx context.Context, in *GenerateProjectRequest, opts ...grpc.CallOption) (*GenerateProjectResponse, error)
 	// GeneratePackage generates a given pulumi package into a package for this language.
 	GeneratePackage(ctx context.Context, in *GeneratePackageRequest, opts ...grpc.CallOption) (*GeneratePackageResponse, error)
+	// Pack packs a package into a language specific artifact.
+	Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error)
 }
 
 type languageRuntimeClient struct {
@@ -189,6 +191,15 @@ func (c *languageRuntimeClient) GeneratePackage(ctx context.Context, in *Generat
 	return out, nil
 }
 
+func (c *languageRuntimeClient) Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error) {
+	out := new(PackResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/Pack", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LanguageRuntimeServer is the server API for LanguageRuntime service.
 // All implementations must embed UnimplementedLanguageRuntimeServer
 // for forward compatibility
@@ -213,6 +224,8 @@ type LanguageRuntimeServer interface {
 	GenerateProject(context.Context, *GenerateProjectRequest) (*GenerateProjectResponse, error)
 	// GeneratePackage generates a given pulumi package into a package for this language.
 	GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error)
+	// Pack packs a package into a language specific artifact.
+	Pack(context.Context, *PackRequest) (*PackResponse, error)
 	mustEmbedUnimplementedLanguageRuntimeServer()
 }
 
@@ -249,6 +262,9 @@ func (UnimplementedLanguageRuntimeServer) GenerateProject(context.Context, *Gene
 }
 func (UnimplementedLanguageRuntimeServer) GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GeneratePackage not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) Pack(context.Context, *PackRequest) (*PackResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pack not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
 
@@ -449,6 +465,24 @@ func _LanguageRuntime_GeneratePackage_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LanguageRuntime_Pack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).Pack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/Pack",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).Pack(ctx, req.(*PackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LanguageRuntime_ServiceDesc is the grpc.ServiceDesc for LanguageRuntime service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -487,6 +521,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GeneratePackage",
 			Handler:    _LanguageRuntime_GeneratePackage_Handler,
+		},
+		{
+			MethodName: "Pack",
+			Handler:    _LanguageRuntime_Pack_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

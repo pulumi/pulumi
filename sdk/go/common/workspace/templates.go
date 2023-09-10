@@ -269,9 +269,12 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	return nil
 }
 
-// IsTemplateURL returns true if templateNamePathOrURL starts with "https://".
+// IsTemplateURL returns true if templateNamePathOrURL starts with "https://" (SSL) or "git@" (SSH).
 func IsTemplateURL(templateNamePathOrURL string) bool {
-	return strings.HasPrefix(templateNamePathOrURL, "https://")
+	// Normalize the provided URL so we can check its scheme. This will
+	// correctly return false in the case where the URL doesn't parse cleanly.
+	url, _, _ := gitutil.ParseGitRepoURL(templateNamePathOrURL)
+	return strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "ssh://")
 }
 
 // isTemplateFileOrDirectory returns true if templateNamePathOrURL is the name of a valid file or directory.

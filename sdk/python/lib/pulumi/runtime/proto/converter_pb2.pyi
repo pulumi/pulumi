@@ -35,14 +35,21 @@ class ConvertStateRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
     mapper_target: builtins.str
     """the gRPC target of the mapper service."""
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
+        import from.
+        """
     def __init__(
         self,
         *,
         mapper_target: builtins.str = ...,
+        args: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["mapper_target", b"mapper_target"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "mapper_target", b"mapper_target"]) -> None: ...
 
 global___ConvertStateRequest = ConvertStateRequest
 
@@ -104,20 +111,24 @@ class ConvertProgramRequest(google.protobuf.message.Message):
     SOURCE_DIRECTORY_FIELD_NUMBER: builtins.int
     TARGET_DIRECTORY_FIELD_NUMBER: builtins.int
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
     source_directory: builtins.str
     """the source directory containing the program to convert from."""
     target_directory: builtins.str
     """a target directory to write the resulting PCL code and project file to."""
     mapper_target: builtins.str
     """the gRPC target of the mapper service."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     def __init__(
         self,
         *,
         source_directory: builtins.str = ...,
         target_directory: builtins.str = ...,
         mapper_target: builtins.str = ...,
+        loader_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["mapper_target", b"mapper_target", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "mapper_target", b"mapper_target", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
 
 global___ConvertProgramRequest = ConvertProgramRequest
 

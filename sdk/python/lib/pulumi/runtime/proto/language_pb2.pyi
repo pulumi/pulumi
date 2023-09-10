@@ -461,11 +461,28 @@ global___GenerateProgramResponse = GenerateProgramResponse
 class GenerateProjectRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing_extensions.final
+    class LocalDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     SOURCE_DIRECTORY_FIELD_NUMBER: builtins.int
     TARGET_DIRECTORY_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
     STRICT_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
     source_directory: builtins.str
     """the directory to generate the project from."""
     target_directory: builtins.str
@@ -476,6 +493,11 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     """if PCL binding should be strict or not."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    @property
+    def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """local dependencies to use instead of using the package system. This is a map of package name to a local
+        path of a language specific artifact to use for the SDK for that package.
+        """
     def __init__(
         self,
         *,
@@ -484,8 +506,9 @@ class GenerateProjectRequest(google.protobuf.message.Message):
         project: builtins.str = ...,
         strict: builtins.bool = ...,
         loader_target: builtins.str = ...,
+        local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 
@@ -560,3 +583,43 @@ class GeneratePackageResponse(google.protobuf.message.Message):
     ) -> None: ...
 
 global___GeneratePackageResponse = GeneratePackageResponse
+
+@typing_extensions.final
+class PackRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_DIRECTORY_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DESTINATION_DIRECTORY_FIELD_NUMBER: builtins.int
+    package_directory: builtins.str
+    """the directory of a package to pack."""
+    version: builtins.str
+    """the version to tag the artifact with."""
+    destination_directory: builtins.str
+    """the directory to write the packed artifact to."""
+    def __init__(
+        self,
+        *,
+        package_directory: builtins.str = ...,
+        version: builtins.str = ...,
+        destination_directory: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory", "version", b"version"]) -> None: ...
+
+global___PackRequest = PackRequest
+
+@typing_extensions.final
+class PackResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ARTIFACT_PATH_FIELD_NUMBER: builtins.int
+    artifact_path: builtins.str
+    """the full path of the packed artifact."""
+    def __init__(
+        self,
+        *,
+        artifact_path: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["artifact_path", b"artifact_path"]) -> None: ...
+
+global___PackResponse = PackResponse

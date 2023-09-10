@@ -300,6 +300,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Ensure referencing external types/resources with referenced enums import correctly",
 	},
 	{
+		Directory:   "enum-reference-python",
+		Description: "Ensure referencing external types/resources with referenced enums import correctly in Python",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
 		Directory:   "external-enum",
 		Description: "Ensure we generate valid tokens for external enums",
 		Skip:        codegen.NewStringSet("dotnet/any"),
@@ -307,6 +312,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "internal-dependencies-go",
 		Description: "Emit Go internal dependencies",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "go-overridden-internal-module-name",
+		Description: "Go SDK where the internal module name is overridden to be 'utilities'",
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{

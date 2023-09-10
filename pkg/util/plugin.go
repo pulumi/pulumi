@@ -48,7 +48,6 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 		"harbor",
 		"hcp",
 		"heroku",
-		"ibm",
 		"matchbox",
 		"mssql",
 		"ngrok",

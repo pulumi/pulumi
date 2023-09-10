@@ -267,6 +267,7 @@ type enum struct {
 // docNestedType represents a complex type.
 type docNestedType struct {
 	Name       string
+	Input      bool
 	AnchorID   string
 	Properties map[string][]property
 	EnumValues map[string][]enum
@@ -552,6 +553,20 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 	}
 
 	switch t := t.(type) {
+	case *schema.ObjectType:
+		// Strip "Args" suffixes from display names for everything but Python inputs.
+		if lang != "python" || (lang == "python" && !isInput) {
+			name := tokenToName(t.Token)
+			nameWithArgs := name + "Args"
+
+			// If the langTypeString looks like it's a concatenation of its name and "Args", strip out the "Args".
+			if strings.Contains(langTypeString, nameWithArgs) {
+				langTypeString = strings.ReplaceAll(langTypeString, nameWithArgs, name)
+			}
+		}
+	}
+
+	switch t := t.(type) {
 	case *schema.ArrayType:
 		if schema.IsPrimitiveType(t.ElementType) {
 			break
@@ -576,6 +591,7 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 	} else if lang == "csharp" {
 		return cleanCSharpName(mod.pkg.Name(), modName)
 	}
+
 	return strings.ReplaceAll(langTypeString, modName, "")
 }
 
@@ -2137,8 +2153,21 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			if err := goldmark.Convert([]byte(html), &buf); err != nil {
 				glog.Fatalf("rendering Markdown: %v", err)
 			}
+			rendered := buf.String()
+
+			// Trim surrounding <p></p> tags.
+			result := strings.TrimSpace(rendered)
+			result = strings.TrimPrefix(result, "<p>")
+			result = strings.TrimSuffix(result, "</p>")
+
+			// If there are still <p> tags, there are multiple paragraphs,
+			// in which case use the original rendered string (untrimmed).
+			if strings.Contains(result, "<p>") {
+				result = rendered
+			}
+
 			//nolint:gosec
-			return template.HTML(buf.String())
+			return template.HTML(result)
 		},
 	})
 

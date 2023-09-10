@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 // The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
@@ -84,6 +85,12 @@ func (o CloudAuditOptionsLogNameOutput) ToCloudAuditOptionsLogNamePtrOutputWithC
 	}).(CloudAuditOptionsLogNamePtrOutput)
 }
 
+func (o CloudAuditOptionsLogNameOutput) ToOutput(ctx context.Context) pulumix.Output[CloudAuditOptionsLogName] {
+	return pulumix.Output[CloudAuditOptionsLogName]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o CloudAuditOptionsLogNameOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -117,6 +124,12 @@ func (o CloudAuditOptionsLogNamePtrOutput) ToCloudAuditOptionsLogNamePtrOutput()
 
 func (o CloudAuditOptionsLogNamePtrOutput) ToCloudAuditOptionsLogNamePtrOutputWithContext(ctx context.Context) CloudAuditOptionsLogNamePtrOutput {
 	return o
+}
+
+func (o CloudAuditOptionsLogNamePtrOutput) ToOutput(ctx context.Context) pulumix.Output[*CloudAuditOptionsLogName] {
+	return pulumix.Output[*CloudAuditOptionsLogName]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o CloudAuditOptionsLogNamePtrOutput) Elem() CloudAuditOptionsLogNameOutput {
@@ -179,6 +192,12 @@ func (in *cloudAuditOptionsLogNamePtr) ToCloudAuditOptionsLogNamePtrOutput() Clo
 
 func (in *cloudAuditOptionsLogNamePtr) ToCloudAuditOptionsLogNamePtrOutputWithContext(ctx context.Context) CloudAuditOptionsLogNamePtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(CloudAuditOptionsLogNamePtrOutput)
+}
+
+func (in *cloudAuditOptionsLogNamePtr) ToOutput(ctx context.Context) pulumix.Output[*CloudAuditOptionsLogName] {
+	return pulumix.Output[*CloudAuditOptionsLogName]{
+		OutputState: in.ToCloudAuditOptionsLogNamePtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 type ContainerBrightness float64
@@ -248,6 +267,12 @@ func (o ContainerBrightnessOutput) ToContainerBrightnessPtrOutputWithContext(ctx
 	}).(ContainerBrightnessPtrOutput)
 }
 
+func (o ContainerBrightnessOutput) ToOutput(ctx context.Context) pulumix.Output[ContainerBrightness] {
+	return pulumix.Output[ContainerBrightness]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o ContainerBrightnessOutput) ToFloat64Output() pulumi.Float64Output {
 	return o.ToFloat64OutputWithContext(context.Background())
 }
@@ -281,6 +306,12 @@ func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutput() Container
 
 func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
 	return o
+}
+
+func (o ContainerBrightnessPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ContainerBrightness] {
+	return pulumix.Output[*ContainerBrightness]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ContainerBrightnessPtrOutput) Elem() ContainerBrightnessOutput {
@@ -343,6 +374,12 @@ func (in *containerBrightnessPtr) ToContainerBrightnessPtrOutput() ContainerBrig
 
 func (in *containerBrightnessPtr) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(ContainerBrightnessPtrOutput)
+}
+
+func (in *containerBrightnessPtr) ToOutput(ctx context.Context) pulumix.Output[*ContainerBrightness] {
+	return pulumix.Output[*ContainerBrightness]{
+		OutputState: in.ToContainerBrightnessPtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 // plant container colors
@@ -414,6 +451,12 @@ func (o ContainerColorOutput) ToContainerColorPtrOutputWithContext(ctx context.C
 	}).(ContainerColorPtrOutput)
 }
 
+func (o ContainerColorOutput) ToOutput(ctx context.Context) pulumix.Output[ContainerColor] {
+	return pulumix.Output[ContainerColor]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o ContainerColorOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -447,6 +490,12 @@ func (o ContainerColorPtrOutput) ToContainerColorPtrOutput() ContainerColorPtrOu
 
 func (o ContainerColorPtrOutput) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
 	return o
+}
+
+func (o ContainerColorPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ContainerColor] {
+	return pulumix.Output[*ContainerColor]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ContainerColorPtrOutput) Elem() ContainerColorOutput {
@@ -509,6 +558,12 @@ func (in *containerColorPtr) ToContainerColorPtrOutput() ContainerColorPtrOutput
 
 func (in *containerColorPtr) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(ContainerColorPtrOutput)
+}
+
+func (in *containerColorPtr) ToOutput(ctx context.Context) pulumix.Output[*ContainerColor] {
+	return pulumix.Output[*ContainerColor]{
+		OutputState: in.ToContainerColorPtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 // plant container sizes
@@ -581,6 +636,12 @@ func (o ContainerSizeOutput) ToContainerSizePtrOutputWithContext(ctx context.Con
 	}).(ContainerSizePtrOutput)
 }
 
+func (o ContainerSizeOutput) ToOutput(ctx context.Context) pulumix.Output[ContainerSize] {
+	return pulumix.Output[ContainerSize]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o ContainerSizeOutput) ToIntOutput() pulumi.IntOutput {
 	return o.ToIntOutputWithContext(context.Background())
 }
@@ -614,6 +675,12 @@ func (o ContainerSizePtrOutput) ToContainerSizePtrOutput() ContainerSizePtrOutpu
 
 func (o ContainerSizePtrOutput) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
 	return o
+}
+
+func (o ContainerSizePtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ContainerSize] {
+	return pulumix.Output[*ContainerSize]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ContainerSizePtrOutput) Elem() ContainerSizeOutput {
@@ -676,6 +743,12 @@ func (in *containerSizePtr) ToContainerSizePtrOutput() ContainerSizePtrOutput {
 
 func (in *containerSizePtr) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(ContainerSizePtrOutput)
+}
+
+func (in *containerSizePtr) ToOutput(ctx context.Context) pulumix.Output[*ContainerSize] {
+	return pulumix.Output[*ContainerSize]{
+		OutputState: in.ToContainerSizePtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 func init() {

@@ -9,6 +9,7 @@ import (
 
 	"cyclic-types/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 var _ = internal.GetEnvOrDefault
@@ -48,6 +49,12 @@ func (i AcyclicReferentArgs) ToAcyclicReferentOutputWithContext(ctx context.Cont
 	return pulumi.ToOutputWithContext(ctx, i).(AcyclicReferentOutput)
 }
 
+func (i AcyclicReferentArgs) ToOutput(ctx context.Context) pulumix.Output[AcyclicReferent] {
+	return pulumix.Output[AcyclicReferent]{
+		OutputState: i.ToAcyclicReferentOutputWithContext(ctx).OutputState,
+	}
+}
+
 type AcyclicReferentOutput struct{ *pulumi.OutputState }
 
 func (AcyclicReferentOutput) ElementType() reflect.Type {
@@ -60,6 +67,12 @@ func (o AcyclicReferentOutput) ToAcyclicReferentOutput() AcyclicReferentOutput {
 
 func (o AcyclicReferentOutput) ToAcyclicReferentOutputWithContext(ctx context.Context) AcyclicReferentOutput {
 	return o
+}
+
+func (o AcyclicReferentOutput) ToOutput(ctx context.Context) pulumix.Output[AcyclicReferent] {
+	return pulumix.Output[AcyclicReferent]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o AcyclicReferentOutput) Bar() IndirectCycleSOutput {
@@ -105,6 +118,12 @@ func (i AcyclicSArgs) ToAcyclicSOutputWithContext(ctx context.Context) AcyclicSO
 	return pulumi.ToOutputWithContext(ctx, i).(AcyclicSOutput)
 }
 
+func (i AcyclicSArgs) ToOutput(ctx context.Context) pulumix.Output[AcyclicS] {
+	return pulumix.Output[AcyclicS]{
+		OutputState: i.ToAcyclicSOutputWithContext(ctx).OutputState,
+	}
+}
+
 type AcyclicSOutput struct{ *pulumi.OutputState }
 
 func (AcyclicSOutput) ElementType() reflect.Type {
@@ -117,6 +136,12 @@ func (o AcyclicSOutput) ToAcyclicSOutput() AcyclicSOutput {
 
 func (o AcyclicSOutput) ToAcyclicSOutputWithContext(ctx context.Context) AcyclicSOutput {
 	return o
+}
+
+func (o AcyclicSOutput) ToOutput(ctx context.Context) pulumix.Output[AcyclicS] {
+	return pulumix.Output[AcyclicS]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o AcyclicSOutput) Foo5() pulumi.StringOutput {
@@ -154,6 +179,12 @@ func (i AcyclicTArgs) ToAcyclicTOutputWithContext(ctx context.Context) AcyclicTO
 	return pulumi.ToOutputWithContext(ctx, i).(AcyclicTOutput)
 }
 
+func (i AcyclicTArgs) ToOutput(ctx context.Context) pulumix.Output[AcyclicT] {
+	return pulumix.Output[AcyclicT]{
+		OutputState: i.ToAcyclicTOutputWithContext(ctx).OutputState,
+	}
+}
+
 type AcyclicTOutput struct{ *pulumi.OutputState }
 
 func (AcyclicTOutput) ElementType() reflect.Type {
@@ -166,6 +197,12 @@ func (o AcyclicTOutput) ToAcyclicTOutput() AcyclicTOutput {
 
 func (o AcyclicTOutput) ToAcyclicTOutputWithContext(ctx context.Context) AcyclicTOutput {
 	return o
+}
+
+func (o AcyclicTOutput) ToOutput(ctx context.Context) pulumix.Output[AcyclicT] {
+	return pulumix.Output[AcyclicT]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o AcyclicTOutput) Foo6() AcyclicSOutput {
@@ -201,6 +238,12 @@ func (i DirectCycleArgs) ToDirectCycleOutput() DirectCycleOutput {
 
 func (i DirectCycleArgs) ToDirectCycleOutputWithContext(ctx context.Context) DirectCycleOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DirectCycleOutput)
+}
+
+func (i DirectCycleArgs) ToOutput(ctx context.Context) pulumix.Output[DirectCycle] {
+	return pulumix.Output[DirectCycle]{
+		OutputState: i.ToDirectCycleOutputWithContext(ctx).OutputState,
+	}
 }
 
 func (i DirectCycleArgs) ToDirectCyclePtrOutput() DirectCyclePtrOutput {
@@ -244,6 +287,12 @@ func (i *directCyclePtrType) ToDirectCyclePtrOutputWithContext(ctx context.Conte
 	return pulumi.ToOutputWithContext(ctx, i).(DirectCyclePtrOutput)
 }
 
+func (i *directCyclePtrType) ToOutput(ctx context.Context) pulumix.Output[*DirectCycle] {
+	return pulumix.Output[*DirectCycle]{
+		OutputState: i.ToDirectCyclePtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 type DirectCycleOutput struct{ *pulumi.OutputState }
 
 func (DirectCycleOutput) ElementType() reflect.Type {
@@ -268,6 +317,12 @@ func (o DirectCycleOutput) ToDirectCyclePtrOutputWithContext(ctx context.Context
 	}).(DirectCyclePtrOutput)
 }
 
+func (o DirectCycleOutput) ToOutput(ctx context.Context) pulumix.Output[DirectCycle] {
+	return pulumix.Output[DirectCycle]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o DirectCycleOutput) Foo() DirectCyclePtrOutput {
 	return o.ApplyT(func(v DirectCycle) *DirectCycle { return v.Foo }).(DirectCyclePtrOutput)
 }
@@ -284,6 +339,12 @@ func (o DirectCyclePtrOutput) ToDirectCyclePtrOutput() DirectCyclePtrOutput {
 
 func (o DirectCyclePtrOutput) ToDirectCyclePtrOutputWithContext(ctx context.Context) DirectCyclePtrOutput {
 	return o
+}
+
+func (o DirectCyclePtrOutput) ToOutput(ctx context.Context) pulumix.Output[*DirectCycle] {
+	return pulumix.Output[*DirectCycle]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o DirectCyclePtrOutput) Elem() DirectCycleOutput {
@@ -336,6 +397,12 @@ func (i IndirectCycleSArgs) ToIndirectCycleSOutputWithContext(ctx context.Contex
 	return pulumi.ToOutputWithContext(ctx, i).(IndirectCycleSOutput)
 }
 
+func (i IndirectCycleSArgs) ToOutput(ctx context.Context) pulumix.Output[IndirectCycleS] {
+	return pulumix.Output[IndirectCycleS]{
+		OutputState: i.ToIndirectCycleSOutputWithContext(ctx).OutputState,
+	}
+}
+
 func (i IndirectCycleSArgs) ToIndirectCycleSPtrOutput() IndirectCycleSPtrOutput {
 	return i.ToIndirectCycleSPtrOutputWithContext(context.Background())
 }
@@ -377,6 +444,12 @@ func (i *indirectCycleSPtrType) ToIndirectCycleSPtrOutputWithContext(ctx context
 	return pulumi.ToOutputWithContext(ctx, i).(IndirectCycleSPtrOutput)
 }
 
+func (i *indirectCycleSPtrType) ToOutput(ctx context.Context) pulumix.Output[*IndirectCycleS] {
+	return pulumix.Output[*IndirectCycleS]{
+		OutputState: i.ToIndirectCycleSPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 type IndirectCycleSOutput struct{ *pulumi.OutputState }
 
 func (IndirectCycleSOutput) ElementType() reflect.Type {
@@ -401,6 +474,12 @@ func (o IndirectCycleSOutput) ToIndirectCycleSPtrOutputWithContext(ctx context.C
 	}).(IndirectCycleSPtrOutput)
 }
 
+func (o IndirectCycleSOutput) ToOutput(ctx context.Context) pulumix.Output[IndirectCycleS] {
+	return pulumix.Output[IndirectCycleS]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o IndirectCycleSOutput) Foo2() IndirectCycleTPtrOutput {
 	return o.ApplyT(func(v IndirectCycleS) *IndirectCycleT { return v.Foo2 }).(IndirectCycleTPtrOutput)
 }
@@ -417,6 +496,12 @@ func (o IndirectCycleSPtrOutput) ToIndirectCycleSPtrOutput() IndirectCycleSPtrOu
 
 func (o IndirectCycleSPtrOutput) ToIndirectCycleSPtrOutputWithContext(ctx context.Context) IndirectCycleSPtrOutput {
 	return o
+}
+
+func (o IndirectCycleSPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*IndirectCycleS] {
+	return pulumix.Output[*IndirectCycleS]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o IndirectCycleSPtrOutput) Elem() IndirectCycleSOutput {
@@ -469,6 +554,12 @@ func (i IndirectCycleTArgs) ToIndirectCycleTOutputWithContext(ctx context.Contex
 	return pulumi.ToOutputWithContext(ctx, i).(IndirectCycleTOutput)
 }
 
+func (i IndirectCycleTArgs) ToOutput(ctx context.Context) pulumix.Output[IndirectCycleT] {
+	return pulumix.Output[IndirectCycleT]{
+		OutputState: i.ToIndirectCycleTOutputWithContext(ctx).OutputState,
+	}
+}
+
 func (i IndirectCycleTArgs) ToIndirectCycleTPtrOutput() IndirectCycleTPtrOutput {
 	return i.ToIndirectCycleTPtrOutputWithContext(context.Background())
 }
@@ -510,6 +601,12 @@ func (i *indirectCycleTPtrType) ToIndirectCycleTPtrOutputWithContext(ctx context
 	return pulumi.ToOutputWithContext(ctx, i).(IndirectCycleTPtrOutput)
 }
 
+func (i *indirectCycleTPtrType) ToOutput(ctx context.Context) pulumix.Output[*IndirectCycleT] {
+	return pulumix.Output[*IndirectCycleT]{
+		OutputState: i.ToIndirectCycleTPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 type IndirectCycleTOutput struct{ *pulumi.OutputState }
 
 func (IndirectCycleTOutput) ElementType() reflect.Type {
@@ -534,6 +631,12 @@ func (o IndirectCycleTOutput) ToIndirectCycleTPtrOutputWithContext(ctx context.C
 	}).(IndirectCycleTPtrOutput)
 }
 
+func (o IndirectCycleTOutput) ToOutput(ctx context.Context) pulumix.Output[IndirectCycleT] {
+	return pulumix.Output[IndirectCycleT]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o IndirectCycleTOutput) Foo3() IndirectCycleSPtrOutput {
 	return o.ApplyT(func(v IndirectCycleT) *IndirectCycleS { return v.Foo3 }).(IndirectCycleSPtrOutput)
 }
@@ -550,6 +653,12 @@ func (o IndirectCycleTPtrOutput) ToIndirectCycleTPtrOutput() IndirectCycleTPtrOu
 
 func (o IndirectCycleTPtrOutput) ToIndirectCycleTPtrOutputWithContext(ctx context.Context) IndirectCycleTPtrOutput {
 	return o
+}
+
+func (o IndirectCycleTPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*IndirectCycleT] {
+	return pulumix.Output[*IndirectCycleT]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o IndirectCycleTPtrOutput) Elem() IndirectCycleTOutput {

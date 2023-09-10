@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"output-funcs/mypkg/internal"
 )
 
@@ -65,6 +66,12 @@ func (o FuncWithDictParamResultOutput) ToFuncWithDictParamResultOutput() FuncWit
 
 func (o FuncWithDictParamResultOutput) ToFuncWithDictParamResultOutputWithContext(ctx context.Context) FuncWithDictParamResultOutput {
 	return o
+}
+
+func (o FuncWithDictParamResultOutput) ToOutput(ctx context.Context) pulumix.Output[FuncWithDictParamResult] {
+	return pulumix.Output[FuncWithDictParamResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FuncWithDictParamResultOutput) R() pulumi.StringOutput {

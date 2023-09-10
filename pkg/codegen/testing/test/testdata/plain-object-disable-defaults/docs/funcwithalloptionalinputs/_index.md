@@ -114,8 +114,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
@@ -123,8 +122,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -138,8 +136,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
@@ -147,8 +144,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -162,8 +158,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_java" style="color: inherit; text-decoration: inherit;">b</a>
@@ -171,8 +166,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -186,8 +180,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
@@ -195,8 +188,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -210,8 +202,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
@@ -219,8 +210,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -234,8 +224,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Property Map</a></span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_yaml" style="color: inherit; text-decoration: inherit;">b</a>
@@ -243,8 +232,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -361,8 +349,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -370,8 +357,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -379,8 +365,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -394,8 +379,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -403,8 +387,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -412,8 +395,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -427,8 +409,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_java" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -436,8 +417,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_java" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -445,8 +425,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -460,8 +439,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -469,8 +447,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -478,8 +455,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -493,8 +469,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -502,8 +477,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="plugins_path_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
@@ -511,8 +485,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -526,8 +499,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>to test required args</p>
-</dd><dt class="property-optional"
+    <dd>to test required args</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_yaml" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -535,8 +507,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
-</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_yaml" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -544,8 +515,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The path to the helm plugins directory.</p>
-</dd></dl>
+    <dd>The path to the helm plugins directory.</dd></dl>
 </pulumi-choosable>
 </div>
 

@@ -4,7 +4,7 @@
 {{ htmlSafe "<!-- Do not edit by hand unless you're certain you know what you are doing! -->" }}
 
 {{- if .DeprecationMessage }}
-<p class="resource-deprecated">Deprecated: {{- markdownify .DeprecationMessage -}}</p>
+<div class="resource-deprecated">Deprecated: {{ markdownify .DeprecationMessage -}}</div>
 {{- end }}
 
 {{ htmlSafe .Comment }}
@@ -129,7 +129,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 ### {{ .Title }} Method {#method_{{ .Title }}}
 
 {{- if .DeprecationMessage }}
-<p class="resource-deprecated">Deprecated: {{- markdownify .DeprecationMessage -}}</p>
+<div class="resource-deprecated">Deprecated: {{ markdownify .DeprecationMessage -}}</div>
 {{- end }}
 
 {{ htmlSafe .Comment }}
@@ -303,7 +303,9 @@ Only the first 200 types are included in this documentation.
 
 {{ range $index, $elem := .NestedTypes }}
 {{ if lt $index 200 }}
-<h4 id="{{ $elem.AnchorID }}">{{ htmlSafe $elem.Name }}</h4>
+<h4 id="{{ $elem.AnchorID }}">
+{{ htmlSafe $elem.Name }}<pulumi-choosable type="language" values="python,go" class="inline">, {{ htmlSafe $elem.Name }}<wbr>Args</pulumi-choosable>
+</h4>
 
 {{- if $elem.Properties }}{{template "properties" $elem.Properties -}}{{ end -}}
 {{- if $elem.EnumValues }}{{- template "enums" $elem.EnumValues -}}{{ end -}}

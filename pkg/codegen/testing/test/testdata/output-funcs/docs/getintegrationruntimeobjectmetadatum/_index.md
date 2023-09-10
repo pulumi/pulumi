@@ -119,8 +119,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The factory name.</p>
-</dd><dt class="property-required"
+    <dd>The factory name.</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_csharp" style="color: inherit; text-decoration: inherit;">Integration<wbr>Runtime<wbr>Name</a>
@@ -128,8 +127,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The integration runtime name.</p>
-</dd><dt class="property-required"
+    <dd>The integration runtime name.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -137,8 +135,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The resource group name.</p>
-</dd><dt class="property-optional"
+    <dd>The resource group name.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Path</a>
@@ -146,8 +143,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata path.</p>
-</dd></dl>
+    <dd>Metadata path.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -161,8 +157,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The factory name.</p>
-</dd><dt class="property-required"
+    <dd>The factory name.</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_go" style="color: inherit; text-decoration: inherit;">Integration<wbr>Runtime<wbr>Name</a>
@@ -170,8 +165,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The integration runtime name.</p>
-</dd><dt class="property-required"
+    <dd>The integration runtime name.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -179,8 +173,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The resource group name.</p>
-</dd><dt class="property-optional"
+    <dd>The resource group name.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Path</a>
@@ -188,8 +181,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata path.</p>
-</dd></dl>
+    <dd>Metadata path.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -203,8 +195,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The factory name.</p>
-</dd><dt class="property-required"
+    <dd>The factory name.</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_java" style="color: inherit; text-decoration: inherit;">integration<wbr>Runtime<wbr>Name</a>
@@ -212,8 +203,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The integration runtime name.</p>
-</dd><dt class="property-required"
+    <dd>The integration runtime name.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -221,8 +211,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The resource group name.</p>
-</dd><dt class="property-optional"
+    <dd>The resource group name.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Path</a>
@@ -230,8 +219,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata path.</p>
-</dd></dl>
+    <dd>Metadata path.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -245,8 +233,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The factory name.</p>
-</dd><dt class="property-required"
+    <dd>The factory name.</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_nodejs" style="color: inherit; text-decoration: inherit;">integration<wbr>Runtime<wbr>Name</a>
@@ -254,8 +241,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The integration runtime name.</p>
-</dd><dt class="property-required"
+    <dd>The integration runtime name.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -263,8 +249,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The resource group name.</p>
-</dd><dt class="property-optional"
+    <dd>The resource group name.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Path</a>
@@ -272,8 +257,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata path.</p>
-</dd></dl>
+    <dd>Metadata path.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -287,8 +271,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The factory name.</p>
-</dd><dt class="property-required"
+    <dd>The factory name.</dd><dt class="property-required"
             title="Required">
         <span id="integration_runtime_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integration_runtime_name_python" style="color: inherit; text-decoration: inherit;">integration_<wbr>runtime_<wbr>name</a>
@@ -296,8 +279,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The integration runtime name.</p>
-</dd><dt class="property-required"
+    <dd>The integration runtime name.</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
@@ -305,8 +287,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The resource group name.</p>
-</dd><dt class="property-optional"
+    <dd>The resource group name.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_path_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_path_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>path</a>
@@ -314,8 +295,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata path.</p>
-</dd></dl>
+    <dd>Metadata path.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -329,8 +309,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The factory name.</p>
-</dd><dt class="property-required"
+    <dd>The factory name.</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_yaml" style="color: inherit; text-decoration: inherit;">integration<wbr>Runtime<wbr>Name</a>
@@ -338,8 +317,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The integration runtime name.</p>
-</dd><dt class="property-required"
+    <dd>The integration runtime name.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -347,8 +325,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The resource group name.</p>
-</dd><dt class="property-optional"
+    <dd>The resource group name.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Path</a>
@@ -356,8 +333,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata path.</p>
-</dd></dl>
+    <dd>Metadata path.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -380,8 +356,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The link to the next page of results, if any remaining results exist.</p>
-</dd><dt class="property-"
+    <dd>The link to the next page of results, if any remaining results exist.</dd><dt class="property-"
             title="">
         <span id="value_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -389,8 +364,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;object&gt;</span>
     </dt>
-    <dd><p>List of SSIS object metadata.</p>
-</dd></dl>
+    <dd>List of SSIS object metadata.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -404,8 +378,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The link to the next page of results, if any remaining results exist.</p>
-</dd><dt class="property-"
+    <dd>The link to the next page of results, if any remaining results exist.</dd><dt class="property-"
             title="">
         <span id="value_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -413,8 +386,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]interface{}</span>
     </dt>
-    <dd><p>List of SSIS object metadata.</p>
-</dd></dl>
+    <dd>List of SSIS object metadata.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -428,8 +400,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The link to the next page of results, if any remaining results exist.</p>
-</dd><dt class="property-"
+    <dd>The link to the next page of results, if any remaining results exist.</dd><dt class="property-"
             title="">
         <span id="value_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
@@ -437,8 +408,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;Object&gt;</span>
     </dt>
-    <dd><p>List of SSIS object metadata.</p>
-</dd></dl>
+    <dd>List of SSIS object metadata.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -452,8 +422,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The link to the next page of results, if any remaining results exist.</p>
-</dd><dt class="property-"
+    <dd>The link to the next page of results, if any remaining results exist.</dd><dt class="property-"
             title="">
         <span id="value_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
@@ -461,8 +430,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">(Ssis<wbr>Environment<wbr>Response | Ssis<wbr>Folder<wbr>Response | Ssis<wbr>Package<wbr>Response | Ssis<wbr>Project<wbr>Response)[]</span>
     </dt>
-    <dd><p>List of SSIS object metadata.</p>
-</dd></dl>
+    <dd>List of SSIS object metadata.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -476,8 +444,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The link to the next page of results, if any remaining results exist.</p>
-</dd><dt class="property-"
+    <dd>The link to the next page of results, if any remaining results exist.</dd><dt class="property-"
             title="">
         <span id="value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
@@ -485,8 +452,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[Any]</span>
     </dt>
-    <dd><p>List of SSIS object metadata.</p>
-</dd></dl>
+    <dd>List of SSIS object metadata.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -500,8 +466,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The link to the next page of results, if any remaining results exist.</p>
-</dd><dt class="property-"
+    <dd>The link to the next page of results, if any remaining results exist.</dd><dt class="property-"
             title="">
         <span id="value_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
@@ -509,8 +474,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;Property Map | Property Map | Property Map | Property Map&gt;</span>
     </dt>
-    <dd><p>List of SSIS object metadata.</p>
-</dd></dl>
+    <dd>List of SSIS object metadata.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -534,8 +498,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Environment folder name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment folder name.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Name</a>
@@ -543,8 +506,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Environment name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment name.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -552,8 +514,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Environment reference id.</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference id.</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_csharp" style="color: inherit; text-decoration: inherit;">Reference<wbr>Type</a>
@@ -561,8 +522,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reference type</p>
-</dd></dl>
+    <dd>Reference type</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -576,8 +536,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Environment folder name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment folder name.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Name</a>
@@ -585,8 +544,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Environment name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment name.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -594,8 +552,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Environment reference id.</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference id.</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_go" style="color: inherit; text-decoration: inherit;">Reference<wbr>Type</a>
@@ -603,8 +560,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reference type</p>
-</dd></dl>
+    <dd>Reference type</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -618,8 +574,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Environment folder name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment folder name.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_java" style="color: inherit; text-decoration: inherit;">environment<wbr>Name</a>
@@ -627,8 +582,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Environment name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment name.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
@@ -636,8 +590,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Environment reference id.</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference id.</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_java" style="color: inherit; text-decoration: inherit;">reference<wbr>Type</a>
@@ -645,8 +598,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Reference type</p>
-</dd></dl>
+    <dd>Reference type</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -660,8 +612,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Environment folder name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment folder name.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Name</a>
@@ -669,8 +620,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Environment name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment name.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -678,8 +628,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Environment reference id.</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference id.</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_nodejs" style="color: inherit; text-decoration: inherit;">reference<wbr>Type</a>
@@ -687,8 +636,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reference type</p>
-</dd></dl>
+    <dd>Reference type</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -702,8 +650,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Environment folder name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment folder name.</dd><dt class="property-optional"
             title="Optional">
         <span id="environment_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environment_name_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>name</a>
@@ -711,8 +658,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Environment name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment name.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -720,8 +666,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Environment reference id.</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference id.</dd><dt class="property-optional"
             title="Optional">
         <span id="reference_type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#reference_type_python" style="color: inherit; text-decoration: inherit;">reference_<wbr>type</a>
@@ -729,8 +674,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Reference type</p>
-</dd></dl>
+    <dd>Reference type</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -744,8 +688,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Environment folder name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment folder name.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_yaml" style="color: inherit; text-decoration: inherit;">environment<wbr>Name</a>
@@ -753,8 +696,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Environment name.</p>
-</dd><dt class="property-optional"
+    <dd>Environment name.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
@@ -762,8 +704,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Environment reference id.</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference id.</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_yaml" style="color: inherit; text-decoration: inherit;">reference<wbr>Type</a>
@@ -771,8 +712,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Reference type</p>
-</dd></dl>
+    <dd>Reference type</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -790,8 +730,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
@@ -799,8 +738,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Folder id which contains environment.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains environment.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -808,8 +746,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -817,8 +754,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_csharp" style="color: inherit; text-decoration: inherit;">Variables</a>
@@ -826,8 +762,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">List&lt;Ssis<wbr>Variable<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Variable in environment</p>
-</dd></dl>
+    <dd>Variable in environment</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -841,8 +776,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
@@ -850,8 +784,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Folder id which contains environment.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains environment.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -859,8 +792,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -868,8 +800,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_go" style="color: inherit; text-decoration: inherit;">Variables</a>
@@ -877,8 +808,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">[]Ssis<wbr>Variable<wbr>Response</a></span>
     </dt>
-    <dd><p>Variable in environment</p>
-</dd></dl>
+    <dd>Variable in environment</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -892,8 +822,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_java" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -901,8 +830,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Folder id which contains environment.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains environment.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
@@ -910,8 +838,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
@@ -919,8 +846,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_java" style="color: inherit; text-decoration: inherit;">variables</a>
@@ -928,8 +854,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">List&lt;Ssis<wbr>Variable<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Variable in environment</p>
-</dd></dl>
+    <dd>Variable in environment</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -943,8 +868,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -952,8 +876,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Folder id which contains environment.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains environment.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -961,8 +884,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -970,8 +892,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_nodejs" style="color: inherit; text-decoration: inherit;">variables</a>
@@ -979,8 +900,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">Ssis<wbr>Variable<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Variable in environment</p>
-</dd></dl>
+    <dd>Variable in environment</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -994,8 +914,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folder_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
@@ -1003,8 +922,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Folder id which contains environment.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains environment.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1012,8 +930,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1021,8 +938,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_python" style="color: inherit; text-decoration: inherit;">variables</a>
@@ -1030,8 +946,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">Sequence[Ssis<wbr>Variable<wbr>Response]</a></span>
     </dt>
-    <dd><p>Variable in environment</p>
-</dd></dl>
+    <dd>Variable in environment</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1045,8 +960,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_yaml" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -1054,8 +968,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Folder id which contains environment.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains environment.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1063,8 +976,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1072,8 +984,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_yaml" style="color: inherit; text-decoration: inherit;">variables</a>
@@ -1081,8 +992,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Variable in environment</p>
-</dd></dl>
+    <dd>Variable in environment</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1100,8 +1010,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -1109,8 +1018,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -1118,8 +1026,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd></dl>
+    <dd>Metadata name.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1133,8 +1040,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -1142,8 +1048,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -1151,8 +1056,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd></dl>
+    <dd>Metadata name.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1166,8 +1070,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1175,8 +1078,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1184,8 +1086,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd></dl>
+    <dd>Metadata name.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1199,8 +1100,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1208,8 +1108,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1217,8 +1116,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd></dl>
+    <dd>Metadata name.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1232,8 +1130,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1241,8 +1138,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1250,8 +1146,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd></dl>
+    <dd>Metadata name.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1265,8 +1160,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1274,8 +1168,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1283,8 +1176,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd></dl>
+    <dd>Metadata name.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1302,8 +1194,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
@@ -1311,8 +1202,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Folder id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -1320,8 +1210,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -1329,8 +1218,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_csharp" style="color: inherit; text-decoration: inherit;">Parameters</a>
@@ -1338,8 +1226,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Parameters in package</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in package</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_csharp" style="color: inherit; text-decoration: inherit;">Project<wbr>Id</a>
@@ -1347,8 +1234,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Project id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Project id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_csharp" style="color: inherit; text-decoration: inherit;">Project<wbr>Version</a>
@@ -1356,8 +1242,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Project version which contains package.</p>
-</dd></dl>
+    <dd>Project version which contains package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1371,8 +1256,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
@@ -1380,8 +1264,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Folder id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -1389,8 +1272,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -1398,8 +1280,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_go" style="color: inherit; text-decoration: inherit;">Parameters</a>
@@ -1407,8 +1288,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">[]Ssis<wbr>Parameter<wbr>Response</a></span>
     </dt>
-    <dd><p>Parameters in package</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in package</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_go" style="color: inherit; text-decoration: inherit;">Project<wbr>Id</a>
@@ -1416,8 +1296,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Project id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Project id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_go" style="color: inherit; text-decoration: inherit;">Project<wbr>Version</a>
@@ -1425,8 +1304,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Project version which contains package.</p>
-</dd></dl>
+    <dd>Project version which contains package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1440,8 +1318,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_java" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -1449,8 +1326,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Folder id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1458,8 +1334,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1467,8 +1342,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_java" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -1476,8 +1350,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Parameters in package</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in package</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_java" style="color: inherit; text-decoration: inherit;">project<wbr>Id</a>
@@ -1485,8 +1358,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Project id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Project id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_java" style="color: inherit; text-decoration: inherit;">project<wbr>Version</a>
@@ -1494,8 +1366,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Project version which contains package.</p>
-</dd></dl>
+    <dd>Project version which contains package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1509,8 +1380,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -1518,8 +1388,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Folder id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1527,8 +1396,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1536,8 +1404,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_nodejs" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -1545,8 +1412,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Ssis<wbr>Parameter<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Parameters in package</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in package</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_nodejs" style="color: inherit; text-decoration: inherit;">project<wbr>Id</a>
@@ -1554,8 +1420,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Project id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Project id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_nodejs" style="color: inherit; text-decoration: inherit;">project<wbr>Version</a>
@@ -1563,8 +1428,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Project version which contains package.</p>
-</dd></dl>
+    <dd>Project version which contains package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1578,8 +1442,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folder_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
@@ -1587,8 +1450,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Folder id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1596,8 +1458,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1605,8 +1466,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_python" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -1614,8 +1474,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Sequence[Ssis<wbr>Parameter<wbr>Response]</a></span>
     </dt>
-    <dd><p>Parameters in package</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in package</dd><dt class="property-optional"
             title="Optional">
         <span id="project_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#project_id_python" style="color: inherit; text-decoration: inherit;">project_<wbr>id</a>
@@ -1623,8 +1482,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Project id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Project id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="project_version_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#project_version_python" style="color: inherit; text-decoration: inherit;">project_<wbr>version</a>
@@ -1632,8 +1490,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Project version which contains package.</p>
-</dd></dl>
+    <dd>Project version which contains package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1647,8 +1504,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_yaml" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -1656,8 +1512,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Folder id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1665,8 +1520,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1674,8 +1528,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_yaml" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -1683,8 +1536,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Parameters in package</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in package</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_yaml" style="color: inherit; text-decoration: inherit;">project<wbr>Id</a>
@@ -1692,8 +1544,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Project id which contains package.</p>
-</dd><dt class="property-optional"
+    <dd>Project id which contains package.</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_yaml" style="color: inherit; text-decoration: inherit;">project<wbr>Version</a>
@@ -1701,8 +1552,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Project version which contains package.</p>
-</dd></dl>
+    <dd>Project version which contains package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1720,8 +1570,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter type.</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Value</a>
@@ -1729,8 +1578,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -1738,8 +1586,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter description.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter description.</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Design<wbr>Default<wbr>Value</a>
@@ -1747,8 +1594,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Design default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Design default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -1756,8 +1602,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Parameter id.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -1765,8 +1610,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter name.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter name.</dd><dt class="property-optional"
             title="Optional">
         <span id="required_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_csharp" style="color: inherit; text-decoration: inherit;">Required</a>
@@ -1774,8 +1618,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether parameter is required.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is required.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_csharp" style="color: inherit; text-decoration: inherit;">Sensitive</a>
@@ -1783,8 +1626,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether parameter is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Default<wbr>Value</a>
@@ -1792,8 +1634,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default sensitive value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default sensitive value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_csharp" style="color: inherit; text-decoration: inherit;">Value<wbr>Set</a>
@@ -1801,8 +1642,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Parameter value set.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value set.</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_csharp" style="color: inherit; text-decoration: inherit;">Value<wbr>Type</a>
@@ -1810,8 +1650,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter value type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value type.</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_csharp" style="color: inherit; text-decoration: inherit;">Variable</a>
@@ -1819,8 +1658,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter reference variable.</p>
-</dd></dl>
+    <dd>Parameter reference variable.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1834,8 +1672,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter type.</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_go" style="color: inherit; text-decoration: inherit;">Default<wbr>Value</a>
@@ -1843,8 +1680,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -1852,8 +1688,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter description.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter description.</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_go" style="color: inherit; text-decoration: inherit;">Design<wbr>Default<wbr>Value</a>
@@ -1861,8 +1696,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Design default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Design default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -1870,8 +1704,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Parameter id.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -1879,8 +1712,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter name.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter name.</dd><dt class="property-optional"
             title="Optional">
         <span id="required_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_go" style="color: inherit; text-decoration: inherit;">Required</a>
@@ -1888,8 +1720,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether parameter is required.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is required.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_go" style="color: inherit; text-decoration: inherit;">Sensitive</a>
@@ -1897,8 +1728,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether parameter is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_go" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Default<wbr>Value</a>
@@ -1906,8 +1736,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default sensitive value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default sensitive value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_go" style="color: inherit; text-decoration: inherit;">Value<wbr>Set</a>
@@ -1915,8 +1744,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Parameter value set.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value set.</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_go" style="color: inherit; text-decoration: inherit;">Value<wbr>Type</a>
@@ -1924,8 +1752,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter value type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value type.</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_go" style="color: inherit; text-decoration: inherit;">Variable</a>
@@ -1933,8 +1760,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter reference variable.</p>
-</dd></dl>
+    <dd>Parameter reference variable.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1948,8 +1774,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter type.</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_java" style="color: inherit; text-decoration: inherit;">default<wbr>Value</a>
@@ -1957,8 +1782,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
@@ -1966,8 +1790,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter description.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter description.</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_java" style="color: inherit; text-decoration: inherit;">design<wbr>Default<wbr>Value</a>
@@ -1975,8 +1798,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Design default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Design default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
@@ -1984,8 +1806,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Parameter id.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
@@ -1993,8 +1814,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter name.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter name.</dd><dt class="property-optional"
             title="Optional">
         <span id="required_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_java" style="color: inherit; text-decoration: inherit;">required</a>
@@ -2002,8 +1822,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Whether parameter is required.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is required.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_java" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -2011,8 +1830,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Whether parameter is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_java" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Default<wbr>Value</a>
@@ -2020,8 +1838,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Default sensitive value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default sensitive value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_java" style="color: inherit; text-decoration: inherit;">value<wbr>Set</a>
@@ -2029,8 +1846,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Parameter value set.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value set.</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_java" style="color: inherit; text-decoration: inherit;">value<wbr>Type</a>
@@ -2038,8 +1854,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter value type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value type.</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_java" style="color: inherit; text-decoration: inherit;">variable</a>
@@ -2047,8 +1862,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter reference variable.</p>
-</dd></dl>
+    <dd>Parameter reference variable.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2062,8 +1876,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter type.</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">default<wbr>Value</a>
@@ -2071,8 +1884,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2080,8 +1892,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter description.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter description.</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">design<wbr>Default<wbr>Value</a>
@@ -2089,8 +1900,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Design default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Design default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2098,8 +1908,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Parameter id.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2107,8 +1916,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter name.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter name.</dd><dt class="property-optional"
             title="Optional">
         <span id="required_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_nodejs" style="color: inherit; text-decoration: inherit;">required</a>
@@ -2116,8 +1924,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd><p>Whether parameter is required.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is required.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_nodejs" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -2125,8 +1932,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd><p>Whether parameter is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Default<wbr>Value</a>
@@ -2134,8 +1940,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Default sensitive value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default sensitive value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_nodejs" style="color: inherit; text-decoration: inherit;">value<wbr>Set</a>
@@ -2143,8 +1948,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd><p>Parameter value set.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value set.</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_nodejs" style="color: inherit; text-decoration: inherit;">value<wbr>Type</a>
@@ -2152,8 +1956,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter value type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value type.</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_nodejs" style="color: inherit; text-decoration: inherit;">variable</a>
@@ -2161,8 +1964,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Parameter reference variable.</p>
-</dd></dl>
+    <dd>Parameter reference variable.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2176,8 +1978,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Parameter type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter type.</dd><dt class="property-optional"
             title="Optional">
         <span id="default_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#default_value_python" style="color: inherit; text-decoration: inherit;">default_<wbr>value</a>
@@ -2185,8 +1986,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2194,8 +1994,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Parameter description.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter description.</dd><dt class="property-optional"
             title="Optional">
         <span id="design_default_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#design_default_value_python" style="color: inherit; text-decoration: inherit;">design_<wbr>default_<wbr>value</a>
@@ -2203,8 +2002,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Design default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Design default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2212,8 +2010,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Parameter id.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2221,8 +2018,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Parameter name.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter name.</dd><dt class="property-optional"
             title="Optional">
         <span id="required_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_python" style="color: inherit; text-decoration: inherit;">required</a>
@@ -2230,8 +2026,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether parameter is required.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is required.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_python" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -2239,8 +2034,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether parameter is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_default_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_default_value_python" style="color: inherit; text-decoration: inherit;">sensitive_<wbr>default_<wbr>value</a>
@@ -2248,8 +2042,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Default sensitive value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default sensitive value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_set_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_set_python" style="color: inherit; text-decoration: inherit;">value_<wbr>set</a>
@@ -2257,8 +2050,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Parameter value set.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value set.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_type_python" style="color: inherit; text-decoration: inherit;">value_<wbr>type</a>
@@ -2266,8 +2058,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Parameter value type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value type.</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_python" style="color: inherit; text-decoration: inherit;">variable</a>
@@ -2275,8 +2066,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Parameter reference variable.</p>
-</dd></dl>
+    <dd>Parameter reference variable.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2290,8 +2080,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter type.</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_yaml" style="color: inherit; text-decoration: inherit;">default<wbr>Value</a>
@@ -2299,8 +2088,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2308,8 +2096,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter description.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter description.</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_yaml" style="color: inherit; text-decoration: inherit;">design<wbr>Default<wbr>Value</a>
@@ -2317,8 +2104,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Design default value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Design default value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2326,8 +2112,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Parameter id.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2335,8 +2120,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter name.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter name.</dd><dt class="property-optional"
             title="Optional">
         <span id="required_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_yaml" style="color: inherit; text-decoration: inherit;">required</a>
@@ -2344,8 +2128,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Whether parameter is required.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is required.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_yaml" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -2353,8 +2136,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Whether parameter is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether parameter is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_yaml" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Default<wbr>Value</a>
@@ -2362,8 +2144,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Default sensitive value of parameter.</p>
-</dd><dt class="property-optional"
+    <dd>Default sensitive value of parameter.</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_yaml" style="color: inherit; text-decoration: inherit;">value<wbr>Set</a>
@@ -2371,8 +2152,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Parameter value set.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value set.</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_yaml" style="color: inherit; text-decoration: inherit;">value<wbr>Type</a>
@@ -2380,8 +2160,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter value type.</p>
-</dd><dt class="property-optional"
+    <dd>Parameter value type.</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_yaml" style="color: inherit; text-decoration: inherit;">variable</a>
@@ -2389,8 +2168,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Parameter reference variable.</p>
-</dd></dl>
+    <dd>Parameter reference variable.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2408,8 +2186,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Refs</a>
@@ -2417,8 +2194,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Ssis<wbr>Environment<wbr>Reference<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Environment reference in project</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference in project</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
@@ -2426,8 +2202,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Folder id which contains project.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains project.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -2435,8 +2210,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -2444,8 +2218,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_csharp" style="color: inherit; text-decoration: inherit;">Parameters</a>
@@ -2453,8 +2226,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Parameters in project</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in project</dd><dt class="property-optional"
             title="Optional">
         <span id="version_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_csharp" style="color: inherit; text-decoration: inherit;">Version</a>
@@ -2462,8 +2234,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Project version.</p>
-</dd></dl>
+    <dd>Project version.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2477,8 +2248,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Refs</a>
@@ -2486,8 +2256,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">[]Ssis<wbr>Environment<wbr>Reference<wbr>Response</a></span>
     </dt>
-    <dd><p>Environment reference in project</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference in project</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
@@ -2495,8 +2264,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Folder id which contains project.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains project.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -2504,8 +2272,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -2513,8 +2280,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_go" style="color: inherit; text-decoration: inherit;">Parameters</a>
@@ -2522,8 +2288,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">[]Ssis<wbr>Parameter<wbr>Response</a></span>
     </dt>
-    <dd><p>Parameters in project</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in project</dd><dt class="property-optional"
             title="Optional">
         <span id="version_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_go" style="color: inherit; text-decoration: inherit;">Version</a>
@@ -2531,8 +2296,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Project version.</p>
-</dd></dl>
+    <dd>Project version.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2546,8 +2310,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_java" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
@@ -2555,8 +2318,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Ssis<wbr>Environment<wbr>Reference<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Environment reference in project</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference in project</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_java" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -2564,8 +2326,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Folder id which contains project.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains project.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2573,8 +2334,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2582,8 +2342,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_java" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -2591,8 +2350,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Parameters in project</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in project</dd><dt class="property-optional"
             title="Optional">
         <span id="version_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_java" style="color: inherit; text-decoration: inherit;">version</a>
@@ -2600,8 +2358,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Project version.</p>
-</dd></dl>
+    <dd>Project version.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2615,8 +2372,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
@@ -2624,8 +2380,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">Ssis<wbr>Environment<wbr>Reference<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Environment reference in project</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference in project</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -2633,8 +2388,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Folder id which contains project.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains project.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2642,8 +2396,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2651,8 +2404,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_nodejs" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -2660,8 +2412,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Ssis<wbr>Parameter<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Parameters in project</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in project</dd><dt class="property-optional"
             title="Optional">
         <span id="version_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_nodejs" style="color: inherit; text-decoration: inherit;">version</a>
@@ -2669,8 +2420,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Project version.</p>
-</dd></dl>
+    <dd>Project version.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2684,8 +2434,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="environment_refs_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environment_refs_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>refs</a>
@@ -2693,8 +2442,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">Sequence[Ssis<wbr>Environment<wbr>Reference<wbr>Response]</a></span>
     </dt>
-    <dd><p>Environment reference in project</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference in project</dd><dt class="property-optional"
             title="Optional">
         <span id="folder_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
@@ -2702,8 +2450,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Folder id which contains project.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains project.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2711,8 +2458,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2720,8 +2466,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_python" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -2729,8 +2474,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Sequence[Ssis<wbr>Parameter<wbr>Response]</a></span>
     </dt>
-    <dd><p>Parameters in project</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in project</dd><dt class="property-optional"
             title="Optional">
         <span id="version_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_python" style="color: inherit; text-decoration: inherit;">version</a>
@@ -2738,8 +2482,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Project version.</p>
-</dd></dl>
+    <dd>Project version.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2753,8 +2496,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata description.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata description.</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_yaml" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
@@ -2762,8 +2504,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Environment reference in project</p>
-</dd><dt class="property-optional"
+    <dd>Environment reference in project</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_yaml" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
@@ -2771,8 +2512,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Folder id which contains project.</p>
-</dd><dt class="property-optional"
+    <dd>Folder id which contains project.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2780,8 +2520,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Metadata id.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2789,8 +2528,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Metadata name.</p>
-</dd><dt class="property-optional"
+    <dd>Metadata name.</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_yaml" style="color: inherit; text-decoration: inherit;">parameters</a>
@@ -2798,8 +2536,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Parameters in project</p>
-</dd><dt class="property-optional"
+    <dd>Parameters in project</dd><dt class="property-optional"
             title="Optional">
         <span id="version_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_yaml" style="color: inherit; text-decoration: inherit;">version</a>
@@ -2807,8 +2544,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Project version.</p>
-</dd></dl>
+    <dd>Project version.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2826,8 +2562,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable type.</p>
-</dd><dt class="property-optional"
+    <dd>Variable type.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2835,8 +2570,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable description.</p>
-</dd><dt class="property-optional"
+    <dd>Variable description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -2844,8 +2578,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd><p>Variable id.</p>
-</dd><dt class="property-optional"
+    <dd>Variable id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -2853,8 +2586,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable name.</p>
-</dd><dt class="property-optional"
+    <dd>Variable name.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_csharp" style="color: inherit; text-decoration: inherit;">Sensitive</a>
@@ -2862,8 +2594,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether variable is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether variable is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_csharp" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Value</a>
@@ -2871,8 +2602,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable sensitive value.</p>
-</dd><dt class="property-optional"
+    <dd>Variable sensitive value.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -2880,8 +2610,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable value.</p>
-</dd></dl>
+    <dd>Variable value.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2895,8 +2624,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable type.</p>
-</dd><dt class="property-optional"
+    <dd>Variable type.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2904,8 +2632,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable description.</p>
-</dd><dt class="property-optional"
+    <dd>Variable description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -2913,8 +2640,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd><p>Variable id.</p>
-</dd><dt class="property-optional"
+    <dd>Variable id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -2922,8 +2648,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable name.</p>
-</dd><dt class="property-optional"
+    <dd>Variable name.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_go" style="color: inherit; text-decoration: inherit;">Sensitive</a>
@@ -2931,8 +2656,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether variable is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether variable is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_go" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Value</a>
@@ -2940,8 +2664,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable sensitive value.</p>
-</dd><dt class="property-optional"
+    <dd>Variable sensitive value.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -2949,8 +2672,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable value.</p>
-</dd></dl>
+    <dd>Variable value.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -2964,8 +2686,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable type.</p>
-</dd><dt class="property-optional"
+    <dd>Variable type.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2973,8 +2694,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable description.</p>
-</dd><dt class="property-optional"
+    <dd>Variable description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
@@ -2982,8 +2702,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
-    <dd><p>Variable id.</p>
-</dd><dt class="property-optional"
+    <dd>Variable id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
@@ -2991,8 +2710,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable name.</p>
-</dd><dt class="property-optional"
+    <dd>Variable name.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_java" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -3000,8 +2718,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Whether variable is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether variable is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_java" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Value</a>
@@ -3009,8 +2726,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable sensitive value.</p>
-</dd><dt class="property-optional"
+    <dd>Variable sensitive value.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
@@ -3018,8 +2734,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable value.</p>
-</dd></dl>
+    <dd>Variable value.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3033,8 +2748,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable type.</p>
-</dd><dt class="property-optional"
+    <dd>Variable type.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -3042,8 +2756,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable description.</p>
-</dd><dt class="property-optional"
+    <dd>Variable description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -3051,8 +2764,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd><p>Variable id.</p>
-</dd><dt class="property-optional"
+    <dd>Variable id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -3060,8 +2772,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable name.</p>
-</dd><dt class="property-optional"
+    <dd>Variable name.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_nodejs" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -3069,8 +2780,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd><p>Whether variable is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether variable is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_nodejs" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Value</a>
@@ -3078,8 +2788,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable sensitive value.</p>
-</dd><dt class="property-optional"
+    <dd>Variable sensitive value.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
@@ -3087,8 +2796,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Variable value.</p>
-</dd></dl>
+    <dd>Variable value.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3102,8 +2810,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Variable type.</p>
-</dd><dt class="property-optional"
+    <dd>Variable type.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -3111,8 +2818,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Variable description.</p>
-</dd><dt class="property-optional"
+    <dd>Variable description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -3120,8 +2826,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd><p>Variable id.</p>
-</dd><dt class="property-optional"
+    <dd>Variable id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -3129,8 +2834,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Variable name.</p>
-</dd><dt class="property-optional"
+    <dd>Variable name.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_python" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -3138,8 +2842,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd><p>Whether variable is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether variable is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_value_python" style="color: inherit; text-decoration: inherit;">sensitive_<wbr>value</a>
@@ -3147,8 +2850,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Variable sensitive value.</p>
-</dd><dt class="property-optional"
+    <dd>Variable sensitive value.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
@@ -3156,8 +2858,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Variable value.</p>
-</dd></dl>
+    <dd>Variable value.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -3171,8 +2872,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable type.</p>
-</dd><dt class="property-optional"
+    <dd>Variable type.</dd><dt class="property-optional"
             title="Optional">
         <span id="description_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
@@ -3180,8 +2880,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable description.</p>
-</dd><dt class="property-optional"
+    <dd>Variable description.</dd><dt class="property-optional"
             title="Optional">
         <span id="id_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
@@ -3189,8 +2888,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd><p>Variable id.</p>
-</dd><dt class="property-optional"
+    <dd>Variable id.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
@@ -3198,8 +2896,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable name.</p>
-</dd><dt class="property-optional"
+    <dd>Variable name.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_yaml" style="color: inherit; text-decoration: inherit;">sensitive</a>
@@ -3207,8 +2904,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
-    <dd><p>Whether variable is sensitive.</p>
-</dd><dt class="property-optional"
+    <dd>Whether variable is sensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_yaml" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Value</a>
@@ -3216,8 +2912,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable sensitive value.</p>
-</dd><dt class="property-optional"
+    <dd>Variable sensitive value.</dd><dt class="property-optional"
             title="Optional">
         <span id="value_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
@@ -3225,8 +2920,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Variable value.</p>
-</dd></dl>
+    <dd>Variable value.</dd></dl>
 </pulumi-choosable>
 </div>
 

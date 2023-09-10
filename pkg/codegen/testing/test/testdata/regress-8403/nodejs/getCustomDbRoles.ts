@@ -20,3 +20,6 @@ export interface GetCustomDbRolesArgs {
 export interface GetCustomDbRolesResult {
     readonly result?: outputs.GetCustomDbRolesResult;
 }
+export function getCustomDbRolesOutput(opts?: pulumi.InvokeOptions): pulumi.Output<GetCustomDbRolesResult> {
+    return pulumi.output(getCustomDbRoles(opts))
+}
