@@ -351,16 +351,6 @@ func (a *Asset) readPath() (*Blob, error) {
 	return blob, nil
 }
 
-func getFilenameFromDisposition(disposition string) string {
-	const prefix = "filename="
-	if idx := strings.Index(disposition, prefix); idx != -1 {
-		filename := disposition[idx+len(prefix):]
-		// Remove quotes if they exist
-		return strings.Trim(filename, `"`)
-	}
-	return ""
-}
-
 func (a *Asset) readURI() (*Blob, error) {
 	url, isURL, err := a.GetURIURL()
 	if err != nil {
@@ -373,7 +363,7 @@ func (a *Asset) readURI() (*Blob, error) {
 		if err != nil {
 			return nil, err
 		}
-		filename := httputil.extractFilenameFromHeader(resp.Header)
+		filename := httputil.ExtractFilenameFromHeader(resp.Header)
 		if filename == "" {
 			filename = filepath.Clean(path.Base(url.Path))
 		}
@@ -466,7 +456,11 @@ func NewReadCloserBlob(r io.ReadCloser, filename string) (*Blob, error) {
 	}
 
 	_, err = io.Copy(file, r)
-	file.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = file.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
 	}

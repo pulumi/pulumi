@@ -17,8 +17,8 @@ package httputil
 import (
 	"context"
 	"net/http"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
@@ -112,7 +112,7 @@ func GetWithRetry(url string, client *http.Client) (*http.Response, error) {
 	return DoWithRetry(req, client)
 }
 
-func extractFilenameFromHeader(header http.Header) (string) {
+func ExtractFilenameFromHeader(header http.Header) string {
 	contentDisposition := header.Get("Content-Disposition")
 	if contentDisposition == "" {
 		return ""

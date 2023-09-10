@@ -105,4 +105,3 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil => /Users/tzehaotay/Desktop/TzeHao/pulumi/sdk/v3/go/common/util/httputil

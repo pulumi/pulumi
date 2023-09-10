@@ -97,6 +97,7 @@ func TestRetryPostHTTP2(t *testing.T) {
 }
 
 func TestExtractFilenameFromHeader(t *testing.T) {
+	t.Parallel()
 	tests := map[string]struct {
 		headerValues map[string][]string
 		want         string
@@ -114,23 +115,22 @@ func TestExtractFilenameFromHeader(t *testing.T) {
 			want:         "",
 		},
 		"attachment without filename": {
-			headerValues: map[string][]string{"Content-Disposition": []string{`attachment`}},
+			headerValues: map[string][]string{"Content-Disposition": {`attachment`}},
 			want:         "",
 		},
 		"filename without attachment": {
-			headerValues: map[string][]string{"Content-Disposition": []string{`filename="sample.txt"`}},
+			headerValues: map[string][]string{"Content-Disposition": {`filename="sample.txt"`}},
 			want:         "sample.txt",
 		},
-
 	}
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			header := http.Header(tt.headerValues)
-			got := extractFilenameFromHeader(header)
-			if got != tt.want {
-				t.Errorf("expected %s, got %s", tt.want, got)
-			}
-		})
+	for _, tt := range tests {
+
+		header := http.Header(tt.headerValues)
+		got := ExtractFilenameFromHeader(header)
+		if got != tt.want {
+			t.Errorf("expected %s, got %s", tt.want, got)
+		}
+
 	}
 }
