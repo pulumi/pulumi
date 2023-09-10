@@ -72,7 +72,6 @@ require (
 	github.com/creack/pty v1.1.17
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/go-git/go-git/v5 v5.6.0
-	github.com/goccy/go-json v0.10.2
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02
 	github.com/json-iterator/go v1.1.12
