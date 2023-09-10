@@ -14,8 +14,8 @@
 
 import { log } from "../..";
 import { Resource } from "../../resource";
-import * as closure from "./createClosure";
 import * as utils from "./utils";
+import type * as closure from "./createClosure";
 
 /**
  * SerializeFunctionArgs are arguments used to serialize a JavaScript function
@@ -47,7 +47,7 @@ export interface SerializeFunctionArgs {
     logResource?: Resource;
     /**
      * If true, allow secrets to be serialized into the function. This should only be set to true if the calling
-     * code will handle this and propoerly wrap the resulting text in a Secret before passing it into any Resources
+     * code will handle this and properly wrap the resulting text in a Secret before passing it into any Resources
      * or serializing it to any other output format. If set, the `containsSecrets` property on the returned
      * SerializedFunction object will indicate whether secrets were serialized into the function text.
      */
@@ -92,6 +92,8 @@ export interface SerializedFunction {
  * @param args Arguments to use to control the serialization of the JavaScript function.
  */
 export async function serializeFunction(func: Function, args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
+    const closure = await import("./createClosure");
+
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || ((_) => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
@@ -107,6 +109,8 @@ export async function serializeFunction(func: Function, args: SerializeFunctionA
  * @deprecated Please use 'serializeFunction' instead.
  */
 export async function serializeFunctionAsync(func: Function, serialize?: (o: any) => boolean): Promise<string> {
+    const closure = await import("./createClosure");
+
     log.warn("'function serializeFunctionAsync' is deprecated.  Please use 'serializeFunction' instead.");
 
     serialize = serialize || ((_) => true);
@@ -451,7 +455,7 @@ function serializeJavaScriptText(
 
             // Walk the names of the array properties directly. This ensures we work efficiently
             // with sparse arrays.  i.e. if the array has length 1k, but only has one value in it
-            // set, we can just set htat value, instead of setting 999 undefineds.
+            // set, we can just set that value, instead of setting 999 undefineds.
             for (const key of Object.getOwnPropertyNames(arr)) {
                 if (key !== "length") {
                     const entryString = envEntryToString(arr[<any>key], `${varName}_${key}`);

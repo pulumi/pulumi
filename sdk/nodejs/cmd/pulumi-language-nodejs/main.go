@@ -93,6 +93,7 @@ const (
 func main() {
 	var tracing string
 	var typescript bool
+	var bun bool
 	var root string
 	var tsconfigpath string
 	var nodeargs string
@@ -100,6 +101,8 @@ func main() {
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.BoolVar(&typescript, "typescript", true,
 		"Use ts-node at runtime to support typescript source natively")
+	flag.BoolVar(&bun, "bun", true,
+		"Use bun instead of node or ts-node")
 	flag.StringVar(&root, "root", "", "Project root path to use")
 	flag.StringVar(&tsconfigpath, "tsconfig", "",
 		"Path to tsconfig.json to use")
@@ -133,7 +136,14 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, typescript, tsconfigpath, nodeargs)
+			host := &nodeLanguageHost{
+				engineAddress: engineAddress,
+				tracing:       tracing,
+				typescript:    typescript,
+				bun:           bun,
+				tsconfigpath:  tsconfigpath,
+				nodeargs:      nodeargs,
+			}
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -153,7 +163,13 @@ func main() {
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
-func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
+func locateModule(ctx context.Context, mod, programDir string) (string, error) {
+	// Cannot use bun here, see: https://github.com/oven-sh/bun/issues/4866
+	nodeBin, err := exec.LookPath("node")
+	if err != nil {
+		return "", err
+	}
+
 	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -182,22 +198,9 @@ type nodeLanguageHost struct {
 	engineAddress string
 	tracing       string
 	typescript    bool
+	bun           bool
 	tsconfigpath  string
 	nodeargs      string
-}
-
-func newLanguageHost(
-	engineAddress, tracing string,
-	typescript bool, tsconfigpath,
-	nodeargs string,
-) pulumirpc.LanguageRuntimeServer {
-	return &nodeLanguageHost{
-		engineAddress: engineAddress,
-		tracing:       tracing,
-		typescript:    typescript,
-		tsconfigpath:  tsconfigpath,
-		nodeargs:      nodeargs,
-	}
 }
 
 func compatibleVersions(a, b semver.Version) (bool, string) {
@@ -528,7 +531,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	nodeBin, err := exec.LookPath("node")
+	nodeBin, err := getNodelikeBin(host.bun)
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not find node on the $PATH: %w", err))
 	}
@@ -538,7 +541,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Pwd, nodeBin)
+	runPath, err = locateModule(ctx, runPath, req.Pwd)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
@@ -572,6 +575,14 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 			return response, nil
 		}
 	}
+}
+
+func getNodelikeBin(bun bool) (string, error) {
+	if bun {
+		return exec.LookPath("bun")
+	}
+
+	return exec.LookPath("node")
 }
 
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
@@ -803,7 +814,11 @@ func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*p
 		return ex, strings.TrimSpace(string(out)), nil
 	}
 
-	node, version, err := getResponse("node", "--version")
+	nodeBin, err := getNodelikeBin(host.bun)
+	if err != nil {
+		return nil, err
+	}
+	node, version, err := getResponse(nodeBin, "--version")
 	if err != nil {
 		return nil, err
 	}

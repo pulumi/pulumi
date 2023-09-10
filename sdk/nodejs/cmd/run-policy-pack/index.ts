@@ -70,13 +70,6 @@ process.on("exit", (code: number) => {
     }
 });
 
-// As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
-// this as some information is only sent out as events, without any way to query for it after the
-// fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
-// report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
-// by register to hear about scripts being parsed.
-import * as v8Hooks from "../../runtime/closure/v8Hooks";
-
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 import minimist from "minimist";
 
@@ -90,7 +83,7 @@ function printErrorUsageAndExit(message: string): never {
     return process.exit(-1);
 }
 
-function main(args: string[]): void {
+async function main(args: string[]): Promise<void> {
     // See usage above for the intended usage of this program, including flags and required args.
     const argv: minimist.ParsedArgs = minimist(args, {});
 
@@ -102,29 +95,40 @@ function main(args: string[]): void {
     // Remove <engine-address> so we simply execute the program.
     argv._.shift();
 
-    // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
-    v8Hooks.isInitializedAsync().then(() => {
-        const promise: Promise<void> = require("./run").run({
-            argv,
-            programStarted: () => {
-                programRunning = true;
-            },
-            reportLoggedError: (err: Error) => loggedErrors.add(err),
-            runInStack: false,
-            typeScript: true, // Should have no deleterious impact on JS codebases.
-        });
+    const usingBun = process.versions.bun !== undefined;
 
-        // when the user's program completes successfully, set programRunning back to false.  That
-        // way, if the Pulumi scaffolding code ends up throwing an exception during teardown, it
-        // will get printed directly to the console.
-        //
-        // Note: we only do this in the 'resolved' arg of '.then' (not the 'rejected' arg).  If the
-        // users code throws an exception, this promise will get rejected, and we don't want touch
-        // or otherwise intercept the exception or change the programRunning state here at all.
-        promise.then(() => {
-            programRunning = false;
-        });
+    if (!usingBun) {
+        // As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
+        // this as some information is only sent out as events, without any way to query for it after the
+        // fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
+        // report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
+        // by register to hear about scripts being parsed.
+        const v8Hooks = await import("../../runtime/closure/v8Hooks");
+
+        // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
+        await v8Hooks.isInitializedAsync();
+    }
+
+    // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
+    const { run } = await import("./run");
+    await run({
+        argv,
+        programStarted: () => {
+            programRunning = true;
+        },
+        reportLoggedError: (err: Error) => loggedErrors.add(err),
+        runInStack: false,
+        typeScript: true, // Should have no deleterious impact on JS codebases.
     });
+
+    // when the user's program completes successfully, set programRunning back to false.  That
+    // way, if the Pulumi scaffolding code ends up throwing an exception during teardown, it
+    // will get printed directly to the console.
+    //
+    // Note: we only do this in the 'resolved' arg of '.then' (not the 'rejected' arg).  If the
+    // users code throws an exception, this promise will get rejected, and we don't want touch
+    // or otherwise intercept the exception or change the programRunning state here at all.
+    programRunning = false;
 }
 
 main(process.argv.slice(2));

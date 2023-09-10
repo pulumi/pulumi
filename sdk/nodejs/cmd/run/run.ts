@@ -240,6 +240,7 @@ export function run(
         process.chdir(pwd);
     }
 
+    const bun: boolean = process.versions.bun !== undefined;
     // If this is a typescript project, we'll want to load node-ts.
     const typeScript: boolean = process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
 
@@ -253,7 +254,7 @@ export function run(
     const skipProject = !fs.existsSync(tsConfigPath);
 
     span.setAttribute("typescript-enabled", typeScript);
-    if (typeScript) {
+    if (typeScript && !bun) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require("ts-node");
