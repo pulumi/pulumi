@@ -18,27 +18,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
 type searchAICmd struct {
-	orgName     string
+	searchCmd
 	queryString string
-
-	Stdout io.Writer // defaults to os.Stdout
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
@@ -91,11 +83,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.RenderTable(res.Resources)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
-	}
-	return nil
+	return cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
 }
 
 func newSearchAICmd() *cobra.Command {
@@ -111,18 +99,22 @@ func newSearchAICmd() *cobra.Command {
 		},
 		),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&scmd.orgName, "org", "o", "",
+	cmd.PersistentFlags().StringVar(
+		&scmd.orgName, "org", "",
 		"Organization name to search within",
 	)
 	cmd.PersistentFlags().StringVarP(
 		&scmd.queryString, "query", "q", "",
 		"Plaintext natural language query",
 	)
+	cmd.PersistentFlags().VarP(
+		&scmd.outputFormat, "output", "o",
+		"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'.",
+	)
+	cmd.PersistentFlags().Var(
+		&scmd.csvDelimiter, "delimiter",
+		"Delimiter to use when rendering CSV output.",
+	)
 
 	return cmd
-}
-
-func (cmd *searchAICmd) RenderTable(results []apitype.ResourceResult) error {
-	return renderSearchTable(cmd.Stdout, results)
 }

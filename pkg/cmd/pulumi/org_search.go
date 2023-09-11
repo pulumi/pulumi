@@ -16,12 +16,13 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -30,11 +31,68 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
+	"gopkg.in/yaml.v3"
 )
 
+type Delimiter rune
+
+func (d *Delimiter) String() string {
+	return string(*d)
+}
+
+func (d *Delimiter) Set(v string) error {
+	if v == "\\t" {
+		*d = Delimiter('\t')
+	} else if len(v) != 1 {
+		return errors.New("delimiter must be a single character")
+	} else {
+		*d = Delimiter(v[0])
+	}
+	return nil
+}
+
+func (d *Delimiter) Type() string {
+	return "Delimiter"
+}
+
+func (d *Delimiter) Rune() rune {
+	return rune(*d)
+}
+
+type outputFormat string
+
+const (
+	outputFormatTable outputFormat = "table"
+	outputFormatJSON  outputFormat = "json"
+	outputFormatYAML  outputFormat = "yaml"
+	outputFormatCSV   outputFormat = "csv"
+)
+
+// String is used both by fmt.Print and by Cobra in help text
+func (o *outputFormat) String() string {
+	return string(*o)
+}
+
+// Set must have pointer receiver so it doesn't change the value of a copy
+func (o *outputFormat) Set(v string) error {
+	switch v {
+	case "csv", "table", "json", "yaml":
+		*o = outputFormat(v)
+		return nil
+	default:
+		return errors.New(`must be one of "csv", "table", "json", or "yaml"`)
+	}
+}
+
+// Type is only used in help text
+func (o *outputFormat) Type() string {
+	return "outputFormat"
+}
+
 type searchCmd struct {
-	orgName     string
-	queryParams []string
+	orgName      string
+	csvDelimiter Delimiter
+	outputFormat
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -43,8 +101,17 @@ type searchCmd struct {
 	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
-func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
+type orgSearchCmd struct {
+	searchCmd
+	queryParams []string
+}
+
+func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
+
+	if cmd.outputFormat == "" {
+		cmd.outputFormat = outputFormatTable
+	}
 
 	if cmd.Stdout == nil {
 		cmd.Stdout = os.Stdout
@@ -92,15 +159,11 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.RenderTable(res.Resources)
-	if err != nil {
-		return fmt.Errorf("table rendering error: %s", err)
-	}
-	return nil
+	return cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
 }
 
 func newSearchCmd() *cobra.Command {
-	var scmd searchCmd
+	var scmd orgSearchCmd
 	cmd := &cobra.Command{
 		Use:   "search",
 		Short: "Search for resources in Pulumi Cloud",
@@ -125,6 +188,14 @@ func newSearchCmd() *cobra.Command {
 			"Must be formatted like: -q key1=value1 -q key2=value2. "+
 			"Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
 	)
+	cmd.PersistentFlags().VarP(
+		&scmd.outputFormat, "output", "o",
+		"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'.",
+	)
+	cmd.PersistentFlags().Var(
+		&scmd.csvDelimiter, "delimiter",
+		"Delimiter to use when rendering CSV output.",
+	)
 
 	return cmd
 }
@@ -144,16 +215,76 @@ func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
 	for _, r := range results {
 		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
 	}
-	var err error
 	if errs := table.Errors(); errs != nil {
-		for _, tableErr := range errs {
-			err = multierror.Append(err, tableErr)
-		}
-		return err
+		return errors.Join(errs...)
 	}
 	return table.RenderTo(w)
 }
 
 func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
 	return renderSearchTable(cmd.Stdout, results)
+}
+
+func renderSearchCSV(w io.Writer, results []apitype.ResourceResult, delimiter rune) error {
+	data := make([][]string, 0, len(results)+1)
+	writer := csv.NewWriter(w)
+	if delimiter != 0 {
+		writer.Comma = delimiter
+	}
+	data = append(data, []string{"Project", "Stack", "Name", "Type", "Package", "Module", "Modified"})
+	for _, result := range results {
+		data = append(data, []string{
+			*result.Program,
+			*result.Stack,
+			*result.Name,
+			*result.Type,
+			*result.Package,
+			*result.Module,
+			*result.Modified,
+		})
+	}
+	return writer.WriteAll(data)
+}
+
+func (cmd *searchCmd) RenderCSV(results []apitype.ResourceResult, delimiter rune) error {
+	return renderSearchCSV(cmd.Stdout, results, delimiter)
+}
+
+func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
+	output, err := json.MarshalIndent(results, "", "    ")
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(output)
+	return err
+}
+
+func (o *outputFormat) Render(cmd *searchCmd, results []apitype.ResourceResult) error {
+	switch *o {
+	case outputFormatJSON:
+		return cmd.RenderJSON(results)
+	case outputFormatTable:
+		return cmd.RenderTable(results)
+	case outputFormatYAML:
+		return cmd.RenderYAML(results)
+	default:
+		return fmt.Errorf("unknown output format %q", *o)
+	}
+}
+
+func (cmd *searchCmd) RenderJSON(results []apitype.ResourceResult) error {
+	return renderSearchJSON(cmd.Stdout, results)
+}
+
+func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
+	output, err := yaml.Marshal(results)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(output)
+	return err
+}
+
+func (cmd *searchCmd) RenderYAML(results []apitype.ResourceResult) error {
+	return renderSearchYAML(cmd.Stdout, results)
 }
