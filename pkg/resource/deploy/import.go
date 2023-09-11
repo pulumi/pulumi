@@ -364,7 +364,8 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 	}
 
 	if createdStack {
-		i.executor.ExecuteRegisterResourceOutputs(noopOutputsEvent(stackURN))
+		return result.WrapIfNonNil(
+			i.executor.ExecuteRegisterResourceOutputs(noopOutputsEvent(stackURN)))
 	}
 
 	return nil
