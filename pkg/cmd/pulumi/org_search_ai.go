@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ import (
 
 type searchAICmd struct {
 	searchCmd
+	orgName     string
 	queryString string
 	openWeb     bool
 }
@@ -147,4 +149,8 @@ func newSearchAICmd() *cobra.Command {
 		"Open the search results in a web browser.",
 	)
 	return cmd
+}
+
+func (cmd *searchAICmd) RenderTable(result *apitype.ResourceSearchResponse) error {
+	return renderSearchTable(cmd.Stdout, result)
 }
