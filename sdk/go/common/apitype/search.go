@@ -16,7 +16,6 @@ package apitype
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -80,19 +79,11 @@ type PulumiQueryRequest struct {
 }
 
 // ParseQueryParams takes a list of parameters passed into the CLI
-// Search commands (either in the form of `key=value` or a bare Pulumi query)
+// Search commands (in the form of a Pulumi query)
 // and returns a PulumiQueryRequest struct that can be used to make a request
 // to the Pulumi API.
 //
 // See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for reference
 func ParseQueryParams(rawParams []string) *PulumiQueryRequest {
-	var queryString strings.Builder
-	for _, param := range rawParams {
-		if key, value, ok := strings.Cut(param, "="); ok {
-			fmt.Fprintf(&queryString, "%s:%s", key, value)
-		} else {
-			queryString.WriteString(param)
-		}
-	}
-	return &PulumiQueryRequest{Query: queryString.String()}
+	return &PulumiQueryRequest{Query: strings.Join(rawParams, " ")}
 }

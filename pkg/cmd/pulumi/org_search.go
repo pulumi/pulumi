@@ -204,14 +204,15 @@ func newSearchCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&scmd.orgName, "org", "",
-		"Name of the organization to search. Defaults to the current user's organization.",
+		"Name of the organization to search. Defaults to the current user's default organization.",
 	)
 	cmd.PersistentFlags().StringArrayVarP(
 		&scmd.queryParams, "query", "q", nil,
-		"Key-value pairs to use as query parameters. "+
-			"Must be formatted like: -q key1=value1 -q key2=value2. "+
-			"Alternately, each parameter provided here can be in raw Pulumi query syntax form. "+
-			"At least one query parameter must be provided.",
+		"A Pulumi Query to send to Pulumi Cloud for resource search."+
+			"May be formatted as a single query, or multiple:\n"+
+			"\t-q \"type:aws:s3/bucket:Bucket modified:>=2023-09-01\"\n"+
+			"\t-q \"type:aws:s3/bucket:Bucket\" -q \"modified:>=2023-09-01\"\n"+
+			"See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.",
 	)
 	cmd.PersistentFlags().VarP(
 		&scmd.outputFormat, "output", "o",
