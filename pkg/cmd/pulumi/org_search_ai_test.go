@@ -38,6 +38,7 @@ func TestSearchAI_cmd(t *testing.T) {
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
 	total := int64(132)
+	orgName := "org1"
 	b := &stubHTTPBackend{
 		NaturalLanguageSearchF: func(context.Context, string, string) (*apitype.ResourceSearchResponse, error) {
 			return &apitype.ResourceSearchResponse{
@@ -61,7 +62,7 @@ func TestSearchAI_cmd(t *testing.T) {
 	}
 	cmd := searchAICmd{
 		searchCmd: searchCmd{
-			orgName: "org1",
+			orgName: orgName,
 			Stdout:  &buff,
 			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 				return b, nil
@@ -76,4 +77,50 @@ func TestSearchAI_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), name)
 	assert.Contains(t, buff.String(), typ)
 	assert.Contains(t, buff.String(), program)
+}
+
+func TestAISearchUserOrgFailure_cmd(t *testing.T) {
+	t.Parallel()
+	var buff bytes.Buffer
+	name := "foo"
+	typ := "bar"
+	program := "program1"
+	stack := "stack1"
+	pack := "pack1"
+	mod := "mod1"
+	modified := "2023-01-01T00:00:00.000Z"
+	orgName := "user"
+	cmd := searchAICmd{
+		searchCmd: searchCmd{
+			orgName: orgName,
+			Stdout:  &buff,
+			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+				return &stubHTTPBackend{
+					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+						return &apitype.ResourceSearchResponse{
+							Resources: []apitype.ResourceResult{
+								{
+									Name:     &name,
+									Type:     &typ,
+									Program:  &program,
+									Stack:    &stack,
+									Package:  &pack,
+									Module:   &mod,
+									Modified: &modified,
+								},
+							},
+						}, nil
+					},
+					CurrentUserF: func() (string, []string, error) {
+						return "user", []string{"org1", "org2"}, nil
+					},
+				}, nil
+			},
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{})
+	require.Error(t, err)
+
+	assert.Contains(t, err.Error(), "user is an individual account, not an organization")
 }

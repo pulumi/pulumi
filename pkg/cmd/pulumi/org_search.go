@@ -157,16 +157,21 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if defaultOrg != "" && cmd.orgName == "" {
 		cmd.orgName = defaultOrg
 	}
-	filterName := userName
+	if cmd.orgName == userName {
+		return fmt.Errorf(
+			"%s is an individual account, not an organization."+
+				"Organization search is not supported for individual accounts",
+			userName,
+		)
+	}
 	if cmd.orgName != "" {
 		if !sliceContains(orgs, cmd.orgName) {
 			return fmt.Errorf("user %s is not a member of organization %s", userName, cmd.orgName)
 		}
-		filterName = cmd.orgName
 	}
 
 	parsedQueryParams := apitype.ParseQueryParams(cmd.queryParams)
-	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
+	res, err := cloudBackend.Search(ctx, cmd.orgName, parsedQueryParams)
 	if err != nil {
 		return err
 	}

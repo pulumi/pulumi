@@ -78,15 +78,21 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if defaultOrg != "" && cmd.orgName == "" {
 		cmd.orgName = defaultOrg
 	}
-	filterName := userName
-	if cmd.orgName != "" {
-		filterName = cmd.orgName
+	if cmd.orgName == "" {
+		cmd.orgName = userName
+	}
+	if cmd.orgName == userName {
+		return fmt.Errorf(
+			"%s is an individual account, not an organization."+
+				"Organization search is not supported for individual accounts",
+			userName,
+		)
 	}
 	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
 		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
 	}
 
-	res, err := cloudBackend.NaturalLanguageSearch(ctx, filterName, cmd.queryString)
+	res, err := cloudBackend.NaturalLanguageSearch(ctx, cmd.orgName, cmd.queryString)
 	if err != nil {
 		return err
 	}
