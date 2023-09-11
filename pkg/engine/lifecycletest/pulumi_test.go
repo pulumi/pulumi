@@ -4305,3 +4305,54 @@ func TestBadResourceOptionURNs(t *testing.T) {
 		})
 	}
 }
+
+func TestProviderChecksums(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	createResource := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if createResource {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: ins,
+				PluginChecksums: map[string][]byte{
+					"windows-x64": {0, 1, 2, 3, 4},
+				},
+			})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	// Check the checksum was saved in the provider resource
+	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[0].Type)
+	assert.Equal(t, "0001020304", snap.Resources[0].Inputs["pluginChecksums"].ObjectValue()["windows-x64"].StringValue())
+
+	// Delete the resource and ensure the checksums are passed to EnsurePlugins
+	createResource = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
+}

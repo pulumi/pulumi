@@ -262,6 +262,22 @@ class CallRequest(google.protobuf.message.Message):
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing_extensions.final
     class ConfigEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -283,6 +299,7 @@ class CallRequest(google.protobuf.message.Message):
     PROVIDER_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int
     CONFIG_FIELD_NUMBER: builtins.int
@@ -306,6 +323,9 @@ class CallRequest(google.protobuf.message.Message):
     """the version of the provider to use when servicing this request."""
     pluginDownloadURL: builtins.str
     """the pluginDownloadURL of the provider to use when servicing this request."""
+    @property
+    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of checksums of the provider to use when servicing this request."""
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -336,6 +356,7 @@ class CallRequest(google.protobuf.message.Message):
         provider: builtins.str = ...,
         version: builtins.str = ...,
         pluginDownloadURL: builtins.str = ...,
+        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         project: builtins.str = ...,
         stack: builtins.str = ...,
         config: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
@@ -347,7 +368,7 @@ class CallRequest(google.protobuf.message.Message):
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "pluginDownloadURL", b"pluginDownloadURL", "project", b"project", "provider", b"provider", "sourcePosition", b"sourcePosition", "stack", b"stack", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "project", b"project", "provider", b"provider", "sourcePosition", b"sourcePosition", "stack", b"stack", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___CallRequest = CallRequest
 

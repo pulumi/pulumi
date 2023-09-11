@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -33,9 +34,48 @@ import (
 )
 
 const (
-	versionKey        resource.PropertyKey = "version"
-	pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
+	versionKey         resource.PropertyKey = "version"
+	pluginDownloadKey  resource.PropertyKey = "pluginDownloadURL"
+	pluginChecksumsKey resource.PropertyKey = "pluginChecksums"
 )
+
+// SetProviderChecksums sets the provider plugin checksums in the given property map.
+func SetProviderChecksums(inputs resource.PropertyMap, value map[string][]byte) {
+	propMap := make(resource.PropertyMap)
+	for key, checksum := range value {
+		hex := hex.EncodeToString(checksum)
+		propMap[resource.PropertyKey(key)] = resource.NewStringProperty(hex)
+	}
+
+	inputs[pluginChecksumsKey] = resource.NewObjectProperty(propMap)
+}
+
+// GetProviderChecksums fetches a provider plugin checksums from the given property map.
+// If the checksums is not set, this function returns nil.
+func GetProviderChecksums(inputs resource.PropertyMap) (map[string][]byte, error) {
+	checksums, ok := inputs[pluginChecksumsKey]
+	if !ok {
+		return nil, nil
+	}
+	if !checksums.IsObject() {
+		return nil, fmt.Errorf("'%s' must be an object", pluginChecksumsKey)
+	}
+	result := make(map[string][]byte)
+	for key, value := range checksums.ObjectValue() {
+		if !value.IsString() {
+			return nil, fmt.Errorf("'%s[%s]' must be a string", pluginChecksumsKey, key)
+		}
+
+		bytes, err := hex.DecodeString(value.StringValue())
+		if err != nil {
+			return nil, fmt.Errorf("'%s[%s]' must be a hexadecimal string", pluginChecksumsKey, key)
+		}
+
+		result[string(key)] = bytes
+	}
+
+	return result, nil
+}
 
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {

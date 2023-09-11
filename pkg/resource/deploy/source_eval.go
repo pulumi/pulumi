@@ -338,6 +338,24 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		}
 	}
 
+	if req.PluginChecksums() != nil {
+		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using pluginChecksums %v from request",
+			req, req.PluginChecksums())
+		providers.SetProviderChecksums(inputs, req.PluginChecksums())
+	} else {
+		logging.V(5).Infof(
+			"newRegisterDefaultProviderEvent(%s): no pluginChecksums specified, falling back to default pluginChecksums",
+			req)
+		if pluginChecksums := d.defaultProviderInfo[req.Package()].Checksums; pluginChecksums != nil {
+			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginChecksums hit on %v",
+				req, pluginChecksums)
+			providers.SetProviderChecksums(inputs, pluginChecksums)
+		} else {
+			logging.V(5).Infof(
+				"newRegisterDefaultProviderEvent(%s): default pluginChecksums miss, sending empty map to engine", req)
+		}
+	}
+
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
@@ -656,10 +674,13 @@ func getProviderFromSource(
 	return provider, nil
 }
 
-func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string) (providers.ProviderRequest, error) {
+func parseProviderRequest(
+	pkg tokens.Package, version,
+	pluginDownloadURL string, pluginChecksums map[string][]byte,
+) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL), nil
+		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL, pluginChecksums), nil
 	}
 
 	parsedVersion, err := semver.Parse(version)
@@ -670,7 +691,7 @@ func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string)
 
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
-	return providers.NewProviderRequest(&parsedVersion, pkg, url), nil
+	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -713,7 +734,9 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+	providerReq, err := parseProviderRequest(
+		tok.Package(), req.GetVersion(),
+		req.GetPluginDownloadURL(), req.GetPluginChecksums())
 	if err != nil {
 		return nil, err
 	}
@@ -773,7 +796,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+	providerReq, err := parseProviderRequest(
+		tok.Package(), req.GetVersion(),
+		req.GetPluginDownloadURL(), req.GetPluginChecksums())
 	if err != nil {
 		return nil, err
 	}
@@ -865,7 +890,9 @@ func (rm *resmon) StreamInvoke(
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+	providerReq, err := parseProviderRequest(
+		tok.Package(), req.GetVersion(),
+		req.GetPluginDownloadURL(), req.GetPluginChecksums())
 	if err != nil {
 		return err
 	}
@@ -936,7 +963,9 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+		providerReq, err := parseProviderRequest(
+			t.Package(), req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums())
 		if err != nil {
 			return nil, err
 		}
@@ -1204,7 +1233,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRefs map[string]string
 
 	if custom && !providers.IsProviderType(t) || remote {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+		providerReq, err := parseProviderRequest(
+			t.Package(), req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums())
 		if err != nil {
 			return nil, err
 		}
