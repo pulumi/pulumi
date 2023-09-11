@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"sync"
 	"testing"
@@ -94,8 +93,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 func TestLanguage(t *testing.T) {
 	t.Parallel()
-
-	os.Setenv("PULUMI_ACCEPT", "true")
 
 	engineAddress, engine := runTestingHost(t)
 
