@@ -5,9 +5,6 @@
 
 ### Features
 
-- [cli] Adds Pulumi AI and Pulumi AI Web commands
-  [#13808](https://github.com/pulumi/pulumi/pull/13808)
-
 - [cli] Pass args from import to state converters.
   [#13862](https://github.com/pulumi/pulumi/pull/13862)
 
@@ -77,9 +74,6 @@
 
 
 ### Features
-
-- [cli] Adds basic Search and AI-assisted Search functionality
-  [#13611](https://github.com/pulumi/pulumi/pull/13611)
 
 - [engine] Support runtime plugins returning plugin checksums from GetRequiredPlugins.
   [#13776](https://github.com/pulumi/pulumi/pull/13776)
