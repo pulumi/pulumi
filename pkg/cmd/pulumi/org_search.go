@@ -268,11 +268,13 @@ func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) err
 	if err != nil {
 		return err
 	}
-	_, err = w.Write([]byte(urlInfo + "\n"))
+	_, err = w.Write([]byte(urlInfo + "\n" + results.URL + "\n"))
 	if err != nil {
 		return err
 	}
-	_, err = w.Write([]byte(results.URL))
+	_, err = w.Write(
+		[]byte(fmt.Sprintf("\nResources displayed are the result of the following Pulumi query:\n%s\n", results.Query)),
+	)
 	return err
 }
 

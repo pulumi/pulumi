@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ import (
 
 type searchAICmd struct {
 	searchCmd
+	orgName     string
 	queryString string
 	openWeb     bool
 }
@@ -98,7 +100,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	}
 	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err)
 	}
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
@@ -143,4 +145,8 @@ func newSearchAICmd() *cobra.Command {
 		"Open the search results in a web browser.",
 	)
 	return cmd
+}
+
+func (cmd *searchAICmd) RenderTable(result *apitype.ResourceSearchResponse) error {
+	return renderSearchTable(cmd.Stdout, result)
 }

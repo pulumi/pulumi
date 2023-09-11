@@ -25,6 +25,7 @@ type ResourceSearchResponse struct {
 	Aggregations map[string]Aggregation    `json:"aggregations,omitempty" yaml:"aggregations,omitempty"`
 	Pagination   *ResourceSearchPagination `json:"pagination,omitempty" yaml:"pagination,omitempty"`
 	URL          string
+	Query        string `json:"query,omitempty" yaml:"query,omitempty"`
 }
 
 // ResourceResult is the user-facing type for our indexed resources.
