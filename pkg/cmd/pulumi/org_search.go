@@ -159,7 +159,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	}
 	if cmd.orgName == userName {
 		return fmt.Errorf(
-			"%s is an individual account, not an organization. "+
+			"%s is an individual account, not an organization."+
 				"Organization search is not supported for individual accounts",
 			userName,
 		)
