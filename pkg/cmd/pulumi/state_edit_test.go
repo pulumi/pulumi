@@ -86,3 +86,37 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 	// The round-tripped snapshot text should be the same as the original.
 	assert.Equal(t, text, roundTrippedText)
 }
+
+func TestOpenInEditorMultiPart(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		command  string
+		filename string
+	}{
+		{
+			name:     "Simple command",
+			command:  "echo",
+			filename: "filename.txt",
+		},
+		{
+			name:     "Command with arguments",
+			command:  "echo Hello",
+			filename: "filename.txt",
+		},
+		{
+			name:     "Complex command",
+			command:  "echo --foo --bar a",
+			filename: "filename.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := openInEditorInternal(tt.command, tt.filename)
+			assert.NoError(t, err)
+		})
+	}
+}
