@@ -324,6 +324,8 @@ func (o *outputFormat) Render(cmd *searchCmd, result *apitype.ResourceSearchResp
 		return cmd.RenderTable(result)
 	case outputFormatYAML:
 		return cmd.RenderYAML(result)
+	case outputFormatCSV:
+		return cmd.RenderCSV(result.Resources, cmd.csvDelimiter.Rune())
 	default:
 		return fmt.Errorf("unknown output format %q", *o)
 	}

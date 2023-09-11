@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/config,display
-  description: Adds display of query, individual org validation, console query syntax alignment

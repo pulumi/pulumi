@@ -42,6 +42,10 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 		cmd.Stdout = os.Stdout
 	}
 
+	if cmd.outputFormat == "" {
+		cmd.outputFormat = outputFormatTable
+	}
+
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = currentBackend
 	}
