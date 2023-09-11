@@ -96,8 +96,7 @@ type searchCmd struct {
 	orgName      string
 	csvDelimiter Delimiter
 	outputFormat
-	queryParams []string
-	openWeb     bool
+	openWeb bool
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -171,7 +170,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
+	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
 	if err != nil {
 		return fmt.Errorf("table rendering error: %s", err)
 	}
@@ -309,21 +308,21 @@ func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
 	return err
 }
 
-func (o *outputFormat) Render(cmd *searchCmd, results []apitype.ResourceResult) error {
+func (o *outputFormat) Render(cmd *searchCmd, result *apitype.ResourceSearchResponse) error {
 	switch *o {
 	case outputFormatJSON:
-		return cmd.RenderJSON(results)
+		return cmd.RenderJSON(result)
 	case outputFormatTable:
-		return cmd.RenderTable(results)
+		return cmd.RenderTable(result)
 	case outputFormatYAML:
-		return cmd.RenderYAML(results)
+		return cmd.RenderYAML(result)
 	default:
 		return fmt.Errorf("unknown output format %q", *o)
 	}
 }
 
-func (cmd *searchCmd) RenderJSON(results []apitype.ResourceResult) error {
-	return renderSearchJSON(cmd.Stdout, results)
+func (cmd *searchCmd) RenderJSON(result *apitype.ResourceSearchResponse) error {
+	return renderSearchJSON(cmd.Stdout, result.Resources)
 }
 
 func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
@@ -335,6 +334,6 @@ func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
 	return err
 }
 
-func (cmd *searchCmd) RenderYAML(results []apitype.ResourceResult) error {
-	return renderSearchYAML(cmd.Stdout, results)
+func (cmd *searchCmd) RenderYAML(result *apitype.ResourceSearchResponse) error {
+	return renderSearchYAML(cmd.Stdout, result.Resources)
 }

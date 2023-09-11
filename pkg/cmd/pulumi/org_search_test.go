@@ -43,7 +43,8 @@ func TestSearch_cmd(t *testing.T) {
 	total := int64(132)
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
-			Stdout: &buff,
+			orgName: "org1",
+			Stdout:  &buff,
 			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 				return &stubHTTPBackend{
 					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
@@ -59,7 +60,8 @@ func TestSearch_cmd(t *testing.T) {
 									Modified: &modified,
 								},
 							},
-							URL: searchURL,
+							URL:   searchURL,
+							Total: &total,
 						}, nil
 					},
 					CurrentUserF: func() (string, []string, error) {
@@ -99,7 +101,7 @@ func (f *stubHTTPBackend) Search(
 }
 
 func (f *stubHTTPBackend) NaturalLanguageSearch(
-	ctx context.Context, orgName, query string, _ string,
+	ctx context.Context, orgName, query string,
 ) (*apitype.ResourceSearchResponse, error) {
 	return f.NaturalLanguageSearchF(ctx, orgName, query)
 }

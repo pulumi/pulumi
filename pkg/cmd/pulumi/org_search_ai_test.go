@@ -61,7 +61,8 @@ func TestSearchAI_cmd(t *testing.T) {
 	}
 	cmd := searchAICmd{
 		searchCmd: searchCmd{
-			Stdout: &buff,
+			orgName: "org1",
+			Stdout:  &buff,
 			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 				return b, nil
 			},

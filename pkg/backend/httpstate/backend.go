@@ -119,7 +119,7 @@ type Backend interface {
 		ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
 	NaturalLanguageSearch(
-		ctx context.Context, orgName string, query string, client string,
+		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
 }
 
@@ -1033,14 +1033,14 @@ func (b *cloudBackend) Search(
 }
 
 func (b *cloudBackend) NaturalLanguageSearch(
-	ctx context.Context, orgName string, queryString string, client string,
+	ctx context.Context, orgName string, queryString string,
 ) (*apitype.ResourceSearchResponse, error) {
 	parsedResults, err := b.Client().GetNaturalLanguageQueryResults(ctx, orgName, queryString)
 	if err != nil {
 		return nil, err
 	}
 	requestBody := apitype.PulumiQueryRequest{Query: parsedResults.Query}
-	results, err := b.Client().GetSearchQueryResults(ctx, orgName, &requestBody, client)
+	results, err := b.Client().GetSearchQueryResults(ctx, orgName, &requestBody, b.CloudConsoleURL())
 	if err != nil {
 		return nil, err
 	}
