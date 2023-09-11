@@ -22,12 +22,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
@@ -93,6 +96,7 @@ type searchCmd struct {
 	orgName      string
 	csvDelimiter Delimiter
 	outputFormat
+	openWeb bool
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -142,9 +146,16 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return err
+	}
 	userName, orgs, err := cloudBackend.CurrentUser()
 	if err != nil {
 		return err
+	}
+	if defaultOrg != "" && cmd.orgName == "" {
+		cmd.orgName = defaultOrg
 	}
 	filterName := userName
 	if cmd.orgName != "" {
@@ -159,7 +170,17 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
+	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	if err != nil {
+		return fmt.Errorf("table rendering error: %s", err)
+	}
+	if cmd.openWeb {
+		err = browser.OpenURL(res.URL)
+		if err != nil {
+			logging.Warningf("failed to open URL: %s", err)
+		}
+	}
+	return nil
 }
 
 func newSearchCmd() *cobra.Command {
@@ -171,6 +192,9 @@ func newSearchCmd() *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
+			if len(scmd.queryParams) == 0 {
+				return cmd.Help()
+			}
 			return scmd.Run(ctx, args)
 		},
 		),
@@ -186,7 +210,8 @@ func newSearchCmd() *cobra.Command {
 		&scmd.queryParams, "query", "q", nil,
 		"Key-value pairs to use as query parameters. "+
 			"Must be formatted like: -q key1=value1 -q key2=value2. "+
-			"Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
+			"Alternately, each parameter provided here can be in raw Pulumi query syntax form. "+
+			"At least one query parameter must be provided.",
 	)
 	cmd.PersistentFlags().VarP(
 		&scmd.outputFormat, "output", "o",
@@ -195,6 +220,10 @@ func newSearchCmd() *cobra.Command {
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&scmd.openWeb, "web", false,
+		"Open the search results in a web browser.",
 	)
 
 	return cmd
@@ -209,19 +238,39 @@ func sliceContains(slice []string, search string) bool {
 	return false
 }
 
-func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
+func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) error {
+	urlInfo := "Results are also visible in Pulumi Cloud:"
 	table := auto_table.New("utf8-heavy")
 	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
-	for _, r := range results {
+	for _, r := range results.Resources {
 		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
 	}
 	if errs := table.Errors(); errs != nil {
 		return errors.Join(errs...)
 	}
-	return table.RenderTo(w)
+	err := table.RenderTo(w)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(
+		[]byte(
+			fmt.Sprintf(
+				"Displaying %s of %s total results.\n",
+				strconv.Itoa(len(results.Resources)),
+				strconv.FormatInt(*results.Total, 10))),
+	)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte(urlInfo + "\n"))
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte(results.URL))
+	return err
 }
 
-func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
+func (cmd *searchCmd) RenderTable(results *apitype.ResourceSearchResponse) error {
 	return renderSearchTable(cmd.Stdout, results)
 }
 
@@ -259,21 +308,21 @@ func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
 	return err
 }
 
-func (o *outputFormat) Render(cmd *searchCmd, results []apitype.ResourceResult) error {
+func (o *outputFormat) Render(cmd *searchCmd, result *apitype.ResourceSearchResponse) error {
 	switch *o {
 	case outputFormatJSON:
-		return cmd.RenderJSON(results)
+		return cmd.RenderJSON(result)
 	case outputFormatTable:
-		return cmd.RenderTable(results)
+		return cmd.RenderTable(result)
 	case outputFormatYAML:
-		return cmd.RenderYAML(results)
+		return cmd.RenderYAML(result)
 	default:
 		return fmt.Errorf("unknown output format %q", *o)
 	}
 }
 
-func (cmd *searchCmd) RenderJSON(results []apitype.ResourceResult) error {
-	return renderSearchJSON(cmd.Stdout, results)
+func (cmd *searchCmd) RenderJSON(result *apitype.ResourceSearchResponse) error {
+	return renderSearchJSON(cmd.Stdout, result.Resources)
 }
 
 func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
@@ -285,6 +334,6 @@ func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
 	return err
 }
 
-func (cmd *searchCmd) RenderYAML(results []apitype.ResourceResult) error {
-	return renderSearchYAML(cmd.Stdout, results)
+func (cmd *searchCmd) RenderYAML(result *apitype.ResourceSearchResponse) error {
+	return renderSearchYAML(cmd.Stdout, result.Resources)
 }

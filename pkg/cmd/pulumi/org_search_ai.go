@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -31,6 +32,7 @@ import (
 type searchAICmd struct {
 	searchCmd
 	queryString string
+	openWeb     bool
 }
 
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
@@ -65,14 +67,19 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return err
+	}
 	userName, orgs, err := cloudBackend.CurrentUser()
 	if err != nil {
 		return err
 	}
-	var filterName string
-	if cmd.orgName == "" {
-		filterName = userName
-	} else {
+	if defaultOrg != "" && cmd.orgName == "" {
+		cmd.orgName = defaultOrg
+	}
+	filterName := userName
+	if cmd.orgName != "" {
 		filterName = cmd.orgName
 	}
 	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
@@ -83,7 +90,17 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return cmd.outputFormat.Render(&cmd.searchCmd, res.Resources)
+	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
+	}
+	if cmd.openWeb {
+		err = browser.OpenURL(res.URL)
+		if err != nil {
+			return fmt.Errorf("failed to open URL: %s", err)
+		}
+	}
+	return nil
 }
 
 func newSearchAICmd() *cobra.Command {
@@ -115,6 +132,9 @@ func newSearchAICmd() *cobra.Command {
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",
 	)
-
+	cmd.PersistentFlags().BoolVar(
+		&scmd.openWeb, "web", false,
+		"Open the search results in a web browser.",
+	)
 	return cmd
 }

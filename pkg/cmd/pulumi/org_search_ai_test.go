@@ -37,6 +37,7 @@ func TestSearchAI_cmd(t *testing.T) {
 	pack := "pack1"
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
+	total := int64(132)
 	b := &stubHTTPBackend{
 		NaturalLanguageSearchF: func(context.Context, string, string) (*apitype.ResourceSearchResponse, error) {
 			return &apitype.ResourceSearchResponse{
@@ -51,6 +52,7 @@ func TestSearchAI_cmd(t *testing.T) {
 						Modified: &modified,
 					},
 				},
+				Total: &total,
 			}, nil
 		},
 		CurrentUserF: func() (string, []string, error) {
@@ -59,7 +61,8 @@ func TestSearchAI_cmd(t *testing.T) {
 	}
 	cmd := searchAICmd{
 		searchCmd: searchCmd{
-			Stdout: &buff,
+			orgName: "org1",
+			Stdout:  &buff,
 			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 				return b, nil
 			},
