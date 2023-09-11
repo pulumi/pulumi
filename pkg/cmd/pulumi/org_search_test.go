@@ -93,7 +93,7 @@ type stubHTTPBackend struct {
 var _ httpstate.Backend = (*stubHTTPBackend)(nil)
 
 func (f *stubHTTPBackend) Search(
-	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, _ string,
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
 	return f.SearchF(ctx, orgName, queryParams)
 }

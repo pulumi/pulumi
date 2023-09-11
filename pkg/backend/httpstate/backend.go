@@ -116,7 +116,7 @@ type Backend interface {
 
 	// Queries the backend for resources based on the given query parameters.
 	Search(
-		ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, client string,
+		ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
 	NaturalLanguageSearch(
 		ctx context.Context, orgName string, query string, client string,
@@ -1027,9 +1027,9 @@ func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) res
 }
 
 func (b *cloudBackend) Search(
-	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, client string,
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
-	return b.Client().GetSearchQueryResults(ctx, orgName, queryParams, client)
+	return b.Client().GetSearchQueryResults(ctx, orgName, queryParams, b.CloudConsoleURL())
 }
 
 func (b *cloudBackend) NaturalLanguageSearch(

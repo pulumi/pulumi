@@ -1147,20 +1147,20 @@ func getNaturalLanguageSearchPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/search/resources/parse", url.PathEscape(orgName))
 }
 
-func getPulumiOrgSearchPath(client string, orgName string) string {
-	return fmt.Sprintf("%s/%s/resources", client, url.PathEscape(orgName))
+func getPulumiOrgSearchPath(baseURL string, orgName string) string {
+	return fmt.Sprintf("%s/%s/resources", baseURL, url.PathEscape(orgName))
 }
 
 // Pulumi Cloud Search Functions
 func (pc *Client) GetSearchQueryResults(
-	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, client string,
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, baseURL string,
 ) (*apitype.ResourceSearchResponse, error) {
 	var resp apitype.ResourceSearchResponse
 	err := pc.restCall(ctx, http.MethodGet, getSearchPath(orgName), queryParams, nil, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("querying search failed: %w", err)
 	}
-	resp.URL = fmt.Sprintf("%s?query=%s", getPulumiOrgSearchPath(client, orgName), url.QueryEscape(queryParams.Query))
+	resp.URL = fmt.Sprintf("%s?query=%s", getPulumiOrgSearchPath(baseURL, orgName), url.QueryEscape(queryParams.Query))
 	return &resp, nil
 }
 

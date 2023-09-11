@@ -98,7 +98,6 @@ type searchCmd struct {
 	outputFormat
 	queryParams []string
 	openWeb     bool
-	client      string
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -168,7 +167,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	parsedQueryParams := apitype.ParseQueryParams(cmd.queryParams)
-	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams, cmd.client)
+	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
 	if err != nil {
 		return err
 	}
@@ -227,11 +226,6 @@ func newSearchCmd() *cobra.Command {
 		&scmd.openWeb, "web", false,
 		"Open the search results in a web browser.",
 	)
-	cmd.PersistentFlags().StringVar(
-		&scmd.client, "client", "https://app.pulumi.com",
-		"The base URL of the Pulumi Cloud service to direct to. This defaults to https://app.pulumi.com.",
-	)
-	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	return cmd
 }
