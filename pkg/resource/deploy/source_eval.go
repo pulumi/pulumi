@@ -220,9 +220,6 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 			}
 			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
-			// Make sure to clean up before exiting.
-			defer contract.IgnoreClose(langhost)
-
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
 				MonitorAddress:   iter.mon.Address(),
