@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Pass args from import to state converters.

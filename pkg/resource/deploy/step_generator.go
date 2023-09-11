@@ -494,6 +494,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var hasOld bool
 	var alias []resource.Alias
 	var createdAt, modifiedAt *time.Time
+	// Important: Check the URN first, then aliases. Otherwise we may pick the wrong resource which
+	// could lead to a corrupt snapshot.
 	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
