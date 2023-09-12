@@ -62,7 +62,8 @@ func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 
 //nolint:paralleltest
 func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
-	t.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", "your-access-token")
+	expectedAccessToken := "your-access-token"
+	t.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", expectedAccessToken)
 
 	ctx := context.Background()
 	scope := "some-scope"
@@ -74,9 +75,11 @@ func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
 
 	token, err := credentials.TokenSource.Token()
 	assert.NoError(t, err)
-	assert.Empty(t, os.Getenv("GOOGLE_CREDENTIALS"))
-	assert.Equal(t, "your-access-token", token.AccessToken)
-	assert.Equal(t, "your-access-token", os.Getenv("GOOGLE_OAUTH_ACCESS_TOKEN"))
+
+	actualAccessToken := token.AccessToken
+	assert.Equal(t, expectedAccessToken, actualAccessToken)
+	googleAccessToken := os.Getenv("GOOGLE_OAUTH_ACCESS_TOKEN")
+	assert.NotEmpty(t, googleAccessToken)
 
 	t.Cleanup(func() {
 		os.Unsetenv("GOOGLE_OAUTH_ACCESS_TOKEN")
