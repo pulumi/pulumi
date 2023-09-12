@@ -31,6 +31,12 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	var creds map[string]interface{}
 	err = json.Unmarshal([]byte(os.Getenv("GOOGLE_CREDENTIALS")), &creds)
 	assert.NoError(t, err)
+	assert.Equal(t, creds["type"], "service_account")
+	assert.Equal(t, creds["project_id"], "your-project-id")
+	assert.Equal(t, creds["private_key_id"], "your-private-key-id")
+	assert.Equal(t, creds["private_key"], "your-private-key")
+	assert.Equal(t, creds["client_email"], "your-client-email")
+	assert.Equal(t, creds["client_id"], "your-client-id")
 
 	t.Cleanup(func() {
 		os.Unsetenv("GOOGLE_CREDENTIALS")
