@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest
 func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
-	t.Parallel()
 	os.Setenv("GOOGLE_CREDENTIALS", `{
 		"type": "service_account",
 		"project_id": "your-project-id",
@@ -37,8 +37,8 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+//nolint:paralleltest
 func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
-	t.Parallel()
 	os.Setenv("GOOGLE_CREDENTIALS", `{}`)
 
 	defer os.Unsetenv("GOOGLE_CREDENTIALS")
@@ -52,8 +52,8 @@ func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 	assert.Nil(t, credentials, "Expected nil credentials")
 }
 
+//nolint:paralleltest
 func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
-	t.Parallel()
 	os.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", "your-access-token")
 	defer os.Unsetenv("GOOGLE_OAUTH_ACCESS_TOKEN")
 
