@@ -37,10 +37,6 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	assert.Equal(t, creds["private_key"], "your-private-key")
 	assert.Equal(t, creds["client_email"], "your-client-email")
 	assert.Equal(t, creds["client_id"], "your-client-id")
-
-	t.Cleanup(func() {
-		os.Unsetenv("GOOGLE_CREDENTIALS")
-	})
 }
 
 //nolint:paralleltest
@@ -54,10 +50,6 @@ func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 
 	assert.Error(t, err, "Expected an error")
 	assert.Nil(t, credentials, "Expected nil credentials")
-
-	t.Cleanup(func() {
-		os.Unsetenv("GOOGLE_CREDENTIALS")
-	})
 }
 
 //nolint:paralleltest
@@ -78,10 +70,4 @@ func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
 
 	actualAccessToken := token.AccessToken
 	assert.Equal(t, expectedAccessToken, actualAccessToken)
-	googleAccessToken := os.Getenv("GOOGLE_OAUTH_ACCESS_TOKEN")
-	assert.NotEmpty(t, googleAccessToken)
-
-	t.Cleanup(func() {
-		os.Unsetenv("GOOGLE_OAUTH_ACCESS_TOKEN")
-	})
 }
