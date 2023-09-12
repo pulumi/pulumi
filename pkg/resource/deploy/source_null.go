@@ -54,6 +54,6 @@ func (iter *nullSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *nullSourceIterator) Next() (SourceEvent, result.Result) {
+func (iter *nullSourceIterator) Next() (SourceEvent, error) {
 	return nil, nil // means "done"
 }

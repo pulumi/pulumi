@@ -51,7 +51,7 @@ type SourceIterator interface {
 	io.Closer
 
 	// Next returns the next event from the source.
-	Next() (SourceEvent, result.Result)
+	Next() (SourceEvent, error)
 }
 
 // SourceResourceMonitor directs resource operations from the `Source` to various resource
