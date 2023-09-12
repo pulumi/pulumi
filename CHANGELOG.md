@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.82.0 (2023-09-12)
+
+
+### Features
+
+- [cli] Adds `pulumi org search` and `pulumi org search ai` for Pulumi Insights in the CLI. These commands render a table containing all resources in a given organization matching the query provided.
+
+  `-q <query>` will search for resources in the organization using a query provided in Pulumi Query Syntax.
+
+  `-o <json|csv|yaml>` flag customizes the output.
+
+  The `ai` command uses AI Assist to translate a natural language query into Pulumi Query Syntax.
+
+  Default table output will show a count of displayed resources out of the total. Additional output includes the query run, a URL to view and explore search results in the Pulumi Console and the query, and the query run.
+
+  Additional output is suppressed for non-table output formats such that they can be easily piped into other tools.
+
+  The `--web` flag will open the search results in a default browser.
+  [#13611](https://github.com/pulumi/pulumi/pull/13611)
+  [#13879](https://github.com/pulumi/pulumi/pull/13879)
+  [#13888](https://github.com/pulumi/pulumi/pull/13888)
+  [#13846](https://github.com/pulumi/pulumi/pull/13846)
+
+- [cli] Adds `pulumi ai` command - currently the only functionality in this group is `pulumi ai web`, which will open the Pulumi AI application in a default browser. An optional `--prompt/-p` flag can be provided with a query to pre-populate the search bar in the Pulumi AI application. By default, that prompt will be submitted automatically, but passing `--no-auto-submit` will prevent that.
+  [#13808](https://github.com/pulumi/pulumi/pull/13808)
+  [#13846](https://github.com/pulumi/pulumi/pull/13846)
+
+- [engine] Support SDKs sending plugin checksums as part of resource requests.
+  [#13789](https://github.com/pulumi/pulumi/pull/13789)
+
+
+### Bug Fixes
+
+- [cli/new] Fixes `pulumi policy new <template-name>` to not require `--yes` when run non-interactively.
+  [#13902](https://github.com/pulumi/pulumi/pull/13902)
+
 ## 3.81.0 (2023-09-06)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Fixes `pulumi policy new <template-name>` to not require `--yes` when run non-interactively.
