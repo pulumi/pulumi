@@ -66,28 +66,28 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	return NewSnapshotManager(sp, baseSnap), sp
 }
 
-func NewResourceWithDeps(name string, deps []resource.URN) *resource.State {
+func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
 	return &resource.State{
 		Type:         tokens.Type("test"),
-		URN:          resource.URN(name),
+		URN:          urn,
 		Inputs:       make(resource.PropertyMap),
 		Outputs:      make(resource.PropertyMap),
 		Dependencies: deps,
 	}
 }
 
-func NewResourceWithInputs(name string, inputs resource.PropertyMap) *resource.State {
+func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *resource.State {
 	return &resource.State{
 		Type:         tokens.Type("test"),
-		URN:          resource.URN(name),
+		URN:          urn,
 		Inputs:       inputs,
 		Outputs:      make(resource.PropertyMap),
 		Dependencies: []resource.URN{},
 	}
 }
 
-func NewResource(name string, deps ...resource.URN) *resource.State {
-	return NewResourceWithDeps(name, deps)
+func NewResource(urn resource.URN, deps ...resource.URN) *resource.State {
+	return NewResourceWithDeps(urn, deps)
 }
 
 func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
@@ -98,10 +98,17 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 	}, b64.NewBase64SecretsManager(), resources, nil)
 }
 
+var (
+	aUniqueUrn          = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn")
+	aUniqueUrnResourceA = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-a")
+	aUniqueUrnResourceB = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-b")
+	aUniqueUrnResourceP = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-p")
+)
+
 func TestIdenticalSames(t *testing.T) {
 	t.Parallel()
 
-	sameState := NewResource("a-unique-urn")
+	sameState := NewResource(aUniqueUrn)
 	snap := NewSnapshot([]*resource.State{
 		sameState,
 	})
@@ -109,7 +116,7 @@ func TestIdenticalSames(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 
 	// The engine generates a SameStep on sameState.
-	engineGeneratedSame := NewResource(string(sameState.URN))
+	engineGeneratedSame := NewResource(sameState.URN)
 	same := deploy.NewSameStep(nil, nil, sameState, engineGeneratedSame)
 
 	mutation, err := manager.BeginMutation(same)
@@ -138,12 +145,12 @@ func TestIdenticalSames(t *testing.T) {
 func TestSamesWithEmptyDependencies(t *testing.T) {
 	t.Parallel()
 
-	res := NewResourceWithDeps("a-unique-urn-resource-a", nil)
+	res := NewResourceWithDeps(aUniqueUrnResourceA, nil)
 	snap := NewSnapshot([]*resource.State{
 		res,
 	})
 	manager, sp := MockSetup(t, snap)
-	resUpdated := NewResourceWithDeps(string(res.URN), []resource.URN{})
+	resUpdated := NewResourceWithDeps(res.URN, []resource.URN{})
 	same := deploy.NewSameStep(nil, nil, res, resUpdated)
 	mutation, err := manager.BeginMutation(same)
 	assert.NoError(t, err)
@@ -160,7 +167,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter, config.NopEncrypter)
 	assert.NoError(t, err)
 
-	res := NewResourceWithInputs("a-unique-urn-resource-a", inputs)
+	res := NewResourceWithInputs(aUniqueUrnResourceA, inputs)
 	snap := NewSnapshot([]*resource.State{
 		res,
 	})
@@ -172,7 +179,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 	inputsUpdated, err := plugin.UnmarshalProperties(marshalledInputs, plugin.MarshalOptions{})
 	assert.NoError(t, err)
 
-	resUpdated := NewResourceWithInputs(string(res.URN), inputsUpdated)
+	resUpdated := NewResourceWithInputs(res.URN, inputsUpdated)
 	same := deploy.NewSameStep(nil, nil, res, resUpdated)
 	mutation, err := manager.BeginMutation(same)
 	assert.NoError(t, err)
@@ -190,8 +197,8 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 func TestSamesWithDependencyChanges(t *testing.T) {
 	t.Parallel()
 
-	resourceA := NewResource("a-unique-urn-resource-a")
-	resourceB := NewResource("a-unique-urn-resource-b", resourceA.URN)
+	resourceA := NewResource(aUniqueUrnResourceA)
+	resourceB := NewResource(aUniqueUrnResourceB, resourceA.URN)
 
 	// The setup: the snapshot contains two resources, A and B, where
 	// B depends on A. We're going to begin a mutation in which B no longer
@@ -203,10 +210,10 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 
 	manager, sp := MockSetup(t, snap)
 
-	resourceBUpdated := NewResource(string(resourceB.URN))
+	resourceBUpdated := NewResource(resourceB.URN)
 	// note: no dependencies
 
-	resourceAUpdated := NewResource(string(resourceA.URN), resourceBUpdated.URN)
+	resourceAUpdated := NewResource(resourceA.URN, resourceBUpdated.URN)
 	// note: now depends on B
 
 	// The engine first generates a Same for b:
@@ -275,7 +282,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 
 	// Generate a same for the provider.
-	provUpdated := NewResource(string(provider.URN))
+	provUpdated := NewResource(provider.URN)
 	provUpdated.Custom, provUpdated.Type = true, provider.Type
 	provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 	mutation, err := manager.BeginMutation(provSame)
@@ -286,7 +293,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	assert.NoError(t, err)
 
 	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
-	pUpdated := NewResource(string(resourceP.URN))
+	pUpdated := NewResource(resourceP.URN)
 	pUpdated.Protect = !resourceP.Protect
 	pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
 	mutation, err = manager.BeginMutation(pSame)
@@ -295,7 +302,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	assert.NoError(t, err)
 
 	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
-	aUpdated := NewResource(string(resourceA.URN))
+	aUpdated := NewResource(resourceA.URN)
 	aUpdated.Protect = !resourceA.Protect
 	aSame := deploy.NewSameStep(nil, nil, resourceA, aUpdated)
 	mutation, err = manager.BeginMutation(aSame)
@@ -321,29 +328,33 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider")
 	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgA", "id"
 
-	resourceP := NewResource("a-unique-urn-resource-p")
-	resourceA := NewResource("a-unique-urn-resource-a")
+	resourceP := NewResource(aUniqueUrnResourceP)
+	resourceA := NewResource(aUniqueUrnResourceA)
 
 	var changes []*resource.State
 
 	// Change the "custom" bit.
-	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes = append(changes, NewResource(resourceA.URN))
 	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
 
-	// Change the parent.
-	changes = append(changes, NewResource(string(resourceA.URN)))
+	// Change the parent, this also has to change the URN.
+	changes = append(changes, NewResource(resourceA.URN))
+	changes[1].URN = resource.NewURN(
+		resourceA.URN.Stack(), resourceA.URN.Project(),
+		resourceP.URN.QualifiedType(), resourceA.URN.Type(),
+		resourceA.URN.Name())
 	changes[1].Parent = resourceP.URN
 
 	// Change the "protect" bit.
-	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes = append(changes, NewResource(resourceA.URN))
 	changes[2].Protect = !resourceA.Protect
 
 	// Change the resource outputs.
-	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes = append(changes, NewResource(resourceA.URN))
 	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 
 	// Change the resource source position.
-	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes = append(changes, NewResource(resourceA.URN))
 	changes[4].SourcePosition = "project:///foo.ts#1,2"
 
 	snap := NewSnapshot([]*resource.State{
@@ -356,7 +367,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		manager, sp := MockSetup(t, snap)
 
 		// Generate a same for the provider.
-		provUpdated := NewResource(string(provider.URN))
+		provUpdated := NewResource(provider.URN)
 		provUpdated.Custom, provUpdated.Type = true, provider.Type
 		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 		mutation, err := manager.BeginMutation(provSame)
@@ -368,7 +379,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.Empty(t, sp.SavedSnapshots)
 
 		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
-		pUpdated := NewResource(string(resourceP.URN))
+		pUpdated := NewResource(resourceP.URN)
 		pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
 		mutation, err = manager.BeginMutation(pSame)
 		assert.NoError(t, err)
@@ -387,6 +398,8 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
+		// The snapshot might edit the URN so don't check against that
+		c.URN = inSnapshot.URN
 		assert.Equal(t, c, inSnapshot)
 
 		err = manager.Close()
@@ -407,14 +420,14 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		resourceA,
 	})
 
-	changes = []*resource.State{NewResource(string(resourceA.URN))}
+	changes = []*resource.State{NewResource(resourceA.URN)}
 	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
 
 	for _, c := range changes {
 		manager, sp := MockSetup(t, snap)
 
 		// Generate sames for the providers.
-		provUpdated := NewResource(string(provider.URN))
+		provUpdated := NewResource(provider.URN)
 		provUpdated.Custom, provUpdated.Type = true, provider.Type
 		provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
 		mutation, err := manager.BeginMutation(provSame)
@@ -426,7 +439,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.Empty(t, sp.SavedSnapshots)
 
 		// The engine generates a Same for p. This is not a meaningful change, so the snapshot is not written.
-		prov2Updated := NewResource(string(provider2.URN))
+		prov2Updated := NewResource(provider2.URN)
 		prov2Updated.Custom, prov2Updated.Type = true, provider.Type
 		prov2Same := deploy.NewSameStep(nil, nil, provider2, prov2Updated)
 		mutation, err = manager.BeginMutation(prov2Same)
@@ -543,11 +556,11 @@ func TestVexingDeployment(t *testing.T) {
 	}
 
 	// b now depends on nothing
-	bPrime := NewResource(string(b.URN))
+	bPrime := NewResource(b.URN)
 	applyStep(deploy.NewSameStep(nil, MockRegisterResourceEvent{}, b, bPrime))
 
 	// c now only depends on b
-	cPrime := NewResource(string(c.URN), bPrime.URN)
+	cPrime := NewResource(c.URN, bPrime.URN)
 
 	// mocking out the behavior of a provider indicating that this resource needs to be deleted
 	createReplacement := deploy.NewCreateReplacementStep(nil, MockRegisterResourceEvent{}, c, cPrime, nil, nil, nil, true)
@@ -559,7 +572,7 @@ func TestVexingDeployment(t *testing.T) {
 
 	// cPrime now exists, c is now pending deletion
 	// dPrime now depends on cPrime, which got replaced
-	dPrime := NewResource(string(d.URN), cPrime.URN)
+	dPrime := NewResource(d.URN, cPrime.URN)
 	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil, nil, nil, nil))
 
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]

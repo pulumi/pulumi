@@ -24,9 +24,12 @@ import (
 
 func TestStateBuilder(t *testing.T) {
 	t.Parallel()
-	s0 := &resource.State{}
+	s0 := &resource.State{
+		URN: "urn:pulumi:prod::st::cust:res:R::a-res",
+	}
 
 	s1 := &resource.State{
+		URN:      "urn:pulumi:prod::st::cust:res:R$cust:res:R::a-res",
 		Parent:   "urn:pulumi:prod::st::cust:res:R::my-res",
 		Provider: "urn:pulumi:prod::st::cust:prov:P::my-prov",
 		Dependencies: []resource.URN{

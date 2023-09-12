@@ -190,7 +190,7 @@ func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) res
 	stack, project, _ := p.getNames()
 	var pt tokens.Type
 	if parent != "" {
-		pt = parent.Type()
+		pt = parent.QualifiedType()
 	}
 	return resource.NewURN(stack.Q(), project, pt, typ, tokens.QName(name))
 }

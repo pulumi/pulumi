@@ -43,45 +43,58 @@ func updateDependencies(dependencies []resource.URN, oldUrn resource.URN, newUrn
 	return updatedDependencies
 }
 
-// stateRenameOperation renames a resource (or provider) and mutates/rewrites references to it in the snapshot.
-func stateRenameOperation(
-	urn resource.URN, newResourceName tokens.QName, opts display.Options, snap *deploy.Snapshot,
+// stateReurnOperation changes the URN for a resource and mutates/rewrites references to it in the snapshot.
+func stateReurnOperation(
+	oldURN resource.URN, newURN resource.URN, opts display.Options, snap *deploy.Snapshot,
 ) error {
+	contract.Requiref(oldURN != "", "oldURN", "must not be empty")
+	contract.Requiref(newURN != "", "newURN", "must not be empty")
+
 	// Check whether the input URN corresponds to an existing resource
-	existingResources := edit.LocateResource(snap, urn)
+	existingResources := edit.LocateResource(snap, oldURN)
 	if len(existingResources) != 1 {
 		return errors.New("The input URN does not correspond to an existing resource")
 	}
 
-	contract.Assertf(tokens.IsQName(string(newResourceName)),
-		"QName must be valid")
+	// If the URN hasn't changed then there's nothing to do.
+	if oldURN == newURN {
+		return nil
+	}
 
 	inputResource := existingResources[0]
-	oldUrn := inputResource.URN
-	// update the URN with only the name part changed
-	newUrn := oldUrn.Rename(string(newResourceName))
+	contract.Assertf(inputResource.URN == oldURN, "The input resource does not match the input URN")
 	// Check whether the new URN _does not_ correspond to an existing resource
-	candidateResources := edit.LocateResource(snap, newUrn)
+	candidateResources := edit.LocateResource(snap, newURN)
 	if len(candidateResources) > 0 {
-		return errors.New("The chosen new name for the state corresponds to an already existing resource")
+		return errors.New("The chosen new urn for the state corresponds to an already existing resource")
 	}
 
 	// Update the URN of the input resource
-	inputResource.URN = newUrn
+	inputResource.URN = newURN
 	// Update the dependants of the input resource
 	for _, existingResource := range snap.Resources {
 		// update resources other than the input resource
 		if existingResource.URN != inputResource.URN {
 			// Update dependencies
-			existingResource.Dependencies = updateDependencies(existingResource.Dependencies, oldUrn, newUrn)
+			existingResource.Dependencies = updateDependencies(existingResource.Dependencies, oldURN, newURN)
 			// Update property dependencies
 			for property, dependencies := range existingResource.PropertyDependencies {
-				existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldUrn, newUrn)
+				existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldURN, newURN)
 			}
 
 			// Update parent, if any.
-			if existingResource.Parent == oldUrn {
-				existingResource.Parent = newUrn
+			if existingResource.Parent == oldURN {
+				existingResource.Parent = newURN
+				// We also need to update this resources URN now
+				oldChildURN := existingResource.URN
+				newChildURN := resource.NewURN(
+					oldChildURN.Stack(), oldChildURN.Project(),
+					newURN.QualifiedType(), oldChildURN.Type(),
+					oldChildURN.Name())
+				err := stateReurnOperation(oldChildURN, newChildURN, opts, snap)
+				if err != nil {
+					return fmt.Errorf("failed to update %s with new parent %s: %w", oldChildURN, newURN, err)
+				}
 			}
 		}
 	}
@@ -100,7 +113,7 @@ func stateRenameOperation(
 			}
 
 			// Skip resources that don't use the renamed provider.
-			if curResourceProviderRef.URN() != oldUrn {
+			if curResourceProviderRef.URN() != oldURN {
 				continue
 			}
 
@@ -112,7 +125,7 @@ func stateRenameOperation(
 
 	// If the renamed resource is a Provider, fix all resources referring to the old name.
 	if providers.IsProviderType(inputResource.Type) {
-		newRef, err := providers.NewReference(newUrn, inputResource.ID)
+		newRef, err := providers.NewReference(newURN, inputResource.ID)
 		if err != nil {
 			return err
 		}
@@ -120,6 +133,17 @@ func stateRenameOperation(
 	}
 
 	return nil
+}
+
+// stateRenameOperation renames a resource (or provider) and mutates/rewrites references to it in the snapshot.
+func stateRenameOperation(
+	urn resource.URN, newResourceName tokens.QName, opts display.Options, snap *deploy.Snapshot,
+) error {
+	contract.Assertf(tokens.IsQName(string(newResourceName)),
+		"QName must be valid")
+	// update the URN with only the name part changed
+	newUrn := urn.Rename(string(newResourceName))
+	return stateReurnOperation(urn, newUrn, opts, snap)
 }
 
 //nolint:lll

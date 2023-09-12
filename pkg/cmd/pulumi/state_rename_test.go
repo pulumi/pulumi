@@ -117,7 +117,7 @@ func TestStateRename_updatesChildren(t *testing.T) {
 
 	provider := resource.URN("urn:pulumi:dev::pets::random::provider")
 	parent := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::parent")
-	child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::child")
+	child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet$random:index/randomPet:RandomPet::child")
 
 	snap := deploy.Snapshot{
 		Resources: []*resource.State{

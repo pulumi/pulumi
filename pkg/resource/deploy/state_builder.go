@@ -29,6 +29,11 @@ func newStateBuilder(state *resource.State) *stateBuilder {
 	return &stateBuilder{*state, state, false}
 }
 
+func (sb *stateBuilder) withUpdatedURN(update func(resource.URN) resource.URN) *stateBuilder {
+	sb.setURN(&sb.state.URN, update(sb.state.URN))
+	return sb
+}
+
 func (sb *stateBuilder) withUpdatedParent(update func(resource.URN) resource.URN) *stateBuilder {
 	if sb.state.Parent != "" {
 		sb.setURN(&sb.state.Parent, update(sb.state.Parent))

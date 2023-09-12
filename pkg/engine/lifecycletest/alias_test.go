@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -1506,4 +1507,144 @@ func TestParentAlias(t *testing.T) {
 	assert.Nil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
+}
+
+func TestSplitUpdateComponentAliases(t *testing.T) {
+	t.Parallel()
+
+	// This is a test for https://github.com/pulumi/pulumi/issues/13903 to check that if a component is
+	// aliased the internal resources follow it across a split deployment.
+
+	mode := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					// We should only create things in the first pass
+					assert.Equal(t, 0, mode, "%s tried to create but should be aliased", urn)
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		switch mode {
+		case 0:
+			// Default case, make "resA", and "resB" a component with "resA" as its parent and "resC" in the component
+			aURN, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+			bURN, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typB",
+				"resB",
+				false,
+				deploytest.ResourceOptions{
+					Parent: aURN,
+				})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typC",
+				"resC",
+				true,
+				deploytest.ResourceOptions{
+					Parent: bURN,
+				})
+			assert.NoError(t, err)
+
+		case 1:
+			// Delete "resA" and re-parent "resB" to the root but then fail before getting to resC.
+			_, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typB",
+				"resB",
+				false,
+				deploytest.ResourceOptions{
+					AliasURNs: []resource.URN{
+						"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB",
+					},
+				})
+			assert.NoError(t, err)
+
+			return errors.New("something went bang")
+
+		case 2:
+			// Update again but this time succeed and register C.
+			bURN, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typB",
+				"resB",
+				false,
+				deploytest.ResourceOptions{
+					AliasURNs: []resource.URN{
+						"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB",
+					},
+				})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typC",
+				"resC",
+				true,
+				deploytest.ResourceOptions{
+					Parent: bURN,
+				})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update for initial state with "resA", "resB", and "resC".
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[2].Parent)
+	assert.Equal(t,
+		resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB$pkgA:m:typC::resC"),
+		snap.Resources[3].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB"), snap.Resources[3].Parent)
+
+	// Run the next case, resB should be re-parented to the root. A should still be left (because we couldn't
+	// tell it needed to delete due to the error), C should have it's old URN but new parent because it wasn't
+	// registered.
+	mode = 1
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN(""), snap.Resources[0].Parent)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[2].URN)
+	// Even though we didn't register C its URN must update to take the re-parenting into account.
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typC::resC"), snap.Resources[3].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[3].Parent)
+
+	mode = 2
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN(""), snap.Resources[0].Parent)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typC::resC"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[2].Parent)
 }
