@@ -189,7 +189,7 @@ type Backend interface {
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) result.Result
 
 	// Query against the resource outputs in a stack's state checkpoint.
-	Query(ctx context.Context, op QueryOperation) result.Result
+	Query(ctx context.Context, op QueryOperation) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).

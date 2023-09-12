@@ -1022,7 +1022,7 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
+func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) error {
 	return b.query(ctx, op, nil /*events*/)
 }
 
@@ -1181,7 +1181,7 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 // Cloud.
 func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 	callerEventsOpt chan<- engine.Event,
-) result.Result {
+) error {
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
