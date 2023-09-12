@@ -17,7 +17,7 @@ __all__ = [
 @pulumi.output_type
 class Container(dict):
     def __init__(__self__, *,
-                 size: 'ContainerSize',
+                 size: Optional['ContainerSize'] = None,
                  brightness: Optional['ContainerBrightness'] = None,
                  color: Optional[str] = None,
                  material: Optional[str] = None):

@@ -18,8 +18,8 @@ __all__ = ['RubberTreeArgs', 'RubberTree']
 @pulumi.input_type
 class RubberTreeArgs:
     def __init__(__self__, *,
-                 diameter: pulumi.Input['Diameter'],
-                 type: pulumi.Input['RubberTreeVariety'],
+                 diameter: Optional[pulumi.Input['Diameter']] = None,
+                 type: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  container: Optional[pulumi.Input['_root_inputs.ContainerArgs']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
                  size: Optional[pulumi.Input['TreeSize']] = None):
