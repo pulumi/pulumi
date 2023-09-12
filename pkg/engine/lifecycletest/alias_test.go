@@ -1507,3 +1507,132 @@ func TestParentAlias(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 }
+
+func TestRemoteComponentAliases(t *testing.T) {
+	t.Parallel()
+
+	// Test that aliases work for remote component resources.
+
+	mode := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					// We should only create things in the first pass
+					assert.Equal(t, 0, mode, "%s tried to create but should be aliased", urn)
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ConstructF: func(
+					monitor *deploytest.ResourceMonitor,
+					typ string,
+					name string,
+					parent resource.URN,
+					inputs resource.PropertyMap,
+					info plugin.ConstructInfo,
+					options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					assert.Equal(t, "pkgA:m:typB", typ)
+
+					urn, _, _, err := monitor.RegisterResource(
+						tokens.Type(typ),
+						name,
+						false,
+						deploytest.ResourceOptions{
+							Parent:  parent,
+							Aliases: options.Aliases,
+						})
+					assert.NoError(t, err)
+
+					_, _, _, err = monitor.RegisterResource(
+						"pkgA:m:typC",
+						"resC",
+						true,
+						deploytest.ResourceOptions{
+							Parent: urn,
+						})
+					assert.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN: urn,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		switch mode {
+		case 0:
+			// Default case, make "resA", and "resB" with "resA" as its parent.
+			aURN, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typB",
+				"resB",
+				false,
+				deploytest.ResourceOptions{
+					Remote: true,
+					Parent: aURN,
+				})
+			assert.NoError(t, err)
+
+		case 1:
+			// Delete "resA" and re-parent "resB" to the root.
+			_, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typB",
+				"resB",
+				false,
+				deploytest.ResourceOptions{
+					Remote: true,
+					AliasURNs: []resource.URN{
+						"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB",
+					},
+				})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update for initial state with "resA", "resB", and "resC".
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[2].Parent)
+	assert.Equal(t,
+		resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB$pkgA:m:typC::resC"),
+		snap.Resources[3].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::resB"), snap.Resources[3].Parent)
+
+	// Run the next case, resA should be deleted and resB should be re-parented to the root as well as resC.
+	mode = 1
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN(""), snap.Resources[1].Parent)
+	assert.Equal(t,
+		resource.URN("urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typC::resC"),
+		snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[2].Parent)
+}

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix aliases in remote component resources.
