@@ -1,3 +1,5 @@
+// Copyright 2023, Pulumi Corporation.  All rights reserved.
+
 package schema
 
 type BooleanBuilder struct {

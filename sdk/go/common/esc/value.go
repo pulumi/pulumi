@@ -1,10 +1,16 @@
-// Copyright 2022, Pulumi Corporation.  All rights reserved.
+// Copyright 2023, Pulumi Corporation.  All rights reserved.
 
 package environments
 
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
+	"golang.org/x/exp/maps"
 )
 
 // ValueType defines the types of concrete values stored inside a Value.
@@ -93,7 +99,7 @@ func (v *Value) UnmarshalJSON(data []byte) error {
 // map[string]any).
 func (v Value) ToJSON() any {
 	if v.Unknown {
-		return "<unknown>"
+		return "[unknown]"
 	}
 	switch pv := v.Value.(type) {
 	case []Value:
@@ -111,4 +117,48 @@ func (v Value) ToJSON() any {
 	default:
 		return pv
 	}
+}
+
+// ToString returns the string representation of this value. If redact is true, secrets are replaced with [secret].
+func (v Value) ToString(redact bool) string {
+	if v.Unknown {
+		return "[unknown]"
+	}
+	if v.Secret {
+		return "[secret]"
+	}
+
+	switch pv := v.Value.(type) {
+	case bool:
+		if pv {
+			return "true"
+		}
+		return "false"
+	case json.Number:
+		return pv.String()
+	case string:
+		return pv
+	case []Value:
+		vals := make([]string, len(pv))
+		for i, v := range pv {
+			vals[i] = strconv.Quote(v.ToString(redact))
+		}
+		return strings.Join(vals, ",")
+	case map[string]Value:
+		keys := maps.Keys(pv)
+		sort.Strings(keys)
+
+		pairs := make([]string, len(pv))
+		for i, k := range keys {
+			pairs[i] = fmt.Sprintf("%q=%q", k, pv[k].ToString(redact))
+		}
+		return strings.Join(pairs, ",")
+	default:
+		return ""
+	}
+}
+
+// String is shorthand for ToString(true).
+func (v Value) String() string {
+	return v.ToString(true)
 }
