@@ -157,16 +157,21 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if defaultOrg != "" && cmd.orgName == "" {
 		cmd.orgName = defaultOrg
 	}
-	filterName := userName
+	if cmd.orgName == userName {
+		return fmt.Errorf(
+			"%s is an individual account, not an organization. "+
+				"Organization search is not supported for individual accounts",
+			userName,
+		)
+	}
 	if cmd.orgName != "" {
 		if !sliceContains(orgs, cmd.orgName) {
 			return fmt.Errorf("user %s is not a member of organization %s", userName, cmd.orgName)
 		}
-		filterName = cmd.orgName
 	}
 
 	parsedQueryParams := apitype.ParseQueryParams(cmd.queryParams)
-	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
+	res, err := cloudBackend.Search(ctx, cmd.orgName, parsedQueryParams)
 	if err != nil {
 		return err
 	}
@@ -204,14 +209,15 @@ func newSearchCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&scmd.orgName, "org", "",
-		"Name of the organization to search. Defaults to the current user's organization.",
+		"Name of the organization to search. Defaults to the current user's default organization.",
 	)
 	cmd.PersistentFlags().StringArrayVarP(
 		&scmd.queryParams, "query", "q", nil,
-		"Key-value pairs to use as query parameters. "+
-			"Must be formatted like: -q key1=value1 -q key2=value2. "+
-			"Alternately, each parameter provided here can be in raw Pulumi query syntax form. "+
-			"At least one query parameter must be provided.",
+		"A Pulumi Query to send to Pulumi Cloud for resource search."+
+			"May be formatted as a single query, or multiple:\n"+
+			"\t-q \"type:aws:s3/bucket:Bucket modified:>=2023-09-01\"\n"+
+			"\t-q \"type:aws:s3/bucket:Bucket\" -q \"modified:>=2023-09-01\"\n"+
+			"See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.",
 	)
 	cmd.PersistentFlags().VarP(
 		&scmd.outputFormat, "output", "o",
@@ -262,11 +268,13 @@ func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) err
 	if err != nil {
 		return err
 	}
-	_, err = w.Write([]byte(urlInfo + "\n"))
+	_, err = w.Write([]byte(urlInfo + "\n" + results.URL + "\n"))
 	if err != nil {
 		return err
 	}
-	_, err = w.Write([]byte(results.URL))
+	_, err = w.Write(
+		[]byte(fmt.Sprintf("\nResources displayed are the result of the following Pulumi query:\n%s\n", results.Query)),
+	)
 	return err
 }
 
@@ -316,6 +324,8 @@ func (o *outputFormat) Render(cmd *searchCmd, result *apitype.ResourceSearchResp
 		return cmd.RenderTable(result)
 	case outputFormatYAML:
 		return cmd.RenderYAML(result)
+	case outputFormatCSV:
+		return cmd.RenderCSV(result.Resources, cmd.csvDelimiter.Rune())
 	default:
 		return fmt.Errorf("unknown output format %q", *o)
 	}

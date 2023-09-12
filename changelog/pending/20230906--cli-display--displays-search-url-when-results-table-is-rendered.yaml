@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Displays search URL when results table is rendered

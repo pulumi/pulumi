@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Adds Pulumi AI and Pulumi AI Web commands

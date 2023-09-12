@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -104,12 +105,16 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 		}
 		query.Set("autoSubmit", "true")
 	}
+	if cmd.language == "" {
+		cmd.language = TypeScript // TODO: default to the language of the current project if one is present
+	}
 	query.Set("language", cmd.language.String())
 
 	requestURL.RawQuery = query.Encode()
-	err = browser.OpenURL(requestURL.String())
-	if err != nil {
-		return err
+	if err = browser.OpenURL(requestURL.String()); err != nil {
+		fmt.Printf("We couldn't launch your web browser for some reason. Please visit:\n\n%s\n\n"+
+			"to continue your Pulumi AI session.\n", requestURL)
+		return errors.Join(err, fmt.Errorf("failed to open URL: %s", requestURL.String()))
 	}
 
 	return nil

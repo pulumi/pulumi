@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Displays total and displayed resource counts for org search

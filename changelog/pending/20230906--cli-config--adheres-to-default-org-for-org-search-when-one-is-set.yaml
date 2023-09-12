@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/config
-  description: Adheres to default org for org search when one is set
