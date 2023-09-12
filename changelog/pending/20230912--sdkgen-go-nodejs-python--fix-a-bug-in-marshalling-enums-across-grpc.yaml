@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go,nodejs,python
+  description: Fix a bug in marshalling enums across gRPC

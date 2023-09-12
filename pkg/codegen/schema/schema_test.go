@@ -96,6 +96,42 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	assert.Empty(t, diags)
 }
 
+func TestRoundtripEnum(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/13921
+	t.Parallel()
+
+	assertEnum := func(t *testing.T, pkg *Package) {
+		typ, ok := pkg.GetType("enum:index:Color")
+		assert.True(t, ok)
+		enum, ok := typ.(*EnumType)
+		assert.True(t, ok)
+		assert.Equal(t, "An enum representing a color", enum.Comment)
+		assert.ElementsMatch(t, []*Enum{
+			{Value: "red"},
+			{Value: "green"},
+			{Value: "blue"},
+		}, enum.Elements)
+	}
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("enum-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertEnum(t, pkg)
+
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Try and bind again
+	pkg, diags, err = BindSpec(*newSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertEnum(t, pkg)
+}
+
 func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
