@@ -1083,8 +1083,12 @@ func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
 	}
 
 	return ComplexTypeSpec{
-		ObjectTypeSpec: ObjectTypeSpec{Type: pkg.marshalType(t.ElementType, false).Type, IsOverlay: t.IsOverlay},
-		Enum:           values,
+		ObjectTypeSpec: ObjectTypeSpec{
+			Description: t.Comment,
+			Type:        pkg.marshalType(t.ElementType, false).Type,
+			IsOverlay:   t.IsOverlay,
+		},
+		Enum: values,
 	}
 }
 
