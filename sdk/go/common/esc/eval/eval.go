@@ -792,7 +792,7 @@ func (e *evalContext) evaluateBuiltinToJSON(x *expr, repr *toJSONExpr) *value {
 
 	v.combine(value)
 	if !v.unknown {
-		b, err := json.Marshal(value.export("").ToJSON())
+		b, err := json.Marshal(value.export("").ToJSON(false))
 		if err != nil {
 			e.errorf(repr.syntax(), "failed to encode JSON: %v", err)
 			v.unknown = true

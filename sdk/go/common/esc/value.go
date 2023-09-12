@@ -96,22 +96,26 @@ func (v *Value) UnmarshalJSON(data []byte) error {
 }
 
 // ToJSON converts a Value into a plain-old-JSON value (i.e. a value of type nil, bool, json.Number, string, []any, or
-// map[string]any).
-func (v Value) ToJSON() any {
+// map[string]any). If redact is true, secrets are replaced with [secret].
+func (v Value) ToJSON(redact bool) any {
 	if v.Unknown {
 		return "[unknown]"
 	}
+	if v.Secret && redact {
+		return "[secret]"
+	}
+
 	switch pv := v.Value.(type) {
 	case []Value:
 		a := make([]any, len(pv))
 		for i, v := range pv {
-			a[i] = v.ToJSON()
+			a[i] = v.ToJSON(redact)
 		}
 		return a
 	case map[string]Value:
 		m := make(map[string]any, len(pv))
 		for k, v := range pv {
-			m[k] = v.ToJSON()
+			m[k] = v.ToJSON(redact)
 		}
 		return m
 	default:
@@ -124,7 +128,7 @@ func (v Value) ToString(redact bool) string {
 	if v.Unknown {
 		return "[unknown]"
 	}
-	if v.Secret {
+	if v.Secret && redact {
 		return "[secret]"
 	}
 
