@@ -92,6 +92,10 @@ func evalEnvironment(
 	providers ProviderLoader,
 	envs EnvironmentLoader,
 ) (*environments.Environment, syntax.Diagnostics) {
+	if env == nil {
+		return nil, nil
+	}
+
 	ec := newEvalContext(ctx, validating, name, env, providers, envs, map[string]*value{})
 	v, diags := ec.evaluate()
 
