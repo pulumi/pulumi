@@ -11,7 +11,7 @@ import (
 
 //nolint:paralleltest
 func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
-	os.Setenv("GOOGLE_CREDENTIALS", `{
+	t.Setenv("GOOGLE_CREDENTIALS", `{
 		"type": "service_account",
 		"project_id": "your-project-id",
 		"private_key_id": "your-private-key-id",
@@ -19,10 +19,6 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 		"client_email": "your-client-email",
 		"client_id": "your-client-id"
 	}`)
-
-	defer os.Unsetenv("GOOGLE_CREDENTIALS")
-
-	os.Setenv("GOOGLE_CREDENTIALS", os.Getenv("GOOGLE_CREDENTIALS"))
 
 	ctx := context.Background()
 	scope := "some-scope"
@@ -35,13 +31,15 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	var creds map[string]interface{}
 	err = json.Unmarshal([]byte(os.Getenv("GOOGLE_CREDENTIALS")), &creds)
 	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		os.Unsetenv("GOOGLE_CREDENTIALS")
+	})
 }
 
 //nolint:paralleltest
 func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
-	os.Setenv("GOOGLE_CREDENTIALS", `{}`)
-
-	defer os.Unsetenv("GOOGLE_CREDENTIALS")
+	t.Setenv("GOOGLE_CREDENTIALS", `{}`)
 
 	ctx := context.Background()
 	scope := "some-scope"
@@ -50,12 +48,15 @@ func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 
 	assert.Error(t, err, "Expected an error")
 	assert.Nil(t, credentials, "Expected nil credentials")
+
+	t.Cleanup(func() {
+		os.Unsetenv("GOOGLE_CREDENTIALS")
+	})
 }
 
 //nolint:paralleltest
 func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
-	os.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", "your-access-token")
-	defer os.Unsetenv("GOOGLE_OAUTH_ACCESS_TOKEN")
+	t.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", "your-access-token")
 
 	ctx := context.Background()
 	scope := "some-scope"
@@ -70,4 +71,8 @@ func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
 	assert.Empty(t, os.Getenv("GOOGLE_CREDENTIALS"))
 	assert.Equal(t, "your-access-token", token.AccessToken)
 	assert.Equal(t, "your-access-token", os.Getenv("GOOGLE_OAUTH_ACCESS_TOKEN"))
+
+	t.Cleanup(func() {
+		os.Unsetenv("GOOGLE_OAUTH_ACCESS_TOKEN")
+	})
 }
