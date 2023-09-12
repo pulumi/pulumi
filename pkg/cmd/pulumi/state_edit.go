@@ -23,6 +23,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -30,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
 )
@@ -252,8 +254,19 @@ func openInEditor(filename string) error {
 	if editor == "" {
 		return fmt.Errorf("no EDITOR environment variable set")
 	}
+	return openInEditorInternal(editor, filename)
+}
 
-	cmd := exec.Command(editor, filename)
+func openInEditorInternal(editor, filename string) error {
+	contract.Requiref(editor != "", "editor", "must not be empty")
+
+	args, err := shlex.Split(editor)
+	if err != nil {
+		return err
+	}
+	args = append(args, filename)
+
+	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
