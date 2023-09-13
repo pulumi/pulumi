@@ -1030,8 +1030,11 @@ func (b *cloudBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
 	results, err := b.Client().GetSearchQueryResults(ctx, orgName, queryParams, b.CloudConsoleURL())
+	if err != nil {
+		return nil, err
+	}
 	results.Query = queryParams.Query
-	return results, err
+	return results, nil
 }
 
 func (b *cloudBackend) NaturalLanguageSearch(

@@ -83,6 +83,58 @@ func TestSearch_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), fmt.Sprint(total))
 }
 
+func TestSearchNoOrgName_cmd(t *testing.T) {
+	t.Parallel()
+	var buff bytes.Buffer
+	name := "foo"
+	typ := "bar"
+	program := "program1"
+	stack := "stack1"
+	pack := "pack1"
+	mod := "mod1"
+	modified := "2023-01-01T00:00:00.000Z"
+	searchURL := "https://app.pulumi.com/user/resources?foo=bar"
+	total := int64(132)
+	cmd := orgSearchCmd{
+		searchCmd: searchCmd{
+			Stdout: &buff,
+			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+				return &stubHTTPBackend{
+					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+						return &apitype.ResourceSearchResponse{
+							Resources: []apitype.ResourceResult{
+								{
+									Name:     &name,
+									Type:     &typ,
+									Program:  &program,
+									Stack:    &stack,
+									Package:  &pack,
+									Module:   &mod,
+									Modified: &modified,
+								},
+							},
+							URL:   searchURL,
+							Total: &total,
+						}, nil
+					},
+					CurrentUserF: func() (string, []string, error) {
+						return "user", []string{"org1", "org2"}, nil
+					},
+				}, nil
+			},
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{})
+	require.NoError(t, err)
+
+	assert.Contains(t, buff.String(), name)
+	assert.Contains(t, buff.String(), typ)
+	assert.Contains(t, buff.String(), program)
+	assert.Contains(t, buff.String(), fmt.Sprintf("Results are also visible in Pulumi Cloud:\n%s", searchURL))
+	assert.Contains(t, buff.String(), fmt.Sprint(total))
+}
+
 type stubHTTPBackend struct {
 	httpstate.Backend
 

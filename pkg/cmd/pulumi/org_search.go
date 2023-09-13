@@ -161,6 +161,8 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 		if !sliceContains(orgs, cmd.orgName) {
 			return fmt.Errorf("user %s is not a member of organization %s", userName, cmd.orgName)
 		}
+	} else {
+		cmd.orgName = userName
 	}
 
 	parsedQueryParams := apitype.ParseQueryParams(cmd.queryParams)

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fixes panic when default org is not set and no org is provided to org search
