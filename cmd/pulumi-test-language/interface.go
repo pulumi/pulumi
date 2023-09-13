@@ -260,7 +260,7 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 		}
 
 		if !bytes.Equal(actualContents, expectedContents) {
-			// TODO: Find a way to show better diffs here
+			// TODO(https://github.com/pulumi/pulumi/issues/13943): Find a way to show better diffs here
 			validations = append(validations, fmt.Sprintf("expected file %s does not match actual file", relativePath))
 		}
 
@@ -571,9 +571,8 @@ func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 	return *info.Version, nil
 }
 
-// TODO: We need a RunLanguageTest(t *testing.T) function
-// that handles the machinery of plugging the language test logs
-// into the testing.T.
+// TODO(https://github.com/pulumi/pulumi/issues/13944): We need a RunLanguageTest(t *testing.T) function that
+// handles the machinery of plugging the language test logs into the testing.T.
 
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
@@ -749,7 +748,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	// Generate the project and read in the Pulumi.yaml
 	projectJSON := fmt.Sprintf(`{"name": "%s"}`, req.Test)
 
-	// TODO: We don't report back warning diagnostics here
+	// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 	diagnostics, err := languageClient.GenerateProject(
 		sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
 	if err != nil {
@@ -768,12 +767,13 @@ func (eng *languageTestServer) RunLanguageTest(
 		return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
 	}
 
-	// TODO: We don't capture stdout/stderr from the language plugin, so we can't show it back to the test.
+	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
+	// plugin, so we can't show it back to the test.
 	err = languageClient.InstallDependencies(projectDir)
 	if err != nil {
 		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
 	}
-	// TODO: This should only add new things, don't modify
+	// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
 
 	project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
 	if err != nil {
