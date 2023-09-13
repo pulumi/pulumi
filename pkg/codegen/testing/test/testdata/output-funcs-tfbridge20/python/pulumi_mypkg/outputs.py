@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -31,10 +31,25 @@ class StorageAccountKeyResponseResult(dict):
         :param str permissions: Permissions for the key -- read-only or full permissions.
         :param str value: Base 64-encoded value of the key.
         """
-        pulumi.set(__self__, "creation_time", creation_time)
-        pulumi.set(__self__, "key_name", key_name)
-        pulumi.set(__self__, "permissions", permissions)
-        pulumi.set(__self__, "value", value)
+        StorageAccountKeyResponseResult._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            creation_time=creation_time,
+            key_name=key_name,
+            permissions=permissions,
+            value=value,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             creation_time: str,
+             key_name: str,
+             permissions: str,
+             value: str,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("creation_time", creation_time)
+        _setter("key_name", key_name)
+        _setter("permissions", permissions)
+        _setter("value", value)
 
     @property
     @pulumi.getter(name="creationTime")
@@ -74,8 +89,19 @@ class GetAmiIdsFilterResult(dict):
     def __init__(__self__, *,
                  name: str,
                  values: Sequence[str]):
-        pulumi.set(__self__, "name", name)
-        pulumi.set(__self__, "values", values)
+        GetAmiIdsFilterResult._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            name=name,
+            values=values,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             name: str,
+             values: Sequence[str],
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("name", name)
+        _setter("values", values)
 
     @property
     @pulumi.getter

@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._enums import *
@@ -24,8 +24,17 @@ __all__ = [
 class ConfigMap(dict):
     def __init__(__self__, *,
                  config: Optional[str] = None):
+        ConfigMap._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            config=config,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             config: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if config is not None:
-            pulumi.set(__self__, "config", config)
+            _setter("config", config)
 
     @property
     @pulumi.getter
@@ -62,16 +71,33 @@ class Object(dict):
         :param Sequence[Sequence['SomeOtherObject']] others: List of lists of other objects
         :param Mapping[str, Sequence['SomeOtherObject']] still_others: Mapping from string to list of some other object
         """
+        Object._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            bar=bar,
+            configs=configs,
+            foo=foo,
+            others=others,
+            still_others=still_others,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             bar: Optional[str] = None,
+             configs: Optional[Sequence['outputs.ConfigMap']] = None,
+             foo: Optional['Resource'] = None,
+             others: Optional[Sequence[Sequence['outputs.SomeOtherObject']]] = None,
+             still_others: Optional[Mapping[str, Sequence['outputs.SomeOtherObject']]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if bar is not None:
-            pulumi.set(__self__, "bar", bar)
+            _setter("bar", bar)
         if configs is not None:
-            pulumi.set(__self__, "configs", configs)
+            _setter("configs", configs)
         if foo is not None:
-            pulumi.set(__self__, "foo", foo)
+            _setter("foo", foo)
         if others is not None:
-            pulumi.set(__self__, "others", others)
+            _setter("others", others)
         if still_others is not None:
-            pulumi.set(__self__, "still_others", still_others)
+            _setter("still_others", still_others)
 
     @property
     @pulumi.getter
@@ -110,9 +136,20 @@ class ObjectWithNodeOptionalInputs(dict):
     def __init__(__self__, *,
                  foo: str,
                  bar: Optional[int] = None):
-        pulumi.set(__self__, "foo", foo)
+        ObjectWithNodeOptionalInputs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            foo=foo,
+            bar=bar,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             foo: str,
+             bar: Optional[int] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("foo", foo)
         if bar is not None:
-            pulumi.set(__self__, "bar", bar)
+            _setter("bar", bar)
 
     @property
     @pulumi.getter
@@ -129,8 +166,17 @@ class ObjectWithNodeOptionalInputs(dict):
 class OutputOnlyObjectType(dict):
     def __init__(__self__, *,
                  foo: Optional[str] = None):
+        OutputOnlyObjectType._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            foo=foo,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             foo: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if foo is not None:
-            pulumi.set(__self__, "foo", foo)
+            _setter("foo", foo)
 
     @property
     @pulumi.getter
@@ -142,8 +188,17 @@ class OutputOnlyObjectType(dict):
 class SomeOtherObject(dict):
     def __init__(__self__, *,
                  baz: Optional[str] = None):
+        SomeOtherObject._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            baz=baz,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             baz: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if baz is not None:
-            pulumi.set(__self__, "baz", baz)
+            _setter("baz", baz)
 
     @property
     @pulumi.getter

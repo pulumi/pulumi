@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
 __all__ = ['ProviderArgs', 'Provider']
@@ -18,8 +18,17 @@ class ProviderArgs:
         """
         The set of arguments for constructing a Provider resource.
         """
+        ProviderArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            a=a,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             a: Optional[bool] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if a is not None:
-            pulumi.set(__self__, "a", a)
+            _setter("a", a)
 
     @property
     @pulumi.getter
@@ -61,6 +70,10 @@ class Provider(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            ProviderArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,

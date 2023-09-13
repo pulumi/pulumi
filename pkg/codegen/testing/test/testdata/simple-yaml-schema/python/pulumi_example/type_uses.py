@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._enums import *
@@ -25,14 +25,29 @@ class TypeUsesArgs:
         """
         The set of arguments for constructing a TypeUses resource.
         """
+        TypeUsesArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            bar=bar,
+            baz=baz,
+            foo=foo,
+            qux=qux,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             bar: Optional[pulumi.Input['SomeOtherObjectArgs']] = None,
+             baz: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']] = None,
+             foo: Optional[pulumi.Input['ObjectArgs']] = None,
+             qux: Optional[pulumi.Input['RubberTreeVariety']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if bar is not None:
-            pulumi.set(__self__, "bar", bar)
+            _setter("bar", bar)
         if baz is not None:
-            pulumi.set(__self__, "baz", baz)
+            _setter("baz", baz)
         if foo is not None:
-            pulumi.set(__self__, "foo", foo)
+            _setter("foo", foo)
         if qux is not None:
-            pulumi.set(__self__, "qux", qux)
+            _setter("qux", qux)
 
     @property
     @pulumi.getter
@@ -104,6 +119,10 @@ class TypeUses(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            TypeUsesArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -122,8 +141,23 @@ class TypeUses(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
 
+            if not isinstance(bar, SomeOtherObjectArgs):
+                bar = bar or {}
+                def _setter(key, value):
+                    bar[key] = value
+                SomeOtherObjectArgs._configure(_setter, **bar)
             __props__.__dict__["bar"] = bar
+            if not isinstance(baz, ObjectWithNodeOptionalInputsArgs):
+                baz = baz or {}
+                def _setter(key, value):
+                    baz[key] = value
+                ObjectWithNodeOptionalInputsArgs._configure(_setter, **baz)
             __props__.__dict__["baz"] = baz
+            if not isinstance(foo, ObjectArgs):
+                foo = foo or {}
+                def _setter(key, value):
+                    foo[key] = value
+                ObjectArgs._configure(_setter, **foo)
             __props__.__dict__["foo"] = foo
             __props__.__dict__["qux"] = qux
             __props__.__dict__["alpha"] = None

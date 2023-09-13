@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 from . import outputs
 
@@ -25,10 +25,21 @@ class CompositePathResponse(dict):
         :param str order: Sort order for composite paths.
         :param str path: The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)
         """
+        CompositePathResponse._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            order=order,
+            path=path,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             order: Optional[str] = None,
+             path: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if order is not None:
-            pulumi.set(__self__, "order", order)
+            _setter("order", order)
         if path is not None:
-            pulumi.set(__self__, "path", path)
+            _setter("path", path)
 
     @property
     @pulumi.getter
@@ -75,8 +86,17 @@ class IndexingPolicyResponse(dict):
         Cosmos DB indexing policy
         :param Sequence[Sequence['CompositePathResponse']] composite_indexes: List of composite path list
         """
+        IndexingPolicyResponse._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            composite_indexes=composite_indexes,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             composite_indexes: Optional[Sequence[Sequence['outputs.CompositePathResponse']]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if composite_indexes is not None:
-            pulumi.set(__self__, "composite_indexes", composite_indexes)
+            _setter("composite_indexes", composite_indexes)
 
     @property
     @pulumi.getter(name="compositeIndexes")
@@ -111,8 +131,17 @@ class SqlContainerGetPropertiesResponseResource(dict):
         """
         :param 'IndexingPolicyResponse' indexing_policy: The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container
         """
+        SqlContainerGetPropertiesResponseResource._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            indexing_policy=indexing_policy,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             indexing_policy: Optional['outputs.IndexingPolicyResponse'] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if indexing_policy is not None:
-            pulumi.set(__self__, "indexing_policy", indexing_policy)
+            _setter("indexing_policy", indexing_policy)
 
     @property
     @pulumi.getter(name="indexingPolicy")

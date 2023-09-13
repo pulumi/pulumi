@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -17,8 +17,17 @@ __all__ = [
 class ConfigArgs:
     def __init__(__self__, *,
                  foo: Optional[pulumi.Input[str]] = None):
+        ConfigArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            foo=foo,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             foo: Optional[pulumi.Input[str]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if foo is not None:
-            pulumi.set(__self__, "foo", foo)
+            _setter("foo", foo)
 
     @property
     @pulumi.getter

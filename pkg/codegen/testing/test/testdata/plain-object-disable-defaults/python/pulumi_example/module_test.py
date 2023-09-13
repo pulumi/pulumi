@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import mod1 as _mod1
 from . import mod2 as _mod2
@@ -22,10 +22,21 @@ class ModuleTestArgs:
         """
         The set of arguments for constructing a ModuleTest resource.
         """
+        ModuleTestArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            mod1=mod1,
+            val=val,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
+             val: Optional[pulumi.Input['TypArgs']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if mod1 is not None:
-            pulumi.set(__self__, "mod1", mod1)
+            _setter("mod1", mod1)
         if val is not None:
-            pulumi.set(__self__, "val", val)
+            _setter("val", val)
 
     @property
     @pulumi.getter
@@ -77,6 +88,10 @@ class ModuleTest(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            ModuleTestArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -93,7 +108,17 @@ class ModuleTest(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleTestArgs.__new__(ModuleTestArgs)
 
+            if not isinstance(mod1, _mod1.TypArgs):
+                mod1 = mod1 or {}
+                def _setter(key, value):
+                    mod1[key] = value
+                _mod1.TypArgs._configure(_setter, **mod1)
             __props__.__dict__["mod1"] = mod1
+            if not isinstance(val, TypArgs):
+                val = val or {}
+                def _setter(key, value):
+                    val[key] = value
+                TypArgs._configure(_setter, **val)
             __props__.__dict__["val"] = val
         super(ModuleTest, __self__).__init__(
             'example:index:moduleTest',

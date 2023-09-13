@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._inputs import *
 import pulumi_random
@@ -21,10 +21,21 @@ class CatArgs:
         """
         The set of arguments for constructing a Cat resource.
         """
+        CatArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            age=age,
+            pet=pet,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             age: Optional[pulumi.Input[int]] = None,
+             pet: Optional[pulumi.Input['PetArgs']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if age is not None:
-            pulumi.set(__self__, "age", age)
+            _setter("age", age)
         if pet is not None:
-            pulumi.set(__self__, "pet", pet)
+            _setter("pet", pet)
 
     @property
     @pulumi.getter
@@ -76,6 +87,10 @@ class Cat(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            CatArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -93,6 +108,11 @@ class Cat(pulumi.CustomResource):
             __props__ = CatArgs.__new__(CatArgs)
 
             __props__.__dict__["age"] = age
+            if not isinstance(pet, PetArgs):
+                pet = pet or {}
+                def _setter(key, value):
+                    pet[key] = value
+                PetArgs._configure(_setter, **pet)
             __props__.__dict__["pet"] = pet
             __props__.__dict__["name"] = None
         super(Cat, __self__).__init__(

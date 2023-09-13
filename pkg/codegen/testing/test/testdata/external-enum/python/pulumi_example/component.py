@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import local
 import pulumi_google_native
@@ -21,10 +21,21 @@ class ComponentArgs:
         """
         The set of arguments for constructing a Component resource.
         """
+        ComponentArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            local_enum=local_enum,
+            remote_enum=remote_enum,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             local_enum: Optional[pulumi.Input['local.MyEnum']] = None,
+             remote_enum: Optional[pulumi.Input['pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if local_enum is not None:
-            pulumi.set(__self__, "local_enum", local_enum)
+            _setter("local_enum", local_enum)
         if remote_enum is not None:
-            pulumi.set(__self__, "remote_enum", remote_enum)
+            _setter("remote_enum", remote_enum)
 
     @property
     @pulumi.getter(name="localEnum")
@@ -76,6 +87,10 @@ class Component(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            ComponentArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,

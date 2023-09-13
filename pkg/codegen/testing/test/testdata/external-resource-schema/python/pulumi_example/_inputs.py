@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 import pulumi_random
 
@@ -24,17 +24,38 @@ class PetArgs:
                  name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
                  name_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
                  name_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None):
-        pulumi.set(__self__, "required_name", required_name)
-        pulumi.set(__self__, "required_name_array", required_name_array)
-        pulumi.set(__self__, "required_name_map", required_name_map)
+        PetArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            required_name=required_name,
+            required_name_array=required_name_array,
+            required_name_map=required_name_map,
+            age=age,
+            name=name,
+            name_array=name_array,
+            name_map=name_map,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             required_name: pulumi.Input['pulumi_random.RandomPet'],
+             required_name_array: pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]],
+             required_name_map: pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]],
+             age: Optional[pulumi.Input[int]] = None,
+             name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
+             name_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
+             name_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("required_name", required_name)
+        _setter("required_name_array", required_name_array)
+        _setter("required_name_map", required_name_map)
         if age is not None:
-            pulumi.set(__self__, "age", age)
+            _setter("age", age)
         if name is not None:
-            pulumi.set(__self__, "name", name)
+            _setter("name", name)
         if name_array is not None:
-            pulumi.set(__self__, "name_array", name_array)
+            _setter("name_array", name_array)
         if name_map is not None:
-            pulumi.set(__self__, "name_map", name_map)
+            _setter("name_map", name_map)
 
     @property
     @pulumi.getter(name="requiredName")

@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import config as _config
 from ._enums import *
@@ -23,12 +23,23 @@ class ProviderArgs:
         :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
         :param pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]] secret_sandwiches: Super duper secret sandwiches.
         """
+        ProviderArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            favorite_color=favorite_color,
+            secret_sandwiches=secret_sandwiches,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
+             secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if favorite_color is None:
             favorite_color = _utilities.get_env('FAVE_COLOR')
         if favorite_color is not None:
-            pulumi.set(__self__, "favorite_color", favorite_color)
+            _setter("favorite_color", favorite_color)
         if secret_sandwiches is not None:
-            pulumi.set(__self__, "secret_sandwiches", secret_sandwiches)
+            _setter("secret_sandwiches", secret_sandwiches)
 
     @property
     @pulumi.getter(name="favoriteColor")
@@ -88,6 +99,10 @@ class Provider(pulumi.ProviderResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            ProviderArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,

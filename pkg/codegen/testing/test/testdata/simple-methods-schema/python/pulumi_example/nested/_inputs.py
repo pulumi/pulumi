@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
 __all__ = [
@@ -18,10 +18,21 @@ class Baz:
     def __init__(__self__, *,
                  hello: Optional[str] = None,
                  world: Optional[str] = None):
+        Baz._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            hello=hello,
+            world=world,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             hello: Optional[str] = None,
+             world: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if hello is not None:
-            pulumi.set(__self__, "hello", hello)
+            _setter("hello", hello)
         if world is not None:
-            pulumi.set(__self__, "world", world)
+            _setter("world", world)
 
     @property
     @pulumi.getter

@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -26,13 +26,28 @@ class FooArgs:
         :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input['LayeredTypeArgs'] settings: describing things
         """
-        pulumi.set(__self__, "backup_kube_client_settings", backup_kube_client_settings)
+        FooArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            backup_kube_client_settings=backup_kube_client_settings,
+            argument=argument,
+            kube_client_settings=kube_client_settings,
+            settings=settings,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             backup_kube_client_settings: pulumi.Input['KubeClientSettingsArgs'],
+             argument: Optional[str] = None,
+             kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
+             settings: Optional[pulumi.Input['LayeredTypeArgs']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("backup_kube_client_settings", backup_kube_client_settings)
         if argument is not None:
-            pulumi.set(__self__, "argument", argument)
+            _setter("argument", argument)
         if kube_client_settings is not None:
-            pulumi.set(__self__, "kube_client_settings", kube_client_settings)
+            _setter("kube_client_settings", kube_client_settings)
         if settings is not None:
-            pulumi.set(__self__, "settings", settings)
+            _setter("settings", settings)
 
     @property
     @pulumi.getter(name="backupKubeClientSettings")
@@ -118,6 +133,10 @@ class Foo(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            FooArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -137,10 +156,25 @@ class Foo(pulumi.CustomResource):
             __props__ = FooArgs.__new__(FooArgs)
 
             __props__.__dict__["argument"] = argument
+            if not isinstance(backup_kube_client_settings, KubeClientSettingsArgs):
+                backup_kube_client_settings = backup_kube_client_settings or {}
+                def _setter(key, value):
+                    backup_kube_client_settings[key] = value
+                KubeClientSettingsArgs._configure(_setter, **backup_kube_client_settings)
             if backup_kube_client_settings is None and not opts.urn:
                 raise TypeError("Missing required property 'backup_kube_client_settings'")
             __props__.__dict__["backup_kube_client_settings"] = backup_kube_client_settings
+            if not isinstance(kube_client_settings, KubeClientSettingsArgs):
+                kube_client_settings = kube_client_settings or {}
+                def _setter(key, value):
+                    kube_client_settings[key] = value
+                KubeClientSettingsArgs._configure(_setter, **kube_client_settings)
             __props__.__dict__["kube_client_settings"] = kube_client_settings
+            if not isinstance(settings, LayeredTypeArgs):
+                settings = settings or {}
+                def _setter(key, value):
+                    settings[key] = value
+                LayeredTypeArgs._configure(_setter, **settings)
             __props__.__dict__["settings"] = settings
             __props__.__dict__["default_kube_client_settings"] = None
         super(Foo, __self__).__init__(

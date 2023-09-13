@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -21,10 +21,21 @@ class PersonArgs:
         """
         The set of arguments for constructing a Person resource.
         """
+        PersonArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            name=name,
+            pets=pets,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             name: Optional[pulumi.Input[str]] = None,
+             pets: Optional[pulumi.Input[Sequence[pulumi.Input['PetArgs']]]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if name is not None:
-            pulumi.set(__self__, "name", name)
+            _setter("name", name)
         if pets is not None:
-            pulumi.set(__self__, "pets", pets)
+            _setter("pets", pets)
 
     @property
     @pulumi.getter
@@ -76,6 +87,10 @@ class Person(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            PersonArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,

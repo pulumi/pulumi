@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/python
+  description: Python sdkgen now correctly sets default values on dicts passed as resource arguments.
