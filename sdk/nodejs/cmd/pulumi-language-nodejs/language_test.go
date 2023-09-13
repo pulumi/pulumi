@@ -122,6 +122,7 @@ func TestLanguage(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
 	//nolint:paralleltest // These aren't yet safe to run in parallel
 	for _, tt := range tests.Tests {
 		tt := tt
