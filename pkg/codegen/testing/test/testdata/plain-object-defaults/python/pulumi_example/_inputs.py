@@ -197,7 +197,7 @@ class KubeClientSettingsArgs:
 class LayeredTypeArgs:
     def __init__(__self__, *,
                  other: pulumi.Input['HelmReleaseSettingsArgs'],
-                 thinker: pulumi.Input[str],
+                 thinker: Optional[pulumi.Input[str]] = None,
                  answer: Optional[pulumi.Input[float]] = None,
                  plain_other: Optional['HelmReleaseSettingsArgs'] = None,
                  question: Optional[pulumi.Input[str]] = None,

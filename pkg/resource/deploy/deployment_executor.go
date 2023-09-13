@@ -182,15 +182,15 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
-		Event  SourceEvent
-		Result result.Result
+		Event SourceEvent
+		Error error
 	}
 	incomingEvents := make(chan nextEvent)
 	go func() {
 		for {
-			event, sourceErr := src.Next()
+			event, err := src.Next()
 			select {
-			case incomingEvents <- nextEvent{event, sourceErr}:
+			case incomingEvents <- nextEvent{event, err}:
 				if event == nil {
 					return
 				}
@@ -215,11 +215,11 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 			select {
 			case event := <-incomingEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil,
-					event.Result)
+					event.Error)
 
-				if event.Result != nil {
-					if !event.Result.IsBail() {
-						ex.reportError("", event.Result.Error())
+				if event.Error != nil {
+					if !result.IsBail(event.Error) {
+						ex.reportError("", event.Error)
 					}
 					cancel()
 
@@ -402,7 +402,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) result.Result
 		steps, res = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
-		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
+		return result.WrapIfNonNil(ex.stepExec.ExecuteRegisterResourceOutputs(e))
 	}
 
 	if res != nil {

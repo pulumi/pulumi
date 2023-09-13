@@ -220,6 +220,9 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 				if imp.PluginDownloadURL == "" {
 					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
 				}
+				if imp.PluginChecksums == nil {
+					imp.PluginChecksums = defaultProviderInfo[imp.Type.Package()].Checksums
+				}
 			}
 		}
 

@@ -137,7 +137,7 @@ func (src *evalSource) Iterate(
 		regChan:     regChan,
 		regOutChan:  regOutChan,
 		regReadChan: regReadChan,
-		finChan:     make(chan result.Result),
+		finChan:     make(chan error),
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -154,7 +154,7 @@ type evalSourceIterator struct {
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
-	finChan     chan result.Result                 // the channel that communicates completion.
+	finChan     chan error                         // the channel that communicates completion.
 	done        bool                               // set to true when the evaluation is done.
 }
 
@@ -167,7 +167,7 @@ func (iter *evalSourceIterator) ResourceMonitor() SourceResourceMonitor {
 	return iter.mon
 }
 
-func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
+func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	// If we are done, quit.
 	if iter.done {
 		return nil, nil
@@ -190,18 +190,18 @@ func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
 		contract.Assertf(read != nil, "received a nil readResourceEvent")
 		logging.V(5).Infoln("EvalSourceIterator produced a read")
 		return read, nil
-	case res := <-iter.finChan:
+	case err := <-iter.finChan:
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
 		iter.done = true
-		if res != nil {
-			if res.IsBail() {
+		if err != nil {
+			if result.IsBail(err) {
 				logging.V(5).Infof("EvalSourceIterator ended with bail.")
 			} else {
-				logging.V(5).Infof("EvalSourceIterator ended with an error: %v", res.Error())
+				logging.V(5).Infof("EvalSourceIterator ended with an error: %v", err)
 			}
 		}
-		return nil, res
+		return nil, err
 	}
 }
 
@@ -211,12 +211,12 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
 		// Next, launch the language plugin.
-		run := func() result.Result {
+		run := func() error {
 			rt := iter.src.runinfo.Proj.Runtime.Name()
 			rtopts := iter.src.runinfo.Proj.Runtime.Options()
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(iter.src.plugctx.Root, iter.src.plugctx.Pwd, rt, rtopts)
 			if err != nil {
-				return result.FromError(fmt.Errorf("failed to launch language host %s: %w", rt, err))
+				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 			}
 			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
@@ -241,14 +241,14 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 			// Check if we were asked to Bail.  This a special random constant used for that
 			// purpose.
 			if err == nil && bail {
-				return result.Bail()
+				return result.BailErrorf("run bailed")
 			}
 
 			if err == nil && progerr != "" {
 				// If the program had an unhandled error; propagate it to the caller.
 				err = fmt.Errorf("an unhandled error occurred: %v", progerr)
 			}
-			return result.WrapIfNonNil(err)
+			return err
 		}
 
 		// Communicate the error, if it exists, or nil if the program exited cleanly.
@@ -335,6 +335,24 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		} else {
 			logging.V(5).Infof(
 				"newRegisterDefaultProviderEvent(%s): default pluginDownloadURL miss, sending empty string to engine", req)
+		}
+	}
+
+	if req.PluginChecksums() != nil {
+		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using pluginChecksums %v from request",
+			req, req.PluginChecksums())
+		providers.SetProviderChecksums(inputs, req.PluginChecksums())
+	} else {
+		logging.V(5).Infof(
+			"newRegisterDefaultProviderEvent(%s): no pluginChecksums specified, falling back to default pluginChecksums",
+			req)
+		if pluginChecksums := d.defaultProviderInfo[req.Package()].Checksums; pluginChecksums != nil {
+			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginChecksums hit on %v",
+				req, pluginChecksums)
+			providers.SetProviderChecksums(inputs, pluginChecksums)
+		} else {
+			logging.V(5).Infof(
+				"newRegisterDefaultProviderEvent(%s): default pluginChecksums miss, sending empty map to engine", req)
 		}
 	}
 
@@ -656,10 +674,13 @@ func getProviderFromSource(
 	return provider, nil
 }
 
-func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string) (providers.ProviderRequest, error) {
+func parseProviderRequest(
+	pkg tokens.Package, version,
+	pluginDownloadURL string, pluginChecksums map[string][]byte,
+) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL), nil
+		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL, pluginChecksums), nil
 	}
 
 	parsedVersion, err := semver.Parse(version)
@@ -670,7 +691,7 @@ func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string)
 
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
-	return providers.NewProviderRequest(&parsedVersion, pkg, url), nil
+	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -713,7 +734,9 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+	providerReq, err := parseProviderRequest(
+		tok.Package(), req.GetVersion(),
+		req.GetPluginDownloadURL(), req.GetPluginChecksums())
 	if err != nil {
 		return nil, err
 	}
@@ -773,7 +796,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+	providerReq, err := parseProviderRequest(
+		tok.Package(), req.GetVersion(),
+		req.GetPluginDownloadURL(), req.GetPluginChecksums())
 	if err != nil {
 		return nil, err
 	}
@@ -865,7 +890,9 @@ func (rm *resmon) StreamInvoke(
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+	providerReq, err := parseProviderRequest(
+		tok.Package(), req.GetVersion(),
+		req.GetPluginDownloadURL(), req.GetPluginChecksums())
 	if err != nil {
 		return err
 	}
@@ -936,7 +963,9 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+		providerReq, err := parseProviderRequest(
+			t.Package(), req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums())
 		if err != nil {
 			return nil, err
 		}
@@ -1204,7 +1233,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRefs map[string]string
 
 	if custom && !providers.IsProviderType(t) || remote {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+		providerReq, err := parseProviderRequest(
+			t.Package(), req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums())
 		if err != nil {
 			return nil, err
 		}

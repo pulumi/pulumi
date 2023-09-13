@@ -16,15 +16,16 @@ package apitype
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
 type ResourceSearchResponse struct {
-	Total        *int64                    `json:"total,omitempty"`
-	Resources    []ResourceResult          `json:"resources,omitempty"`
-	Aggregations map[string]Aggregation    `json:"aggregations,omitempty"`
-	Pagination   *ResourceSearchPagination `json:"pagination,omitempty"`
+	Total        *int64                    `json:"total,omitempty" yaml:"total,omitempty"`
+	Resources    []ResourceResult          `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Aggregations map[string]Aggregation    `json:"aggregations,omitempty" yaml:"aggregations,omitempty"`
+	Pagination   *ResourceSearchPagination `json:"pagination,omitempty" yaml:"pagination,omitempty"`
+	URL          string
+	Query        string `json:"query,omitempty" yaml:"query,omitempty"`
 }
 
 // ResourceResult is the user-facing type for our indexed resources.
@@ -52,22 +53,22 @@ type ResourceResult struct {
 
 // Aggregation collects the top 5 aggregated values for the requested dimension.
 type Aggregation struct {
-	Others  *int64              `json:"others,omitempty"`
-	Results []AggregationBucket `json:"results,omitempty"`
+	Others  *int64              `json:"others,omitempty" yaml:"others,omitempty"`
+	Results []AggregationBucket `json:"results,omitempty" yaml:"results,omitempty"`
 }
 
 // AggregationBucket is an example value for the requested aggregation, with a
 // count of how many resources share that value.
 type AggregationBucket struct {
-	Name  *string `json:"name,omitempty"`
-	Count *int64  `json:"count,omitempty"`
+	Name  *string `json:"name,omitempty" yaml:"name,omitempty"`
+	Count *int64  `json:"count,omitempty" yaml:"count,omitempty"`
 }
 
 // ResourceSearchPagination provides links for paging through results.
 type ResourceSearchPagination struct {
-	Previous *string `json:"previous,omitempty"`
-	Next     *string `json:"next,omitempty"`
-	Cursor   *string `json:"cursor,omitempty"`
+	Previous *string `json:"previous,omitempty" yaml:"previous,omitempty"`
+	Next     *string `json:"next,omitempty" yaml:"next,omitempty"`
+	Cursor   *string `json:"cursor,omitempty" yaml:"cursor,omitempty"`
 }
 
 type PulumiQueryResponse struct {
@@ -79,19 +80,11 @@ type PulumiQueryRequest struct {
 }
 
 // ParseQueryParams takes a list of parameters passed into the CLI
-// Search commands (either in the form of `key=value` or a bare Pulumi query)
+// Search commands (in the form of a Pulumi query)
 // and returns a PulumiQueryRequest struct that can be used to make a request
 // to the Pulumi API.
 //
 // See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for reference
 func ParseQueryParams(rawParams []string) *PulumiQueryRequest {
-	var queryString strings.Builder
-	for _, param := range rawParams {
-		if key, value, ok := strings.Cut(param, "="); ok {
-			fmt.Fprintf(&queryString, "%s:%s", key, value)
-		} else {
-			queryString.WriteString(param)
-		}
-	}
-	return &PulumiQueryRequest{Query: queryString.String()}
+	return &PulumiQueryRequest{Query: strings.Join(rawParams, " ")}
 }

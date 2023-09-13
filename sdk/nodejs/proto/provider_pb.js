@@ -2262,6 +2262,7 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     provider: jspb.Message.getFieldWithDefault(msg, 4, ""),
     version: jspb.Message.getFieldWithDefault(msg, 5, ""),
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
+    pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
     project: jspb.Message.getFieldWithDefault(msg, 6, ""),
     stack: jspb.Message.getFieldWithDefault(msg, 7, ""),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
@@ -2333,6 +2334,12 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 13:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
+      break;
+    case 16:
+      var value = msg.getPluginchecksumsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
+         });
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
@@ -2441,6 +2448,10 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
       13,
       f
     );
+  }
+  f = message.getPluginchecksumsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(16, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
   f = message.getProject();
   if (f.length > 0) {
@@ -2791,6 +2802,28 @@ proto.pulumirpc.CallRequest.prototype.getPlugindownloadurl = function() {
 proto.pulumirpc.CallRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 13, value);
 };
+
+
+/**
+ * map<string, bytes> pluginChecksums = 16;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,!(string|Uint8Array)>}
+ */
+proto.pulumirpc.CallRequest.prototype.getPluginchecksumsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
+      jspb.Message.getMapField(this, 16, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.CallRequest} returns this
+ */
+proto.pulumirpc.CallRequest.prototype.clearPluginchecksumsMap = function() {
+  this.getPluginchecksumsMap().clear();
+  return this;};
 
 
 /**

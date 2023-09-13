@@ -129,6 +129,7 @@ type ResourceOptions struct {
 	DeleteBeforeReplace     *bool
 	Version                 string
 	PluginDownloadURL       string
+	PluginChecksums         map[string][]byte
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
 	AliasURNs               []resource.URN
@@ -269,6 +270,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
 		Providers:                  opts.Providers,
 		PluginDownloadURL:          opts.PluginDownloadURL,
+		PluginChecksums:            opts.PluginChecksums,
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    aliasObjects,

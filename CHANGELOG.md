@@ -1,12 +1,61 @@
 # Changelog
 
-## 3.81.0 (2023-09-06)
+## 3.82.1 (2023-09-12)
+
+
+### Bug Fixes
+
+- [cli/config] Allows org search for individual accounts
+  [#13930](https://github.com/pulumi/pulumi/pull/13930)
+
+- [sdkgen/{go,nodejs,python}] Fix a bug in marshalling enums across gRPC
+
+- [cli/state] `pulumi state edit` now handles multi-part EDITOR env vars (i.e. `emacs -nw`).
+  [#13922](https://github.com/pulumi/pulumi/pull/13922)
+
+- [programgen/python] Fix deprecation warning triggering on ResourceArgs with default values.
+  [#13890](https://github.com/pulumi/pulumi/pull/13890)
+
+## 3.82.0 (2023-09-12)
 
 
 ### Features
 
-- [cli] Adds Pulumi AI and Pulumi AI Web commands
+- [cli] Adds `pulumi org search` and `pulumi org search ai` for Pulumi Insights in the CLI. These commands render a table containing all resources in a given organization matching the query provided.
+
+  `-q <query>` will search for resources in the organization using a query provided in Pulumi Query Syntax.
+
+  `-o <json|csv|yaml>` flag customizes the output.
+
+  The `ai` command uses AI Assist to translate a natural language query into Pulumi Query Syntax.
+
+  Default table output will show a count of displayed resources out of the total. Additional output includes the query run, a URL to view and explore search results in the Pulumi Console and the query, and the query run.
+
+  Additional output is suppressed for non-table output formats such that they can be easily piped into other tools.
+
+  The `--web` flag will open the search results in a default browser.
+  [#13611](https://github.com/pulumi/pulumi/pull/13611)
+  [#13879](https://github.com/pulumi/pulumi/pull/13879)
+  [#13888](https://github.com/pulumi/pulumi/pull/13888)
+  [#13846](https://github.com/pulumi/pulumi/pull/13846)
+
+- [cli] Adds `pulumi ai` command - currently the only functionality in this group is `pulumi ai web`, which will open the Pulumi AI application in a default browser. An optional `--prompt/-p` flag can be provided with a query to pre-populate the search bar in the Pulumi AI application. By default, that prompt will be submitted automatically, but passing `--no-auto-submit` will prevent that.
   [#13808](https://github.com/pulumi/pulumi/pull/13808)
+  [#13846](https://github.com/pulumi/pulumi/pull/13846)
+
+- [engine] Support SDKs sending plugin checksums as part of resource requests.
+  [#13789](https://github.com/pulumi/pulumi/pull/13789)
+
+
+### Bug Fixes
+
+- [cli/new] Fixes `pulumi policy new <template-name>` to not require `--yes` when run non-interactively.
+  [#13902](https://github.com/pulumi/pulumi/pull/13902)
+
+## 3.81.0 (2023-09-06)
+
+
+### Features
 
 - [cli] Pass args from import to state converters.
   [#13862](https://github.com/pulumi/pulumi/pull/13862)
@@ -77,9 +126,6 @@
 
 
 ### Features
-
-- [cli] Adds basic Search and AI-assisted Search functionality
-  [#13611](https://github.com/pulumi/pulumi/pull/13611)
 
 - [engine] Support runtime plugins returning plugin checksums from GetRequiredPlugins.
   [#13776](https://github.com/pulumi/pulumi/pull/13776)

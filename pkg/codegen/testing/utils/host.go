@@ -89,5 +89,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"using-dashes", "1.0.0"},
 		SchemaProvider{"auto-deploy", "0.0.1"},
 		SchemaProvider{"localref", "1.0.0"},
+		SchemaProvider{"enum", "1.0.0"},
 	)
 }

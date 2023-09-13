@@ -1,0 +1,25 @@
+{
+    "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+    "name": "enum",
+    "version": "1.0.0",
+    "//": [
+        "Simple schema with an enum"
+    ],
+    "types": {
+        "enum:index:Color": {
+            "description": "An enum representing a color",
+            "type": "string",
+            "enum": [
+                {
+                    "value": "red"
+                },
+                {
+                    "value": "green"
+                },
+                {
+                    "value": "blue"
+                }
+            ]
+        }
+    }
+}
