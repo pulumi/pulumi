@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.82.1 (2023-09-12)
+
+
+### Bug Fixes
+
+- [cli/config] Allows org search for individual accounts
+  [#13930](https://github.com/pulumi/pulumi/pull/13930)
+
+- [sdkgen/{go,nodejs,python}] Fix a bug in marshalling enums across gRPC
+
+- [cli/state] `pulumi state edit` now handles multi-part EDITOR env vars (i.e. `emacs -nw`).
+  [#13922](https://github.com/pulumi/pulumi/pull/13922)
+
+- [programgen/python] Fix deprecation warning triggering on ResourceArgs with default values.
+  [#13890](https://github.com/pulumi/pulumi/pull/13890)
+
 ## 3.82.0 (2023-09-12)
 
 

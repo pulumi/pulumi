@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/python
-  description: Fix deprecation warning triggering on ResourceArgs with default values.
