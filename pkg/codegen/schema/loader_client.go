@@ -106,7 +106,7 @@ func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version)
 		}
 	}
 
-	p, err := importPartialSpec(spec, nil, l)
+	p, err := ImportPartialSpec(spec, nil, l)
 	if err != nil {
 		return nil, err
 	}

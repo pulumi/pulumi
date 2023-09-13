@@ -11,6 +11,7 @@
             "node_modules",
             ".nyc_output/",
             ".direnv/",
+            "cmd/pulumi-language-nodejs",
             "tests/runtime/jsClosureCases_*.js",
             "tests/runtime/tsClosureCases.ts",
             "tests/mockpackage/lib/"

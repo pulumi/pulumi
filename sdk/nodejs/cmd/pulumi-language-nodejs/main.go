@@ -242,7 +242,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
 	plugins, err := getPluginsFromDir(
-		req.GetProgram(),
+		filepath.Join(req.Pwd, req.Program),
 		pulumiPackagePathToVersionMap,
 		false, /*inNodeModules*/
 		make(map[string]struct{}))
@@ -1226,6 +1226,16 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
 		}
+
+		// "tsc" doesn't copy in the "proto" directory of .js files.
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "proto"),
+			filepath.Join(req.PackageDirectory, "proto"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy proto: %w", err)
+		}
+
 	} else {
 		// Before we can build the package we need to install it's dependencies.
 		err = writeString("$ npm install\n")
