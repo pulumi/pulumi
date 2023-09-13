@@ -24,11 +24,11 @@ ensure:: yarn.ensure node.ensure .ensure.phony
 	@touch .ensure.phony
 
 format:: ensure
-	yarn rome format --write .
+	yarn biome format --write .
 
 lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .
-	yarn rome ci .
+	yarn biome ci .
 
 build_package:: ensure
 	yarn run tsc
