@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -34,8 +34,17 @@ class Bar(dict):
 
     def __init__(__self__, *,
                  has_a_hyphen: Optional[str] = None):
+        Bar._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            has_a_hyphen=has_a_hyphen,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             has_a_hyphen: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if has_a_hyphen is not None:
-            pulumi.set(__self__, "has_a_hyphen", has_a_hyphen)
+            _setter("has_a_hyphen", has_a_hyphen)
 
     @property
     @pulumi.getter(name="has-a-hyphen")

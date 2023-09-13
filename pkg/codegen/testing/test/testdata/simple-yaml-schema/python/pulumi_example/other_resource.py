@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from .resource import Resource
 
@@ -20,10 +20,21 @@ class OtherResourceArgs:
         """
         The set of arguments for constructing a OtherResource resource.
         """
+        OtherResourceArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            bar=bar,
+            foo=foo,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             bar: Optional[Sequence[pulumi.Input[str]]] = None,
+             foo: Optional[pulumi.Input['Resource']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if bar is not None:
-            pulumi.set(__self__, "bar", bar)
+            _setter("bar", bar)
         if foo is not None:
-            pulumi.set(__self__, "foo", foo)
+            _setter("foo", foo)
 
     @property
     @pulumi.getter
@@ -75,6 +86,10 @@ class OtherResource(pulumi.ComponentResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            OtherResourceArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,

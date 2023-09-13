@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -17,8 +17,17 @@ __all__ = [
 class TopLevel(dict):
     def __init__(__self__, *,
                  buzz: Optional[str] = None):
+        TopLevel._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            buzz=buzz,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             buzz: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if buzz is not None:
-            pulumi.set(__self__, "buzz", buzz)
+            _setter("buzz", buzz)
 
     @property
     @pulumi.getter

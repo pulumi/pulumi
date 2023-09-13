@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from ... import _utilities
 
 __all__ = [
@@ -35,10 +35,21 @@ class ENIConfigSpec(dict):
     def __init__(__self__, *,
                  security_groups: Optional[Sequence[str]] = None,
                  subnet: Optional[str] = None):
+        ENIConfigSpec._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            security_groups=security_groups,
+            subnet=subnet,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             security_groups: Optional[Sequence[str]] = None,
+             subnet: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if security_groups is not None:
-            pulumi.set(__self__, "security_groups", security_groups)
+            _setter("security_groups", security_groups)
         if subnet is not None:
-            pulumi.set(__self__, "subnet", subnet)
+            _setter("subnet", subnet)
 
     @property
     @pulumi.getter(name="securityGroups")

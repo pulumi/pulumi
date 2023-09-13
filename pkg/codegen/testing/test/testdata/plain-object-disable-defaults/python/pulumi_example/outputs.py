@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 
@@ -45,16 +45,29 @@ class KubeClientSettings(dict):
         :param int burst: Maximum burst for throttle. Default value is 10.
         :param float qps: Maximum queries per second (QPS) to the API server from this client. Default value is 5.
         """
+        KubeClientSettings._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            burst=burst,
+            qps=qps,
+            rec_test=rec_test,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             burst: Optional[int] = None,
+             qps: Optional[float] = None,
+             rec_test: Optional['outputs.KubeClientSettings'] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if burst is None:
             burst = _utilities.get_env_int('PULUMI_K8S_CLIENT_BURST')
         if burst is not None:
-            pulumi.set(__self__, "burst", burst)
+            _setter("burst", burst)
         if qps is None:
             qps = _utilities.get_env_float('PULUMI_K8S_CLIENT_QPS')
         if qps is not None:
-            pulumi.set(__self__, "qps", qps)
+            _setter("qps", qps)
         if rec_test is not None:
-            pulumi.set(__self__, "rec_test", rec_test)
+            _setter("rec_test", rec_test)
 
     @property
     @pulumi.getter

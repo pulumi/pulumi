@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import mod1 as _mod1
 from . import mod2 as _mod2
@@ -31,15 +31,28 @@ class HelmReleaseSettings:
         :param str driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         :param str plugins_path: The path to the helm plugins directory.
         """
-        pulumi.set(__self__, "required_arg", required_arg)
+        HelmReleaseSettings._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            required_arg=required_arg,
+            driver=driver,
+            plugins_path=plugins_path,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             required_arg: str,
+             driver: Optional[str] = None,
+             plugins_path: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("required_arg", required_arg)
         if driver is None:
             driver = (_utilities.get_env('PULUMI_K8S_HELM_DRIVER') or 'secret')
         if driver is not None:
-            pulumi.set(__self__, "driver", driver)
+            _setter("driver", driver)
         if plugins_path is None:
             plugins_path = _utilities.get_env('PULUMI_K8S_HELM_PLUGINS_PATH')
         if plugins_path is not None:
-            pulumi.set(__self__, "plugins_path", plugins_path)
+            _setter("plugins_path", plugins_path)
 
     @property
     @pulumi.getter(name="requiredArg")
@@ -90,15 +103,28 @@ class HelmReleaseSettingsArgs:
         :param pulumi.Input[str] driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         :param pulumi.Input[str] plugins_path: The path to the helm plugins directory.
         """
-        pulumi.set(__self__, "required_arg", required_arg)
+        HelmReleaseSettingsArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            required_arg=required_arg,
+            driver=driver,
+            plugins_path=plugins_path,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             required_arg: pulumi.Input[str],
+             driver: Optional[pulumi.Input[str]] = None,
+             plugins_path: Optional[pulumi.Input[str]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("required_arg", required_arg)
         if driver is None:
             driver = (_utilities.get_env('PULUMI_K8S_HELM_DRIVER') or 'secret')
         if driver is not None:
-            pulumi.set(__self__, "driver", driver)
+            _setter("driver", driver)
         if plugins_path is None:
             plugins_path = _utilities.get_env('PULUMI_K8S_HELM_PLUGINS_PATH')
         if plugins_path is not None:
-            pulumi.set(__self__, "plugins_path", plugins_path)
+            _setter("plugins_path", plugins_path)
 
     @property
     @pulumi.getter(name="requiredArg")
@@ -148,16 +174,29 @@ class KubeClientSettingsArgs:
         :param pulumi.Input[int] burst: Maximum burst for throttle. Default value is 10.
         :param pulumi.Input[float] qps: Maximum queries per second (QPS) to the API server from this client. Default value is 5.
         """
+        KubeClientSettingsArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            burst=burst,
+            qps=qps,
+            rec_test=rec_test,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             burst: Optional[pulumi.Input[int]] = None,
+             qps: Optional[pulumi.Input[float]] = None,
+             rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if burst is None:
             burst = _utilities.get_env_int('PULUMI_K8S_CLIENT_BURST')
         if burst is not None:
-            pulumi.set(__self__, "burst", burst)
+            _setter("burst", burst)
         if qps is None:
             qps = _utilities.get_env_float('PULUMI_K8S_CLIENT_QPS')
         if qps is not None:
-            pulumi.set(__self__, "qps", qps)
+            _setter("qps", qps)
         if rec_test is not None:
-            pulumi.set(__self__, "rec_test", rec_test)
+            _setter("rec_test", rec_test)
 
     @property
     @pulumi.getter
@@ -209,22 +248,41 @@ class LayeredTypeArgs:
         :param 'HelmReleaseSettingsArgs' plain_other: Test how plain types interact
         :param pulumi.Input[str] question: The question already answered
         """
-        pulumi.set(__self__, "other", other)
+        LayeredTypeArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            other=other,
+            thinker=thinker,
+            answer=answer,
+            plain_other=plain_other,
+            question=question,
+            recursive=recursive,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             other: pulumi.Input['HelmReleaseSettingsArgs'],
+             thinker: Optional[pulumi.Input[str]] = None,
+             answer: Optional[pulumi.Input[float]] = None,
+             plain_other: Optional['HelmReleaseSettingsArgs'] = None,
+             question: Optional[pulumi.Input[str]] = None,
+             recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("other", other)
         if thinker is None:
             thinker = 'not a good interaction'
-        pulumi.set(__self__, "thinker", thinker)
+        _setter("thinker", thinker)
         if answer is None:
             answer = 42
         if answer is not None:
-            pulumi.set(__self__, "answer", answer)
+            _setter("answer", answer)
         if plain_other is not None:
-            pulumi.set(__self__, "plain_other", plain_other)
+            _setter("plain_other", plain_other)
         if question is None:
             question = (_utilities.get_env('PULUMI_THE_QUESTION') or '<unknown>')
         if question is not None:
-            pulumi.set(__self__, "question", question)
+            _setter("question", question)
         if recursive is not None:
-            pulumi.set(__self__, "recursive", recursive)
+            _setter("recursive", recursive)
 
     @property
     @pulumi.getter
@@ -302,14 +360,27 @@ class TypArgs:
         """
         A test for namespaces (mod main)
         """
+        TypArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            mod1=mod1,
+            mod2=mod2,
+            val=val,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
+             mod2: Optional[pulumi.Input['_mod2.TypArgs']] = None,
+             val: Optional[pulumi.Input[str]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if mod1 is not None:
-            pulumi.set(__self__, "mod1", mod1)
+            _setter("mod1", mod1)
         if mod2 is not None:
-            pulumi.set(__self__, "mod2", mod2)
+            _setter("mod2", mod2)
         if val is None:
             val = 'mod main'
         if val is not None:
-            pulumi.set(__self__, "val", val)
+            _setter("val", val)
 
     @property
     @pulumi.getter

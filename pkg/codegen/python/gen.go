@@ -219,6 +219,10 @@ func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input boo
 }
 
 func (mod *modContext) objectType(t *schema.ObjectType, input bool) string {
+	return "'" + mod.objectClassRef(t, input) + "'"
+}
+
+func (mod *modContext) objectClassRef(t *schema.ObjectType, input bool) string {
 	var prefix string
 	if !input {
 		prefix = "outputs."
@@ -228,7 +232,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool) string {
 
 	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
 		modName, name := mod.modNameAndName(t.PackageReference, t, input)
-		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.PackageReference.Name()), modName, prefix, name)
+		return fmt.Sprintf("%s.%s%s%s", pyPack(t.PackageReference.Name()), modName, prefix, name)
 	}
 
 	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input)
@@ -237,7 +241,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool) string {
 		if input {
 			rootModName = "_root_inputs."
 		}
-		return fmt.Sprintf("'%s%s'", rootModName, name)
+		return fmt.Sprintf("%s%s", rootModName, name)
 	}
 
 	if modName == mod.mod {
@@ -247,7 +251,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool) string {
 		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
 	}
 
-	return fmt.Sprintf("'%s%s%s'", modName, prefix, name)
+	return fmt.Sprintf("%s%s%s", modName, prefix, name)
 }
 
 func (mod *modContext) enumType(enum *schema.EnumType) string {
@@ -390,6 +394,7 @@ func genStandardHeader(w io.Writer, tool string) {
 func typingImports() []string {
 	return []string{
 		"Any",
+		"Callable",
 		"Mapping",
 		"Optional",
 		"Sequence",
@@ -1293,6 +1298,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "        if resource_args is not None:\n")
 	fmt.Fprintf(w, "            __self__._internal_init(resource_name, opts, **resource_args.__dict__)\n")
 	fmt.Fprintf(w, "        else:\n")
+	fmt.Fprintf(w, "            kwargs = kwargs or {}\n")
+	fmt.Fprintf(w, "            def _setter(key, value):\n")
+	fmt.Fprintf(w, "                kwargs[key] = value\n")
+	fmt.Fprintf(w, "            %s._configure(_setter, **kwargs)\n", resourceArgsName)
 	fmt.Fprintf(w, "            __self__._internal_init(resource_name, *args, **kwargs)\n")
 	fmt.Fprintf(w, "\n")
 
@@ -1326,6 +1335,25 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		pname := InitParamName(prop.Name)
 		var arg interface{}
 		var err error
+
+		unwrapped := prop.Type
+		for {
+			cur := codegen.UnwrapType(unwrapped)
+			if cur == unwrapped {
+				break
+			}
+			unwrapped = cur
+		}
+
+		// Emit logic to configure schema.ObjectType args that have defaults and deprecation messages.
+		if objType, ok := unwrapped.(*schema.ObjectType); ok {
+			expectedObjType := mod.objectClassRef(objType, true)
+			fmt.Fprintf(w, "            if not isinstance(%s, %s):\n", InitParamName(prop.Name), expectedObjType)
+			fmt.Fprintf(w, "                %[1]s = %[1]s or {}\n", InitParamName(prop.Name))
+			fmt.Fprintf(w, "                def _setter(key, value):\n")
+			fmt.Fprintf(w, "                    %s[key] = value\n", InitParamName(prop.Name))
+			fmt.Fprintf(w, "                %s._configure(_setter, **%s)\n", expectedObjType, InitParamName(prop.Name))
+		}
 
 		// Fill in computed defaults for arguments.
 		if prop.DefaultValue != nil {
@@ -2558,6 +2586,38 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	mod.genTypeDocstring(w, comment, props)
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
+	} else {
+		fmt.Fprintf(w, "        %s._configure(\n", name)
+		fmt.Fprintf(w, "            lambda key, value: pulumi.set(__self__, key, value),\n")
+		for _, prop := range props {
+			pname := PyName(prop.Name)
+			fmt.Fprintf(w, "            %[1]s=%[1]s,\n", pname)
+		}
+		fmt.Fprintf(w, "        )\n")
+	}
+
+	// Define method signature
+	fmt.Fprintf(w, "    @staticmethod\n")
+	fmt.Fprintf(w, "    def _configure(")
+	// This setter allows the caller to explicitly control mutation of arguments.
+	fmt.Fprintf(w, "\n             _setter: Callable[[Any, Any], None],")
+	for _, prop := range props {
+		pname := PyName(prop.Name)
+		ty := mod.typeString(prop.Type, input, false /*acceptMapping*/)
+		if prop.DefaultValue != nil {
+			ty = mod.typeString(codegen.OptionalType(prop), input, false /*acceptMapping*/)
+		}
+
+		var defaultValue string
+		if !prop.IsRequired() || prop.DefaultValue != nil {
+			defaultValue = " = None"
+		}
+		fmt.Fprintf(w, "\n             %s: %s%s,", pname, ty, defaultValue)
+	}
+	// Catch ResourceOptions being expanded by `**kwargs`.
+	fmt.Fprintf(w, "\n             opts: Optional[pulumi.ResourceOptions]=None):\n")
+	if len(props) == 0 {
+		fmt.Fprintf(w, "        pass\n")
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
@@ -2598,7 +2658,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 			indent = "    "
 		}
 
-		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, pname, arg)
+		fmt.Fprintf(w, "%s        _setter(\"%s\", %s)\n", indent, pname, arg)
 	}
 	fmt.Fprintf(w, "\n")
 

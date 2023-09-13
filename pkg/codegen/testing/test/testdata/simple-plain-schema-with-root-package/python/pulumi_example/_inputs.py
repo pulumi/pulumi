@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -22,15 +22,34 @@ class FooArgs:
                  b: Optional[bool] = None,
                  d: Optional[int] = None,
                  f: Optional[str] = None):
-        pulumi.set(__self__, "a", a)
-        pulumi.set(__self__, "c", c)
-        pulumi.set(__self__, "e", e)
+        FooArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            a=a,
+            c=c,
+            e=e,
+            b=b,
+            d=d,
+            f=f,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             a: bool,
+             c: int,
+             e: str,
+             b: Optional[bool] = None,
+             d: Optional[int] = None,
+             f: Optional[str] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("a", a)
+        _setter("c", c)
+        _setter("e", e)
         if b is not None:
-            pulumi.set(__self__, "b", b)
+            _setter("b", b)
         if d is not None:
-            pulumi.set(__self__, "d", d)
+            _setter("d", d)
         if f is not None:
-            pulumi.set(__self__, "f", f)
+            _setter("f", f)
 
     @property
     @pulumi.getter

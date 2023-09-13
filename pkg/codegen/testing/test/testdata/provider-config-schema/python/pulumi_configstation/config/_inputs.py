@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
 __all__ = [
@@ -18,10 +18,21 @@ class SandwichArgs:
     def __init__(__self__, *,
                  bread: Optional[pulumi.Input[str]] = None,
                  veggies: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None):
+        SandwichArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            bread=bread,
+            veggies=veggies,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             bread: Optional[pulumi.Input[str]] = None,
+             veggies: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if bread is not None:
-            pulumi.set(__self__, "bread", bread)
+            _setter("bread", bread)
         if veggies is not None:
-            pulumi.set(__self__, "veggies", veggies)
+            _setter("veggies", veggies)
 
     @property
     @pulumi.getter

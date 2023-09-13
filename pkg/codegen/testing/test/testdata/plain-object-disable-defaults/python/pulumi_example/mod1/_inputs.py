@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
 __all__ = [
@@ -20,10 +20,19 @@ class TypArgs:
         """
         A test for namespaces (mod 1)
         """
+        TypArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            val=val,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             val: Optional[pulumi.Input[str]] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if val is None:
             val = 'mod1'
         if val is not None:
-            pulumi.set(__self__, "val", val)
+            _setter("val", val)
 
     @property
     @pulumi.getter

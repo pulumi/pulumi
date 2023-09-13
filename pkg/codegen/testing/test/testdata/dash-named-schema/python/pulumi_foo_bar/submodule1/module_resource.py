@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 from .. import _inputs as _root_inputs
 from .. import outputs as _root_outputs
@@ -20,8 +20,17 @@ class ModuleResourceArgs:
         """
         The set of arguments for constructing a ModuleResource resource.
         """
+        ModuleResourceArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            thing=thing,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             thing: Optional[pulumi.Input['_root_inputs.TopLevelArgs']] = None,
+             opts: Optional[pulumi.ResourceOptions]=None):
         if thing is not None:
-            pulumi.set(__self__, "thing", thing)
+            _setter("thing", thing)
 
     @property
     @pulumi.getter
@@ -63,6 +72,10 @@ class ModuleResource(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            ModuleResourceArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -78,6 +91,11 @@ class ModuleResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
+            if not isinstance(thing, _root_inputs.TopLevelArgs):
+                thing = thing or {}
+                def _setter(key, value):
+                    thing[key] = value
+                _root_inputs.TopLevelArgs._configure(_setter, **thing)
             __props__.__dict__["thing"] = thing
         super(ModuleResource, __self__).__init__(
             'foo-bar:submodule1:ModuleResource',

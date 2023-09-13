@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -25,12 +25,31 @@ class ResourceArgs:
         """
         The set of arguments for constructing a Resource resource.
         """
-        pulumi.set(__self__, "config", config)
-        pulumi.set(__self__, "config_array", config_array)
-        pulumi.set(__self__, "config_map", config_map)
-        pulumi.set(__self__, "foo", foo)
-        pulumi.set(__self__, "foo_array", foo_array)
-        pulumi.set(__self__, "foo_map", foo_map)
+        ResourceArgs._configure(
+            lambda key, value: pulumi.set(__self__, key, value),
+            config=config,
+            config_array=config_array,
+            config_map=config_map,
+            foo=foo,
+            foo_array=foo_array,
+            foo_map=foo_map,
+        )
+    @staticmethod
+    def _configure(
+             _setter: Callable[[Any, Any], None],
+             config: pulumi.Input['ConfigArgs'],
+             config_array: pulumi.Input[Sequence[pulumi.Input['ConfigArgs']]],
+             config_map: pulumi.Input[Mapping[str, pulumi.Input['ConfigArgs']]],
+             foo: pulumi.Input[str],
+             foo_array: pulumi.Input[Sequence[pulumi.Input[str]]],
+             foo_map: pulumi.Input[Mapping[str, pulumi.Input[str]]],
+             opts: Optional[pulumi.ResourceOptions]=None):
+        _setter("config", config)
+        _setter("config_array", config_array)
+        _setter("config_map", config_map)
+        _setter("foo", foo)
+        _setter("foo_array", foo_array)
+        _setter("foo_map", foo_map)
 
     @property
     @pulumi.getter
@@ -122,6 +141,10 @@ class Resource(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
+            kwargs = kwargs or {}
+            def _setter(key, value):
+                kwargs[key] = value
+            ResourceArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -142,6 +165,11 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
+            if not isinstance(config, ConfigArgs):
+                config = config or {}
+                def _setter(key, value):
+                    config[key] = value
+                ConfigArgs._configure(_setter, **config)
             if config is None and not opts.urn:
                 raise TypeError("Missing required property 'config'")
             __props__.__dict__["config"] = None if config is None else pulumi.Output.secret(config)
