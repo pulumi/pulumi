@@ -44,6 +44,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 const (
@@ -83,8 +85,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Validate name (if specified) before further prompts/operations.
-	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
-		return fmt.Errorf("'%s' is not a valid project name: %w", args.name, workspace.ValidateProjectName(args.name))
+	if args.name != "" && pkgWorkspace.ValidateProjectName(args.name) != nil {
+		return fmt.Errorf("'%s' is not a valid project name: %w", args.name, pkgWorkspace.ValidateProjectName(args.name))
 	}
 
 	// Validate secrets provider type
@@ -228,7 +230,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
-		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
+		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
 		if err := validateProjectName(ctx, b, orgName, defaultValue, args.generateOnly, opts); err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
@@ -249,10 +251,10 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for the project description, if it wasn't already specified.
 	if args.description == "" {
-		defaultValue := workspace.ValueOrDefaultProjectDescription(
+		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 			args.description, template.ProjectDescription, template.Description)
 		args.description, err = args.prompt(
-			args.yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts)
+			args.yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
 		if err != nil {
 			return err
 		}
@@ -571,7 +573,7 @@ func errorIfNotEmptyDirectory(path string) error {
 func validateProjectName(ctx context.Context, b backend.Backend,
 	orgName string, projectName string, generateOnly bool, opts display.Options,
 ) error {
-	err := workspace.ValidateProjectName(projectName)
+	err := pkgWorkspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
 	}
@@ -1101,7 +1103,7 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 		}
 
 		// Create the option string that combines the name, padding, and description.
-		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
+		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
 		nameToTemplateMap[option] = template
