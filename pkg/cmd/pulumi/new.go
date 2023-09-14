@@ -26,8 +26,6 @@ import (
 	"strings"
 	"unicode"
 
-	survey "github.com/AlecAivazis/survey/v2"
-	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 
@@ -161,7 +159,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else {
-		if template, err = chooseTemplate(templates, opts); err != nil {
+		if template, err = display.ChooseTemplate(templates, opts); err != nil {
 			return err
 		}
 	}
@@ -811,34 +809,6 @@ func pythonCommands() []string {
 	commands = append(commands, "python -m pip install -r requirements.txt")
 
 	return commands
-}
-
-// chooseTemplate will prompt the user to choose amongst the available templates.
-func chooseTemplate(templates []workspace.Template, opts display.Options) (workspace.Template, error) {
-	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
-	if !opts.IsInteractive {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
-	}
-
-	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
-	surveycore.DisableColor = true
-
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
-	nopts := len(options)
-	pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
-	message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, nopts)
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
-
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: pageSize,
-	}, &option, surveyIcons(opts.Color)); err != nil {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
-	}
-
-	return optionToTemplateMap[option], nil
 }
 
 // parseConfig parses the config values passed via command line flags.

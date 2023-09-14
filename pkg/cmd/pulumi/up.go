@@ -214,7 +214,7 @@ func newUpCmd() *cobra.Command {
 		} else if len(templates) == 1 {
 			template = templates[0]
 		} else {
-			if template, err = chooseTemplate(templates, opts.Display); err != nil {
+			if template, err = display.ChooseTemplate(templates, opts.Display); err != nil {
 				return result.FromError(err)
 			}
 		}
