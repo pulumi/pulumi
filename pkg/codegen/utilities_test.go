@@ -21,34 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStringSetContains(t *testing.T) {
-	t.Parallel()
-
-	set123 := NewStringSet("1", "2", "3")
-	set12 := NewStringSet("1", "2")
-	set14 := NewStringSet("1", "4")
-	setEmpty := NewStringSet()
-
-	assert.True(t, set123.Contains(set123))
-	assert.True(t, set123.Contains(set12))
-	assert.False(t, set12.Contains(set123))
-	assert.False(t, set123.Contains(set14))
-	assert.True(t, set123.Contains(setEmpty))
-}
-
-func TestStringSetSubtract(t *testing.T) {
-	t.Parallel()
-
-	set1234 := NewStringSet("1", "2", "3", "4")
-	set125 := NewStringSet("1", "2", "5")
-	set34 := NewStringSet("3", "4")
-	setEmpty := NewStringSet()
-
-	assert.Equal(t, set34, set1234.Subtract(set125))
-	assert.Equal(t, setEmpty, set1234.Subtract(set1234))
-	assert.Equal(t, set1234, set1234.Subtract(setEmpty))
-}
-
 func TestSimplifyInputUnion(t *testing.T) {
 	t.Parallel()
 

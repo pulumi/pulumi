@@ -15,6 +15,7 @@ import (
 	"sync"
 	"unicode"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/iancoleman/strcase"
 
@@ -47,7 +48,7 @@ type generator struct {
 	readDirTempSpiller  *readDirSpiller
 	splatSpiller        *splatSpiller
 	optionalSpiller     *optionalSpiller
-	scopeTraversalRoots codegen.StringSet
+	scopeTraversalRoots mapset.Set[string]
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	tmpVarCount         int
@@ -102,7 +103,7 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
+		scopeTraversalRoots: mapset.NewSet[string](),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		externalCache:       opts.ExternalCache,
 		importer:            newFileImporter(),
@@ -625,7 +626,7 @@ func (g *generator) collectScopeRoots(n pcl.Node) {
 }
 
 // genPreamble generates package decl, imports, and opens the main func
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods mapset.Set[string]) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
 
@@ -641,7 +642,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	g.Fprintf(w, ")\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range codegen.SortedValues(preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 }
@@ -689,8 +690,8 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
-func (g *generator) collectImports(program *pcl.Program) (helpers codegen.StringSet) {
-	helpers = codegen.NewStringSet()
+func (g *generator) collectImports(program *pcl.Program) (helpers mapset.Set[string]) {
+	helpers = mapset.NewSet[string]()
 
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
@@ -1016,7 +1017,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
-		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
+		if g.scopeTraversalRoots.Contains(varName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)
 		} else {
 			assignment := ":="
@@ -1187,7 +1188,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	componentName := r.DeclarationName()
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
-		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
+		if g.scopeTraversalRoots.Contains(varName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := New%s(ctx, %s, ", varName, componentName, resourceName)
 		} else {
 			assignment := ":="
@@ -1363,7 +1364,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	g.genTemps(w, temps)
 	name := makeValidIdentifier(v.Name())
 	assignment := ":="
-	if !g.scopeTraversalRoots.Has(v.Name()) {
+	if !g.scopeTraversalRoots.Contains(v.Name()) {
 		name = "_"
 		if g.isErrAssigned {
 			assignment = "="
@@ -1519,7 +1520,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	}
 	fnLookup := "Lookup" + fn[3:]
 	pkgContext, has := g.contexts[pkg][mod]
-	if has && pkgContext.names.Has(fnLookup) {
+	if has && pkgContext.names.Contains(fnLookup) {
 		return true
 	}
 	return false

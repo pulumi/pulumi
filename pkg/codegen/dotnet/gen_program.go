@@ -22,6 +22,7 @@ import (
 	"path"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -381,15 +382,15 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 }
 
 type programUsings struct {
-	systemUsings        codegen.StringSet
-	pulumiUsings        codegen.StringSet
-	pulumiHelperMethods codegen.StringSet
+	systemUsings        mapset.Set[string]
+	pulumiUsings        mapset.Set[string]
+	pulumiHelperMethods mapset.Set[string]
 }
 
 func (g *generator) usingStatements(program *pcl.Program) programUsings {
-	systemUsings := codegen.NewStringSet("System.Linq", "System.Collections.Generic")
-	pulumiUsings := codegen.NewStringSet()
-	preambleHelperMethods := codegen.NewStringSet()
+	systemUsings := mapset.NewSet("System.Linq", "System.Collections.Generic")
+	pulumiUsings := mapset.NewSet[string]()
+	preambleHelperMethods := mapset.NewSet[string]()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
@@ -614,11 +615,11 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 	programUsings := g.usingStatements(component.Program)
 	systemUsings := programUsings.systemUsings
 	pulumiUsings := programUsings.pulumiUsings
-	for _, pkg := range systemUsings.SortedValues() {
+	for _, pkg := range codegen.SortedValues(systemUsings) {
 		g.Fprintf(w, "using %v;\n", pkg)
 	}
 	g.Fprintln(w, `using Pulumi;`)
-	for _, pkg := range pulumiUsings.SortedValues() {
+	for _, pkg := range codegen.SortedValues(pulumiUsings) {
 		g.Fprintf(w, "using %v;\n", pkg)
 	}
 	configVars := component.Program.ConfigVariables()
@@ -726,7 +727,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 			}
 
 			// If we collected any helper methods that should be added, write them
-			for _, preambleHelperMethodBody := range programUsings.pulumiHelperMethods.SortedValues() {
+			for _, preambleHelperMethodBody := range codegen.SortedValues(programUsings.pulumiHelperMethods) {
 				g.Fprintf(w, "        %s\n\n", preambleHelperMethodBody)
 			}
 
@@ -824,18 +825,18 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 		systemUsings.Add("System.Threading.Tasks")
 	}
 
-	for _, pkg := range systemUsings.SortedValues() {
+	for _, pkg := range codegen.SortedValues(systemUsings) {
 		g.Fprintf(w, "using %v;\n", pkg)
 	}
 	g.Fprintln(w, `using Pulumi;`)
-	for _, pkg := range pulumiUsings.SortedValues() {
+	for _, pkg := range codegen.SortedValues(pulumiUsings) {
 		g.Fprintf(w, "using %v;\n", pkg)
 	}
 
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range codegen.SortedValues(preambleHelperMethods) {
 		g.Fprintf(w, "\t%s\n\n", preambleHelperMethodBody)
 	}
 

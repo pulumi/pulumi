@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -459,7 +460,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 			}
 			diagnostics = append(diagnostics, d)
 		}
-		attrNames := codegen.StringSet{}
+		attrNames := mapset.NewSet[string]()
 		for _, attr := range node.Inputs {
 			attrNames.Add(attr.Name)
 
@@ -475,7 +476,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 		for _, k := range codegen.SortedKeys(objectType.Properties) {
 			typ := objectType.Properties[k]
-			if model.IsOptionalType(typ) || attrNames.Has(k) {
+			if model.IsOptionalType(typ) || attrNames.Contains(k) {
 				// The type is present or optional. No error.
 				continue
 			}

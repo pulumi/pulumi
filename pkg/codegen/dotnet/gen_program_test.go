@@ -3,7 +3,7 @@ package dotnet
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
@@ -26,7 +26,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Language:   "dotnet",
 			Extension:  "cs",
 			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				Check(t, path, dependencies, "")
 			},
 			GenProgram: GenerateProgram,

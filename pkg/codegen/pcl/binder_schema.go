@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -236,7 +237,7 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	var pkgOpts packageOpts
-	packageNames := codegen.StringSet{}
+	packageNames := mapset.NewSet[string]()
 
 	if r, ok := n.(*Resource); ok {
 		token, tokenRange := getResourceToken(r)
@@ -268,7 +269,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	})
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
-	for _, name := range packageNames.SortedValues() {
+	for _, name := range codegen.SortedValues(packageNames) {
 		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
 			continue
 		}
@@ -469,7 +470,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				return a, true
 			}
 		}
-		schemas := codegen.Set{}
+		schemas := mapset.NewSet[schema.Type]()
 		for _, t := range t.ElementTypes {
 			if s, ok := GetSchemaForType(t); ok {
 				if union, ok := s.(*schema.UnionType); ok {
@@ -481,13 +482,14 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				}
 			}
 		}
-		if len(schemas) == 0 {
+		if schemas.Cardinality() == 0 {
 			return nil, false
 		}
-		schemaTypes := slice.Prealloc[schema.Type](len(schemas))
-		for t := range schemas {
-			schemaTypes = append(schemaTypes, t.(schema.Type))
-		}
+		schemaTypes := slice.Prealloc[schema.Type](schemas.Cardinality())
+		schemas.Each(func(t schema.Type) bool {
+			schemaTypes = append(schemaTypes, t)
+			return true
+		})
 		if len(schemaTypes) == 1 {
 			return schemaTypes[0], true
 		}

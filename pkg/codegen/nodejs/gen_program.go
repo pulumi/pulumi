@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -356,12 +357,12 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 
 type programImports struct {
 	importStatements      []string
-	preambleHelperMethods codegen.StringSet
+	preambleHelperMethods mapset.Set[string]
 }
 
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
-	importSet := codegen.NewStringSet("@pulumi/pulumi")
-	preambleHelperMethods := codegen.NewStringSet()
+	importSet := mapset.NewSet("@pulumi/pulumi")
+	preambleHelperMethods := mapset.NewSet[string]()
 	var componentImports []string
 
 	npmToPuPkgName := make(map[string]string)
@@ -404,7 +405,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
-	sortedValues := importSet.SortedValues()
+	sortedValues := codegen.SortedValues(importSet)
 	imports := slice.Prealloc[string](len(sortedValues))
 	for _, pkg := range sortedValues {
 		if pkg == "@pulumi/pulumi" {
@@ -441,7 +442,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range codegen.SortedValues(programImports.preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 	return nil
@@ -526,7 +527,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range codegen.SortedValues(programImports.preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 

@@ -30,6 +30,7 @@ import (
 	"strings"
 	"unicode"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -290,7 +291,7 @@ func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
 }
 
 func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, input, wrapInput, state, requireInitializers bool) string {
-	elementTypeSet := codegen.StringSet{}
+	elementTypeSet := mapset.NewSet[string]()
 	var elementTypes []string
 	for _, e := range t.ElementTypes {
 		// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
@@ -300,7 +301,7 @@ func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, in
 		}
 
 		et := mod.typeString(e, qualifier, input, state, false)
-		if !elementTypeSet.Has(et) {
+		if !elementTypeSet.Contains(et) {
 			elementTypeSet.Add(et)
 			elementTypes = append(elementTypes, et)
 		}
@@ -621,7 +622,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 }
 
 // Set to avoid generating a class with the same name twice.
-var generatedTypes = codegen.Set{}
+var generatedTypes = mapset.NewSet[string]()
 
 func (pt *plainType) genInputType(w io.Writer, level int) error {
 	return pt.genInputTypeWithFlags(w, level, true /* generateInputAttributes */)
@@ -634,7 +635,7 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, generateInput
 	// ever change the namespacing in the k8s SDK to the standard one.
 	if pt.mod.isK8sCompatMode() {
 		key := pt.mod.namespaceName + pt.name
-		if generatedTypes.Has(key) {
+		if generatedTypes.Contains(key) {
 			return nil
 		}
 		generatedTypes.Add(key)

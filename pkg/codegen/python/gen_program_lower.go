@@ -1,20 +1,20 @@
 package python
 
 import (
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func isParameterReference(parameters codegen.Set, x model.Expression) bool {
+func isParameterReference(parameters mapset.Set[model.Traversable], x model.Expression) bool {
 	scopeTraversal, ok := x.(*model.ScopeTraversalExpression)
 	if !ok {
 		return false
 	}
 
-	return parameters.Has(scopeTraversal.Parts[0])
+	return parameters.Contains(scopeTraversal.Parts[0])
 }
 
 // parseProxyApply attempts to match and rewrite the given parsed apply using the following patterns:
@@ -25,7 +25,7 @@ func isParameterReference(parameters codegen.Set, x model.Expression) bool {
 //
 // Each of these patterns matches an apply that can be handled by `pulumi.Output`'s `__getitem__` or `__getattr__`
 // method. The rewritten expressions will use those methods rather than calling `apply`.
-func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Expression,
+func (g *generator) parseProxyApply(parameters mapset.Set[model.Traversable], args []model.Expression,
 	then model.Expression,
 ) (model.Expression, bool) {
 	if len(args) != 1 {
@@ -87,7 +87,7 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		// Parse the apply call.
 		args, then := pcl.ParseApplyCall(apply)
 
-		parameters := codegen.Set{}
+		parameters := mapset.NewSet[model.Traversable]()
 		for _, p := range then.Parameters {
 			parameters.Add(p)
 		}

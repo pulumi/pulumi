@@ -70,6 +70,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kms v1.18.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.10
 	github.com/creack/pty v1.1.17
+	github.com/deckarep/golang-set/v2 v2.3.1
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/go-git/go-git/v5 v5.6.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510

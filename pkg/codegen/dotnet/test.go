@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +16,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+func Check(t *testing.T, path string, dependencies mapset.Set[string], pulumiSDKPath string) {
 	var err error
 	dir := filepath.Dir(path)
 
@@ -70,7 +71,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 	TypeCheck(t, path, dependencies, pulumiSDKPath)
 }
 
-func TypeCheck(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+func TypeCheck(t *testing.T, path string, dependencies mapset.Set[string], pulumiSDKPath string) {
 	var err error
 	dir := filepath.Dir(path)
 
@@ -103,9 +104,9 @@ func (pkg dep) install(t *testing.T, ex, dir string) {
 //
 //	"aws" => {"Pulumi.Aws", 4.21.1}
 //	"azure" => {"Pulumi.Azure", 4.21.1}
-func dotnetDependencies(deps codegen.StringSet) []dep {
-	result := make([]dep, len(deps))
-	for i, d := range deps.SortedValues() {
+func dotnetDependencies(deps mapset.Set[string]) []dep {
+	result := make([]dep, deps.Cardinality())
+	for i, d := range codegen.SortedValues(deps) {
 		switch d {
 		case "aws":
 			result[i] = dep{"Pulumi.Aws", test.AwsSchema}
@@ -132,7 +133,7 @@ func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
 			Language:   "dotnet",
 			Extension:  "cs",
 			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				Check(t, path, dependencies, "")
 			},
 			GenProgram: GenerateProgram,

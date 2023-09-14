@@ -1,11 +1,12 @@
 package codegen
 
 import (
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
-	if seen.Has(t) {
+func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen mapset.Set[schema.Type]) {
+	if seen.Contains(t) {
 		return
 	}
 	seen.Add(t)
@@ -33,12 +34,12 @@ func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
 }
 
 func VisitType(schemaType schema.Type, visitor func(t schema.Type)) {
-	seen := Set{}
+	seen := mapset.NewSet[schema.Type]()
 	visitTypeClosure(schemaType, visitor, seen)
 }
 
 func VisitTypeClosure(properties []*schema.Property, visitor func(t schema.Type)) {
-	seen := Set{}
+	seen := mapset.NewSet[schema.Type]()
 	for _, p := range properties {
 		visitTypeClosure(p.Type, visitor, seen)
 	}

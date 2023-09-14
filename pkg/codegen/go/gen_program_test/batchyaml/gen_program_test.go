@@ -4,10 +4,10 @@ import (
 	"os"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	codegenGo "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
@@ -25,7 +25,7 @@ func TestGenerateProgram(t *testing.T) {
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				codegenGo.Check(t, path, dependencies, "../../../../../../../../sdk")
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {

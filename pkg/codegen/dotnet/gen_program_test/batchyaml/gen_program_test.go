@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	codegenDotnet "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
@@ -23,7 +23,7 @@ func TestGenerateProgram(t *testing.T) {
 			Language:   "dotnet",
 			Extension:  "cs",
 			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				codegenDotnet.Check(t, path, dependencies, "")
 			},
 			GenProgram: codegenDotnet.GenerateProgram,

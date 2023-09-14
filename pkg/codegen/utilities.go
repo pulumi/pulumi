@@ -19,11 +19,14 @@ import (
 	"path/filepath"
 	"sort"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// Deprecated: Use "github.com/deckarep/golang-set/v2".Set[T] instead.
 type StringSet map[string]struct{}
 
 func NewStringSet(values ...string) StringSet {
@@ -38,79 +41,31 @@ func (ss StringSet) Add(s string) {
 	ss[s] = struct{}{}
 }
 
-func (ss StringSet) Any() bool {
-	return len(ss) > 0
-}
-
-func (ss StringSet) Delete(s string) {
-	delete(ss, s)
-}
-
 func (ss StringSet) Has(s string) bool {
 	_, ok := ss[s]
 	return ok
 }
 
-// StringSet.Except returns the string set setminus s.
-func (ss StringSet) Except(s string) StringSet {
-	return ss.Subtract(NewStringSet(s))
-}
-
-func (ss StringSet) SortedValues() []string {
-	values := slice.Prealloc[string](len(ss))
-	for v := range ss {
-		values = append(values, v)
+// Except returns a new set with all elements of `a` minus the elements `bs`.
+// It's a functional equivalent of `a.Remove(b)`.
+func Except[T comparable](a mapset.Set[T], b T, bs ...T) mapset.Set[T] {
+	aCopy := a.Clone()
+	aCopy.Remove(b)
+	for _, b := range bs {
+		aCopy.Remove(b)
 	}
-	sort.Strings(values)
-	return values
+	return aCopy
 }
 
-// Contains returns true if all elements of the subset are also present in the current set. It also returns true
-// if subset is empty.
-func (ss StringSet) Contains(subset StringSet) bool {
-	for v := range subset {
-		if !ss.Has(v) {
-			return false
-		}
-	}
-	return true
-}
-
-// Subtract returns a new string set with all elements of the current set that are not present in the other set.
-func (ss StringSet) Subtract(other StringSet) StringSet {
-	result := NewStringSet()
-	for v := range ss {
-		if !other.Has(v) {
-			result.Add(v)
-		}
-	}
-	return result
-}
-
-func (ss StringSet) Union(other StringSet) StringSet {
-	result := NewStringSet()
-	for v := range ss {
-		result.Add(v)
-	}
-	for v := range other {
-		result.Add(v)
-	}
-	return result
-}
-
-type Set map[interface{}]struct{}
-
-func (s Set) Add(v interface{}) {
-	s[v] = struct{}{}
-}
-
-func (s Set) Delete(v interface{}) {
-	delete(s, v)
-}
-
-func (s Set) Has(v interface{}) bool {
-	_, ok := s[v]
-	return ok
+// SortedValues returns a sorted list of values for the given set.
+func SortedValues(m mapset.Set[string]) []string {
+	keys := slice.Prealloc[string](m.Cardinality())
+	m.Each(func(v string) bool {
+		keys = append(keys, v)
+		return false
+	})
+	sort.Strings(keys)
+	return keys
 }
 
 // SortedKeys returns a sorted list of keys for the given map.
@@ -128,7 +83,7 @@ func SortedKeys[T any](m map[string]T) []string {
 // Note: The exclusions currently don't function recursively, so you cannot exclude a single file
 // in a subdirectory, only entire subdirectories. This function will need improvements to be able to
 // target that use-case.
-func CleanDir(dirPath string, exclusions StringSet) error {
+func CleanDir(dirPath string, exclusions mapset.Set[string]) error {
 	subPaths, err := os.ReadDir(dirPath)
 	if err != nil {
 		return err
@@ -136,7 +91,7 @@ func CleanDir(dirPath string, exclusions StringSet) error {
 
 	if len(subPaths) > 0 {
 		for _, path := range subPaths {
-			if !exclusions.Has(path.Name()) {
+			if !exclusions.Contains(path.Name()) {
 				err = os.RemoveAll(filepath.Join(dirPath, path.Name()))
 				if err != nil {
 					return err

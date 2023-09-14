@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
-func Check(t *testing.T, path string, _ codegen.StringSet) {
+func Check(t *testing.T, path string, _ mapset.Set[string]) {
 	pyCompileCheck(t, filepath.Dir(path))
 }
 

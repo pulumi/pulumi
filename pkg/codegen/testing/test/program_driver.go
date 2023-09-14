@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,14 +33,14 @@ func transpiled(dir string) string {
 	return filepath.Join(transpiledExamplesDir, dir)
 }
 
-var allProgLanguages = codegen.NewStringSet("dotnet", "python", "go", "nodejs")
+var allProgLanguages = mapset.NewSet("dotnet", "python", "go", "nodejs")
 
 type ProgramTest struct {
 	Directory          string
 	Description        string
-	Skip               codegen.StringSet
-	ExpectNYIDiags     codegen.StringSet
-	SkipCompile        codegen.StringSet
+	Skip               mapset.Set[string]
+	ExpectNYIDiags     mapset.Set[string]
+	SkipCompile        mapset.Set[string]
 	BindOptions        []pcl.BindOption
 	MockPluginVersions map[string]string
 }
@@ -72,13 +73,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "synthetic-resource-properties",
 		Description: "Synthetic resource properties",
-		SkipCompile: codegen.NewStringSet("nodejs", "dotnet", "go"), // not a real package
+		SkipCompile: mapset.NewSet("nodejs", "dotnet", "go"), // not a real package
 	},
 	{
 		Directory:      "aws-s3-folder",
 		Description:    "AWS S3 Folder",
-		ExpectNYIDiags: codegen.NewStringSet("dotnet", "python"),
-		SkipCompile:    codegen.NewStringSet("go", "python"),
+		ExpectNYIDiags: mapset.NewSet("dotnet", "python"),
+		SkipCompile:    mapset.NewSet("go", "python"),
 		// Blocked on python: TODO[pulumi/pulumi#8062]: Re-enable this test.
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8064]
@@ -95,13 +96,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-fargate-output-versioned",
 		Description: "AWS Fargate Using Output-versioned invokes for python and typescript",
-		Skip:        codegen.NewStringSet("go", "dotnet"),
+		Skip:        mapset.NewSet("go", "dotnet"),
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
 	},
 	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet("go"),
+		SkipCompile: mapset.NewSet("go"),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
@@ -112,19 +113,19 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "python-regress-10914",
 		Description: "Python regression test for #10914",
-		Skip:        allProgLanguages.Except("python"),
+		Skip:        codegen.Except(allProgLanguages, "python"),
 	},
 	{
 		Directory:   "simplified-invokes",
 		Description: "Simplified invokes",
-		Skip:        codegen.NewStringSet("python", "go"),
-		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
+		Skip:        mapset.NewSet("python", "go"),
+		SkipCompile: mapset.NewSet("dotnet", "nodejs"),
 	},
 	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:
-		Skip: allProgLanguages.Except("go"),
+		Skip: codegen.Except(allProgLanguages, "go"),
 	},
 	{
 		Directory:   "aws-webserver",
@@ -137,7 +138,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "azure-native",
 		Description: "Azure Native",
-		SkipCompile: codegen.NewStringSet("go", "nodejs", "dotnet"),
+		SkipCompile: mapset.NewSet("go", "nodejs", "dotnet"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8072]
 		//   TODO[pulumi/pulumi#8073]
@@ -156,7 +157,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "kubernetes-pod",
 		Description: "K8s Pod",
-		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		SkipCompile: mapset.NewSet("go", "nodejs"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8073]
 		//   TODO[pulumi/pulumi#8074]
@@ -189,17 +190,17 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// compiling and type checking involves downloading the real package to
 		// check against. Because we are checking against the "other" package
 		// (which doesn't exist), this does not work.
-		SkipCompile: codegen.NewStringSet("nodejs", "dotnet", "go"),
+		SkipCompile: mapset.NewSet("nodejs", "dotnet", "go"),
 	},
 	{
 		Directory:   "invalid-go-sprintf",
 		Description: "Regress invalid Go",
-		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
+		Skip:        mapset.NewSet("python", "nodejs", "dotnet"),
 	},
 	{
 		Directory:   "typed-enum",
 		Description: "Supply strongly typed enums",
-		Skip:        codegen.NewStringSet(golang),
+		Skip:        mapset.NewSet(golang),
 	},
 	{
 		Directory:   "pulumi-stack-reference",
@@ -208,7 +209,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "python-resource-names",
 		Description: "Repro for #9357",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet"),
 	},
 	{
 		Directory:   "logical-name",
@@ -218,12 +219,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "aws-lambda",
 		Description: "AWS Lambdas",
 		// We have special testing for this case because lambda is a python keyword.
-		Skip: codegen.NewStringSet("go", "nodejs", "dotnet"),
+		Skip: mapset.NewSet("go", "nodejs", "dotnet"),
 	},
 	{
 		Directory:   "discriminated-union",
 		Description: "Discriminated Unions for choosing an input type",
-		Skip:        codegen.NewStringSet("go"),
+		Skip:        mapset.NewSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#10834]
 	},
 	{
@@ -249,14 +250,14 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "components",
 		Description: "Components",
-		SkipCompile: codegen.NewStringSet("go"),
+		SkipCompile: mapset.NewSet("go"),
 	},
 	{
 		Directory:   "entries-function",
 		Description: "Using the entries function",
 		// go and dotnet do fully not support GenForExpression yet
 		// Todo: https://github.com/pulumi/pulumi/issues/12606
-		SkipCompile: allProgLanguages.Except("nodejs").Except("python"),
+		SkipCompile: codegen.Except(allProgLanguages, "nodejs", "python"),
 	},
 	{
 		Directory:   "retain-on-delete",
@@ -269,7 +270,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "regress-11176",
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
-		Skip:        allProgLanguages.Except("go"),
+		Skip:        codegen.Except(allProgLanguages, "go"),
 	},
 	{
 		Directory:   "throw-not-implemented",
@@ -278,25 +279,25 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "python-reserved",
 		Description: "Test python reserved words aren't used",
-		Skip:        allProgLanguages.Except("python"),
+		Skip:        codegen.Except(allProgLanguages, "python"),
 	},
 	{
 		Directory:   "iterating-optional-range-expressions",
 		Description: "Test that we can iterate over range expression that are option(iterator)",
 		// TODO: dotnet and go
-		Skip: allProgLanguages.Except("nodejs").Except("python"),
+		Skip: codegen.Except(allProgLanguages, "nodejs", "python"),
 		// We are using a synthetic schema defined in range-1.0.0.json so we can't compile all the way
 		SkipCompile: allProgLanguages,
 	},
 	{
 		Directory:   "output-literals",
 		Description: "Tests that we can return various literal values via stack outputs",
-		SkipCompile: codegen.NewStringSet("go"),
+		SkipCompile: mapset.NewSet("go"),
 	},
 	{
 		Directory:   "dynamic-entries",
 		Description: "Testing iteration of dynamic entries in TypeScript",
-		Skip:        allProgLanguages.Except("nodejs"),
+		Skip:        codegen.Except(allProgLanguages, "nodejs"),
 		SkipCompile: allProgLanguages,
 	},
 	{
@@ -305,7 +306,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// TODO[pulumi/pulumi#4899]: Skip compiling for Go because it is trying to pass a value of type float64
 		// as an argument to ctx.Export but float64 does not implement pulumi.Input. The value needs to be
 		// wrapped as a pulumi.Float64.
-		SkipCompile: codegen.NewStringSet("go"),
+		SkipCompile: mapset.NewSet("go"),
 	},
 	{
 		Directory:   "simple-splat",
@@ -316,18 +317,18 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "invoke-inside-conditional-range",
 		Description: "Using the result of an invoke inside a conditional range expression of a resource",
-		Skip:        allProgLanguages.Except("nodejs").Except("dotnet"),
+		Skip:        codegen.Except(allProgLanguages, "nodejs", "dotnet"),
 		SkipCompile: allProgLanguages,
 	},
 	{
 		Directory:   "output-name-conflict",
 		Description: "Tests whether we are able to generate programs where output variables have same id as config var",
-		SkipCompile: codegen.NewStringSet("go"),
+		SkipCompile: mapset.NewSet("go"),
 	},
 	{
 		Directory:   "snowflake-python-12998",
 		Description: "Tests regression for issue https://github.com/pulumi/pulumi/issues/12998",
-		Skip:        allProgLanguages.Except("python"),
+		Skip:        codegen.Except(allProgLanguages, "python"),
 		SkipCompile: allProgLanguages,
 		BindOptions: []pcl.BindOption{pcl.AllowMissingVariables, pcl.AllowMissingProperties},
 	},
@@ -351,29 +352,29 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "optional-complex-config",
 		Description: "Tests generating code for optional and complex config values",
-		Skip:        allProgLanguages.Except("nodejs").Except("dotnet"),
-		SkipCompile: allProgLanguages.Except("nodejs").Except("dotnet"),
+		Skip:        codegen.Except(allProgLanguages, "nodejs", "dotnet"),
+		SkipCompile: codegen.Except(allProgLanguages, "nodejs", "dotnet"),
 	},
 	{
 		Directory:   "interpolated-string-keys",
 		Description: "Tests that interpolated string keys are supported in maps. ",
-		Skip:        allProgLanguages.Except("nodejs").Except("python"),
+		Skip:        codegen.Except(allProgLanguages, "nodejs", "python"),
 	},
 	{
 		Directory:   "regress-node-12507",
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
-		Skip:        allProgLanguages.Except("nodejs"),
+		Skip:        codegen.Except(allProgLanguages, "nodejs"),
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
 	},
 	{
 		Directory:   "csharp-plain-lists",
 		Description: "Tests that plain lists are supported in C#",
-		Skip:        allProgLanguages.Except("dotnet"),
+		Skip:        codegen.Except(allProgLanguages, "dotnet"),
 	},
 	{
 		Directory:   "csharp-typed-for-expressions",
 		Description: "Testing for expressions with typed target expressions in csharp",
-		Skip:        allProgLanguages.Except("dotnet"),
+		Skip:        codegen.Except(allProgLanguages, "dotnet"),
 	},
 }
 
@@ -382,38 +383,38 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	{
 		Directory:   transpiled("aws-eks"),
 		Description: "AWS EKS",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet"),
 	},
 	{
 		Directory:   transpiled("aws-static-website"),
 		Description: "AWS static website",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet"),
 		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
 	},
 	{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
-		Skip:        codegen.NewStringSet("dotnet", "nodejs", "go"),
+		Skip:        mapset.NewSet("dotnet", "nodejs", "go"),
 	},
 	{
 		Directory:   transpiled("azure-app-service"),
 		Description: "Azure App Service",
-		Skip:        codegen.NewStringSet("go", "dotnet"),
+		Skip:        mapset.NewSet("go", "dotnet"),
 	},
 	{
 		Directory:   transpiled("azure-container-apps"),
 		Description: "Azure Container Apps",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet", "python"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet", "python"),
 	},
 	{
 		Directory:   transpiled("azure-static-website"),
 		Description: "Azure static website",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet", "python"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet", "python"),
 	},
 	{
 		Directory:   transpiled("cue-eks"),
 		Description: "Cue EKS",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet"),
 	},
 	{
 		Directory:   transpiled("cue-random"),
@@ -426,42 +427,42 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	{
 		Directory:   transpiled("kubernetes"),
 		Description: "Kubernetes",
-		Skip:        codegen.NewStringSet("go"),
+		Skip:        mapset.NewSet("go"),
 	},
 	{
 		Directory:   transpiled("pulumi-variable"),
 		Description: "Pulumi variable",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet"),
 	},
 	{
 		Directory:   transpiled("random"),
 		Description: "Random",
-		Skip:        codegen.NewStringSet("nodejs"),
+		Skip:        mapset.NewSet("nodejs"),
 	},
 	{
 		Directory:   transpiled("readme"),
 		Description: "README",
-		Skip:        codegen.NewStringSet("go", "dotnet"),
+		Skip:        mapset.NewSet("go", "dotnet"),
 	},
 	{
 		Directory:   transpiled("stackreference-consumer"),
 		Description: "Stack reference consumer",
-		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+		Skip:        mapset.NewSet("go", "nodejs", "dotnet"),
 	},
 	{
 		Directory:   transpiled("stackreference-producer"),
 		Description: "Stack reference producer",
-		Skip:        codegen.NewStringSet("go", "dotnet"),
+		Skip:        mapset.NewSet("go", "dotnet"),
 	},
 	{
 		Directory:   transpiled("webserver-json"),
 		Description: "Webserver JSON",
-		Skip:        codegen.NewStringSet("go", "dotnet", "python"),
+		Skip:        mapset.NewSet("go", "dotnet", "python"),
 	},
 	{
 		Directory:   transpiled("webserver"),
 		Description: "Webserver",
-		Skip:        codegen.NewStringSet("go", "dotnet", "python"),
+		Skip:        mapset.NewSet("go", "dotnet", "python"),
 	},
 }
 
@@ -469,7 +470,7 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 //
 // The arguments are to be read:
 // (Testing environment, path to generated code, set of dependencies)
-type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
+type CheckProgramOutput = func(*testing.T, string, mapset.Set[string])
 
 // Generates a program from a pcl.Program
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
@@ -533,12 +534,12 @@ func TestProgramCodegen(
 			// and can OOM in CI with too many running.
 
 			var err error
-			if tt.Skip.Has(testcase.Language) {
+			if tt.Skip.Contains(testcase.Language) {
 				t.Skip()
 				return
 			}
 
-			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
+			expectNYIDiags := tt.ExpectNYIDiags.Contains(testcase.Language)
 
 			testDir := filepath.Join(testdataPath, tt.Directory+"-pp")
 			pclFile := filepath.Join(testDir, tt.Directory+".pp")
@@ -657,8 +658,8 @@ func TestProgramCodegen(
 					}
 				}
 			}
-			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
-				extraPulumiPackages := codegen.NewStringSet()
+			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Contains(testcase.Language) {
+				extraPulumiPackages := mapset.NewSet[string]()
 				collectExtraPulumiPackages(program, extraPulumiPackages)
 				testcase.Check(t, expectedFile, extraPulumiPackages)
 			}
@@ -666,7 +667,7 @@ func TestProgramCodegen(
 	}
 }
 
-func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codegen.StringSet) {
+func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages mapset.Set[string]) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()

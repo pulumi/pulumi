@@ -24,9 +24,10 @@ import (
 
 	"github.com/pgavlin/goldmark/ast"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 const defaultMissingExampleSnippetPlaceholder = "Coming soon!"
@@ -48,7 +49,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 		return docInfo{}
 	}
 
-	languages := codegen.NewStringSet(dctx.snippetLanguages...)
+	languages := mapset.NewSet(dctx.snippetLanguages...)
 
 	source := []byte(docstring)
 	parsed := schema.ParseDocs(source)
@@ -129,7 +130,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 		case *ast.FencedCodeBlock:
 			language := string(n.Language(source))
 			snippet := schema.RenderDocsToString(source, n)
-			if !languages.Has(language) || len(snippet) == 0 {
+			if !languages.Contains(language) || len(snippet) == 0 {
 				return ast.WalkContinue, nil
 			}
 			if _, ok := currentSection.Snippets[language]; ok {

@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
@@ -62,7 +63,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	nodes := pcl.Linearize(program)
 
 	// Creating a list to store and later print helper methods if they turn out to be needed
-	preambleHelperMethods := codegen.NewStringSet()
+	preambleHelperMethods := mapset.NewSet[string]()
 
 	var main bytes.Buffer
 	g.genPreamble(&main, program, preambleHelperMethods)
@@ -85,7 +86,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		// mark the generator to target components
 		componentGenerator.isComponent = true
 
-		componentPreambleMethods := codegen.NewStringSet()
+		componentPreambleMethods := mapset.NewSet[string]()
 		var componentBuffer bytes.Buffer
 		// generate imports for the component
 		componentGenerator.genPreamble(&componentBuffer, component.Program, componentPreambleMethods)
@@ -452,7 +453,7 @@ func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, args
 	return rewrittenBody
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods mapset.Set[string]) {
 	// Print the pulumi import at the top.
 	g.Fprintln(w, "import pulumi")
 
@@ -507,11 +508,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var imports []string
-	importSetNames := codegen.NewStringSet()
-	for k := range importSet {
-		importSetNames.Add(k)
-	}
-	for _, pkg := range importSetNames.SortedValues() {
+	importSetNames := mapset.NewSetFromMapKeys(importSet)
+	for _, pkg := range codegen.SortedValues(importSetNames) {
 		if pkg == "pulumi" {
 			continue
 		}
@@ -545,7 +543,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range codegen.SortedValues(preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 }

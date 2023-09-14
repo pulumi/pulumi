@@ -6,18 +6,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+func Check(t *testing.T, path string, deps mapset.Set[string], pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -49,7 +49,7 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 	TypeCheck(t, path, deps, pulumiSDKPath)
 }
 
-func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+func TypeCheck(t *testing.T, path string, deps mapset.Set[string], pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				Check(t, path, dependencies, "../../../../../../../sdk")
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {

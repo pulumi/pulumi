@@ -3,10 +3,11 @@ package nodejs
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateProgramVersionSelection(t *testing.T) {
@@ -28,7 +29,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Language:   "nodejs",
 			Extension:  "ts",
 			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				Check(t, path, dependencies, true)
 			},
 			GenProgram: GenerateProgram,

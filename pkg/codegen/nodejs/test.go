@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -14,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
+func Check(t *testing.T, path string, dependencies mapset.Set[string], linkLocal bool) {
 	dir := filepath.Dir(path)
 
 	removeFile := func(name string) {
@@ -57,7 +58,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	TypeCheck(t, path, dependencies, linkLocal)
 }
 
-func TypeCheck(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
+func TypeCheck(t *testing.T, path string, _ mapset.Set[string], linkLocal bool) {
 	dir := filepath.Dir(path)
 
 	typeCheckGeneratedPackage(t, dir, linkLocal)
@@ -82,9 +83,9 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 }
 
 // Returns the nodejs equivalent to the hcl2 package names provided.
-func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
-	result := make(map[string]string, len(deps))
-	for _, d := range deps.SortedValues() {
+func nodejsPackages(t *testing.T, deps mapset.Set[string]) map[string]string {
+	result := make(map[string]string, deps.Cardinality())
+	for _, d := range codegen.SortedValues(deps) {
 		pkgName := fmt.Sprintf("@pulumi/%s", d)
 		set := func(pkgVersion string) {
 			result[pkgName] = "^" + pkgVersion
@@ -116,7 +117,7 @@ func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
 			Language:   "nodejs",
 			Extension:  "ts",
 			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				Check(t, path, dependencies, true)
 			},
 			GenProgram: GenerateProgram,

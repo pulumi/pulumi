@@ -34,6 +34,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
+	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -51,7 +52,7 @@ type typeDetails struct {
 	plainType          bool
 }
 
-type imports codegen.StringSet
+type imports struct{ mapset.Set[string] }
 
 // defaultMinPythonVersion is what we use as the minimum version field in generated
 // package metadata if the schema does not provide a vaule. This version corresponds
@@ -65,27 +66,24 @@ func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool
 
 func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bool, predicate func(imp string) bool) {
 	if imp := mod.importObjectType(t, input); imp != "" && (predicate == nil || predicate(imp)) {
-		codegen.StringSet(imports).Add(imp)
+		mapset.Set[string](imports).Add(imp)
 	}
 }
 
 func (imports imports) addEnum(mod *modContext, enum *schema.EnumType) {
 	if imp := mod.importEnumType(enum); imp != "" {
-		codegen.StringSet(imports).Add(imp)
+		mapset.Set[string](imports).Add(imp)
 	}
 }
 
 func (imports imports) addResource(mod *modContext, r *schema.ResourceType) {
 	if imp := mod.importResourceType(r); imp != "" {
-		codegen.StringSet(imports).Add(imp)
+		mapset.Set[string](imports).Add(imp)
 	}
 }
 
 func (imports imports) strings() []string {
-	result := slice.Prealloc[string](len(imports))
-	for imp := range imports {
-		result = append(result, imp)
-	}
+	result := imports.ToSlice()
 	sort.Strings(result)
 	return result
 }
@@ -689,7 +687,7 @@ func (mod *modContext) fullyQualifiedImportName() string {
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, false /*needsSDK*/, nil)
+	mod.genHeader(w, false /*needsSDK*/, imports{})
 	if mod.isConfig {
 		fmt.Fprintf(w, "import sys\n")
 		fmt.Fprintf(w, "from .vars import _ExportableConfig\n")
@@ -1330,7 +1328,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 	fmt.Fprintf(w, "")
 
-	ins := codegen.NewStringSet()
+	ins := mapset.NewSet[string]()
 	for _, prop := range res.InputProperties {
 		pname := InitParamName(prop.Name)
 		var arg interface{}
@@ -1407,7 +1405,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
-		if !ins.Has(prop.Name) {
+		if !ins.Contains(prop.Name) {
 			fmt.Fprintf(w, "            __props__.__dict__[%q] = None\n", PyName(prop.Name))
 		}
 
@@ -1488,7 +1486,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			fmt.Fprintf(w, "        __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 		}
 
-		stateInputs := codegen.NewStringSet()
+		stateInputs := mapset.NewSet[string]()
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
 				stateInputs.Add(prop.Name)
@@ -1496,7 +1494,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 		for _, prop := range res.Properties {
-			if !stateInputs.Has(prop.Name) {
+			if !stateInputs.Contains(prop.Name) {
 				fmt.Fprintf(w, "        __props__.__dict__[%q] = None\n", PyName(prop.Name))
 			}
 		}
@@ -1960,7 +1958,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 
 func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	// Header
-	mod.genHeader(w, false /*needsSDK*/, nil)
+	mod.genHeader(w, false /*needsSDK*/, imports{})
 
 	// Enum import
 	fmt.Fprintf(w, "from enum import Enum\n\n")
@@ -2093,7 +2091,7 @@ func genPackageMetadata(
 	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string, pythonRequires string,
 ) (string, error) {
 	w := &bytes.Buffer{}
-	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
+	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, imports{})
 
 	// Now create a standard Python package from the metadata.
 	fmt.Fprintf(w, "import errno\n")
@@ -2378,11 +2376,11 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 			return "Any"
 		}
 
-		elementTypeSet := codegen.NewStringSet()
+		elementTypeSet := mapset.NewSet[string]()
 		elements := slice.Prealloc[string](len(t.ElementTypes))
 		for _, e := range t.ElementTypes {
 			et := mod.typeString(e, input, acceptMapping)
-			if !elementTypeSet.Has(et) {
+			if !elementTypeSet.Contains(et) {
 				elementTypeSet.Add(et)
 				elements = append(elements, et)
 			}

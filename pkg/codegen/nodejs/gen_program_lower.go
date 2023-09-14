@@ -1,8 +1,8 @@
 package nodejs
 
 import (
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -41,13 +41,13 @@ func isPromiseType(t model.Type) bool {
 	return false
 }
 
-func isParameterReference(parameters codegen.Set, x model.Expression) bool {
+func isParameterReference(parameters mapset.Set[model.Traversable], x model.Expression) bool {
 	scopeTraversal, ok := x.(*model.ScopeTraversalExpression)
 	if !ok {
 		return false
 	}
 
-	return parameters.Has(scopeTraversal.Parts[0])
+	return parameters.Contains(scopeTraversal.Parts[0])
 }
 
 // canLiftTraversal returns true if this traversal can be lifted. Any traversal that does not traverse
@@ -69,7 +69,7 @@ func (g *generator) canLiftTraversal(parts []model.Traversable) bool {
 // - __apply(scope.traversal, eval(x, x.attr)) -> scope.traversal.attr
 //
 // Each of these patterns matches an apply that can be handled by `pulumi.Output`'s property access proxy.
-func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Expression,
+func (g *generator) parseProxyApply(parameters mapset.Set[model.Traversable], args []model.Expression,
 	then model.Expression,
 ) (model.Expression, bool) {
 	if len(args) != 1 {
@@ -112,11 +112,11 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 	return arg, true
 }
 
-func callbackParameterReferences(expr model.Expression, parameters codegen.Set) []*model.Variable {
+func callbackParameterReferences(expr model.Expression, parameters mapset.Set[model.Traversable]) []*model.Variable {
 	var refs []*model.Variable
 	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		if expr, isScopeTraversal := expr.(*model.ScopeTraversalExpression); isScopeTraversal {
-			if parameters.Has(expr.Parts[0]) {
+			if parameters.Contains(expr.Parts[0]) {
 				refs = append(refs, expr.Parts[0].(*model.Variable))
 			}
 		}
@@ -133,7 +133,7 @@ func callbackParameterReferences(expr model.Expression, parameters codegen.Set) 
 //
 // If a match is found, parseInterpolate returns an appropriate call to the __interpolate intrinsic with a mix of
 // expressions and proxied applies.
-func (g *generator) parseInterpolate(parameters codegen.Set, args []model.Expression,
+func (g *generator) parseInterpolate(parameters mapset.Set[model.Traversable], args []model.Expression,
 	then *model.AnonymousFunctionExpression,
 ) (model.Expression, bool) {
 	template, ok := then.Body.(*model.TemplateExpression)
@@ -200,7 +200,7 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		// Parse the apply call.
 		args, then := pcl.ParseApplyCall(apply)
 
-		parameters := codegen.Set{}
+		parameters := mapset.NewSet[model.Traversable]()
 		for _, p := range then.Parameters {
 			parameters.Add(p)
 		}

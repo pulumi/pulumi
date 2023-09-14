@@ -9,11 +9,11 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -46,7 +46,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				Check(t, path, dependencies, "../../../../../../../sdk")
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -70,7 +70,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 					},
 					// We don't compile because the test relies on the `other` package,
 					// which does not exist.
-					SkipCompile: codegen.NewStringSet("go"),
+					SkipCompile: mapset.NewSet("go"),
 				},
 			},
 
@@ -488,7 +488,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
+		scopeTraversalRoots: mapset.NewSet[string](),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),
 	}
@@ -518,7 +518,7 @@ func parseAndBindProgram(t *testing.T,
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
 	t.Parallel()
 
-	source := `	
+	source := `
 resource main "auto-deploy:index:AutoDeployer" {
     project = "example"
 }`
