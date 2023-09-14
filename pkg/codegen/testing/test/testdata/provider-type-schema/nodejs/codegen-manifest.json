@@ -4,6 +4,7 @@
     "index.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "submod/index.ts",
     "submod/provider.ts",
     "tsconfig.json",

@@ -4,6 +4,7 @@
     "index.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "staticPage.ts",
     "tsconfig.json",
     "types/index.ts",

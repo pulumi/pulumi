@@ -6,6 +6,7 @@
     "listProductFamilies.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "types/enums/index.ts",
     "types/index.ts",

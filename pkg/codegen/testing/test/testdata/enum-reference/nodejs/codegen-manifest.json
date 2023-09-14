@@ -6,6 +6,7 @@
     "mymodule/index.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "utilities.ts"
   ]

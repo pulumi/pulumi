@@ -2329,8 +2329,10 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
+	//     3) .gitkeep: placeholder file to keep the legacy scripts directory
 	fs.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
+	fs.Add("scripts/.gitkeep", []byte{})
 	return nil
 }
 

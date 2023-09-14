@@ -5,6 +5,7 @@
     "package.json",
     "provider.ts",
     "rec.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "utilities.ts"
   ]

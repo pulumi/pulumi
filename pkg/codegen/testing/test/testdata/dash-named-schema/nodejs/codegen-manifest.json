@@ -4,6 +4,7 @@
     "index.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "submodule1/fooencryptedBarClass.ts",
     "submodule1/index.ts",
     "submodule1/moduleResource.ts",

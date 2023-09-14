@@ -9,6 +9,7 @@
     "package.json",
     "provider.ts",
     "resource.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "typeUses.ts",
     "types/index.ts",

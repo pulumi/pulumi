@@ -4,6 +4,7 @@
     "index.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "tree/index.ts",
     "tree/v1/index.ts",
     "tree/v1/nursery.ts",

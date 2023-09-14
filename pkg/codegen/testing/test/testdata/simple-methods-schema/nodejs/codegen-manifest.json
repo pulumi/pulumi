@@ -6,6 +6,7 @@
     "nested/index.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "types/index.ts",
     "types/input.ts",

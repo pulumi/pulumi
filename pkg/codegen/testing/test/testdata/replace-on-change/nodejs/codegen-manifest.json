@@ -8,6 +8,7 @@
     "noRecursive.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "toyStore.ts",
     "tsconfig.json",
     "types/index.ts",

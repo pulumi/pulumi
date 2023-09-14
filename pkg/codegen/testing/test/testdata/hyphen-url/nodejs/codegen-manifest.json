@@ -5,6 +5,7 @@
     "package.json",
     "provider.ts",
     "registryGeoReplication.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "utilities.ts"
   ]

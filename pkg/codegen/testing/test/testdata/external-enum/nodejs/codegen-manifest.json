@@ -6,6 +6,7 @@
     "local/index.ts",
     "package.json",
     "provider.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "types/enums/index.ts",
     "types/enums/local/index.ts",

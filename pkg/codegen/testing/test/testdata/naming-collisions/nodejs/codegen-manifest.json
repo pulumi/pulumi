@@ -10,6 +10,7 @@
     "provider.ts",
     "resource.ts",
     "resourceInput.ts",
+    "scripts/.gitkeep",
     "tsconfig.json",
     "types/enums/index.ts",
     "types/index.ts",
