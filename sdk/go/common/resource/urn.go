@@ -78,7 +78,7 @@ func ParseOptionalURN(s string) (URN, error) {
 // NewURN creates a unique resource URN for the given resource object.
 func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
 	typ := string(baseType)
-	if parentType != "" {
+	if parentType != "" && parentType != RootStackType {
 		typ = string(parentType) + URNTypeDelimiter + typ
 	}
 

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix aliases of parents tracking over partial deployments.

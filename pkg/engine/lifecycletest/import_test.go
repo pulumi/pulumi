@@ -681,7 +681,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, _ result.Result) result.Result {
 			for _, e := range entries {
-				assert.Equal(t, e.Step.Op(), deploy.OpSame)
+				assert.Equal(t, deploy.OpSame, e.Step.Op())
 			}
 			return nil
 		})
