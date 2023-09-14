@@ -300,7 +300,7 @@ type programGeneratorFunc func(
 func generateImportedDefinitions(ctx *plugin.Context,
 	out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
-	imports []deploy.Import, protectResources bool,
+	imports []deploy.Import, protectResources bool, allowDuplicateNames bool,
 ) (bool, error) {
 	defer func() {
 		v := recover()
@@ -342,6 +342,11 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		return false, nil
 	}
 
+	opts := []pcl.BindOption{}
+	if allowDuplicateNames {
+		opts = append(opts, pcl.AllowDuplicateNames)
+	}
+
 	loader := schema.NewPluginLoader(ctx.Host)
 	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
 		files, _, err := programGenerator(p, loader)
@@ -358,7 +363,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 			return err
 		}
 		return nil
-	}, resources, names)
+	}, resources, names, opts...)
 }
 
 func newImportCmd() *cobra.Command {
@@ -367,6 +372,7 @@ func newImportCmd() *cobra.Command {
 	var importFilePath string
 	var outputFilePath string
 	var generateCode bool
+	var allowDuplicateNames bool
 
 	var debug bool
 	var message string
@@ -743,7 +749,7 @@ func newImportCmd() *cobra.Command {
 
 				validImports, err := generateImportedDefinitions(
 					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-					protectResources)
+					protectResources, allowDuplicateNames)
 				if err != nil {
 					if _, ok := err.(*importer.DiagnosticsError); ok {
 						err = fmt.Errorf("internal error: %w", err)
@@ -796,6 +802,9 @@ func newImportCmd() *cobra.Command {
 		&outputFilePath, "out", "o", "", "The path to the file that will contain the generated resource declarations")
 	cmd.PersistentFlags().BoolVar(
 		&generateCode, "generate-code", true, "Generate resource declaration code for the imported resources")
+	cmd.PersistentFlags().BoolVar(
+		//nolint:lll
+		&allowDuplicateNames, "allow-duplicate-names", false, "Allow imported resources to have the same name (generated code may be incorrect)")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

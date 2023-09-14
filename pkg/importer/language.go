@@ -62,7 +62,7 @@ func (e *DiagnosticsError) String() string {
 
 // GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
 func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
-	names NameTable,
+	names NameTable, opts ...pcl.BindOption,
 ) error {
 	var hcl2Text bytes.Buffer
 	for i, state := range states {
@@ -91,7 +91,8 @@ func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen Language
 		})
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+	opts = append([]pcl.BindOption{pcl.Loader(loader), pcl.AllowMissingVariables}, opts...)
+	program, diags, err := pcl.BindProgram(parser.Files, opts...)
 	if err != nil {
 		return err
 	}

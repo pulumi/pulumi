@@ -53,6 +53,7 @@ type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Di
 type bindOptions struct {
 	allowMissingVariables        bool
 	allowMissingProperties       bool
+	allowDuplicateNames          bool
 	skipResourceTypecheck        bool
 	skipInvokeTypecheck          bool
 	skipRangeTypecheck           bool
@@ -96,6 +97,10 @@ func AllowMissingVariables(options *bindOptions) {
 
 func AllowMissingProperties(options *bindOptions) {
 	options.allowMissingProperties = true
+}
+
+func AllowDuplicateNames(options *bindOptions) {
+	options.allowDuplicateNames = true
 }
 
 func SkipResourceTypechecking(options *bindOptions) {
@@ -315,7 +320,6 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				if len(item.Labels) != 2 {
 					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
 				}
-
 				resource := &Resource{
 					syntax: item,
 				}
@@ -473,9 +477,10 @@ func getBooleanAttributeValue(attr *model.Attribute) (bool, *hcl.Diagnostic) {
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
 // appropriate diagnostic.
 func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
-	if !b.root.Define(name, n) {
+	if !b.root.Define(name, n) && !b.options.allowDuplicateNames {
 		existing, _ := b.root.BindReference(name)
-		return hcl.Diagnostics{errorf(existing.SyntaxNode().Range(), "%q already declared", name)}
+		return hcl.Diagnostics{errorf(existing.SyntaxNode().Range(),
+			"%q already declared (to ignore: use `pulumi import --allow-duplicate-names`)", name)}
 	}
 	b.nodes = append(b.nodes, n)
 	return nil

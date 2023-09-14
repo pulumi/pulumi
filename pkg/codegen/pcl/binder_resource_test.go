@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -134,4 +135,54 @@ var _ schema.Loader = (*stubSchemaLoader)(nil)
 
 func (l *stubSchemaLoader) LoadPackage(pkg string, ver *semver.Version) (*schema.Package, error) {
 	return l.Package, nil
+}
+
+func TestBindHandleDuplicateNames(t *testing.T) {
+	t.Parallel()
+
+	var sb strings.Builder
+	fmt.Fprintln(&sb, `resource "res" "foo:index:Bar" {}`)
+	fmt.Fprintln(&sb, `resource "res" "foo:index:Baz" {}`)
+	src := sb.String()
+	defer func() {
+		// If the test fails, print the source code
+		// for easier debugging.
+		if t.Failed() {
+			t.Logf("source:\n%s", src)
+		}
+	}()
+
+	parser := syntax.NewParser()
+	assert.NoError(t,
+		parser.ParseFile(strings.NewReader(src), "test.pcl"),
+		"parse failed")
+
+	pkg, diag, err := schema.BindSpec(schema.PackageSpec{
+		Name: "foo",
+		Resources: map[string]schema.ResourceSpec{
+			"foo:index:Bar": {},
+			"foo:index:Baz": {},
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.Empty(t, diag)
+
+	t.Run("default fail on duplicates", func(t *testing.T) {
+		t.Parallel()
+		_, diag, err = BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			Package: pkg,
+		}))
+		assert.Error(t, err, "should fail already declared")
+		assert.NotEmpty(t, diag, "should fail already declared")
+	})
+
+	t.Run("allow duplicates", func(t *testing.T) {
+		t.Parallel()
+		prog, diag, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			Package: pkg,
+		}), AllowDuplicateNames) // Allow Duplicates
+		require.NoError(t, err, "expected BindProgram success")
+		require.Empty(t, diag, "expected BindProgram success")
+		require.Len(t, prog.Nodes, 2, "expected two nodes")
+	})
 }

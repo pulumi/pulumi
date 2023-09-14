@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/import
+  description: `pulumi import` now has the `--allow-duplicate-names` flag to enable codegen to succeed when resource names are the same, but with differing types.
