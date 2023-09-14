@@ -747,16 +747,6 @@ func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) str
 	return path.Join(stackID.Owner, stackID.Project, stackID.Stack)
 }
 
-// Logout logs out of the target cloud URL.
-func (b *cloudBackend) Logout() error {
-	return workspace.DeleteAccount(b.CloudURL())
-}
-
-// LogoutAll logs out of all accounts
-func (b *cloudBackend) LogoutAll() error {
-	return workspace.DeleteAllAccounts()
-}
-
 func inferOrg(ctx context.Context,
 	getDefaultOrg func() (string, error),
 	getUserOrg func() (string, error),

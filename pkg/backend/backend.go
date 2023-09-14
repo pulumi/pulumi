@@ -207,10 +207,6 @@ type Backend interface {
 	ExportDeployment(ctx context.Context, stack Stack) (*apitype.UntypedDeployment, error)
 	// ImportDeployment imports the given deployment into the indicated stack.
 	ImportDeployment(ctx context.Context, stack Stack, deployment *apitype.UntypedDeployment) error
-	// Logout logs you out of the backend and removes any stored credentials.
-	Logout() error
-	// LogoutAll logs you out of all the backend and removes any stored credentials.
-	LogoutAll() error
 	// Returns the identity of the current user and any organizations they are in for the backend.
 	CurrentUser() (string, []string, error)
 
