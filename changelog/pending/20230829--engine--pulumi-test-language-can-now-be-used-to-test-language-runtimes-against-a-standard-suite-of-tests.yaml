@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: pulumi-test-language can now be used to test language runtimes against a standard suite of tests.
