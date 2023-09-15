@@ -9,7 +9,7 @@ replace github.com/pulumi/pulumi/pkg/v3 => ../../pkg
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi/pkg/v3 v3.81.0
-	github.com/pulumi/pulumi/sdk/v3 v3.82.1
+	github.com/pulumi/pulumi/sdk/v3 v3.83.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.57.0
