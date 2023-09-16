@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/environments"
-	"github.com/pulumi/environments/schema"
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/schema"
+	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,13 +29,13 @@ func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return schema.Always(), schema.Always()
 }
 
-func (testProvider) Open(ctx context.Context, inputs map[string]environments.Value) (environments.Value, error) {
-	return environments.NewValue(inputs), nil
+func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.Value, error) {
+	return esc.NewValue(inputs), nil
 }
 
 type testProviders struct{}
 
-func (testProviders) LoadProvider(ctx context.Context, name string) (environments.Provider, error) {
+func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provider, error) {
 	if name == "test" {
 		return testProvider{}, nil
 	}
@@ -52,10 +52,10 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]
 
 func TestEval(t *testing.T) {
 	type expectedData struct {
-		LoadDiags   syntax.Diagnostics        `json:"loadDiags,omitempty"`
-		CheckDiags  syntax.Diagnostics        `json:"checkDiags,omitempty"`
-		EvalDiags   syntax.Diagnostics        `json:"evalDiags,omitempty"`
-		Environment *environments.Environment `json:"environment,omitempty"`
+		LoadDiags   syntax.Diagnostics `json:"loadDiags,omitempty"`
+		CheckDiags  syntax.Diagnostics `json:"checkDiags,omitempty"`
+		EvalDiags   syntax.Diagnostics `json:"evalDiags,omitempty"`
+		Environment *esc.Environment   `json:"environment,omitempty"`
 	}
 
 	path := filepath.Join("testdata", "eval")

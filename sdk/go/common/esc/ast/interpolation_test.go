@@ -4,7 +4,7 @@ package ast
 import (
 	"testing"
 
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc/syntax"
 	"github.com/stretchr/testify/assert"
 )
 

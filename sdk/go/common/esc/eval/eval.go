@@ -12,18 +12,18 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/environments"
-	"github.com/pulumi/environments/ast"
-	"github.com/pulumi/environments/schema"
-	"github.com/pulumi/environments/syntax"
-	"github.com/pulumi/environments/syntax/encoding"
+	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/schema"
+	"github.com/pulumi/esc/syntax"
+	"github.com/pulumi/esc/syntax/encoding"
 	"golang.org/x/exp/maps"
 )
 
 // A ProviderLoader provides the environment evaluator the capability to load providers.
 type ProviderLoader interface {
 	// LoadProvider loads the provider with the given name.
-	LoadProvider(ctx context.Context, name string) (environments.Provider, error)
+	LoadProvider(ctx context.Context, name string) (esc.Provider, error)
 }
 
 // An EnvironmentLoader provides the environment evaluator the capability to load imported environment definitions.
@@ -67,7 +67,7 @@ func EvalEnvironment(
 	env *ast.EnvironmentDecl,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
-) (*environments.Environment, syntax.Diagnostics) {
+) (*esc.Environment, syntax.Diagnostics) {
 	return evalEnvironment(ctx, false, name, env, providers, environments)
 }
 
@@ -79,7 +79,7 @@ func CheckEnvironment(
 	env *ast.EnvironmentDecl,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
-) (*environments.Environment, syntax.Diagnostics) {
+) (*esc.Environment, syntax.Diagnostics) {
 	return evalEnvironment(ctx, true, name, env, providers, environments)
 }
 
@@ -91,7 +91,7 @@ func evalEnvironment(
 	env *ast.EnvironmentDecl,
 	providers ProviderLoader,
 	envs EnvironmentLoader,
-) (*environments.Environment, syntax.Diagnostics) {
+) (*esc.Environment, syntax.Diagnostics) {
 	if env == nil {
 		return nil, nil
 	}
@@ -109,9 +109,9 @@ func evalEnvironment(
 		s = schema.Record(properties).Schema()
 	}
 
-	return &environments.Environment{
+	return &esc.Environment{
 		Exprs:      ec.root.export(name).Object,
-		Properties: v.export(name).Value.(map[string]environments.Value),
+		Properties: v.export(name).Value.(map[string]esc.Value),
 		Schema:     s,
 	}, diags
 }
@@ -740,7 +740,7 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 		return v
 	}
 
-	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]environments.Value))
+	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]esc.Value))
 	if err != nil {
 		e.errorf(repr.syntax(), err.Error())
 		v.unknown = true

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc/syntax"
 )
 
 type PropertyAccess struct {

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc/syntax"
 )
 
 // Expr represents a Pulumi YAML expression. Expressions may be literals, interpolated strings, symbols, or builtin

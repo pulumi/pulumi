@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc/syntax"
 )
 
 // DecodeValue decodes a plain Go value into a syntax.Node.

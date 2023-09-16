@@ -1,6 +1,6 @@
 // Copyright 2023, Pulumi Corporation.  All rights reserved.
 
-package environments
+package esc
 
 import (
 	"bytes"

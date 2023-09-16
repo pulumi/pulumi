@@ -5,7 +5,7 @@ package eval
 import (
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc/syntax"
 )
 
 // The TagDecoder is responsible for decoding YAML tags that represent calls to builtin functions.

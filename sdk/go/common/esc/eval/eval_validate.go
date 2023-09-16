@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/pulumi/environments/schema"
+	"github.com/pulumi/esc/schema"
 )
 
 // jsonRepr returns the JSON string representation of the given value.

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/environments/syntax/encoding"
+	"github.com/pulumi/esc/syntax/encoding"
 )
 
 const example = `

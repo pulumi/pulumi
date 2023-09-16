@@ -1,8 +1,8 @@
 // Copyright 2023, Pulumi Corporation.  All rights reserved.
 
-package environments
+package esc
 
-import "github.com/pulumi/environments/schema"
+import "github.com/pulumi/esc/schema"
 
 // An Environment contains the result of evaluating an environment definition.
 type Environment struct {

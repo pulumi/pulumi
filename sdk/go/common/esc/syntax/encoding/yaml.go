@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc/syntax"
 	"github.com/rivo/uniseg"
 )
 

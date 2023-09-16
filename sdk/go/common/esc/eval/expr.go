@@ -5,9 +5,9 @@ package eval
 import (
 	"fmt"
 
-	"github.com/pulumi/environments"
-	"github.com/pulumi/environments/ast"
-	"github.com/pulumi/environments/schema"
+	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/schema"
 )
 
 const (
@@ -41,40 +41,40 @@ func newExpr(path string, repr exprRepr, s *schema.Schema, base *value) *expr {
 
 // defRange returns the source range for the expression. If the expression does not have source information, it
 // returns a range that only refers to the given environment.
-func (x *expr) defRange(environment string) environments.Range {
-	rng := environments.Range{Environment: environment}
+func (x *expr) defRange(environment string) esc.Range {
+	rng := esc.Range{Environment: environment}
 	if r := x.repr.syntax().Syntax().Syntax().Range(); r != nil {
 		rng.Environment = r.Filename
-		rng.Begin = environments.Pos{Line: r.Start.Line, Column: r.Start.Column, Byte: r.Start.Byte}
-		rng.End = environments.Pos{Line: r.End.Line, Column: r.End.Column, Byte: r.End.Byte}
+		rng.Begin = esc.Pos{Line: r.Start.Line, Column: r.Start.Column, Byte: r.Start.Byte}
+		rng.End = esc.Pos{Line: r.End.Line, Column: r.End.Column, Byte: r.End.Byte}
 	}
 	return rng
 }
 
-func exportAccessor(accessor ast.PropertyAccessor) environments.Accessor {
+func exportAccessor(accessor ast.PropertyAccessor) esc.Accessor {
 	switch a := accessor.(type) {
 	case *ast.PropertyName:
-		return environments.Accessor{Key: &a.Name}
+		return esc.Accessor{Key: &a.Name}
 	case *ast.PropertySubscript:
 		switch index := a.Index.(type) {
 		case string:
-			return environments.Accessor{Key: &index}
+			return esc.Accessor{Key: &index}
 		case int:
-			return environments.Accessor{Index: &index}
+			return esc.Accessor{Index: &index}
 		}
 	}
 	panic(fmt.Errorf("invalid property accessor %#v", accessor))
 }
 
 // export transforms an expr into its exported, serializable representation.
-func (x *expr) export(environment string) environments.Expr {
-	var base *environments.Expr
+func (x *expr) export(environment string) esc.Expr {
+	var base *esc.Expr
 	if x.base != nil {
 		b := x.base.def.export(environment)
 		base = &b
 	}
 
-	ex := environments.Expr{
+	ex := esc.Expr{
 		Range:  x.defRange(environment),
 		Schema: x.schema,
 		Base:   base,
@@ -91,28 +91,28 @@ func (x *expr) export(environment string) environments.Expr {
 			ex.Literal = syntax.Value
 		}
 	case *interpolateExpr:
-		interp := make([]environments.Interpolation, len(repr.parts))
+		interp := make([]esc.Interpolation, len(repr.parts))
 		for i, p := range repr.parts {
-			var value []environments.PropertyAccessor
+			var value []esc.PropertyAccessor
 			if p.value != nil {
-				value = make([]environments.PropertyAccessor, len(p.value.accessors))
+				value = make([]esc.PropertyAccessor, len(p.value.accessors))
 				for i, a := range p.value.accessors {
-					value[i] = environments.PropertyAccessor{
+					value[i] = esc.PropertyAccessor{
 						Accessor: exportAccessor(a.accessor),
 						Value:    a.value.def.defRange(environment),
 					}
 				}
 			}
-			interp[i] = environments.Interpolation{
+			interp[i] = esc.Interpolation{
 				Text:  p.syntax.Text,
 				Value: value,
 			}
 		}
 		ex.Interpolate = interp
 	case *symbolExpr:
-		value := make([]environments.PropertyAccessor, len(repr.property.accessors))
+		value := make([]esc.PropertyAccessor, len(repr.property.accessors))
 		for i, a := range repr.property.accessors {
-			value[i] = environments.PropertyAccessor{
+			value[i] = esc.PropertyAccessor{
 				Accessor: exportAccessor(a.accessor),
 				Value:    a.value.def.defRange(environment),
 			}
@@ -124,56 +124,56 @@ func (x *expr) export(environment string) environments.Expr {
 			ex = repr.receiver.def.export(environment)
 			ex.Access.Accessors = append(ex.Access.Accessors, accessor)
 		} else {
-			ex.Access = &environments.AccessExpr{
+			ex.Access = &esc.AccessExpr{
 				Receiver:  repr.receiver.def.defRange(environment),
-				Accessors: []environments.Accessor{accessor},
+				Accessors: []esc.Accessor{accessor},
 			}
 		}
 	case *joinExpr:
-		ex.Builtin = &environments.BuiltinExpr{
+		ex.Builtin = &esc.BuiltinExpr{
 			ArgSchema: schema.Tuple(schema.String(), schema.Array().Items(schema.String())).Schema(),
-			Arg:       environments.Expr{List: []environments.Expr{repr.delimiter.export(environment), repr.values.export(environment)}},
+			Arg:       esc.Expr{List: []esc.Expr{repr.delimiter.export(environment), repr.values.export(environment)}},
 		}
 	case *openExpr:
-		ex.Builtin = &environments.BuiltinExpr{
+		ex.Builtin = &esc.BuiltinExpr{
 			ArgSchema: schema.Record(map[string]schema.Builder{
 				"provider": schema.String(),
 				"inputs":   repr.inputSchema,
 			}).Schema(),
-			Arg: environments.Expr{
-				Object: map[string]environments.Expr{
+			Arg: esc.Expr{
+				Object: map[string]esc.Expr{
 					"provider": repr.provider.export(environment),
 					"inputs":   repr.inputs.export(environment),
 				},
 			},
 		}
 	case *secretExpr:
-		ex.Builtin = &environments.BuiltinExpr{
+		ex.Builtin = &esc.BuiltinExpr{
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toBase64Expr:
-		ex.Builtin = &environments.BuiltinExpr{
+		ex.Builtin = &esc.BuiltinExpr{
 			ArgSchema: schema.String().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toJSONExpr:
-		ex.Builtin = &environments.BuiltinExpr{
+		ex.Builtin = &esc.BuiltinExpr{
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toStringExpr:
-		ex.Builtin = &environments.BuiltinExpr{
+		ex.Builtin = &esc.BuiltinExpr{
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *listExpr:
-		ex.List = make([]environments.Expr, len(repr.elements))
+		ex.List = make([]esc.Expr, len(repr.elements))
 		for i, el := range repr.elements {
 			ex.List[i] = el.export(environment)
 		}
 	case *objectExpr:
-		ex.Object = make(map[string]environments.Expr, len(repr.properties))
+		ex.Object = make(map[string]esc.Expr, len(repr.properties))
 		for k, v := range repr.properties {
 			ex.Object[k] = v.export(environment)
 		}

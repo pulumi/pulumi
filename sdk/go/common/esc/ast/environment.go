@@ -11,8 +11,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	yamldiags "github.com/pulumi/environments/diags"
-	"github.com/pulumi/environments/syntax"
+	yamldiags "github.com/pulumi/esc/diags"
+	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 

@@ -1,11 +1,11 @@
 // Copyright 2023, Pulumi Corporation.  All rights reserved.
 
-package environments
+package esc
 
 import (
 	"context"
 
-	"github.com/pulumi/environments/schema"
+	"github.com/pulumi/esc/schema"
 )
 
 // A Provider provides environments access to dynamic secrets. These secrets may be generated at runtime, fetched from

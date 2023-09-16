@@ -1,9 +1,9 @@
 // Copyright 2023, Pulumi Corporation.  All rights reserved.
 
-package environments
+package esc
 
 import (
-	"github.com/pulumi/environments/schema"
+	"github.com/pulumi/esc/schema"
 )
 
 // An Expr holds information about an expression in an environment definition.

@@ -5,7 +5,7 @@ package ast
 import (
 	"strings"
 
-	"github.com/pulumi/environments/syntax"
+	"github.com/pulumi/esc/syntax"
 )
 
 type Interpolation struct {

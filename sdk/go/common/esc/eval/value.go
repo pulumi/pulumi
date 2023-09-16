@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/environments"
-	"github.com/pulumi/environments/ast"
-	"github.com/pulumi/environments/schema"
+	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/schema"
 	"golang.org/x/exp/maps"
 )
 
@@ -211,18 +211,18 @@ func (v *value) toString() (str string, unknown bool, secret bool) {
 }
 
 // export converts the value into its serializable representation.
-func (v *value) export(environment string) environments.Value {
+func (v *value) export(environment string) esc.Value {
 	var pv any
 	switch repr := v.repr.(type) {
 	case []*value:
-		a := make([]environments.Value, len(repr))
+		a := make([]esc.Value, len(repr))
 		for i, v := range repr {
 			a[i] = v.export(environment)
 		}
 		pv = a
 	case map[string]*value:
 		keys := v.keys()
-		pm := make(map[string]environments.Value, len(keys))
+		pm := make(map[string]esc.Value, len(keys))
 		for _, k := range keys {
 			pv := v.property(v.def.repr.syntax(), k)
 			pm[k] = pv.export(environment)
@@ -232,17 +232,17 @@ func (v *value) export(environment string) environments.Value {
 		pv = repr
 	}
 
-	var base *environments.Value
+	var base *esc.Value
 	if v.base != nil {
 		b := v.base.export("<import>")
 		base = &b
 	}
 
-	return environments.Value{
+	return esc.Value{
 		Value:   pv,
 		Secret:  v.secret,
 		Unknown: v.unknown,
-		Trace: environments.Trace{
+		Trace: esc.Trace{
 			Def:  v.def.defRange(environment),
 			Base: base,
 		},
@@ -251,7 +251,7 @@ func (v *value) export(environment string) environments.Value {
 
 // unexport creates a value from a Value. This is used when interacting with providers, as the Provider API works on
 // Values, but the evaluator needs values.
-func unexport(v environments.Value, x *expr) *value {
+func unexport(v esc.Value, x *expr) *value {
 	vv := &value{def: x, secret: v.Secret, unknown: v.Unknown}
 	switch pv := v.Value.(type) {
 	case nil:
@@ -262,14 +262,14 @@ func unexport(v environments.Value, x *expr) *value {
 		vv.repr, vv.schema = pv, schema.Number().Const(pv).Schema()
 	case string:
 		vv.repr, vv.schema = pv, schema.String().Const(pv).Schema()
-	case []environments.Value:
+	case []esc.Value:
 		a, items := make([]*value, len(pv)), make([]schema.Builder, len(pv))
 		for i, v := range pv {
 			uv := unexport(v, x)
 			a[i], items[i] = uv, uv.schema
 		}
 		vv.repr, vv.schema = a, schema.Tuple(items...).Schema()
-	case map[string]environments.Value:
+	case map[string]esc.Value:
 		m, properties := make(map[string]*value, len(pv)), make(map[string]schema.Builder, len(pv))
 		for k, v := range pv {
 			uv := unexport(v, x)
