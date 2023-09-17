@@ -365,6 +365,8 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 
 	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:  string(urn),
+		Name: urn.Name().String(),
+		Type: urn.Type().String(),
 		Olds: molds,
 		News: mnews,
 	})
@@ -476,6 +478,8 @@ func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(urn),
+		Name:          urn.Name().String(),
+		Type:          urn.Type().String(),
 		OldInputs:     mOldInputs,
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
@@ -721,6 +725,8 @@ func (p *provider) Check(urn resource.URN,
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(urn),
+		Name:       urn.Name().String(),
+		Type:       urn.Type().String(),
 		Olds:       molds,
 		News:       mnews,
 		RandomSeed: randomSeed,
@@ -831,6 +837,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
 		Id:            string(id),
 		Urn:           string(urn),
+		Name:          urn.Name().String(),
+		Type:          urn.Type().String(),
 		OldInputs:     mOldInputs,
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
@@ -930,6 +938,8 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
+		Name:       urn.Name().String(),
+		Type:       urn.Type().String(),
 		Properties: mprops,
 		Timeout:    timeout,
 		Preview:    preview,
@@ -1036,6 +1046,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
+		Name:       urn.Name().String(),
+		Type:       urn.Type().String(),
 		Properties: mstate,
 		Inputs:     minputs,
 	})
@@ -1180,6 +1192,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
+		Name:          urn.Name().String(),
+		Type:          urn.Type().String(),
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
 		Timeout:       timeout,
@@ -1260,6 +1274,8 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
+		Name:       urn.Name().String(),
+		Type:       urn.Type().String(),
 		Properties: mprops,
 		Timeout:    timeout,
 	}); err != nil {
