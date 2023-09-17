@@ -215,6 +215,20 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 ) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	state, err := UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("olds", false /* keepOutputValues */))
 	if err != nil {
 		return nil, err
@@ -227,6 +241,8 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 
 	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
 		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
 		Olds:          state,
 		News:          inputs,
 		AllowUnknowns: true,
@@ -251,6 +267,20 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	oldInputs, err := UnmarshalProperties(
 		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
 	if err != nil {
@@ -271,6 +301,8 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 
 	diff, err := p.provider.DiffConfig(ctx, DiffConfigRequest{
 		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
 		OldInputs:     oldInputs,
 		OldOutputs:    oldOutputs,
 		NewInputs:     newInputs,
@@ -325,6 +357,20 @@ func (p *providerServer) Configure(ctx context.Context,
 func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	state, err := UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("state", false /* keepOutputValues */))
 	if err != nil {
 		return nil, err
@@ -337,6 +383,8 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 
 	resp, err := p.provider.Check(ctx, CheckRequest{
 		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
 		Olds:          state,
 		News:          inputs,
 		AllowUnknowns: true,
@@ -362,6 +410,20 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	oldInputs, err := UnmarshalProperties(
 		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
 	if err != nil {
@@ -382,6 +444,8 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 
 	diff, err := p.provider.Diff(ctx, DiffRequest{
 		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
 		ID:            id,
 		OldInputs:     oldInputs,
 		OldOutputs:    oldOutputs,
@@ -398,6 +462,20 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	inputs, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
 	if err != nil {
 		return nil, err
@@ -405,6 +483,8 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 
 	resp, err := p.provider.Create(ctx, CreateRequest{
 		URN:        urn,
+		Name:       req.Name,
+		Type:       tokens.Type(req.Type),
 		Properties: inputs,
 		Timeout:    req.GetTimeout(),
 		Preview:    req.GetPreview(),
@@ -427,6 +507,20 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
 	urn, requestID := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	state, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("state", false /* keepOutputValues */))
 	if err != nil {
 		return nil, err
@@ -439,6 +533,8 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 
 	resp, err := p.provider.Read(ctx, ReadRequest{
 		URN:    urn,
+		Name:   req.Name,
+		Type:   tokens.Type(req.Type),
 		ID:     requestID,
 		Inputs: inputs,
 		State:  state,
@@ -467,6 +563,20 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
 	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	oldOutputs, err := UnmarshalProperties(
 		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
 	if err != nil {
@@ -487,6 +597,8 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 
 	resp, err := p.provider.Update(ctx, UpdateRequest{
 		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
 		ID:            id,
 		OldInputs:     oldInputs,
 		OldOutputs:    oldOutputs,
@@ -510,6 +622,20 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
 	inputs, err := UnmarshalProperties(req.GetOldInputs(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
 	if err != nil {
 		return nil, err
@@ -522,6 +648,8 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 
 	if _, err = p.provider.Delete(ctx, DeleteRequest{
 		URN:     urn,
+		Name:    req.Name,
+		Type:    tokens.Type(req.Type),
 		ID:      id,
 		Inputs:  inputs,
 		Outputs: outputs,

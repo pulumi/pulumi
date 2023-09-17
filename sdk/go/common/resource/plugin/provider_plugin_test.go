@@ -318,6 +318,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
 				Urn:        string(urn),
+				Name:       "qux",
+				Type:       "pulumi:provider:aws",
 				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
 				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
@@ -332,8 +334,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				},
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:  string(id),
-				Urn: string(urn),
+				Id:   string(id),
+				Urn:  string(urn),
+				Name: "qux",
+				Type: "pulumi:provider:aws",
 				OldInputs: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
@@ -354,6 +358,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			want: &pulumirpc.DeleteRequest{
 				Id:        string(id),
 				Urn:       string(urn),
+				Name:      "qux",
+				Type:      "pulumi:provider:aws",
 				OldInputs: &structpb.Struct{Fields: map[string]*structpb.Value{}},
 				Properties: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
@@ -372,6 +378,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
 				Urn:        string(urn),
+				Name:       "qux",
+				Type:       "pulumi:provider:aws",
 				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
 				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
 				Timeout:    30,
@@ -391,8 +399,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				Timeout: 30,
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:  string(id),
-				Urn: string(urn),
+				Id:   string(id),
+				Urn:  string(urn),
+				Name: "qux",
+				Type: "pulumi:provider:aws",
 				OldInputs: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
@@ -720,6 +730,8 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		close(deleting)
 		_, err := p.Delete(context.Background(), DeleteRequest{
 			resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
+			"qux",
+			"bar:baz",
 			"whatever",
 			props,
 			props,
@@ -831,6 +843,8 @@ func TestKubernetesDiffError(t *testing.T) {
 	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
 	_, err := az.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
+		"",
+		"",
 		resource.PropertyMap{},
 		resource.PropertyMap{},
 		resource.PropertyMap{},
@@ -843,6 +857,8 @@ func TestKubernetesDiffError(t *testing.T) {
 	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
 	diff, err := k8s.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		"",
+		"",
 		resource.PropertyMap{},
 		resource.PropertyMap{},
 		resource.PropertyMap{},
@@ -856,6 +872,8 @@ func TestKubernetesDiffError(t *testing.T) {
 	diffErr = status.Errorf(codes.Unknown, "some other error")
 	_, err = k8s.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		"",
+		"",
 		resource.PropertyMap{},
 		resource.PropertyMap{},
 		resource.PropertyMap{},
