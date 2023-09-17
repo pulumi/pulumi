@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.83.0 (2023-09-15)
+
+
+### Features
+
+- [engine] pulumi-test-language can now be used to test language runtimes against a standard suite of tests.
+  [#13705](https://github.com/pulumi/pulumi/pull/13705)
+
+
+### Bug Fixes
+
+- [cli] Fixes panic when default org is not set and no org is provided to org search
+  [#13947](https://github.com/pulumi/pulumi/pull/13947)
+
+- [engine] Fix aliases of parents tracking over partial deployments.
+  [#13935](https://github.com/pulumi/pulumi/pull/13935)
+
+- [sdkgen/python] Python sdkgen now correctly sets default values on dicts passed as resource arguments.
+  [#13825](https://github.com/pulumi/pulumi/pull/13825)
+
 ## 3.82.1 (2023-09-12)
 
 
