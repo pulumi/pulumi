@@ -68,6 +68,9 @@ func (c *testConverterClient) ConvertProgram(
 	if req.TargetDirectory != "dst" {
 		return nil, fmt.Errorf("unexpected TargetDirectory: %s", req.TargetDirectory)
 	}
+	if !reflect.DeepEqual(req.Args, []string{"arg1", "arg2"}) {
+		return nil, fmt.Errorf("unexpected args: %v", req.Args)
+	}
 
 	return &pulumirpc.ConvertProgramResponse{
 		Diagnostics: c.diagnostics,
@@ -117,6 +120,7 @@ func TestConverterPlugin_Program(t *testing.T) {
 		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
+		Args:            []string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)
@@ -146,6 +150,7 @@ func TestConverterPlugin_Program_EmptyDiagnosticsIsNil(t *testing.T) {
 		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
+		Args:            []string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)

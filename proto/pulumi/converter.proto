@@ -70,6 +70,8 @@ message ConvertProgramRequest {
     string mapper_target = 3;
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 4;
+    // the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options.
+    repeated string args = 5;
 }
 
 message ConvertProgramResponse {

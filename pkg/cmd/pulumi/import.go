@@ -390,7 +390,6 @@ func newImportCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
-		Args:  cmdutil.MaximumNArgs(3),
 		Short: "Import resources into an existing stack",
 		Long: "Import resources into an existing stack.\n" +
 			"\n" +
@@ -554,6 +553,10 @@ func newImportCmd() *cobra.Command {
 				if len(args) == 2 {
 					contract.IgnoreError(cmd.Help())
 					return result.Errorf(msg + "id")
+				}
+				if len(args) > 3 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf("only expected at most three arguments")
 				}
 				f, err := makeImportFile(args[0], args[1], args[2], properties, parentSpec, providerSpec, "")
 				if err != nil {

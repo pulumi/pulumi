@@ -102,7 +102,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ConvertProgramRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ConvertProgramRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ConvertProgramRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -730,6 +730,13 @@ proto.pulumirpc.ConvertStateResponse.prototype.clearResourcesList = function() {
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ConvertProgramRequest.repeatedFields_ = [5];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -764,7 +771,8 @@ proto.pulumirpc.ConvertProgramRequest.toObject = function(includeInstance, msg) 
     sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
     mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, "")
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -816,6 +824,10 @@ proto.pulumirpc.ConvertProgramRequest.deserializeBinaryFromReader = function(msg
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setLoaderTarget(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addArgs(value);
       break;
     default:
       reader.skipField();
@@ -871,6 +883,13 @@ proto.pulumirpc.ConvertProgramRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeString(
       4,
+      f
+    );
+  }
+  f = message.getArgsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      5,
       f
     );
   }
@@ -946,6 +965,43 @@ proto.pulumirpc.ConvertProgramRequest.prototype.getLoaderTarget = function() {
  */
 proto.pulumirpc.ConvertProgramRequest.prototype.setLoaderTarget = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * repeated string args = 5;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.getArgsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.setArgsList = function(value) {
+  return jspb.Message.setField(this, 5, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.addArgs = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 5, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.clearArgsList = function() {
+  return this.setArgsList([]);
 };
 
 

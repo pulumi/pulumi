@@ -33,7 +33,9 @@ func TestYamlConvert(t *testing.T) {
 		t.Fatalf("Pulumi.yaml is a directory, not a file")
 	}
 
-	result := runConvert(env.Global(), "convert_testdata", []string{}, "yaml", "go", "convert_testdata/go", true, true)
+	result := runConvert(
+		env.Global(), []string{}, "convert_testdata", []string{},
+		"yaml", "go", "convert_testdata/go", true, true)
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
@@ -43,7 +45,9 @@ func TestPclConvert(t *testing.T) {
 	// Check that we can run convert from PCL to PCL
 	tmp := t.TempDir()
 
-	result := runConvert(env.Global(), "pcl_convert_testdata", []string{}, "pcl", "pcl", tmp, true, true)
+	result := runConvert(
+		env.Global(), []string{}, "pcl_convert_testdata",
+		[]string{}, "pcl", "pcl", tmp, true, true)
 	assert.Nil(t, result)
 
 	// Check that we made one file
