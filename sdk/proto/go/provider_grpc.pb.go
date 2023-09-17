@@ -71,6 +71,10 @@ type ResourceProviderClient interface {
 	// GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
 	// response (not an error) if it doesn't have a mapping for the given key.
 	GetMapping(ctx context.Context, in *GetMappingRequest, opts ...grpc.CallOption) (*GetMappingResponse, error)
+	// GetMappings is an optional method that returns what mappings (if any) a provider supports. If a provider does not
+	// implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
+	// If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
+	GetMappings(ctx context.Context, in *GetMappingsRequest, opts ...grpc.CallOption) (*GetMappingsResponse, error)
 }
 
 type resourceProviderClient struct {
@@ -266,6 +270,15 @@ func (c *resourceProviderClient) GetMapping(ctx context.Context, in *GetMappingR
 	return out, nil
 }
 
+func (c *resourceProviderClient) GetMappings(ctx context.Context, in *GetMappingsRequest, opts ...grpc.CallOption) (*GetMappingsResponse, error) {
+	out := new(GetMappingsResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/GetMappings", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceProviderServer is the server API for ResourceProvider service.
 // All implementations must embed UnimplementedResourceProviderServer
 // for forward compatibility
@@ -318,6 +331,10 @@ type ResourceProviderServer interface {
 	// GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
 	// response (not an error) if it doesn't have a mapping for the given key.
 	GetMapping(context.Context, *GetMappingRequest) (*GetMappingResponse, error)
+	// GetMappings is an optional method that returns what mappings (if any) a provider supports. If a provider does not
+	// implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
+	// If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
+	GetMappings(context.Context, *GetMappingsRequest) (*GetMappingsResponse, error)
 	mustEmbedUnimplementedResourceProviderServer()
 }
 
@@ -378,6 +395,9 @@ func (UnimplementedResourceProviderServer) Attach(context.Context, *PluginAttach
 }
 func (UnimplementedResourceProviderServer) GetMapping(context.Context, *GetMappingRequest) (*GetMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMapping not implemented")
+}
+func (UnimplementedResourceProviderServer) GetMappings(context.Context, *GetMappingsRequest) (*GetMappingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMappings not implemented")
 }
 func (UnimplementedResourceProviderServer) mustEmbedUnimplementedResourceProviderServer() {}
 
@@ -719,6 +739,24 @@ func _ResourceProvider_GetMapping_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_GetMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMappingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).GetMappings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceProvider/GetMappings",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).GetMappings(ctx, req.(*GetMappingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceProvider_ServiceDesc is the grpc.ServiceDesc for ResourceProvider service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -793,6 +831,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMapping",
 			Handler:    _ResourceProvider_GetMapping_Handler,
+		},
+		{
+			MethodName: "GetMappings",
+			Handler:    _ResourceProvider_GetMappings_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

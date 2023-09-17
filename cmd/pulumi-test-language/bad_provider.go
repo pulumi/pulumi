@@ -180,6 +180,10 @@ func (p *badProvider) SignalCancellation() error {
 	return nil
 }
 
-func (p *badProvider) GetMapping(key string) ([]byte, string, error) {
+func (p *badProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", nil
+}
+
+func (p *badProvider) GetMappings(key string) ([]string, error) {
+	return nil, nil
 }

@@ -213,6 +213,10 @@ func (p *simpleProvider) SignalCancellation() error {
 	return nil
 }
 
-func (p *simpleProvider) GetMapping(key string) ([]byte, string, error) {
+func (p *simpleProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", nil
+}
+
+func (p *simpleProvider) GetMappings(key string) ([]string, error) {
+	return nil, nil
 }

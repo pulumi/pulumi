@@ -67,7 +67,8 @@ type Provider struct {
 
 	CancelF func() error
 
-	GetMappingF func(key string) ([]byte, string, error)
+	GetMappingF  func(key, provider string) ([]byte, string, error)
+	GetMappingsF func(key string) ([]string, error)
 }
 
 func (prov *Provider) SignalCancellation() error {
@@ -235,9 +236,16 @@ func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, i
 	return prov.CallF(monitor, tok, args, info, options)
 }
 
-func (prov *Provider) GetMapping(key string) ([]byte, string, error) {
+func (prov *Provider) GetMapping(key, provider string) ([]byte, string, error) {
 	if prov.GetMappingF == nil {
 		return nil, "", nil
 	}
-	return prov.GetMappingF(key)
+	return prov.GetMappingF(key, provider)
+}
+
+func (prov *Provider) GetMappings(key string) ([]string, error) {
+	if prov.GetMappingsF == nil {
+		return []string{}, nil
+	}
+	return prov.GetMappingsF(key)
 }

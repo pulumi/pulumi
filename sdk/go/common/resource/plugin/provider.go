@@ -104,7 +104,12 @@ type Provider interface {
 
 	// GetMapping returns the mapping (if any) for the provider. A provider should return an empty response
 	// (not an error) if it doesn't have a mapping for the given key.
-	GetMapping(key string) ([]byte, string, error)
+	GetMapping(key string, provider string) ([]byte, string, error)
+
+	// GetMappings returns the mappings (if any) for the providers. A provider should return an empty list (not an
+	// error) if it doesn't have any mappings for the given key.
+	// If a provider implements this method GetMapping will be called using the results from this method.
+	GetMappings(key string) ([]string, error)
 }
 
 type GrpcProvider interface {

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Provider mapping information lookups are now more efficient. Providers can also support multiple mappings.
