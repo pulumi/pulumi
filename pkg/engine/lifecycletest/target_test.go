@@ -91,7 +91,7 @@ func destroySpecificTargets(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
@@ -102,7 +102,7 @@ func destroySpecificTargets(
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
@@ -202,7 +202,8 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffF: func(urn resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// all resources will change.
@@ -211,7 +212,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -312,7 +313,8 @@ func updateInvalidTarget(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffF: func(urn resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// all resources will change.
@@ -321,7 +323,7 @@ func updateInvalidTarget(t *testing.T) {
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -525,12 +527,12 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN, olds, news resource.PropertyMap, randomSeed []byte,
+				CheckF: func(urn resource.URN, name, typ string, olds, news resource.PropertyMap, randomSeed []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					assert.Fail(t, "Check shouldn't be called because the provider shouldn't be created")
 					return nil, nil, fmt.Errorf("should not be called")
 				},
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64, preview bool,
+				CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64, preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					assert.Fail(t, "Create shouldn't be called because the provider shouldn't be created")
 					return "", nil, resource.StatusUnknown, fmt.Errorf("should not be called")
@@ -658,14 +660,15 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffF: func(urn resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// No resources will change.
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 				},
 
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -889,7 +892,7 @@ func destroySpecificTargetsWithChildren(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
@@ -900,7 +903,7 @@ func destroySpecificTargetsWithChildren(
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
@@ -1040,7 +1043,7 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN,
+				CheckF: func(urn resource.URN, name, typ string,
 					olds, news resource.PropertyMap, _ []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// Pulumi GCP provider alters inputs during Check.

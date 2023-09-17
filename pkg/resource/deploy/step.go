@@ -243,7 +243,10 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
+		urn := s.URN()
+		id, outs, rst, err := prov.Create(
+			urn, string(urn.Name()), string(urn.Type()),
+			s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -416,7 +419,10 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
+		urn := s.URN()
+		if rst, err := prov.Delete(
+			urn, string(urn.Name()), string(urn.Type()),
+			s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
 			return rst, nil, err
 		}
 	}
@@ -528,7 +534,10 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
-		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs,
+		urn := s.URN()
+		outs, rst, upderr := prov.Update(
+			urn, string(urn.Name()), string(urn.Type()),
+			s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs,
 			s.new.CustomTimeouts.Update, s.ignoreChanges, s.deployment.preview)
 		if upderr != nil {
 			if rst != resource.StatusPartialFailure {
@@ -715,7 +724,9 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			return resource.StatusOK, nil, err
 		}
 
-		result, rst, err := prov.Read(urn, id, nil, s.new.Inputs)
+		result, rst, err := prov.Read(
+			urn, string(urn.Name()), string(urn.Type()),
+			id, nil, s.new.Inputs)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -836,7 +847,10 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	var initErrors []string
-	refreshed, rst, err := prov.Read(s.old.URN, resourceID, s.old.Inputs, s.old.Outputs)
+	urn := s.old.URN
+	refreshed, rst, err := prov.Read(
+		urn, string(urn.Name()), string(urn.Type()),
+		resourceID, s.old.Inputs, s.old.Outputs)
 	if err != nil {
 		if rst != resource.StatusPartialFailure {
 			return rst, nil, err
@@ -1026,7 +1040,10 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if err != nil {
 		return resource.StatusOK, nil, err
 	}
-	read, rst, err := prov.Read(s.new.URN, s.new.ID, nil, nil)
+	urn := s.new.URN
+	read, rst, err := prov.Read(
+		urn, string(urn.Name()), string(urn.Type()),
+		s.new.ID, nil, nil)
 	if err != nil {
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 			s.new.InitErrors = initErr.Reasons
@@ -1084,7 +1101,9 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
 		// we will display the validation failures and a message informing the user that the failures are almost
 		// definitely a provider bug.
-		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
+		_, failures, err := prov.Check(
+			urn, string(urn.Name()), string(urn.Type()),
+			s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 		if err != nil {
 			return rst, nil, err
 		}
@@ -1124,7 +1143,9 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
+	inputs, failures, err := prov.Check(
+		urn, string(urn.Name()), string(urn.Type()),
+		s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 	if err != nil {
 		return rst, nil, err
 	}

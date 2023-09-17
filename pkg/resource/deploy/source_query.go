@@ -220,12 +220,16 @@ func newQueryResourceMonitor(
 		for e := range providerRegChan {
 			urn := syntheticProviderURN(e.goal)
 
-			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false, nil)
+			inputs, _, err := reg.Check(
+				urn, string(urn.Name()), string(urn.Type()),
+				resource.PropertyMap{}, e.goal.Properties, false, nil)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return
 			}
-			_, _, _, err = reg.Create(urn, inputs, 9999, false)
+			_, _, _, err = reg.Create(
+				urn, string(urn.Name()), string(urn.Type()),
+				inputs, 9999, false)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return

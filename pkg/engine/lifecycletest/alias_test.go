@@ -135,7 +135,7 @@ func TestAliases(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
-				DiffF: func(res resource.URN, id resource.ID,
+				DiffF: func(res resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
@@ -676,7 +676,8 @@ func TestAliasURNs(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
-				DiffF: func(res resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffF: func(res resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
@@ -1128,7 +1129,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -1232,7 +1233,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -1325,7 +1326,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := resource.ID("")
@@ -1334,12 +1335,12 @@ func TestComponentToCustomUpdate(t *testing.T) {
 					}
 					return id, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN,
+				DeleteF: func(urn resource.URN, name, typ string,
 					id resource.ID, olds resource.PropertyMap, timeout float64,
 				) (resource.Status, error) {
 					return resource.StatusOK, nil
 				},
-				DiffF: func(urn resource.URN,
+				DiffF: func(urn resource.URN, name, typ string,
 					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
@@ -1430,7 +1431,7 @@ func TestParentAlias(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := resource.ID("")
@@ -1519,7 +1520,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					// We should only create things in the first pass

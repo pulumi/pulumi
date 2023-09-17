@@ -42,11 +42,11 @@ func (p *UnimplementedProvider) GetSchema(version int) ([]byte, error) {
 	return nil, status.Error(codes.Unimplemented, "GetSchema is not yet implemented")
 }
 
-func (p *UnimplementedProvider) CheckConfig(urn resource.URN, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+func (p *UnimplementedProvider) CheckConfig(urn resource.URN, name, typ string, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
 	return resource.PropertyMap{}, nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
 }
 
-func (p *UnimplementedProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
+func (p *UnimplementedProvider) DiffConfig(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
 	return DiffResult{}, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
 }
 
@@ -54,27 +54,27 @@ func (p *UnimplementedProvider) Configure(inputs resource.PropertyMap) error {
 	return status.Error(codes.Unimplemented, "Configure is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Check(urn resource.URN, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error) {
+func (p *UnimplementedProvider) Check(urn resource.URN, name, typ string, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error) {
 	return resource.PropertyMap{}, nil, status.Error(codes.Unimplemented, "Check is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
+func (p *UnimplementedProvider) Diff(urn resource.URN, name, typ string, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
 	return DiffResult{}, status.Error(codes.Unimplemented, "Diff is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+func (p *UnimplementedProvider) Create(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	return resource.ID(""), resource.PropertyMap{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Create is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Read(urn resource.URN, id resource.ID, inputs resource.PropertyMap, state resource.PropertyMap) (ReadResult, resource.Status, error) {
+func (p *UnimplementedProvider) Read(urn resource.URN, name, typ string, id resource.ID, inputs resource.PropertyMap, state resource.PropertyMap) (ReadResult, resource.Status, error) {
 	return ReadResult{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Read is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Update(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+func (p *UnimplementedProvider) Update(urn resource.URN, name, typ string, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 	return resource.PropertyMap{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Update is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
+func (p *UnimplementedProvider) Delete(urn resource.URN, name, typ string, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
 	return resource.StatusUnknown, status.Error(codes.Unimplemented, "Delete is not yet implemented")
 }
 

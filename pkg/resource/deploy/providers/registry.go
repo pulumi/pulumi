@@ -267,7 +267,7 @@ func (r *Registry) GetMappings(key string) ([]string, error) {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (r *Registry) CheckConfig(urn resource.URN, olds,
+func (r *Registry) CheckConfig(urn resource.URN, name, typ string, olds,
 	news resource.PropertyMap, allowUnknowns bool,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	contract.Failf("CheckConfig must not be called on the provider registry")
@@ -275,7 +275,8 @@ func (r *Registry) CheckConfig(urn resource.URN, olds,
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (r *Registry) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (r *Registry) DiffConfig(urn resource.URN, name, typ string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	contract.Failf("DiffConfig must not be called on the provider registry")
@@ -295,7 +296,7 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 //   - we need to keep the newly-loaded provider around in case we need to diff its config
 //   - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //     (we would normally configure the provider in Create or Update).
-func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
+func (r *Registry) Check(urn resource.URN, name, typ string, olds, news resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	contract.Requiref(IsProviderType(urn.Type()), "urn", "must be a provider type, got %v", urn.Type())
@@ -322,7 +323,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	}
 
 	// Check the provider's config. If the check fails, unload the provider.
-	inputs, failures, err := provider.CheckConfig(urn, olds, news, allowUnknowns)
+	inputs, failures, err := provider.CheckConfig(urn, name, typ, olds, news, allowUnknowns)
 	if len(failures) != 0 || err != nil {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
@@ -348,7 +349,8 @@ func (r *Registry) RegisterAlias(providerURN, alias resource.URN) {
 
 // Diff diffs the configuration of the indicated provider. The provider corresponding to the given URN must have
 // previously been loaded by a call to Check.
-func (r *Registry) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (r *Registry) Diff(urn resource.URN, name, typ string,
+	id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	contract.Requiref(id != "", "id", "must not be empty")
@@ -369,7 +371,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	}
 
 	// Diff the properties.
-	diff, err := provider.DiffConfig(urn, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+	diff, err := provider.DiffConfig(urn, name, typ, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
@@ -450,7 +452,7 @@ func (r *Registry) Same(res *resource.State) error {
 // registers it under the assigned (URN, ID).
 //
 // The provider must have been loaded by a prior call to Check.
-func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout float64,
+func (r *Registry) Create(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	label := fmt.Sprintf("%s.Create(%s)", r.label(), urn)
@@ -483,7 +485,7 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 // reference indicated by the (URN, ID) pair.
 //
 // THe provider must have been loaded by a prior call to Check.
-func (r *Registry) Update(urn resource.URN, id resource.ID,
+func (r *Registry) Update(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
@@ -506,7 +508,7 @@ func (r *Registry) Update(urn resource.URN, id resource.ID,
 
 // Delete unregisters and unloads the provider with the given URN and ID. If the provider was never loaded
 // this is a no-op.
-func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+func (r *Registry) Delete(urn resource.URN, name, typ string, id resource.ID, props resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(!r.isPreview, "Delete must not be called during preview")
@@ -522,7 +524,7 @@ func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	return resource.StatusOK, nil
 }
 
-func (r *Registry) Read(urn resource.URN, id resource.ID,
+func (r *Registry) Read(urn resource.URN, name, typ string, id resource.ID,
 	inputs, state resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("provider resources may not be read")

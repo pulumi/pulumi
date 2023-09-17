@@ -603,6 +603,8 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		close(deleting)
 		_, err := p.Delete(
 			resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
+			"qux",
+			"bar:baz",
 			"whatever",
 			props,
 			1000,

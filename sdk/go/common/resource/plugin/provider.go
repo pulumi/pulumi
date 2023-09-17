@@ -46,35 +46,37 @@ type Provider interface {
 	GetSchema(version int) ([]byte, error)
 
 	// CheckConfig validates the configuration for this resource provider.
-	CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
+	CheckConfig(urn resource.URN, name, typ string, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-	DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool,
+	DiffConfig(urn resource.URN, name, typ string,
+		oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool,
 		ignoreChanges []string) (DiffResult, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
 	Configure(inputs resource.PropertyMap) error
 
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
-	Check(urn resource.URN, olds, news resource.PropertyMap,
+	Check(urn resource.URN, name, typ string, olds, news resource.PropertyMap,
 		allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
-	Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	Diff(urn resource.URN, name, typ string, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID,
+	Create(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64, preview bool) (resource.ID,
 		resource.PropertyMap, resource.Status, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
-	Read(urn resource.URN, id resource.ID,
+	Read(urn resource.URN, name, typ string, id resource.ID,
 		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
 	// Update updates an existing resource with new values.
-	Update(urn resource.URN, id resource.ID,
+	Update(urn resource.URN, name, typ string, id resource.ID,
 		oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
-	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
+	Delete(urn resource.URN, name, typ string, id resource.ID,
+		props resource.PropertyMap, timeout float64) (resource.Status, error)
 
 	// Construct creates a new component resource.
 	Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap,

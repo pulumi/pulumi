@@ -156,7 +156,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
@@ -214,7 +214,7 @@ func TestCheckFailureRecord(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN,
+				CheckF: func(urn resource.URN, name, typ string,
 					olds, news resource.PropertyMap, randomSeed []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, errors.New("oh no, check had an error")
@@ -264,7 +264,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN,
+				CheckF: func(urn resource.URN, name, typ string,
 					olds, news resource.PropertyMap, randomSeed []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, []plugin.CheckFailure{{
@@ -483,7 +483,7 @@ func TestProviderCancellation(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					// Inform the waiter that we've entered a provider op and wait for cancellation.
@@ -829,7 +829,8 @@ func TestUpdatePartialFailure(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffF: func(urn resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
@@ -837,7 +838,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -1130,14 +1131,14 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return plugin.DiffResult{}, nil
 				},
 				UpdateF: func(
-					urn resource.URN, id resource.ID,
+					urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -1350,7 +1351,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	assert.NotNil(t, res)
 }
 
-type DiffFunc = func(urn resource.URN, id resource.ID,
+type DiffFunc = func(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error)
 
 func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
@@ -1361,7 +1362,7 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 				return &deploytest.Provider{
 					DiffF: diffFunc,
-					CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 						preview bool,
 					) (resource.ID, resource.PropertyMap, resource.Status, error) {
 						return resource.ID("id123"), inputs, resource.StatusOK, nil
@@ -1465,7 +1466,7 @@ func TestReplaceOnChanges(t *testing.T) {
 
 	// We simulate a provider that has it's own diff function.
 	replaceOnChangesTest(t, "provider diff",
-		func(urn resource.URN, id resource.ID,
+		func(urn resource.URN, name, typ string, id resource.ID,
 			oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 		) (plugin.DiffResult, error) {
 			// To establish a observable difference between the provider and engine diff function,
@@ -1501,7 +1502,7 @@ func TestPersistentDiff(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
@@ -1579,7 +1580,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
@@ -1676,7 +1677,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// Always require replacement if any diff exists.
@@ -1771,7 +1772,9 @@ func TestMissingRead(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ resource.URN, _ resource.ID, _, _ resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+				ReadF: func(_ resource.URN, _, _ string,
+					_ resource.ID, _, _ resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{}, resource.StatusOK, nil
 				},
 			}, nil
@@ -1799,7 +1802,7 @@ func TestProviderPreview(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if preview {
@@ -1809,7 +1812,7 @@ func TestProviderPreview(t *testing.T) {
 					assert.Equal(t, preview, news.ContainsUnknowns())
 					return "created-id", news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -1887,7 +1890,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if preview {
@@ -1897,7 +1900,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 					assert.Equal(t, preview, news.ContainsUnknowns())
 					return "created-id", news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -1977,7 +1980,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		// providers is specific to the gRPC layer.
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if preview {
@@ -1986,7 +1989,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -2338,12 +2341,12 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 			}
 
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", inputs, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
@@ -2768,7 +2771,7 @@ func TestProtect(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(
-					urn resource.URN,
+					urn resource.URN, name, typ string,
 					id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
@@ -2782,14 +2785,14 @@ func TestProtect(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, name, typ string, id resource.ID, olds resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					deleteCounter = deleteCounter + 1
@@ -2924,7 +2927,7 @@ func TestRetainOnDelete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(
-					urn resource.URN,
+					urn resource.URN, name, typ string,
 					id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
@@ -2938,14 +2941,14 @@ func TestRetainOnDelete(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, name, typ string, id resource.ID, olds resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					assert.Fail(t, "Delete was called")
@@ -3016,7 +3019,7 @@ func TestDeletedWith(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(
-					urn resource.URN,
+					urn resource.URN, name, typ string,
 					id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
@@ -3030,14 +3033,14 @@ func TestDeletedWith(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, name, typ string, id resource.ID, olds resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					if urn != topURN {
@@ -3128,21 +3131,21 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(
-					urn resource.URN,
+					urn resource.URN, name, typ string,
 					id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, name, typ string, id resource.ID, olds resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					assert.Fail(t, "Delete was called")
@@ -3254,7 +3257,7 @@ func TestEventSecrets(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					diff := oldOutputs.Diff(newInputs)
@@ -3271,7 +3274,7 @@ func TestEventSecrets(t *testing.T) {
 					}, nil
 				},
 
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("id123"), inputs, resource.StatusOK, nil
@@ -3352,7 +3355,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("id123"), inputs, resource.StatusOK, nil
@@ -3425,7 +3428,7 @@ func TestDefaultParents(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -3505,7 +3508,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if strings.Contains(string(urn), "typB") && failCreationOfTypB {
@@ -3518,7 +3521,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 					}
 					return id, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN,
+				DeleteF: func(urn resource.URN, name, typ string,
 					id resource.ID, olds resource.PropertyMap, timeout float64,
 				) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
@@ -3533,7 +3536,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 					delete(cloudState, id)
 					return resource.StatusOK, nil
 				},
-				DiffF: func(urn resource.URN,
+				DiffF: func(urn resource.URN, name, typ string,
 					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if strings.Contains(string(urn), "typA") {
@@ -3569,7 +3572,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 					return plugin.DiffResult{}, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -3651,7 +3654,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := resource.ID("")
@@ -3662,7 +3665,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					}
 					return id, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN,
+				DeleteF: func(urn resource.URN, name, typ string,
 					id resource.ID, olds resource.PropertyMap, timeout float64,
 				) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
@@ -3681,7 +3684,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					delete(cloudState, id)
 					return resource.StatusOK, nil
 				},
-				DiffF: func(urn resource.URN,
+				DiffF: func(urn resource.URN, name, typ string,
 					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if strings.Contains(string(urn), "typA") {
@@ -3730,7 +3733,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 
 					return plugin.DiffResult{}, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -3817,17 +3820,17 @@ func TestTimestampTracking(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 				},
-				UpdateF: func(_ resource.URN, _ resource.ID, _, _, _ resource.PropertyMap, _ float64,
+				UpdateF: func(_ resource.URN, _, _ string, _ resource.ID, _, _, _ resource.PropertyMap, _ float64,
 					_ []string, _ bool,
 				) (resource.PropertyMap, resource.Status, error) {
 					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -3929,7 +3932,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN,
+				CheckF: func(urn resource.URN, name, typ string,
 					olds, news resource.PropertyMap, randomSeed []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// Check that the old inputs are passed to CheckF
@@ -3957,7 +3960,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 
 					return results, nil, nil
 				},
-				DiffF: func(urn resource.URN,
+				DiffF: func(urn resource.URN, name, typ string,
 					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// Check that the old inputs and outputs are passed to DiffF
@@ -3986,7 +3989,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					// Let the engine do the diff, we just want to assert the conditions above
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := resource.ID("")
@@ -4003,7 +4006,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					}
 					return id, results, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID,
+				UpdateF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
@@ -4126,7 +4129,7 @@ func TestResourceNames(t *testing.T) {
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{
-						CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+						CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 							preview bool,
 						) (resource.ID, resource.PropertyMap, resource.Status, error) {
 							return "1", resource.PropertyMap{}, resource.StatusOK, nil
@@ -4159,12 +4162,12 @@ func TestSourcePositions(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", inputs, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil

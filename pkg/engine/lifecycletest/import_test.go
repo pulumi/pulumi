@@ -23,7 +23,7 @@ func TestImportOption(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
@@ -42,12 +42,12 @@ func TestImportOption(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -275,7 +275,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
+				DiffF: func(urn resource.URN, name, typ string, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
@@ -289,12 +289,12 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -380,7 +380,7 @@ func TestImportUpdatedID(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+					urn resource.URN, name, typ string, id resource.ID, inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						ID:      actualID,
@@ -460,7 +460,7 @@ const importSchema = `{
   }
 }`
 
-func diffImportResource(urn resource.URN, id resource.ID,
+func diffImportResource(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	if oldOutputs["foo"].DeepEquals(newInputs["foo"]) && oldOutputs["frob"].DeepEquals(newInputs["frob"]) {
@@ -491,12 +491,12 @@ func TestImportPlan(t *testing.T) {
 					return []byte(importSchema), nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -554,12 +554,12 @@ func TestImportIgnoreChanges(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -613,12 +613,12 @@ func TestImportPlanExistingImport(t *testing.T) {
 					return []byte(importSchema), nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -700,12 +700,12 @@ func TestImportPlanEmptyState(t *testing.T) {
 					return []byte(importSchema), nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -751,12 +751,12 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 					return []byte(importSchema), nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -811,12 +811,12 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 					return []byte(importSchema), nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+				CreateF: func(urn resource.URN, name, typ string, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
@@ -833,7 +833,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 					}, resource.StatusOK, nil
 				},
 				CheckF: func(
-					urn resource.URN, olds, news resource.PropertyMap,
+					urn resource.URN, name, typ string, olds, news resource.PropertyMap,
 					randomSeed []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// Error unless "foo" and "frob" are in news

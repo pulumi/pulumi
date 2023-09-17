@@ -38,22 +38,24 @@ type Provider struct {
 
 	GetSchemaF func(version int) ([]byte, error)
 
-	CheckConfigF func(urn resource.URN, olds,
+	CheckConfigF func(urn resource.URN, name, typ string, olds,
 		news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error)
-	DiffConfigF func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	DiffConfigF func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
 	ConfigureF func(news resource.PropertyMap) error
 
-	CheckF func(urn resource.URN,
+	CheckF func(urn resource.URN, name, typ string,
 		olds, news resource.PropertyMap, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error)
-	DiffF func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	DiffF func(urn resource.URN, name, typ string, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
-	CreateF func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+	CreateF func(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
-	UpdateF func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
+	UpdateF func(urn resource.URN, name, typ string, id resource.ID,
+		oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
-	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
-	ReadF   func(urn resource.URN, id resource.ID,
+	DeleteF func(urn resource.URN, name, typ string, id resource.ID,
+		olds resource.PropertyMap, timeout float64) (resource.Status, error)
+	ReadF func(urn resource.URN, name, typ string, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
 
 	ConstructF func(monitor *ResourceMonitor, typ, name string, parent resource.URN, inputs resource.PropertyMap,
@@ -100,22 +102,23 @@ func (prov *Provider) GetSchema(version int) ([]byte, error) {
 	return prov.GetSchemaF(version)
 }
 
-func (prov *Provider) CheckConfig(urn resource.URN, olds,
+func (prov *Provider) CheckConfig(urn resource.URN, name, typ string, olds,
 	news resource.PropertyMap, allowUnknowns bool,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	if prov.CheckConfigF == nil {
 		return news, nil, nil
 	}
-	return prov.CheckConfigF(urn, olds, news, allowUnknowns)
+	return prov.CheckConfigF(urn, name, typ, olds, news, allowUnknowns)
 }
 
-func (prov *Provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool,
+func (prov *Provider) DiffConfig(urn resource.URN, name, typ string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	if prov.DiffConfigF == nil {
 		return plugin.DiffResult{}, nil
 	}
-	return prov.DiffConfigF(urn, oldInputs, oldOutputs, newInputs, ignoreChanges)
+	return prov.DiffConfigF(urn, name, typ, oldInputs, oldOutputs, newInputs, ignoreChanges)
 }
 
 func (prov *Provider) Configure(inputs resource.PropertyMap) error {
@@ -129,17 +132,17 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 	return prov.ConfigureF(inputs)
 }
 
-func (prov *Provider) Check(urn resource.URN,
+func (prov *Provider) Check(urn resource.URN, name, typ string,
 	olds, news resource.PropertyMap, _ bool, randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	contract.Requiref(randomSeed != nil, "randomSeed", "must not be nil")
 	if prov.CheckF == nil {
 		return news, nil, nil
 	}
-	return prov.CheckF(urn, olds, news, randomSeed)
+	return prov.CheckF(urn, name, typ, olds, news, randomSeed)
 }
 
-func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
+func (prov *Provider) Create(urn resource.URN, name, typ string, props resource.PropertyMap, timeout float64,
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	if prov.CreateF == nil {
@@ -150,37 +153,38 @@ func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeo
 		}
 		return resource.ID(uuid.String()), resource.PropertyMap{}, resource.StatusOK, nil
 	}
-	return prov.CreateF(urn, props, timeout, preview)
+	return prov.CreateF(urn, name, typ, props, timeout, preview)
 }
 
-func (prov *Provider) Diff(urn resource.URN, id resource.ID,
+func (prov *Provider) Diff(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	if prov.DiffF == nil {
 		return plugin.DiffResult{}, nil
 	}
-	return prov.DiffF(urn, id, oldInputs, oldOutputs, newInputs, ignoreChanges)
+	return prov.DiffF(urn, name, typ, id, oldInputs, oldOutputs, newInputs, ignoreChanges)
 }
 
-func (prov *Provider) Update(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (prov *Provider) Update(urn resource.URN, name, typ string,
+	id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	timeout float64, ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	if prov.UpdateF == nil {
 		return newInputs, resource.StatusOK, nil
 	}
-	return prov.UpdateF(urn, id, oldInputs, oldOutputs, newInputs, timeout, ignoreChanges, preview)
+	return prov.UpdateF(urn, name, typ, id, oldInputs, oldOutputs, newInputs, timeout, ignoreChanges, preview)
 }
 
-func (prov *Provider) Delete(urn resource.URN,
+func (prov *Provider) Delete(urn resource.URN, name, typ string,
 	id resource.ID, props resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	if prov.DeleteF == nil {
 		return resource.StatusOK, nil
 	}
-	return prov.DeleteF(urn, id, props, timeout)
+	return prov.DeleteF(urn, name, typ, id, props, timeout)
 }
 
-func (prov *Provider) Read(urn resource.URN, id resource.ID,
+func (prov *Provider) Read(urn resource.URN, name, typ string, id resource.ID,
 	inputs, state resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
 	contract.Assertf(urn != "", "Read URN was empty")
@@ -191,7 +195,7 @@ func (prov *Provider) Read(urn resource.URN, id resource.ID,
 			Inputs:  resource.PropertyMap{},
 		}, resource.StatusUnknown, nil
 	}
-	return prov.ReadF(urn, id, inputs, state)
+	return prov.ReadF(urn, name, typ, id, inputs, state)
 }
 
 func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,

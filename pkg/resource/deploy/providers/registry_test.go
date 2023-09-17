@@ -134,13 +134,14 @@ func (prov *testProvider) GetSchema(version int) ([]byte, error) {
 	return []byte("{}"), nil
 }
 
-func (prov *testProvider) CheckConfig(urn resource.URN, olds,
+func (prov *testProvider) CheckConfig(urn resource.URN, name, typ string, olds,
 	news resource.PropertyMap, allowUnknowns bool,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.checkConfig(urn, olds, news, allowUnknowns)
 }
 
-func (prov *testProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (prov *testProvider) DiffConfig(urn resource.URN, name, typ string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return prov.diffConfig(urn, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
@@ -154,38 +155,38 @@ func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	return nil
 }
 
-func (prov *testProvider) Check(urn resource.URN,
+func (prov *testProvider) Check(urn resource.URN, name, typ string,
 	olds, news resource.PropertyMap, _ bool, _ []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
 
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
+func (prov *testProvider) Create(urn resource.URN, name, typ string, props resource.PropertyMap, timeout float64,
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
 
-func (prov *testProvider) Read(urn resource.URN, id resource.ID,
+func (prov *testProvider) Read(urn resource.URN, name, typ string, id resource.ID,
 	inputs, state resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
 }
 
-func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
+func (prov *testProvider) Diff(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, _ []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 
-func (prov *testProvider) Update(urn resource.URN, id resource.ID,
+func (prov *testProvider) Update(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
 
-func (prov *testProvider) Delete(urn resource.URN,
+func (prov *testProvider) Delete(urn resource.URN, name, typ string,
 	id resource.ID, props resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	return resource.StatusOK, errors.New("unsupported")
@@ -440,7 +441,7 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -451,7 +452,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Create
-		id, outs, status, err := r.Create(urn, inputs, timeout, false)
+		id, outs, status, err := r.Create(urn, string(urn.Name()), string(urn.Type()), inputs, timeout, false)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", id)
 		assert.NotEqual(t, UnknownID, id)
@@ -475,7 +476,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -487,7 +488,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
+		diff, err := r.Diff(urn, string(urn.Name()), string(urn.Type()), id, nil, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -497,7 +498,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, nil, olds, inputs, timeout, nil, false)
+		outs, status, err := r.Update(urn, string(urn.Name()), string(urn.Type()), id, nil, olds, inputs, timeout, nil, false)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -518,7 +519,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Delete
-		status, err := r.Delete(urn, id, resource.PropertyMap{}, timeout)
+		status, err := r.Delete(urn, string(urn.Name()), string(urn.Type()), id, resource.PropertyMap{}, timeout)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, status)
 
@@ -593,7 +594,7 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -614,7 +615,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -626,7 +627,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
+		diff, err := r.Diff(urn, string(urn.Name()), string(urn.Type()), id, nil, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -647,7 +648,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, nil)
+		inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -659,7 +660,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
+		diff, err := r.Diff(urn, string(urn.Name()), string(urn.Type()), id, nil, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.True(t, diff.Replace())
 
@@ -684,7 +685,7 @@ func TestCRUDNoProviders(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -706,7 +707,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -728,7 +729,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("1.0.0")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -750,7 +751,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
@@ -773,7 +774,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("foo")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, nil)
+	inputs, failures, err := r.Check(urn, string(urn.Name()), string(urn.Type()), olds, news, false, nil)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
@@ -842,7 +843,9 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
 
 			// Check
-			inputs, failures, err := r.Check(providerURN, olds, news, false, nil)
+			inputs, failures, err := r.Check(
+				providerURN, string(providerURN.Name()), string(providerURN.Type()),
+				olds, news, false, nil)
 			assert.NoError(t, err)
 			assert.Len(t, failures, 1)
 			assert.Equal(t, "version", string(failures[0].Property))

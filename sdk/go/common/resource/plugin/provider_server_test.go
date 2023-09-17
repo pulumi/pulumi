@@ -61,7 +61,7 @@ func (p *stubProvider) Configure(inputs resource.PropertyMap) error {
 }
 
 func (p *stubProvider) Read(
-	urn resource.URN,
+	urn resource.URN, name, typ string,
 	id resource.ID,
 	inputs,
 	state resource.PropertyMap,
@@ -69,7 +69,7 @@ func (p *stubProvider) Read(
 	if p.ReadFunc != nil {
 		return p.ReadFunc(urn, id, inputs, state)
 	}
-	return p.Provider.Read(urn, id, inputs, state)
+	return p.Provider.Read(urn, name, typ, id, inputs, state)
 }
 
 // When importing random passwords, the secret passed as "ID" should not leak in plain text into the final ID.

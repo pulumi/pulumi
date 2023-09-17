@@ -188,7 +188,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
@@ -269,7 +269,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
@@ -369,7 +369,7 @@ func (p *configurableProvider) configure(news resource.PropertyMap) error {
 	return nil
 }
 
-func (p *configurableProvider) create(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+func (p *configurableProvider) create(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	uid, err := uuid.NewV4()
@@ -382,7 +382,7 @@ func (p *configurableProvider) create(urn resource.URN, inputs resource.Property
 	return id, inputs, resource.StatusOK, nil
 }
 
-func (p *configurableProvider) delete(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+func (p *configurableProvider) delete(urn resource.URN, name, typ string, id resource.ID, olds resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	p.deletes.Store(id, p.id)
@@ -404,7 +404,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 			}
 
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
@@ -495,7 +495,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 			}
 
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					keys := []resource.PropertyKey{}
@@ -644,7 +644,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
@@ -881,7 +881,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// This implementation of DiffConfig always requests replacement.
-				DiffConfigF: func(_ resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+				DiffConfigF: func(_ resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					keys := []resource.PropertyKey{}
@@ -1506,7 +1506,8 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(
-					urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+					urn resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
@@ -1555,7 +1556,8 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(
-					urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+					urn resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
@@ -1594,5 +1596,77 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	for _, res := range snap.Resources[1:] {
 		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
+	assert.Nil(t, res)
+}
+
+func TestResourceNameAndTypeFields(t *testing.T) {
+	t.Parallel()
+
+	// Test that for all methods that take it (Check/Diff/Read/Update/Create/Delete) that the engine sends the correct
+	// resource name and type.
+
+	registerA := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if registerA {
+			_, _, _, err := monitor.RegisterResource("pkgA:index:resource", "resA", false, deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+		}
+
+		_, _, err := monitor.ReadResource("pkgA:index:other", "resB", "1234", "", nil, "", "", "")
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN, name, typ string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string,
+					parent resource.URN, inputs resource.PropertyMap,
+					info plugin.ConstructInfo, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					require.Equal(t, "resA", name)
+					require.Equal(t, "pkgA:m:typComponent", typ)
+
+					urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+						DeletedWith: options.DeletedWith,
+					})
+					require.NoError(t, err)
+
+					_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+						Parent: urn,
+					})
+					require.NoError(t, err)
+					return plugin.ConstructResult{
+						URN: urn,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+	project := p.GetProject()
+
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Run again to trigger Diff and Update
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Run again to trigger a delete
+	registerA = false
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 }

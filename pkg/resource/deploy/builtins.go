@@ -55,14 +55,15 @@ func (p *builtinProvider) GetMappings(key string) ([]string, error) {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
+func (p *builtinProvider) CheckConfig(urn resource.URN, name, typ string, olds,
 	news resource.PropertyMap, allowUnknowns bool,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, nil
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (p *builtinProvider) DiffConfig(urn resource.URN, name, typ string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -74,32 +75,32 @@ func (p *builtinProvider) Configure(props resource.PropertyMap) error {
 
 const stackReferenceType = "pulumi:pulumi:StackReference"
 
-func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
+func (p *builtinProvider) Check(urn resource.URN, name, typ string, state, inputs resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	typ := urn.Type()
 	if typ != stackReferenceType {
 		return nil, nil, fmt.Errorf("unrecognized resource type '%v'", urn.Type())
 	}
 
-	var name resource.PropertyValue
+	var stackName resource.PropertyValue
 	for k := range inputs {
 		if k != "name" {
 			return nil, []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}}, nil
 		}
 	}
 
-	name, ok := inputs["name"]
+	stackName, ok := inputs["name"]
 	if !ok {
 		return nil, []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}}, nil
 	}
-	if !name.IsString() && !name.IsComputed() {
+	if !stackName.IsString() && !stackName.IsComputed() {
 		return nil, []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}}, nil
 	}
 	return inputs, nil, nil
 }
 
-func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (p *builtinProvider) Diff(urn resource.URN, name, typ string,
+	id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
@@ -114,7 +115,7 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldO
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
-func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+func (p *builtinProvider) Create(urn resource.URN, name, typ string, inputs resource.PropertyMap, timeout float64,
 	preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
@@ -137,7 +138,7 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 	return id, state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Update(urn resource.URN, id resource.ID,
+func (p *builtinProvider) Update(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	timeout float64, ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
@@ -147,7 +148,7 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID,
 	return oldOutputs, resource.StatusOK, errors.New("unexpected update for builtin resource")
 }
 
-func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
+func (p *builtinProvider) Delete(urn resource.URN, name, typ string, id resource.ID,
 	state resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
@@ -155,7 +156,7 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 	return resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
+func (p *builtinProvider) Read(urn resource.URN, name, typ string, id resource.ID,
 	inputs, state resource.PropertyMap,
 ) (plugin.ReadResult, resource.Status, error) {
 	contract.Requiref(urn != "", "urn", "must not be empty")

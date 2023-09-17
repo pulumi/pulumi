@@ -148,7 +148,7 @@ func TestRefreshInitFailure(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+					urn resource.URN, name, typ string, id resource.ID, inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					if refreshShouldFail && urn == resURN {
 						err := &plugin.InitError{
@@ -253,7 +253,7 @@ func TestRefreshWithDelete(t *testing.T) {
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{
 						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+							urn resource.URN, name, typ string, id resource.ID, inputs, state resource.PropertyMap,
 						) (plugin.ReadResult, resource.Status, error) {
 							// This thing doesn't exist. Returning nil from Read should trigger
 							// the engine to delete it from the snapshot.
@@ -367,7 +367,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					switch id {
@@ -547,7 +547,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					new, hasNewState := newStates[id]
@@ -708,7 +708,7 @@ func TestCanceledRefresh(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(urn resource.URN, name, typ string, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					refreshes <- id
@@ -833,7 +833,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+					urn resource.URN, name, typ string, id resource.ID, inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{ID: idAfter, Outputs: outputs, Inputs: resource.PropertyMap{}}, resource.StatusOK, nil
 				},
@@ -894,7 +894,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+					urn resource.URN, name, typ string, id resource.ID, inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{}, resource.StatusOK, nil
 				},

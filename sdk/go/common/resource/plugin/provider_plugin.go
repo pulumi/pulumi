@@ -341,7 +341,7 @@ func (p *provider) GetSchema(version int) ([]byte, error) {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(urn resource.URN, olds,
+func (p *provider) CheckConfig(urn resource.URN, name, typ string, olds,
 	news resource.PropertyMap, allowUnknowns bool,
 ) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
@@ -365,6 +365,8 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 
 	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:  string(urn),
+		Name: urn.Name().String(),
+		Type: urn.Type().String(),
 		Olds: molds,
 		News: mnews,
 	})
@@ -443,7 +445,7 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (p *provider) DiffConfig(urn resource.URN, name, typ string, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
@@ -476,6 +478,8 @@ func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(urn),
+		Name:          urn.Name().String(),
+		Type:          urn.Type().String(),
 		OldInputs:     mOldInputs,
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
@@ -680,7 +684,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *provider) Check(urn resource.URN,
+func (p *provider) Check(urn resource.URN, name, typ string,
 	olds, news resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []CheckFailure, error) {
@@ -721,6 +725,8 @@ func (p *provider) Check(urn resource.URN,
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(urn),
+		Name:       name,
+		Type:       typ,
 		Olds:       molds,
 		News:       mnews,
 		RandomSeed: randomSeed,
@@ -764,7 +770,7 @@ func (p *provider) Check(urn resource.URN,
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) Diff(urn resource.URN, id resource.ID,
+func (p *provider) Diff(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool,
 	ignoreChanges []string,
 ) (DiffResult, error) {
@@ -831,6 +837,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
 		Id:            string(id),
 		Urn:           string(urn),
+		Name:          name,
+		Type:          typ,
 		OldInputs:     mOldInputs,
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
@@ -872,8 +880,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
-	resource.PropertyMap, resource.Status, error,
+func (p *provider) Create(urn resource.URN, name, typ string,
+	props resource.PropertyMap, timeout float64, preview bool,
+) (resource.ID, resource.PropertyMap, resource.Status, error,
 ) {
 	contract.Assertf(urn != "", "Create requires a URN")
 	contract.Assertf(props != nil, "Create requires properties")
@@ -930,6 +939,8 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
+		Name:       name,
+		Type:       typ,
 		Properties: mprops,
 		Timeout:    timeout,
 		Preview:    preview,
@@ -979,7 +990,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource id, but may also include some properties.
-func (p *provider) Read(urn resource.URN, id resource.ID,
+func (p *provider) Read(urn resource.URN, name, typ string, id resource.ID,
 	inputs, state resource.PropertyMap,
 ) (ReadResult, resource.Status, error) {
 	contract.Assertf(urn != "", "Read URN was empty")
@@ -1036,6 +1047,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
+		Name:       name,
+		Type:       typ,
 		Properties: mstate,
 		Inputs:     minputs,
 	})
@@ -1099,7 +1112,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 }
 
 // Update updates an existing resource with new values.
-func (p *provider) Update(urn resource.URN, id resource.ID,
+func (p *provider) Update(urn resource.URN, name, typ string, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
@@ -1180,6 +1193,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
+		Name:          name,
+		Type:          typ,
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
 		Timeout:       timeout,
@@ -1225,7 +1240,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+func (p *provider) Delete(urn resource.URN, name, typ string, id resource.ID, props resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(urn != "", "Delete requires a URN")
@@ -1260,6 +1275,8 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
+		Name:       name,
+		Type:       typ,
 		Properties: mprops,
 		Timeout:    timeout,
 	}); err != nil {

@@ -180,7 +180,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.CheckConfig(urn, state, inputs, true)
+	newInputs, failures, err := p.provider.CheckConfig(urn, req.Name, req.Type, state, inputs, true)
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
 	}
@@ -216,7 +216,8 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		return nil, err
 	}
 
-	diff, err := p.provider.DiffConfig(urn, oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.DiffConfig(urn, req.Name, req.Type,
+		oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
 	}
@@ -273,7 +274,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, req.RandomSeed)
+	newInputs, failures, err := p.provider.Check(urn, req.Name, req.Type, state, inputs, true, req.RandomSeed)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +310,8 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		return nil, err
 	}
 
-	diff, err := p.provider.Diff(urn, id, oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.Diff(urn, req.Name, req.Type,
+		id, oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +326,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	id, state, _, err := p.provider.Create(urn, inputs, req.GetTimeout(), req.GetPreview())
+	id, state, _, err := p.provider.Create(urn, req.Name, req.Type, inputs, req.GetTimeout(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +355,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	result, _, err := p.provider.Read(urn, requestID, inputs, state)
+	result, _, err := p.provider.Read(urn, req.Name, req.Type, requestID, inputs, state)
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +396,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	}
 
 	newState, _, err := p.provider.Update(
-		urn, id, oldOutputs, oldInputs, newInputs,
+		urn, req.Name, req.Type, id, oldOutputs, oldInputs, newInputs,
 		req.GetTimeout(), req.GetIgnoreChanges(), req.GetPreview())
 	if err != nil {
 		return nil, err
@@ -416,7 +418,7 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, err
 	}
 
-	if _, err = p.provider.Delete(urn, id, state, req.GetTimeout()); err != nil {
+	if _, err = p.provider.Delete(urn, req.Name, req.Type, id, state, req.GetTimeout()); err != nil {
 		return nil, err
 	}
 

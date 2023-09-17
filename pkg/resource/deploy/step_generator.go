@@ -653,7 +653,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		checkInputs := prov.Check
 		if !isTargeted {
 			// If not targeted, stub out the provider check and use the old inputs directly.
-			checkInputs = func(urn resource.URN, olds, news resource.PropertyMap,
+			checkInputs = func(urn resource.URN, name, typ string, olds, news resource.PropertyMap,
 				allowUnknowns bool, randomSeed []byte,
 			) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				return oldInputs, nil, nil
@@ -665,9 +665,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			inputs, failures, err = checkInputs(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+			inputs, failures, err = checkInputs(
+				urn, string(urn.Name()), string(urn.Type()),
+				nil, goal.Properties, allowUnknowns, randomSeed)
 		} else {
-			inputs, failures, err = checkInputs(urn, oldInputs, inputs, allowUnknowns, randomSeed)
+			inputs, failures, err = checkInputs(
+				urn, string(urn.Name()), string(urn.Type()),
+				oldInputs, inputs, allowUnknowns, randomSeed)
 		}
 
 		if err != nil {
@@ -972,7 +976,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+				inputs, failures, err = prov.Check(
+					urn, string(urn.Name()), string(urn.Type()),
+					nil, goal.Properties, allowUnknowns, randomSeed)
 				if err != nil {
 					return nil, err
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
@@ -1505,7 +1511,10 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new deployment didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, oldRes.Outputs, newRes.Inputs, true, nil)
+	purn := newRef.URN()
+	diff, err := newProv.DiffConfig(
+		purn, string(purn.Name()), string(purn.Type()),
+		oldRes.Inputs, oldRes.Outputs, newRes.Inputs, true, nil)
 	if err != nil {
 		return false, err
 	}
@@ -1569,7 +1578,9 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+	diff, err := prov.Diff(
+		urn, string(urn.Name()), string(urn.Type()),
+		id, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return diff, err
 	}
@@ -1883,7 +1894,9 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, true, nil)
+		diff, err := prov.Diff(
+			r.URN, string(r.URN.Name()), string(r.URN.Type()),
+			r.ID, r.Inputs, r.Outputs, inputsForDiff, true, nil)
 		if err != nil {
 			return false, nil, err
 		}
