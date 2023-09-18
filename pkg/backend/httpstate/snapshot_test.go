@@ -191,7 +191,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			StackIdentifier: stackID,
 			UpdateKind:      apitype.UpdateUpdate,
 			UpdateID:        updateID,
-		}, newMockTokenSource(), nil)
+		}, newMockTokenSource())
 		return persister
 	}
 

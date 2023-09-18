@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -48,10 +47,6 @@ func (m *MockStackPersister) Save(snap *deploy.Snapshot) error {
 	return nil
 }
 
-func (m *MockStackPersister) SecretsManager() secrets.Manager {
-	return b64.NewBase64SecretsManager()
-}
-
 func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
 	return m.SavedSnapshots[len(m.SavedSnapshots)-1]
 }
@@ -63,7 +58,7 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	}
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap), sp
+	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
