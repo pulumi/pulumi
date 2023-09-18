@@ -149,6 +149,8 @@ type DeploymentV3 struct {
 	Resources []ResourceV3 `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+	// Plugins contains plugin information to help Pulumi track and use plugins consistently across runs.
+	Plugins map[string]PluginV1 `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 type SecretsProvidersV1 struct {
@@ -335,6 +337,12 @@ type ResourceV3 struct {
 	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+}
+
+// PluginV1 contains plugin information to help Pulumi track and use plugins consistently across runs.
+type PluginV1 struct {
+	// DownloadURL contains the URL that a plugin was downloaded from during plugin acquisition.
+	DownloadURL string
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
