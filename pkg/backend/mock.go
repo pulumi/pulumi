@@ -57,8 +57,6 @@ type MockBackend struct {
 	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
-	LogoutF                 func() error
-	LogoutAllF              func() error
 	CurrentUserF            func() (string, []string, error)
 	PreviewF                func(context.Context, Stack,
 		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
@@ -340,20 +338,6 @@ func (be *MockBackend) ImportDeployment(ctx context.Context, stack Stack,
 ) error {
 	if be.ImportDeploymentF != nil {
 		return be.ImportDeploymentF(ctx, stack, deployment)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) Logout() error {
-	if be.LogoutF != nil {
-		return be.LogoutF()
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) LogoutAll() error {
-	if be.LogoutAllF != nil {
-		return be.LogoutAllF()
 	}
 	panic("not implemented")
 }
