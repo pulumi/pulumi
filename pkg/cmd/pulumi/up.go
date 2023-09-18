@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -256,9 +257,9 @@ func newUpCmd() *cobra.Command {
 
 		// Prompt for the project name, if we don't already have one from an existing stack.
 		if name == "" {
-			defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
+			defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
 			name, err = promptForValue(
-				yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
+				yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -266,10 +267,10 @@ func newUpCmd() *cobra.Command {
 
 		// Prompt for the project description, if we don't already have one from an existing stack.
 		if description == "" {
-			defaultValue := workspace.ValueOrDefaultProjectDescription(
+			defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 				description, template.ProjectDescription, template.Description)
 			description, err = promptForValue(
-				yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
+				yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}

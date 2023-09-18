@@ -28,15 +28,12 @@ import (
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
-	defaultProjectName = "project"
-
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
 	legacyPulumiTemplateManifestFile = ".pulumi.template.yaml"
@@ -619,93 +616,6 @@ func GetTemplateDir(templateKind TemplateKind) (string, error) {
 
 	// Use the classic template directory if there is no override.
 	return GetPulumiPath(TemplateDir)
-}
-
-// ValidateProjectName ensures a project name is valid, if it is not it returns an error with a message suitable
-// for display to an end user.
-func ValidateProjectName(s string) error {
-	if err := tokens.ValidateProjectName(s); err != nil {
-		return err
-	}
-
-	// This is needed to stop cyclic imports in DotNet projects
-	if strings.ToLower(s) == "pulumi" || strings.HasPrefix(strings.ToLower(s), "pulumi.") {
-		return errors.New("project name must not be `Pulumi` and must not start with the prefix `Pulumi.` " +
-			"to avoid collision with standard libraries")
-	}
-
-	return nil
-}
-
-// ValidateProjectDescription ensures a project description name is valid, if it is not it returns an error with a
-// message suitable for display to an end user.
-func ValidateProjectDescription(s string) error {
-	const maxTagValueLength = 256
-
-	if len(s) > maxTagValueLength {
-		return errors.New("A project description must be 256 characters or less")
-	}
-
-	return nil
-}
-
-// ValueOrSanitizedDefaultProjectName returns the value or a sanitized valid project name
-// based on defaultNameToSanitize.
-func ValueOrSanitizedDefaultProjectName(name string, projectName string, defaultNameToSanitize string) string {
-	// If we have a name, use it.
-	if name != "" {
-		return name
-	}
-
-	// If the project already has a name that isn't a replacement string, use it.
-	if projectName != "${PROJECT}" {
-		return projectName
-	}
-
-	// Otherwise, get a sanitized version of `defaultNameToSanitize`.
-	return getValidProjectName(defaultNameToSanitize)
-}
-
-// ValueOrDefaultProjectDescription returns the value or defaultDescription.
-func ValueOrDefaultProjectDescription(
-	description string, projectDescription string, defaultDescription string,
-) string {
-	// If we have a description, use it.
-	if description != "" {
-		return description
-	}
-
-	// If the project already has a description that isn't a replacement string, use it.
-	if projectDescription != "${DESCRIPTION}" {
-		return projectDescription
-	}
-
-	// Otherwise, use the default, which may be an empty string.
-	return defaultDescription
-}
-
-// getValidProjectName returns a valid project name based on the passed-in name.
-func getValidProjectName(name string) string {
-	// If the name is valid, return it.
-	if ValidateProjectName(name) == nil {
-		return name
-	}
-
-	// Otherwise, try building-up the name, removing any invalid chars.
-	var result string
-	for i := 0; i < len(name); i++ {
-		temp := result + string(name[i])
-		if ValidateProjectName(temp) == nil {
-			result = temp
-		}
-	}
-
-	// If we couldn't come up with a valid project name, fallback to a default.
-	if result == "" {
-		result = defaultProjectName
-	}
-
-	return result
 }
 
 // walkFiles is a helper that walks the directories/files in a source directory
