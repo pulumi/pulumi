@@ -652,7 +652,8 @@
     },
     "go": {
       "generateExtraInputTypes": true,
-      "importBasePath": "output-funcs/mypkg"
+      "importBasePath": "output-funcs/mypkg",
+      "generics": "side-by-side"
     },
     "python": {},
     "csharp": {
