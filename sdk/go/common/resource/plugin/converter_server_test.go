@@ -113,6 +113,7 @@ func TestConverterServer_Program(t *testing.T) {
 		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
+		Args:            []string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)

@@ -59,7 +59,6 @@ func newConvertCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "convert",
-		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Convert Pulumi programs from a supported source program into other supported languages",
 		Long: "Convert Pulumi programs from a supported source program into other supported languages.\n" +
 			"\n" +
@@ -70,7 +69,7 @@ func newConvertCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			return runConvert(env.Global(), cwd, mappings, from, language, outDir, generateOnly, strict)
+			return runConvert(env.Global(), args, cwd, mappings, from, language, outDir, generateOnly, strict)
 		}),
 	}
 
@@ -201,6 +200,7 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 
 func runConvert(
 	e env.Env,
+	args []string,
 	cwd string, mappings []string, from string, language string,
 	outDir string, generateOnly bool, strict bool,
 ) error {
@@ -378,6 +378,7 @@ func runConvert(
 			TargetDirectory: pclDirectory,
 			MapperTarget:    grpcServer.Addr(),
 			LoaderTarget:    grpcServer.Addr(),
+			Args:            args,
 		})
 		if err != nil {
 			return err
