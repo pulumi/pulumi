@@ -1212,15 +1212,8 @@ func (b *cloudBackend) runEngineAction(
 		close(eventsDone)
 	}()
 
-	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
-	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
-	// to ensure that secrets are not re-encrypted on each update.
-	sm := op.SecretsManager
-	if secrets.AreCompatible(sm, u.GetTarget().Snapshot.SecretsManager) {
-		sm = u.GetTarget().Snapshot.SecretsManager
-	}
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, sm)
-	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+	snapshotManager := backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.

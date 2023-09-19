@@ -1038,8 +1038,8 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(ctx, localStackRef, op.SecretsManager)
-	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
+	persister := b.newSnapshotPersister(ctx, localStackRef)
+	manager := backend.NewSnapshotManager(persister, op.SecretsManager, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
 		Events:          engineEvents,
