@@ -212,6 +212,42 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		errs = multierror.Append(errs, fmt.Errorf(format, args...))
 	}
 
+	makeUnique, checkAmbiguous := func() (func(int, tokens.QName) tokens.QName, func(tokens.QName) bool) {
+		// Track used resource names.
+		takenNames := map[tokens.QName]struct{}{}
+		// Track indexes that are not unique and need to be made unique.
+		duplicateIndexes := map[int]struct{}{}
+		// Track parent/provider/etc references that are ambiguous when referenced.
+		ambiguousNames := map[tokens.QName]struct{}{}
+		for i, spec := range f.Resources {
+			if _, exists := takenNames[spec.Name]; exists {
+				duplicateIndexes[i] = struct{}{}
+				ambiguousNames[spec.Name] = struct{}{}
+			}
+			// Prepopulate already taken names first to avoid using them in makeUnique.
+			takenNames[spec.Name] = struct{}{}
+		}
+		checkAmbiguous := func(name tokens.QName) bool {
+			_, isAmbiguous := ambiguousNames[name]
+			return isAmbiguous
+		}
+		makeUnique := func(i int, name tokens.QName) tokens.QName {
+			if _, isDuplicate := duplicateIndexes[i]; !isDuplicate {
+				return name
+			}
+			newName := name
+			for suffix := 1; ; suffix++ {
+				if _, exists := takenNames[newName]; !exists {
+					// No conflict.
+					takenNames[newName] = struct{}{}
+					return newName
+				}
+				newName = tokens.QName(fmt.Sprintf("%s_%d", name, suffix))
+			}
+		}
+		return makeUnique, checkAmbiguous
+	}()
+
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
 		if spec.Type == "" {
@@ -226,7 +262,7 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 
 		imp := deploy.Import{
 			Type:              spec.Type,
-			Name:              spec.Name,
+			Name:              makeUnique(i, spec.Name),
 			ID:                spec.ID,
 			Protect:           protectResources,
 			Properties:        spec.Properties,
@@ -234,6 +270,10 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		}
 
 		if spec.Parent != "" {
+			if checkAmbiguous(tokens.QName(spec.Parent)) {
+				pusherrf("%v has an ambiguous parent",
+					describeResource(i, spec))
+			}
 			urn, ok := f.NameTable[spec.Parent]
 			if !ok {
 				pusherrf("the parent '%v' for %v has no name",
@@ -244,6 +284,10 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		}
 
 		if spec.Provider != "" {
+			if checkAmbiguous(tokens.QName(spec.Provider)) {
+				pusherrf("%v has an ambiguous provider",
+					describeResource(i, spec))
+			}
 			urn, ok := f.NameTable[spec.Provider]
 			if !ok {
 				pusherrf("the provider '%v' for %v has no name",
