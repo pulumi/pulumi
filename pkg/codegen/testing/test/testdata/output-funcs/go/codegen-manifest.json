@@ -16,6 +16,20 @@
     "mypkg/listStorageAccountKeys.go",
     "mypkg/provider.go",
     "mypkg/pulumi-plugin.json",
-    "mypkg/pulumiTypes.go"
+    "mypkg/pulumiTypes.go",
+    "mypkg/x/doc.go",
+    "mypkg/x/funcWithAllOptionalInputs.go",
+    "mypkg/x/funcWithConstInput.go",
+    "mypkg/x/funcWithDefaultValue.go",
+    "mypkg/x/funcWithDictParam.go",
+    "mypkg/x/funcWithEmptyOutputs.go",
+    "mypkg/x/funcWithListParam.go",
+    "mypkg/x/getBastionShareableLink.go",
+    "mypkg/x/getClientConfig.go",
+    "mypkg/x/getIntegrationRuntimeObjectMetadatum.go",
+    "mypkg/x/init.go",
+    "mypkg/x/listStorageAccountKeys.go",
+    "mypkg/x/provider.go",
+    "mypkg/x/pulumiTypes.go"
   ]
 }

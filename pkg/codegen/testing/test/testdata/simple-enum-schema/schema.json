@@ -250,7 +250,8 @@
     "go": {
       "importBasePath": "simple-enum-schema/plant",
       "generateExtraInputTypes": true,
-      "respectSchemaVersion": true
+      "respectSchemaVersion": true,
+      "generics": "side-by-side"
     },
     "nodejs": {
       "dependencies": {

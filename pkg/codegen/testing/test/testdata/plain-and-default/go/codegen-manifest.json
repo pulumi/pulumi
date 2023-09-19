@@ -7,6 +7,11 @@
     "foo/moduleResource.go",
     "foo/provider.go",
     "foo/pulumi-plugin.json",
-    "foo/pulumiEnums.go"
+    "foo/pulumiEnums.go",
+    "foo/x/doc.go",
+    "foo/x/init.go",
+    "foo/x/moduleResource.go",
+    "foo/x/provider.go",
+    "foo/x/pulumiEnums.go"
   ]
 }

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/go
+  description: Support generating Go SDKs that use generic input and output types
