@@ -47,8 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -267,6 +265,7 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 }
 
 func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
+	var resourceToCreate int
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
@@ -282,7 +281,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 				pulumi.ResourceState
 			}
 
-			for i := 0; i < resourceCount; i++ {
+			for i := 0; i < resourceToCreate; i++ {
 				var dummy Dummy
 				err := ctx.RegisterComponentResource("examples:dummy:Dummy", fmt.Sprintf("dummy-%d", i), &dummy)
 				if err != nil {
@@ -299,33 +298,20 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 		})
 	})
 	host := deploytest.NewPluginHost(nil, nil, program)
-
-	var journalEntries engine.JournalEntries
 	p := &lifecycletest.TestPlan{
 		Options: engine.UpdateOptions{Host: host},
 		Steps: []lifecycletest.TestStep{
 			{
 				Op:          engine.Update,
 				SkipPreview: true,
-				Validate: func(
-					_ workspace.Project,
-					_ deploy.Target,
-					entries engine.JournalEntries,
-					_ []engine.Event,
-					_ result.Result,
-				) result.Result {
-					journalEntries = entries
-					return nil
-				},
 			},
 		},
 	}
-	p.Run(t, nil)
 
-	snaps := make([]*apitype.DeploymentV3, len(journalEntries))
-	for i := range journalEntries {
-		snap, err := journalEntries[:i].Snap(nil)
-		require.NoError(t, err)
+	snaps := make([]*apitype.DeploymentV3, resourceCount)
+	for i := 0; i < resourceCount; i++ {
+		resourceToCreate = i + 1
+		snap := p.Run(t, nil)
 		deployment, err := stack.SerializeDeployment(snap, nil, true)
 		require.NoError(t, err)
 		snaps[i] = deployment
