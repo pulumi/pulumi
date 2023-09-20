@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Fix selector wrapping on narrow terminals.
