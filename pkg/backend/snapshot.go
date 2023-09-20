@@ -62,7 +62,6 @@ type SnapshotManager struct {
 	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
 	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
 	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
-	doVerify         bool                     // If true, verify the snapshot before persisting it
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
@@ -657,10 +656,8 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	if err := sm.persister.Save(snap); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if sm.doVerify {
-		if err := snap.VerifyIntegrity(); err != nil {
-			return fmt.Errorf("failed to verify snapshot: %w", err)
-		}
+	if err := snap.VerifyIntegrity(); err != nil {
+		return fmt.Errorf("failed to verify snapshot: %w", err)
 	}
 	return nil
 }
@@ -732,7 +729,6 @@ func NewSnapshotManager(
 		baseSnapshot:     baseSnap,
 		dones:            make(map[*resource.State]bool),
 		completeOps:      make(map[*resource.State]bool),
-		doVerify:         true,
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
