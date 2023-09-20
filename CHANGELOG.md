@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.84.0 (2023-09-19)
+
+
+### Features
+
+- [engine] Program conversion plugins can now be passed extra arguments from `convert`.
+  [#13973](https://github.com/pulumi/pulumi/pull/13973)
+
+- [sdkgen/go] Support generating Go SDKs that use generic input and output types
+  [#13828](https://github.com/pulumi/pulumi/pull/13828)
+
+
+### Bug Fixes
+
+- [cli/new] `pulumi new` no longer defaults to a project name of "pulum" if ran in a folder called "pulumi".
+  [#13953](https://github.com/pulumi/pulumi/pull/13953)
+
 ## 3.83.0 (2023-09-15)
 
 
