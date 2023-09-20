@@ -22,7 +22,7 @@ func Record(m map[string]Builder) *ObjectBuilder {
 	names := maps.Keys(m)
 	sort.Strings(names)
 
-	return Object().Properties(m).AdditionalProperties(Never()).Required(names...)
+	return Object().Properties(m).Required(names...)
 }
 
 func (b *ObjectBuilder) Properties(m map[string]Builder) *ObjectBuilder {
