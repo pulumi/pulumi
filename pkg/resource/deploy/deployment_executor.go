@@ -164,9 +164,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	// Begin iterating the source.
-	src, res := ex.deployment.source.Iterate(callerCtx, opts, ex.deployment)
-	if res != nil {
-		return nil, res
+	src, err := ex.deployment.source.Iterate(callerCtx, opts, ex.deployment)
+	if err != nil {
+		return nil, result.FromError(err)
 	}
 
 	// Set up a step generator for this deployment.
