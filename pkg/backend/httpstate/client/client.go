@@ -85,6 +85,10 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 	}
 }
 
+func (pc *Client) Token() string {
+	return string(pc.apiToken)
+}
+
 // Returns true if this client is insecure (i.e. has TLS disabled).
 func (pc *Client) Insecure() bool {
 	return pc.insecure

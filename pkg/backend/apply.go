@@ -30,10 +30,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
+
+// This is currently a type used only to shadow the same type from
+// httpstate.Stack - it appears here to avoid circular dependencies.
+type cloudStack interface {
+	Stack
+	WriteSummarizedDiff(opts UpdateOptions) (string, error)
+}
 
 // ApplierOptions is a bag of configuration settings for an Applier.
 type ApplierOptions struct {
@@ -74,9 +82,10 @@ var updateTextMap = map[apitype.UpdateKind]struct {
 type response string
 
 const (
-	yes     response = "yes"
-	no      response = "no"
-	details response = "details"
+	yes       response = "yes"
+	no        response = "no"
+	details   response = "details"
+	summarize response = "🤖 summarize 🤖 [experimental]"
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
@@ -183,6 +192,10 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			choices = append(choices, string(details))
 		}
 
+		if env.Experimental.Value() {
+			choices = append(choices, string(summarize))
+		}
+
 		var previewWarning string
 		if opts.SkipPreview {
 			previewWarning = colors.SpecWarning + " without a preview" + colors.Bold
@@ -223,6 +236,19 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		if response == string(details) {
 			diff := createDiff(kind, events, opts.Display)
 			_, err := os.Stdout.WriteString(diff + "\n")
+			contract.IgnoreError(err)
+			continue
+		}
+
+		if response == string(summarize) {
+			cloudStack, ok := stack.(cloudStack)
+			if !ok {
+				return nil, fmt.Errorf("cannot summarize stack of type %T", stack)
+			}
+			_, err := cloudStack.WriteSummarizedDiff(opts)
+			if err != nil {
+				fmt.Println(err)
+			}
 			contract.IgnoreError(err)
 			continue
 		}

@@ -15,8 +15,14 @@
 package httpstate
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -28,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -40,6 +48,7 @@ type Stack interface {
 	OrgName() string                            // the organization that owns this stack.
 	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
 	StackIdentifier() client.StackIdentifier
+	WriteSummarizedDiff(backend.UpdateOptions) (string, error)
 }
 
 type cloudBackendReference struct {
@@ -131,6 +140,68 @@ func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 	// the above only fails when ref is of the wrong type.
 	contract.AssertNoErrorf(err, "unexpected stack reference type: %T", s.ref)
 	return si
+}
+
+func (s *cloudStack) getDiffSummaryURL() string {
+	aiURL := env.AIServiceEndpoint.Value()
+	if aiURL == "" {
+		aiURL = "http://localhost:3001/www-ai"
+	}
+	return fmt.Sprintf("%s/api/integrations/v0-alpha/diff-summary", aiURL)
+}
+
+type diffSummaryRequest struct {
+	BackendURL  string `json:"backendURL"`
+	OrgName     string `json:"orgName"`
+	ProjectName string `json:"projectName"`
+	StackName   string `json:"stackName"`
+	UpdateID    string `json:"updateID"`
+}
+
+func (s *cloudStack) WriteSummarizedDiff(opts backend.UpdateOptions) (string, error) {
+	os.Stdout.Write([]byte(opts.Display.Color.Colorize(colors.SpecInfo + "\nSummary:\n" + colors.Reset)))
+	client := http.Client{}
+	cloudBackendRef := s.Backend().(*cloudBackend)
+	projectName, _ := s.Ref().Project()
+	requestArgs := diffSummaryRequest{
+		BackendURL:  cloudBackendRef.client.URL(),
+		OrgName:     s.OrgName(),
+		ProjectName: projectName.String(),
+		StackName:   s.Ref().Name().String(),
+		UpdateID:    cloudBackendRef.activeUpdateID,
+	}
+	requestBody, err := json.Marshal(requestArgs)
+	if err != nil {
+		return "", err
+	}
+	requestURL := s.getDiffSummaryURL()
+	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", cloudBackendRef.client.Token()))
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	scanner := bufio.NewScanner(resp.Body)
+	// scanner.Split(bufio.ScanWords)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if strings.Contains(text, "-") {
+			text = fmt.Sprintf("\n%s ", text)
+		} else {
+			text = fmt.Sprintf("%s ", text)
+		}
+		os.Stdout.Write([]byte(text))
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	os.Stdout.Write([]byte("\n\n"))
+	return "", nil
 }
 
 func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {

@@ -131,6 +131,9 @@ type cloudBackend struct {
 
 	// The current project, if any.
 	currentProject *workspace.Project
+
+	// The current active update id, if any.
+	activeUpdateID string
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -1133,6 +1136,7 @@ func (b *cloudBackend) apply(
 
 	// Create an update object to persist results.
 	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
+	b.activeUpdateID = update.UpdateID
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
