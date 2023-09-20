@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Use importlib.metadata instead of pkg_resources
