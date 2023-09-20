@@ -108,13 +108,13 @@ func (src *evalSource) Info() interface{} { return src.runinfo }
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(
 	ctx context.Context, opts Options, providers ProviderSource,
-) (SourceIterator, result.Result) {
+) (SourceIterator, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
 	config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
 	if err != nil {
-		return nil, result.FromError(fmt.Errorf("failed to decrypt config: %w", err))
+		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
 
 	// Keep track of any config keys that have secure values.
@@ -127,7 +127,7 @@ func (src *evalSource) Iterate(
 	mon, err := newResourceMonitor(
 		src, providers, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
 	if err != nil {
-		return nil, result.FromError(fmt.Errorf("failed to start resource monitor: %w", err))
+		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
