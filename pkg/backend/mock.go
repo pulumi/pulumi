@@ -51,7 +51,7 @@ type MockBackend struct {
 		[]StackSummary, ContinuationToken, error)
 	RenameStackF            func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF        func(StackReference) (config.Crypter, error)
-	QueryF                  func(context.Context, QueryOperation) result.Result
+	QueryF                  func(context.Context, QueryOperation) error
 	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
 	GetHistoryF             func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
 	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
@@ -278,7 +278,7 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Query(ctx context.Context, op QueryOperation) result.Result {
+func (be *MockBackend) Query(ctx context.Context, op QueryOperation) error {
 	if be.QueryF != nil {
 		return be.QueryF(ctx, op)
 	}

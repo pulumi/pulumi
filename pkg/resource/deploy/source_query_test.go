@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -31,7 +32,7 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	// Success case.
 	resmon1 := mockQueryResmon{}
-	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) result.Result {
+	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) error {
 		return nil
 	})
 
@@ -47,19 +48,19 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	// Failure case.
 	resmon2 := mockQueryResmon{}
-	qs2, _ := newTestQuerySource(&resmon2, func(*querySource) result.Result {
-		return result.Error("failed")
+	qs2, _ := newTestQuerySource(&resmon2, func(*querySource) error {
+		return fmt.Errorf("failed")
 	})
 
 	qs2.forkRun()
 
 	res = qs2.Wait()
-	assert.False(t, res.IsBail())
+	assert.False(t, result.IsBail(res))
 	assert.NotNil(t, res.Error())
 	assert.False(t, resmon2.cancelled)
 
 	res = qs2.Wait()
-	assert.False(t, res.IsBail())
+	assert.False(t, result.IsBail(res))
 	assert.NotNil(t, res.Error())
 	assert.False(t, resmon2.cancelled)
 }
@@ -76,7 +77,7 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// -> test blocks on `Wait()` until querySource completes.
 	qs1Start, qs1StartAck := make(chan interface{}), make(chan interface{})
 	resmon1 := mockQueryResmon{}
-	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) result.Result {
+	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) error {
 		qs1Start <- struct{}{}
 		<-qs1StartAck
 		return nil
@@ -106,7 +107,7 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// -> test blocks on `Wait()` until querySource completes.
 	qs2Start, qs2StartAck := make(chan interface{}), make(chan interface{})
 	resmon2 := mockQueryResmon{}
-	qs2, cancelQs2 := newTestQuerySource(&resmon2, func(*querySource) result.Result {
+	qs2, cancelQs2 := newTestQuerySource(&resmon2, func(*querySource) error {
 		qs2Start <- struct{}{}
 		// Block forever.
 		<-qs2StartAck
@@ -154,14 +155,14 @@ func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 //
 
 func newTestQuerySource(mon SourceResourceMonitor,
-	runLangPlugin func(*querySource) result.Result,
+	runLangPlugin func(*querySource) error,
 ) (*querySource, context.CancelFunc) {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 
 	return &querySource{
 		mon:               mon,
 		runLangPlugin:     runLangPlugin,
-		langPluginFinChan: make(chan result.Result),
+		langPluginFinChan: make(chan error),
 		cancel:            cancel,
 	}, cancelFunc
 }

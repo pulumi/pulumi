@@ -40,7 +40,7 @@ import (
 
 // QuerySource is used to synchronously wait for a query result.
 type QuerySource interface {
-	Wait() result.Result
+	Wait() error
 }
 
 // NewQuerySource creates a `QuerySource` for some target runtime environment specified by
@@ -74,8 +74,8 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 		plugctx:            plugctx,
 		runinfo:            runinfo,
 		runLangPlugin:      runLangPlugin,
-		langPluginFinChan:  make(chan result.Result),
-		providerRegErrChan: make(chan result.Result),
+		langPluginFinChan:  make(chan error),
+		providerRegErrChan: make(chan error),
 		cancel:             cancel,
 	}
 
@@ -88,14 +88,14 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 }
 
 type querySource struct {
-	mon                SourceResourceMonitor            // the resource monitor, per iterator.
-	plugctx            *plugin.Context                  // the plugin context.
-	runinfo            *EvalRunInfo                     // the directives to use when running the program.
-	runLangPlugin      func(*querySource) result.Result // runs the language plugin.
-	langPluginFinChan  chan result.Result               // communicates language plugin completion.
-	providerRegErrChan chan result.Result               // communicates errors loading providers
-	done               bool                             // set to true when the evaluation is done.
-	res                result.Result                    // result when the channel is finished.
+	mon                SourceResourceMonitor    // the resource monitor, per iterator.
+	plugctx            *plugin.Context          // the plugin context.
+	runinfo            *EvalRunInfo             // the directives to use when running the program.
+	runLangPlugin      func(*querySource) error // runs the language plugin.
+	langPluginFinChan  chan error               // communicates language plugin completion.
+	providerRegErrChan chan error               // communicates errors loading providers
+	done               bool                     // set to true when the evaluation is done.
+	res                error                    // result when the channel is finished.
 	cancel             context.Context
 }
 
@@ -105,7 +105,7 @@ func (src *querySource) Close() error {
 	return src.mon.Cancel()
 }
 
-func (src *querySource) Wait() result.Result {
+func (src *querySource) Wait() error {
 	// If we are done, quit.
 	if src.done {
 		return src.res
@@ -138,12 +138,12 @@ func (src *querySource) forkRun() {
 	}()
 }
 
-func runLangPlugin(src *querySource) result.Result {
+func runLangPlugin(src *querySource) error {
 	rt := src.runinfo.Proj.Runtime.Name()
 	rtopts := src.runinfo.Proj.Runtime.Options()
 	langhost, err := src.plugctx.Host.LanguageRuntime(src.plugctx.Root, src.plugctx.Pwd, rt, rtopts)
 	if err != nil {
-		return result.FromError(fmt.Errorf("failed to launch language host %s: %w", rt, err))
+		return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 	}
 	contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
@@ -155,7 +155,7 @@ func runLangPlugin(src *querySource) result.Result {
 	if src.runinfo.Target != nil {
 		config, err = src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 	}
 
@@ -183,14 +183,14 @@ func runLangPlugin(src *querySource) result.Result {
 	// Check if we were asked to Bail.  This a special random constant used for that
 	// purpose.
 	if err == nil && bail {
-		return result.Bail()
+		return result.BailErrorf("run bailed")
 	}
 
 	if err == nil && progerr != "" {
 		// If the program had an unhandled error; propagate it to the caller.
 		err = fmt.Errorf("an unhandled error occurred: %v", progerr)
 	}
-	return result.WrapIfNonNil(err)
+	return err
 }
 
 // newQueryResourceMonitor creates a new resource monitor RPC server intended to be used in Pulumi's
