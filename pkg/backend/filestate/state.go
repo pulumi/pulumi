@@ -176,9 +176,9 @@ func (b *localBackend) getSnapshot(ctx context.Context,
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
-	if !DisableIntegrityChecking {
-		if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
-			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", verifyerr)
+	if !backend.DisableIntegrityChecking {
+		if err := snapshot.VerifyIntegrity(); err != nil {
+			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}
 
@@ -306,7 +306,7 @@ func (b *localBackend) saveStack(
 		return "", err
 	}
 
-	if !DisableIntegrityChecking {
+	if !backend.DisableIntegrityChecking {
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.

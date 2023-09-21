@@ -1349,3 +1349,50 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 	assert.True(t, found,
 		"file with a timestamp extension not found in %v", got)
 }
+
+//nolint:paralleltest // mutates global state
+func TestDisableIntegrityChecking(t *testing.T) {
+	stateDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil)
+	require.NoError(t, err)
+
+	// make up a bad stack
+	deployment := apitype.UntypedDeployment{
+		Version: 3,
+		Deployment: json.RawMessage(`{
+			"resources": [
+				{
+					"urn": "urn:pulumi:stack::proj::type::name1",
+					"type": "type",
+					"parent": "urn:pulumi:stack::proj::type::name2"
+				},
+				{
+					"urn": "urn:pulumi:stack::proj::type::name2",
+					"type": "type"
+				}
+			]
+		}`),
+	}
+
+	// Import deployment doesn't verify the deployment
+	err = b.ImportDeployment(ctx, s, &deployment)
+	require.NoError(t, err)
+
+	backend.DisableIntegrityChecking = false
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	require.ErrorContains(t, err,
+		"child resource urn:pulumi:stack::proj::type::name1's parent urn:pulumi:stack::proj::type::name2 comes after it")
+	assert.Nil(t, snap)
+
+	backend.DisableIntegrityChecking = true
+	snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+}

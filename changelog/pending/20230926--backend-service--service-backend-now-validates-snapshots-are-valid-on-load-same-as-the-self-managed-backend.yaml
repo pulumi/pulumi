@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/service
+  description: Service backend now validates snapshots are valid on load, same as the self managed backend. This can be disabled with --disable-integrity-checking.

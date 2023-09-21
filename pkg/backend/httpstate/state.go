@@ -223,6 +223,13 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 		return nil, err
 	}
 
+	// Ensure the snapshot passes verification before returning it, to catch bugs early.
+	if !backend.DisableIntegrityChecking {
+		if err := snapshot.VerifyIntegrity(); err != nil {
+			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
+		}
+	}
+
 	return snapshot, nil
 }
 
