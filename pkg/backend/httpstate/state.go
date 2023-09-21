@@ -223,6 +223,12 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 		return nil, err
 	}
 
+	// Renormalize URNs to retroacticly work around issues from https://github.com/pulumi/pulumi/issues/13903
+	snapshot, err = snapshot.NormalizeURNReferences()
+	if err != nil {
+		return nil, err
+	}
+
 	return snapshot, nil
 }
 
