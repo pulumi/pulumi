@@ -16,7 +16,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "foo": {
                             "type": "string",
@@ -31,7 +30,6 @@
                             "const": "value"
                         },
                         "test": {
-                            "additionalProperties": false,
                             "properties": {
                                 "baz": {
                                     "type": "string",
@@ -56,7 +54,6 @@
                                     "type": "array"
                                 },
                                 "object": {
-                                    "additionalProperties": false,
                                     "properties": {
                                         "key": {
                                             "type": "string",
@@ -293,7 +290,6 @@
                             }
                         },
                         "schema": {
-                            "additionalProperties": false,
                             "properties": {
                                 "baz": {
                                     "type": "string",
@@ -318,7 +314,6 @@
                                     "type": "array"
                                 },
                                 "object": {
-                                    "additionalProperties": false,
                                     "properties": {
                                         "key": {
                                             "type": "string",
@@ -375,7 +370,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "baz": {
                             "type": "string",
@@ -400,7 +394,6 @@
                             "type": "array"
                         },
                         "object": {
-                            "additionalProperties": false,
                             "properties": {
                                 "key": {
                                     "type": "string",
@@ -424,7 +417,6 @@
                 "builtin": {
                     "name": "",
                     "argSchema": {
-                        "additionalProperties": false,
                         "properties": {
                             "inputs": true,
                             "provider": {
@@ -466,7 +458,6 @@
                                     }
                                 },
                                 "schema": {
-                                    "additionalProperties": false,
                                     "properties": {
                                         "baz": {
                                             "type": "string",
@@ -491,7 +482,6 @@
                                             "type": "array"
                                         },
                                         "object": {
-                                            "additionalProperties": false,
                                             "properties": {
                                                 "key": {
                                                     "type": "string",
@@ -639,7 +629,6 @@
                                             }
                                         },
                                         "schema": {
-                                            "additionalProperties": false,
                                             "properties": {
                                                 "key": {
                                                     "type": "string",
@@ -1071,10 +1060,8 @@
             }
         },
         "schema": {
-            "additionalProperties": false,
             "properties": {
                 "referent": {
-                    "additionalProperties": false,
                     "properties": {
                         "foo": {
                             "type": "string",
@@ -1089,7 +1076,6 @@
                             "const": "value"
                         },
                         "test": {
-                            "additionalProperties": false,
                             "properties": {
                                 "baz": {
                                     "type": "string",
@@ -1114,7 +1100,6 @@
                                     "type": "array"
                                 },
                                 "object": {
-                                    "additionalProperties": false,
                                     "properties": {
                                         "key": {
                                             "type": "string",
@@ -1145,7 +1130,6 @@
                     ]
                 },
                 "test": {
-                    "additionalProperties": false,
                     "properties": {
                         "baz": {
                             "type": "string",
@@ -1170,7 +1154,6 @@
                             "type": "array"
                         },
                         "object": {
-                            "additionalProperties": false,
                             "properties": {
                                 "key": {
                                     "type": "string",

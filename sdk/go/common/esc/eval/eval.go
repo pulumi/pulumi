@@ -521,6 +521,7 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor)
 
 	// Check for an imports access.
 	if k, ok := e.objectKey(x.repr.syntax(), accessors[0].accessor, false); ok && k == "imports" {
+		accessors[0].value = e.myImports
 		return e.evaluateValueAccess(x.repr.syntax(), e.myImports, accessors[1:])
 	}
 

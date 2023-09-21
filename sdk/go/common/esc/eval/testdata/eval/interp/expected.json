@@ -16,7 +16,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": {
                             "type": "string",
@@ -124,7 +123,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": {
                             "type": "string",
@@ -207,7 +205,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "a": {
                             "prefixItems": [
@@ -683,10 +680,8 @@
             }
         },
         "schema": {
-            "additionalProperties": false,
             "properties": {
                 "a": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": {
                             "type": "string",
@@ -704,7 +699,6 @@
                     ]
                 },
                 "b": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": {
                             "type": "string",
@@ -717,7 +711,6 @@
                     ]
                 },
                 "c": {
-                    "additionalProperties": false,
                     "properties": {
                         "a": {
                             "prefixItems": [

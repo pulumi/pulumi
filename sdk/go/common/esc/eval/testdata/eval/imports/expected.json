@@ -5,14 +5,14 @@
                 "range": {
                     "environment": "imports",
                     "begin": {
-                        "line": 7,
+                        "line": 8,
                         "column": 5,
-                        "byte": 67
+                        "byte": 91
                     },
                     "end": {
-                        "line": 8,
+                        "line": 9,
                         "column": 12,
-                        "byte": 86
+                        "byte": 110
                     }
                 },
                 "schema": {
@@ -101,14 +101,14 @@
                         "range": {
                             "environment": "imports",
                             "begin": {
-                                "line": 7,
+                                "line": 8,
                                 "column": 7,
-                                "byte": 69
+                                "byte": 93
                             },
                             "end": {
-                                "line": 7,
+                                "line": 8,
                                 "column": 12,
-                                "byte": 74
+                                "byte": 98
                             }
                         },
                         "schema": {
@@ -121,14 +121,14 @@
                         "range": {
                             "environment": "imports",
                             "begin": {
-                                "line": 8,
+                                "line": 9,
                                 "column": 7,
-                                "byte": 81
+                                "byte": 105
                             },
                             "end": {
-                                "line": 8,
+                                "line": 9,
                                 "column": 12,
-                                "byte": 86
+                                "byte": 110
                             }
                         },
                         "schema": {
@@ -143,18 +143,17 @@
                 "range": {
                     "environment": "imports",
                     "begin": {
-                        "line": 10,
+                        "line": 11,
                         "column": 5,
-                        "byte": 106
+                        "byte": 130
                     },
                     "end": {
-                        "line": 13,
+                        "line": 15,
                         "column": 28,
-                        "byte": 183
+                        "byte": 234
                     }
                 },
                 "schema": {
-                    "additionalProperties": true,
                     "properties": {
                         "alpha": {
                             "type": "null"
@@ -162,6 +161,10 @@
                         "baz": {
                             "type": "string",
                             "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "bar"
                         },
                         "foo": {
                             "type": "string",
@@ -184,6 +187,7 @@
                     "required": [
                         "alpha",
                         "baz",
+                        "beta",
                         "foo",
                         "goodbye",
                         "hello",
@@ -205,7 +209,6 @@
                         }
                     },
                     "schema": {
-                        "additionalProperties": false,
                         "properties": {
                             "alpha": {
                                 "type": "string",
@@ -295,14 +298,14 @@
                         "range": {
                             "environment": "imports",
                             "begin": {
-                                "line": 12,
+                                "line": 13,
                                 "column": 12,
-                                "byte": 151
+                                "byte": 175
                             },
                             "end": {
-                                "line": 12,
+                                "line": 13,
                                 "column": 16,
-                                "byte": 155
+                                "byte": 179
                             }
                         },
                         "schema": {
@@ -329,18 +332,87 @@
                             "literal": "beta"
                         }
                     },
+                    "beta": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 14,
+                                "column": 11,
+                                "byte": 190
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 27,
+                                "byte": 206
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "imports",
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "c",
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "c",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 8,
+                                        "byte": 15
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    }
+                                }
+                            }
+                        ]
+                    },
                     "goodbye": {
                         "range": {
                             "environment": "imports",
                             "begin": {
-                                "line": 11,
+                                "line": 12,
                                 "column": 14,
-                                "byte": 132
+                                "byte": 156
                             },
                             "end": {
-                                "line": 11,
+                                "line": 12,
                                 "column": 21,
-                                "byte": 139
+                                "byte": 163
                             }
                         },
                         "schema": {
@@ -353,14 +425,14 @@
                         "range": {
                             "environment": "imports",
                             "begin": {
-                                "line": 10,
+                                "line": 11,
                                 "column": 12,
-                                "byte": 113
+                                "byte": 137
                             },
                             "end": {
-                                "line": 10,
+                                "line": 11,
                                 "column": 17,
-                                "byte": 118
+                                "byte": 142
                             }
                         },
                         "schema": {
@@ -373,14 +445,14 @@
                         "range": {
                             "environment": "imports",
                             "begin": {
-                                "line": 13,
+                                "line": 15,
                                 "column": 10,
-                                "byte": 165
+                                "byte": 216
                             },
                             "end": {
-                                "line": 13,
+                                "line": 15,
                                 "column": 28,
-                                "byte": 183
+                                "byte": 234
                             }
                         },
                         "schema": {
@@ -393,14 +465,14 @@
                                 "value": {
                                     "environment": "imports",
                                     "begin": {
-                                        "line": 10,
+                                        "line": 11,
                                         "column": 5,
-                                        "byte": 106
+                                        "byte": 130
                                     },
                                     "end": {
-                                        "line": 13,
+                                        "line": 15,
                                         "column": 28,
-                                        "byte": 183
+                                        "byte": 234
                                     }
                                 }
                             },
@@ -428,14 +500,14 @@
                 "range": {
                     "environment": "imports",
                     "begin": {
-                        "line": 5,
+                        "line": 6,
                         "column": 16,
-                        "byte": 44
+                        "byte": 68
                     },
                     "end": {
-                        "line": 5,
+                        "line": 6,
                         "column": 21,
-                        "byte": 49
+                        "byte": 73
                     }
                 },
                 "schema": {
@@ -454,14 +526,14 @@
                             "def": {
                                 "environment": "imports",
                                 "begin": {
-                                    "line": 7,
+                                    "line": 8,
                                     "column": 7,
-                                    "byte": 69
+                                    "byte": 93
                                 },
                                 "end": {
-                                    "line": 7,
+                                    "line": 8,
                                     "column": 12,
-                                    "byte": 74
+                                    "byte": 98
                                 }
                             }
                         }
@@ -472,14 +544,14 @@
                             "def": {
                                 "environment": "imports",
                                 "begin": {
-                                    "line": 8,
+                                    "line": 9,
                                     "column": 7,
-                                    "byte": 81
+                                    "byte": 105
                                 },
                                 "end": {
-                                    "line": 8,
+                                    "line": 9,
                                     "column": 12,
-                                    "byte": 86
+                                    "byte": 110
                                 }
                             }
                         }
@@ -489,14 +561,14 @@
                     "def": {
                         "environment": "imports",
                         "begin": {
-                            "line": 7,
+                            "line": 8,
                             "column": 5,
-                            "byte": 67
+                            "byte": 91
                         },
                         "end": {
-                            "line": 8,
+                            "line": 9,
                             "column": 12,
-                            "byte": 86
+                            "byte": 110
                         }
                     },
                     "base": {
@@ -599,14 +671,14 @@
                             "def": {
                                 "environment": "imports",
                                 "begin": {
-                                    "line": 12,
+                                    "line": 13,
                                     "column": 12,
-                                    "byte": 151
+                                    "byte": 175
                                 },
                                 "end": {
-                                    "line": 12,
+                                    "line": 13,
                                     "column": 16,
-                                    "byte": 155
+                                    "byte": 179
                                 }
                             },
                             "base": {
@@ -647,6 +719,24 @@
                             }
                         }
                     },
+                    "beta": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 11,
+                                    "byte": 190
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 27,
+                                    "byte": 206
+                                }
+                            }
+                        }
+                    },
                     "foo": {
                         "value": "bar",
                         "trace": {
@@ -671,14 +761,14 @@
                             "def": {
                                 "environment": "imports",
                                 "begin": {
-                                    "line": 11,
+                                    "line": 12,
                                     "column": 14,
-                                    "byte": 132
+                                    "byte": 156
                                 },
                                 "end": {
-                                    "line": 11,
+                                    "line": 12,
                                     "column": 21,
-                                    "byte": 139
+                                    "byte": 163
                                 }
                             }
                         }
@@ -689,14 +779,14 @@
                             "def": {
                                 "environment": "imports",
                                 "begin": {
-                                    "line": 10,
+                                    "line": 11,
                                     "column": 12,
-                                    "byte": 113
+                                    "byte": 137
                                 },
                                 "end": {
-                                    "line": 10,
+                                    "line": 11,
                                     "column": 17,
-                                    "byte": 118
+                                    "byte": 142
                                 }
                             }
                         }
@@ -707,14 +797,14 @@
                             "def": {
                                 "environment": "imports",
                                 "begin": {
-                                    "line": 13,
+                                    "line": 15,
                                     "column": 10,
-                                    "byte": 165
+                                    "byte": 216
                                 },
                                 "end": {
-                                    "line": 13,
+                                    "line": 15,
                                     "column": 28,
-                                    "byte": 183
+                                    "byte": 234
                                 }
                             }
                         }
@@ -724,14 +814,14 @@
                     "def": {
                         "environment": "imports",
                         "begin": {
-                            "line": 10,
+                            "line": 11,
                             "column": 5,
-                            "byte": 106
+                            "byte": 130
                         },
                         "end": {
-                            "line": 13,
+                            "line": 15,
                             "column": 28,
-                            "byte": 183
+                            "byte": 234
                         }
                     },
                     "base": {
@@ -815,21 +905,20 @@
                     "def": {
                         "environment": "imports",
                         "begin": {
-                            "line": 5,
+                            "line": 6,
                             "column": 16,
-                            "byte": 44
+                            "byte": 68
                         },
                         "end": {
-                            "line": 5,
+                            "line": 6,
                             "column": 21,
-                            "byte": 49
+                            "byte": 73
                         }
                     }
                 }
             }
         },
         "schema": {
-            "additionalProperties": false,
             "properties": {
                 "some_list": {
                     "prefixItems": [
@@ -846,7 +935,6 @@
                     "type": "array"
                 },
                 "some_object": {
-                    "additionalProperties": true,
                     "properties": {
                         "alpha": {
                             "type": "null"
@@ -854,6 +942,10 @@
                         "baz": {
                             "type": "string",
                             "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "bar"
                         },
                         "foo": {
                             "type": "string",
@@ -876,6 +968,7 @@
                     "required": [
                         "alpha",
                         "baz",
+                        "beta",
                         "foo",
                         "goodbye",
                         "hello",

@@ -145,7 +145,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "goodbye": {
                             "type": "string",
@@ -410,7 +409,6 @@
             }
         },
         "schema": {
-            "additionalProperties": false,
             "properties": {
                 "some_bool": {
                     "type": "boolean",
@@ -438,7 +436,6 @@
                     "const": 42
                 },
                 "some_object": {
-                    "additionalProperties": false,
                     "properties": {
                         "goodbye": {
                             "type": "string",

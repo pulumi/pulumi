@@ -112,7 +112,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": true
                     },
@@ -189,7 +188,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": true
                     },
@@ -266,7 +264,6 @@
                     }
                 },
                 "schema": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": true
                     },
@@ -446,10 +443,8 @@
             }
         },
         "schema": {
-            "additionalProperties": false,
             "properties": {
                 "a": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": true
                     },
@@ -459,7 +454,6 @@
                     ]
                 },
                 "b": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": true
                     },
@@ -469,7 +463,6 @@
                     ]
                 },
                 "c": {
-                    "additionalProperties": false,
                     "properties": {
                         "p": true
                     },
