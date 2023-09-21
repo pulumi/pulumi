@@ -26,6 +26,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -191,6 +192,21 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			Main:    proj.Main,
 			Runtime: proj.Runtime,
 		}, Root: root}
+
+		// Support Premium Policies.
+		if cloudURL, err := workspace.GetCurrentCloudURL(projinfo.Proj); err == nil {
+			_, hasAccessToken := os.LookupEnv("PULUMI_ACCESS_TOKEN")
+			if !hasAccessToken {
+				account, err := workspace.GetAccount(
+					httpstate.ValueOrDefaultURL(cloudURL),
+				)
+
+				contract.Ignore(err) // We can set access token to "" (string zero value) and be in the same situation.
+				os.Setenv("PULUMI_ACCESS_TOKEN", account.AccessToken)
+				defer os.Unsetenv("PULUMI_ACCESS_TOKEN")
+			}
+		}
+
 		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
 			projinfo,
 			nil,
