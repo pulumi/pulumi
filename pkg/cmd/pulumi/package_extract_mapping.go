@@ -27,8 +27,8 @@ func newExtractMappingCommand() *cobra.Command {
 	var out string
 
 	cmd := &cobra.Command{
-		Use:   "get-mapping <key> <schema_source>",
-		Args:  cobra.ExactArgs(2),
+		Use:   "get-mapping <key> <schema_source> [<provider key>]",
+		Args:  cobra.RangeArgs(2, 3),
 		Short: "Get the mapping information for a given key from a package",
 		Long: `Get the mapping information for a given key from a package.
 
@@ -36,6 +36,7 @@ func newExtractMappingCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]
+			provider := args[2]
 
 			p, err := providerFromSource(source)
 			if err != nil {
@@ -43,7 +44,7 @@ func newExtractMappingCommand() *cobra.Command {
 			}
 			defer p.Close()
 
-			data, mapped, err := p.GetMapping(key)
+			data, mapped, err := p.GetMapping(key, provider)
 			if err != nil {
 				return fmt.Errorf("get mapping: %w", err)
 			}

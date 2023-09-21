@@ -98,6 +98,10 @@ func (p *UnimplementedProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{}, status.Error(codes.Unimplemented, "GetPluginInfo is not yet implemented")
 }
 
-func (p *UnimplementedProvider) GetMapping(key string) ([]byte, string, error) {
+func (p *UnimplementedProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", status.Error(codes.Unimplemented, "GetMapping is not yet implemented")
+}
+
+func (p *UnimplementedProvider) GetMappings(key string) ([]string, error) {
+	return nil, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
 }

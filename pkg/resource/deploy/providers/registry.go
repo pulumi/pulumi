@@ -254,10 +254,16 @@ func (r *Registry) GetSchema(version int) ([]byte, error) {
 	return nil, errors.New("the provider registry has no schema")
 }
 
-func (r *Registry) GetMapping(key string) ([]byte, string, error) {
+func (r *Registry) GetMapping(key, provider string) ([]byte, string, error) {
 	contract.Failf("GetMapping must not be called on the provider registry")
 
 	return nil, "", errors.New("the provider registry has no mappings")
+}
+
+func (r *Registry) GetMappings(key string) ([]string, error) {
+	contract.Failf("GetMappings must not be called on the provider registry")
+
+	return nil, errors.New("the provider registry has no mappings")
 }
 
 // CheckConfig validates the configuration for this resource provider.

@@ -1261,14 +1261,21 @@ class GetMappingRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     KEY_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
     key: builtins.str
     """the conversion key for the mapping being requested."""
+    provider: builtins.str
+    """the optional provider key for the mapping being requested, if this is empty the provider should assume this
+    request is from an old engine from before GetMappings and should return it's "primary" mapping. If this is set
+    then the `provider` field in GetMappingResponse should be the same.
+    """
     def __init__(
         self,
         *,
         key: builtins.str = ...,
+        provider: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["key", b"key"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "provider", b"provider"]) -> None: ...
 
 global___GetMappingRequest = GetMappingRequest
 
@@ -1295,3 +1302,44 @@ class GetMappingResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["data", b"data", "provider", b"provider"]) -> None: ...
 
 global___GetMappingResponse = GetMappingResponse
+
+@typing_extensions.final
+class GetMappingsRequest(google.protobuf.message.Message):
+    """GetMappingsRequest allows providers to return ecosystem specific information without having to send back large data
+    blobs for provider mappings that the engine doesn't then need.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    KEY_FIELD_NUMBER: builtins.int
+    key: builtins.str
+    """the conversion key for the mapping being requested."""
+    def __init__(
+        self,
+        *,
+        key: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["key", b"key"]) -> None: ...
+
+global___GetMappingsRequest = GetMappingsRequest
+
+@typing_extensions.final
+class GetMappingsResponse(google.protobuf.message.Message):
+    """GetMappingsRequest returns a list of providers that this provider can provide mapping information for."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROVIDERS_FIELD_NUMBER: builtins.int
+    @property
+    def providers(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the provider keys this provider can supply mappings for. For example the Pulumi provider "terraform-template"
+        would return ["template"] for this.
+        """
+    def __init__(
+        self,
+        *,
+        providers: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["providers", b"providers"]) -> None: ...
+
+global___GetMappingsResponse = GetMappingsResponse

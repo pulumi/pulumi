@@ -223,8 +223,12 @@ func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
-func (prov *testProvider) GetMapping(key string) ([]byte, string, error) {
+func (prov *testProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", nil
+}
+
+func (prov *testProvider) GetMappings(key string) ([]string, error) {
+	return []string{}, nil
 }
 
 type providerLoader struct {

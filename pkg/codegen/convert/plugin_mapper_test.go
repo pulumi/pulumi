@@ -38,8 +38,9 @@ func (ws *testWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
 }
 
 type testProvider struct {
-	pkg     tokens.Package
-	mapping func(key string) ([]byte, string, error)
+	pkg      tokens.Package
+	mapping  func(key, provider string) ([]byte, string, error)
+	mappings func(key string) ([]string, error)
 }
 
 func (prov *testProvider) SignalCancellation() error {
@@ -140,8 +141,15 @@ func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{}, errors.New("unsupported")
 }
 
-func (prov *testProvider) GetMapping(key string) ([]byte, string, error) {
-	return prov.mapping(key)
+func (prov *testProvider) GetMapping(key, provider string) ([]byte, string, error) {
+	return prov.mapping(key, provider)
+}
+
+func (prov *testProvider) GetMappings(key string) ([]string, error) {
+	if prov.mappings == nil {
+		return nil, nil
+	}
+	return prov.mappings(key)
 }
 
 func semverMustParse(s string) *semver.Version {
@@ -163,8 +171,9 @@ func TestPluginMapper_InstalledPluginMatches(t *testing.T) {
 	}
 	testProvider := &testProvider{
 		pkg: tokens.Package("provider"),
-		mapping: func(key string) ([]byte, string, error) {
+		mapping: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
+			assert.Equal(t, "", provider)
 			return []byte("data"), "provider", nil
 		},
 	}
@@ -204,8 +213,9 @@ func TestPluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 	}
 	testProvider := &testProvider{
 		pkg: tokens.Package("pulumiProvider"),
-		mapping: func(key string) ([]byte, string, error) {
+		mapping: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
+			assert.Equal(t, "", provider)
 			return []byte("data"), "otherProvider", nil
 		},
 	}
@@ -252,8 +262,9 @@ func TestPluginMapper_NoPluginMatches(t *testing.T) {
 
 		testProvider := &testProvider{
 			pkg: tokens.Package("yetAnotherProvider"),
-			mapping: func(key string) ([]byte, string, error) {
+			mapping: func(key, provider string) ([]byte, string, error) {
 				assert.Equal(t, "key", key)
+				assert.Equal(t, "", provider)
 				return []byte("data"), "yetAnotherProvider", nil
 			},
 		}
@@ -284,8 +295,9 @@ func TestPluginMapper_NoPluginMatches(t *testing.T) {
 
 		testProvider := &testProvider{
 			pkg: tokens.Package("pulumiProvider"),
-			mapping: func(key string) ([]byte, string, error) {
+			mapping: func(key, provider string) ([]byte, string, error) {
 				assert.Equal(t, "key", key)
+				assert.Equal(t, "", provider)
 				return []byte("data"), "otherProvider", nil
 			},
 		}
@@ -333,8 +345,9 @@ func TestPluginMapper_UseMatchingNameFirst(t *testing.T) {
 	}
 	testProvider := &testProvider{
 		pkg: tokens.Package("provider"),
-		mapping: func(key string) ([]byte, string, error) {
+		mapping: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
+			assert.Equal(t, "", provider)
 			return []byte("data"), "provider", nil
 		},
 	}
@@ -379,15 +392,17 @@ func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	}
 	testProviderAws := &testProvider{
 		pkg: tokens.Package("pulumiProviderAws"),
-		mapping: func(key string) ([]byte, string, error) {
+		mapping: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
+			assert.Equal(t, "", provider)
 			return []byte("dataaws"), "aws", nil
 		},
 	}
 	testProviderGcp := &testProvider{
 		pkg: tokens.Package("pulumiProviderGcp"),
-		mapping: func(key string) ([]byte, string, error) {
+		mapping: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
+			assert.Equal(t, "", provider)
 			return []byte("datagcp"), "gcp", nil
 		},
 	}
@@ -444,8 +459,9 @@ func TestPluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) {
 	}
 	testProvider := &testProvider{
 		pkg: tokens.Package("pulumiProviderGcp"),
-		mapping: func(key string) ([]byte, string, error) {
+		mapping: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
+			assert.Equal(t, "", provider)
 			return []byte("datagcp"), "gcp", nil
 		},
 	}
@@ -506,4 +522,144 @@ func TestPluginMapper_MissingProviderOnlyTriesToInstallOnce(t *testing.T) {
 	assert.Equal(t, []byte{}, data)
 	// Install should have only been called once
 	assert.Equal(t, 1, called)
+}
+
+func TestPluginMapper_GetMappingsIsUsed(t *testing.T) {
+	t.Parallel()
+
+	// Test that if the provider supports it that GetMappings is used, and will fetch multiple mappings from the same
+	// provider.
+
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "pulumiProviderK8s",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+		},
+	}
+
+	var mappingCalls []string
+
+	testProvider := &testProvider{
+		pkg: tokens.Package("pulumiProviderK8s"),
+		mapping: func(key, provider string) ([]byte, string, error) {
+			mappingCalls = append(mappingCalls, provider)
+
+			assert.Equal(t, "key", key)
+			if provider == "kubernetes" {
+				return []byte("datakubernetes"), "kubernetes", nil
+			} else if provider == "helm" {
+				return []byte("datahelm"), "helm", nil
+			}
+			return nil, "", fmt.Errorf("unexpected provider key %s", provider)
+		},
+		mappings: func(key string) ([]string, error) {
+			assert.Equal(t, "key", key)
+			return []string{"kubernetes", "helm"}, nil
+		},
+	}
+
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
+		return testProvider, nil
+	}
+
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		assert.Contains(t, []string{"kubernetes", "helm"}, string(pkg))
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	ctx := context.Background()
+
+	// Get the mapping for the kubernetes provider.
+	data, err := mapper.GetMapping(ctx, "kubernetes", "")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("datakubernetes"), data)
+	// This should only have called getMapping once
+	assert.Equal(t, []string{"kubernetes"}, mappingCalls)
+
+	// Now get the mapping for the helm provider.
+	data, err = mapper.GetMapping(ctx, "helm", "")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("datahelm"), data)
+	// This should have called getMapping again
+	assert.Equal(t, []string{"kubernetes", "helm"}, mappingCalls)
+}
+
+func TestPluginMapper_GetMappingIsntCalledOnValidMappings(t *testing.T) {
+	t.Parallel()
+
+	// Test that if the provider supports GetMappings that we don't call GetMapping("") on it.
+
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "pulumiProviderAws",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+			{
+				Name:    "pulumiProviderGcp",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+		},
+	}
+	testProviderAws := &testProvider{
+		pkg: tokens.Package("pulumiProviderAws"),
+		mapping: func(key, provider string) ([]byte, string, error) {
+			assert.Equal(t, "key", key)
+			assert.Equal(t, "aws", provider)
+			return []byte("dataaws"), "aws", nil
+		},
+		mappings: func(key string) ([]string, error) {
+			assert.Equal(t, "key", key)
+			return []string{"aws"}, nil
+		},
+	}
+	testProviderGcp := &testProvider{
+		pkg: tokens.Package("pulumiProviderGcp"),
+		mapping: func(key, provider string) ([]byte, string, error) {
+			assert.Equal(t, "key", key)
+			assert.Equal(t, "", provider)
+			return []byte("datagcp"), "gcp", nil
+		},
+	}
+
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		if pkg == testProviderAws.pkg {
+			return testProviderAws, nil
+		} else if pkg == testProviderGcp.pkg {
+			return testProviderGcp, nil
+		}
+		assert.Fail(t, "unexpected package %s", pkg)
+		return nil, fmt.Errorf("unexpected package %s", pkg)
+	}
+
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		assert.Contains(t, []string{"aws", "gcp"}, string(pkg))
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	ctx := context.Background()
+
+	// Get the mapping for the GCP provider.
+	data, err := mapper.GetMapping(ctx, "gcp", "")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("datagcp"), data)
+
+	// Now get the mapping for the AWS provider.
+	data, err = mapper.GetMapping(ctx, "aws", "")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("dataaws"), data)
 }

@@ -1853,12 +1853,13 @@ func decorateProviderSpans(span opentracing.Span, method string, req, resp inter
 }
 
 // GetMapping fetches the conversion mapping (if any) for this resource provider.
-func (p *provider) GetMapping(key string) ([]byte, string, error) {
+func (p *provider) GetMapping(key, provider string) ([]byte, string, error) {
 	label := fmt.Sprintf("%s.GetMapping", p.label())
-	logging.V(7).Infof("%s executing: key=%s", label, key)
+	logging.V(7).Infof("%s executing: key=%s, provider=%s", label, key, provider)
 
 	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
-		Key: key,
+		Key:      key,
+		Provider: provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1875,4 +1876,31 @@ func (p *provider) GetMapping(key string) ([]byte, string, error) {
 
 	logging.V(7).Infof("%s success: data=#%d provider=%s", label, len(resp.Data), resp.Provider)
 	return resp.Data, resp.Provider, nil
+}
+
+func (p *provider) GetMappings(key string) ([]string, error) {
+	label := fmt.Sprintf("%s.GetMappings", p.label())
+	logging.V(7).Infof("%s executing: key=%s", label, key)
+
+	resp, err := p.clientRaw.GetMappings(p.requestContext(), &pulumirpc.GetMappingsRequest{
+		Key: key,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented {
+			// For backwards compatibility just return nil to indicate unimplemented.
+			logging.V(7).Infof("%s unimplemented", label)
+			return nil, nil
+		}
+		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		return nil, err
+	}
+
+	logging.V(7).Infof("%s success: providers=%v", label, resp.Providers)
+	// Ensure we don't return nil here because we use it as an "unimplemented" flag elsewhere in the system
+	if resp.Providers == nil {
+		resp.Providers = []string{}
+	}
+	return resp.Providers, nil
 }

@@ -83,6 +83,11 @@ service ResourceProvider {
     // GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
     // response (not an error) if it doesn't have a mapping for the given key.
     rpc GetMapping(GetMappingRequest) returns (GetMappingResponse) {}
+
+    // GetMappings is an optional method that returns what mappings (if any) a provider supports. If a provider does not
+    // implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
+    // If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
+    rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
 }
 
 message GetSchemaRequest {
@@ -393,6 +398,8 @@ message ErrorResourceInitFailed {
     google.protobuf.Struct inputs = 4;     // the current inputs to this resource (only applicable for Read)
 }
 
+
+
 // GetMappingRequest allows providers to return ecosystem specific information to allow the provider to be
 // converted from a source markup to Pulumi. It's expected that provider bridges that target a given ecosystem
 // (e.g. Terraform, Kubernetes) would also publish a conversion plugin to convert markup from that ecosystem
@@ -400,6 +407,10 @@ message ErrorResourceInitFailed {
 message GetMappingRequest {
     // the conversion key for the mapping being requested.
     string key = 1;
+    // the optional provider key for the mapping being requested, if this is empty the provider should assume this
+    // request is from an old engine from before GetMappings and should return it's "primary" mapping. If this is set
+    // then the `provider` field in GetMappingResponse should be the same.
+    string provider = 2;
 }
 
 // GetMappingResponse returns convert plugin specific data for this provider. This will normally be human
@@ -410,4 +421,18 @@ message GetMappingResponse {
 
     // the conversion plugin specific data.
     bytes data = 2;
+}
+
+// GetMappingsRequest allows providers to return ecosystem specific information without having to send back large data
+// blobs for provider mappings that the engine doesn't then need.
+message GetMappingsRequest {
+    // the conversion key for the mapping being requested.
+    string key = 1;
+}
+
+// GetMappingsRequest returns a list of providers that this provider can provide mapping information for.
+message GetMappingsResponse {
+    // the provider keys this provider can supply mappings for. For example the Pulumi provider "terraform-template"
+    // would return ["template"] for this.
+    repeated string providers = 1;
 }

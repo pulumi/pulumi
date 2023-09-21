@@ -93,6 +93,11 @@ func ProviderFactoryFromHost(host plugin.Host) ProviderFactory {
 type mapperPluginSpec struct {
 	name    tokens.Package
 	version semver.Version
+	// An optional list of providers this plugin can map to, only filled if GetMappings is implemented.
+	mappings []string
+	// Set to true once we've called GetMappings, mappings may still be nil after this if GetMappings wasn't
+	// implemented.
+	calledGetMappings bool
 }
 
 type pluginMapper struct {
@@ -183,7 +188,7 @@ func NewPluginMapper(ws Workspace,
 // the "terraform" mapping and getting an empty result this will fallback to also asking for the "tf" mapping.
 // This is because tfbridge providers originally only replied to "tf", while new ones reply (with the same
 // answer) to both "tf" and "terraform".
-func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec) ([]byte, string, error) {
+func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec, provider string) ([]byte, string, error) {
 	providerPlugin, err := l.providerFactory(pluginSpec.name, &pluginSpec.version)
 	if err != nil {
 		// We should maybe be lenient here and ignore errors but for now assume it's better to fail out on
@@ -201,7 +206,7 @@ func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec) ([]byte,
 
 	// We'll delete this for loop once the plugins have had a chance to update.
 	for _, conversionKey := range conversionKeys {
-		data, mappedProvider, err := providerPlugin.GetMapping(conversionKey)
+		data, mappedProvider, err := providerPlugin.GetMapping(conversionKey, provider)
 		if err != nil {
 			// This was an error calling GetMapping, not just that GetMapping returned a nil result. It's fine for
 			// GetMapping to return (nil, "", nil) as that simply indicates that the plugin doesn't have a mapping
@@ -223,6 +228,62 @@ func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec) ([]byte,
 	}
 
 	return nil, "", err
+}
+
+func (l *pluginMapper) getMappingsForPlugin(pluginSpec *mapperPluginSpec, provider string) ([]byte, bool, error) {
+	var providerPlugin plugin.Provider
+	if !pluginSpec.calledGetMappings {
+		var err error
+		providerPlugin, err = l.providerFactory(pluginSpec.name, &pluginSpec.version)
+		if err != nil {
+			// We should maybe be lenient here and ignore errors but for now assume it's better to fail out on
+			// things like providers failing to start.
+			return nil, false, fmt.Errorf("could not create provider '%s': %w", pluginSpec.name, err)
+		}
+		defer contract.IgnoreClose(providerPlugin)
+
+		mappings, err := providerPlugin.GetMappings(l.conversionKey)
+		if err != nil {
+			return nil, false, fmt.Errorf("could not get mappings for provider '%s': %w", pluginSpec.name, err)
+		}
+
+		pluginSpec.calledGetMappings = true
+		pluginSpec.mappings = mappings
+	}
+
+	var hasMapping bool
+	for _, mapping := range pluginSpec.mappings {
+		if mapping == provider {
+			hasMapping = true
+			break
+		}
+	}
+
+	if hasMapping {
+		// This reports it has the mapping so just return that
+		if providerPlugin == nil {
+			var err error
+			providerPlugin, err = l.providerFactory(pluginSpec.name, &pluginSpec.version)
+			if err != nil {
+				return nil, false, fmt.Errorf("could not create provider '%s': %w", pluginSpec.name, err)
+			}
+			defer contract.IgnoreClose(providerPlugin)
+		}
+
+		mappingData, returnedProvider, err := providerPlugin.GetMapping(l.conversionKey, provider)
+		if err != nil {
+			return nil, false, fmt.Errorf("could not get mapping for provider '%s': %w", pluginSpec.name, err)
+		}
+		if returnedProvider != provider {
+			return nil, false, fmt.Errorf(
+				"mapping call returned unexpected provider, expected '%s', got '%s'",
+				provider, returnedProvider)
+		}
+
+		return mappingData, true, nil
+	}
+
+	return nil, false, nil
 }
 
 func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error) {
@@ -266,6 +327,59 @@ func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiPr
 		}
 	}
 
+	// Before we being the GetMappings loop below iff we've got a plugin at the head of the list which is the exact name
+	// match we'll try that plugin first (GetMappings, and then GetMapping) as it will normally be right.
+	if len(l.plugins) > 0 && l.plugins[0].name == pulumiProviderPkg {
+		data, found, err := l.getMappingsForPlugin(&l.plugins[0], provider)
+		if err != nil {
+			return nil, err
+		}
+		// Found it via GetMappings lookup just return it
+		if found {
+			// Don't overwrite entries, the first wins
+			if _, has := l.entries[provider]; !has {
+				l.entries[provider] = data
+			}
+			return data, nil
+		}
+
+		// Once we call GetMappping("") we'll not use this plugin again so pop it from the list.
+		pluginSpec := l.plugins[0]
+		l.plugins = l.plugins[1:]
+		data, mappedProvider, err := l.getMappingForPlugin(pluginSpec, "")
+		if err != nil {
+			return nil, err
+		}
+		if mappedProvider != "" {
+			// Don't overwrite entries, the first wins
+			if _, has := l.entries[mappedProvider]; !has {
+				l.entries[mappedProvider] = data
+			}
+			// If this was the provider we we're looking for we can now return it
+			if mappedProvider == provider {
+				return data, nil
+			}
+		}
+	}
+
+	// The first plugin didn't match by name (or did but didn't have the mapping we wanted) so scan is to see if we can
+	// find a plugin thats reports this conversion via GetMappings. If one does then ask it for the mapping and return
+	// that. Else cache which mappings are reported in case we need one of those later.
+	for idx := range l.plugins {
+		data, found, err := l.getMappingsForPlugin(&l.plugins[idx], provider)
+		if err != nil {
+			return nil, err
+		}
+
+		if found {
+			// Don't overwrite entries, the first wins
+			if _, has := l.entries[provider]; !has {
+				l.entries[provider] = data
+			}
+			return data, nil
+		}
+	}
+
 	// No entry yet, start popping providers off the plugin list and return the first one that returns
 	// conversion data for this provider for the given key we're looking for. Second assumption is that only
 	// one pulumi provider will provide a mapping for each source mapping. This _might_ change in the future
@@ -280,18 +394,29 @@ func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiPr
 			return []byte{}, nil
 		}
 
+		// If we're in this loop we're looking for the mapping via legacy GetMapping("") calls. We shouldn't make these
+		// calls against providers who have told us the set they map against.
+
 		// Pop the first spec off the plugins list
 		pluginSpec := l.plugins[0]
+
+		contract.Assertf(pluginSpec.calledGetMappings, "GetMappings should have been called")
+		// If this plugin has mapping information then don't call GetMapping("") on it, if it had the right mapping it
+		// would have been picked up in the loop above.
+		if pluginSpec.mappings != nil {
+			// Put it back on the plugin list
+			l.plugins[0] = l.plugins[len(l.plugins)-1]
+			l.plugins[len(l.plugins)-1] = pluginSpec
+			continue
+		}
+		// We're going to call GetMapping("") on this plugin, it will never be needed again so remove it from the list.
 		l.plugins = l.plugins[1:]
 
-		data, mappedProvider, err := l.getMappingForPlugin(pluginSpec)
+		data, mappedProvider, err := l.getMappingForPlugin(pluginSpec, "")
 		if err != nil {
 			return nil, err
 		}
 		if mappedProvider != "" {
-			contract.Assertf(len(data) != 0,
-				"getMappingForPlugin returned empty data but non-empty provider name, %s", mappedProvider)
-
 			// Don't overwrite entries, the first wins
 			if _, has := l.entries[mappedProvider]; !has {
 				l.entries[mappedProvider] = data

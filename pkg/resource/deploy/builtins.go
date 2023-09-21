@@ -46,8 +46,12 @@ func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
 	return []byte("{}"), nil
 }
 
-func (p *builtinProvider) GetMapping(key string) ([]byte, string, error) {
+func (p *builtinProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", nil
+}
+
+func (p *builtinProvider) GetMappings(key string) ([]string, error) {
+	return []string{}, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
