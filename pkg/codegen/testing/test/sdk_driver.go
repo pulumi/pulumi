@@ -358,6 +358,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "A schema with CRD types with package names different from the main package",
 		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
+	{
+		Directory:   "regress-py-14012",
+		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
+		Skip:        allLanguages.Except("python/any"),
+	},
 }
 
 var genSDKOnly bool
