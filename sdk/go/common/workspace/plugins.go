@@ -433,8 +433,12 @@ func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, e
 
 func (source *githubSource) getHTTPResponse(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
-	req *http.Request,
+	url, accept string,
 ) (io.ReadCloser, int64, error) {
+	req, err := source.newHTTPRequest(url, accept)
+	if err != nil {
+		return nil, -1, err
+	}
 	resp, length, err := getHTTPResponse(req)
 	if err == nil {
 		return resp, length, nil
@@ -443,6 +447,11 @@ func (source *githubSource) getHTTPResponse(
 	// Wrap 403 rate limit errors with a more helpful message.
 	var downErr *downloadError
 	if !errors.As(err, &downErr) || downErr.code != 403 {
+		// If we see a 401 error and were using a token we'll disable that token and try again
+		if downErr != nil && downErr.code == 401 && source.token != "" {
+			source.token = ""
+			return source.getHTTPResponse(getHTTPResponse, url, accept)
+		}
 		return nil, -1, err
 	}
 
@@ -474,11 +483,7 @@ func (source *githubSource) GetLatestVersion(
 		"https://%s/repos/%s/%s/releases/latest",
 		source.host, source.organization, source.repository)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	req, err := source.newHTTPRequest(releaseURL, "application/json")
-	if err != nil {
-		return nil, err
-	}
-	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -506,12 +511,7 @@ func (source *githubSource) Download(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-
-	req, err := source.newHTTPRequest(releaseURL, "application/json")
-	if err != nil {
-		return nil, -1, err
-	}
-	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -541,12 +541,7 @@ func (source *githubSource) Download(
 	}
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
-
-	req, err = source.newHTTPRequest(assetURL, "application/octet-stream")
-	if err != nil {
-		return nil, -1, err
-	}
-	return source.getHTTPResponse(getHTTPResponse, req)
+	return source.getHTTPResponse(getHTTPResponse, assetURL, "application/octet-stream")
 }
 
 func (source *githubSource) URL() string {
