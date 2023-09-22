@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Ensure Assets of AssetArchive are non-nil when creating and deserializing

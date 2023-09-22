@@ -27,6 +27,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -537,6 +539,19 @@ func TestFileExtentionSniffing(t *testing.T) {
 	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.file.tgz"))
 	assert.Equal(t, ArchiveFormat(JARArchive), detectArchiveFormat("./some/path/my.file.jar"))
 	assert.Equal(t, ArchiveFormat(NotArchive), detectArchiveFormat("./some/path/who.even.knows"))
+}
+
+func TestEmptyArchiveRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	emptyArchive, err := NewAssetArchive(nil)
+	require.NoError(t, err, "Creating an empty archive should work")
+	assert.True(t, emptyArchive.IsAssets(), "even empty archives should be have empty assets")
+	serialized := emptyArchive.Serialize()
+	deserialized, ok, err := DeserializeArchive(serialized)
+	assert.NoError(t, err, "Deserializing an empty archive should work")
+	assert.True(t, ok, "Deserializing an empty archive should return true")
+	assert.True(t, deserialized.IsAssets(), "Deserialized archive should be an AssetsArchive")
 }
 
 func TestInvalidPathArchive(t *testing.T) {
