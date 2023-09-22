@@ -1780,11 +1780,12 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if returnType != nil {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
-	}
-	fmt.Fprintf(w, "    '%s',\n", name)
-	if fun.NeedsOutputVersion() {
+		fmt.Fprintf(w, "    '%s',\n", name)
 		fmt.Fprintf(w, "    '%s_output',\n", name)
+	} else {
+		fmt.Fprintf(w, "    '%s',\n", name)
 	}
+
 	fmt.Fprintf(w, "]\n\n")
 
 	if fun.DeprecationMessage != "" {
@@ -1929,19 +1930,16 @@ func returnTypeObject(fun *schema.Function) *schema.ObjectType {
 // Generates `def ${fn}_output(..) version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
 func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
-	if !fun.NeedsOutputVersion() {
+	returnType := returnTypeObject(fun)
+
+	if returnType == nil {
+		// do not generate an output version if the function does not return an object
 		return
 	}
 
-	returnType := returnTypeObject(fun)
-
 	var retTypeName string
-	if returnType != nil {
-		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
-		retTypeName = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
-	} else {
-		retTypeName = "pulumi.Output[void]"
-	}
+	originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
+	retTypeName = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 
 	originalName := PyName(tokenToName(fun.Token))
 	outputSuffixedName := fmt.Sprintf("%s_output", originalName)
