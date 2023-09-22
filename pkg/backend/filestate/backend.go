@@ -1072,7 +1072,12 @@ func (b *localBackend) apply(
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	contract.IgnoreClose(manager)
+	err = manager.Close()
+	// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
+	// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
+	if err != nil {
+		cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+	}
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
 	<-eventsDone

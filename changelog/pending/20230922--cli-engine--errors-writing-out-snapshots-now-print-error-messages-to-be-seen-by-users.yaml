@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/engine
+  description: Errors writing out snapshots now print error messages to be seen by users.
