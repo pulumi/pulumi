@@ -1888,7 +1888,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	fmt.Fprintf(w, "    public static class Config\n")
 	fmt.Fprintf(w, "    {\n")
 
-	fmt.Fprintf(w, "        [System.Diagnostics.CodeAnalysis.SuppressMessage(\"Microsoft.Design\", \"IDE1006\", Justification = \n")
+	fmt.Fprintf(w, "        [global::System.Diagnostics.CodeAnalysis.SuppressMessage(\"Microsoft.Design\", \"IDE1006\", Justification = \n")
 	fmt.Fprintf(w, "        \"Double underscore prefix used to avoid conflicts with variable names.\")]\n")
 	fmt.Fprintf(w, "        private sealed class __Value<T>\n")
 	fmt.Fprintf(w, "        {\n")
