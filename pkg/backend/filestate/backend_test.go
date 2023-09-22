@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -646,12 +647,10 @@ func TestOptIntoLegacyFolderStructure(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	ctx := context.Background()
+	s := make(env.MapStore)
+	s[env.SelfManagedStateLegacyLayout.Var().Name()] = "true"
 	b, err := newLocalBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
-		&localBackendOptions{
-			Getenv: mapGetenv(map[string]string{
-				"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT": "true",
-			}),
-		},
+		&localBackendOptions{Env: env.NewEnv(s)},
 	)
 	require.NoError(t, err)
 
@@ -865,7 +864,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	tests := []struct {
 		desc    string
 		files   map[string]string
-		env     map[string]string
+		env     env.MapStore
 		wantOut string
 	}{
 		{
@@ -923,9 +922,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 			sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
 
 			_, err = newLocalBackend(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil,
-				&localBackendOptions{
-					Getenv: mapGetenv(tt.env),
-				})
+				&localBackendOptions{Env: env.NewEnv(tt.env)})
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.wantOut, buff.String())
@@ -1280,15 +1277,15 @@ func TestCreateStack_gzip(t *testing.T) {
 
 	stateDir := t.TempDir()
 	ctx := context.Background()
+
+	s := make(env.MapStore)
+	s[env.SelfManagedGzip.Var().Name()] = "true"
+
 	b, err := newLocalBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
 		&workspace.Project{Name: "testproj"},
-		&localBackendOptions{
-			Getenv: mapGetenv(map[string]string{
-				"PULUMI_SELF_MANAGED_STATE_GZIP": "true",
-			}),
-		},
+		&localBackendOptions{Env: env.NewEnv(s)},
 	)
 	require.NoError(t, err)
 
@@ -1308,15 +1305,15 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 
 	stateDir := t.TempDir()
 	ctx := context.Background()
+
+	s := make(env.MapStore)
+	s[env.SelfManagedRetainCheckpoints.Var().Name()] = "true"
+
 	b, err := newLocalBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
 		&workspace.Project{Name: "testproj"},
-		&localBackendOptions{
-			Getenv: mapGetenv(map[string]string{
-				"PULUMI_RETAIN_CHECKPOINTS": "true",
-			}),
-		},
+		&localBackendOptions{Env: env.NewEnv(s)},
 	)
 	require.NoError(t, err)
 
@@ -1345,12 +1342,4 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 	}
 	assert.True(t, found,
 		"file with a timestamp extension not found in %v", got)
-}
-
-// mapGetenv builds an os.Getenv-like function
-// that returns values from the given map.
-func mapGetenv(m map[string]string) func(string) string {
-	return func(key string) string {
-		return m[key]
-	}
 }
