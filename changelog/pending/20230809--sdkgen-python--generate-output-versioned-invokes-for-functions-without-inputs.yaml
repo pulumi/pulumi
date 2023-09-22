@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/python
+  description: Generate output-versioned invokes for functions without inputs
