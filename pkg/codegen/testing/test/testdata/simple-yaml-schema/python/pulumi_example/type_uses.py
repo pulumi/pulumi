@@ -141,19 +141,19 @@ class TypeUses(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
 
-            if not isinstance(bar, SomeOtherObjectArgs):
+            if bar is not None and not isinstance(bar, SomeOtherObjectArgs):
                 bar = bar or {}
                 def _setter(key, value):
                     bar[key] = value
                 SomeOtherObjectArgs._configure(_setter, **bar)
             __props__.__dict__["bar"] = bar
-            if not isinstance(baz, ObjectWithNodeOptionalInputsArgs):
+            if baz is not None and not isinstance(baz, ObjectWithNodeOptionalInputsArgs):
                 baz = baz or {}
                 def _setter(key, value):
                     baz[key] = value
                 ObjectWithNodeOptionalInputsArgs._configure(_setter, **baz)
             __props__.__dict__["baz"] = baz
-            if not isinstance(foo, ObjectArgs):
+            if foo is not None and not isinstance(foo, ObjectArgs):
                 foo = foo or {}
                 def _setter(key, value):
                     foo[key] = value

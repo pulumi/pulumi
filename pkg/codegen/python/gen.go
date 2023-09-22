@@ -1348,7 +1348,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		// Emit logic to configure schema.ObjectType args that have defaults and deprecation messages.
 		if objType, ok := unwrapped.(*schema.ObjectType); ok {
 			expectedObjType := mod.objectClassRef(objType, true)
-			fmt.Fprintf(w, "            if not isinstance(%s, %s):\n", InitParamName(prop.Name), expectedObjType)
+			fmt.Fprintf(w, "            if %[1]s is not None and not isinstance(%[1]s, %s):\n",
+				InitParamName(prop.Name), expectedObjType)
 			fmt.Fprintf(w, "                %[1]s = %[1]s or {}\n", InitParamName(prop.Name))
 			fmt.Fprintf(w, "                def _setter(key, value):\n")
 			fmt.Fprintf(w, "                    %s[key] = value\n", InitParamName(prop.Name))

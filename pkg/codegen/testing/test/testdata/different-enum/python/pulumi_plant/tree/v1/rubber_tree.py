@@ -194,7 +194,7 @@ class RubberTree(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = RubberTreeArgs.__new__(RubberTreeArgs)
 
-            if not isinstance(container, _root_inputs.ContainerArgs):
+            if container is not None and not isinstance(container, _root_inputs.ContainerArgs):
                 container = container or {}
                 def _setter(key, value):
                     container[key] = value

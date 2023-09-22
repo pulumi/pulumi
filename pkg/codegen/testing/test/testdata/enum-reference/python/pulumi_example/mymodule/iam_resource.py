@@ -92,7 +92,7 @@ class IamResource(pulumi.ComponentResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = IamResourceArgs.__new__(IamResourceArgs)
 
-            if not isinstance(config, pulumi_google_native.iam.v1.AuditConfigArgs):
+            if config is not None and not isinstance(config, pulumi_google_native.iam.v1.AuditConfigArgs):
                 config = config or {}
                 def _setter(key, value):
                     config[key] = value

@@ -168,7 +168,7 @@ class Component(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ComponentArgs.__new__(ComponentArgs)
 
-            if not isinstance(metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs):
+            if metadata is not None and not isinstance(metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs):
                 metadata = metadata or {}
                 def _setter(key, value):
                     metadata[key] = value
@@ -176,7 +176,7 @@ class Component(pulumi.CustomResource):
             __props__.__dict__["metadata"] = metadata
             __props__.__dict__["metadata_array"] = metadata_array
             __props__.__dict__["metadata_map"] = metadata_map
-            if not isinstance(required_metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs):
+            if required_metadata is not None and not isinstance(required_metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs):
                 required_metadata = required_metadata or {}
                 def _setter(key, value):
                     required_metadata[key] = value

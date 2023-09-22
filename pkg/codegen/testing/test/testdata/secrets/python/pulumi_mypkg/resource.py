@@ -165,7 +165,7 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
-            if not isinstance(config, ConfigArgs):
+            if config is not None and not isinstance(config, ConfigArgs):
                 config = config or {}
                 def _setter(key, value):
                     config[key] = value

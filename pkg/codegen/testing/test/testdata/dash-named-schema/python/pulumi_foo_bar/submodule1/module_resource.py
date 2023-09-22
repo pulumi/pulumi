@@ -91,7 +91,7 @@ class ModuleResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
-            if not isinstance(thing, _root_inputs.TopLevelArgs):
+            if thing is not None and not isinstance(thing, _root_inputs.TopLevelArgs):
                 thing = thing or {}
                 def _setter(key, value):
                     thing[key] = value

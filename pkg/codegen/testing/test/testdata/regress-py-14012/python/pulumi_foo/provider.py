@@ -15,34 +15,30 @@ __all__ = ['ProviderArgs', 'Provider']
 @pulumi.input_type
 class ProviderArgs:
     def __init__(__self__, *,
-                 helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None):
+                 certmanager: Optional[pulumi.Input['ProviderCertmanagerArgs']] = None):
         """
         The set of arguments for constructing a Provider resource.
-        :param pulumi.Input['HelmReleaseSettingsArgs'] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
         """
         ProviderArgs._configure(
             lambda key, value: pulumi.set(__self__, key, value),
-            helm_release_settings=helm_release_settings,
+            certmanager=certmanager,
         )
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None,
+             certmanager: Optional[pulumi.Input['ProviderCertmanagerArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None):
-        if helm_release_settings is not None:
-            _setter("helm_release_settings", helm_release_settings)
+        if certmanager is not None:
+            _setter("certmanager", certmanager)
 
     @property
-    @pulumi.getter(name="helmReleaseSettings")
-    def helm_release_settings(self) -> Optional[pulumi.Input['HelmReleaseSettingsArgs']]:
-        """
-        BETA FEATURE - Options to configure the Helm Release resource.
-        """
-        return pulumi.get(self, "helm_release_settings")
+    @pulumi.getter
+    def certmanager(self) -> Optional[pulumi.Input['ProviderCertmanagerArgs']]:
+        return pulumi.get(self, "certmanager")
 
-    @helm_release_settings.setter
-    def helm_release_settings(self, value: Optional[pulumi.Input['HelmReleaseSettingsArgs']]):
-        pulumi.set(self, "helm_release_settings", value)
+    @certmanager.setter
+    def certmanager(self, value: Optional[pulumi.Input['ProviderCertmanagerArgs']]):
+        pulumi.set(self, "certmanager", value)
 
 
 class Provider(pulumi.ProviderResource):
@@ -50,14 +46,12 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
+                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArgs']]] = None,
                  __props__=None):
         """
-        The provider type for the kubernetes package.
-
+        Create a Foo resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
         """
         ...
     @overload
@@ -66,8 +60,7 @@ class Provider(pulumi.ProviderResource):
                  args: Optional[ProviderArgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        The provider type for the kubernetes package.
-
+        Create a Foo resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -87,7 +80,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
+                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -97,14 +90,14 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
-            if helm_release_settings is not None and not isinstance(helm_release_settings, HelmReleaseSettingsArgs):
-                helm_release_settings = helm_release_settings or {}
+            if certmanager is not None and not isinstance(certmanager, ProviderCertmanagerArgs):
+                certmanager = certmanager or {}
                 def _setter(key, value):
-                    helm_release_settings[key] = value
-                HelmReleaseSettingsArgs._configure(_setter, **helm_release_settings)
-            __props__.__dict__["helm_release_settings"] = pulumi.Output.from_input(helm_release_settings).apply(pulumi.runtime.to_json) if helm_release_settings is not None else None
+                    certmanager[key] = value
+                ProviderCertmanagerArgs._configure(_setter, **certmanager)
+            __props__.__dict__["certmanager"] = pulumi.Output.from_input(certmanager).apply(pulumi.runtime.to_json) if certmanager is not None else None
         super(Provider, __self__).__init__(
-            'example',
+            'foo',
             resource_name,
             __props__,
             opts)
