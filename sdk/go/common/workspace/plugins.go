@@ -407,6 +407,12 @@ func (source *githubSource) getHTTPResponse(
 	// Wrap 403 rate limit errors with a more helpful message.
 	var downErr *downloadError
 	if !errors.As(err, &downErr) || downErr.code != 403 {
+		// If we see a 401 error and were using a token we'll disable that token and report an error about that.
+		// Whatever called us will probably retry and hopefully not having the token set fixes the 401 error.
+		if downErr.code == 401 && source.token != "" {
+			source.token = ""
+			return nil, -1, fmt.Errorf("401 error, invalidating saved GITHUB_TOKEN: %w", downErr)
+		}
 		return nil, -1, err
 	}
 
