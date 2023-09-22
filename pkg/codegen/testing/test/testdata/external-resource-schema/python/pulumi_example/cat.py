@@ -108,7 +108,7 @@ class Cat(pulumi.CustomResource):
             __props__ = CatArgs.__new__(CatArgs)
 
             __props__.__dict__["age"] = age
-            if not isinstance(pet, PetArgs):
+            if pet is not None and not isinstance(pet, PetArgs):
                 pet = pet or {}
                 def _setter(key, value):
                     pet[key] = value

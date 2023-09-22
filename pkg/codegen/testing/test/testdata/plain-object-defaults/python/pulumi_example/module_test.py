@@ -108,13 +108,13 @@ class ModuleTest(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleTestArgs.__new__(ModuleTestArgs)
 
-            if not isinstance(mod1, _mod1.TypArgs):
+            if mod1 is not None and not isinstance(mod1, _mod1.TypArgs):
                 mod1 = mod1 or {}
                 def _setter(key, value):
                     mod1[key] = value
                 _mod1.TypArgs._configure(_setter, **mod1)
             __props__.__dict__["mod1"] = mod1
-            if not isinstance(val, TypArgs):
+            if val is not None and not isinstance(val, TypArgs):
                 val = val or {}
                 def _setter(key, value):
                     val[key] = value

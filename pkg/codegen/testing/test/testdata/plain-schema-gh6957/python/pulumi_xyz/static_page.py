@@ -113,7 +113,7 @@ class StaticPage(pulumi.ComponentResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = StaticPageArgs.__new__(StaticPageArgs)
 
-            if not isinstance(foo, FooArgs):
+            if foo is not None and not isinstance(foo, FooArgs):
                 foo = foo or {}
                 def _setter(key, value):
                     foo[key] = value

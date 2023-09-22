@@ -90,7 +90,7 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
-            if not isinstance(certmanager, ProviderCertmanagerArgs):
+            if certmanager is not None and not isinstance(certmanager, ProviderCertmanagerArgs):
                 certmanager = certmanager or {}
                 def _setter(key, value):
                     certmanager[key] = value

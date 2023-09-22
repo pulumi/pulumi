@@ -222,7 +222,7 @@ class Component(pulumi.ComponentResource):
                 raise TypeError("Missing required property 'a'")
             __props__.__dict__["a"] = a
             __props__.__dict__["b"] = b
-            if not isinstance(bar, FooArgs):
+            if bar is not None and not isinstance(bar, FooArgs):
                 bar = bar or {}
                 def _setter(key, value):
                     bar[key] = value
@@ -237,7 +237,7 @@ class Component(pulumi.ComponentResource):
                 raise TypeError("Missing required property 'e'")
             __props__.__dict__["e"] = e
             __props__.__dict__["f"] = f
-            if not isinstance(foo, FooArgs):
+            if foo is not None and not isinstance(foo, FooArgs):
                 foo = foo or {}
                 def _setter(key, value):
                     foo[key] = value

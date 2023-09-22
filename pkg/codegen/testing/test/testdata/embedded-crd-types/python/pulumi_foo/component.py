@@ -110,7 +110,7 @@ class Component(pulumi.ComponentResource):
             __props__ = ComponentArgs.__new__(ComponentArgs)
 
             __props__.__dict__["eni_config"] = eni_config
-            if not isinstance(pod, pulumi_kubernetes.core.v1.PodArgs):
+            if pod is not None and not isinstance(pod, pulumi_kubernetes.core.v1.PodArgs):
                 pod = pod or {}
                 def _setter(key, value):
                     pod[key] = value
