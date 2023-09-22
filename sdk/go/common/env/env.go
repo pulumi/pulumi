@@ -79,6 +79,15 @@ var (
 
 	SelfManagedStateLegacyLayout = env.Bool("SELF_MANAGED_STATE_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.")
+
+	SelfManagedGzip = env.Bool("SELF_MANAGED_STATE_GZIP",
+		"Enables gzip compression when writing state files.")
+
+	SelfManagedRetainCheckpoints = env.Bool("RETAIN_CHECKPOINTS",
+		"If set every checkpoint will be duplicated to a timestamped file.")
+
+	SelfManagedDisableCheckpointBackups = env.Bool("DISABLE_CHECKPOINT_BACKUPS",
+		"If set checkpoint backups will not be written the to the backup folder.")
 )
 
 // Environment variables which affect Pulumi AI integrations

@@ -64,10 +64,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// PulumiFilestateGzipEnvVar is an env var that must be truthy
-// to enable gzip compression when using the filestate backend.
-const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
-
 // TODO[pulumi/pulumi#12539]:
 // This section contains names of environment variables
 // that affect the behavior of the backend.
@@ -89,6 +85,18 @@ var (
 	//
 	// This opt-out is intended to be removed in a future release.
 	PulumiFilestateLegacyLayoutEnvVar = env.SelfManagedStateLegacyLayout.Var().Name()
+
+	// PulumiFilestateGzipEnvVar is an env var that must be truthy
+	// to enable gzip compression when using the filestate backend.
+	PulumiFilestateGzipEnvVar = env.SelfManagedGzip.Var().Name()
+
+	// PulumiFilestateRetainCheckpoints is an env var that must be truthy
+	// to write out timestamped state files.
+	PulumiFilestateRetainCheckpoints = env.SelfManagedRetainCheckpoints.Var().Name()
+
+	// PulumiFilestateRetainCheckpoints is an env var that must be truthy
+	// to disable checkpoint backups.
+	PulumiFilestateDisableCheckpointBackups = env.SelfManagedDisableCheckpointBackups.Var().Name()
 )
 
 // UpgradeOptions customizes the behavior of the upgrade operation.

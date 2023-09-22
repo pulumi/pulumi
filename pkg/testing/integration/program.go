@@ -693,7 +693,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", filestate.DisableCheckpointBackupsEnvVar))
+	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", filestate.PulumiFilestateDisableCheckpointBackups))
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
 	if !opts.NoParallel && !opts.DestroyOnCleanup {

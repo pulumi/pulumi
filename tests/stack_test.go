@@ -361,9 +361,9 @@ func TestStackBackups(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs/nodejs")
 
 		// We're testing that backups are created so ensure backups aren't disabled.
-		if env := os.Getenv(filestate.DisableCheckpointBackupsEnvVar); env != "" {
-			os.Unsetenv(filestate.DisableCheckpointBackupsEnvVar)
-			defer os.Setenv(filestate.DisableCheckpointBackupsEnvVar, env)
+		if env := os.Getenv(filestate.PulumiFilestateDisableCheckpointBackups); env != "" {
+			os.Unsetenv(filestate.PulumiFilestateDisableCheckpointBackups)
+			defer os.Setenv(filestate.PulumiFilestateDisableCheckpointBackups, env)
 		}
 
 		const stackName = "imulup"
