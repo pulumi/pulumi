@@ -1,7 +1,10 @@
 package lifecycletest
 
 import (
+	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
@@ -134,5 +137,69 @@ func TestSecretMasked(t *testing.T) {
 	assert.NotNil(t, snap)
 	if snap != nil {
 		assert.True(t, snap.Resources[1].Outputs["shouldBeSecret"].IsSecret())
+	}
+}
+
+func TestStepGeneratorParallel(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					time.Sleep(1 * time.Second)
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var cond bool
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		wg := sync.WaitGroup{}
+		// Create 5 resources res-N
+		for i := 0; i < 5; i++ {
+			wg.Add(1)
+			go func(i int) {
+				_, _, _, err := monitor.RegisterResource(
+					"pkgA:m:typA", fmt.Sprintf("res-%d", i), true, deploytest.ResourceOptions{
+						Inputs: resource.PropertyMap{
+							"foo": resource.NewBoolProperty(cond),
+						},
+					})
+				require.NoError(t, err)
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Cause diff.
+	cond = true
+
+	// Start timer to measure how long it takes to register all resources.
+	start := time.Now()
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	end := time.Now()
+	// Check that it took less than 2 seconds to register all resources.
+	assert.True(
+		t, end.Sub(start) < 2*time.Second, "5 diffs should have been run in parallel and taken less than 2 seconds")
+
+	assert.Nil(t, res)
+
+	if snap != nil {
+		assert.True(t, len(snap.Resources) == 6 /* 5 resources + 1 stack */)
 	}
 }
