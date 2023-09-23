@@ -30,7 +30,7 @@ func TestWhoAmICmd_default(t *testing.T) {
 	err := cmd.Run(context.Background())
 	require.NoError(t, err)
 
-	assert.Equal(t, "user1", buff.String())
+	assert.Equal(t, "user1\n", buff.String())
 }
 
 func TestWhoAmICmd_verbose(t *testing.T) {
