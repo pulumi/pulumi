@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -89,16 +90,17 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	name, orgs, err := b.CurrentUser()
+	name, orgs, tokenInfo, err := b.CurrentUser()
 	if err != nil {
 		return err
 	}
 
 	if cmd.jsonOut {
 		return fprintJSON(cmd.Stdout, WhoAmIJSON{
-			User:          name,
-			Organizations: orgs,
-			URL:           b.URL(),
+			User:             name,
+			Organizations:    orgs,
+			URL:              b.URL(),
+			TokenInformation: tokenInfo,
 		})
 	}
 
@@ -106,6 +108,19 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
+		if tokenInfo != nil {
+			var tokenType string
+			if tokenInfo.Team != "" {
+				tokenType = fmt.Sprintf("team: %s", tokenInfo.Team)
+			} else {
+				contract.Assertf(tokenInfo.Organization != "", "token must have an organization or team")
+				tokenType = fmt.Sprintf("organization: %s", tokenInfo.Organization)
+			}
+			fmt.Fprintf(cmd.Stdout, "Token type: %s\n", tokenType)
+			fmt.Fprintf(cmd.Stdout, "Token name: %s\n", tokenInfo.Name)
+		} else {
+			fmt.Fprintf(cmd.Stdout, "Token type: personal\n")
+		}
 	} else {
 		fmt.Fprintf(cmd.Stdout, "%s\n", name)
 	}
@@ -115,7 +130,8 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 
 // WhoAmIJSON is the shape of the --json output of this command.
 type WhoAmIJSON struct {
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations,omitempty"`
-	URL           string   `json:"url"`
+	User             string                      `json:"user"`
+	Organizations    []string                    `json:"organizations,omitempty"`
+	URL              string                      `json:"url"`
+	TokenInformation *workspace.TokenInformation `json:"tokenInformation,omitempty"`
 }

@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -300,34 +301,52 @@ func (host hostAbout) String() string {
 }
 
 type backendAbout struct {
-	Name          string   `json:"name"`
-	URL           string   `json:"url"`
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations"`
+	Name             string                      `json:"name"`
+	URL              string                      `json:"url"`
+	User             string                      `json:"user"`
+	Organizations    []string                    `json:"organizations"`
+	TokenInformation *workspace.TokenInformation `json:"tokenInformation,omitempty"`
 }
 
 func getBackendAbout(b backend.Backend) backendAbout {
-	currentUser, currentOrgs, err := b.CurrentUser()
+	currentUser, currentOrgs, tokenInfo, err := b.CurrentUser()
 	if err != nil {
 		currentUser = "Unknown"
 	}
 	return backendAbout{
-		Name:          b.Name(),
-		URL:           b.URL(),
-		User:          currentUser,
-		Organizations: currentOrgs,
+		Name:             b.Name(),
+		URL:              b.URL(),
+		User:             currentUser,
+		Organizations:    currentOrgs,
+		TokenInformation: tokenInfo,
 	}
 }
 
 func (b backendAbout) String() string {
+	rows := [][]string{
+		{"Name", b.Name},
+		{"URL", b.URL},
+		{"User", b.User},
+		{"Organizations", strings.Join(b.Organizations, ", ")},
+	}
+
+	if b.TokenInformation != nil {
+		var tokenType string
+		if b.TokenInformation.Team != "" {
+			tokenType = fmt.Sprintf("team: %s", b.TokenInformation.Team)
+		} else {
+			contract.Assertf(b.TokenInformation.Organization != "", "token must have an organization or team")
+			tokenType = fmt.Sprintf("organization: %s", b.TokenInformation.Organization)
+		}
+		rows = append(rows, []string{"Token type", tokenType})
+		rows = append(rows, []string{"Token type", b.TokenInformation.Name})
+	} else {
+		rows = append(rows, []string{"Token type", "personal"})
+	}
+
 	return cmdutil.Table{
 		Headers: []string{"Backend", ""},
-		Rows: simpleTableRows([][]string{
-			{"Name", b.Name},
-			{"URL", b.URL},
-			{"User", b.User},
-			{"Organizations", strings.Join(b.Organizations, ", ")},
-		}),
+		Rows:    simpleTableRows(rows),
 	}.String()
 }
 

@@ -208,7 +208,7 @@ type Backend interface {
 	// ImportDeployment imports the given deployment into the indicated stack.
 	ImportDeployment(ctx context.Context, stack Stack, deployment *apitype.UntypedDeployment) error
 	// Returns the identity of the current user and any organizations they are in for the backend.
-	CurrentUser() (string, []string, error)
+	CurrentUser() (string, []string, *workspace.TokenInformation, error)
 
 	// Cancel the current update for the given stack.
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error

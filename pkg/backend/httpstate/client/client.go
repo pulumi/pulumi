@@ -49,6 +49,7 @@ type Client struct {
 	apiToken   apiAccessToken
 	apiUser    string
 	apiOrgs    []string
+	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
 	diag       diag.Sink
 	insecure   bool
 	restClient restClient
@@ -203,7 +204,7 @@ type serviceUserInfo struct {
 	Email       string `json:"email,omitempty"`
 }
 
-// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L34
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L37
 type serviceUser struct {
 	ID            string            `json:"id"`
 	GitHubLogin   string            `json:"githubLogin"`
@@ -213,32 +214,47 @@ type serviceUser struct {
 	Organizations []serviceUserInfo `json:"organizations"`
 	Identities    []string          `json:"identities"`
 	SiteAdmin     *bool             `json:"siteAdmin,omitempty"`
+	TokenInfo     *serviceTokenInfo `json:"tokenInfo,omitempty"`
+}
+
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L39-L43
+type serviceTokenInfo struct {
+	Name         string `json:"name"`
+	Organization string `json:"organization,omitempty"`
+	Team         string `json:"team,omitempty"`
 }
 
 // GetPulumiAccountName returns the user implied by the API token associated with this client.
-func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, error) {
+func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
 	if pc.apiUser == "" {
 		resp := serviceUser{}
 		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
-			return "", nil, err
+			return "", nil, nil, err
 		}
 
 		if resp.GitHubLogin == "" {
-			return "", nil, errors.New("unexpected response from server")
+			return "", nil, nil, errors.New("unexpected response from server")
 		}
 
 		pc.apiUser = resp.GitHubLogin
 		pc.apiOrgs = make([]string, len(resp.Organizations))
 		for i, org := range resp.Organizations {
 			if org.GitHubLogin == "" {
-				return "", nil, errors.New("unexpected response from server")
+				return "", nil, nil, errors.New("unexpected response from server")
 			}
 
 			pc.apiOrgs[i] = org.GitHubLogin
 		}
+		if resp.TokenInfo != nil {
+			pc.tokenInfo = &workspace.TokenInformation{
+				Name:         resp.TokenInfo.Name,
+				Organization: resp.TokenInfo.Organization,
+				Team:         resp.TokenInfo.Team,
+			}
+		}
 	}
 
-	return pc.apiUser, pc.apiOrgs, nil
+	return pc.apiUser, pc.apiOrgs, pc.tokenInfo, nil
 }
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the

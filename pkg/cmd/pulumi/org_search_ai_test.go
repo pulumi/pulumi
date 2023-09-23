@@ -56,8 +56,8 @@ func TestSearchAI_cmd(t *testing.T) {
 				Total: &total,
 			}, nil
 		},
-		CurrentUserF: func() (string, []string, error) {
-			return "user", []string{"org1", "org2"}, nil
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "user", []string{"org1", "org2"}, nil, nil
 		},
 	}
 	cmd := searchAICmd{
@@ -111,8 +111,8 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 							},
 						}, nil
 					},
-					CurrentUserF: func() (string, []string, error) {
-						return "user", []string{"org1", "org2"}, nil
+					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+						return "user", []string{"org1", "org2"}, nil, nil
 					},
 				}, nil
 			},
