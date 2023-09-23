@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Allow arbitrary flags to be passed to pulumi convert and send args to converter plugins

@@ -63,13 +63,14 @@ func newConvertCmd() *cobra.Command {
 		Long: "Convert Pulumi programs from a supported source program into other supported languages.\n" +
 			"\n" +
 			"The source program to convert will default to the current working directory.\n",
+		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			return runConvert(env.Global(), args, cwd, mappings, from, language, outDir, generateOnly, strict)
+			return runConvert(env.Global(), os.Args, cwd, mappings, from, language, outDir, generateOnly, strict)
 		}),
 	}
 
