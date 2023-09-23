@@ -889,7 +889,7 @@ func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (
 	if out, err = cmd.Output(); err != nil {
 		return errCouldNotGet(err)
 	}
-	version := strings.TrimPrefix(string(out), "Python ")
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	return &pulumirpc.AboutResponse{
 		Executable: pyexe,
