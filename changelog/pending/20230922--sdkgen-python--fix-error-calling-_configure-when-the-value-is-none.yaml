@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/python
-  description: Fix error calling _configure when the value is None
