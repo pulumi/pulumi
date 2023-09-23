@@ -375,6 +375,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Testing for expressions with typed target expressions in csharp",
 		Skip:        allProgLanguages.Except("dotnet"),
 	},
+	{
+		Directory:   "empty-list-property",
+		Description: "Tests compiling empty list expressions of object properties",
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
