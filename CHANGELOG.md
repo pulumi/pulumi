@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.85.0 (2023-09-22)
+
+
+### Features
+
+- [engine] Provider mapping information lookups are now more efficient. Providers can also support multiple mappings.
+  [#13975](https://github.com/pulumi/pulumi/pull/13975)
+
+- [cli/new] `pulumi policy new` now injects `PULUMI_ACCESS_TOKEN` when necessary to support downloading Premium Policies.
+  [#13898](https://github.com/pulumi/pulumi/pull/13898)
+
+- [sdkgen/python] Generate output-versioned invokes for functions without inputs
+  [#13685](https://github.com/pulumi/pulumi/pull/13685)
+
+
+### Bug Fixes
+
+- [sdkgen/dotnet] Fixes potential conflicts when generating resources called System
+  [#14011](https://github.com/pulumi/pulumi/pull/14011)
+
+- [cli/engine] Errors writing out snapshots now print error messages to be seen by users.
+  [#14016](https://github.com/pulumi/pulumi/pull/14016)
+
+- [sdk/go] Ensure Assets of AssetArchive are non-nil when creating and deserializing
+  [#14007](https://github.com/pulumi/pulumi/pull/14007)
+
+- [cli/new] Fix selector wrapping on narrow terminals.
+  [#13979](https://github.com/pulumi/pulumi/pull/13979)
+
+- [sdkgen/python] Fix error calling _configure when the value is None
+  [#14014](https://github.com/pulumi/pulumi/pull/14014)
+
 ## 3.84.0 (2023-09-19)
 
 
