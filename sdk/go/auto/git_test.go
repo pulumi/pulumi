@@ -110,7 +110,7 @@ func TestGitClone(t *testing.T) {
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			assert.NoError(t, err)
 
-			_, err = setupGitRepo(context.TODO(), tmp, repo)
+			_, err = setupGitRepo(context.Background(), tmp, repo)
 			assert.NoError(t, err)
 
 			r, err := git.PlainOpen(tmp)
@@ -144,7 +144,7 @@ func TestGitClone(t *testing.T) {
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			assert.NoError(t, err)
 
-			_, err = setupGitRepo(context.TODO(), tmp, repo)
+			_, err = setupGitRepo(context.Background(), tmp, repo)
 			assert.Error(t, err)
 		})
 	}

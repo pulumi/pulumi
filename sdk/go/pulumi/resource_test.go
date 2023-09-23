@@ -190,7 +190,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	newRes := func(name string) (Resource, URN) {
 		res := &testRes{foo: name}
 		res.urn = CreateURN(String(name), String("t"), nil, String("stack"), String("project"))
-		urn, _, _, err := res.urn.awaitURN(context.TODO())
+		urn, _, _, err := res.urn.awaitURN(context.Background())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -204,7 +204,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	resolveDependsOn := func(opts *resourceOptions) []URN {
 		allDeps := urnSet{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addURNs(context.TODO(), allDeps, nil /* from */); err != nil {
+			if err := ds.addURNs(context.Background(), allDeps, nil /* from */); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -1329,7 +1329,7 @@ func TestRehydratedComponentConsideredRemote(t *testing.T) {
 			&component))
 		require.False(t, component.keepDependency())
 
-		urn, _, _, err := component.URN().awaitURN(context.TODO())
+		urn, _, _, err := component.URN().awaitURN(context.Background())
 		require.NoError(t, err)
 
 		var rehydrated testComp
