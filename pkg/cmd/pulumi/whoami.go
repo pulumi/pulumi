@@ -107,7 +107,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
 	} else {
-		fmt.Fprint(cmd.Stdout, name)
+		fmt.Fprintf(cmd.Stdout, "%s\n", name)
 	}
 
 	return nil
