@@ -13,8 +13,8 @@ import (
 func TestMain(m *testing.M) {
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
-		fmt.Printf("error setting env var '%s': %v\n", filestate.DisableCheckpointBackupsEnvVar, err)
+	if err := os.Setenv(filestate.PulumiFilestateDisableCheckpointBackups, "1"); err != nil {
+		fmt.Printf("error setting env var '%s': %v\n", filestate.PulumiFilestateDisableCheckpointBackups, err)
 		os.Exit(1)
 	}
 

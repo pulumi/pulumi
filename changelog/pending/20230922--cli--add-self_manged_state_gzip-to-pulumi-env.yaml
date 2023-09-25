@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Add filestate variables to `pulumi env`.

@@ -44,8 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"
-
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
 // recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
 // be used as a last resort when a command absolutely must be run.
@@ -283,7 +281,7 @@ func (b *localBackend) saveCheckpoint(
 	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", ref.FullyQualifiedName(), file, backupFile)
 
 	// And if we are retaining historical checkpoint information, write it out again
-	if cmdutil.IsTruthy(b.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
+	if cmdutil.IsTruthy(b.Getenv(PulumiFilestateRetainCheckpoints)) {
 		if err = b.bucket.WriteAll(ctx, fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
 			return backupFile, "", fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
 		}
@@ -360,7 +358,7 @@ func (b *localBackend) backupStack(ctx context.Context, ref *localBackendReferen
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Exit early if backups are disabled.
-	if cmdutil.IsTruthy(b.Getenv(DisableCheckpointBackupsEnvVar)) {
+	if cmdutil.IsTruthy(b.Getenv(PulumiFilestateDisableCheckpointBackups)) {
 		return nil
 	}
 
