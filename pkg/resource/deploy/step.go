@@ -31,8 +31,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// StepCompleteFunc is the type of functions returned from Step.Apply. These functions are to be called
-// when the engine has fully retired a step.
+// StepCompleteFunc is the type of functions returned from Step.Apply. These functions are to be called when the engine
+// has fully retired a step. You _should not_ modify the resource state in these functions, that will race with the
+// snapshot writing code.
 type StepCompleteFunc func()
 
 // Step is a specification for a deployment operation.
@@ -266,19 +267,17 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.new.Outputs = outs
 	}
 
+	// Create should set the Create and Modified timestamps as the resource state has been created.
+	now := time.Now().UTC()
+	s.new.Created = &now
+	s.new.Modified = &now
+
 	// Mark the old resource as pending deletion if necessary.
 	if s.replacing && s.pendingDelete {
 		s.old.Delete = true
 	}
 
-	complete := func() {
-		// Create should set the Create and Modified timestamps as the resource state has been created.
-		now := time.Now().UTC()
-		s.new.Created = &now
-		s.new.Modified = &now
-
-		s.reg.Done(&RegisterResult{State: s.new})
-	}
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -545,16 +544,15 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
 		s.new.Outputs = outs
-	}
 
-	// Finally, mark this operation as complete.
-	complete := func() {
 		// UpdateStep doesn't create, but does modify state.
 		// Change the Modified timestamp.
 		now := time.Now().UTC()
 		s.new.Modified = &now
-		s.reg.Done(&RegisterResult{State: s.new})
 	}
+
+	// Finally, mark this operation as complete.
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -750,21 +748,19 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		s.new.Created = s.old.Created
 		s.new.Modified = s.old.Modified
 	}
-	complete := func() {
-		var inputsChange, outputsChange bool
-		if s.old != nil {
-			inputsChange = !s.new.Inputs.DeepEquals(s.old.Inputs)
-			outputsChange = !s.new.Outputs.DeepEquals(s.old.Outputs)
-		}
-
-		// Only update the Modified timestamp if read provides new values that differ
-		// from the old state.
-		if inputsChange || outputsChange {
-			now := time.Now().UTC()
-			s.new.Modified = &now
-		}
-		s.event.Done(&ReadResult{State: s.new})
+	var inputsChange, outputsChange bool
+	if s.old != nil {
+		inputsChange = !s.new.Inputs.DeepEquals(s.old.Inputs)
+		outputsChange = !s.new.Outputs.DeepEquals(s.old.Outputs)
 	}
+	// Only update the Modified timestamp if read provides new values that differ
+	// from the old state.
+	if inputsChange || outputsChange {
+		now := time.Now().UTC()
+		s.new.Modified = &now
+	}
+
+	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -877,27 +873,25 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified,
 			s.old.SourcePosition,
 		)
-		complete = func() {
-			var inputsChange, outputsChange bool
-			if s.old != nil {
-				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
-			}
+		var inputsChange, outputsChange bool
+		if s.old != nil {
+			inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
+			outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+		}
 
-			// Only update the Modified timestamp if refresh provides new values that differ
-			// from the old state.
-			if inputsChange || outputsChange {
-				// The refresh has identified an incongruence between the provider and state
-				// updated the Modified timestamp to track this.
-				now := time.Now().UTC()
-				s.new.Modified = &now
-			}
+		// Only update the Modified timestamp if refresh provides new values that differ
+		// from the old state.
+		if inputsChange || outputsChange {
+			// The refresh has identified an incongruence between the provider and state
+			// updated the Modified timestamp to track this.
+			now := time.Now().UTC()
+			s.new.Modified = &now
 		}
 	} else {
 		s.new = nil
 	}
 
-	return rst, complete, err
+	return rst, nil, err
 }
 
 type ImportStep struct {
@@ -998,12 +992,6 @@ func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	complete := func() {
-		// Import takes a resource that Pulumi did not create and imports it into pulumi state.
-		now := time.Now().UTC()
-		s.new.Modified = &now
-		// Set Created to now as the resource has been created in the state.
-		s.new.Created = &now
-
 		s.reg.Done(&RegisterResult{State: s.new})
 	}
 
@@ -1054,6 +1042,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
 		s.new.DeletedWith, nil, nil, s.new.SourcePosition)
+
+	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
+	now := time.Now().UTC()
+	s.new.Modified = &now
+	// Set Created to now as the resource has been created in the state.
+	s.new.Created = &now
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
@@ -1113,7 +1107,8 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures)
 
 		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
-		return rst, complete, err
+
+		return rst, complete, nil
 	}
 
 	// Set inputs back to their old values (if any) for any "ignored" properties
