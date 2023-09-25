@@ -108,6 +108,7 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 			withUpdatedDependencies(fixUrn).
 			withUpdatedPropertyDependencies(fixUrn).
 			withUpdatedProvider(fixProvider).
+			withUpdatedAliases().
 			build()
 	}
 

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fixes the engine using aliases from old deployments when writing out statefiles.

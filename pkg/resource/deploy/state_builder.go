@@ -70,6 +70,15 @@ func (sb *stateBuilder) withUpdatedPropertyDependencies(update func(resource.URN
 	return sb
 }
 
+// Removes all "Aliases" from the state. Once URN normalisation is done we don't want to write aliases out.
+func (sb *stateBuilder) withUpdatedAliases() *stateBuilder {
+	if len(sb.state.Aliases) > 0 {
+		sb.state.Aliases = nil
+		sb.edited = true
+	}
+	return sb
+}
+
 func (sb *stateBuilder) build() *resource.State {
 	if !sb.edited {
 		return sb.original
