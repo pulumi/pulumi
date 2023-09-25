@@ -35,7 +35,7 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 		templateNameOrURL: "aws-javascript",
 	}
 
-	err := runNewPolicyPack(context.TODO(), args)
+	err := runNewPolicyPack(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
@@ -57,7 +57,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 			templateNameOrURL: nonExistantTemplate,
 		}
 
-		err := runNewPolicyPack(context.TODO(), args)
+		err := runNewPolicyPack(context.Background(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})
@@ -72,7 +72,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 			templateNameOrURL: nonExistantTemplate,
 		}
 
-		err := runNewPolicyPack(context.TODO(), args)
+		err := runNewPolicyPack(context.Background(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})

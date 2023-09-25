@@ -31,7 +31,7 @@ func TestTokenSource(t *testing.T) {
 	}
 	t.Parallel()
 
-	ctx := context.TODO()
+	ctx := context.Background()
 	dur := 20 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
 
@@ -67,7 +67,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	}
 	t.Parallel()
 
-	ctx := context.TODO()
+	ctx := context.Background()
 	dur := 20 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
 

@@ -154,7 +154,7 @@ func TestGetRequiredPlugins(t *testing.T) {
 	}
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPlugins(context.TODO(), &pulumirpc.GetRequiredPluginsRequest{
+	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
 		Program: dir,
 	})
 	require.NoError(t, err)
@@ -207,7 +207,7 @@ func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
 	require.NoError(t, err)
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPlugins(context.TODO(), &pulumirpc.GetRequiredPluginsRequest{
+	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
 		Program: dir,
 	})
 	require.NoError(t, err)
@@ -262,7 +262,7 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 	require.NoError(t, err)
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPlugins(context.TODO(), &pulumirpc.GetRequiredPluginsRequest{
+	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
 		Program: dir,
 	})
 	require.NoError(t, err)
