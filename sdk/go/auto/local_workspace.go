@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -460,6 +461,19 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 	return nil, nil
 }
 
+// StackChangeSecretsProvider edits the secrets provider for the given stack.
+func (l *LocalWorkspace) StackChangeSecretsProvider(
+	ctx context.Context, stackName, newSecretsProvider, stdin string,
+) error {
+	args := []string{"stack", "change-secrets-provider", "--stack", stackName, newSecretsProvider}
+	reader := strings.NewReader(stdin)
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, reader, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("failed to change secrets provider: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 // CreateStack creates and sets a new stack with the stack name, failing if one already exists.
 func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) error {
 	args := []string{"stack", "init", stackName}
@@ -705,8 +719,9 @@ func parseAndValidatePulumiVersion(minVersion semver.Version, currentVersion str
 	return version, nil
 }
 
-func (l *LocalWorkspace) runPulumiCmdSync(
+func (l *LocalWorkspace) runPulumiInputCmdSync(
 	ctx context.Context,
+	stdin io.Reader,
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
@@ -722,11 +737,19 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 	}
 	return runPulumiCommandSync(ctx,
 		l.WorkDir(),
+		stdin,
 		nil, /* additionalOutputs */
 		nil, /* additionalErrorOutputs */
 		env,
 		args...,
 	)
+}
+
+func (l *LocalWorkspace) runPulumiCmdSync(
+	ctx context.Context,
+	args ...string,
+) (string, string, int, error) {
+	return l.runPulumiInputCmdSync(ctx, nil, args...)
 }
 
 // supportsPulumiCmdFlag runs a command with `--help` to see if the specified flag is found within the resulting
@@ -738,7 +761,7 @@ func (l *LocalWorkspace) supportsPulumiCmdFlag(ctx context.Context, flag string,
 	}
 
 	// Run the command with `--help`, and then we'll look for the flag in the output.
-	stdout, _, _, err := runPulumiCommandSync(ctx, l.WorkDir(), nil, nil, env, append(args, "--help")...)
+	stdout, _, _, err := runPulumiCommandSync(ctx, l.WorkDir(), nil, nil, nil, env, append(args, "--help")...)
 	if err != nil {
 		return false, err
 	}

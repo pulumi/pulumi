@@ -966,6 +966,7 @@ func (s *Stack) runPulumiCmdSync(
 	stdout, stderr, errCode, err := runPulumiCommandSync(
 		ctx,
 		s.Workspace().WorkDir(),
+		nil,
 		additionalOutput,
 		additionalErrorOutput,
 		env,

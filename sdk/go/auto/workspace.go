@@ -106,6 +106,8 @@ type Workspace interface {
 	// WhoAmIDetails returns detailed information about the currently
 	// logged-in Pulumi identity.
 	WhoAmIDetails(ctx context.Context) (WhoAmIResult, error)
+	// StackChangeSecretsProvider edits the secrets provider for the given stack.
+	StackChangeSecretsProvider(ctx context.Context, stackName, newSecretsProvider, stdin string) error
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.

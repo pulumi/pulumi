@@ -65,25 +65,27 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
-	opts := []LocalWorkspaceOption{
-		SecretsProvider("passphrase"),
-		EnvVars(map[string]string{
-			"PULUMI_CONFIG_PASSPHRASE": "password",
-		}),
+	mkstack := func(passphrase string) Stack {
+		opts := []LocalWorkspaceOption{
+			SecretsProvider("passphrase"),
+			EnvVars(map[string]string{
+				"PULUMI_CONFIG_PASSPHRASE": passphrase,
+			}),
+		}
+
+		// initialize
+		s, err := UpsertStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+			c := config.New(ctx, "")
+			ctx.Export("exp_static", pulumi.String("foo"))
+			ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
+			ctx.Export("exp_secret", c.GetSecret("buzz"))
+			return nil
+		}, opts...)
+		require.NoError(t, err, "failed to initialize stack")
+		return s
 	}
 
-	// initialize
-	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
-		c := config.New(ctx, "")
-		ctx.Export("exp_static", pulumi.String("foo"))
-		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
-		ctx.Export("exp_secret", c.GetSecret("buzz"))
-		return nil
-	}, opts...)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	s := mkstack("password")
 
 	defer func() {
 		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
@@ -95,7 +97,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	}()
 
 	passwordVal := "Password1234!"
-	err = s.SetConfig(ctx, "MySecretDatabasePassword", ConfigValue{Value: passwordVal, Secret: true})
+	err := s.SetConfig(ctx, "MySecretDatabasePassword", ConfigValue{Value: passwordVal, Secret: true})
 	if err != nil {
 		t.Errorf("setConfig failed, err: %v", err)
 		t.FailNow()
@@ -119,6 +121,11 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	}
 	assert.Equal(t, passwordVal, conf.Value)
 	assert.Equal(t, true, conf.Secret)
+
+	// -- change passphrase --
+	err = s.Workspace().StackChangeSecretsProvider(ctx, s.Name(), "passphrase", "newpassphrase")
+	require.NoError(t, err)
+	s = mkstack("newpassphrase")
 
 	// -- pulumi destroy --
 
