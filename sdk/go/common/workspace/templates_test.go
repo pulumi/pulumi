@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -202,4 +203,15 @@ func TestRetrieveFileTemplate(t *testing.T) {
 			assert.Equal(t, ".", repository.SubDirectory)
 		})
 	}
+}
+
+func TestAIBuild(t *testing.T) {
+	repository, err := buildAIRepository("https://www.pulumi.com/ai/answers/6c060c2d-e754-47d2-af8c-0d6a761634e3")
+	assert.NoError(t, err)
+	_, err = os.ReadFile(path.Join(repository.SubDirectory, "Pulumi.yaml"))
+	assert.NoError(t, err)
+	_, err = os.ReadFile(path.Join(repository.SubDirectory, "package.json"))
+	assert.NoError(t, err)
+	_, err = os.ReadFile(path.Join(repository.SubDirectory, "index.ts"))
+	assert.NoError(t, err)
 }

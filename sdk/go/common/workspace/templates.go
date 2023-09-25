@@ -15,12 +15,17 @@
 package workspace
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
@@ -274,6 +279,14 @@ func IsTemplateURL(templateNamePathOrURL string) bool {
 	return strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "ssh://")
 }
 
+// IsTemplateURL returns true if templateNamePathOrURL starts with "https://" (SSL) or "git@" (SSH).
+// Examples:
+// * https://www.pulumi.com/ai/answers/6c060c2d-e754-47d2-af8c-0d6a761634e3
+// * https://www.pulumi.com/ai/conversations/16ff22f6-42cc-44e5-87e4-ee5e12b72f03
+func isAIURL(templateNamePathOrURL string) bool {
+	return strings.HasPrefix(templateNamePathOrURL, "https://www.pulumi.com/ai/")
+}
+
 // isTemplateFileOrDirectory returns true if templateNamePathOrURL is the name of a valid file or directory.
 func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 	_, err := os.Stat(templateNamePathOrURL)
@@ -284,6 +297,9 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 func RetrieveTemplates(templateNamePathOrURL string, offline bool,
 	templateKind TemplateKind,
 ) (TemplateRepository, error) {
+	if isAIURL(templateNamePathOrURL) {
+		return buildAIRepository(templateNamePathOrURL)
+	}
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
 	}
@@ -326,6 +342,148 @@ func retrieveFileTemplates(path string) (TemplateRepository, error) {
 		SubDirectory: path,
 		ShouldDelete: false,
 	}, nil
+}
+
+// buildAIRepository builds a TemplateRepository from the code snippet that is part of the AI URL.
+// It uses heuristics to determine what to include in the package manager files.
+func buildAIRepository(aiURL string) (TemplateRepository, error) {
+	resp, err := http.Get(aiURL)
+	if err != nil {
+		return TemplateRepository{}, fmt.Errorf("getting URL: %w", err)
+	}
+	defer contract.IgnoreClose(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return TemplateRepository{}, fmt.Errorf("reading from URL: %w", err)
+	}
+	/// Parse the text between the last instance of "```<languge>" and "```" to get the code snippet.
+	re := regexp.MustCompile("(?s)```(typescript|python|yaml|javascript)(.*?)```")
+	matches := re.FindAllSubmatch(body, -1)
+	if len(matches) == 0 {
+		return TemplateRepository{}, errors.New("no code snippet found in AI URL")
+	}
+
+	match := matches[len(matches)-1]
+	language := string(match[1])
+	code, err := strconv.Unquote(`"` + string(match[2]) + `"`)
+	if err != nil {
+		return TemplateRepository{}, fmt.Errorf("extracing code: %w", err)
+	}
+	code = strings.TrimPrefix(code, "\n")
+	// create a temp directory
+	temp, err := os.MkdirTemp("", "pulumi-template-")
+	if err != nil {
+		return TemplateRepository{}, fmt.Errorf("creating temp folder for template: %w", err)
+	}
+	filenameMap := map[string]string{
+		"typescript": "index.ts",
+		"python":     "__main__.py",
+		"yaml":       "Pulumi.yaml",
+		"javascript": "index.js",
+		"go":         "main.go",
+	}
+	// write the code snippet to the temp directory
+	err = os.WriteFile(filepath.Join(temp, filenameMap[language]), []byte(code), 0o600)
+	if err != nil {
+		return TemplateRepository{}, err
+	}
+	runtimeMap := map[string]string{
+		"typescript": "nodejs",
+		"python":     "python",
+		"yaml":       "yaml",
+		"javascript": "nodejs",
+		"go":         "go",
+	}
+	packageDependencies := map[string]struct{}{}
+	switch language {
+	case "typescript", "javascript":
+		type packageJSON struct {
+			Name         string            `json:"name"`
+			Main         string            `json:"main"`
+			Dependencies map[string]string `json:"dependencies"`
+			DevDeps      map[string]string `json:"devDependencies"`
+		}
+		pkg := packageJSON{
+			Name: "${PROJECT}",
+			Main: filenameMap[language],
+			Dependencies: map[string]string{
+				"@pulumi/pulumi": "^3.0.0",
+			},
+			DevDeps: map[string]string{},
+		}
+
+		if language == "typescript" {
+			pkg.DevDeps["@types/node"] = "^14.14.37"
+		}
+
+		importRegExp := regexp.MustCompile(`"(@pulumi/(.*))"`)
+		imports := importRegExp.FindAllStringSubmatch(code, -1)
+		for _, imp := range imports {
+			// TODO: This should ideally pick the latest major version with "^3.0.0"
+			pkg.Dependencies[imp[1]] = "latest"
+			packageDependencies[imp[2]] = struct{}{}
+		}
+
+		byts, err := json.MarshalIndent(pkg, "", "    ")
+		if err != nil {
+			return TemplateRepository{}, err
+		}
+		err = os.WriteFile(filepath.Join(temp, "package.json"), byts, 0o600)
+		if err != nil {
+			return TemplateRepository{}, err
+		}
+	default:
+		// TODO: Python, Go, .NET, Java, YAML
+		return TemplateRepository{}, fmt.Errorf("not yet implemented support for '%s' language in `pulumi new` with AI URL", language)
+	}
+	if language != "yaml" {
+		re := regexp.MustCompile("<title>(.*)</title>")
+		matches := re.FindAllSubmatch(body, -1)
+		if len(matches) != 1 {
+			return TemplateRepository{}, errors.New("no title found in AI result")
+		}
+		description := "${DESCRIPTION}"
+		proj := Project{
+			Name:        "${PROJECT}",
+			Description: &description,
+			Runtime: ProjectRuntimeInfo{
+				name: runtimeMap[language],
+			},
+			Template: &ProjectTemplate{
+				Description: string(matches[0][1]),
+				Config:      map[string]ProjectTemplateConfigValue{},
+			},
+		}
+		if language == "javascript" {
+			proj.Runtime.options = map[string]interface{}{
+				"typescript": "false",
+			}
+		}
+		for dep := range packageDependencies {
+			switch dep {
+			case "aws":
+				proj.Template.Config["aws:region"] = ProjectTemplateConfigValue{
+					Default:     "us-east-1",
+					Description: "The AWS region to deploy into",
+				}
+			}
+		}
+		pulumiYamlBytes, err := yaml.Marshal(proj)
+		if err != nil {
+			return TemplateRepository{}, fmt.Errorf("writing Pulumi.yaml: %w", err)
+		}
+		// write a Pulumi.yaml file with the appropriate language
+		err = os.WriteFile(filepath.Join(temp, "Pulumi.yaml"), pulumiYamlBytes, 0o600)
+		if err != nil {
+			return TemplateRepository{}, err
+		}
+	}
+
+	return TemplateRepository{
+		Root:         temp,
+		SubDirectory: temp,
+		ShouldDelete: false,
+	}, err
 }
 
 // retrievePulumiTemplates retrieves the "template repository" for Pulumi templates.
