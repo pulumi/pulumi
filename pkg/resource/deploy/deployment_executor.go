@@ -247,10 +247,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 					return false, nil
 				}
 
-				if res := ex.handleSingleEvent(event.Event); res != nil {
-					if resErr := res.Error(); resErr != nil {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", resErr)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), resErr)
+				if err := ex.handleSingleEvent(event.Event); err != nil {
+					if !result.IsBail(err) {
+						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
 					}
 					cancel()
 					return false, result.Bail()
@@ -350,10 +350,10 @@ func (ex *deploymentExecutor) performDeletes(
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
-	deleteSteps, res := ex.stepGen.GenerateDeletes(targetsOpt)
-	if res != nil {
+	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt)
+	if err != nil {
 		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
-		return res
+		return result.FromError(err)
 	}
 
 	deletes := ex.stepGen.ScheduleDeletes(deleteSteps)
@@ -388,25 +388,25 @@ func (ex *deploymentExecutor) performDeletes(
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) result.Result {
+func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	contract.Requiref(event != nil, "event", "must not be nil")
 
 	var steps []Step
-	var res result.Result
+	var err error
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, res = ex.stepGen.GenerateSteps(e)
+		steps, err = ex.stepGen.GenerateSteps(e)
 	case ReadResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ReadResourceEvent")
-		steps, res = ex.stepGen.GenerateReadSteps(e)
+		steps, err = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
-		return result.WrapIfNonNil(ex.stepExec.ExecuteRegisterResourceOutputs(e))
+		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 
-	if res != nil {
-		return res
+	if err != nil {
+		return err
 	}
 
 	ex.stepExec.ExecuteSerial(steps)

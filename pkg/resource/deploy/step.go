@@ -1117,9 +1117,9 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Set inputs back to their old values (if any) for any "ignored" properties
-	processedInputs, res := processIgnoreChanges(s.new.Inputs, s.old.Inputs, s.ignoreChanges)
-	if res != nil {
-		return resource.StatusOK, nil, res.Error()
+	processedInputs, err := processIgnoreChanges(s.new.Inputs, s.old.Inputs, s.ignoreChanges)
+	if err != nil {
+		return resource.StatusOK, nil, err
 	}
 	s.new.Inputs = processedInputs
 
