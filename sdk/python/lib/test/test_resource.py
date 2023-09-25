@@ -295,3 +295,13 @@ def test_complex_parent_child_dependencies():
         parent=a.b,
         depends_on=[a.b]
     ))
+
+# Regression test for https://github.com/pulumi/pulumi/issues/13997
+@pulumi.runtime.test
+def test_bad_component_super_call():
+    class C(pulumi.ComponentResource):
+        def __init__(self, name: str, arg: int, opts=None):
+            super().__init__("my:module:C", name, arg, opts)
+
+    with pytest.raises(TypeError):
+        C("test", 4, None)

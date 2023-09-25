@@ -781,11 +781,14 @@ class Resource:
         # If `props` is an input type, convert it into an untranslated dictionary.
         # Translation of the keys will happen later using the type's and resource's type/name metadata.
         # If `props` is not an input type, set `typ` to None to make translation behave as it has previously.
-        typ = type(props)
+        typ: Optional[type] = type(props)
+        assert typ is not None
         if _types.is_input_type(typ):
             props = _types.input_type_to_untranslated_dict(props)
         else:
-            typ = None  # type: ignore
+            if not isinstance(props, Mapping):
+                raise TypeError("Execpted resource properties to be a mapping")
+            typ = None
 
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
         # provided properties and options assigned to this resource.
