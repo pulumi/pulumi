@@ -2791,7 +2791,7 @@ func TestProtect(t *testing.T) {
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					deleteCounter = deleteCounter + 1
@@ -2947,7 +2947,7 @@ func TestRetainOnDelete(t *testing.T) {
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					assert.Fail(t, "Delete was called")
@@ -3039,7 +3039,7 @@ func TestDeletedWith(t *testing.T) {
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					if urn != topURN {
@@ -3144,7 +3144,7 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					assert.Fail(t, "Delete was called")
@@ -3521,7 +3521,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 					return id, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN,
-					id resource.ID, olds resource.PropertyMap, timeout float64,
+					id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 				) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
 					for other, res := range cloudState {
@@ -3665,7 +3665,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					return id, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN,
-					id resource.ID, olds resource.PropertyMap, timeout float64,
+					id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 				) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
 					for _, res := range cloudState {
@@ -3923,7 +3923,7 @@ func TestTimestampTracking(t *testing.T) {
 
 func TestOldCheckedInputsAreSent(t *testing.T) {
 	// Test for https://github.com/pulumi/pulumi/issues/5973, check that the old inputs from Check are passed
-	// to Diff and Update.
+	// to Diff, Update, and Delete.
 	t.Parallel()
 
 	firstUpdate := true
@@ -4037,6 +4037,23 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 
 					return results, resource.StatusOK, nil
 				},
+				DeleteF: func(urn resource.URN, id resource.ID,
+					oldInputs, oldOutputs resource.PropertyMap,
+					timeout float64,
+				) (resource.Status, error) {
+					// Check that the old inputs and outputs are passed to UpdateF
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						"foo":     "baz",
+						"default": "default",
+					}), oldInputs)
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						"foo":      "baz",
+						"default":  "default",
+						"computed": "computed",
+					}), oldOutputs)
+
+					return resource.StatusOK, nil
+				},
 			}, nil
 		}, deploytest.WithoutGrpc),
 	}
@@ -4096,6 +4113,12 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 		"default":  "default",
 		"computed": "computed",
 	}), resA.Outputs)
+
+	// Now run a destroy to delete the resource and check the stored inputs and outputs are sent
+	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
 }
 
 func TestResourceNames(t *testing.T) {

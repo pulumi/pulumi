@@ -27,11 +27,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type simpleProvider struct{}
+type simpleProvider struct {
+	plugin.UnimplementedProvider
+}
 
 var _ plugin.Provider = (*simpleProvider)(nil)
 
 func (p *simpleProvider) Close() error {
+	return nil
+}
+
+func (p *simpleProvider) Configure(inputs resource.PropertyMap) error {
 	return nil
 }
 
@@ -102,17 +108,6 @@ func (p *simpleProvider) CheckConfig(urn resource.URN, oldInputs, newInputs reso
 	return newInputs, nil, nil
 }
 
-func (p *simpleProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	return plugin.DiffResult{}, fmt.Errorf("DiffConfig not implemented")
-}
-
-func (p *simpleProvider) Configure(inputs resource.PropertyMap) error {
-	// Nothing to configure
-	return nil
-}
-
 func (p *simpleProvider) Check(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -136,12 +131,6 @@ func (p *simpleProvider) Check(urn resource.URN, oldInputs, newInputs resource.P
 	return newInputs, nil, nil
 }
 
-func (p *simpleProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	return plugin.DiffResult{}, fmt.Errorf("Diff not implemented")
-}
-
 func (p *simpleProvider) Create(
 	urn resource.URN, news resource.PropertyMap,
 	timeout float64, preview bool,
@@ -157,49 +146,6 @@ func (p *simpleProvider) Create(
 	}
 
 	return resource.ID(id), news, resource.StatusOK, nil
-}
-
-func (p *simpleProvider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
-	return plugin.ReadResult{}, resource.StatusOK, fmt.Errorf("Read not implemented")
-}
-
-func (p *simpleProvider) Update(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool,
-) (resource.PropertyMap, resource.Status, error) {
-	return nil, resource.StatusOK, fmt.Errorf("Update not implemented")
-}
-
-func (p *simpleProvider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
-	timeout float64,
-) (resource.Status, error) {
-	return resource.StatusOK, fmt.Errorf("Delete not implemented")
-}
-
-func (p *simpleProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions,
-) (plugin.ConstructResult, error) {
-	return plugin.ConstructResult{}, fmt.Errorf("Construct not implemented")
-}
-
-func (p *simpleProvider) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return nil, nil, fmt.Errorf("Invoke not implemented")
-}
-
-func (p *simpleProvider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error,
-) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("StreamInvoke not implemented")
-}
-
-func (p *simpleProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions,
-) (plugin.CallResult, error) {
-	return plugin.CallResult{}, fmt.Errorf("Call not implemented")
 }
 
 func (p *simpleProvider) GetPluginInfo() (workspace.PluginInfo, error) {

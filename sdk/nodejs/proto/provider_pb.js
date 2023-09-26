@@ -1091,7 +1091,8 @@ proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
     args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    sendsOldInputs: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+    sendsOldInputs: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+    sendsOldInputsToDelete: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -1150,6 +1151,10 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSendsOldInputs(value);
+      break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSendsOldInputsToDelete(value);
       break;
     default:
       reader.skipField();
@@ -1210,6 +1215,13 @@ proto.pulumirpc.ConfigureRequest.serializeBinaryToWriter = function(message, wri
   if (f) {
     writer.writeBool(
       5,
+      f
+    );
+  }
+  f = message.getSendsOldInputsToDelete();
+  if (f) {
+    writer.writeBool(
+      6,
       f
     );
   }
@@ -1326,6 +1338,24 @@ proto.pulumirpc.ConfigureRequest.prototype.getSendsOldInputs = function() {
  */
 proto.pulumirpc.ConfigureRequest.prototype.setSendsOldInputs = function(value) {
   return jspb.Message.setProto3BooleanField(this, 5, value);
+};
+
+
+/**
+ * optional bool sends_old_inputs_to_delete = 6;
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getSendsOldInputsToDelete = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.setSendsOldInputsToDelete = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 6, value);
 };
 
 
@@ -6589,7 +6619,8 @@ proto.pulumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0)
+    timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0),
+    oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6642,6 +6673,11 @@ proto.pulumirpc.DeleteRequest.deserializeBinaryFromReader = function(msg, reader
     case 4:
       var value = /** @type {number} */ (reader.readDouble());
       msg.setTimeout(value);
+      break;
+    case 5:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setOldInputs(value);
       break;
     default:
       reader.skipField();
@@ -6699,6 +6735,14 @@ proto.pulumirpc.DeleteRequest.serializeBinaryToWriter = function(message, writer
     writer.writeDouble(
       4,
       f
+    );
+  }
+  f = message.getOldInputs();
+  if (f != null) {
+    writer.writeMessage(
+      5,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -6792,6 +6836,43 @@ proto.pulumirpc.DeleteRequest.prototype.getTimeout = function() {
  */
 proto.pulumirpc.DeleteRequest.prototype.setTimeout = function(value) {
   return jspb.Message.setProto3FloatField(this, 4, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct old_inputs = 5;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.DeleteRequest.prototype.getOldInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.DeleteRequest} returns this
+*/
+proto.pulumirpc.DeleteRequest.prototype.setOldInputs = function(value) {
+  return jspb.Message.setWrapperField(this, 5, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.DeleteRequest} returns this
+ */
+proto.pulumirpc.DeleteRequest.prototype.clearOldInputs = function() {
+  return this.setOldInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.DeleteRequest.prototype.hasOldInputs = function() {
+  return jspb.Message.getField(this, 5) != null;
 };
 
 

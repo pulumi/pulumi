@@ -148,7 +148,7 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID,
 }
 
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
-	state resource.PropertyMap, timeout float64,
+	oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 

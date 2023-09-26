@@ -549,7 +549,7 @@ func (r *Registry) Update(urn resource.URN, id resource.ID,
 
 // Delete unregisters and unloads the provider with the given URN and ID. If the provider was never loaded
 // this is a no-op.
-func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+func (r *Registry) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(!r.isPreview, "Delete must not be called during preview")
