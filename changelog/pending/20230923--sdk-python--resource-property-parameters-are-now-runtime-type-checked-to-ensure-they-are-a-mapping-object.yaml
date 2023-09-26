@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Resource property parameters are now runtime type checked to ensure they are a `Mapping` object.

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/about
-  description: `pulumi about` and `pulumi whoami` will now return information about the access token used to login to the service.

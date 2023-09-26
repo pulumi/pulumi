@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: `import --from=plugin` will now try to auto-install the plugin if missing.
