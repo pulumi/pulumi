@@ -158,9 +158,14 @@ func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project *workspace.Project,
-	insecure bool, opts display.Options,
-) (Backend, error) {
+func loginWithBrowser(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	welcome func(display.Options),
+	current bool,
+	opts display.Options,
+) (*workspace.Account, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -228,7 +233,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project
 	accessToken := <-c
 
 	username, organizations, tokenInfo, err := client.NewClient(
-		cloudURL, accessToken, insecure, d).GetPulumiAccountDetails(ctx)
+		cloudURL, accessToken, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -242,25 +247,34 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project
 		Insecure:         insecure,
 		TokenInformation: tokenInfo,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
+	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
 		return nil, err
 	}
 
 	// Welcome the user since this was an interactive login.
-	WelcomeUser(opts)
+	if welcome != nil {
+		welcome(opts)
+	}
 
-	return New(d, cloudURL, project, insecure)
+	return &account, nil
 }
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
 	// Current returns the current cloud backend if one is already logged in.
-	Current(ctx context.Context, d diag.Sink, cloudURL string,
-		project *workspace.Project, insecure bool) (Backend, error)
+	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error)
 
 	// Login logs into the target cloud URL and returns the cloud backend for it.
-	Login(ctx context.Context, d diag.Sink, cloudURL string,
-		project *workspace.Project, insecure bool, opts display.Options) (Backend, error)
+	Login(
+		ctx context.Context,
+		cloudURL string,
+		insecure bool,
+		command string,
+		message string,
+		welcome func(display.Options),
+		current bool,
+		opts display.Options,
+	) (*workspace.Account, error)
 }
 
 // NewLoginManager returns a LoginManager for handling backend logins.
@@ -277,9 +291,12 @@ var newLoginManager = func() LoginManager {
 type defaultLoginManager struct{}
 
 // Current returns the current cloud backend if one is already logged in.
-func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL string,
-	project *workspace.Project, insecure bool,
-) (Backend, error) {
+func (m defaultLoginManager) Current(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	setCurrent bool,
+) (*workspace.Account, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -305,11 +322,11 @@ func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL 
 			existingAccount.Organizations = organizations
 			existingAccount.TokenInformation = tokenInfo
 			existingAccount.Insecure = insecure
-			if err = workspace.StoreAccount(cloudURL, existingAccount, true); err != nil {
+			if err = workspace.StoreAccount(cloudURL, existingAccount, setCurrent); err != nil {
 				return nil, err
 			}
 
-			return New(d, cloudURL, project, insecure)
+			return &existingAccount, nil
 		}
 	}
 
@@ -343,19 +360,25 @@ func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL 
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
+	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 
-	return New(d, cloudURL, project, insecure)
+	return &account, nil
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
 func (m defaultLoginManager) Login(
-	ctx context.Context, d diag.Sink, cloudURL string,
-	project *workspace.Project, insecure bool, opts display.Options,
-) (Backend, error) {
-	current, err := m.Current(ctx, d, cloudURL, project, insecure)
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	command string,
+	message string,
+	welcome func(display.Options),
+	setCurrent bool,
+	opts display.Options,
+) (*workspace.Account, error) {
+	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
 	if err != nil {
 		return nil, err
 	}
@@ -375,13 +398,13 @@ func (m defaultLoginManager) Login(
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
 	// open a browser to make it easy to generate and use a fresh token.
-	line1 := "Manage your Pulumi stacks by logging in."
+	line1 := "Manage your " + message + " by logging in."
 	line1len := len(line1)
-	line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
+	line1 = colors.Highlight(line1, message, colors.Underline+colors.Bold)
 	fmt.Printf(opts.Color.Colorize(line1) + "\n")
 	maxlen := line1len
 
-	line2 := "Run `pulumi login --help` for alternative login options."
+	line2 := fmt.Sprintf("Run `%s --help` for alternative login options.", command)
 	line2len := len(line2)
 	fmt.Printf(opts.Color.Colorize(line2) + "\n")
 	if line2len > maxlen {
@@ -421,11 +444,13 @@ func (m defaultLoginManager) Login(
 		}
 
 		if accessToken == "" {
-			return loginWithBrowser(ctx, d, cloudURL, project, insecure, opts)
+			return loginWithBrowser(ctx, cloudURL, insecure, welcome, setCurrent, opts)
 		}
 
 		// Welcome the user since this was an interactive login.
-		WelcomeUser(opts)
+		if welcome != nil {
+			welcome(opts)
+		}
 	}
 
 	// Try and use the credentials to see if they are valid.
@@ -445,11 +470,11 @@ func (m defaultLoginManager) Login(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
+	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 
-	return New(d, cloudURL, project, insecure)
+	return &account, nil
 }
 
 // WelcomeUser prints a Welcome to Pulumi message.

@@ -121,6 +121,21 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
+func loginToCloud(
+	ctx context.Context,
+	cloudURL string,
+	project *workspace.Project,
+	insecure bool,
+	opts display.Options,
+) (backend.Backend, error) {
+	lm := httpstate.NewLoginManager()
+	_, err := lm.Login(ctx, cloudURL, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, true /*current*/, opts)
+	if err != nil {
+		return nil, err
+	}
+	return httpstate.New(cmdutil.Diag(), cloudURL, project, insecure)
+}
+
 func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Project) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
@@ -134,7 +149,13 @@ func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Projec
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(ctx, cmdutil.Diag(), url, project)
 	}
-	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url, project, workspace.GetCloudInsecure(url))
+
+	insecure := workspace.GetCloudInsecure(url)
+	_, err = httpstate.NewLoginManager().Current(ctx, url, insecure, true)
+	if err != nil {
+		return nil, err
+	}
+	return httpstate.New(cmdutil.Diag(), url, project, insecure)
 }
 
 func currentBackend(ctx context.Context, project *workspace.Project, opts display.Options) (backend.Backend, error) {
@@ -150,7 +171,8 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(ctx, cmdutil.Diag(), url, project)
 	}
-	return httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), url, project, workspace.GetCloudInsecure(url), opts)
+
+	return loginToCloud(ctx, url, project, workspace.GetCloudInsecure(url), opts)
 }
 
 // This is used to control the contents of the tracing header.
