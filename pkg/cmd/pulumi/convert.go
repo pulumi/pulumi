@@ -49,6 +49,39 @@ import (
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
+func loadConverterPlugin(
+	ctx *plugin.Context,
+	name string,
+	log func(sev diag.Severity, msg string),
+) (plugin.Converter, error) {
+	// Try and load the converter plugin for this
+	converter, err := plugin.NewConverter(ctx, name, nil)
+	if err != nil {
+		// If NewConverter returns a MissingError, we can try and install the plugin and try again.
+		var me *workspace.MissingError
+		if !errors.As(err, &me) {
+			// Not a MissingError, return the original error.
+			return nil, fmt.Errorf("load %q: %w", name, err)
+		}
+
+		pluginSpec := workspace.PluginSpec{
+			Kind: workspace.ConverterPlugin,
+			Name: name,
+		}
+
+		_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+		if err != nil {
+			return nil, fmt.Errorf("install %q: %w", name, err)
+		}
+
+		converter, err = plugin.NewConverter(ctx, name, nil)
+		if err != nil {
+			return nil, fmt.Errorf("load %q: %w", name, err)
+		}
+	}
+	return converter, nil
+}
+
 func newConvertCmd() *cobra.Command {
 	var outDir string
 	var from string
@@ -335,31 +368,9 @@ func runConvert(
 		}
 		pclDirectory = cwd
 	} else {
-
-		// Try and load the converter plugin for this
-		converter, err := plugin.NewConverter(pCtx, from, nil)
+		converter, err := loadConverterPlugin(pCtx, from, log)
 		if err != nil {
-			// If NewConverter returns a MissingError, we can try and install the plugin and try again.
-			var me *workspace.MissingError
-			if !errors.As(err, &me) {
-				// Not a MissingError, return the original error.
-				return fmt.Errorf("load plugin source %q: %w", from, err)
-			}
-
-			pluginSpec := workspace.PluginSpec{
-				Kind: workspace.ConverterPlugin,
-				Name: from,
-			}
-
-			_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
-			if err != nil {
-				return fmt.Errorf("install plugin source %q: %w", from, err)
-			}
-
-			converter, err = plugin.NewConverter(pCtx, from, nil)
-			if err != nil {
-				return fmt.Errorf("load plugin source %q: %w", from, err)
-			}
+			return fmt.Errorf("load converter plugin: %w", err)
 		}
 		defer contract.IgnoreClose(converter)
 
