@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.86.0 (2023-09-26)
+
+
+### Features
+
+- [cli/about] `pulumi about` and `pulumi whoami` will now return information about the access token used to login to the service.
+  [#13206](https://github.com/pulumi/pulumi/pull/13206)
+
+
+### Bug Fixes
+
+- [cli] Add filestate variables to `pulumi env`.
+  [#14015](https://github.com/pulumi/pulumi/pull/14015)
+
+- [cli] Include a newline in `pulumi whoami`'s output
+  [#14025](https://github.com/pulumi/pulumi/pull/14025)
+
+- [cli/import] `import --from=plugin` will now try to auto-install the plugin if missing.
+  [#14048](https://github.com/pulumi/pulumi/pull/14048)
+
+- [engine] Fix creation and modification timestamps sometimes not setting.
+  [#14038](https://github.com/pulumi/pulumi/pull/14038)
+
+- [engine] Fixes the engine using aliases from old deployments when writing out statefiles.
+
+- [sdk/python] Resource property parameters are now runtime type checked to ensure they are a `Mapping` object.
+  [#14030](https://github.com/pulumi/pulumi/pull/14030)
+
 ## 3.85.0 (2023-09-22)
 
 
