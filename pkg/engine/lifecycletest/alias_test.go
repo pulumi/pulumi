@@ -1648,3 +1648,124 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typC::resC"), snap.Resources[2].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[2].Parent)
 }
+
+func TestFailDeleteDuplicateAliases(t *testing.T) {
+	t.Parallel()
+
+	// This is a test for https://github.com/pulumi/pulumi/issues/14041 to check that we don't courrupt state files when
+	// old aliased resources are left in state because they can't delete.
+	//
+	// Imagine the following update flow from an old engine version where we saved aliases to state:
+	//
+	// 1) Creates "resA".
+	//
+	// 2) Makes "resAX" with an alias to "resA" so end up with one resource in the state file "resAX", but it records
+	// it's alias as "resA".
+	//
+	// 3) Tries to destroy "resA" but fails so leaves it in the state file as is, this step doesn't actually seem
+	// important for triggering the error.
+	//
+	// 4) Creates "resA" and again tries to delete "resAX" but again fails, now we try and save the snapshot but before
+	// we save the snapshot we do URN normalisation - That looks at all the resources and sees which ones we're aliased
+	// by looking at the Aliases field on their state - "resAX" still has it's alias recorded from Update 2 so it
+	// registers a URN fixup of "resA" -> "resAX" - We then rewrite all the resources with that rule which means any new
+	// resources created in the update (new resources are always first in the snapshot list) that were either called
+	// resA or tried to use resA as a parent now all rewrite their pointers and URNs to "resAX" which is at the end of
+	// the snapshot list (this explains why we we're seeing child before parent before 3.83, and now see duplicate
+	// resource) - Voila bad snapshot.
+	//
+	// To prevent the above the engine now doesn't save Aliases in state anymore, so when we run update 4 above it
+	// doesn't see any aliases saved for "resAX" and so doesn't do the broken normalisation.
+
+	mode := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					// We should only create things in the first and last pass
+					ok := mode == 0 || mode == 2
+					assert.True(t, ok, "%s tried to create but should be aliased", urn)
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+					timeout float64,
+				) (resource.Status, error) {
+					// We should only delete things in the last pass
+					ok := mode == 2
+					assert.True(t, ok, "%s tried to delete but should be aliased", urn)
+
+					return resource.StatusUnknown, errors.New("can't delete")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		switch mode {
+		case 0:
+			fallthrough
+		case 2:
+			// Default case, and also the last case make "resA"
+			_, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+		case 1:
+			// Rename "resA" to "resAX" with an alias
+			_, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resAX",
+				true,
+				deploytest.ResourceOptions{
+					Aliases: []resource.Alias{
+						{
+							Name: "resA",
+						},
+					},
+				})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update for initial state with "resA"
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+
+	// Run the next case, resA should be aliased
+	mode = 1
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resAX"), snap.Resources[1].URN)
+
+	// Run the last case, resAX should try to delete and resA should be created. We can't possibly know that resA ==
+	// resAX at this point because we're not being sent aliases.
+	mode = 2
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Nil(t, snap.VerifyIntegrity())
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resAX"), snap.Resources[2].URN)
+}
