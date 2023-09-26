@@ -204,11 +204,11 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 func RunInstallPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
 ) error {
-	_, _, err := installPlugins(proj, pwd, main, target, plugctx, true /*returnInstallErrors*/)
+	_, _, err := installPlugins(context.Background(), proj, pwd, main, target, plugctx, true /*returnInstallErrors*/)
 	return err
 }
 
-func installPlugins(
+func installPlugins(cancel context.Context,
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
 	plugctx *plugin.Context, returnInstallErrors bool,
 ) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
@@ -244,7 +244,7 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(plugctx.Request(), plugctx.Diag, allPlugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(cancel, plugctx.Diag, allPlugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
@@ -258,7 +258,7 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
+func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
 	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions,
 ) error {
 	var allValidationErrors []string
@@ -272,7 +272,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 
 	// Install and load required policy packs.
 	for _, policy := range policies {
-		policyPath, err := policy.Install(context.Background())
+		policyPath, err := policy.Install(ctx)
 		if err != nil {
 			return err
 		}
@@ -367,7 +367,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 	return nil
 }
 
-func newUpdateSource(
+func newUpdateSource(cancel context.Context,
 	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
@@ -375,7 +375,7 @@ func newUpdateSource(
 	// Step 1: Install and load plugins.
 	//
 
-	allPlugins, defaultProviderVersions, err := installPlugins(proj, pwd, main, target,
+	allPlugins, defaultProviderVersions, err := installPlugins(cancel, proj, pwd, main, target,
 		plugctx, false /*returnInstallErrors*/)
 	if err != nil {
 		return nil, err
@@ -405,7 +405,7 @@ func newUpdateSource(
 		Config:       config,
 		DryRun:       dryRun,
 	}
-	if err := installAndLoadPolicyPlugins(plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
+	if err := installAndLoadPolicyPlugins(cancel, plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {
 		return nil, err
 	}
