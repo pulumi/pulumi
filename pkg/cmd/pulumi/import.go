@@ -489,9 +489,12 @@ func newImportCmd() *cobra.Command {
 				}
 				importFile = f
 			} else if from != "" {
-				converter, err := plugin.NewConverter(pCtx, from, nil)
+				log := func(sev diag.Severity, msg string) {
+					pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
+				}
+				converter, err := loadConverterPlugin(pCtx, from, log)
 				if err != nil {
-					return result.FromError(err)
+					return result.Errorf("load converter plugin: %w", err)
 				}
 				defer contract.IgnoreClose(converter)
 
