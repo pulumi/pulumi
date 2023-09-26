@@ -89,6 +89,9 @@ type stepExecutor struct {
 	pendingNews     sync.Map    // Resources that have been created but are pending a RegisterResourceOutputs.
 	continueOnError bool        // True if we want to continue the deployment after a step error.
 
+	// Lock protecting the running of workers. This can be used to synchronize with step executor.
+	workerLock sync.RWMutex
+
 	workers        sync.WaitGroup     // WaitGroup tracking the worker goroutines that are owned by this step executor.
 	incomingChains chan incomingChain // Incoming chains that we are to execute
 
@@ -117,6 +120,16 @@ func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 	}
 
 	return completionToken{channel: completion}
+}
+
+// Locks the step executor from executing any more steps. This is used to synchronize with the step executor.
+func (se *stepExecutor) Lock() {
+	se.workerLock.Lock()
+}
+
+// Unlocks the step executor to allow it to execute more steps. This is used to synchronize with the step executor.
+func (se *stepExecutor) Unlock() {
+	se.workerLock.Unlock()
 }
 
 // ExecuteParallel submits an antichain for parallel execution. All of the steps within the antichain are submitted for
@@ -247,7 +260,14 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 		default:
 		}
 
-		if err := se.executeStep(workerID, step); err != nil {
+		// Take the work lock before executing the step, this uses the "read" side of the lock because we're ok with as
+		// many workers as possible executing steps in parallel.
+		se.workerLock.RLock()
+		err := se.executeStep(workerID, step)
+		// Regardless of error we need to release the lock here.
+		se.workerLock.RUnlock()
+
+		if err != nil {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
 			se.cancelDueToError()
 			if err != errStepApplyFailed {
