@@ -1786,7 +1786,8 @@ type genOutputTypesArgs struct {
 	usingGenericTypes bool
 
 	// optional type name override
-	name string
+	name   string
+	output bool
 }
 
 func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
@@ -1800,7 +1801,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 		name = pkg.tokenToType(t.Token)
 	}
 
-	if details.output {
+	if details.output || genArgs.output {
 		printComment(w, t.Comment, false)
 		genOutputType(w,
 			name,                      /* baseName */
@@ -2620,7 +2621,7 @@ func NeedsGoOutputVersion(f *schema.Function) bool {
 		return false
 	}
 
-	return f.NeedsOutputVersion()
+	return f.ReturnType != nil
 }
 
 func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
@@ -2631,7 +2632,7 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	buffer := &bytes.Buffer{}
 
 	var imports []string
-	if NeedsGoOutputVersion(f) {
+	if f.ReturnType != nil {
 		imports = []string{"context", "reflect"}
 		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 	}
@@ -2806,7 +2807,10 @@ func (pkg *pkgContext) genFunctionOutputGenericVersion(w io.Writer, f *schema.Fu
 	originalResultTypeName := pkg.functionResultTypeName(f)
 	resultTypeName := fmt.Sprintf("%sOutput", originalResultTypeName)
 
-	code := `
+	code := ""
+
+	if f.Inputs != nil {
+		code = `
 func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${outputType} {
 	outputResult := pulumix.ApplyErr[*${fn}Args](args.ToOutput(), func(plainArgs *${fn}Args) (*${fn}Result, error) {
 		return ${fn}(ctx, plainArgs, opts...)
@@ -2815,40 +2819,51 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 	return pulumix.Cast[${outputType}, *${fn}Result](outputResult)
 }
 `
+	} else {
+		code = `
+func ${fn}Output(ctx *pulumi.Context, opts ...pulumi.InvokeOption) ${outputType} {
+	outputResult := pulumix.ApplyErr[int](pulumix.Val(0), func(_ int) (*${fn}Result, error) {
+		return ${fn}(ctx, opts...)
+	})
+
+	return pulumix.Cast[${outputType}, *${fn}Result](outputResult)
+}
+`
+	}
 
 	code = strings.ReplaceAll(code, "${fn}", originalName)
 	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
 	fmt.Fprint(w, code)
 
-	useGenericTypes := true
-	pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape, useGenericTypes)
+	if f.Inputs != nil {
+		useGenericTypes := true
+		pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape, useGenericTypes)
 
-	receiverType := name + "Args"
-	plainType := originalName + "Args"
+		receiverType := name + "Args"
+		plainType := originalName + "Args"
 
-	fmt.Fprintf(w, "func (args %s) ToOutput() pulumix.Output[*%s] {\n", receiverType, plainType)
-	fmt.Fprint(w, "\tallArgs := pulumix.All(\n")
-	for i, p := range f.Inputs.Properties {
-		fmt.Fprintf(w, "\t\targs.%s.ToOutput(context.Background()).AsAny()", pkg.fieldName(nil, p))
-		if i < len(f.Inputs.Properties)-1 {
-			fmt.Fprint(w, ",\n")
+		fmt.Fprintf(w, "func (args %s) ToOutput() pulumix.Output[*%s] {\n", receiverType, plainType)
+		fmt.Fprint(w, "\tallArgs := pulumix.All(\n")
+		for i, p := range f.Inputs.Properties {
+			fmt.Fprintf(w, "\t\targs.%s.ToOutput(context.Background()).AsAny()", pkg.fieldName(nil, p))
+			if i < len(f.Inputs.Properties)-1 {
+				fmt.Fprint(w, ",\n")
+			}
 		}
+		fmt.Fprint(w, ")\n")
+
+		fmt.Fprintf(w, "\treturn pulumix.Apply[[]any](allArgs, func(resolvedArgs []interface{}) *%s {\n", plainType)
+		fmt.Fprintf(w, "\t\treturn &%s{\n", plainType)
+		for i, p := range f.Inputs.Properties {
+			fmt.Fprintf(w, "\t\t\t%s: resolvedArgs[%d].(%s),\n",
+				pkg.fieldName(nil, p),
+				i,
+				pkg.typeString(p.Type))
+		}
+		fmt.Fprintf(w, "\t\t}\n")
+		fmt.Fprintf(w, "\t})\n")
+		fmt.Fprintf(w, "}\n\n")
 	}
-	fmt.Fprint(w, ")\n")
-
-	fmt.Fprintf(w, "\treturn pulumix.Apply[[]any](allArgs, func(resolvedArgs []interface{}) *%s {\n", plainType)
-	fmt.Fprintf(w, "\t\treturn &%s{\n", plainType)
-	for i, p := range f.Inputs.Properties {
-		fmt.Fprintf(w, "\t\t\t%s: resolvedArgs[%d].(%s),\n",
-			pkg.fieldName(nil, p),
-			i,
-			pkg.typeString(p.Type))
-	}
-	fmt.Fprintf(w, "\t\t}\n")
-
-	fmt.Fprintf(w, "\t})\n")
-
-	fmt.Fprintf(w, "}\n\n")
 
 	var objectReturnType *schema.ObjectType
 	if f.ReturnType != nil {
@@ -2904,7 +2919,7 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 }
 
 func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function, useGenericTypes bool) {
-	if !NeedsGoOutputVersion(f) {
+	if f.ReturnType == nil {
 		return
 	}
 
@@ -2918,7 +2933,10 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 	originalResultTypeName := pkg.functionResultTypeName(f)
 	resultTypeName := originalResultTypeName + "Output"
 
-	code := `
+	code := ""
+
+	if f.Inputs != nil {
+		code = `
 func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${outputType} {
 	return pulumi.ToOutputWithContext(context.Background(), args).
 		ApplyT(func(v interface{}) (${fn}Result, error) {
@@ -2933,24 +2951,42 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 }
 
 `
+	} else {
+		code = `
+func ${fn}Output(ctx *pulumi.Context, opts ...pulumi.InvokeOption) ${outputType} {
+	return pulumi.ToOutput(0).ApplyT(func(int) (${fn}Result, error) {
+		r, err := ${fn}(ctx, opts...)
+		var s ${fn}Result
+		if r != nil {
+			s = *r
+		}
+		return s, err
+	}).(${outputType})
+}
+
+`
+	}
 
 	code = strings.ReplaceAll(code, "${fn}", originalName)
 	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
 	fmt.Fprint(w, code)
 
-	pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape, false /*emitGenericVariant*/)
+	if f.Inputs != nil {
+		pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape, false /*emitGenericVariant*/)
 
-	genInputImplementationWithArgs(w, genInputImplementationArgs{
-		name:              name + "Args",
-		receiverType:      name + "Args",
-		elementType:       pkg.functionArgsTypeName(f),
-		usingGenericTypes: useGenericTypes,
-	})
+		genInputImplementationWithArgs(w, genInputImplementationArgs{
+			name:              name + "Args",
+			receiverType:      name + "Args",
+			elementType:       pkg.functionArgsTypeName(f),
+			usingGenericTypes: useGenericTypes,
+		})
+	}
 	if f.ReturnType != nil {
 		if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 			pkg.genOutputTypes(w, genOutputTypesArgs{
-				t:    objectType,
-				name: originalResultTypeName,
+				t:      objectType,
+				name:   originalResultTypeName,
+				output: true,
 			})
 		}
 	}
