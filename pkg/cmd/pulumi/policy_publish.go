@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -126,8 +125,7 @@ func requirePolicyPack(ctx context.Context, policyPack string) (backend.PolicyPa
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, project,
-		workspace.GetCloudInsecure(cloudURL), displayOptions)
+	b, err := loginToCloud(ctx, cloudURL, project, workspace.GetCloudInsecure(cloudURL), displayOptions)
 	if err != nil {
 		return nil, err
 	}
