@@ -2353,7 +2353,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeFactory(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
@@ -2376,11 +2376,13 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 		}, result)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := func() plugin.Host {
+		return deploytest.NewPluginHost(nil, nil, programF(), loaders...)
+	}
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
-		Steps:   MakeBasicLifecycleSteps(t, 4),
+		OptionsFunc: WithHostF(hostF),
+		Steps:       MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
