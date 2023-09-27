@@ -39,6 +39,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+var ErrHostIsClosed = errors.New("plugin host is shutting down")
+
 var UseGrpcPluginsByDefault = false
 
 type (
@@ -346,6 +348,9 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 }
 
 func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	if host.isClosed() {
+		return nil, ErrHostIsClosed
+	}
 	plug, err := host.plugin(workspace.ResourcePlugin, string(pkg), version, nil)
 	if err != nil {
 		return nil, err
@@ -363,10 +368,16 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 func (host *pluginHost) LanguageRuntime(
 	root, pwd, runtime string, options map[string]interface{},
 ) (plugin.LanguageRuntime, error) {
+	if host.isClosed() {
+		return nil, ErrHostIsClosed
+	}
 	return host.languageRuntime, nil
 }
 
 func (host *pluginHost) SignalCancellation() error {
+	if host.isClosed() {
+		return ErrHostIsClosed
+	}
 	host.m.Lock()
 	defer host.m.Unlock()
 
@@ -380,6 +391,9 @@ func (host *pluginHost) SignalCancellation() error {
 }
 
 func (host *pluginHost) Close() error {
+	if host.isClosed() {
+		return nil // Close is idempotent
+	}
 	host.m.Lock()
 	defer host.m.Unlock()
 
@@ -416,6 +430,9 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 }
 
 func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
+	if host.isClosed() {
+		return ErrHostIsClosed
+	}
 	host.m.Lock()
 	defer host.m.Unlock()
 
@@ -424,6 +441,9 @@ func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
 }
 
 func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+	if host.isClosed() {
+		return ErrHostIsClosed
+	}
 	return nil
 }
 
@@ -476,6 +496,9 @@ func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
 func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 	opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
+	if host.isClosed() {
+		return nil, ErrHostIsClosed
+	}
 	plug, err := host.plugin(workspace.AnalyzerPlugin, string(name), nil, opts)
 	if err != nil || plug == nil {
 		return nil, err
