@@ -16,6 +16,7 @@ package deploytest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -25,6 +26,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+var ErrLanguageRuntimeIsClosed = errors.New("language runtime is shutting down")
+
+type LanguageRuntimeFactory func() plugin.LanguageRuntime
+
+func NewLanguageRuntimeFactory(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) LanguageRuntimeFactory {
+	return func() plugin.LanguageRuntime {
+		return NewLanguageRuntime(program, requiredPlugins...)
+	}
+}
 
 type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
 
@@ -38,17 +49,25 @@ func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.Plugin
 type languageRuntime struct {
 	requiredPlugins []workspace.PluginSpec
 	program         ProgramFunc
+	closed          bool
 }
 
 func (p *languageRuntime) Close() error {
+	p.closed = true
 	return nil
 }
 
 func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginSpec, error) {
+	if p.closed {
+		return nil, ErrLanguageRuntimeIsClosed
+	}
 	return p.requiredPlugins, nil
 }
 
 func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
+	if p.closed {
+		return "", false, ErrLanguageRuntimeIsClosed
+	}
 	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
 	if err != nil {
 		return "", false, err
@@ -67,20 +86,32 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 }
 
 func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
+	if p.closed {
+		return workspace.PluginInfo{}, ErrLanguageRuntimeIsClosed
+	}
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
 func (p *languageRuntime) InstallDependencies(directory string) error {
+	if p.closed {
+		return ErrLanguageRuntimeIsClosed
+	}
 	return nil
 }
 
 func (p *languageRuntime) About() (plugin.AboutInfo, error) {
+	if p.closed {
+		return plugin.AboutInfo{}, ErrLanguageRuntimeIsClosed
+	}
 	return plugin.AboutInfo{}, nil
 }
 
 func (p *languageRuntime) GetProgramDependencies(
 	info plugin.ProgInfo, transitiveDependencies bool,
 ) ([]plugin.DependencyInfo, error) {
+	if p.closed {
+		return nil, ErrLanguageRuntimeIsClosed
+	}
 	return nil, nil
 }
 

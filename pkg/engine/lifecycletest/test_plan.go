@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -158,6 +159,15 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	}
 }
 
+type UpdateOptionsFunc func(opts *UpdateOptions)
+
+// WithHostF overrides the host to be used in the op.
+func WithHostF(f func() plugin.Host) UpdateOptionsFunc {
+	return func(opts *UpdateOptions) {
+		opts.Host = f()
+	}
+}
+
 type TestPlan struct {
 	Project        string
 	Stack          string
@@ -167,6 +177,7 @@ type TestPlan struct {
 	Decrypter      config.Decrypter
 	BackendClient  deploy.BackendClient
 	Options        UpdateOptions
+	OptionsFunc    UpdateOptionsFunc
 	Steps          []TestStep
 }
 
@@ -252,6 +263,9 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 		// cause state changes from the preview to persist even when doing an update.
 		// GetTarget ALWAYS clones the snapshot, so the previewTarget.Snapshot != target.Snapshot
 		if !step.SkipPreview {
+			if p.OptionsFunc != nil {
+				p.OptionsFunc(&p.Options)
+			}
 			previewTarget := p.GetTarget(t, snap)
 			// Don't run validate on the preview step
 			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
@@ -263,6 +277,9 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 			assert.Nil(t, res)
 		}
 
+		if p.OptionsFunc != nil {
+			p.OptionsFunc(&p.Options)
+		}
 		var res result.Result
 		target := p.GetTarget(t, snap)
 		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
