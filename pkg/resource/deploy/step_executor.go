@@ -149,7 +149,9 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
 	value, has := se.pendingNews.Load(urn)
-	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
+	if !has {
+		return fmt.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
+	}
 	reg := value.(Step)
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	se.pendingNews.Delete(urn)
