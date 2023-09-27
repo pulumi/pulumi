@@ -231,12 +231,14 @@ func (e *evalContext) validateSchemaArray(x, accept *schema.Schema, loc validati
 // accept to validate x:
 //
 // - For each property P with schema S in x:
-//     - If P is also in accept with schema T, then T must validate S
-//     - If P is not in accept, then x's AdditionalProperties must validate S
+//   - If P is also in accept with schema T, then T must validate S
+//   - If P is not in accept, then x's AdditionalProperties must validate S
+//
 // - If x does not have AdditionalProperties:
-//     - All Required properties in accept must also be Required in x
-//     - For each DependentRequired property P in accept, if P is Required in x, all of P's dependencies must also be
-//       Required in x
+//   - All Required properties in accept must also be Required in x
+//   - For each DependentRequired property P in accept, if P is Required in x, all of P's dependencies must also be
+//     Required in x
+//
 // - If x _does_ have AdditionalProperties, then accept's AdditionalProperties must validate x's AdditionalProperties
 func (e *evalContext) validateSchemaObject(x, accept *schema.Schema, loc validationLoc) bool {
 	allOk := true
