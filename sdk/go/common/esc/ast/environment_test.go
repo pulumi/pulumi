@@ -13,7 +13,10 @@ import (
 	"github.com/pulumi/esc/syntax/encoding"
 )
 
-const example = `
+func TestExample(t *testing.T) {
+	t.Parallel()
+
+	const example = `
 imports:
   - green-channel
   - us-west-2
@@ -30,8 +33,32 @@ config:
         environment: prod
 `
 
-func TestExample(t *testing.T) {
+	syntax, diags := encoding.DecodeYAML("<stdin>", yaml.NewDecoder(strings.NewReader(example)), nil)
+	require.Len(t, diags, 0)
+
+	environment, diags := ParseEnvironment([]byte(example), syntax)
+	assert.Len(t, diags, 0)
+
+	assert.Nil(t, environment.Description)
+}
+
+func TestExample2(t *testing.T) {
 	t.Parallel()
+
+	const example = `
+imports:
+  - green-channel
+  - us-west-2
+config:
+  aws:
+    fn::open::aws-oidc:
+      sessionName: site-prod-session
+      roleArn: some-role-arn
+  pulumi:
+    aws:defaultTags:
+      tags:
+        environment: prod
+`
 
 	syntax, diags := encoding.DecodeYAML("<stdin>", yaml.NewDecoder(strings.NewReader(example)), nil)
 	require.Len(t, diags, 0)

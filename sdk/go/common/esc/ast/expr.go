@@ -531,6 +531,11 @@ func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) 
 	case "fn::toString":
 		parse = parseToString
 	default:
+		if strings.HasPrefix(kvp.Key.Value(), "fn::open::") {
+			parse = parseShortOpen
+			break
+		}
+
 		if strings.HasPrefix(strings.ToLower(kvp.Key.Value()), "fn::") {
 			diags = append(diags, syntax.Warning(kvp.Key.Syntax().Range(),
 				"'fn::' is a reserved prefix",
@@ -602,6 +607,18 @@ func parseOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, synt
 	}
 
 	return OpenSyntax(node, name, obj, provider, inputs), diags
+}
+
+func parseShortOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
+	kvp := node.Index(0)
+	provider := strings.TrimPrefix(kvp.Key.Value(), "fn::open::")
+	inputs, ok := args.(*ObjectExpr)
+	if !ok {
+		return nil, syntax.Diagnostics{ExprError(args, fmt.Sprintf("the argument to fn::open::%s must be an object", provider), "")}
+	}
+	p := name.Syntax().(*syntax.StringNode)
+
+	return OpenSyntax(node, name, inputs, StringSyntaxValue(p, provider), inputs), nil
 }
 
 func parseJoin(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
