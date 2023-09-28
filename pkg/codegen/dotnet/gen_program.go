@@ -84,6 +84,10 @@ func (g *generator) resetListInitializer() {
 	g.listInitializer = "new[]"
 }
 
+func (g *generator) usingDefaultListInitializer() bool {
+	return g.listInitializer == "new[]"
+}
+
 const (
 	pulumiPackage = "pulumi"
 	dynamicType   = "dynamic"

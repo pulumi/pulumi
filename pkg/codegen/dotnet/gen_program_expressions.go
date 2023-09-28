@@ -800,6 +800,23 @@ func resolvePropertyName(property string, overrides map[string]string) string {
 	return propertyName(property)
 }
 
+func unwrapIntrinsicConvert(expr model.Expression) model.Expression {
+	if call, ok := expr.(*model.FunctionCallExpression); ok && call.Name == pcl.IntrinsicConvert {
+		return call.Args[0]
+	}
+
+	return expr
+}
+
+func isEmptyList(expr model.Expression) bool {
+	expr = unwrapIntrinsicConvert(expr)
+	if list, ok := expr.(*model.TupleConsExpression); ok {
+		return len(list.Expressions) == 0
+	}
+
+	return false
+}
+
 func (g *generator) genObjectConsExpressionWithTypeName(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
@@ -832,7 +849,11 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 				lit := item.Key.(*model.LiteralValueExpression)
 				propertyKey := lit.Value.AsString()
 				g.Fprint(w, resolvePropertyName(propertyKey, propertyNames))
-				g.Fgenf(w, " = %.v,\n", item.Value)
+				if g.usingDefaultListInitializer() && isEmptyList(item.Value) {
+					g.Fgen(w, " = new() { },\n")
+				} else {
+					g.Fgenf(w, " = %.v,\n", item.Value)
+				}
 			}
 		})
 		g.Fgenf(w, "%s}", g.Indent)
