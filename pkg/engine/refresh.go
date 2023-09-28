@@ -69,7 +69,8 @@ func Refresh(
 	}, dryRun)
 }
 
-func newRefreshSource(cancel context.Context, client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main,
+func newRefreshSource(
+	cancel context.Context, client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main,
 	projectRoot string, target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.

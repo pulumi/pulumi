@@ -199,7 +199,8 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
-	source, err := opts.SourceFunc(cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, dryRun)
+	source, err := opts.SourceFunc(
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, dryRun)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
