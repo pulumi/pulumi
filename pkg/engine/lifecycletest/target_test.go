@@ -980,23 +980,20 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 func TestTargetedCreateDefaultProvider(t *testing.T) {
 	t.Parallel()
 
-	hostF := func() plugin.Host {
-		loaders := []*deploytest.ProviderLoader{
-			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-				return &deploytest.Provider{}, nil
-			}),
-		}
-
-		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-			assert.NoError(t, err)
-
-			return nil
-		})
-
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-		return host
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
 	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{}
 
