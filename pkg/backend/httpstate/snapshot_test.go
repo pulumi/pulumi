@@ -267,7 +267,7 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 }
 
 func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -298,11 +298,11 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			return nil
 		})
 	})
-	host := deploytest.NewPluginHost(nil, nil, program)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
 
 	var journalEntries engine.JournalEntries
 	p := &lifecycletest.TestPlan{
-		Options: engine.UpdateOptions{Host: host},
+		Options: lifecycletest.TestUpdateOptions{HostF: hostF},
 		Steps: []lifecycletest.TestStep{
 			{
 				Op:          engine.Update,

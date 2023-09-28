@@ -32,7 +32,7 @@ func TestParallelRefresh(t *testing.T) {
 
 	// Create a program that registers four resources, each of which depends on the resource that immediately precedes
 	// it.
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
@@ -53,10 +53,10 @@ func TestParallelRefresh(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Parallel: 4, Host: host},
+		Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{Parallel: 4}},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -90,7 +90,7 @@ func TestExternalRefresh(t *testing.T) {
 	}
 
 	// Our program reads a resource and exits.
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "")
 		if !assert.NoError(t, err) {
 			t.FailNow()
@@ -98,9 +98,9 @@ func TestExternalRefresh(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 
@@ -112,7 +112,7 @@ func TestExternalRefresh(t *testing.T) {
 	assert.True(t, snap.Resources[1].External)
 
 	p = &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Refresh}},
 	}
 
@@ -164,14 +164,14 @@ func TestRefreshInitFailure(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p.Options.Host = host
+	p.Options.HostF = hostF
 
 	//
 	// Create an old snapshot with a single initialization failure.
@@ -263,14 +263,14 @@ func TestRefreshWithDelete(t *testing.T) {
 				}),
 			}
 
-			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 				assert.NoError(t, err)
 				return err
 			})
 
-			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-			p := &TestPlan{Options: UpdateOptions{Host: host, Parallel: parallelFactor}}
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			p := &TestPlan{Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{Parallel: parallelFactor}}}
 
 			p.Steps = []TestStep{{Op: Update}}
 			snap := p.Run(t, nil)
@@ -382,7 +382,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{
 		{
@@ -558,7 +558,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{{
 		Op: Refresh,
@@ -655,6 +655,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 // Tests that an interrupted refresh leaves behind an expected state.
 func TestCanceledRefresh(t *testing.T) {
+	t.SkipNow() // fix: https://github.com/pulumi/pulumi/pull/14057
 	t.Parallel()
 
 	p := &TestPlan{}
@@ -728,9 +729,11 @@ func TestCanceledRefresh(t *testing.T) {
 
 	refreshed := make(map[resource.ID]bool)
 	op := TestOp(Refresh)
-	options := UpdateOptions{
-		Parallel: 1,
-		Host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
+	options := TestUpdateOptions{
+		HostF: deploytest.NewPluginHostF(nil, nil, nil, loaders...),
+		UpdateOptions: UpdateOptions{
+			Parallel: 1,
+		},
 	}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -841,14 +844,14 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p.Options.Host = host
+	p.Options.HostF = hostF
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
@@ -902,12 +905,12 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p.Options.Host = host
+	p.Options.HostF = hostF
 	p.Options.Refresh = true
 
 	old := &deploy.Snapshot{

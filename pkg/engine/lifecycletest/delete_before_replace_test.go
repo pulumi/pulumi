@@ -23,7 +23,7 @@ var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G"
 
 func generateComplexTestDependencyGraph(
 	t *testing.T, p *TestPlan,
-) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+) ([]resource.URN, *deploy.Snapshot, deploytest.LanguageRuntimeFactory) {
 	resType := tokens.Type("pkgA:m:typA")
 
 	names := complexTestDependencyGraphNames
@@ -86,7 +86,7 @@ func generateComplexTestDependencyGraph(
 		},
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
 			_, id, _, err := monitor.RegisterResource(urn.Type(), string(urn.Name()), true, deploytest.ResourceOptions{
 				Provider: provider,
@@ -112,7 +112,7 @@ func generateComplexTestDependencyGraph(
 		return nil
 	})
 
-	return urns, old, program
+	return urns, old, programF
 }
 
 func TestDeleteBeforeReplace(t *testing.T) {
@@ -138,7 +138,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 
 	p := &TestPlan{}
 
-	urns, old, program := generateComplexTestDependencyGraph(t, p)
+	urns, old, programF := generateComplexTestDependencyGraph(t, p)
 	names := complexTestDependencyGraphNames
 
 	loaders := []*deploytest.ProviderLoader{
@@ -167,7 +167,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		}),
 	}
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p.Steps = []TestStep{{
 		Op:            Update,
@@ -216,7 +216,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 
 	const resType = "pkgA:m:typA"
 	var urnA, urnB, urnC, urnD resource.URN
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(name string, inputs resource.PropertyMap, inputDeps propertyDependencies,
 			dependencies []resource.URN,
 		) resource.URN {
@@ -247,9 +247,9 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		return nil
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	snap := p.Run(t, nil)
@@ -307,7 +307,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	var provURN, urnA, urnB resource.URN
 	var provID resource.ID
 	var err error
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err = monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
 
@@ -337,7 +337,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		return nil
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -528,7 +528,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 
 	var urnA, urnB resource.URN
 	var err error
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
@@ -545,12 +545,12 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	inputsA["A"] = resource.NewStringProperty("bar")
-	program = deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		urnB, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs: inputsB,
 		})
@@ -564,7 +564,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Steps = []TestStep{
 		{
 			Op: Update,

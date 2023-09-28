@@ -51,7 +51,7 @@ func TestResourceReferences(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		urnA, _, _, err = monitor.RegisterResource("component", "resA", false)
 		assert.NoError(t, err)
@@ -76,10 +76,10 @@ func TestResourceReferences(t *testing.T) {
 		}))
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -126,7 +126,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	}
 
 	opts := deploytest.ResourceOptions{DisableResourceReferences: true}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		urnA, _, _, err = monitor.RegisterResource("component", "resA", false, opts)
 		assert.NoError(t, err)
@@ -148,10 +148,10 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 		}
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -194,7 +194,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		urnA, _, _, err = monitor.RegisterResource("component", "resA", false)
 		assert.NoError(t, err)
@@ -223,10 +223,10 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		return nil
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host, DisableResourceReferences: true},
+		Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{DisableResourceReferences: true}},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -259,7 +259,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		urnChild, idChild, _, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
 		assert.NoError(t, err)
 
@@ -287,10 +287,10 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		return nil
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)

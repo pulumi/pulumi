@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -54,14 +55,14 @@ type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, displ
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
 	events []Event, res result.Result) result.Result
 
-func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts UpdateOptions,
+func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Plan, result.Result) {
 	plan, _, res := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate)
 	return plan, res
 }
 
-func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
+func (op TestOp) Run(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Snapshot, result.Result) {
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
@@ -69,7 +70,7 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 
 func (op TestOp) RunWithContext(
 	callerCtx context.Context, project workspace.Project,
-	target deploy.Target, opts UpdateOptions, dryRun bool,
+	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Snapshot, result.Result) {
 	_, snap, res := op.runWithContext(callerCtx, project, target, opts, dryRun, backendClient, validate)
@@ -78,7 +79,7 @@ func (op TestOp) RunWithContext(
 
 func (op TestOp) runWithContext(
 	callerCtx context.Context, project workspace.Project,
-	target deploy.Target, opts UpdateOptions, dryRun bool,
+	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Plan, *deploy.Snapshot, result.Result) {
 	// Create an appropriate update info and context.
@@ -105,6 +106,13 @@ func (op TestOp) runWithContext(
 		BackendClient:   backendClient,
 	}
 
+	updateOpts := opts.Options()
+	defer func() {
+		if updateOpts.Host != nil {
+			contract.IgnoreClose(updateOpts.Host)
+		}
+	}()
+
 	// Begin draining events.
 	var wg sync.WaitGroup
 	var firedEvents []Event
@@ -117,7 +125,7 @@ func (op TestOp) runWithContext(
 	}()
 
 	// Run the step and its validator.
-	plan, _, res := op(info, ctx, opts, dryRun)
+	plan, _, res := op(info, ctx, updateOpts, dryRun)
 	close(events)
 	wg.Wait()
 	contract.IgnoreClose(journal)
@@ -158,6 +166,22 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	}
 }
 
+// TestUpdateOptions is UpdateOptions for a TestPlan.
+type TestUpdateOptions struct {
+	UpdateOptions
+	// a factory to produce a plugin host for an update operation.
+	HostF deploytest.PluginHostFactory
+}
+
+// Options produces UpdateOptions for an update operation.
+func (o TestUpdateOptions) Options() UpdateOptions {
+	opts := o.UpdateOptions
+	if o.HostF != nil {
+		opts.Host = o.HostF()
+	}
+	return opts
+}
+
 type TestPlan struct {
 	Project        string
 	Stack          string
@@ -166,7 +190,7 @@ type TestPlan struct {
 	Config         config.Map
 	Decrypter      config.Decrypter
 	BackendClient  deploy.BackendClient
-	Options        UpdateOptions
+	Options        TestUpdateOptions
 	Steps          []TestStep
 }
 

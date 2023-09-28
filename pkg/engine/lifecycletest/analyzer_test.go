@@ -55,17 +55,19 @@ func TestSimpleAnalyzer(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{
-			RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
-			Host:             host,
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
 		},
 	}
 
@@ -97,17 +99,19 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.Error(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{
-			RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
-			Host:             host,
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
 		},
 	}
 
@@ -139,17 +143,19 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{
-			RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
-			Host:             host,
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
 		},
 	}
 
