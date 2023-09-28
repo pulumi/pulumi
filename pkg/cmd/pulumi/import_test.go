@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -147,6 +149,67 @@ func TestParseImportFile_errors(t *testing.T) {
 				"could not parse version 'not-a-semver' for resource 'thing' of type 'foo:bar:baz'",
 			},
 		},
+		{
+			desc: "ambiguous parent",
+			give: importFile{
+				Resources: []importSpec{
+					{
+						Name:    "res",
+						ID:      "res",
+						Type:    "foo:bar:bar",
+						Version: "0.0.0",
+					},
+					{
+						Name:    "res",
+						ID:      "res",
+						Type:    "foo:bar:baz",
+						Version: "0.0.0",
+					},
+					{
+						Name:    "res-2",
+						ID:      "res-2",
+						Type:    "foo:bar:a",
+						Parent:  "res",
+						Version: "0.0.0",
+					},
+				},
+			},
+			wantErrs: []string{
+				"resource 'res-2' of type 'foo:bar:a' has an ambiguous parent",
+			},
+		},
+		{
+			desc: "ambiguous provider",
+			give: importFile{
+				NameTable: map[string]resource.URN{
+					"res": "whatever",
+				},
+				Resources: []importSpec{
+					{
+						Name:    "res",
+						ID:      "res",
+						Type:    "foo:bar:bar",
+						Version: "0.0.0",
+					},
+					{
+						Name:    "res",
+						ID:      "res",
+						Type:    "foo:bar:baz",
+						Version: "0.0.0",
+					},
+					{
+						Name:     "res-2",
+						ID:       "res-2",
+						Type:     "foo:bar:a",
+						Provider: "res",
+						Version:  "0.0.0",
+					},
+				},
+			},
+			wantErrs: []string{
+				"resource 'res-2' of type 'foo:bar:a' has an ambiguous provider",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -162,5 +225,80 @@ func TestParseImportFile_errors(t *testing.T) {
 				assert.ErrorContains(t, err, wantErr)
 			}
 		})
+	}
+}
+
+func TestParseImportFileSameName(t *testing.T) {
+	t.Parallel()
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name:    "thing",
+				ID:      "thing",
+				Type:    "foo:bar:bar",
+				Version: "0.0.0",
+			},
+			{
+				Name:    "thing",
+				ID:      "thing",
+				Type:    "foo:bar:bar",
+				Version: "0.0.0",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, false)
+	assert.NoError(t, err)
+	resourceNames := map[tokens.QName]struct{}{}
+	for _, imp := range imports {
+		_, exists := resourceNames[imp.Name]
+		assert.False(t, exists, "name %s should not have been seen already", imp.Name)
+		resourceNames[imp.Name] = struct{}{}
+	}
+
+	// Check expected names are present.
+	for _, name := range []tokens.QName{"thing", "thing_1"} {
+		_, exists := resourceNames[name]
+		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
+	}
+}
+
+func TestParseImportFileRenameNoClash(t *testing.T) {
+	t.Parallel()
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name:    "thing",
+				ID:      "thing",
+				Type:    "foo:bar:a",
+				Version: "0.0.0",
+			},
+			{
+				Name:    "thing",
+				ID:      "thing",
+				Type:    "foo:bar:a",
+				Version: "0.0.0",
+			},
+			{
+				Name:    "thing_1",
+				ID:      "thing",
+				Type:    "foo:bar:a",
+				Version: "0.0.0",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, false)
+	assert.NoError(t, err)
+	resourceNames := map[tokens.QName]struct{}{}
+	// Check resource names are unique.
+	for _, imp := range imports {
+		_, exists := resourceNames[imp.Name]
+		assert.False(t, exists, "name %s should not have been seen already", imp.Name)
+		resourceNames[imp.Name] = struct{}{}
+	}
+
+	// Check expected names are present.
+	for _, name := range []tokens.QName{"thing", "thing_1", "thing_2"} {
+		_, exists := resourceNames[name]
+		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
 	}
 }
