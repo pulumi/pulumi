@@ -267,13 +267,6 @@ func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	return snap
 }
 
-// func (p *TestPlan) Options2() {
-// 	opts := p.Options
-// 	if p.OptionsF != nil {
-// 		p.OptionsF(&opts)
-// 	}
-// }
-
 func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
 	project := p.GetProject()
 	snap := snapshot
