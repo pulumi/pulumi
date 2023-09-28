@@ -1660,41 +1660,38 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 func TestResoucesTargeted(t *testing.T) {
 	t.Parallel()
 
-	hostF := func() deploytest.PluginHostFactory {
-		loaders := []*deploytest.ProviderLoader{
-			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-				return &deploytest.Provider{}, nil
-			}),
-		}
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
 
-		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
-				},
-			})
-			assert.NoError(t, err)
-
-			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
-				},
-			})
-			assert.NoError(t, err)
-
-			return nil
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			},
 		})
+		assert.NoError(t, err)
 
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-		return hostF
-	}()
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{}
 
 	project := p.GetProject()
 
 	// Create the update plan with only targeted resources.
-	opts := TestUpdateOptions{
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Experimental: true,
@@ -1703,26 +1700,24 @@ func TestResoucesTargeted(t *testing.T) {
 				"urn:pulumi:test::test::pkgA:m:typA::resB",
 			}),
 		},
-	}
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), opts, p.BackendClient, nil)
+	}, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.NotNil(t, plan)
 
 	// Check that running an update with everything targeted fails due to our plan being constrained
 	// to the resource.
-	opts = TestUpdateOptions{
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			// Clone the plan as the plan will be mutated by the engine and useless in future runs.
 			Plan:         plan.Clone(),
 			Experimental: true,
 		},
-	}
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 
 	// Check that running an update with the same Targets as the Plan succeeds.
-	opts = TestUpdateOptions{
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			// Clone the plan as the plan will be mutated by the engine and useless in future runs.
@@ -1732,8 +1727,7 @@ func TestResoucesTargeted(t *testing.T) {
 				"urn:pulumi:test::test::pkgA:m:typA::resB",
 			}),
 		},
-	}
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 }
 
