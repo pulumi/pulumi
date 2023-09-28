@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/import
+  description: Import converters will write out their intermediate import file for manual fixups if needed.
