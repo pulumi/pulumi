@@ -88,7 +88,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/spf13/afero v1.9.5
 	go.pennock.tech/tabular v1.1.3
-	golang.org/x/mod v0.10.0
+	golang.org/x/mod v0.12.0
 	golang.org/x/term v0.8.0
 	google.golang.org/protobuf v1.31.0
 )
