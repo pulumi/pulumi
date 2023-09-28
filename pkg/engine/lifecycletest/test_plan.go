@@ -14,11 +14,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -55,14 +55,14 @@ type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, displ
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
 	events []Event, res result.Result) result.Result
 
-func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts UpdateOptions,
+func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Plan, result.Result) {
 	plan, _, res := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate)
 	return plan, res
 }
 
-func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
+func (op TestOp) Run(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Snapshot, result.Result) {
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
@@ -70,7 +70,7 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 
 func (op TestOp) RunWithContext(
 	callerCtx context.Context, project workspace.Project,
-	target deploy.Target, opts UpdateOptions, dryRun bool,
+	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Snapshot, result.Result) {
 	_, snap, res := op.runWithContext(callerCtx, project, target, opts, dryRun, backendClient, validate)
@@ -79,7 +79,7 @@ func (op TestOp) RunWithContext(
 
 func (op TestOp) runWithContext(
 	callerCtx context.Context, project workspace.Project,
-	target deploy.Target, opts UpdateOptions, dryRun bool,
+	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc,
 ) (*deploy.Plan, *deploy.Snapshot, result.Result) {
 	// Create an appropriate update info and context.
@@ -118,7 +118,7 @@ func (op TestOp) runWithContext(
 	}()
 
 	// Run the step and its validator.
-	plan, _, res := op(info, ctx, opts, dryRun)
+	plan, _, res := op(info, ctx, opts.Options(), dryRun)
 	close(events)
 	wg.Wait()
 	contract.IgnoreClose(journal)
@@ -159,13 +159,20 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	}
 }
 
-type UpdateOptionsFunc func(opts *UpdateOptions)
+// TestUpdateOptions is UpdateOptions for a TestPlan.
+type TestUpdateOptions struct {
+	UpdateOptions
+	// a factory to produce a plugin host for an operation.
+	HostF deploytest.PluginHostFactory
+}
 
-// WithHostF overrides the host to be used in the op.
-func WithHostF(f func() plugin.Host) UpdateOptionsFunc {
-	return func(opts *UpdateOptions) {
-		opts.Host = f()
+// Options produces UpdateOptions for an operation.
+func (o TestUpdateOptions) Options() UpdateOptions {
+	opts := o.UpdateOptions
+	if o.HostF != nil {
+		opts.Host = o.HostF()
 	}
+	return opts
 }
 
 type TestPlan struct {
@@ -176,8 +183,7 @@ type TestPlan struct {
 	Config         config.Map
 	Decrypter      config.Decrypter
 	BackendClient  deploy.BackendClient
-	Options        UpdateOptions
-	OptionsFunc    UpdateOptionsFunc
+	Options        TestUpdateOptions
 	Steps          []TestStep
 }
 
@@ -254,6 +260,13 @@ func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	return snap
 }
 
+// func (p *TestPlan) Options2() {
+// 	opts := p.Options
+// 	if p.OptionsF != nil {
+// 		p.OptionsF(&opts)
+// 	}
+// }
+
 func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
 	project := p.GetProject()
 	snap := snapshot
@@ -263,9 +276,6 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 		// cause state changes from the preview to persist even when doing an update.
 		// GetTarget ALWAYS clones the snapshot, so the previewTarget.Snapshot != target.Snapshot
 		if !step.SkipPreview {
-			if p.OptionsFunc != nil {
-				p.OptionsFunc(&p.Options)
-			}
 			previewTarget := p.GetTarget(t, snap)
 			// Don't run validate on the preview step
 			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
@@ -277,9 +287,6 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 			assert.Nil(t, res)
 		}
 
-		if p.OptionsFunc != nil {
-			p.OptionsFunc(&p.Options)
-		}
 		var res result.Result
 		target := p.GetTarget(t, snap)
 		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)

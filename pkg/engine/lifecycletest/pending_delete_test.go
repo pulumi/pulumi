@@ -23,13 +23,13 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 			return &deploytest.Provider{}, nil
 		}),
 	}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -102,10 +102,10 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		}),
 	}
 
-	host := deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")

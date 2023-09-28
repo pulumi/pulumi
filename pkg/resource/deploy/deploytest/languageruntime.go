@@ -31,13 +31,13 @@ var ErrLanguageRuntimeIsClosed = errors.New("language runtime is shutting down")
 
 type LanguageRuntimeFactory func() plugin.LanguageRuntime
 
-func NewLanguageRuntimeFactory(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) LanguageRuntimeFactory {
+type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
+
+func NewLanguageRuntimeF(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) LanguageRuntimeFactory {
 	return func() plugin.LanguageRuntime {
 		return NewLanguageRuntime(program, requiredPlugins...)
 	}
 }
-
-type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
 
 func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) plugin.LanguageRuntime {
 	return &languageRuntime{

@@ -138,13 +138,13 @@ func TestMain(m *testing.M) {
 func TestEmptyProgramLifecycle(t *testing.T) {
 	t.Parallel()
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 0),
 	}
 	p.Run(t, nil)
@@ -166,17 +166,17 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	}
 
 	inputs := resource.PropertyMap{}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -223,15 +223,15 @@ func TestCheckFailureRecord(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.Error(t, err)
 		return err
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -276,15 +276,15 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.Error(t, err)
 		return err
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -324,14 +324,14 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 	}
 
 	errorText := "oh no"
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		// Exiting immediately with an error simulates a language exiting immediately with a non-zero exit code.
 		return errors.New(errorText)
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -383,16 +383,16 @@ func TestBrokenDecrypter(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	key := config.MustMakeKey("foo", "bar")
 	msg := "decryption failed"
 	configMap := make(config.Map)
 	configMap[key] = config.NewSecureValue("hunter2")
 	p := &TestPlan{
-		Options:   UpdateOptions{Host: host},
+		Options:   TestUpdateOptions{HostF: hostF},
 		Decrypter: brokenDecrypter{ErrorMessage: msg},
 		Config:    configMap,
 		Steps: []TestStep{{
@@ -423,7 +423,7 @@ func TestBadResourceType(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, _, err := mon.RegisterResource("very:bad", "resA", true)
 		assert.Error(t, err)
 		rpcerr, ok := rpcerror.FromError(err)
@@ -448,9 +448,9 @@ func TestBadResourceType(t *testing.T) {
 		return err
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -501,7 +501,7 @@ func TestProviderCancellation(t *testing.T) {
 	}
 
 	done := make(chan bool)
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		errors := make([]error, resourceCount)
 		var resources sync.WaitGroup
 		resources.Add(resourceCount)
@@ -521,9 +521,11 @@ func TestProviderCancellation(t *testing.T) {
 
 	p := &TestPlan{}
 	op := TestOp(Update)
-	options := UpdateOptions{
-		Parallel: resourceCount,
-		Host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
+	options := TestUpdateOptions{
+		HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+		UpdateOptions: UpdateOptions{
+			Parallel: resourceCount,
+		},
 	}
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
@@ -572,14 +574,15 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
 
 	op := TestOp(Update)
-	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+
+	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// A preview should succeed despite the pending operations.
@@ -625,14 +628,14 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
 
 	op := TestOp(Update)
-	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// With a refresh, the update should succeed.
@@ -703,14 +706,14 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
 
 	op := TestOp(Update)
-	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// With a refresh, the update should succeed.
@@ -779,14 +782,14 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
 
 	op := TestOp(Update)
-	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// The update should succeed but give a warning
@@ -851,7 +854,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, _, err := mon.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"input_prop": "new inputs",
@@ -860,8 +863,8 @@ func TestUpdatePartialFailure(t *testing.T) {
 		return err
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-	p := &TestPlan{Options: UpdateOptions{Host: host}}
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	p.Steps = []TestStep{{
@@ -925,7 +928,7 @@ func TestStackReference(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{}
 
 	// Test that the normal lifecycle works correctly.
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, state, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
@@ -950,7 +953,7 @@ func TestStackReference(t *testing.T) {
 				}
 			},
 		},
-		Options: UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)},
+		Options: TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
@@ -999,7 +1002,7 @@ func TestStackReference(t *testing.T) {
 	p.Run(t, old)
 
 	// Test that unknown stacks are handled appropriately.
-	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "rehto",
@@ -1008,7 +1011,7 @@ func TestStackReference(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -1017,7 +1020,7 @@ func TestStackReference(t *testing.T) {
 	p.Run(t, nil)
 
 	// Test that unknown properties cause errors.
-	program = deploytest.NewLanguageRuntime(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, _, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
@@ -1027,7 +1030,7 @@ func TestStackReference(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	p.Run(t, nil)
 }
 
@@ -1098,7 +1101,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
 
@@ -1110,7 +1113,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 
 	op := TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
-	options := UpdateOptions{Host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
+	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(sink, sink, programF, loaders...)}
 	p := &TestPlan{}
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
@@ -1152,7 +1155,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		allowedOps []display.StepOp,
 	) *deploy.Snapshot {
 		expectedIgnoreChanges = ignoreChanges
-		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:        props,
 				IgnoreChanges: ignoreChanges,
@@ -1160,9 +1163,9 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 			assert.NoError(t, err)
 			return nil
 		})
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
+			Options: TestUpdateOptions{HostF: hostF},
 			Steps: []TestStep{
 				{
 					Op: Update,
@@ -1281,13 +1284,13 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 		return nil
 	}
 
-	runtime := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	runtimeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return program(monitor)
 	})
-	host := deploytest.NewPluginHost(nil, nil, runtime, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, runtimeF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1373,7 +1376,7 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 		updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, replaceOnChanges []string,
 			allowedOps []display.StepOp,
 		) *deploy.Snapshot {
-			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 					Inputs:           props,
 					ReplaceOnChanges: replaceOnChanges,
@@ -1381,9 +1384,9 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 				assert.NoError(t, err)
 				return nil
 			})
-			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &TestPlan{
-				Options: UpdateOptions{Host: host},
+				Options: TestUpdateOptions{HostF: hostF},
 				Steps: []TestStep{
 					{
 						Op: Update,
@@ -1511,17 +1514,17 @@ func TestPersistentDiff(t *testing.T) {
 	}
 
 	inputs := resource.PropertyMap{}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -1594,17 +1597,17 @@ func TestDetailedDiffReplace(t *testing.T) {
 	}
 
 	inputs := resource.PropertyMap{}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -1643,7 +1646,7 @@ func TestCustomTimeouts(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			CustomTimeouts: &resource.CustomTimeouts{
 				Create: 60, Delete: 60, Update: 240,
@@ -1652,10 +1655,10 @@ func TestCustomTimeouts(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -1693,15 +1696,15 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "foo"): config.NewValue("bar"),
 		},
@@ -1779,14 +1782,14 @@ func TestMissingRead(t *testing.T) {
 	}
 
 	// Our program reads a resource and exits.
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "")
 		assert.Error(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Update, ExpectFailure: true}},
 	}
 	p.Run(t, nil)
@@ -1825,7 +1828,7 @@ func TestProviderPreview(t *testing.T) {
 	}
 
 	preview := true
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
 		if !preview {
 			computed = "alpha"
@@ -1853,10 +1856,10 @@ func TestProviderPreview(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1913,7 +1916,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 	}
 
 	preview := true
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
 		if !preview {
 			computed = "alpha"
@@ -1941,10 +1944,10 @@ func TestProviderPreviewGrpc(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -2031,7 +2034,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	}
 
 	preview := true
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
 		if !preview {
 			computed = "alpha"
@@ -2093,10 +2096,10 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -2159,7 +2162,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
@@ -2169,10 +2172,10 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		}, state)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 3),
 	}
 	p.Run(t, nil)
@@ -2189,7 +2192,7 @@ type updateContext struct {
 	updateResult chan result.Result
 }
 
-func startUpdate(t *testing.T, host plugin.Host) (*updateContext, error) {
+func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateContext, error) {
 	ctx := &updateContext{
 		resmon:       make(chan *deploytest.ResourceMonitor),
 		programErr:   make(chan error),
@@ -2209,7 +2212,7 @@ func startUpdate(t *testing.T, host plugin.Host) (*updateContext, error) {
 	}
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Runtime: "client",
 		RuntimeOptions: map[string]interface{}{
 			"address": fmt.Sprintf("127.0.0.1:%d", port),
@@ -2287,7 +2290,7 @@ func TestLanguageClient(t *testing.T) {
 		}),
 	}
 
-	update, err := startUpdate(t, deploytest.NewPluginHost(nil, nil, nil, loaders...))
+	update, err := startUpdate(t, deploytest.NewPluginHostF(nil, nil, nil, loaders...))
 	if err != nil {
 		t.Fatalf("failed to start update: %v", err)
 	}
@@ -2353,7 +2356,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 		}),
 	}
 
-	programF := deploytest.NewLanguageRuntimeFactory(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
@@ -2376,13 +2379,11 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 		}, result)
 		return nil
 	})
-	hostF := func() plugin.Host {
-		return deploytest.NewPluginHost(nil, nil, programF(), loaders...)
-	}
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		OptionsFunc: WithHostF(hostF),
-		Steps:       MakeBasicLifecycleSteps(t, 4),
+		Options: TestUpdateOptions{HostF: hostF},
+		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -2396,19 +2397,19 @@ func TestConfigSecrets(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	crypter := config.NewSymmetricCrypter(make([]byte, 32))
 	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
 	assert.NoError(t, err)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
@@ -2434,7 +2435,7 @@ func TestComponentOutputs(t *testing.T) {
 
 	// A component's outputs should never be returned by `RegisterResource`, even if (especially if) there are
 	// outputs from a prior deployment and the component's inputs have not changed.
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		urn, _, state, err := monitor.RegisterResource("component", "resA", false)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, state)
@@ -2445,10 +2446,10 @@ func TestComponentOutputs(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 1),
 	}
 	p.Run(t, nil)
@@ -2519,7 +2520,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
@@ -2538,10 +2539,10 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -2600,7 +2601,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
@@ -2613,10 +2614,10 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -2695,7 +2696,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err = monitor.RegisterResource("pkgB:m:first", "first", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
@@ -2713,8 +2714,8 @@ func TestComponentDeleteDependencies(t *testing.T) {
 		return nil
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-	p := &TestPlan{Options: UpdateOptions{Host: host}}
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
 
 	p.Steps = []TestStep{
 		{
@@ -2808,7 +2809,7 @@ func TestProtect(t *testing.T) {
 	shouldProtect := true
 	createResource := true
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:  ins,
@@ -2819,10 +2820,10 @@ func TestProtect(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -2963,7 +2964,7 @@ func TestRetainOnDelete(t *testing.T) {
 
 	createResource := true
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:         ins,
@@ -2974,10 +2975,10 @@ func TestRetainOnDelete(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3058,7 +3059,7 @@ func TestDeletedWith(t *testing.T) {
 
 	createResource := true
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
 			aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
@@ -3081,10 +3082,10 @@ func TestDeletedWith(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3162,7 +3163,7 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 	createResource := true
 	cURN := resource.URN("")
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
 			aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:      ins,
@@ -3185,10 +3186,10 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3228,15 +3229,15 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "")
 		assert.Error(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3283,17 +3284,17 @@ func TestEventSecrets(t *testing.T) {
 	}
 
 	var inputs resource.PropertyMap
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps: []TestStep{{
 			Op:          Update,
 			SkipPreview: true,
@@ -3364,7 +3365,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	}
 
 	var inputs resource.PropertyMap
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:                  inputs,
 			AdditionalSecretOutputs: []resource.PropertyKey{"a", "b"},
@@ -3372,10 +3373,10 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3436,7 +3437,7 @@ func TestDefaultParents(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource(
 			resource.RootStackType,
 			info.Project+"-"+info.Stack,
@@ -3453,10 +3454,10 @@ func TestDefaultParents(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3585,7 +3586,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 	})
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		urnA, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
@@ -3601,10 +3602,10 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3747,7 +3748,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 		"foo": "bar",
 	})
 	inB := "active"
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		urnA, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: insA,
 		})
@@ -3767,10 +3768,10 @@ func TestPendingDeleteReplacement(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3841,7 +3842,7 @@ func TestTimestampTracking(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource(
 			resource.RootStackType,
 			info.Project+"-"+info.Stack,
@@ -3859,7 +3860,7 @@ func TestTimestampTracking(t *testing.T) {
 		return nil
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	// Run an update to create the resource -- created and updated should be set and equal.
 	p.Steps = []TestStep{{Op: Update, SkipPreview: true}}
@@ -4044,17 +4045,17 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 	})
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: insA,
 		})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -4136,14 +4137,14 @@ func TestResourceNames(t *testing.T) {
 					}, nil
 				}),
 			}
-			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", tt, true, deploytest.ResourceOptions{})
 				assert.NoError(t, err)
 				return nil
 			})
-			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &TestPlan{
-				Options: UpdateOptions{Host: host},
+				Options: TestUpdateOptions{HostF: hostF},
 			}
 
 			snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
@@ -4178,7 +4179,7 @@ func TestSourcePositions(t *testing.T) {
 	const regPos = "/test/source/positions#1,2"
 	const readPos = "/test/source/positions#3,4"
 	inputs := resource.PropertyMap{}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:         inputs,
 			SourcePosition: "file://" + regPos,
@@ -4190,10 +4191,10 @@ func TestSourcePositions(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 	regURN := p.NewURN("pkgA:m:typA", "resA", "")
 	readURN := p.NewURN("pkgA:m:typA", "resB", "")
@@ -4288,15 +4289,15 @@ func TestBadResourceOptionURNs(t *testing.T) {
 				}, deploytest.WithoutGrpc),
 			}
 
-			program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "res", true, tt.opts)
 				tt.assertFn(err)
 				return nil
 			})
-			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 			p := &TestPlan{
-				Options: UpdateOptions{Host: host},
+				Options: TestUpdateOptions{HostF: hostF},
 			}
 
 			project := p.GetProject()
@@ -4322,7 +4323,7 @@ func TestProviderChecksums(t *testing.T) {
 	})
 
 	createResource := true
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
@@ -4334,10 +4335,10 @@ func TestProviderChecksums(t *testing.T) {
 		}
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()

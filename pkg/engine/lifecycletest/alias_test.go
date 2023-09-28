@@ -84,13 +84,13 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 	return func(
 		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool,
 	) *deploy.Snapshot {
-		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			err := registerResources(t, monitor, resources)
 			return err
 		})
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
+			Options: TestUpdateOptions{HostF: hostF},
 			Steps: []TestStep{
 				{
 					Op:            Update,
@@ -1138,7 +1138,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	}
 
 	mode := 0
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		switch mode {
 		case 0:
 			// Default case, just make resA
@@ -1189,10 +1189,10 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 		}
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1242,7 +1242,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 	}
 
 	mode := 0
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		switch mode {
 		case 0:
 			// Default case, make "resA", "resB with resA as its parent", and "resB with no parent".
@@ -1285,10 +1285,10 @@ func TestCorrectResourceChosen(t *testing.T) {
 		}
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1358,14 +1358,14 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		createA(monitor)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1444,7 +1444,7 @@ func TestParentAlias(t *testing.T) {
 	}
 
 	firstRun := true
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		urnA, _, _, err := monitor.RegisterResource("prog:index:myStandardType", "resA", false, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
@@ -1479,10 +1479,10 @@ func TestParentAlias(t *testing.T) {
 		}
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1531,7 +1531,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		switch mode {
 		case 0:
 			// Default case, make "resA", and "resB" a component with "resA" as its parent and "resC" in the component
@@ -1599,10 +1599,10 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 		}
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1703,7 +1703,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		switch mode {
 		case 0:
 			fallthrough
@@ -1733,10 +1733,10 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 		}
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()

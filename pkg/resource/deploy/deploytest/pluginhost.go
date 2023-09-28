@@ -239,6 +239,8 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 	return nil, errors.New("unsupported")
 }
 
+type PluginHostFactory func() plugin.Host
+
 type pluginHost struct {
 	pluginLoaders   []*ProviderLoader
 	languageRuntime plugin.LanguageRuntime
@@ -252,6 +254,19 @@ type pluginHost struct {
 	plugins   map[interface{}]io.Closer
 	closed    bool
 	m         sync.Mutex
+}
+
+// NewPluginHostF returns a factory that produces a plugin host for an operation.
+func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeF LanguageRuntimeFactory,
+	pluginLoaders ...*ProviderLoader,
+) PluginHostFactory {
+	return func() plugin.Host {
+		var lr plugin.LanguageRuntime
+		if languageRuntimeF != nil {
+			lr = languageRuntimeF()
+		}
+		return NewPluginHost(sink, statusSink, lr, pluginLoaders...)
+	}
 }
 
 func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,

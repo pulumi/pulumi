@@ -66,7 +66,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -94,10 +94,10 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 			return nil
 		})
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -144,7 +144,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		}, &resChild, pulumi.Parent(&res))
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -236,10 +236,10 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		})
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 	p.Steps = []TestStep{{
 		Op: Update,
@@ -337,7 +337,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 	}
 
 	setupAndRunProgram := func(ignoreChanges []string) *deploy.Snapshot {
-		program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 				Project:     info.Project,
 				Stack:       info.Stack,
@@ -356,9 +356,9 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 			})
 		})
 
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
+			Options: TestUpdateOptions{HostF: hostF},
 			Steps: []TestStep{
 				{
 					Op: Update,
@@ -431,7 +431,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 
 	var stackURN, provURN, urnA resource.URN = "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
 		"urn:pulumi:test::test::pulumi:providers:pkgA::provA", "urn:pulumi:test::test::pkgA:m:typA::resA"
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -455,7 +455,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		})
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -526,7 +526,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 		"urn:pulumi:test::test::pulumi:providers:pkgA::default", "urn:pulumi:test::test::pkgA:m:typA::resA"
 
 	setupAndRunProgram := func() *deploy.Snapshot {
-		program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 				Project:     info.Project,
 				Stack:       info.Stack,
@@ -545,9 +545,9 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 			})
 		})
 
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
+			Options: TestUpdateOptions{HostF: hostF},
 			Steps: []TestStep{
 				{
 					Op: Update,
@@ -629,7 +629,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -743,10 +743,10 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			return nil
 		})
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
@@ -772,7 +772,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 		Foo: pulumi.String("bar"),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -794,9 +794,9 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 	expectedOps := []display.StepOp{deploy.OpCreate}
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps: []TestStep{
 			{
 				Op: Update,
@@ -893,7 +893,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -920,10 +920,10 @@ func TestRemoteComponentGolang(t *testing.T) {
 		})
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
