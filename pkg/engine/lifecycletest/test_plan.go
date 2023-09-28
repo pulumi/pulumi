@@ -106,6 +106,13 @@ func (op TestOp) runWithContext(
 		BackendClient:   backendClient,
 	}
 
+	updateOpts := opts.Options()
+	defer func() {
+		if updateOpts.Host != nil {
+			contract.IgnoreClose(updateOpts.Host)
+		}
+	}()
+
 	// Begin draining events.
 	var wg sync.WaitGroup
 	var firedEvents []Event
@@ -118,7 +125,7 @@ func (op TestOp) runWithContext(
 	}()
 
 	// Run the step and its validator.
-	plan, _, res := op(info, ctx, opts.Options(), dryRun)
+	plan, _, res := op(info, ctx, updateOpts, dryRun)
 	close(events)
 	wg.Wait()
 	contract.IgnoreClose(journal)
