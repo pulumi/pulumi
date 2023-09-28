@@ -162,11 +162,11 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 // TestUpdateOptions is UpdateOptions for a TestPlan.
 type TestUpdateOptions struct {
 	UpdateOptions
-	// a factory to produce a plugin host for an operation.
+	// a factory to produce a plugin host for an update operation.
 	HostF deploytest.PluginHostFactory
 }
 
-// Options produces UpdateOptions for an operation.
+// Options produces UpdateOptions for an update operation.
 func (o TestUpdateOptions) Options() UpdateOptions {
 	opts := o.UpdateOptions
 	if o.HostF != nil {
