@@ -31,6 +31,9 @@ import (
 // Used to replace the `## <command>` line in generated markdown files.
 var replaceH2Pattern = regexp.MustCompile(`(?m)^## .*$`)
 
+// Used to promote the `###` headings to `##` in generated markdown files.
+var h3Pattern = regexp.MustCompile(`(?m)^###\s`)
+
 // newGenMarkdownCmd returns a new command that, when run, generates CLI documentation as Markdown files.
 // It is hidden by default since it's not commonly used outside of our own build processes.
 func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
@@ -84,6 +87,11 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				// Replace the `## <command>` line with an empty string.
 				// We do this because we're already including the command as the front matter title.
 				result := replaceH2Pattern.ReplaceAllString(string(b), "")
+
+				// Promote the `###` to `##` headings. We removed the command name above which was
+				// a level 2 heading (##), so need to promote the ### to ## so there is no gap in
+				// heading levels when these files are used to render the CLI docs on the docs site.
+				result = h3Pattern.ReplaceAllString(result, "## ")
 
 				if err := os.WriteFile(file, []byte(result), 0o600); err != nil {
 					return err
