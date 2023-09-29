@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
 )
@@ -404,6 +405,8 @@ func getResourceOutputsPropertiesString(
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
 		if planning && step.URN.Type() == resource.RootStackType {
+			// Deeply copy outputDiff, since we may be mutating it to strip out nested outputs.
+			outputDiff = deepcopy.Copy(outputDiff).(*resource.ObjectDiff)
 			massageStackPreviewOutputDiff(outputDiff, false)
 		}
 
