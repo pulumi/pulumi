@@ -208,7 +208,7 @@ func RunInstallPlugins(
 	return err
 }
 
-func installPlugins(cancel context.Context,
+func installPlugins(ctx context.Context,
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
 	plugctx *plugin.Context, returnInstallErrors bool,
 ) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
@@ -244,7 +244,7 @@ func installPlugins(cancel context.Context,
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(cancel, plugctx.Diag, allPlugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, allPlugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
@@ -367,7 +367,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context, d
 	return nil
 }
 
-func newUpdateSource(cancel context.Context,
+func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
@@ -375,7 +375,7 @@ func newUpdateSource(cancel context.Context,
 	// Step 1: Install and load plugins.
 	//
 
-	allPlugins, defaultProviderVersions, err := installPlugins(cancel, proj, pwd, main, target,
+	allPlugins, defaultProviderVersions, err := installPlugins(ctx, proj, pwd, main, target,
 		plugctx, false /*returnInstallErrors*/)
 	if err != nil {
 		return nil, err
@@ -405,7 +405,7 @@ func newUpdateSource(cancel context.Context,
 		Config:       config,
 		DryRun:       dryRun,
 	}
-	if err := installAndLoadPolicyPlugins(cancel, plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
+	if err := installAndLoadPolicyPlugins(ctx, plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {
 		return nil, err
 	}

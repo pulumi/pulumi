@@ -66,7 +66,7 @@ func Destroy(
 }
 
 func newDestroySource(
-	cancel context.Context,
+	ctx context.Context,
 	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
@@ -80,7 +80,7 @@ func newDestroySource(
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
 
-	if err := ensurePluginsAreInstalled(cancel, plugctx.Diag, plugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, plugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}

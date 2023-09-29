@@ -153,7 +153,7 @@ type deploymentOptions struct {
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
 type deploymentSourceFunc func(
-	cancel context.Context,
+	ctx context.Context,
 	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
 

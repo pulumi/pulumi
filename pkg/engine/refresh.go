@@ -70,7 +70,7 @@ func Refresh(
 }
 
 func newRefreshSource(
-	cancel context.Context, client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main,
+	ctx context.Context, client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main,
 	projectRoot string, target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.
@@ -82,7 +82,7 @@ func newRefreshSource(
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(cancel, plugctx.Diag, plugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, plugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
 	}
