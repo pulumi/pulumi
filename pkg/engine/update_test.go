@@ -1,10 +1,15 @@
 package engine
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAbbreviateFilePath(t *testing.T) {
@@ -49,3 +54,42 @@ func TestAbbreviateFilePath(t *testing.T) {
 		assert.Equal(t, filepath.ToSlash(tt.expected), filepath.ToSlash(actual))
 	}
 }
+
+func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
+	t.Parallel()
+
+	cancelCtx, _ := cancel.NewContext(context.Background())
+
+	acts := newUpdateActions(&Context{
+		Cancel: cancelCtx,
+	}, nil, deploymentOptions{})
+	eventsChan := make(chan Event, 10)
+	acts.Opts.Events.ch = eventsChan
+
+	step := deploy.NewDeleteStep(&deploy.Deployment{}, map[resource.URN]bool{}, &resource.State{
+		URN:      resource.URN("urn:pulumi:stack::project::my:example:Foo::foo"),
+		ID:       "foo",
+		Custom:   false,
+		Provider: "unimportant",
+	})
+	acts.Seen[resource.URN("urn:pulumi:stack::project::my:example:Foo::foo")] = step
+
+	err := acts.OnResourceStepPost(
+		&mockSnapshotMutation{}, step, resource.StatusOK,
+		nil, /* err */
+	)
+	require.NoError(t, err)
+
+	switch e := <-eventsChan; e.Type {
+	case ResourceOutputsEvent:
+		e, ok := e.Payload().(ResourceOutputsEventPayload)
+		assert.True(t, ok)
+		assert.True(t, e.Metadata.URN == "urn:pulumi:stack::project::my:example:Foo::foo")
+	default:
+		assert.Fail(t, "unexpected event type")
+	}
+}
+
+type mockSnapshotMutation struct{}
+
+func (msm *mockSnapshotMutation) End(step deploy.Step, successful bool) error { return nil }

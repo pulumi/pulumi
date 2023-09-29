@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: ComponentResources now emit resourceOutputEvent on Deletion. This fixes the time elapsed timer not ending when the resource is deleted.
