@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: ctrl-c should cause Pulumi to send cancellation signal to providers
