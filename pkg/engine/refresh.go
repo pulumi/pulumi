@@ -15,6 +15,8 @@
 package engine
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -67,7 +69,8 @@ func Refresh(
 	}, dryRun)
 }
 
-func newRefreshSource(client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main,
+func newRefreshSource(
+	ctx context.Context, client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main,
 	projectRoot string, target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.
@@ -79,7 +82,7 @@ func newRefreshSource(client deploy.BackendClient, opts deploymentOptions, proj 
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(plugctx.Request(), plugctx.Diag, plugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, plugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
 	}
