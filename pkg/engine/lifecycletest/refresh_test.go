@@ -655,7 +655,6 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 // Tests that an interrupted refresh leaves behind an expected state.
 func TestCanceledRefresh(t *testing.T) {
-	t.SkipNow() // fix: https://github.com/pulumi/pulumi/pull/14057
 	t.Parallel()
 
 	p := &TestPlan{}

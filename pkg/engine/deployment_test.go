@@ -120,10 +120,9 @@ func TestSourceFuncCancellation(t *testing.T) {
 	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
 
 	// Wait for our source func, then cancel.
-	var ops sync.WaitGroup
-	ops.Add(1)
+	ops := make(chan bool)
 	go func() {
-		ops.Wait()
+		<-ops
 		cancelSrc.Cancel()
 	}()
 
@@ -132,8 +131,8 @@ func TestSourceFuncCancellation(t *testing.T) {
 		client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 		target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 	) (deploy.Source, error) {
-		// Wait for the cancellation signal.
-		ops.Done()
+		// Send ops completion then wait for the cancellation signal.
+		close(ops)
 		<-cancel.Done()
 		return nil, cancel.Err()
 	}
@@ -150,7 +149,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 
 	host := makePluginHost(t, program)
 	defer host.Close()
-	
+
 	opts := deploymentOptions{
 		UpdateOptions: UpdateOptions{
 			Host: host,
