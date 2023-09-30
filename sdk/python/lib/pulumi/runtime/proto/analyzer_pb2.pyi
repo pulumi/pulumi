@@ -44,6 +44,8 @@ class _EnforcementLevelEnumTypeWrapper(google.protobuf.internal.enum_type_wrappe
     """Stops deployment, cannot be overridden."""
     DISABLED: _EnforcementLevel.ValueType  # 2
     """Disabled policies do not run during a deployment."""
+    DEFAULT: _EnforcementLevel.ValueType  # 3
+    """Use the default enforcement level for the policy pack."""
 
 class EnforcementLevel(_EnforcementLevel, metaclass=_EnforcementLevelEnumTypeWrapper):
     """EnforcementLevel indicates the severity of a policy violation."""
@@ -54,6 +56,8 @@ MANDATORY: EnforcementLevel.ValueType  # 1
 """Stops deployment, cannot be overridden."""
 DISABLED: EnforcementLevel.ValueType  # 2
 """Disabled policies do not run during a deployment."""
+DEFAULT: EnforcementLevel.ValueType  # 3
+"""Use the default enforcement level for the policy pack."""
 global___EnforcementLevel = EnforcementLevel
 
 @typing_extensions.final
@@ -383,7 +387,6 @@ class TransformResult(google.protobuf.message.Message):
     POLICYPACKNAME_FIELD_NUMBER: builtins.int
     POLICYPACKVERSION_FIELD_NUMBER: builtins.int
     DESCRIPTION_FIELD_NUMBER: builtins.int
-    URN_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     transformName: builtins.str
     """Name of the transform itself."""
@@ -393,8 +396,6 @@ class TransformResult(google.protobuf.message.Message):
     """Version of the policy pack."""
     description: builtins.str
     """Description of transform rule. e.g., "auto-tag resources." """
-    urn: builtins.str
-    """the URN for the transformed resource."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """the transformed properties to use."""
@@ -405,11 +406,10 @@ class TransformResult(google.protobuf.message.Message):
         policyPackName: builtins.str = ...,
         policyPackVersion: builtins.str = ...,
         description: builtins.str = ...,
-        urn: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties", "transformName", b"transformName", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties", "transformName", b"transformName"]) -> None: ...
 
 global___TransformResult = TransformResult
 

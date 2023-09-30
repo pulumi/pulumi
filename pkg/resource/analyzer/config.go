@@ -127,7 +127,7 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 func extractEnforcementLevel(props map[string]interface{}) (apitype.EnforcementLevel, error) {
 	contract.Assertf(props != nil, "props != nil")
 
-	var enforcementLevel apitype.EnforcementLevel
+	enforcementLevel := apitype.Default
 	if unknown, ok := props["enforcementLevel"]; ok {
 		enforcementLevelStr, isStr := unknown.(string)
 		if !isStr {

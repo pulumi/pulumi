@@ -2883,7 +2883,6 @@ proto.pulumirpc.TransformResult.toObject = function(includeInstance, msg) {
     policypackname: jspb.Message.getFieldWithDefault(msg, 2, ""),
     policypackversion: jspb.Message.getFieldWithDefault(msg, 3, ""),
     description: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 5, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -2938,10 +2937,6 @@ proto.pulumirpc.TransformResult.deserializeBinaryFromReader = function(msg, read
       msg.setDescription(value);
       break;
     case 5:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setUrn(value);
-      break;
-    case 6:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
@@ -3003,17 +2998,10 @@ proto.pulumirpc.TransformResult.serializeBinaryToWriter = function(message, writ
       f
     );
   }
-  f = message.getUrn();
-  if (f.length > 0) {
-    writer.writeString(
-      5,
-      f
-    );
-  }
   f = message.getProperties();
   if (f != null) {
     writer.writeMessage(
-      6,
+      5,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -3094,30 +3082,12 @@ proto.pulumirpc.TransformResult.prototype.setDescription = function(value) {
 
 
 /**
- * optional string urn = 5;
- * @return {string}
- */
-proto.pulumirpc.TransformResult.prototype.getUrn = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.TransformResult} returns this
- */
-proto.pulumirpc.TransformResult.prototype.setUrn = function(value) {
-  return jspb.Message.setProto3StringField(this, 5, value);
-};
-
-
-/**
- * optional google.protobuf.Struct properties = 6;
+ * optional google.protobuf.Struct properties = 5;
  * @return {?proto.google.protobuf.Struct}
  */
 proto.pulumirpc.TransformResult.prototype.getProperties = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 6));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
 };
 
 
@@ -3126,7 +3096,7 @@ proto.pulumirpc.TransformResult.prototype.getProperties = function() {
  * @return {!proto.pulumirpc.TransformResult} returns this
 */
 proto.pulumirpc.TransformResult.prototype.setProperties = function(value) {
-  return jspb.Message.setWrapperField(this, 6, value);
+  return jspb.Message.setWrapperField(this, 5, value);
 };
 
 
@@ -3144,7 +3114,7 @@ proto.pulumirpc.TransformResult.prototype.clearProperties = function() {
  * @return {boolean}
  */
 proto.pulumirpc.TransformResult.prototype.hasProperties = function() {
-  return jspb.Message.getField(this, 6) != null;
+  return jspb.Message.getField(this, 5) != null;
 };
 
 
@@ -4449,7 +4419,8 @@ proto.pulumirpc.ConfigureAnalyzerRequest.prototype.clearPolicyconfigMap = functi
 proto.pulumirpc.EnforcementLevel = {
   ADVISORY: 0,
   MANDATORY: 1,
-  DISABLED: 2
+  DISABLED: 2,
+  DEFAULT: 3
 };
 
 goog.object.extend(exports, proto.pulumirpc);

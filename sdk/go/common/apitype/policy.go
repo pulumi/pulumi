@@ -127,12 +127,15 @@ const (
 
 	// Disabled is an enforcement level that disables the policy from being enforced.
 	Disabled EnforcementLevel = "disabled"
+
+	// Default is the default enforcement level specified by the policy pack itself.
+	Default EnforcementLevel = ""
 )
 
 // IsValid returns true if the EnforcementLevel is a valid value.
 func (el EnforcementLevel) IsValid() bool {
 	switch el {
-	case Advisory, Mandatory, Disabled:
+	case Advisory, Mandatory, Disabled, Default:
 		return true
 	}
 	return false

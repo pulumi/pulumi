@@ -23,10 +23,9 @@ import (
 type Analyzer struct {
 	Info plugin.AnalyzerInfo
 
-	AnalyzeF        func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
-	AnalyzeStackF   func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
-	TransformF      func(r plugin.AnalyzerResource) ([]plugin.TransformResult, error)
-	TransformStackF func(resources []plugin.AnalyzerStackResource) ([]plugin.TransformResult, error)
+	AnalyzeF      func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
+	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
+	TransformF    func(r plugin.AnalyzerResource) ([]plugin.TransformResult, error)
 
 	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
 }
@@ -58,13 +57,6 @@ func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) ([]plu
 func (a *Analyzer) Transform(r plugin.AnalyzerResource) ([]plugin.TransformResult, error) {
 	if a.TransformF != nil {
 		return a.TransformF(r)
-	}
-	return nil, nil
-}
-
-func (a *Analyzer) TransformStack(resources []plugin.AnalyzerStackResource) ([]plugin.TransformResult, error) {
-	if a.TransformStackF != nil {
-		return a.TransformStackF(resources)
 	}
 	return nil, nil
 }

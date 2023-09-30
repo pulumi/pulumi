@@ -313,14 +313,6 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 
 	var results []TransformResult
 	for _, t := range resp.GetTransforms() {
-		tURN := resource.URN(t.GetUrn())
-		if tURN == "" {
-			tURN = urn
-		} else if tURN != urn {
-			return nil,
-				errors.Wrapf(err, "expected transformed URN (%s) to match input URN (%s)", tURN, urn)
-		}
-
 		tprops, err := UnmarshalProperties(t.GetProperties(),
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 		if err != nil {
@@ -332,91 +324,11 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 			Description:       t.GetDescription(),
 			PolicyPackName:    t.GetPolicyPackName(),
 			PolicyPackVersion: t.GetPolicyPackVersion(),
-			URN:               tURN,
 			Properties:        tprops,
 		})
 	}
 
 	logging.V(7).Infof("%s success: #transforms=%d", label, len(results))
-	return results, nil
-}
-
-// TransformStack is given the opportunity to transfom all resources in the stack, and returns the
-// resulting rewritten properties in a map indexed by resource URN.
-func (a *analyzer) TransformStack(resources []AnalyzerStackResource) ([]TransformResult, error) {
-	logging.V(7).Infof("%s.TransformStack(#resources=%d) executing", a.label(), len(resources))
-
-	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
-	for idx, resource := range resources {
-		props, err := MarshalProperties(resource.Properties,
-			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
-		if err != nil {
-			return nil, errors.Wrap(err, "marshalling properties")
-		}
-
-		provider, err := marshalProvider(resource.Provider)
-		if err != nil {
-			return nil, err
-		}
-
-		propertyDeps := make(map[string]*pulumirpc.AnalyzerPropertyDependencies)
-		for pk, pd := range resource.PropertyDependencies {
-			// Skip properties that have no dependencies.
-			if len(pd) == 0 {
-				continue
-			}
-
-			pdeps := make([]string, 0, 1)
-			for _, d := range pd {
-				pdeps = append(pdeps, string(d))
-			}
-			propertyDeps[string(pk)] = &pulumirpc.AnalyzerPropertyDependencies{
-				Urns: pdeps,
-			}
-		}
-
-		protoResources[idx] = &pulumirpc.AnalyzerResource{
-			Urn:                  string(resource.URN),
-			Type:                 string(resource.Type),
-			Name:                 string(resource.Name),
-			Properties:           props,
-			Options:              marshalResourceOptions(resource.Options),
-			Provider:             provider,
-			Parent:               string(resource.Parent),
-			Dependencies:         convertURNs(resource.Dependencies),
-			PropertyDependencies: propertyDeps,
-		}
-	}
-
-	resp, err := a.client.TransformStack(a.ctx.Request(), &pulumirpc.AnalyzeStackRequest{
-		Resources: protoResources,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var results []TransformResult
-	for _, t := range resp.GetTransforms() {
-		tURN := resource.URN(t.GetUrn())
-
-		// TODO: validate that this URN is correct.
-
-		tprops, err := UnmarshalProperties(t.GetProperties(),
-			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
-		if err != nil {
-			return nil, err
-		}
-
-		results = append(results, TransformResult{
-			TransformName:     t.GetTransformName(),
-			Description:       t.GetDescription(),
-			PolicyPackName:    t.GetPolicyPackName(),
-			PolicyPackVersion: t.GetPolicyPackVersion(),
-			URN:               tURN,
-			Properties:        tprops,
-		})
-	}
-
 	return results, nil
 }
 
@@ -638,6 +550,8 @@ func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementL
 		return pulumirpc.EnforcementLevel_MANDATORY
 	case apitype.Disabled:
 		return pulumirpc.EnforcementLevel_DISABLED
+	case apitype.Default:
+		return pulumirpc.EnforcementLevel_DEFAULT
 	}
 	contract.Failf("Unrecognized enforcement level %s", el)
 	return 0
@@ -772,6 +686,8 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Mandatory, nil
 	case pulumirpc.EnforcementLevel_DISABLED:
 		return apitype.Disabled, nil
+	case pulumirpc.EnforcementLevel_DEFAULT:
+		return apitype.Default, nil
 
 	default:
 		return "", fmt.Errorf("invalid enforcement level %d", el)
