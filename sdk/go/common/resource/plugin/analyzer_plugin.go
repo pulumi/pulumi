@@ -337,7 +337,7 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 		})
 	}
 
-	logging.V(7).Infof("%s success: #trasnforms=%d", label, len(results))
+	logging.V(7).Infof("%s success: #transforms=%d", label, len(results))
 	return results, nil
 }
 

@@ -41,7 +41,7 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 	}
 	defer emitter.Close()
 
-	return update(ctx, info, deploymentOptions{
+	return update(ctx, info, &deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,

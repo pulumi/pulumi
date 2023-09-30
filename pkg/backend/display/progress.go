@@ -463,12 +463,20 @@ func (display *ProgressDisplay) processEndSteps() {
 	// don't really want to reprint any finished items we've already printed.
 	display.renderer.done(display)
 
-	// Render several "sections" of output based on available data as applicable.
+	// Render the policies section; this will print all policy packs that ran plus any specific
+	// policies that led to violations or transformations. This comes before diagnostics since policy
+	// violations yield failures and it is better to see those in advance of the failure message.
+	wroteMandatoryPolicyViolations := display.printPolicies()
+
+	// Render the actual diagnostics streams (warnings, errors, etc).
 	hasError := display.printDiagnostics()
-	display.printPolicyTransforms()
-	wroteMandatoryPolicyViolations := display.printPolicyViolations()
+
+	// Print output variables; this comes last, prior to the summary, since these are the final
+	// outputs after having run all of the above.
 	display.printOutputs()
-	// If no mandatory policies violated, print policy packs applied.
+
+	// Print a summary of resource operations unless there were mandatory policy violations.
+	// In that case, we want to abruptly terminate the display so as not to confuse.
 	if !wroteMandatoryPolicyViolations {
 		display.printSummary(hasError)
 	}
@@ -549,6 +557,110 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 	return hasError
 }
 
+type policyPackSummary struct {
+	ViolationEvents []engine.PolicyViolationEventPayload
+	TransformEvents []engine.PolicyTransformEventPayload
+}
+
+func (display *ProgressDisplay) printPolicies() bool {
+	if display.summaryEventPayload == nil || len(display.summaryEventPayload.PolicyPacks) == 0 {
+		return false
+	}
+
+	var hadMandatoryViolations bool
+	display.println(display.opts.Color.Colorize(colors.SpecHeadline + "Policies:" + colors.Reset))
+
+	// Print policy packs that were run and any violations or transformations associated with them.
+	// Gather up all policy packs and their associated violation and transform events.
+	policyPackInfos := make(map[string]policyPackSummary)
+
+	// First initialize empty lists for all policy packs just to ensure they show if no events are found.
+	for name, version := range display.summaryEventPayload.PolicyPacks {
+		policyPackInfos[fmt.Sprintf("%s@v%s", name, version)] = policyPackSummary{}
+	}
+
+	// Next associate all violation events with the corresponding policy pack in the list.
+	for _, row := range display.eventUrnToResourceRow {
+		for _, event := range row.PolicyPayloads() {
+			key := fmt.Sprintf("%s@v%s", event.PolicyPackName, event.PolicyPackVersion)
+			newInfo := policyPackInfos[key]
+			newInfo.ViolationEvents = append(newInfo.ViolationEvents, event)
+			policyPackInfos[key] = newInfo
+		}
+	}
+
+	// Now associate all transform events with the corresponding policy pack in the list.
+	for _, row := range display.eventUrnToResourceRow {
+		for _, event := range row.PolicyTransformPayloads() {
+			key := fmt.Sprintf("%s@v%s", event.PolicyPackName, event.PolicyPackVersion)
+			newInfo := policyPackInfos[key]
+			newInfo.TransformEvents = append(newInfo.TransformEvents, event)
+			policyPackInfos[key] = newInfo
+		}
+	}
+
+	// Enumerate all policy packs in a deterministic order:
+	var policyKeys []string
+	for key := range policyPackInfos {
+		policyKeys = append(policyKeys, key)
+	}
+	sort.Strings(policyKeys)
+
+	// Finally, print the policy pack info and any violations and any transforms for each one.
+	for _, key := range policyKeys {
+		info := policyPackInfos[key]
+
+		// Print the policy pack status and name/version as a header:
+		passFailWarn := "✅"
+		for _, violation := range info.ViolationEvents {
+			if violation.EnforcementLevel == apitype.Mandatory {
+				passFailWarn = "❌"
+				hadMandatoryViolations = true
+				break
+			}
+
+			passFailWarn = "⚠️"
+			// do not break; subsequent mandatory violations will override this.
+		}
+		display.println(fmt.Sprintf("    %s %s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset))
+		subItemIndent := "        "
+
+		// First show any transforms since they happen first. Do not sort them -- show them in the
+		// order in which events arrived, since for transforms, the order matters.
+		for _, transformEvent := range info.TransformEvents {
+			// Print the individual policy event.
+			transformLine := renderDiffPolicyTransformEvent(
+				transformEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
+			transformLine = strings.TrimSuffix(transformLine, "\n")
+			display.println(transformLine)
+		}
+
+		// Next up, display all violations. Sort policy events by: policy pack name, policy pack version,
+		// enforcement level, policy name, and finally the URN of the resource.
+		sort.SliceStable(info.ViolationEvents, func(i, j int) bool {
+			eventI, eventJ := info.ViolationEvents[i], info.ViolationEvents[j]
+			if enfLevelCmp := strings.Compare(
+				string(eventI.EnforcementLevel), string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
+				return enfLevelCmp < 0
+			}
+			if policyNameCmp := strings.Compare(eventI.PolicyName, eventJ.PolicyName); policyNameCmp != 0 {
+				return policyNameCmp < 0
+			}
+			return strings.Compare(string(eventI.ResourceURN), string(eventJ.ResourceURN)) < 0
+		})
+		for _, policyEvent := range info.ViolationEvents {
+			// Print the individual policy event.
+			policyLine := renderDiffPolicyViolationEvent(
+				policyEvent, fmt.Sprintf("%s- ", subItemIndent), subItemIndent+"  ", display.opts)
+			policyLine = strings.TrimSuffix(policyLine, "\n")
+			display.println(policyLine)
+		}
+	}
+
+	display.println("")
+	return hadMandatoryViolations
+}
+
 // printPolicyTransforms prints a new "Policy Transforms:" section with all of the transformations
 // grouped by policy pack. If no policy transformations were encountered, prints nothing.
 func (display *ProgressDisplay) printPolicyTransforms() {
@@ -596,7 +708,7 @@ func (display *ProgressDisplay) printPolicyTransforms() {
 
 	for _, transformEvent := range transformEvents {
 		// Print the individual policy event.
-		transformLine := renderDiffPolicyTransformEvent(transformEvent, false, display.opts)
+		transformLine := renderDiffPolicyTransformEvent(transformEvent, "", false, display.opts)
 		display.println(transformLine)
 	}
 

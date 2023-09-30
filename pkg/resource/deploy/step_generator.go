@@ -756,7 +756,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				// against the transformed properties, ensuring nothing circumvents the analysis checks.
 				tresults, err := analyzer.Transform(r)
 				if err != nil {
-					return nil, result.FromError(err)
+					return nil, fmt.Errorf("failed to run transform: %w", err)
 				} else if tresults != nil && len(tresults) > 0 {
 					for _, tresult := range tresults {
 						if tresult.Properties != nil {
@@ -773,7 +773,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				// analyzers see properties as they were after the transformations have occurred.
 				diagnostics, err := analyzer.Analyze(r)
 				if err != nil {
-					return nil, result.FromError(err)
+					return nil, fmt.Errorf("failed to run policy: %w", err)
 				}
 				for _, d := range diagnostics {
 					if d.EnforcementLevel == apitype.Mandatory {

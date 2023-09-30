@@ -21,12 +21,14 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize/english"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -119,9 +121,9 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
 	case engine.PolicyTransformEvent:
-		return renderDiffPolicyTransformEvent(event.Payload().(engine.PolicyTransformEventPayload), true, opts)
+		return renderDiffPolicyTransformEvent(event.Payload().(engine.PolicyTransformEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
-		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), opts)
+		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -136,23 +138,27 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload, detailed bool, opts Options) string {
-	// Print the individual policy event.
-	transformLine := fmt.Sprintf("    %s%s v%s %s%s (%s: %s)",
-		colors.SpecInfo,
-		payload.PolicyPackName,
-		payload.PolicyPackVersion,
-		colors.Reset,
-		payload.TransformName,
-		payload.ResourceURN.Type(),
-		payload.ResourceURN.Name(),
-	)
+func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload,
+	prefix string, detailed bool, opts Options) string {
+	// Print the individual transform's name and target resource type/name.
+	transformLine := fmt.Sprintf("%s[transform] %s%s (%s: %s)",
+		colors.SpecInfo, payload.TransformName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
 
-	// Print a short diff summary, similar to what is show for an update row.
+	// If there is already a prefix string requested, use it, otherwise fall back to a default.
+	if prefix == "" {
+		transformLine = fmt.Sprintf("    %s%s@v%s %s%s",
+			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, transformLine)
+	} else {
+		transformLine = fmt.Sprintf("%s%s", prefix, transformLine)
+	}
+
+	// Render the event's diff; if a detailed diff is requested, a full object diff is emitted, otherwise
+	// a short diff summary similar to what is show for an update row is emitted.
 	var b bytes.Buffer
 	if diff := payload.Before.Diff(payload.After); diff != nil {
 		if detailed {
-			PrintObjectDiff(&b, *diff, nil, false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
+			PrintObjectDiff(&b, *diff, nil,
+				false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
 			transformLine = fmt.Sprintf("%s\n%s", transformLine, b.String())
 		} else {
 			writeShortDiff(&b, diff, nil)
@@ -160,11 +166,40 @@ func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload, 
 		}
 	}
 
-	return opts.Color.Colorize(transformLine)
+	return opts.Color.Colorize(transformLine + "\n")
 }
 
-func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload, opts Options) string {
-	return opts.Color.Colorize(payload.Prefix + payload.Message)
+func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
+	prefix string, linePrefix string, opts Options) string {
+	// Colorize mandatory and warning violations differently.
+	c := colors.SpecWarning
+	if payload.EnforcementLevel == apitype.Mandatory {
+		c = colors.SpecError
+	}
+
+	// Print the individual policy's name and target resource type/name.
+	policyLine := fmt.Sprintf("%s[%s] %s%s (%s: %s)",
+		c, payload.EnforcementLevel, payload.PolicyName, colors.Reset,
+		payload.ResourceURN.Type(), payload.ResourceURN.Name())
+
+	// If there is already a prefix string requested, use it, otherwise fall back to a default.
+	if prefix == "" {
+		policyLine = fmt.Sprintf("    %s%s@v%s %s%s",
+			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, policyLine)
+	} else {
+		policyLine = fmt.Sprintf("%s%s", prefix, policyLine)
+	}
+
+	// If there is a line prefix, separate the heading and lines with a newline.
+	if linePrefix != "" {
+		policyLine += "\n"
+	}
+
+	// The message may span multiple lines, so we massage it so it will be indented properly.
+	message := strings.TrimSuffix(payload.Message, "\n")
+	message = strings.ReplaceAll(message, "\n", fmt.Sprintf("\n%s", linePrefix))
+	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
+	return opts.Color.Colorize(policyLine + "\n")
 }
 
 func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
@@ -183,6 +218,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Op
 		renderPolicyPacks(out, event.PolicyPacks, opts)
 		return out.String()
 	}
+
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
 

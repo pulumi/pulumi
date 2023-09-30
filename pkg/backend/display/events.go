@@ -82,6 +82,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			EnforcementLevel:     string(p.EnforcementLevel),
 		}
 
+	// TODO: PolicyTransformationEvent
+
 	case engine.PreludeEvent:
 		p, ok := e.Payload().(engine.PreludeEventPayload)
 		if !ok {

@@ -154,11 +154,11 @@ type deploymentOptions struct {
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
 type deploymentSourceFunc func(
 	ctx context.Context,
-	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
+	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
-func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions,
+func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOptions,
 	dryRun bool,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
@@ -259,7 +259,7 @@ type deployment struct {
 	Ctx        *deploymentContext // deployment context information.
 	Plugctx    *plugin.Context    // the context containing plugins and their state.
 	Deployment *deploy.Deployment // the deployment created by this command.
-	Options    deploymentOptions  // the options used while deploying.
+	Options    *deploymentOptions // the options used while deploying.
 }
 
 type runActions interface {
@@ -270,9 +270,8 @@ type runActions interface {
 }
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
-func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+func (deployment *deployment) run(cancelCtx *Context, actions runActions,
+	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
 	if err != nil {
@@ -340,8 +339,22 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	duration := time.Since(start)
 	changes := actions.Changes()
 
+	// Refresh and Import do not execute Policy Packs.
+	policies := map[string]string{}
+	if !deployment.Options.isRefresh && !deployment.Options.isImport {
+		for _, p := range deployment.Options.RequiredPolicies {
+			policies[p.Name()] = p.Version()
+		}
+		for _, pack := range deployment.Options.LocalPolicyPacks {
+			//path := abbreviateFilePath(pack.Path)
+			packName := pack.Name
+			// How to track (local) without mangling the name/version strings?
+			policies[packName] = pack.Version
+		}
+	}
+
 	// Emit a summary event.
-	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policyPacks)
+	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policies)
 
 	return newPlan, changes, res
 }
