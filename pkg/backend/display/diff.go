@@ -140,6 +140,13 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 
 func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload,
 	prefix string, detailed bool, opts Options) string {
+
+	// Diff the before/after state. If there is no diff, we show nothing.
+	diff := payload.Before.Diff(payload.After)
+	if diff == nil {
+		return ""
+	}
+
 	// Print the individual transform's name and target resource type/name.
 	transformLine := fmt.Sprintf("%s[transform] %s%s (%s: %s)",
 		colors.SpecInfo, payload.TransformName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
@@ -154,16 +161,15 @@ func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload,
 
 	// Render the event's diff; if a detailed diff is requested, a full object diff is emitted, otherwise
 	// a short diff summary similar to what is show for an update row is emitted.
-	var b bytes.Buffer
-	if diff := payload.Before.Diff(payload.After); diff != nil {
-		if detailed {
-			PrintObjectDiff(&b, *diff, nil,
-				false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
-			transformLine = fmt.Sprintf("%s\n%s", transformLine, b.String())
-		} else {
-			writeShortDiff(&b, diff, nil)
-			transformLine = fmt.Sprintf("%s [%s]", transformLine, b.String())
-		}
+	if detailed {
+		var b bytes.Buffer
+		PrintObjectDiff(&b, *diff, nil,
+			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
+		transformLine = fmt.Sprintf("%s\n%s", transformLine, b.String())
+	} else {
+		var b bytes.Buffer
+		writeShortDiff(&b, diff, nil)
+		transformLine = fmt.Sprintf("%s [%s]", transformLine, b.String())
 	}
 
 	return opts.Color.Colorize(transformLine + "\n")

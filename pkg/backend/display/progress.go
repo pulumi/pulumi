@@ -632,7 +632,9 @@ func (display *ProgressDisplay) printPolicies() bool {
 			transformLine := renderDiffPolicyTransformEvent(
 				transformEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
 			transformLine = strings.TrimSuffix(transformLine, "\n")
-			display.println(transformLine)
+			if transformLine != "" {
+				display.println(transformLine)
+			}
 		}
 
 		// Next up, display all violations. Sort policy events by: policy pack name, policy pack version,
