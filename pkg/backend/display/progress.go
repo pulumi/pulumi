@@ -830,7 +830,7 @@ func (display *ProgressDisplay) printSummary(hasError bool) {
 		return
 	}
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, hasError, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, hasError, false, display.opts)
 	display.println(msg)
 }
 

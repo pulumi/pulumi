@@ -105,7 +105,7 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
 		const wroteDiagnosticHeader = false
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -212,19 +212,16 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffSummary bool, opts Options) string {
 	changes := event.ResourceChanges
 
-	out := &bytes.Buffer{}
-
-	// If this is a failed preview, we only render the Policy Packs that ran. This is because rendering the summary
-	// for a failed preview may be surprising/misleading, as it does not describe the totality of the proposed changes
-	// (as the preview may have aborted when the error occurred).
+	// If this is a failed preview, do not render anything. It could be surprising/misleading as it doesn't
+	// describe the totality of the proposed changes (for instance, could be missing resources if it errored early).
 	if event.IsPreview && hasError {
-		renderPolicyPacks(out, event.PolicyPacks, opts)
-		return out.String()
+		return ""
 	}
 
+	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
 
@@ -292,8 +289,13 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Op
 		fprintIgnoreError(out, "\n")
 	}
 
-	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
-	renderPolicyPacks(out, event.PolicyPacks, opts)
+	if diffSummary {
+		// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
+		// This is only shown during the diff view, because in the progress view we have a nicer
+		// summarization and grouping of all violations and transforms that have occurred. The
+		// diff view renders events incrementally as we go, so it cannot do this.
+		renderPolicyPacks(out, event.PolicyPacks, opts)
+	}
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
