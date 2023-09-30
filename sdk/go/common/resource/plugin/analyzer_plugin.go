@@ -307,6 +307,13 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
+
+		// Handle the case where we the policy pack doesn't implement a recent enough to implement Transform.
+		if rpcError.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s.Transform(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			return nil, nil
+		}
+
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
 		return nil, rpcError
 	}
@@ -550,8 +557,6 @@ func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementL
 		return pulumirpc.EnforcementLevel_MANDATORY
 	case apitype.Disabled:
 		return pulumirpc.EnforcementLevel_DISABLED
-	case apitype.Default:
-		return pulumirpc.EnforcementLevel_DEFAULT
 	}
 	contract.Failf("Unrecognized enforcement level %s", el)
 	return 0
@@ -686,8 +691,6 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Mandatory, nil
 	case pulumirpc.EnforcementLevel_DISABLED:
 		return apitype.Disabled, nil
-	case pulumirpc.EnforcementLevel_DEFAULT:
-		return apitype.Default, nil
 
 	default:
 		return "", fmt.Errorf("invalid enforcement level %d", el)

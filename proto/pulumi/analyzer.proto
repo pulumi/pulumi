@@ -113,7 +113,6 @@ enum EnforcementLevel {
     ADVISORY = 0;  // Displayed to users, but does not block deployment.
     MANDATORY = 1; // Stops deployment, cannot be overridden.
     DISABLED = 2;  // Disabled policies do not run during a deployment.
-    DEFAULT = 3;   // Use the default enforcement level for the policy pack.
 }
 
 message AnalyzeDiagnostic {
@@ -138,7 +137,7 @@ message TransformResult {
 
 // TransformResponse contains a sequence of transforms applied, in order.
 message TransformResponse {
-    repeated TransformResult transforms = 1;   // the set of transforms to apply.
+    repeated TransformResult transforms = 1;   // the set of transforms that were applied.
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.

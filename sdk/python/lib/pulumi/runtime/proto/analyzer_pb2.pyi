@@ -44,8 +44,6 @@ class _EnforcementLevelEnumTypeWrapper(google.protobuf.internal.enum_type_wrappe
     """Stops deployment, cannot be overridden."""
     DISABLED: _EnforcementLevel.ValueType  # 2
     """Disabled policies do not run during a deployment."""
-    DEFAULT: _EnforcementLevel.ValueType  # 3
-    """Use the default enforcement level for the policy pack."""
 
 class EnforcementLevel(_EnforcementLevel, metaclass=_EnforcementLevelEnumTypeWrapper):
     """EnforcementLevel indicates the severity of a policy violation."""
@@ -56,8 +54,6 @@ MANDATORY: EnforcementLevel.ValueType  # 1
 """Stops deployment, cannot be overridden."""
 DISABLED: EnforcementLevel.ValueType  # 2
 """Disabled policies do not run during a deployment."""
-DEFAULT: EnforcementLevel.ValueType  # 3
-"""Use the default enforcement level for the policy pack."""
 global___EnforcementLevel = EnforcementLevel
 
 @typing_extensions.final
@@ -422,7 +418,7 @@ class TransformResponse(google.protobuf.message.Message):
     TRANSFORMS_FIELD_NUMBER: builtins.int
     @property
     def transforms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___TransformResult]:
-        """the set of transforms to apply."""
+        """the set of transforms that were applied."""
     def __init__(
         self,
         *,
