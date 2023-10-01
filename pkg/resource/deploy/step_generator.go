@@ -759,7 +759,18 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 					return nil, fmt.Errorf("failed to run transform: %w", err)
 				} else if tresults != nil && len(tresults) > 0 {
 					for _, tresult := range tresults {
-						if tresult.Properties != nil {
+						if tresult.Diagnostic != "" {
+							// If there is a diagnostic, we have a warning to display.
+							sg.opts.Events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
+								PolicyName:        tresult.TransformName,
+								PolicyPackName:    tresult.PolicyPackName,
+								PolicyPackVersion: tresult.PolicyPackVersion,
+								Description:       tresult.Description,
+								Message:           tresult.Diagnostic,
+								EnforcementLevel:  apitype.Advisory,
+								URN:               new.URN,
+							})
+						} else if tresult.Properties != nil {
 							// Emit a nice message so users know what was transformed.
 							sg.opts.Events.OnPolicyTransform(new.URN, tresult, inputs, tresult.Properties)
 							// Use the transformed inputs rather than the old ones from this point onwards.

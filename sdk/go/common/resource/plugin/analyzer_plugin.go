@@ -332,6 +332,7 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 			PolicyPackName:    t.GetPolicyPackName(),
 			PolicyPackVersion: t.GetPolicyPackVersion(),
 			Properties:        tprops,
+			Diagnostic:        t.GetDiagnostic(),
 		})
 	}
 

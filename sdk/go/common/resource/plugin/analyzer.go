@@ -106,6 +106,7 @@ type TransformResult struct {
 	PolicyPackVersion string
 	URN               resource.URN
 	Properties        resource.PropertyMap
+	Diagnostic        string
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.

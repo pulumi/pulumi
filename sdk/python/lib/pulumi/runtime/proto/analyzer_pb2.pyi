@@ -384,6 +384,7 @@ class TransformResult(google.protobuf.message.Message):
     POLICYPACKVERSION_FIELD_NUMBER: builtins.int
     DESCRIPTION_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
+    DIAGNOSTIC_FIELD_NUMBER: builtins.int
     transformName: builtins.str
     """Name of the transform itself."""
     policyPackName: builtins.str
@@ -395,6 +396,8 @@ class TransformResult(google.protobuf.message.Message):
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """the transformed properties to use."""
+    diagnostic: builtins.str
+    """an optional warning diagnostic to emit, if a transform failed."""
     def __init__(
         self,
         *,
@@ -403,9 +406,10 @@ class TransformResult(google.protobuf.message.Message):
         policyPackVersion: builtins.str = ...,
         description: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
+        diagnostic: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties", "transformName", b"transformName"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "diagnostic", b"diagnostic", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties", "transformName", b"transformName"]) -> None: ...
 
 global___TransformResult = TransformResult
 

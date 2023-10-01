@@ -212,7 +212,7 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffSummary bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffStyleSummary bool, opts Options) string {
 	changes := event.ResourceChanges
 
 	// If this is a failed preview, do not render anything. It could be surprising/misleading as it doesn't
@@ -289,7 +289,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffSum
 		fprintIgnoreError(out, "\n")
 	}
 
-	if diffSummary {
+	if diffStyleSummary {
 		// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
 		// This is only shown during the diff view, because in the progress view we have a nicer
 		// summarization and grouping of all violations and transforms that have occurred. The

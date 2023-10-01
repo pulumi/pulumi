@@ -2883,7 +2883,8 @@ proto.pulumirpc.TransformResult.toObject = function(includeInstance, msg) {
     policypackname: jspb.Message.getFieldWithDefault(msg, 2, ""),
     policypackversion: jspb.Message.getFieldWithDefault(msg, 3, ""),
     description: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    diagnostic: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -2940,6 +2941,10 @@ proto.pulumirpc.TransformResult.deserializeBinaryFromReader = function(msg, read
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setDiagnostic(value);
       break;
     default:
       reader.skipField();
@@ -3004,6 +3009,13 @@ proto.pulumirpc.TransformResult.serializeBinaryToWriter = function(message, writ
       5,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getDiagnostic();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
+      f
     );
   }
 };
@@ -3115,6 +3127,24 @@ proto.pulumirpc.TransformResult.prototype.clearProperties = function() {
  */
 proto.pulumirpc.TransformResult.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 5) != null;
+};
+
+
+/**
+ * optional string diagnostic = 6;
+ * @return {string}
+ */
+proto.pulumirpc.TransformResult.prototype.getDiagnostic = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.TransformResult} returns this
+ */
+proto.pulumirpc.TransformResult.prototype.setDiagnostic = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 

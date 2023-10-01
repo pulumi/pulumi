@@ -133,6 +133,7 @@ message TransformResult {
     string policyPackVersion = 3;          // Version of the policy pack.
     string description = 4;                // Description of transform rule. e.g., "auto-tag resources."
     google.protobuf.Struct properties = 5; // the transformed properties to use.
+    string diagnostic = 6;                 // an optional warning diagnostic to emit, if a transform failed.
 }
 
 // TransformResponse contains a sequence of transforms applied, in order.
