@@ -432,7 +432,7 @@ func (ex *deploymentExecutor) importResources(
 		executor:   stepExec,
 		preview:    preview,
 	}
-	res := importer.importResources(ctx)
+	err := importer.importResources(ctx)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
@@ -440,9 +440,9 @@ func (ex *deploymentExecutor) importResources(
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
 
-	if res != nil || stepExec.Errored() {
-		if res != nil && res.Error() != nil {
-			ex.reportExecResult(fmt.Sprintf("failed: %s", res.Error()), preview)
+	if err != nil || stepExec.Errored() {
+		if err != nil && !result.IsBail(err) {
+			ex.reportExecResult(fmt.Sprintf("failed: %s", err), preview)
 		} else {
 			ex.reportExecResult("failed", preview)
 		}
