@@ -284,31 +284,33 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpSame, "step.Op()", "must be %q, got %q", deploy.OpSame, step.Op())
-	contract.Assertf(successful, "expected mutation to be successful")
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 	return ssm.manager.mutate(func() bool {
 		sameStep := step.(*deploy.SameStep)
 
-		ssm.manager.markDone(step.Old())
+		ssm.manager.markOperationComplete(step.New())
+		if successful {
+			ssm.manager.markDone(step.Old())
 
-		// In the case of a 'resource create' in a program that wasn't specified by the user in the
-		// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
-		// doesn't exist at all.  That way when the program runs the next time, we'll actually
-		// create it.
-		if sameStep.IsSkippedCreate() {
-			return false
-		}
+			// In the case of a 'resource create' in a program that wasn't specified by the user in the
+			// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
+			// doesn't exist at all.  That way when the program runs the next time, we'll actually
+			// create it.
+			if sameStep.IsSkippedCreate() {
+				return false
+			}
 
-		ssm.manager.markNew(step.New())
+			ssm.manager.markNew(step.New())
 
-		// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
-		// resource with new dependencies, outputs, parent, protection. etc.
-		//
-		// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
-		// changes.
-		if !ssm.mustWrite(sameStep) {
-			logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
-			return false
+			// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
+			// resource with new dependencies, outputs, parent, protection. etc.
+			//
+			// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
+			// changes.
+			if !ssm.mustWrite(sameStep) {
+				logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
+				return false
+			}
 		}
 
 		logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() not eliding write")

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -1059,4 +1060,29 @@ func TestRegisterOutputs(t *testing.T) {
 	lastSnap := sp.LastSnap()
 	assert.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
+}
+
+func TestRecordingSameFailure(t *testing.T) {
+	t.Parallel()
+
+	resourceA := NewResource("a")
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+	manager, sp := MockSetup(t, snap)
+	step := deploy.NewSameStep(nil, nil, resourceA, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	require.NoError(t, err)
+
+	// There should be zero snaps performed at the start.
+	assert.Len(t, sp.SavedSnapshots, 0)
+
+	err = mutation.End(step, false /* successful */)
+	require.NoError(t, err)
+
+	// A failed same should leave the resource in the snapshot.
+	snap = sp.LastSnap()
+	assert.Len(t, snap.Resources, 1)
+	assert.Len(t, snap.PendingOperations, 0)
+	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 }
