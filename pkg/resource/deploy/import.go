@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // An Import specifies a resource to import.
@@ -176,7 +175,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	return urn, true, true
 }
 
-func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, result.Result, bool) {
+func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, bool, error) {
 	urnToReference := map[resource.URN]string{}
 
 	// Determine which default providers are not present in the state. If all default providers are accounted for,
@@ -202,7 +201,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		if imp.Type.Package() == "" {
-			return nil, result.Error("incorrect package type specified"), false
+			return nil, false, fmt.Errorf("incorrect package type specified")
 		}
 		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
@@ -222,7 +221,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		defaultProviders[urn] = struct{}{}
 	}
 	if len(defaultProviderRequests) == 0 {
-		return urnToReference, nil, true
+		return urnToReference, true, nil
 	}
 
 	steps := make([]Step, len(defaultProviderRequests))
@@ -231,7 +230,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	})
 	for idx, req := range defaultProviderRequests {
 		if req.Package() == "" {
-			return nil, result.Error("incorrect package type specified"), false
+			return nil, false, fmt.Errorf("incorrect package type specified")
 		}
 
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
@@ -240,7 +239,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		// Fetch, prepare, and check the configuration for this provider.
 		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
 		if err != nil {
-			return nil, result.Errorf("failed to fetch provider config: %v", err), false
+			return nil, false, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
 
 		// Calculate the inputs for the provider using the ambient config.
@@ -255,14 +254,14 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, nil)
 		if err != nil {
-			return nil, result.Errorf("failed to validate provider config: %v", err), false
+			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
 			nil, nil, nil, "", false, "", nil, nil, "")
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, failures) {
-			return nil, nil, false
+			return nil, false, nil
 		}
 
 		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state)
@@ -270,7 +269,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 	// Issue the create steps.
 	if !i.executeParallel(ctx, steps...) {
-		return nil, nil, false
+		return nil, false, nil
 	}
 
 	// Update the URN to reference map.
@@ -285,10 +284,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urnToReference[res.URN] = ref.String()
 	}
 
-	return urnToReference, nil, true
+	return urnToReference, true, nil
 }
 
-func (i *importer) importResources(ctx context.Context) result.Result {
+func (i *importer) importResources(ctx context.Context) error {
 	contract.Assertf(len(i.deployment.imports) != 0, "no resources to import")
 
 	if !i.registerExistingResources(ctx) {
@@ -300,9 +299,9 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 		return nil
 	}
 
-	urnToReference, res, ok := i.registerProviders(ctx)
+	urnToReference, ok, err := i.registerProviders(ctx)
 	if !ok {
-		return res
+		return err
 	}
 
 	// Create a step per resource to import and execute them in parallel. If there are duplicates, fail the import.
@@ -317,7 +316,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		// Check for duplicate imports.
 		if _, has := urns[urn]; has {
-			return result.Errorf("duplicate import '%v' of type '%v'", imp.Name, imp.Type)
+			return fmt.Errorf("duplicate import '%v' of type '%v'", imp.Name, imp.Type)
 		}
 		urns[urn] = struct{}{}
 
@@ -368,8 +367,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 	}
 
 	if createdStack {
-		return result.WrapIfNonNil(
-			i.executor.ExecuteRegisterResourceOutputs(noopOutputsEvent(stackURN)))
+		return i.executor.ExecuteRegisterResourceOutputs(noopOutputsEvent(stackURN))
 	}
 
 	return nil
