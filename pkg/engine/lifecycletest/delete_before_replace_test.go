@@ -86,6 +86,7 @@ func generateComplexTestDependencyGraph(
 				propertyDependencies{"B": []resource.URN{urnF, urnG}}, nil),
 		},
 	}
+	assert.NoError(t, old.VerifyIntegrity())
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
