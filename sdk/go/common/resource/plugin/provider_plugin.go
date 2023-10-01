@@ -769,7 +769,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	ignoreChanges []string,
 ) (DiffResult, error) {
 	contract.Assertf(urn != "", "Diff requires a URN")
-	//contract.Assertf(id != "", "Diff requires an ID") //?????????????????????????????????????????
+	contract.Assertf(id != "", "Diff requires an ID")
 	contract.Assertf(oldInputs != nil, "Diff requires old input properties")
 	contract.Assertf(newInputs != nil, "Diff requires new input properties")
 	contract.Assertf(oldOutputs != nil, "Diff requires old output properties")
