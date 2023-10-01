@@ -4,6 +4,7 @@ package lifecycletest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -12,11 +13,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -28,6 +31,64 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func copystruct[T any](t *testing.T, v T) T {
+	t.Helper()
+	r, err := copystructure.Copy(v)
+	require.NoError(t, err)
+	return r.(T)
+}
+
+func snapshotEqual(journal, manager *deploy.Snapshot) error {
+	// Just want to check the same operations and resources are counted, but order might be slightly different.
+	if journal == nil && manager == nil {
+		return nil
+	}
+	if journal == nil {
+		return fmt.Errorf("journal snapshot is nil")
+	}
+	if manager == nil {
+		return fmt.Errorf("manager snapshot is nil")
+	}
+
+	// Manifests and SecretsManagers are known to differ because we don't thread them through for the Journal code.
+
+	if len(journal.PendingOperations) != len(manager.PendingOperations) {
+		return fmt.Errorf("journal and manager pending operations differ")
+	}
+
+	for _, jop := range journal.PendingOperations {
+		found := false
+		for _, mop := range manager.PendingOperations {
+			if reflect.DeepEqual(jop, mop) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("journal and manager pending operations differ, %v not found in manager", jop)
+		}
+	}
+
+	if len(journal.Resources) != len(manager.Resources) {
+		return fmt.Errorf("journal and manager resources differ")
+	}
+
+	for _, jr := range journal.Resources {
+		found := false
+		for _, mr := range manager.Resources {
+			if reflect.DeepEqual(jr, mr) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
+		}
+	}
+
+	return nil
+}
 
 type updateInfo struct {
 	project workspace.Project
@@ -102,11 +163,18 @@ func (op TestOp) runWithContext(
 
 	events := make(chan Event)
 	journal := NewJournal()
+	persister := &backend.InMemoryPersister{}
+	secretsManager := b64.NewBase64SecretsManager()
+	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+
+	combined := &CombinedManager{
+		Managers: []SnapshotManager{journal, snapshotManager},
+	}
 
 	ctx := &Context{
 		Cancel:          cancelCtx,
 		Events:          events,
-		SnapshotManager: journal,
+		SnapshotManager: combined,
 		BackendClient:   backendClient,
 	}
 
@@ -129,7 +197,7 @@ func (op TestOp) runWithContext(
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	closeErr := journal.Close()
+	closeErr := combined.Close()
 
 	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
 	// the deployment context, not expecting it to have any effect on the test code here. See
@@ -159,13 +227,19 @@ func (op TestOp) runWithContext(
 			snap = nil
 			break
 		}
-		err = snap.VerifyIntegrity()
-		if err != nil {
-			// Likewise as soon as one snapshot fails to validate stop checking
-			errs = append(errs, err)
-			snap = nil
-			break
+		// journal.Snap internally verifies integrity so we don't need to call VerifyIntegrity explicitly.
+	}
+
+	// if we couldn't even create the journal snapshot don't even try to compare it to the SnapshotManager snapshot
+	if snap != nil {
+		// But the persister doesn't do the same integrity checks so if it wrote out a snapshot we now need to
+		// verify it.
+		if persister.Snap != nil {
+			errs = append(errs, persister.Snap.VerifyIntegrity())
 		}
+
+		// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
+		errs = append(errs, snapshotEqual(snap, persister.Snap))
 	}
 
 	return nil, snap, errors.Join(errs...)

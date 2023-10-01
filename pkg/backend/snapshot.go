@@ -264,16 +264,19 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
-	// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
-	sortDeps := func(deps []resource.URN) {
-		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
-	}
-	sortDeps(old.Dependencies)
-	sortDeps(new.Dependencies)
 	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both
 	// lists being empty ourselves.
 	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
-		if !reflect.DeepEqual(old.Dependencies, new.Dependencies) {
+		// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
+		sortDeps := func(deps []resource.URN) []resource.URN {
+			result := make([]resource.URN, len(deps))
+			copy(result, deps)
+			sort.Slice(result, func(i, j int) bool { return deps[i] < deps[j] })
+			return result
+		}
+		oldDeps := sortDeps(old.Dependencies)
+		newDeps := sortDeps(new.Dependencies)
+		if !reflect.DeepEqual(oldDeps, newDeps) {
 			logging.V(9).Infof("SnapshotManager: mustWrite() true because of Dependencies")
 			return true
 		}
@@ -672,7 +675,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
 func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
 	// True if we have elided writes since the last actual write.
-	hasElidedWrites := false
+	hasElidedWrites := true
 
 	// Service each mutation request in turn.
 serviceLoop:

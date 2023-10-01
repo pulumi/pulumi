@@ -114,7 +114,6 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			}
 		}
 	}
-
 	// Append any resources from the base snapshot that were not produced by the current snapshot.
 	// See backend.SnapshotManager.snap for why this works.
 	if base != nil {
@@ -195,6 +194,7 @@ func (j *Journal) End(step deploy.Step, success bool) error {
 	if success {
 		kind = JournalEntrySuccess
 	}
+
 	select {
 	case j.events <- JournalEntry{Kind: kind, Step: step}:
 		return nil
