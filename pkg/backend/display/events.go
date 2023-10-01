@@ -82,7 +82,29 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			EnforcementLevel:     string(p.EnforcementLevel),
 		}
 
-	// TODO: PolicyTransformationEvent
+	case engine.PolicyTransformEvent:
+		p, ok := e.Payload().(engine.PolicyTransformEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+
+		// Serialize properties, ignoring errors, as with other event types.
+		encrypter := config.BlindingCrypter
+		before, err := stack.SerializeProperties(p.Before, encrypter, showSecrets)
+		contract.IgnoreError(err)
+		after, err := stack.SerializeProperties(p.After, encrypter, showSecrets)
+		contract.IgnoreError(err)
+
+		apiEvent.PolicyTransformEvent = &apitype.PolicyTransformEvent{
+			ResourceURN:          string(p.ResourceURN),
+			Color:                string(p.Color),
+			TransformName:        p.TransformName,
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Before:               before,
+			After:                after,
+		}
 
 	case engine.PreludeEvent:
 		p, ok := e.Payload().(engine.PreludeEventPayload)
@@ -285,6 +307,27 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
+		})
+
+	case apiEvent.PolicyTransformEvent != nil:
+		p := apiEvent.PolicyTransformEvent
+
+		// Deserialize the before and after properties, ignoring serialization
+		// errors as the other event types do (e.g., step events).
+		crypter := config.BlindingCrypter
+		before, err := stack.DeserializeProperties(p.Before, crypter, crypter)
+		contract.IgnoreError(err)
+		after, err := stack.DeserializeProperties(p.After, crypter, crypter)
+		contract.IgnoreError(err)
+
+		event = engine.NewEvent(engine.PolicyTransformEvent, engine.PolicyTransformEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			Color:             colors.Colorization(p.Color),
+			TransformName:     p.TransformName,
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Before:            before,
+			After:             after,
 		})
 
 	case apiEvent.PreludeEvent != nil:

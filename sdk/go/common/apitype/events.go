@@ -59,6 +59,18 @@ type PolicyEvent struct {
 	EnforcementLevel string `json:"enforcementLevel"`
 }
 
+// PolicyTransformEvent is emitted whenever there is Policy transformation.
+type PolicyTransformEvent struct {
+	ResourceURN          string                 `json:"resourceUrn,omitempty"`
+	Color                string                 `json:"color"`
+	TransformName        string                 `json:"transformName"`
+	PolicyPackName       string                 `json:"policyPackName"`
+	PolicyPackVersion    string                 `json:"policyPackVersion"`
+	PolicyPackVersionTag string                 `json:"policyPackVersionTag"`
+	Before               map[string]interface{} `json:"before,omitempty"`
+	After                map[string]interface{} `json:"after,omitempty"`
+}
+
 // PreludeEvent is emitted at the start of an update.
 type PreludeEvent struct {
 	// Config contains the keys and values for the update.
@@ -199,15 +211,16 @@ type EngineEvent struct {
 	// Timestamp is a Unix timestamp (seconds) of when the event was emitted.
 	Timestamp int `json:"timestamp"`
 
-	CancelEvent      *CancelEvent       `json:"cancelEvent,omitempty"`
-	StdoutEvent      *StdoutEngineEvent `json:"stdoutEvent,omitempty"`
-	DiagnosticEvent  *DiagnosticEvent   `json:"diagnosticEvent,omitempty"`
-	PreludeEvent     *PreludeEvent      `json:"preludeEvent,omitempty"`
-	SummaryEvent     *SummaryEvent      `json:"summaryEvent,omitempty"`
-	ResourcePreEvent *ResourcePreEvent  `json:"resourcePreEvent,omitempty"`
-	ResOutputsEvent  *ResOutputsEvent   `json:"resOutputsEvent,omitempty"`
-	ResOpFailedEvent *ResOpFailedEvent  `json:"resOpFailedEvent,omitempty"`
-	PolicyEvent      *PolicyEvent       `json:"policyEvent,omitempty"`
+	CancelEvent          *CancelEvent          `json:"cancelEvent,omitempty"`
+	StdoutEvent          *StdoutEngineEvent    `json:"stdoutEvent,omitempty"`
+	DiagnosticEvent      *DiagnosticEvent      `json:"diagnosticEvent,omitempty"`
+	PreludeEvent         *PreludeEvent         `json:"preludeEvent,omitempty"`
+	SummaryEvent         *SummaryEvent         `json:"summaryEvent,omitempty"`
+	ResourcePreEvent     *ResourcePreEvent     `json:"resourcePreEvent,omitempty"`
+	ResOutputsEvent      *ResOutputsEvent      `json:"resOutputsEvent,omitempty"`
+	ResOpFailedEvent     *ResOpFailedEvent     `json:"resOpFailedEvent,omitempty"`
+	PolicyEvent          *PolicyEvent          `json:"policyEvent,omitempty"`
+	PolicyTransformEvent *PolicyTransformEvent `json:"policyTransformEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.

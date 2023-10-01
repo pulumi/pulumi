@@ -122,14 +122,12 @@ type PolicyViolationEventPayload struct {
 // PolicyTransformEventPayload is the payload for an event with type `policy-transform`.
 type PolicyTransformEventPayload struct {
 	ResourceURN       resource.URN
-	Message           string
 	Color             colors.Colorization
 	TransformName     string
 	PolicyPackName    string
 	PolicyPackVersion string
 	Before            resource.PropertyMap
 	After             resource.PropertyMap
-	Prefix            string
 }
 
 type StdoutEventPayload struct {
