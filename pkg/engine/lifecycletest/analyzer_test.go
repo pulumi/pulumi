@@ -3,12 +3,14 @@ package lifecycletest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 )
@@ -162,4 +164,162 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 	project := p.GetProject()
 	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
+}
+
+// TestSimpleTransformResource tests a very simple sequence of transforms. We register two, to ensure that
+// the transforms are applied in the order specified, an important part of the design.
+func TestSimpleTransformResource(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				TransformF: func(r plugin.AnalyzerResource) ([]plugin.TransformResult, error) {
+					// Run two transforms to ensure they are applied in order.
+					return []plugin.TransformResult{
+						{
+							TransformName:     "ignored",
+							PolicyPackName:    "analyzerA",
+							PolicyPackVersion: "1.0.0",
+							Description:       "a transform that gets ignored because it runs first",
+							Properties: resource.PropertyMap{
+								"a":   resource.NewStringProperty("nope"),
+								"ggg": resource.NewBoolProperty(true),
+							},
+						},
+						{
+							TransformName:     "real-deal",
+							PolicyPackName:    "analyzerA",
+							PolicyPackVersion: "1.0.0",
+							Description:       "a transform that actually gets applied because it runs last",
+							Properties: resource.PropertyMap{
+								"a":   resource.NewStringProperty("foo"),
+								"fff": resource.NewBoolProperty(true),
+								"z":   resource.NewStringProperty("bar"),
+							},
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{
+			RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			Host:             host,
+		},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	// Expect no error, valid snapshot, two resources:
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
+
+	// Ensure the rewritten properties have been applied to the inputs:
+	r := snap.Resources[1]
+	assert.Equal(t, "pkgA:m:typA", string(r.Type))
+	assert.Equal(t, 3, len(r.Inputs))
+	assert.Equal(t, "foo", r.Inputs["a"].StringValue())
+	assert.Equal(t, true, r.Inputs["fff"].BoolValue())
+	assert.Equal(t, "bar", r.Inputs["z"].StringValue())
+}
+
+// TestTransformDiagnostic tests the case where a transform issues a diagnostic rather than transforming
+// state. In this case, the deployment should still succeed, even though no transforms took place.
+func TestTransformDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				TransformF: func(r plugin.AnalyzerResource) ([]plugin.TransformResult, error) {
+					return []plugin.TransformResult{{
+						TransformName:     "warning",
+						PolicyPackName:    "analyzerA",
+						PolicyPackVersion: "1.0.0",
+						Description:       "a transform with a diagnostic",
+						Diagnostic:        "warning - could not run due to unknowns",
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{
+			RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			Host:             host,
+		},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	// Expect no error, valid snapshot, two resources:
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
+}
+
+// TestTransformFailure tests the case where a transform fails to execute. In this case, the whole
+// deployment itself should also fail.
+func TestTransformFailure(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				TransformF: func(r plugin.AnalyzerResource) ([]plugin.TransformResult, error) {
+					return nil, errors.New("this transform failed")
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{
+			RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			Host:             host,
+		},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 0, len(snap.Resources))
 }
