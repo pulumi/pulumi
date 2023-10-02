@@ -280,11 +280,11 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 	return diags, nil
 }
 
-// Transform is given the opportunity to transform a single resource, and returns its new properties.
-func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
+// Remediate is given the opportunity to transform a single resource, and returns its new properties.
+func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
-	label := fmt.Sprintf("%s.Transform(%s)", a.label(), t)
+	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 	mprops, err := MarshalProperties(props,
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
@@ -297,7 +297,7 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 		return nil, err
 	}
 
-	resp, err := a.client.Transform(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+	resp, err := a.client.Remediate(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       string(name),
@@ -318,16 +318,16 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 		return nil, rpcError
 	}
 
-	var results []TransformResult
-	for _, t := range resp.GetTransforms() {
+	var results []Remediation
+	for _, t := range resp.GetRemediations() {
 		tprops, err := UnmarshalProperties(t.GetProperties(),
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 		if err != nil {
 			return nil, err
 		}
 
-		results = append(results, TransformResult{
-			TransformName:     t.GetTransformName(),
+		results = append(results, Remediation{
+			PolicyName:        t.GetPolicyName(),
 			Description:       t.GetDescription(),
 			PolicyPackName:    t.GetPolicyPackName(),
 			PolicyPackVersion: t.GetPolicyPackVersion(),
@@ -336,7 +336,7 @@ func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
 		})
 	}
 
-	logging.V(7).Infof("%s success: #transforms=%d", label, len(results))
+	logging.V(7).Infof("%s success: #remediations=%d", label, len(results))
 	return results, nil
 }
 

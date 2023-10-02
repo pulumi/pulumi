@@ -125,6 +125,9 @@ const (
 	// Mandatory is an enforcement level that prevents a resource from being created.
 	Mandatory EnforcementLevel = "mandatory"
 
+	// Remediate is an enforcement level that fixes policy issues instead of issuing diagnostics.
+	Remediate EnforcementLevel = "remediate"
+
 	// Disabled is an enforcement level that disables the policy from being enforced.
 	Disabled EnforcementLevel = "disabled"
 )

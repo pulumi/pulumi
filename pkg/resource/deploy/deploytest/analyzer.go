@@ -25,7 +25,7 @@ type Analyzer struct {
 
 	AnalyzeF      func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
 	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
-	TransformF    func(r plugin.AnalyzerResource) ([]plugin.TransformResult, error)
+	RemediateF    func(r plugin.AnalyzerResource) ([]plugin.Remediation, error)
 
 	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
 }
@@ -54,9 +54,9 @@ func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) ([]plu
 	return nil, nil
 }
 
-func (a *Analyzer) Transform(r plugin.AnalyzerResource) ([]plugin.TransformResult, error) {
-	if a.TransformF != nil {
-		return a.TransformF(r)
+func (a *Analyzer) Remediate(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
+	if a.RemediateF != nil {
+		return a.RemediateF(r)
 	}
 	return nil, nil
 }

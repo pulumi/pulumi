@@ -171,8 +171,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return payload.Metadata.URN, &payload.Metadata
 	case engine.DiagEvent:
 		return event.Payload().(engine.DiagEventPayload).URN, nil
-	case engine.PolicyTransformEvent:
-		return event.Payload().(engine.PolicyTransformEventPayload).ResourceURN, nil
+	case engine.PolicyRemediationEvent:
+		return event.Payload().(engine.PolicyRemediationEventPayload).ResourceURN, nil
 	case engine.PolicyViolationEvent:
 		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
 	default:
@@ -464,7 +464,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	display.renderer.done(display)
 
 	// Render the policies section; this will print all policy packs that ran plus any specific
-	// policies that led to violations or transformations. This comes before diagnostics since policy
+	// policies that led to violations or remediations. This comes before diagnostics since policy
 	// violations yield failures and it is better to see those in advance of the failure message.
 	wroteMandatoryPolicyViolations := display.printPolicies()
 
@@ -558,8 +558,8 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 }
 
 type policyPackSummary struct {
-	ViolationEvents []engine.PolicyViolationEventPayload
-	TransformEvents []engine.PolicyTransformEventPayload
+	ViolationEvents   []engine.PolicyViolationEventPayload
+	RemediationEvents []engine.PolicyRemediationEventPayload
 }
 
 func (display *ProgressDisplay) printPolicies() bool {
@@ -570,8 +570,8 @@ func (display *ProgressDisplay) printPolicies() bool {
 	var hadMandatoryViolations bool
 	display.println(display.opts.Color.Colorize(colors.SpecHeadline + "Policies:" + colors.Reset))
 
-	// Print policy packs that were run and any violations or transformations associated with them.
-	// Gather up all policy packs and their associated violation and transform events.
+	// Print policy packs that were run and any violations or remediations associated with them.
+	// Gather up all policy packs and their associated violation and remediation events.
 	policyPackInfos := make(map[string]policyPackSummary)
 
 	// First initialize empty lists for all policy packs just to ensure they show if no events are found.
@@ -589,12 +589,12 @@ func (display *ProgressDisplay) printPolicies() bool {
 		}
 	}
 
-	// Now associate all transform events with the corresponding policy pack in the list.
+	// Now associate all remediation events with the corresponding policy pack in the list.
 	for _, row := range display.eventUrnToResourceRow {
-		for _, event := range row.PolicyTransformPayloads() {
+		for _, event := range row.PolicyRemediationPayloads() {
 			key := fmt.Sprintf("%s@v%s", event.PolicyPackName, event.PolicyPackVersion)
 			newInfo := policyPackInfos[key]
-			newInfo.TransformEvents = append(newInfo.TransformEvents, event)
+			newInfo.RemediationEvents = append(newInfo.RemediationEvents, event)
 			policyPackInfos[key] = newInfo
 		}
 	}
@@ -606,7 +606,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 	}
 	sort.Strings(policyKeys)
 
-	// Finally, print the policy pack info and any violations and any transforms for each one.
+	// Finally, print the policy pack info and any violations and any remediations for each one.
 	for _, key := range policyKeys {
 		info := policyPackInfos[key]
 
@@ -625,15 +625,15 @@ func (display *ProgressDisplay) printPolicies() bool {
 		display.println(fmt.Sprintf("    %s %s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset))
 		subItemIndent := "        "
 
-		// First show any transforms since they happen first. Do not sort them -- show them in the
-		// order in which events arrived, since for transforms, the order matters.
-		for _, transformEvent := range info.TransformEvents {
+		// First show any remediations since they happen first. Do not sort them -- show them in the
+		// order in which events arrived, since for remediations, the order matters.
+		for _, remediationEvent := range info.RemediationEvents {
 			// Print the individual policy event.
-			transformLine := renderDiffPolicyTransformEvent(
-				transformEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
-			transformLine = strings.TrimSuffix(transformLine, "\n")
-			if transformLine != "" {
-				display.println(transformLine)
+			remediationLine := renderDiffPolicyRemediationEvent(
+				remediationEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
+			remediationLine = strings.TrimSuffix(remediationLine, "\n")
+			if remediationLine != "" {
+				display.println(remediationLine)
 			}
 		}
 
@@ -912,9 +912,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else if event.Type == engine.PolicyViolationEvent {
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
-	} else if event.Type == engine.PolicyTransformEvent {
-		// record this transformation so we print it at the end.
-		row.RecordPolicyTransformEvent(event)
+	} else if event.Type == engine.PolicyRemediationEvent {
+		// record this remediation so we print it at the end.
+		row.RecordPolicyRemediationEvent(event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}

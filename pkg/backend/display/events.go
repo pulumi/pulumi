@@ -82,8 +82,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			EnforcementLevel:     string(p.EnforcementLevel),
 		}
 
-	case engine.PolicyTransformEvent:
-		p, ok := e.Payload().(engine.PolicyTransformEventPayload)
+	case engine.PolicyRemediationEvent:
+		p, ok := e.Payload().(engine.PolicyRemediationEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -95,10 +95,10 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		after, err := stack.SerializeProperties(p.After, encrypter, showSecrets)
 		contract.IgnoreError(err)
 
-		apiEvent.PolicyTransformEvent = &apitype.PolicyTransformEvent{
+		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
 			ResourceURN:          string(p.ResourceURN),
 			Color:                string(p.Color),
-			TransformName:        p.TransformName,
+			PolicyName:           p.PolicyName,
 			PolicyPackName:       p.PolicyPackName,
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
@@ -309,8 +309,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
 		})
 
-	case apiEvent.PolicyTransformEvent != nil:
-		p := apiEvent.PolicyTransformEvent
+	case apiEvent.PolicyRemediationEvent != nil:
+		p := apiEvent.PolicyRemediationEvent
 
 		// Deserialize the before and after properties, ignoring serialization
 		// errors as the other event types do (e.g., step events).
@@ -320,10 +320,10 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		after, err := stack.DeserializeProperties(p.After, crypter, crypter)
 		contract.IgnoreError(err)
 
-		event = engine.NewEvent(engine.PolicyTransformEvent, engine.PolicyTransformEventPayload{
+		event = engine.NewEvent(engine.PolicyRemediationEvent, engine.PolicyRemediationEventPayload{
 			ResourceURN:       resource.URN(p.ResourceURN),
 			Color:             colors.Colorization(p.Color),
-			TransformName:     p.TransformName,
+			PolicyName:        p.PolicyName,
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
 			Before:            before,

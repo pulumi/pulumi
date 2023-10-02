@@ -60,8 +60,8 @@ func NewEvent(typ EventType, payload interface{}) Event {
 		_, ok = payload.(ResourceOperationFailedPayload)
 	case PolicyViolationEvent:
 		_, ok = payload.(PolicyViolationEventPayload)
-	case PolicyTransformEvent:
-		_, ok = payload.(PolicyTransformEventPayload)
+	case PolicyRemediationEvent:
+		_, ok = payload.(PolicyRemediationEventPayload)
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -85,7 +85,7 @@ const (
 	ResourceOutputsEvent    EventType = "resource-outputs"
 	ResourceOperationFailed EventType = "resource-operationfailed"
 	PolicyViolationEvent    EventType = "policy-violation"
-	PolicyTransformEvent    EventType = "policy-transform"
+	PolicyRemediationEvent  EventType = "policy-remediation"
 )
 
 func (e Event) Payload() interface{} {
@@ -119,11 +119,11 @@ type PolicyViolationEventPayload struct {
 	Prefix            string
 }
 
-// PolicyTransformEventPayload is the payload for an event with type `policy-transform`.
-type PolicyTransformEventPayload struct {
+// PolicyRemediationEventPayload is the payload for an event with type `policy-remediation`.
+type PolicyRemediationEventPayload struct {
 	ResourceURN       resource.URN
 	Color             colors.Colorization
-	TransformName     string
+	PolicyName        string
 	PolicyPackName    string
 	PolicyPackVersion string
 	Before            resource.PropertyMap
@@ -474,14 +474,14 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	}))
 }
 
-func (e *eventEmitter) policyTransformEvent(urn resource.URN, t plugin.TransformResult,
+func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remediation,
 	before resource.PropertyMap, after resource.PropertyMap) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(PolicyTransformEvent, PolicyTransformEventPayload{
+	e.sendEvent(NewEvent(PolicyRemediationEvent, PolicyRemediationEventPayload{
 		ResourceURN:       urn,
 		Color:             colors.Raw,
-		TransformName:     t.TransformName,
+		PolicyName:        t.PolicyName,
 		PolicyPackName:    t.PolicyPackName,
 		PolicyPackVersion: t.PolicyPackVersion,
 		Before:            before,

@@ -97,7 +97,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		for e := range eventsChannel {
 			if e.Type == engine.ResourcePreEvent ||
 				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.PolicyTransformEvent ||
+				e.Type == engine.PolicyRemediationEvent ||
 				e.Type == engine.SummaryEvent {
 				events = append(events, e)
 			}
@@ -313,7 +313,7 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	displayOpts.SummaryDiff = true
 
 	outputEventsDiff := make([]string, 0)
-	transformEventsDiff := make([]string, 0)
+	remediationEventsDiff := make([]string, 0)
 	for _, e := range events {
 		if e.Type == engine.SummaryEvent {
 			continue
@@ -324,13 +324,13 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 			continue
 		}
 
-		// Keep track of output and transforms events separately, since we print them after the
+		// Keep track of output and remediation events separately, since we print them after the
 		// ordinary resource diff information.
 		if e.Type == engine.ResourceOutputsEvent {
 			outputEventsDiff = append(outputEventsDiff, msg)
 			continue
-		} else if e.Type == engine.PolicyTransformEvent {
-			transformEventsDiff = append(transformEventsDiff, msg)
+		} else if e.Type == engine.PolicyRemediationEvent {
+			remediationEventsDiff = append(remediationEventsDiff, msg)
 			continue
 		}
 
@@ -348,12 +348,12 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 		}
 	}
 
-	// Print policy transformations last.
-	if len(transformEventsDiff) > 0 {
+	// Print policy remediations last.
+	if len(remediationEventsDiff) > 0 {
 		_, err := buff.WriteString(displayOpts.Color.Colorize(
-			fmt.Sprintf("\n%s  Policy Transforms:%s\n", colors.SpecHeadline, colors.Reset)))
+			fmt.Sprintf("\n%s  Policy Remediations:%s\n", colors.SpecHeadline, colors.Reset)))
 		contract.IgnoreError(err)
-		for _, msg := range transformEventsDiff {
+		for _, msg := range remediationEventsDiff {
 			_, err := buff.WriteString(msg)
 			contract.IgnoreError(err)
 		}

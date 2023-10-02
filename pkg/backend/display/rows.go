@@ -59,11 +59,11 @@ type ResourceRow interface {
 
 	DiagInfo() *DiagInfo
 	PolicyPayloads() []engine.PolicyViolationEventPayload
-	PolicyTransformPayloads() []engine.PolicyTransformEventPayload
+	PolicyRemediationPayloads() []engine.PolicyRemediationEventPayload
 
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
-	RecordPolicyTransformEvent(diagEvent engine.Event)
+	RecordPolicyRemediationEvent(diagEvent engine.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -127,9 +127,9 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
-	diagInfo                *DiagInfo
-	policyPayloads          []engine.PolicyViolationEventPayload
-	policyTransformPayloads []engine.PolicyTransformEventPayload
+	diagInfo                  *DiagInfo
+	policyPayloads            []engine.PolicyViolationEventPayload
+	policyRemediationPayloads []engine.PolicyRemediationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -232,15 +232,15 @@ func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
 	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 
-// PolicyTransformPayloads returns all policy transformation event payloads that have been registered.
-func (data *resourceRowData) PolicyTransformPayloads() []engine.PolicyTransformEventPayload {
-	return data.policyTransformPayloads
+// PolicyRemediationPayloads returns all policy remediation event payloads that have been registered.
+func (data *resourceRowData) PolicyRemediationPayloads() []engine.PolicyRemediationEventPayload {
+	return data.policyRemediationPayloads
 }
 
-// RecordPolicyTransformEvent records a policy transformation with the resourceRowData.
-func (data *resourceRowData) RecordPolicyTransformEvent(event engine.Event) {
-	tPayload := event.Payload().(engine.PolicyTransformEventPayload)
-	data.policyTransformPayloads = append(data.policyTransformPayloads, tPayload)
+// RecordPolicyRemediationEvent records a policy remediation with the resourceRowData.
+func (data *resourceRowData) RecordPolicyRemediationEvent(event engine.Event) {
+	tPayload := event.Payload().(engine.PolicyRemediationEventPayload)
+	data.policyRemediationPayloads = append(data.policyRemediationPayloads, tPayload)
 }
 
 type column int

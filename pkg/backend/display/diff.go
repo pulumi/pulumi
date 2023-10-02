@@ -120,8 +120,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
-	case engine.PolicyTransformEvent:
-		return renderDiffPolicyTransformEvent(event.Payload().(engine.PolicyTransformEventPayload), "", true, opts)
+	case engine.PolicyRemediationEvent:
+		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
 		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
 
@@ -138,7 +138,7 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload,
+func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
 	prefix string, detailed bool, opts Options) string {
 
 	// Diff the before/after state. If there is no diff, we show nothing.
@@ -147,16 +147,16 @@ func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload,
 		return ""
 	}
 
-	// Print the individual transform's name and target resource type/name.
-	transformLine := fmt.Sprintf("%s[transform] %s%s (%s: %s)",
-		colors.SpecInfo, payload.TransformName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
+	// Print the individual remediation's name and target resource type/name.
+	remediationLine := fmt.Sprintf("%s[remediate] %s%s (%s: %s)",
+		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
-		transformLine = fmt.Sprintf("    %s%s@v%s %s%s",
-			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, transformLine)
+		remediationLine = fmt.Sprintf("    %s%s@v%s %s%s",
+			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, remediationLine)
 	} else {
-		transformLine = fmt.Sprintf("%s%s", prefix, transformLine)
+		remediationLine = fmt.Sprintf("%s%s", prefix, remediationLine)
 	}
 
 	// Render the event's diff; if a detailed diff is requested, a full object diff is emitted, otherwise
@@ -165,14 +165,14 @@ func renderDiffPolicyTransformEvent(payload engine.PolicyTransformEventPayload,
 		var b bytes.Buffer
 		PrintObjectDiff(&b, *diff, nil,
 			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
-		transformLine = fmt.Sprintf("%s\n%s", transformLine, b.String())
+		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
 		var b bytes.Buffer
 		writeShortDiff(&b, diff, nil)
-		transformLine = fmt.Sprintf("%s [%s]", transformLine, b.String())
+		remediationLine = fmt.Sprintf("%s [%s]", remediationLine, b.String())
 	}
 
-	return opts.Color.Colorize(transformLine + "\n")
+	return opts.Color.Colorize(remediationLine + "\n")
 }
 
 func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
@@ -292,7 +292,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffSty
 	if diffStyleSummary {
 		// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
 		// This is only shown during the diff view, because in the progress view we have a nicer
-		// summarization and grouping of all violations and transforms that have occurred. The
+		// summarization and grouping of all violations and remediations that have occurred. The
 		// diff view renders events incrementally as we go, so it cannot do this.
 		renderPolicyPacks(out, event.PolicyPacks, opts)
 	}

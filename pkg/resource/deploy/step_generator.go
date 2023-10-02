@@ -723,9 +723,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	}
 
 	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
-	// transforms, and *then* we do analysis, since we want analyzers to run on the final resource states.
+	// remediatoins, and *then* we do analysis, since we want analyzers to run on the final resource states.
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
-	for _, transform := range []bool{true, false} {
+	for _, remediate := range []bool{true, false} {
 		for _, analyzer := range analyzers {
 			r := plugin.AnalyzerResource{
 				URN:        new.URN,
@@ -751,18 +751,18 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				}
 			}
 
-			if transform {
-				// During the first pass, perform transformations. This ensures subsequent analyzers run
+			if remediate {
+				// During the first pass, perform remediations. This ensures subsequent analyzers run
 				// against the transformed properties, ensuring nothing circumvents the analysis checks.
-				tresults, err := analyzer.Transform(r)
+				tresults, err := analyzer.Remediate(r)
 				if err != nil {
-					return nil, fmt.Errorf("failed to run transform: %w", err)
+					return nil, fmt.Errorf("failed to run remediation: %w", err)
 				} else if tresults != nil && len(tresults) > 0 {
 					for _, tresult := range tresults {
 						if tresult.Diagnostic != "" {
 							// If there is a diagnostic, we have a warning to display.
 							sg.opts.Events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
-								PolicyName:        tresult.TransformName,
+								PolicyName:        tresult.PolicyName,
 								PolicyPackName:    tresult.PolicyPackName,
 								PolicyPackVersion: tresult.PolicyPackVersion,
 								Description:       tresult.Description,
@@ -771,8 +771,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 								URN:               new.URN,
 							})
 						} else if tresult.Properties != nil {
-							// Emit a nice message so users know what was transformed.
-							sg.opts.Events.OnPolicyTransform(new.URN, tresult, inputs, tresult.Properties)
+							// Emit a nice message so users know what was remediated.
+							sg.opts.Events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
 							// Use the transformed inputs rather than the old ones from this point onwards.
 							inputs = tresult.Properties
 							new.Inputs = tresult.Properties
@@ -780,7 +780,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 					}
 				}
 			} else {
-				// During the second pass, perform analysis. This happens after transformations so that
+				// During the second pass, perform analysis. This happens after remediations so that
 				// analyzers see properties as they were after the transformations have occurred.
 				diagnostics, err := analyzer.Analyze(r)
 				if err != nil {
