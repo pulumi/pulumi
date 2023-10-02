@@ -13,6 +13,11 @@ jobs:
     name: Install Pulumi with Homebrew on macOS
     runs-on: macos-11
     steps:
+      # Workaround for https://github.com/pulumi/pulumi/issues/13938
+      - name: Delete default golang installed on the runner
+        run: |
+          rm /usr/local/bin/go || true
+          rm /usr/local/bin/gofmt || true
       - name: homedate homebrew formulae
         run: brew update
       - name: homebrew install
