@@ -787,7 +787,7 @@ class Resource:
             props = _types.input_type_to_untranslated_dict(props)
         else:
             if not isinstance(props, Mapping):
-                raise TypeError("Execpted resource properties to be a mapping")
+                raise TypeError("Expected resource properties to be a mapping")
             typ = None
 
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
