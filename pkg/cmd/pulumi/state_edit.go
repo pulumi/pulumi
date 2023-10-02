@@ -21,8 +21,6 @@ import (
 	"os"
 	"os/exec"
 
-	survey "github.com/AlecAivazis/survey/v2"
-	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -186,7 +184,7 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 			}
 		}
 
-		switch response := cmd.promptStateEdit(msg, options, edit); response {
+		switch response := promptUser(msg, options, edit, cmd.Colorizer); response {
 		case accept:
 			return saveSnapshot(cmd.Ctx, s, news, false /* force */)
 		case edit:
@@ -200,25 +198,6 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 			return fmt.Errorf("confirmation cancelled, not proceeding with the state edit")
 		}
 	}
-}
-
-func (cmd *stateEditCmd) promptStateEdit(msg string, options []string, defaultOption string) string {
-	prompt := "\b" + cmd.Colorizer.Colorize(colors.SpecPrompt+msg+colors.Reset)
-	surveycore.DisableColor = true
-	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
-		icons.Question = survey.Icon{}
-		icons.SelectFocus = survey.Icon{Text: cmd.Colorizer.Colorize(colors.BrightGreen + ">" + colors.Reset)}
-	})
-
-	var response string
-	if err := survey.AskOne(&survey.Select{
-		Message: prompt,
-		Options: options,
-		Default: defaultOption,
-	}, &response, surveyIcons); err != nil {
-		return ""
-	}
-	return response
 }
 
 func (cmd *stateEditCmd) validateAndPrintState(f *snapshotBuffer) (*deploy.Snapshot, error) {

@@ -252,7 +252,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 
 	err := runNew(context.Background(), args)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project with this name already exists")
+	assert.Contains(t, err.Error(), "Try again")
 }
 
 //nolint:paralleltest // changes directory for process
@@ -1018,4 +1018,37 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestPulumiNewConflictingProject(t *testing.T) {
+	t.Parallel()
+
+	b := &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, orgName string, projectName string) (bool, error) {
+			if projectName == "existing-project-name" {
+				return true, nil
+			}
+			return false, nil
+		},
+	}
+
+	assert.NoError(t,
+		validateProjectNameInternal(
+			context.Background(), b, "moolumi", "some-project-name", false /* generateOnly */, display.Options{},
+			func(s string) error {
+				assert.Fail(t, "this should not be called as this is a not a duplicate project name")
+				return nil
+			},
+		))
+
+	var called bool
+	assert.NoError(t,
+		validateProjectNameInternal(
+			context.Background(), b, "moolumi", "existing-project-name", false /* generateOnly */, display.Options{},
+			func(s string) error {
+				called = true
+				return nil
+			},
+		))
+	assert.Truef(t, called, "expected resolution to be called with duplicate name")
 }

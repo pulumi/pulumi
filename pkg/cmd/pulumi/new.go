@@ -231,18 +231,19 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
 		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		if err := validateProjectName(ctx, b, orgName, defaultValue, args.generateOnly, opts); err != nil {
+		err := validateProjectName(
+			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false))
+		if err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
 			// See https://github.com/pulumi/pulumi/issues/8747.
 			if args.yes {
 				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
 			}
-
-			// Do not suggest an invalid or existing name as the default project name.
-			defaultValue = ""
 		}
-		validate := func(s string) error { return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts) }
+		validate := func(s string) error {
+			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
+		}
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
@@ -573,6 +574,33 @@ func errorIfNotEmptyDirectory(path string) error {
 func validateProjectName(ctx context.Context, b backend.Backend,
 	orgName string, projectName string, generateOnly bool, opts display.Options,
 ) error {
+	handleExistingProjectName := func(projectName string) error {
+		prompt := "\b\n" + opts.Color.Colorize(colors.SpecPrompt+
+			fmt.Sprintf("A project with the name `%s` already exists.", projectName)+
+			colors.Reset)
+
+		accept := fmt.Sprintf("Use '%s' anyway", projectName)
+		retry := "Specify a different project name"
+		response := promptUser(prompt, []string{accept, retry}, accept, opts.Color)
+
+		if response != accept {
+			return errRetry
+		}
+		return nil
+	}
+	if !opts.IsInteractive {
+		handleExistingProjectName = func(projectName string) error {
+			return fmt.Errorf("a project with this name already exists: %s", projectName)
+		}
+	}
+	return validateProjectNameInternal(
+		ctx, b, orgName, projectName, generateOnly, opts, handleExistingProjectName)
+}
+
+func validateProjectNameInternal(ctx context.Context, b backend.Backend,
+	orgName string, projectName string, generateOnly bool, opts display.Options,
+	handleExistingProjectName func(string) error,
+) error {
 	err := pkgWorkspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
@@ -587,7 +615,7 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 		}
 
 		if exists {
-			return fmt.Errorf("a project with this name already exists: %s", projectName)
+			return handleExistingProjectName(projectName)
 		}
 	}
 
@@ -1002,6 +1030,8 @@ func promptForConfig(
 	return c, nil
 }
 
+var errRetry = errors.New("Try again")
+
 // promptForValue prompts the user for a value with a defaultValue preselected. Hitting enter accepts the
 // default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
 // when specified, it will be run to validate that value entered. When this function returns a non nil error
@@ -1057,7 +1087,10 @@ func promptForValue(
 		// Ensure the resulting value is valid; note that we even validate the default, since sometimes
 		// we will have invalid default values, like "" for the project name.
 		if isValidFn != nil {
-			if validationError := isValidFn(value); validationError != nil {
+			validationError := isValidFn(value)
+			if validationError == errRetry {
+				continue
+			} else if validationError != nil {
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
 				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
