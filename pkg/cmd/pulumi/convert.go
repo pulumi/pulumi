@@ -57,7 +57,12 @@ func loadConverterPlugin(
 	// Try and load the converter plugin for this
 	converter, err := plugin.NewConverter(ctx, name, nil)
 	if err != nil {
-		// If NewConverter returns a MissingError, we can try and install the plugin and try again.
+		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
+		// unless auto plugin installs are turned off.
+		if env.DisableAutomaticPluginAcquisition.Value() {
+			return nil, fmt.Errorf("load %q: %w", name, err)
+		}
+
 		var me *workspace.MissingError
 		if !errors.As(err, &me) {
 			// Not a MissingError, return the original error.
@@ -323,6 +328,11 @@ func runConvert(
 	}
 
 	installProvider := func(provider tokens.Package) *semver.Version {
+		// If auto plugin installs are disabled just return nil, the mapper will still carry on
+		if env.DisableAutomaticPluginAcquisition.Value() {
+			return nil
+		}
+
 		pluginSpec := workspace.PluginSpec{
 			Name: string(provider),
 			Kind: workspace.ResourcePlugin,

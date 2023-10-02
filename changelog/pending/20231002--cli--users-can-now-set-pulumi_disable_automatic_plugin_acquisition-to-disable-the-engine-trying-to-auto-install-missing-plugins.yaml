@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Users can now set PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION to disable the engine trying to auto install missing plugins.

@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/blang/semver"
@@ -157,6 +158,11 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			// There is an executable with the same name, so suggest that
 			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
 				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", pkg, err)
+			}
+
+			// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
+			if env.DisableAutomaticPluginAcquisition.Value() {
+				return nil, err
 			}
 
 			var missingError *workspace.MissingError
