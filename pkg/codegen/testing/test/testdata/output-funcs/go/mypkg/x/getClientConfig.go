@@ -4,7 +4,11 @@
 package mypkg
 
 import (
+	"context"
+	"reflect"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"output-funcs/mypkg/internal"
 )
 
@@ -29,4 +33,40 @@ type GetClientConfigResult struct {
 	SubscriptionId string `pulumi:"subscriptionId"`
 	// Azure Tenant ID
 	TenantId string `pulumi:"tenantId"`
+}
+
+func GetClientConfigOutput(ctx *pulumi.Context, opts ...pulumi.InvokeOption) GetClientConfigResultOutput {
+	outputResult := pulumix.ApplyErr[int](pulumix.Val(0), func(_ int) (*GetClientConfigResult, error) {
+		return GetClientConfig(ctx, opts...)
+	})
+
+	return pulumix.Cast[GetClientConfigResultOutput, *GetClientConfigResult](outputResult)
+}
+
+type GetClientConfigResultOutput struct{ *pulumi.OutputState }
+
+func (GetClientConfigResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetClientConfigResult)(nil)).Elem()
+}
+
+func (o GetClientConfigResultOutput) ToOutput(context.Context) pulumix.Output[*GetClientConfigResult] {
+	return pulumix.Output[*GetClientConfigResult]{
+		OutputState: o.OutputState,
+	}
+}
+
+func (o GetClientConfigResultOutput) ClientId() pulumix.Output[string] {
+	return pulumix.Apply[*GetClientConfigResult](o, func(v *GetClientConfigResult) string { return v.ClientId })
+}
+
+func (o GetClientConfigResultOutput) ObjectId() pulumix.Output[string] {
+	return pulumix.Apply[*GetClientConfigResult](o, func(v *GetClientConfigResult) string { return v.ObjectId })
+}
+
+func (o GetClientConfigResultOutput) SubscriptionId() pulumix.Output[string] {
+	return pulumix.Apply[*GetClientConfigResult](o, func(v *GetClientConfigResult) string { return v.SubscriptionId })
+}
+
+func (o GetClientConfigResultOutput) TenantId() pulumix.Output[string] {
+	return pulumix.Apply[*GetClientConfigResult](o, func(v *GetClientConfigResult) string { return v.TenantId })
 }

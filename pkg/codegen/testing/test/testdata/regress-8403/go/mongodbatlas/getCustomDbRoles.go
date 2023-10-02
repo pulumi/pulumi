@@ -4,7 +4,11 @@
 package mongodbatlas
 
 import (
+	"context"
+	"reflect"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"regress-8403/mongodbatlas/internal"
 )
 
@@ -23,4 +27,52 @@ type LookupCustomDbRolesArgs struct {
 
 type LookupCustomDbRolesResult struct {
 	Result *GetCustomDbRolesResult `pulumi:"result"`
+}
+
+func LookupCustomDbRolesOutput(ctx *pulumi.Context, args LookupCustomDbRolesOutputArgs, opts ...pulumi.InvokeOption) LookupCustomDbRolesResultOutput {
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (LookupCustomDbRolesResult, error) {
+			args := v.(LookupCustomDbRolesArgs)
+			r, err := LookupCustomDbRoles(ctx, &args, opts...)
+			var s LookupCustomDbRolesResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
+		}).(LookupCustomDbRolesResultOutput)
+}
+
+type LookupCustomDbRolesOutputArgs struct {
+}
+
+func (LookupCustomDbRolesOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*LookupCustomDbRolesArgs)(nil)).Elem()
+}
+
+type LookupCustomDbRolesResultOutput struct{ *pulumi.OutputState }
+
+func (LookupCustomDbRolesResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*LookupCustomDbRolesResult)(nil)).Elem()
+}
+
+func (o LookupCustomDbRolesResultOutput) ToLookupCustomDbRolesResultOutput() LookupCustomDbRolesResultOutput {
+	return o
+}
+
+func (o LookupCustomDbRolesResultOutput) ToLookupCustomDbRolesResultOutputWithContext(ctx context.Context) LookupCustomDbRolesResultOutput {
+	return o
+}
+
+func (o LookupCustomDbRolesResultOutput) ToOutput(ctx context.Context) pulumix.Output[LookupCustomDbRolesResult] {
+	return pulumix.Output[LookupCustomDbRolesResult]{
+		OutputState: o.OutputState,
+	}
+}
+
+func (o LookupCustomDbRolesResultOutput) Result() GetCustomDbRolesResultPtrOutput {
+	return o.ApplyT(func(v LookupCustomDbRolesResult) *GetCustomDbRolesResult { return v.Result }).(GetCustomDbRolesResultPtrOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(LookupCustomDbRolesResultOutput{})
 }
