@@ -347,10 +347,15 @@ func (ex *deploymentExecutor) performDeletes(
 
 	logging.V(7).Infof("performDeletes(...): beginning")
 
+	// GenerateDeletes mutates state we need to lock the step executor while we do this.
+	ex.stepExec.Lock()
+
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
 	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt)
+	// Regardless of if this error'd or not the step executor needs unlocking
+	ex.stepExec.Unlock()
 	if err != nil {
 		logging.V(7).Infof("performDeletes(...): generating deletes produced error result")
 		return result.FromError(err)
