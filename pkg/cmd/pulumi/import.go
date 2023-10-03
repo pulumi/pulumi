@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -566,6 +567,11 @@ func newImportCmd() *cobra.Command {
 				pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
 				installProvider := func(provider tokens.Package) *semver.Version {
+					// If auto plugin installs are disabled just return nil, the mapper will still carry on
+					if env.DisableAutomaticPluginAcquisition.Value() {
+						return nil
+					}
+
 					log := func(sev diag.Severity, msg string) {
 						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 					}

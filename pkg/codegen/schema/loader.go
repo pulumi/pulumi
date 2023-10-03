@@ -31,6 +31,7 @@ import (
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -215,6 +216,11 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]byte, *semver.Version, error) {
 	pluginInfo, err := l.host.ResolvePlugin(workspace.ResourcePlugin, pkg, version)
 	if err != nil {
+		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
+		if env.DisableAutomaticPluginAcquisition.Value() {
+			return nil, nil, err
+		}
+
 		var missingError *workspace.MissingError
 		if errors.As(err, &missingError) {
 			spec := workspace.PluginSpec{
