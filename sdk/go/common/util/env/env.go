@@ -124,6 +124,12 @@ type options struct {
 	prerequs []BoolValue
 	noPrefix bool
 	secret   bool
+	// The default value to read in. It will be parsed as if it was provided from a
+	// Store.
+	defaultValue string
+
+	// If err is non-nil, then this value will always fail validation.
+	err error
 }
 
 func (o options) name(underlying string) string {
@@ -150,6 +156,17 @@ func Secret(opts *options) {
 	opts.secret = true
 }
 
+// Add a default value to the variable.
+//
+// If f returns a non-nil error, then the variable will fail validation.
+func DefaultF(f func() (string, error)) Option {
+	return func(opts *options) {
+		s, err := f()
+		opts.defaultValue = s
+		opts.err = err
+	}
+}
+
 // The value of a environmental variable.
 //
 // In general, `Value`s should only be used in collections. For specific values, used the
@@ -164,16 +181,29 @@ type Value interface {
 	//
 	// If the variable was not set, ("", false) is returned.
 	Underlying() (string, bool)
+
 	// Retrieve the Var associated with this value.
 	Var() Var
 
+	Type() string
+
 	Validate() ValidateError
+
+	// Get the value, or the default value as appropriate. If "" is returned, a type
+	// specific default value should be provided.
+	get() string
+
+	// This is the inner validate method that should be implemented by Value*
+	// types. Only [value] should implement [Validate] directly.
+	validate(input string) ValidateError
 
 	// set the associated variable for the value. This is necessary since Value and Var
 	// are inherently cyclical.
 	setVar(Var)
 	// A type correct formatting for the value. This is used for display purposes and
 	// should not be quoted.
+	//
+	// This function should not be called directly, except by [fmtValue].
 	formattedValue() string
 }
 
@@ -188,20 +218,57 @@ type value struct {
 	store    Store
 }
 
+func (v value) Validate() ValidateError {
+	if err := v.variable.options.err; err != nil {
+		// If we have a preset error, fail with that.
+		return ValidateError{Error: err}
+	}
+	value := v.get()
+	_, specified := v.Underlying()
+	var warn error
+	if m := v.missingPrerequs(); m != "" && specified {
+		warn = fmt.Errorf("cannot set because %q required %q", v.variable.name, m)
+	}
+
+	// We validate if the user specified a value, or if we set a default value.
+	var validation ValidateError
+	if specified || value != "" {
+		validation = v.variable.Value.validate(value)
+	}
+	if validation.Warning == nil && warn != nil {
+		validation.Warning = warn
+	}
+	return validation
+}
+
 func (v value) withStore(store Store) *value {
 	v.store = store // This is non-mutating since `v` is taken by value.
 	return &v
 }
 
+func (v value) hasDefault() bool { return v.variable.options.defaultValue != "" }
+
 func (v value) String() string {
 	_, present := v.Underlying()
 	if !present {
-		return "unset"
+		msg := "unset"
+		if v.hasDefault() {
+			msg = "default " + fmtValue(v)
+		}
+		return msg
 	}
+
 	if m := v.missingPrerequs(); m != "" {
-		return fmt.Sprintf("need %s (%s)", m, v.Var().Value.formattedValue())
+		return fmt.Sprintf("needs %s (%s)", m, fmtValue(v))
 	}
-	return v.Var().Value.formattedValue()
+	return fmtValue(v)
+}
+
+func fmtValue(v value) string {
+	if v.variable.options.secret {
+		return "[secret]"
+	}
+	return v.variable.Value.formattedValue()
 }
 
 func (v *value) setVar(variable Var) {
@@ -212,12 +279,29 @@ func (v value) Var() Var {
 	return v.variable
 }
 
+// Get the value that will be used.
+func (v value) get() string {
+	defValue := v.variable.options.defaultValue
+	if v.missingPrerequs() != "" {
+		return defValue
+	}
+	val, ok := v.Underlying()
+	if ok {
+		return val
+	}
+	return defValue
+}
+
 func (v value) Underlying() (string, bool) {
 	s := v.store
 	if s == nil {
 		s = Global
 	}
-	return s.Raw(v.Var().Name())
+	found, ok := s.Raw(v.Var().Name())
+	if !ok && v.hasDefault() {
+		found = v.variable.options.defaultValue
+	}
+	return found, ok
 }
 
 func (v value) missingPrerequs() string {
@@ -235,27 +319,15 @@ type StringValue struct{ *value }
 func (StringValue) Type() string { return "string" }
 
 func (s StringValue) formattedValue() string {
-	if s.variable.options.secret {
-		return "[secret]"
-	}
 	return fmt.Sprintf("%#v", s.Value())
 }
 
-func (StringValue) Validate() ValidateError { return ValidateError{} }
+func (StringValue) validate(string) ValidateError { return ValidateError{} }
 
 // The string value of the variable.
 //
 // If the variable is unset, "" is returned.
-func (s StringValue) Value() string {
-	if s.missingPrerequs() != "" {
-		return ""
-	}
-	v, ok := s.Underlying()
-	if !ok {
-		return ""
-	}
-	return v
-}
+func (s StringValue) Value() string { return s.get() }
 
 // A boolean retrieved from the environment.
 type BoolValue struct{ *value }
@@ -266,9 +338,8 @@ func (b BoolValue) formattedValue() string {
 	return fmt.Sprintf("%#v", b.Value())
 }
 
-func (b BoolValue) Validate() ValidateError {
-	v, ok := b.Underlying()
-	if !ok || b.Value() || v == "0" || strings.EqualFold(v, "false") {
+func (BoolValue) validate(v string) ValidateError {
+	if cmdutil.IsTruthy(v) || v == "0" || strings.EqualFold(v, "false") {
 		return ValidateError{}
 	}
 	return ValidateError{
@@ -279,27 +350,14 @@ func (b BoolValue) Validate() ValidateError {
 // The boolean value of the variable.
 //
 // If the variable is unset, false is returned.
-func (b BoolValue) Value() bool {
-	if b.missingPrerequs() != "" {
-		return false
-	}
-	v, ok := b.Underlying()
-	if !ok {
-		return false
-	}
-	return cmdutil.IsTruthy(v)
-}
+func (b BoolValue) Value() bool { return cmdutil.IsTruthy(b.get()) }
 
 // An integer retrieved from the environment.
 type IntValue struct{ *value }
 
 func (IntValue) Type() string { return "int" }
 
-func (i IntValue) Validate() ValidateError {
-	v, ok := i.Underlying()
-	if !ok {
-		return ValidateError{}
-	}
+func (IntValue) validate(v string) ValidateError {
 	_, err := strconv.ParseInt(v, 10, 64)
 	return ValidateError{
 		Error: err,
@@ -310,11 +368,8 @@ func (i IntValue) Validate() ValidateError {
 //
 // If the variable is unset or not parsable, 0 is returned.
 func (i IntValue) Value() int {
-	if i.missingPrerequs() != "" {
-		return 0
-	}
-	v, ok := i.Underlying()
-	if !ok {
+	v := i.get()
+	if v == "" {
 		return 0
 	}
 	parsed, err := strconv.ParseInt(v, 10, 64)

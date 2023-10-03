@@ -31,7 +31,8 @@ import (
 )
 
 func newEnvCmd() *cobra.Command {
-	return &cobra.Command{
+	var showAll bool
+	cmd := &cobra.Command{
 		Use:   "env",
 		Short: "An overview of the environmental variables used by pulumi",
 		Args:  cmdutil.NoArgs,
@@ -45,6 +46,20 @@ func newEnvCmd() *cobra.Command {
 			}
 			var foundError bool
 			for _, v := range declared.Variables() {
+				if r := v.Requires(); len(r) > 0 && !showAll {
+					var blocked bool
+					for _, d := range r {
+						if !d.Value() {
+							blocked = true
+							break
+						}
+					}
+					if blocked {
+						continue
+					}
+
+				}
+
 				foundError = foundError || emitEnvVarDiag(v)
 				table.Rows = append(table.Rows, cmdutil.TableRow{
 					Columns: []string{v.Name(), v.Description, v.Value.String()},
@@ -57,6 +72,9 @@ func newEnvCmd() *cobra.Command {
 			return nil
 		}),
 	}
+	cmd.PersistentFlags().BoolVarP(&showAll, "all", "a", false,
+		"If all environmental variables should be show.")
+	return cmd
 }
 
 func emitEnvVarDiag(val declared.Var) bool {
