@@ -36,13 +36,23 @@ func newPolicyPublishCmd() *cobra.Command {
 		Short: "Publish a Policy Pack to the Pulumi Cloud",
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
-			"If an organization name is not specified, the current user account is used.",
+			"If an organization name is not specified, the default org (if set) or the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 
 			var orgName string
 			if len(args) > 0 {
 				orgName = args[0]
+			} else if len(args) == 0 {
+				project, _, err := readProject()
+				if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+					return err
+				}
+				org, err := workspace.GetBackendConfigDefaultOrg(project)
+				if err != nil {
+					return err
+				}
+				orgName = org
 			}
 
 			//
