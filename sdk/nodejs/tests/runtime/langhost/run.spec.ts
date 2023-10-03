@@ -2005,7 +2005,13 @@ function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.Chil
     // directory which is changed by by the pwd option.
 
     process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = path.normalize(path.join(__dirname, "..", "..", "..", "cmd", "run"));
-    const proc = childProcess.spawn("pulumi-language-nodejs", [engineAddr]);
+    let gobin = path.join(process.env.HOME as string, "go", "bin");
+    if (process.env.GOBIN !== undefined) {
+        gobin = process.env.GOBIN as string;
+    } else if (process.env.GOPATH !== undefined) {
+        gobin = path.join(process.env.GOPATH as string, "bin");
+    }
+    const proc = childProcess.spawn(path.join(gobin, "pulumi-language-nodejs"), [engineAddr]);
 
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.

@@ -22,7 +22,7 @@ import unittest
 from collections import namedtuple
 from concurrent import futures
 from inspect import signature
-from os import path
+from os import path, environ
 
 import grpc
 from google.protobuf import empty_pb2, struct_pb2
@@ -344,8 +344,13 @@ class LanghostTest(unittest.TestCase):
 
     def _create_language_host(self, port):
         exec_path = path.join(path.dirname(__file__), "..", "..", "..", "cmd", "pulumi-language-python-exec")
+        gobin = path.join(environ["HOME"], "go", "bin")
+        if environ.get("GOBIN") is not None:
+            gobin = environ["GOBIN"]
+        elif environ.get("GOPATH") is not None:
+            gobin = path.join(environ["GOPATH"], "bin")
         proc = subprocess.Popen(
-            ["pulumi-language-python", "--use-executor", exec_path, "localhost:%d" % port],
+            [path.join(gobin, "pulumi-language-python"), "--use-executor", exec_path, "localhost:%d" % port],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True)
