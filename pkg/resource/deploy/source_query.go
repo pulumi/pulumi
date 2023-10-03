@@ -55,7 +55,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	reg := providers.NewRegistry(plugctx.Host, false, builtins)
 
 	// Allows queryResmon to communicate errors loading providers.
-	providerRegErrChan := make(chan result.Result)
+	providerRegErrChan := make(chan error)
 
 	// First, fire up a resource monitor that will disallow all resource operations, as well as
 	// service calls for things like resource ouptuts of state snapshots.
@@ -198,7 +198,7 @@ func runLangPlugin(src *querySource) error {
 func newQueryResourceMonitor(
 	builtins *builtinProvider, defaultProviderInfo map[tokens.Package]workspace.PluginSpec,
 	provs ProviderSource, reg *providers.Registry, plugctx *plugin.Context,
-	providerRegErrChan chan<- result.Result, tracingSpan opentracing.Span, runinfo *EvalRunInfo,
+	providerRegErrChan chan<- error, tracingSpan opentracing.Span, runinfo *EvalRunInfo,
 ) (*queryResmon, error) {
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -222,12 +222,12 @@ func newQueryResourceMonitor(
 
 			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false, nil)
 			if err != nil {
-				providerRegErrChan <- result.FromError(err)
+				providerRegErrChan <- err
 				return
 			}
 			_, _, _, err = reg.Create(urn, inputs, 9999, false)
 			if err != nil {
-				providerRegErrChan <- result.FromError(err)
+				providerRegErrChan <- err
 				return
 			}
 
