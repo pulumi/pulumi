@@ -85,7 +85,7 @@ type client struct {
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
 // function so it can be set to a different implementation at runtime, if necessary.
-var newClient = func(apiURL, apiToken string, insecure bool) *client {
+var newClient = func(userAgent, apiURL, apiToken string, insecure bool) *client {
 	var httpClient *http.Client
 	if insecure {
 		tr := &http.Transport{
@@ -105,6 +105,7 @@ var newClient = func(apiURL, apiToken string, insecure bool) *client {
 			client: &defaultHTTPClient{
 				client: httpClient,
 			},
+			userAgent: userAgent,
 		},
 	}
 }
@@ -115,8 +116,8 @@ func (pc *client) Insecure() bool {
 }
 
 // New creates a new Pulumi API client with the given URL and API token.
-func New(apiURL, apiToken string, insecure bool) Client {
-	return newClient(apiURL, apiToken, insecure)
+func New(userAgent, apiURL, apiToken string, insecure bool) Client {
+	return newClient(userAgent, apiURL, apiToken, insecure)
 }
 
 // URL returns the URL of the API endpoint this client interacts with

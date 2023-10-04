@@ -112,7 +112,7 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 				backendName = "pulumi.com"
 			}
 
-			client := esc.newClient(backendURL, account.AccessToken, account.Insecure)
+			client := esc.newClient(esc.userAgent, backendURL, account.AccessToken, account.Insecure)
 			if currentUser, _, _, err := client.GetPulumiAccountDetails(ctx); err == nil {
 				// TODO should we print the token information here? (via team MyTeam token MyToken)
 				consoleURL := esc.cloudConsoleURL(backendURL, currentUser)
@@ -152,7 +152,7 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		return fmt.Errorf("no credentials. Please run `esc login` to log in.")
 	}
 
-	esc.client = esc.newClient(account.BackendURL, account.AccessToken, account.Insecure)
+	esc.client = esc.newClient(esc.userAgent, account.BackendURL, account.AccessToken, account.Insecure)
 	return nil
 }
 

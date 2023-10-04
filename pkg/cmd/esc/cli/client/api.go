@@ -12,13 +12,11 @@ import (
 	"io"
 	"net/http"
 	"path"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/google/go-querystring/query"
 
-	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -117,7 +115,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
 func pulumiAPICall(ctx context.Context,
-	client httpClient, cloudAPI, method, path string, body []byte,
+	client httpClient, userAgent, cloudAPI, method, path string, body []byte,
 	tok string, opts httpCallOptions,
 ) (string, *http.Response, error) {
 	// Normalize URL components
@@ -165,7 +163,6 @@ func pulumiAPICall(ctx context.Context,
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
 	// backwards compatibility.
-	userAgent := fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 	req.Header.Set("User-Agent", userAgent)
 	// Specify the specific API version we accept.
 	req.Header.Set("Accept", "application/vnd.pulumi+8")
@@ -236,7 +233,8 @@ type restClient interface {
 
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
 type defaultRESTClient struct {
-	client httpClient
+	client    httpClient
+	userAgent string
 }
 
 // Call calls the Pulumi REST API marshalling reqObj to JSON and using that as
@@ -277,7 +275,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, cloudAPI, method, path str
 
 	// Make API call
 	_, resp, err := pulumiAPICall(
-		ctx, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+		ctx, c.client, c.userAgent, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}

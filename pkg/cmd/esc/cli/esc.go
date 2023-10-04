@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
+	"github.com/pulumi/esc/cmd/esc/cli/version"
 	"github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -20,6 +22,7 @@ import (
 
 type Options struct {
 	ParentPath string
+	UserAgent  string
 
 	Stdin  io.Reader
 	Stdout io.Writer
@@ -34,7 +37,7 @@ type Options struct {
 	environ environ
 	exec    cmdExec
 
-	newClient func(backendURL, accessToken string, insecure bool) client.Client
+	newClient func(userAgent, backendURL, accessToken string, insecure bool) client.Client
 }
 
 type escCommand struct {
@@ -51,7 +54,8 @@ type escCommand struct {
 	login     httpstate.LoginManager
 	workspace *workspace.Workspace
 
-	newClient func(backendURL, accessToken string, insecure bool) client.Client
+	userAgent string
+	newClient func(userAgent, backendURL, accessToken string, insecure bool) client.Client
 	client    client.Client
 	account   workspace.Account
 }
@@ -102,6 +106,7 @@ func New(opts *Options) *cobra.Command {
 		colors:    valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
 		login:     valueOrDefault(opts.Login, httpstate.NewLoginManager()),
 		workspace: workspace.New(fs, valueOrDefault(opts.PulumiWorkspace, workspace.DefaultPulumiWorkspace())),
+		userAgent: valueOrDefault(opts.UserAgent, fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)),
 		newClient: opts.newClient,
 	}
 	if esc.newClient == nil {

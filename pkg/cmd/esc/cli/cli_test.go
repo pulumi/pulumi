@@ -630,7 +630,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 		fs:              fs,
 		environ:         environ,
 		exec:            &exec,
-		newClient: func(backendURL, accessToken string, insecure bool) client.Client {
+		newClient: func(_, backendURL, accessToken string, insecure bool) client.Client {
 			return &testPulumiClient{
 				user:         "test-user",
 				environments: environments,
