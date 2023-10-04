@@ -1,0 +1,34 @@
+stdout: |
+    Pulumi ESC - Manage environments, secrets, and configuration
+
+    To begin working with Pulumi ESC, run the `esc env init` command:
+
+        $ esc env init
+
+    This will prompt you to create a new environment to hold secrets and configuration.
+
+    The most common commands from there are:
+
+        - esc env get  : Get a property in an environment definition
+        - esc env set  : Set a property in an environment definition
+        - esc env edit : Edit an environment definition
+        - esc env run  : Run a command within the context of an environment
+        - esc env open : Open an environment and access its contents
+        - esc env ls   : List available environments
+
+    For more information, please visit the project page: https://www.pulumi.com/docs/esc
+
+    Usage:
+      esc [command]
+
+    Available Commands:
+      completion  Generate the autocompletion script for the specified shell
+      env         Manage environments
+      help        Help about any command
+      login       Log in to the Pulumi Cloud
+      version     Print esc's version number
+
+    Flags:
+      -h, --help   help for esc
+
+    Use "esc [command] --help" for more information about a command.

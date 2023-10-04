@@ -1,0 +1,1 @@
+run: env init test-env

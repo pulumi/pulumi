@@ -1,0 +1,6 @@
+run: env init dup
+error: already exists
+environments:
+    test-user/dup: arbitrary
+stderr: |
+    Error: already exists
