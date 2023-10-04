@@ -246,6 +246,12 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		}
 	}
 
+	if opts.Version == "" {
+		// Always send a Version so that we don't repeatedly try and hit github to ask what the latest version
+		// is during tests.
+		opts.Version = "1.0.0"
+	}
+
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,

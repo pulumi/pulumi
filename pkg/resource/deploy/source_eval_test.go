@@ -318,7 +318,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		}
 
 		if providers.IsProviderType(goal.Type) {
-			assert.Equal(t, "default", string(goal.Name))
+			assert.Equal(t, "default_1_0_0", string(goal.Name))
 			ref, err := providers.NewReference(urn, id)
 			assert.NoError(t, err)
 			_, ok := defaults[ref.String()]
