@@ -736,7 +736,7 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 	v.schema = x.schema
 
 	inputs, ok := e.evaluateTypedExpr(repr.inputs, repr.inputSchema)
-	if !ok || e.validating || err != nil {
+	if !ok || inputs.unknown || e.validating || err != nil {
 		v.unknown = true
 		return v
 	}

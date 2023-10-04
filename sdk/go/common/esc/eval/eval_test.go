@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,6 +24,16 @@ func accept() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 }
 
+type errorProvider struct{}
+
+func (errorProvider) Schema() (*schema.Schema, *schema.Schema) {
+	return schema.Record(map[string]schema.Builder{"why": schema.String()}).Schema(), schema.Always()
+}
+
+func (errorProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.Value, error) {
+	return esc.Value{}, errors.New(inputs["why"].Value.(string))
+}
+
 type testProvider struct{}
 
 func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
@@ -36,7 +47,10 @@ func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.
 type testProviders struct{}
 
 func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provider, error) {
-	if name == "test" {
+	switch name {
+	case "error":
+		return errorProvider{}, nil
+	case "test":
 		return testProvider{}, nil
 	}
 	return nil, fmt.Errorf("unknown provider %q", name)
