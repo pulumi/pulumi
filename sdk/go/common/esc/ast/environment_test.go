@@ -68,3 +68,17 @@ config:
 
 	assert.Nil(t, environment.Description)
 }
+
+func TestEmptyDocument(t *testing.T) {
+	t.Parallel()
+
+	const example = ``
+
+	syntax, diags := encoding.DecodeYAML("<stdin>", yaml.NewDecoder(strings.NewReader(example)), nil)
+	require.Len(t, diags, 0)
+
+	environment, diags := ParseEnvironment([]byte(example), syntax)
+	assert.Len(t, diags, 0)
+
+	assert.Nil(t, environment.Description)
+}

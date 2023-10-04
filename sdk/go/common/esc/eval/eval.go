@@ -92,7 +92,7 @@ func evalEnvironment(
 	providers ProviderLoader,
 	envs EnvironmentLoader,
 ) (*esc.Environment, syntax.Diagnostics) {
-	if env == nil {
+	if env == nil || len(env.Values.GetEntries()) == 0 {
 		return nil, nil
 	}
 

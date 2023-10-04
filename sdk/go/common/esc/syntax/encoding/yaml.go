@@ -4,7 +4,9 @@ package encoding
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -340,6 +342,10 @@ func (v *yamlValue) UnmarshalYAML(n *yaml.Node) error {
 // DecodeYAMLBytes decodes a YAML value from the given decoder into a syntax node. See UnmarshalYAML for mode details on the
 // decoding process.
 func DecodeYAMLBytes(filename string, bytes []byte, tags TagDecoder) (*syntax.ObjectNode, syntax.Diagnostics) {
+	// If this is an empty file, return an empty object node.
+	if len(bytes) == 0 {
+		return &syntax.ObjectNode{}, nil
+	}
 	v := yamlValue{filename: filename, positions: newPositionIndex(bytes), tags: tags}
 	if err := yaml.Unmarshal(bytes, &v); err != nil {
 		return nil, syntax.Diagnostics{syntax.Error(nil, err.Error(), "")}
@@ -357,6 +363,9 @@ func DecodeYAMLBytes(filename string, bytes []byte, tags TagDecoder) (*syntax.Ob
 func DecodeYAML(filename string, d *yaml.Decoder, tags TagDecoder) (*syntax.ObjectNode, syntax.Diagnostics) {
 	v := yamlValue{filename: filename, tags: tags}
 	if err := d.Decode(&v); err != nil {
+		if errors.Is(err, io.EOF) {
+			return &syntax.ObjectNode{}, v.diags
+		}
 		return nil, syntax.Diagnostics{syntax.Error(nil, err.Error(), "")}
 	}
 	obj, ok := v.node.(*syntax.ObjectNode)
