@@ -29,6 +29,7 @@ import (
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -182,6 +183,15 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 		}
 		logging.V(9).Infof("Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
 	}
+
+	// Create a root span for the operation
+	opts := []opentracing.StartSpanOption{}
+	if ctx != nil && ctx.tracingSpan != nil {
+		opts = append(opts, opentracing.ChildOf(ctx.tracingSpan.Context()))
+	}
+	opts = append(opts, opentracing.Tag{Key: "pulumi-decorator", Value: prefix})
+	tracingSpan := opentracing.StartSpan("LaunchPlugin", opts...)
+	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
 	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
