@@ -460,7 +460,7 @@ func (c *testPulumiClient) OpenYAMLEnvironment(
 	return c.openEnvironment(ctx, orgName, "<yaml>", yaml)
 }
 
-func (c *testPulumiClient) GetOpenEnvironment(ctx context.Context, openEnvID string) (*esc.Environment, error) {
+func (c *testPulumiClient) GetOpenEnvironment(ctx context.Context, orgName, envName, openEnvID string) (*esc.Environment, error) {
 	env, ok := c.openEnvs[openEnvID]
 	if !ok {
 		return nil, errors.New("not found")
@@ -468,7 +468,7 @@ func (c *testPulumiClient) GetOpenEnvironment(ctx context.Context, openEnvID str
 	return env, nil
 }
 
-func (c *testPulumiClient) GetOpenProperty(ctx context.Context, openEnvID, property string) (*esc.Value, error) {
+func (c *testPulumiClient) GetOpenProperty(ctx context.Context, orgName, envName, openEnvID, property string) (*esc.Value, error) {
 	return nil, errors.New("NYI")
 }
 

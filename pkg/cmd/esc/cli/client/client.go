@@ -18,7 +18,7 @@ import (
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client interface {
-	// Returns true if this client is insecure (i.e. has TLS disabled).
+	// Insecure returns true if this client is insecure (i.e. has TLS disabled).
 	Insecure() bool
 
 	// URL returns the URL of the API endpoint this client interacts with
@@ -67,9 +67,9 @@ type Client interface {
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
-	GetOpenEnvironment(ctx context.Context, openEnvID string) (*esc.Environment, error)
+	GetOpenEnvironment(ctx context.Context, orgName, envName, openEnvID string) (*esc.Environment, error)
 
-	GetOpenProperty(ctx context.Context, openEnvID, property string) (*esc.Value, error)
+	GetOpenProperty(ctx context.Context, orgName, envName, openEnvID, property string) (*esc.Value, error)
 }
 
 type client struct {
@@ -110,7 +110,7 @@ var newClient = func(userAgent, apiURL, apiToken string, insecure bool) *client 
 	}
 }
 
-// Returns true if this client is insecure (i.e. has TLS disabled).
+// Insecure returns true if this client is insecure (i.e. has TLS disabled).
 func (pc *client) Insecure() bool {
 	return pc.insecure
 }
@@ -311,7 +311,7 @@ func (pc *client) CheckYAMLEnvironment(
 ) (*esc.Environment, []EnvironmentDiagnostic, error) {
 	var resp esc.Environment
 	var errResp EnvironmentDiagnosticsResponse
-	path := fmt.Sprintf("/api/preview/environments-yaml/%v/check", orgName)
+	path := fmt.Sprintf("/api/preview/environments/%v/yaml/check", orgName)
 	err := pc.restCallWithOptions(ctx, http.MethodPost, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
@@ -341,7 +341,7 @@ func (pc *client) OpenYAMLEnvironment(
 		ID string `json:"id"`
 	}
 	var errResp EnvironmentDiagnosticsResponse
-	path := fmt.Sprintf("/api/preview/environments-yaml/%v/open", orgName)
+	path := fmt.Sprintf("/api/preview/environments/%v/yaml/open", orgName)
 	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, json.RawMessage(yaml), &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
@@ -355,9 +355,9 @@ func (pc *client) OpenYAMLEnvironment(
 	return resp.ID, nil, nil
 }
 
-func (pc *client) GetOpenEnvironment(ctx context.Context, openEnvID string) (*esc.Environment, error) {
+func (pc *client) GetOpenEnvironment(ctx context.Context, orgName, envName, openSessionID string) (*esc.Environment, error) {
 	var resp esc.Environment
-	path := fmt.Sprintf("/api/preview/environments-open/%v", openEnvID)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/open/%v", orgName, envName, openSessionID)
 	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
 	if err != nil {
 		return nil, err
@@ -365,7 +365,7 @@ func (pc *client) GetOpenEnvironment(ctx context.Context, openEnvID string) (*es
 	return &resp, nil
 }
 
-func (pc *client) GetOpenProperty(ctx context.Context, openEnvID, property string) (*esc.Value, error) {
+func (pc *client) GetOpenProperty(ctx context.Context, orgName, envName, openSessionID, property string) (*esc.Value, error) {
 	queryObj := struct {
 		Property string `url:"property"`
 	}{
@@ -373,7 +373,7 @@ func (pc *client) GetOpenProperty(ctx context.Context, openEnvID, property strin
 	}
 
 	var resp esc.Value
-	path := fmt.Sprintf("/api/preview/openenvironments/%v", openEnvID)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/open/%v", orgName, envName, openSessionID)
 	err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp)
 	if err != nil {
 		return nil, err

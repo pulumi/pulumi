@@ -161,6 +161,6 @@ func (env *envCommand) openEnvironment(
 	if len(diags) != 0 {
 		return nil, diags, err
 	}
-	open, err := env.esc.client.GetOpenEnvironment(ctx, envID)
+	open, err := env.esc.client.GetOpenEnvironment(ctx, orgName, envName, envID)
 	return open, nil, err
 }
