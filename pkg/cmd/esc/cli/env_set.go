@@ -189,7 +189,7 @@ func (n yamlNode) get(path resource.PropertyPath) (_ *yaml.Node, ok bool) {
 		if !ok || index < 0 || index >= len(n.Content) {
 			return nil, false
 		}
-		return yamlNode{n.Content[index]}.get(path)
+		return yamlNode{n.Content[index]}.get(path[1:])
 	case yaml.MappingNode:
 		key, ok := path[0].(string)
 		if !ok {

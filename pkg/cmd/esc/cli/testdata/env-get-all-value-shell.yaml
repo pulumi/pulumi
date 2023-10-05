@@ -1,0 +1,24 @@
+run: esc env get test --value=shell
+environments:
+  test-user/a: {}
+  test-user/b: {}
+  test-user/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test: echo
+      environmentVariables:
+        STRING: ${string}
+        OBJECT: {'fn::toJSON': "${object}"}
+stdout: |
+  export OBJECT="{\"hello\":\"world\"}"
+  export STRING="esc"

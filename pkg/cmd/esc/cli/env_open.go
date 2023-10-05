@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"time"
 
@@ -70,42 +71,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
 			}
 
-			val := esc.NewValue(env.Properties)
-			if len(path) != 0 {
-				if vv, ok := getEnvValue(val, path); ok {
-					val = *vv
-				} else {
-					val = esc.Value{}
-				}
-			}
-
-			switch format {
-			case "json":
-				body := val.ToJSON(false)
-				enc := json.NewEncoder(envcmd.esc.stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(body)
-			case "detailed":
-				enc := json.NewEncoder(envcmd.esc.stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(val)
-			case "dotenv":
-				for _, kvp := range getEnvironmentVariables(env) {
-					fmt.Fprintln(envcmd.esc.stdout, kvp)
-				}
-				return nil
-			case "shell":
-				for _, kvp := range getEnvironmentVariables(env) {
-					fmt.Fprintf(envcmd.esc.stdout, "export %v\n", kvp)
-				}
-				return nil
-			case "string":
-				fmt.Fprintf(envcmd.esc.stdout, "%v\n", val.ToString(false))
-				return nil
-			default:
-				// NOTE: we shouldn't get here. This was checked at the beginning of the function.
-				return fmt.Errorf("unknown output format %q", format)
-			}
+			return renderValue(envcmd.esc.stdout, env, path, format)
 		},
 	}
 
@@ -117,6 +83,51 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 		"the output format to use. May be 'dotenv', 'json', 'detailed', or 'shell'")
 
 	return cmd
+}
+
+func renderValue(
+	out io.Writer,
+	env *esc.Environment,
+	path resource.PropertyPath,
+	format string,
+) error {
+	val := esc.NewValue(env.Properties)
+	if len(path) != 0 {
+		if vv, ok := getEnvValue(val, path); ok {
+			val = *vv
+		} else {
+			val = esc.Value{}
+		}
+	}
+
+	switch format {
+	case "json":
+		body := val.ToJSON(false)
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		return enc.Encode(body)
+	case "detailed":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		return enc.Encode(val)
+	case "dotenv":
+		for _, kvp := range getEnvironmentVariables(env) {
+			fmt.Fprintln(out, kvp)
+		}
+		return nil
+	case "shell":
+		for _, kvp := range getEnvironmentVariables(env) {
+			fmt.Fprintf(out, "export %v\n", kvp)
+		}
+		return nil
+	case "string":
+		fmt.Fprintf(out, "%v\n", val.ToString(false))
+		return nil
+	default:
+		// NOTE: we shouldn't get here. This was checked at the beginning of the function.
+		return fmt.Errorf("unknown output format %q", format)
+	}
+
 }
 
 func getEnvironmentVariables(env *esc.Environment) []string {

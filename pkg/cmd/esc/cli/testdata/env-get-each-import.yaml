@@ -1,0 +1,47 @@
+run: |
+  esc env get test imports
+  esc env get test 'imports[0]'
+  esc env get test 'imports[1]'
+environments:
+  test-user/a:
+    values:
+      object: {hello: esc, goodbye: world}
+  test-user/b:
+    values:
+      string: foo
+      object: {goodbye: all}
+  test-user/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test:
+          foo: bar
+stdout: |+
+  # Definition
+  ```yaml
+  - a
+  - b
+
+  ```
+
+  # Definition
+  ```yaml
+  a
+
+  ```
+
+  # Definition
+  ```yaml
+  b
+
+  ```
+

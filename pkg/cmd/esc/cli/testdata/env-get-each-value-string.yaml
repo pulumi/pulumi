@@ -1,0 +1,46 @@
+run: |
+  echo \"$(esc env get test --value string null)\"
+  esc env get test --value string boolean
+  esc env get test --value string number
+  esc env get test --value string string
+  esc env get test --value string array
+  esc env get test --value string 'array[0]'
+  esc env get test --value string 'array[1]'
+  esc env get test --value string object
+  esc env get test --value string object.hello
+  esc env get test --value string object.goodbye
+  esc env get test --value string open
+environments:
+  test-user/a:
+    values:
+      object: {hello: esc, goodbye: world}
+  test-user/b:
+    values:
+      string: foo
+      object: {goodbye: all}
+  test-user/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test: echo
+stdout: |
+  ""
+  true
+  42
+  esc
+  "hello","world"
+  hello
+  world
+  "goodbye"="all","hello"="world"
+  world
+  all
+  [unknown]

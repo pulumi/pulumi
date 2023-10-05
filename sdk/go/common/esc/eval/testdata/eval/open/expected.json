@@ -415,7 +415,7 @@
                     ]
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::open",
                     "argSchema": {
                         "properties": {
                             "inputs": true,

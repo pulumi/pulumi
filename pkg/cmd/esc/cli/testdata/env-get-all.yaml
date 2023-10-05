@@ -1,0 +1,54 @@
+run: esc env get test
+environments:
+  test-user/a: {}
+  test-user/b: {}
+  test-user/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test: echo
+stdout: |+
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "boolean": true,
+    "null": null,
+    "number": 42,
+    "object": {
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    # comment
+    "null": null
+    boolean: true
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test: echo
+
+  ```
+

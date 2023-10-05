@@ -131,39 +131,54 @@ func (x *expr) export(environment string) esc.Expr {
 		}
 	case *joinExpr:
 		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
 			ArgSchema: schema.Tuple(schema.String(), schema.Array().Items(schema.String())).Schema(),
 			Arg:       esc.Expr{List: []esc.Expr{repr.delimiter.export(environment), repr.values.export(environment)}},
 		}
 	case *openExpr:
-		ex.Builtin = &esc.BuiltinExpr{
-			ArgSchema: schema.Record(map[string]schema.Builder{
-				"provider": schema.String(),
-				"inputs":   repr.inputSchema,
-			}).Schema(),
-			Arg: esc.Expr{
-				Object: map[string]esc.Expr{
-					"provider": repr.provider.export(environment),
-					"inputs":   repr.inputs.export(environment),
+		name := repr.node.Name().Value
+		if name == "fn::open" {
+			ex.Builtin = &esc.BuiltinExpr{
+				Name: name,
+				ArgSchema: schema.Record(map[string]schema.Builder{
+					"provider": schema.String(),
+					"inputs":   repr.inputSchema,
+				}).Schema(),
+				Arg: esc.Expr{
+					Object: map[string]esc.Expr{
+						"provider": repr.provider.export(environment),
+						"inputs":   repr.inputs.export(environment),
+					},
 				},
-			},
+			}
+		} else {
+			ex.Builtin = &esc.BuiltinExpr{
+				Name:      name,
+				ArgSchema: repr.inputSchema,
+				Arg:       repr.inputs.export(environment),
+			}
 		}
 	case *secretExpr:
 		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toBase64Expr:
 		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
 			ArgSchema: schema.String().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toJSONExpr:
 		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toStringExpr:
 		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}

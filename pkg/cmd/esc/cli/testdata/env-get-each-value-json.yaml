@@ -1,0 +1,52 @@
+run: |
+  esc env get test --value json null
+  esc env get test --value json boolean
+  esc env get test --value json number
+  esc env get test --value json string
+  esc env get test --value json array
+  esc env get test --value json 'array[0]'
+  esc env get test --value json 'array[1]'
+  esc env get test --value json object
+  esc env get test --value json object.hello
+  esc env get test --value json object.goodbye
+  esc env get test --value json open
+environments:
+  test-user/a:
+    values:
+      object: {hello: esc, goodbye: world}
+  test-user/b:
+    values:
+      string: foo
+      object: {goodbye: all}
+  test-user/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test: echo
+stdout: |
+  null
+  true
+  42
+  "esc"
+  [
+    "hello",
+    "world"
+  ]
+  "hello"
+  "world"
+  {
+    "goodbye": "all",
+    "hello": "world"
+  }
+  "world"
+  "all"
+  "[unknown]"

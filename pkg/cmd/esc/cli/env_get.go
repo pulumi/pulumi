@@ -3,17 +3,18 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 type envGetCommand struct {
@@ -21,7 +22,7 @@ type envGetCommand struct {
 }
 
 func newEnvGetCmd(env *envCommand) *cobra.Command {
-	var explain bool
+	var value string
 
 	get := &envGetCommand{env: env}
 
@@ -55,127 +56,261 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				}
 			}
 
+			switch value {
+			case "":
+				// OK
+			case "detailed", "json", "string":
+				return get.showValue(ctx, orgName, envName, path, value)
+			case "dotenv":
+				if len(path) != 0 {
+					return fmt.Errorf("output format '%s' may not be used with a property path", value)
+				}
+				return get.showValue(ctx, orgName, envName, path, value)
+			case "shell":
+				if len(path) != 0 {
+					return fmt.Errorf("output format '%s' may not be used with a property path", value)
+				}
+				return get.showValue(ctx, orgName, envName, path, value)
+			default:
+				return fmt.Errorf("unknown output format %q", value)
+			}
+
 			def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
 
+			var data *envGetTemplateData
 			if len(args) == 0 {
-				env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
-				if err != nil {
-					return fmt.Errorf("getting environment metadata: %w", err)
-				}
-				enc := json.NewEncoder(get.env.esc.stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(esc.NewValue(env.Properties).ToJSON(true))
+				data, err = get.getEntireEnvironment(ctx, orgName, def)
+			} else {
+				data, err = get.getEnvironmentMember(ctx, orgName, envName, def, path)
 			}
-
-			var docNode yaml.Node
-			if err := yaml.Unmarshal(def, &docNode); err != nil {
-				return fmt.Errorf("unmarshaling environment definition: %w", err)
-			}
-			if docNode.Kind != yaml.DocumentNode {
-				return nil
-			}
-
-			if len(path) != 0 && path[0] == "imports" {
-				node, _ := yamlNode{&docNode}.get(path)
-				if node == nil {
-					return nil
-				}
-				enc := yaml.NewEncoder(get.env.esc.stdout)
-				return enc.Encode(node)
-			}
-
-			env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
 			if err != nil {
-				return fmt.Errorf("getting environment metadata: %w", err)
+				return err
 			}
-
-			value, ok := getEnvValue(esc.NewValue(env.Properties), path)
-			if !ok {
+			if data == nil {
 				return nil
 			}
 
-			schema := getEnvSchema(env.Schema, path)
-
-			if valuesNode, ok := (yamlNode{&docNode}.get(resource.PropertyPath{"values"})); ok {
-				if node, _ := (yamlNode{valuesNode}.get(path)); node != nil {
-					expr, ok := getEnvExpr(esc.Expr{Object: env.Exprs}, path)
-					if !ok {
-						return fmt.Errorf("internal error: no expr for path %v", path)
-					}
-					return get.showEnvSyntax(value, expr, schema, node, explain)
-				}
+			var markdown bytes.Buffer
+			if err := envGetTemplate.Execute(&markdown, data); err != nil {
+				return fmt.Errorf("internal error: rendering: %w", err)
 			}
-			return get.showEnvValue(value, schema, explain)
+
+			if !cmdutil.InteractiveTerminal() {
+				fmt.Fprint(get.env.esc.stdout, markdown.String())
+				return nil
+			}
+
+			renderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(0))
+			if err != nil {
+				return fmt.Errorf("internal error: creating renderer: %w", err)
+			}
+			rendered, err := renderer.Render(markdown.String())
+			if err != nil {
+				rendered = markdown.String()
+			}
+			fmt.Fprint(get.env.esc.stdout, rendered)
+			return nil
 		},
 	}
 
-	cmd.Flags().BoolVarP(
-		&explain, "explain", "x", false,
-		"true to show detailed information about the value")
+	cmd.Flags().StringVar(
+		&value, "value", "",
+		"set to print just the value in the given format. may be 'dotenv', 'json', 'detailed', or 'shell'")
 
 	return cmd
 }
 
-func (cmd *envGetCommand) showEnvSyntax(
-	value *esc.Value,
-	expr *esc.Expr,
-	schema *schema.Schema,
-	node *yaml.Node,
-	explain bool,
-) error {
-	enc := json.NewEncoder(cmd.env.esc.stdout)
-	enc.SetIndent("", "  ")
-
-	if !explain {
-		return enc.Encode(value.ToJSON(true))
+func marshalYAML(v any) (string, error) {
+	var b bytes.Buffer
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	if err := enc.Encode(v); err != nil {
+		return "", err
 	}
-
-	fmt.Fprintln(cmd.env.esc.stdout, "VALUE:")
-	if err := enc.Encode(value.ToJSON(true)); err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.env.esc.stdout)
-
-	fmt.Fprintln(cmd.env.esc.stdout, "DEFINITION:")
-	yamlEnc := yaml.NewEncoder(cmd.env.esc.stdout)
-	if err := yamlEnc.Encode(node); err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.env.esc.stdout)
-
-	fmt.Fprintln(cmd.env.esc.stdout, "STACK:")
-	for expr != nil {
-		rng := expr.Range
-		fmt.Fprintf(cmd.env.esc.stdout, "- %v:%v:%v\n", rng.Environment, rng.Begin.Line, rng.Begin.Column)
-		expr = expr.Base
-	}
-	return nil
+	return b.String(), nil
 }
 
-func (cmd *envGetCommand) showEnvValue(value *esc.Value, schema *schema.Schema, explain bool) error {
-	enc := json.NewEncoder(cmd.env.esc.stdout)
-	enc.SetIndent("", "  ")
+func (get *envGetCommand) showValue(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	path resource.PropertyPath,
+	format string,
+) error {
+	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName)
+	if err != nil {
+		return fmt.Errorf("getting environment definition: %w", err)
+	}
+	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
+	if err != nil {
+		return fmt.Errorf("getting environment: %w", err)
+	}
+	return renderValue(get.env.esc.stdout, env, path, format)
+}
 
-	if !explain {
-		return enc.Encode(value.ToJSON(true))
+func (get *envGetCommand) getEntireEnvironment(
+	ctx context.Context,
+	orgName string,
+	def []byte,
+) (*envGetTemplateData, error) {
+	var docNode yaml.Node
+	if err := yaml.Unmarshal(def, &docNode); err != nil {
+		return nil, fmt.Errorf("unmarshaling environment definition: %w", err)
+	}
+	if docNode.Kind != yaml.DocumentNode {
+		return nil, nil
 	}
 
-	fmt.Fprintln(cmd.env.esc.stdout, "VALUE:")
-	if err := enc.Encode(value.ToJSON(true)); err != nil {
-		return err
+	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
+	if err != nil {
+		return nil, fmt.Errorf("getting environment metadata: %w", err)
 	}
-	fmt.Fprintln(cmd.env.esc.stdout)
 
-	fmt.Fprintln(cmd.env.esc.stdout, "STACK:")
-	for value != nil {
-		rng := value.Trace.Def
-		fmt.Fprintf(cmd.env.esc.stdout, "- %v:%v:%v\n", rng.Environment, rng.Begin.Line, rng.Begin.Column)
-		value = value.Trace.Base
+	envJSON, err := json.MarshalIndent(esc.NewValue(env.Properties).ToJSON(true), "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encoding value: %w", err)
 	}
-	return nil
+
+	defYAML, err := marshalYAML(docNode.Content[0])
+	if err != nil {
+		return nil, fmt.Errorf("marshaling environment definition: %w", err)
+	}
+
+	return &envGetTemplateData{
+		Value:      string(envJSON),
+		Definition: defYAML,
+	}, nil
+}
+
+func (get *envGetCommand) getEnvironmentMember(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	def []byte,
+	path resource.PropertyPath,
+) (*envGetTemplateData, error) {
+	var docNode yaml.Node
+	if err := yaml.Unmarshal(def, &docNode); err != nil {
+		return nil, fmt.Errorf("unmarshaling environment definition: %w", err)
+	}
+	if docNode.Kind != yaml.DocumentNode {
+		return nil, nil
+	}
+
+	if len(path) != 0 && path[0] == "imports" {
+		node, _ := yamlNode{&docNode}.get(path)
+		if node == nil {
+			return nil, nil
+		}
+		def, err := marshalYAML(node)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling definition: %w", err)
+		}
+		return &envGetTemplateData{Definition: def}, nil
+	}
+
+	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
+	if err != nil {
+		return nil, fmt.Errorf("getting environment metadata: %w", err)
+	}
+
+	value, _ := getEnvValue(esc.NewValue(env.Properties), path)
+
+	var stacker stackable
+
+	valueJSON := ""
+	if value != nil {
+		stacker = &stackableValue{v: value}
+
+		j, err := json.MarshalIndent(value.ToJSON(true), "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("encoding value: %w", err)
+		}
+		valueJSON = string(j)
+	}
+
+	definitionYAML := ""
+	if valuesNode, ok := (yamlNode{&docNode}.get(resource.PropertyPath{"values"})); ok {
+		if node, _ := (yamlNode{valuesNode}.get(path)); node != nil {
+			expr, ok := getEnvExpr(esc.Expr{Object: env.Exprs}, path)
+			if !ok {
+				return nil, fmt.Errorf("internal error: no expr for path %v", path)
+			}
+			stacker = &stackableExpr{x: expr}
+
+			d, err := marshalYAML(node)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling definition: %w", err)
+			}
+			definitionYAML = d
+		}
+	}
+
+	var stack []string
+	if stacker != nil {
+		for stacker.Next() {
+			rng := stacker.Range()
+			env := rng.Environment
+			if env == "<yaml>" {
+				env = envName
+			}
+			stack = append(stack, fmt.Sprintf("%v:%v:%v", env, rng.Begin.Line, rng.Begin.Column))
+		}
+	}
+
+	return &envGetTemplateData{
+		Value:      valueJSON,
+		Definition: definitionYAML,
+		Stack:      stack,
+	}, nil
+}
+
+type stackable interface {
+	Range() esc.Range
+	Next() bool
+}
+
+type stackableExpr struct {
+	x   *esc.Expr
+	any bool
+}
+
+func (x *stackableExpr) Range() esc.Range {
+	return x.x.Range
+}
+
+func (x *stackableExpr) Next() bool {
+	if x.any {
+		x.x = x.x.Base
+	}
+	x.any = true
+	return x.x != nil
+}
+
+type stackableValue struct {
+	v   *esc.Value
+	any bool
+}
+
+func (v *stackableValue) Range() esc.Range {
+	return v.v.Trace.Def
+}
+
+func (v *stackableValue) Next() bool {
+	if v.any {
+		v.v = v.v.Trace.Base
+	}
+	v.any = true
+	return v.v != nil
+}
+
+type envGetTemplateData struct {
+	Value      string
+	Definition string
+	Stack      []string
 }
 
 func getEnvExpr(root esc.Expr, path resource.PropertyPath) (*esc.Expr, bool) {
@@ -238,21 +373,5 @@ func getEnvValue(root esc.Value, path resource.PropertyPath) (*esc.Value, bool) 
 		return getEnvValue(e, path[1:])
 	default:
 		return nil, false
-	}
-}
-
-func getEnvSchema(root *schema.Schema, path resource.PropertyPath) *schema.Schema {
-	if len(path) == 0 {
-		return root
-	}
-
-	switch accessor := path[0].(type) {
-	case int:
-		return getEnvSchema(root.Item(accessor), path[1:])
-	case string:
-		return getEnvSchema(root.Property(accessor), path[1:])
-	default:
-		contract.Failf("unexpected accessor type %T", accessor)
-		return schema.Never()
 	}
 }

@@ -10,8 +10,18 @@ environments:
   test-user/test:
     values:
       foo: bar
-stdout: |
+stdout: |+
   Environment updated.
+  # Value
+  ```json
   {
     "foo": "baz"
   }
+  ```
+  # Definition
+  ```yaml
+  values:
+    foo: baz
+
+  ```
+

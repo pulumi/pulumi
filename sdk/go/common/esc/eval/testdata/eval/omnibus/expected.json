@@ -113,7 +113,7 @@
                     "type": "string"
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::join",
                     "argSchema": {
                         "prefixItems": [
                             {
@@ -295,41 +295,42 @@
                     }
                 },
                 "builtin": {
-                    "name": "",
-                    "argSchema": {
-                        "properties": {
-                            "inputs": true,
-                            "provider": {
-                                "type": "string"
-                            }
-                        },
-                        "type": "object",
-                        "required": [
-                            "inputs",
-                            "provider"
-                        ]
-                    },
+                    "name": "fn::open::test",
+                    "argSchema": true,
                     "arg": {
                         "range": {
+                            "environment": "omnibus",
                             "begin": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 8,
+                                "column": 7,
+                                "byte": 101
                             },
                             "end": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 8,
+                                "column": 15,
+                                "byte": 109
                             }
                         },
+                        "schema": {
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz"
+                            ]
+                        },
                         "object": {
-                            "inputs": {
+                            "baz": {
                                 "range": {
                                     "environment": "omnibus",
                                     "begin": {
                                         "line": 8,
-                                        "column": 7,
-                                        "byte": 101
+                                        "column": 12,
+                                        "byte": 106
                                     },
                                     "end": {
                                         "line": 8,
@@ -338,59 +339,10 @@
                                     }
                                 },
                                 "schema": {
-                                    "properties": {
-                                        "baz": {
-                                            "type": "string",
-                                            "const": "qux"
-                                        }
-                                    },
-                                    "type": "object",
-                                    "required": [
-                                        "baz"
-                                    ]
-                                },
-                                "object": {
-                                    "baz": {
-                                        "range": {
-                                            "environment": "omnibus",
-                                            "begin": {
-                                                "line": 8,
-                                                "column": 12,
-                                                "byte": 106
-                                            },
-                                            "end": {
-                                                "line": 8,
-                                                "column": 15,
-                                                "byte": 109
-                                            }
-                                        },
-                                        "schema": {
-                                            "type": "string",
-                                            "const": "qux"
-                                        },
-                                        "literal": "qux"
-                                    }
-                                }
-                            },
-                            "provider": {
-                                "range": {
-                                    "environment": "omnibus",
-                                    "begin": {
-                                        "line": 7,
-                                        "column": 5,
-                                        "byte": 79
-                                    },
-                                    "end": {
-                                        "line": 7,
-                                        "column": 19,
-                                        "byte": 93
-                                    }
-                                },
-                                "schema": {
                                     "type": "string",
-                                    "const": "test"
+                                    "const": "qux"
                                 },
-                                "literal": "test"
+                                "literal": "qux"
                             }
                         }
                     }
@@ -428,105 +380,57 @@
                     ]
                 },
                 "builtin": {
-                    "name": "",
-                    "argSchema": {
-                        "properties": {
-                            "inputs": true,
-                            "provider": {
-                                "type": "string"
-                            }
-                        },
-                        "type": "object",
-                        "required": [
-                            "inputs",
-                            "provider"
-                        ]
-                    },
+                    "name": "fn::open::test",
+                    "argSchema": true,
                     "arg": {
                         "range": {
+                            "environment": "omnibus",
                             "begin": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 19,
+                                "column": 21,
+                                "byte": 289
                             },
                             "end": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 19,
+                                "column": 28,
+                                "byte": 296
                             }
                         },
-                        "object": {
-                            "inputs": {
-                                "range": {
-                                    "environment": "omnibus",
-                                    "begin": {
-                                        "line": 19,
-                                        "column": 21,
-                                        "byte": 289
-                                    },
-                                    "end": {
-                                        "line": 19,
-                                        "column": 28,
-                                        "byte": 296
-                                    }
-                                },
-                                "schema": {
-                                    "properties": {
-                                        "baz": {
-                                            "type": "string",
-                                            "const": "qux"
-                                        },
-                                        "foo": {
-                                            "type": "string",
-                                            "const": "bar"
-                                        }
-                                    },
-                                    "type": "object",
-                                    "required": [
-                                        "baz",
-                                        "foo"
-                                    ]
-                                },
-                                "symbol": [
-                                    {
-                                        "key": "open",
-                                        "value": {
-                                            "environment": "omnibus",
-                                            "begin": {
-                                                "line": 7,
-                                                "column": 5,
-                                                "byte": 79
-                                            },
-                                            "end": {
-                                                "line": 8,
-                                                "column": 15,
-                                                "byte": 109
-                                            }
-                                        }
-                                    }
-                                ]
-                            },
-                            "provider": {
-                                "range": {
-                                    "environment": "omnibus",
-                                    "begin": {
-                                        "line": 19,
-                                        "column": 5,
-                                        "byte": 273
-                                    },
-                                    "end": {
-                                        "line": 19,
-                                        "column": 19,
-                                        "byte": 287
-                                    }
-                                },
-                                "schema": {
+                        "schema": {
+                            "properties": {
+                                "baz": {
                                     "type": "string",
-                                    "const": "test"
+                                    "const": "qux"
                                 },
-                                "literal": "test"
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz",
+                                "foo"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "value": {
+                                    "environment": "omnibus",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 5,
+                                        "byte": 79
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 15,
+                                        "byte": 109
+                                    }
+                                }
                             }
-                        }
+                        ]
                     }
                 }
             },
@@ -549,7 +453,7 @@
                     "const": "hunter2"
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::secret",
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -591,7 +495,7 @@
                     "type": "string"
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::toBase64",
                     "argSchema": {
                         "type": "string"
                     },
@@ -651,7 +555,7 @@
                     "type": "string"
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::toJSON",
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -723,7 +627,7 @@
                     "type": "string"
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::toString",
                     "argSchema": true,
                     "arg": {
                         "range": {

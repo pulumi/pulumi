@@ -661,345 +661,297 @@
                     ]
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::open::schema",
                     "argSchema": {
-                        "properties": {
-                            "inputs": {
-                                "$defs": {
-                                    "defRecord": {
-                                        "properties": {
-                                            "baz": {
-                                                "type": "string",
-                                                "const": "qux"
-                                            }
-                                        },
-                                        "type": "object",
-                                        "required": [
-                                            "baz"
-                                        ]
+                        "$defs": {
+                            "defRecord": {
+                                "properties": {
+                                    "baz": {
+                                        "type": "string",
+                                        "const": "qux"
                                     }
                                 },
+                                "type": "object",
+                                "required": [
+                                    "baz"
+                                ]
+                            }
+                        },
+                        "properties": {
+                            "anyOf": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "type": ""
+                            },
+                            "array": {
+                                "items": true,
+                                "type": "array"
+                            },
+                            "boolean": {
+                                "type": "boolean"
+                            },
+                            "false": {
+                                "type": "boolean",
+                                "const": false
+                            },
+                            "hello": {
+                                "type": "string",
+                                "const": "hello"
+                            },
+                            "map": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "null": {
+                                "type": "null"
+                            },
+                            "number": {
+                                "type": "number"
+                            },
+                            "oneOf": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "type": ""
+                            },
+                            "pi": {
+                                "type": "number",
+                                "const": 3.14
+                            },
+                            "record": {
                                 "properties": {
-                                    "anyOf": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "number"
-                                            }
-                                        ],
-                                        "type": ""
-                                    },
-                                    "array": {
-                                        "items": true,
-                                        "type": "array"
-                                    },
-                                    "boolean": {
-                                        "type": "boolean"
-                                    },
-                                    "false": {
-                                        "type": "boolean",
-                                        "const": false
-                                    },
-                                    "hello": {
+                                    "foo": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "foo"
+                                ]
+                            },
+                            "ref": {
+                                "$ref": "#/$defs/defRecord",
+                                "type": ""
+                            },
+                            "string": {
+                                "type": "string"
+                            },
+                            "true": {
+                                "type": "boolean",
+                                "const": true
+                            },
+                            "tuple": {
+                                "prefixItems": [
+                                    {
                                         "type": "string",
                                         "const": "hello"
                                     },
-                                    "map": {
-                                        "additionalProperties": true,
-                                        "type": "object"
-                                    },
-                                    "null": {
-                                        "type": "null"
-                                    },
-                                    "number": {
-                                        "type": "number"
-                                    },
-                                    "oneOf": {
-                                        "oneOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "number"
-                                            }
-                                        ],
-                                        "type": ""
-                                    },
-                                    "pi": {
-                                        "type": "number",
-                                        "const": 3.14
-                                    },
-                                    "record": {
-                                        "properties": {
-                                            "foo": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object",
-                                        "required": [
-                                            "foo"
-                                        ]
-                                    },
-                                    "ref": {
-                                        "$ref": "#/$defs/defRecord",
-                                        "type": ""
-                                    },
-                                    "string": {
-                                        "type": "string"
-                                    },
-                                    "true": {
-                                        "type": "boolean",
-                                        "const": true
-                                    },
-                                    "tuple": {
-                                        "prefixItems": [
-                                            {
-                                                "type": "string",
-                                                "const": "hello"
-                                            },
-                                            {
-                                                "type": "string",
-                                                "const": "world"
-                                            }
-                                        ],
-                                        "items": false,
-                                        "type": "array"
+                                    {
+                                        "type": "string",
+                                        "const": "world"
                                     }
-                                },
-                                "type": "object"
-                            },
-                            "provider": {
-                                "type": "string"
+                                ],
+                                "items": false,
+                                "type": "array"
                             }
                         },
-                        "type": "object",
-                        "required": [
-                            "inputs",
-                            "provider"
-                        ]
+                        "type": "object"
                     },
                     "arg": {
                         "range": {
+                            "environment": "schema",
                             "begin": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 20,
+                                "column": 23,
+                                "byte": 427
                             },
                             "end": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 20,
+                                "column": 32,
+                                "byte": 436
                             }
                         },
-                        "object": {
-                            "inputs": {
-                                "range": {
-                                    "environment": "schema",
-                                    "begin": {
-                                        "line": 20,
-                                        "column": 23,
-                                        "byte": 427
-                                    },
-                                    "end": {
-                                        "line": 20,
-                                        "column": 32,
-                                        "byte": 436
-                                    }
+                        "schema": {
+                            "properties": {
+                                "anyOf": {
+                                    "type": "string",
+                                    "const": "hello"
                                 },
-                                "schema": {
-                                    "properties": {
-                                        "anyOf": {
-                                            "type": "string",
-                                            "const": "hello"
+                                "array": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 2
                                         },
-                                        "array": {
+                                        {
+                                            "type": "string",
+                                            "const": "items"
+                                        },
+                                        {
+                                            "properties": {
+                                                "some": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "some"
+                                            ]
+                                        },
+                                        {
                                             "prefixItems": [
                                                 {
-                                                    "type": "number",
-                                                    "const": 2
-                                                },
-                                                {
                                                     "type": "string",
-                                                    "const": "items"
-                                                },
-                                                {
-                                                    "properties": {
-                                                        "some": {
-                                                            "type": "string",
-                                                            "const": "object"
-                                                        }
-                                                    },
-                                                    "type": "object",
-                                                    "required": [
-                                                        "some"
-                                                    ]
-                                                },
-                                                {
-                                                    "prefixItems": [
-                                                        {
-                                                            "type": "string",
-                                                            "const": "array"
-                                                        }
-                                                    ],
-                                                    "items": false,
-                                                    "type": "array"
+                                                    "const": "array"
                                                 }
                                             ],
                                             "items": false,
                                             "type": "array"
-                                        },
-                                        "boolean": {
-                                            "type": "boolean",
-                                            "const": true
-                                        },
-                                        "false": {
-                                            "type": "boolean",
-                                            "const": false
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "boolean": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "false": {
+                                    "type": "boolean",
+                                    "const": false
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "map": {
+                                    "properties": {
+                                        "blue": {
+                                            "type": "number",
+                                            "const": 42
                                         },
                                         "hello": {
                                             "type": "string",
-                                            "const": "hello"
-                                        },
-                                        "map": {
-                                            "properties": {
-                                                "blue": {
-                                                    "type": "number",
-                                                    "const": 42
-                                                },
-                                                "hello": {
-                                                    "type": "string",
-                                                    "const": "world"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "blue",
-                                                "hello"
-                                            ]
-                                        },
-                                        "null": {
-                                            "type": "null"
-                                        },
-                                        "number": {
-                                            "type": "number",
-                                            "const": 42
-                                        },
-                                        "oneOf": {
-                                            "type": "number",
-                                            "const": 42
-                                        },
-                                        "pi": {
-                                            "type": "number",
-                                            "const": 3.14
-                                        },
-                                        "record": {
-                                            "properties": {
-                                                "foo": {
-                                                    "type": "string",
-                                                    "const": "bar"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "foo"
-                                            ]
-                                        },
-                                        "ref": {
-                                            "properties": {
-                                                "baz": {
-                                                    "type": "string",
-                                                    "const": "qux"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "baz"
-                                            ]
-                                        },
-                                        "string": {
-                                            "type": "string",
-                                            "const": "esc"
-                                        },
-                                        "true": {
-                                            "type": "boolean",
-                                            "const": true
-                                        },
-                                        "tuple": {
-                                            "prefixItems": [
-                                                {
-                                                    "type": "string",
-                                                    "const": "hello"
-                                                },
-                                                {
-                                                    "type": "string",
-                                                    "const": "world"
-                                                }
-                                            ],
-                                            "items": false,
-                                            "type": "array"
+                                            "const": "world"
                                         }
                                     },
                                     "type": "object",
                                     "required": [
-                                        "anyOf",
-                                        "array",
-                                        "boolean",
-                                        "false",
-                                        "hello",
-                                        "map",
-                                        "null",
-                                        "number",
-                                        "oneOf",
-                                        "pi",
-                                        "record",
-                                        "ref",
-                                        "string",
-                                        "true",
-                                        "tuple"
+                                        "blue",
+                                        "hello"
                                     ]
                                 },
-                                "symbol": [
-                                    {
-                                        "key": "source",
-                                        "value": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 3,
-                                                "column": 5,
-                                                "byte": 22
-                                            },
-                                            "end": {
-                                                "line": 18,
-                                                "column": 22,
-                                                "byte": 394
-                                            }
+                                "null": {
+                                    "type": "null"
+                                },
+                                "number": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "oneOf": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "pi": {
+                                    "type": "number",
+                                    "const": 3.14
+                                },
+                                "record": {
+                                    "properties": {
+                                        "foo": {
+                                            "type": "string",
+                                            "const": "bar"
                                         }
-                                    }
-                                ]
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "foo"
+                                    ]
+                                },
+                                "ref": {
+                                    "properties": {
+                                        "baz": {
+                                            "type": "string",
+                                            "const": "qux"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "baz"
+                                    ]
+                                },
+                                "string": {
+                                    "type": "string",
+                                    "const": "esc"
+                                },
+                                "true": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "tuple": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
                             },
-                            "provider": {
-                                "range": {
+                            "type": "object",
+                            "required": [
+                                "anyOf",
+                                "array",
+                                "boolean",
+                                "false",
+                                "hello",
+                                "map",
+                                "null",
+                                "number",
+                                "oneOf",
+                                "pi",
+                                "record",
+                                "ref",
+                                "string",
+                                "true",
+                                "tuple"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "source",
+                                "value": {
                                     "environment": "schema",
                                     "begin": {
-                                        "line": 20,
+                                        "line": 3,
                                         "column": 5,
-                                        "byte": 409
+                                        "byte": 22
                                     },
                                     "end": {
-                                        "line": 20,
-                                        "column": 21,
-                                        "byte": 425
+                                        "line": 18,
+                                        "column": 22,
+                                        "byte": 394
                                     }
-                                },
-                                "schema": {
-                                    "type": "string",
-                                    "const": "schema"
-                                },
-                                "literal": "schema"
+                                }
                             }
-                        }
+                        ]
                     }
                 }
             },
@@ -1170,333 +1122,447 @@
                     ]
                 },
                 "builtin": {
-                    "name": "",
+                    "name": "fn::open::schema",
                     "argSchema": {
-                        "properties": {
-                            "inputs": {
-                                "$defs": {
-                                    "defRecord": {
-                                        "properties": {
-                                            "baz": {
-                                                "type": "string",
-                                                "const": "qux"
-                                            }
-                                        },
-                                        "type": "object",
-                                        "required": [
-                                            "baz"
-                                        ]
+                        "$defs": {
+                            "defRecord": {
+                                "properties": {
+                                    "baz": {
+                                        "type": "string",
+                                        "const": "qux"
                                     }
                                 },
+                                "type": "object",
+                                "required": [
+                                    "baz"
+                                ]
+                            }
+                        },
+                        "properties": {
+                            "anyOf": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "type": ""
+                            },
+                            "array": {
+                                "items": true,
+                                "type": "array"
+                            },
+                            "boolean": {
+                                "type": "boolean"
+                            },
+                            "false": {
+                                "type": "boolean",
+                                "const": false
+                            },
+                            "hello": {
+                                "type": "string",
+                                "const": "hello"
+                            },
+                            "map": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "null": {
+                                "type": "null"
+                            },
+                            "number": {
+                                "type": "number"
+                            },
+                            "oneOf": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "type": ""
+                            },
+                            "pi": {
+                                "type": "number",
+                                "const": 3.14
+                            },
+                            "record": {
                                 "properties": {
-                                    "anyOf": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "number"
-                                            }
-                                        ],
-                                        "type": ""
-                                    },
-                                    "array": {
-                                        "items": true,
-                                        "type": "array"
-                                    },
-                                    "boolean": {
-                                        "type": "boolean"
-                                    },
-                                    "false": {
-                                        "type": "boolean",
-                                        "const": false
-                                    },
-                                    "hello": {
+                                    "foo": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "foo"
+                                ]
+                            },
+                            "ref": {
+                                "$ref": "#/$defs/defRecord",
+                                "type": ""
+                            },
+                            "string": {
+                                "type": "string"
+                            },
+                            "true": {
+                                "type": "boolean",
+                                "const": true
+                            },
+                            "tuple": {
+                                "prefixItems": [
+                                    {
                                         "type": "string",
                                         "const": "hello"
                                     },
-                                    "map": {
-                                        "additionalProperties": true,
-                                        "type": "object"
-                                    },
-                                    "null": {
-                                        "type": "null"
-                                    },
-                                    "number": {
-                                        "type": "number"
-                                    },
-                                    "oneOf": {
-                                        "oneOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "number"
-                                            }
-                                        ],
-                                        "type": ""
-                                    },
-                                    "pi": {
-                                        "type": "number",
-                                        "const": 3.14
-                                    },
-                                    "record": {
-                                        "properties": {
-                                            "foo": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object",
-                                        "required": [
-                                            "foo"
-                                        ]
-                                    },
-                                    "ref": {
-                                        "$ref": "#/$defs/defRecord",
-                                        "type": ""
-                                    },
-                                    "string": {
-                                        "type": "string"
-                                    },
-                                    "true": {
-                                        "type": "boolean",
-                                        "const": true
-                                    },
-                                    "tuple": {
-                                        "prefixItems": [
-                                            {
-                                                "type": "string",
-                                                "const": "hello"
-                                            },
-                                            {
-                                                "type": "string",
-                                                "const": "world"
-                                            }
-                                        ],
-                                        "items": false,
-                                        "type": "array"
+                                    {
+                                        "type": "string",
+                                        "const": "world"
                                     }
-                                },
-                                "type": "object"
-                            },
-                            "provider": {
-                                "type": "string"
+                                ],
+                                "items": false,
+                                "type": "array"
                             }
                         },
-                        "type": "object",
-                        "required": [
-                            "inputs",
-                            "provider"
-                        ]
+                        "type": "object"
                     },
                     "arg": {
                         "range": {
+                            "environment": "schema",
                             "begin": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 4,
+                                "column": 7,
+                                "byte": 46
                             },
                             "end": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 18,
+                                "column": 22,
+                                "byte": 394
                             }
                         },
-                        "object": {
-                            "inputs": {
-                                "range": {
-                                    "environment": "schema",
-                                    "begin": {
-                                        "line": 4,
-                                        "column": 7,
-                                        "byte": 46
-                                    },
-                                    "end": {
-                                        "line": 18,
-                                        "column": 22,
-                                        "byte": 394
-                                    }
+                        "schema": {
+                            "properties": {
+                                "anyOf": {
+                                    "type": "string",
+                                    "const": "hello"
                                 },
-                                "schema": {
-                                    "properties": {
-                                        "anyOf": {
+                                "array": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        {
                                             "type": "string",
-                                            "const": "hello"
+                                            "const": "items"
                                         },
-                                        "array": {
-                                            "prefixItems": [
-                                                {
-                                                    "type": "number",
-                                                    "const": 2
-                                                },
-                                                {
-                                                    "type": "string",
-                                                    "const": "items"
-                                                },
-                                                {
-                                                    "properties": {
-                                                        "some": {
-                                                            "type": "string",
-                                                            "const": "object"
-                                                        }
-                                                    },
-                                                    "type": "object",
-                                                    "required": [
-                                                        "some"
-                                                    ]
-                                                },
-                                                {
-                                                    "prefixItems": [
-                                                        {
-                                                            "type": "string",
-                                                            "const": "array"
-                                                        }
-                                                    ],
-                                                    "items": false,
-                                                    "type": "array"
-                                                }
-                                            ],
-                                            "items": false,
-                                            "type": "array"
-                                        },
-                                        "boolean": {
-                                            "type": "boolean",
-                                            "const": true
-                                        },
-                                        "false": {
-                                            "type": "boolean",
-                                            "const": false
-                                        },
-                                        "hello": {
-                                            "type": "string",
-                                            "const": "hello"
-                                        },
-                                        "map": {
+                                        {
                                             "properties": {
-                                                "blue": {
-                                                    "type": "number",
-                                                    "const": 42
-                                                },
-                                                "hello": {
+                                                "some": {
                                                     "type": "string",
-                                                    "const": "world"
+                                                    "const": "object"
                                                 }
                                             },
                                             "type": "object",
                                             "required": [
-                                                "blue",
-                                                "hello"
+                                                "some"
                                             ]
                                         },
-                                        "null": {
-                                            "type": "null"
-                                        },
-                                        "number": {
-                                            "type": "number",
-                                            "const": 42
-                                        },
-                                        "oneOf": {
-                                            "type": "number",
-                                            "const": 42
-                                        },
-                                        "pi": {
-                                            "type": "number",
-                                            "const": 3.14
-                                        },
-                                        "record": {
-                                            "properties": {
-                                                "foo": {
-                                                    "type": "string",
-                                                    "const": "bar"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "foo"
-                                            ]
-                                        },
-                                        "ref": {
-                                            "properties": {
-                                                "baz": {
-                                                    "type": "string",
-                                                    "const": "qux"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "baz"
-                                            ]
-                                        },
-                                        "string": {
-                                            "type": "string",
-                                            "const": "esc"
-                                        },
-                                        "true": {
-                                            "type": "boolean",
-                                            "const": true
-                                        },
-                                        "tuple": {
+                                        {
                                             "prefixItems": [
                                                 {
                                                     "type": "string",
-                                                    "const": "hello"
-                                                },
-                                                {
-                                                    "type": "string",
-                                                    "const": "world"
+                                                    "const": "array"
                                                 }
                                             ],
                                             "items": false,
                                             "type": "array"
                                         }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "boolean": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "false": {
+                                    "type": "boolean",
+                                    "const": false
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "map": {
+                                    "properties": {
+                                        "blue": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "hello": {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
                                     },
                                     "type": "object",
                                     "required": [
-                                        "anyOf",
-                                        "array",
-                                        "boolean",
-                                        "false",
-                                        "hello",
-                                        "map",
-                                        "null",
-                                        "number",
-                                        "oneOf",
-                                        "pi",
-                                        "record",
-                                        "ref",
-                                        "string",
-                                        "true",
-                                        "tuple"
+                                        "blue",
+                                        "hello"
                                     ]
                                 },
-                                "object": {
-                                    "anyOf": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 16,
-                                                "column": 14,
-                                                "byte": 351
-                                            },
-                                            "end": {
-                                                "line": 16,
-                                                "column": 19,
-                                                "byte": 356
-                                            }
-                                        },
-                                        "schema": {
+                                "null": {
+                                    "type": "null"
+                                },
+                                "number": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "oneOf": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "pi": {
+                                    "type": "number",
+                                    "const": 3.14
+                                },
+                                "record": {
+                                    "properties": {
+                                        "foo": {
+                                            "type": "string",
+                                            "const": "bar"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "foo"
+                                    ]
+                                },
+                                "ref": {
+                                    "properties": {
+                                        "baz": {
+                                            "type": "string",
+                                            "const": "qux"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "baz"
+                                    ]
+                                },
+                                "string": {
+                                    "type": "string",
+                                    "const": "esc"
+                                },
+                                "true": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "tuple": {
+                                    "prefixItems": [
+                                        {
                                             "type": "string",
                                             "const": "hello"
                                         },
-                                        "literal": "hello"
+                                        {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "anyOf",
+                                "array",
+                                "boolean",
+                                "false",
+                                "hello",
+                                "map",
+                                "null",
+                                "number",
+                                "oneOf",
+                                "pi",
+                                "record",
+                                "ref",
+                                "string",
+                                "true",
+                                "tuple"
+                            ]
+                        },
+                        "object": {
+                            "anyOf": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 14,
+                                        "byte": 351
                                     },
-                                    "array": {
+                                    "end": {
+                                        "line": 16,
+                                        "column": 19,
+                                        "byte": 356
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "literal": "hello"
+                            },
+                            "array": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 14,
+                                        "byte": 201
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 51,
+                                        "byte": 238
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "items"
+                                        },
+                                        {
+                                            "properties": {
+                                                "some": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "some"
+                                            ]
+                                        },
+                                        {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "array"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
                                         "range": {
                                             "environment": "schema",
                                             "begin": {
                                                 "line": 12,
-                                                "column": 14,
-                                                "byte": 201
+                                                "column": 16,
+                                                "byte": 203
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 17,
+                                                "byte": 204
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        "literal": 2
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 19,
+                                                "byte": 206
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 24,
+                                                "byte": 211
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "items"
+                                        },
+                                        "literal": "items"
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 26,
+                                                "byte": 213
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 40,
+                                                "byte": 227
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "some": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "some"
+                                            ]
+                                        },
+                                        "object": {
+                                            "some": {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 34,
+                                                        "byte": 221
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 40,
+                                                        "byte": 227
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                },
+                                                "literal": "object"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 44,
+                                                "byte": 231
                                             },
                                             "end": {
                                                 "line": 12,
@@ -1507,34 +1573,8 @@
                                         "schema": {
                                             "prefixItems": [
                                                 {
-                                                    "type": "number",
-                                                    "const": 2
-                                                },
-                                                {
                                                     "type": "string",
-                                                    "const": "items"
-                                                },
-                                                {
-                                                    "properties": {
-                                                        "some": {
-                                                            "type": "string",
-                                                            "const": "object"
-                                                        }
-                                                    },
-                                                    "type": "object",
-                                                    "required": [
-                                                        "some"
-                                                    ]
-                                                },
-                                                {
-                                                    "prefixItems": [
-                                                        {
-                                                            "type": "string",
-                                                            "const": "array"
-                                                        }
-                                                    ],
-                                                    "items": false,
-                                                    "type": "array"
+                                                    "const": "array"
                                                 }
                                             ],
                                             "items": false,
@@ -1546,97 +1586,8 @@
                                                     "environment": "schema",
                                                     "begin": {
                                                         "line": 12,
-                                                        "column": 16,
-                                                        "byte": 203
-                                                    },
-                                                    "end": {
-                                                        "line": 12,
-                                                        "column": 17,
-                                                        "byte": 204
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "number",
-                                                    "const": 2
-                                                },
-                                                "literal": 2
-                                            },
-                                            {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 12,
-                                                        "column": 19,
-                                                        "byte": 206
-                                                    },
-                                                    "end": {
-                                                        "line": 12,
-                                                        "column": 24,
-                                                        "byte": 211
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "string",
-                                                    "const": "items"
-                                                },
-                                                "literal": "items"
-                                            },
-                                            {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 12,
-                                                        "column": 26,
-                                                        "byte": 213
-                                                    },
-                                                    "end": {
-                                                        "line": 12,
-                                                        "column": 40,
-                                                        "byte": 227
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "properties": {
-                                                        "some": {
-                                                            "type": "string",
-                                                            "const": "object"
-                                                        }
-                                                    },
-                                                    "type": "object",
-                                                    "required": [
-                                                        "some"
-                                                    ]
-                                                },
-                                                "object": {
-                                                    "some": {
-                                                        "range": {
-                                                            "environment": "schema",
-                                                            "begin": {
-                                                                "line": 12,
-                                                                "column": 34,
-                                                                "byte": 221
-                                                            },
-                                                            "end": {
-                                                                "line": 12,
-                                                                "column": 40,
-                                                                "byte": 227
-                                                            }
-                                                        },
-                                                        "schema": {
-                                                            "type": "string",
-                                                            "const": "object"
-                                                        },
-                                                        "literal": "object"
-                                                    }
-                                                }
-                                            },
-                                            {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 12,
-                                                        "column": 44,
-                                                        "byte": 231
+                                                        "column": 46,
+                                                        "byte": 233
                                                     },
                                                     "end": {
                                                         "line": 12,
@@ -1645,107 +1596,114 @@
                                                     }
                                                 },
                                                 "schema": {
-                                                    "prefixItems": [
-                                                        {
-                                                            "type": "string",
-                                                            "const": "array"
-                                                        }
-                                                    ],
-                                                    "items": false,
-                                                    "type": "array"
+                                                    "type": "string",
+                                                    "const": "array"
                                                 },
-                                                "list": [
-                                                    {
-                                                        "range": {
-                                                            "environment": "schema",
-                                                            "begin": {
-                                                                "line": 12,
-                                                                "column": 46,
-                                                                "byte": 233
-                                                            },
-                                                            "end": {
-                                                                "line": 12,
-                                                                "column": 51,
-                                                                "byte": 238
-                                                            }
-                                                        },
-                                                        "schema": {
-                                                            "type": "string",
-                                                            "const": "array"
-                                                        },
-                                                        "literal": "array"
-                                                    }
-                                                ]
+                                                "literal": "array"
                                             }
                                         ]
+                                    }
+                                ]
+                            },
+                            "boolean": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 16,
+                                        "byte": 74
                                     },
-                                    "boolean": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 5,
-                                                "column": 16,
-                                                "byte": 74
-                                            },
-                                            "end": {
-                                                "line": 5,
-                                                "column": 20,
-                                                "byte": 78
-                                            }
-                                        },
-                                        "schema": {
-                                            "type": "boolean",
-                                            "const": true
-                                        },
-                                        "literal": true
+                                    "end": {
+                                        "line": 5,
+                                        "column": 20,
+                                        "byte": 78
+                                    }
+                                },
+                                "schema": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "literal": true
+                            },
+                            "false": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 16,
+                                        "byte": 94
                                     },
-                                    "false": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 6,
-                                                "column": 16,
-                                                "byte": 94
-                                            },
-                                            "end": {
-                                                "line": 6,
-                                                "column": 21,
-                                                "byte": 99
-                                            }
-                                        },
-                                        "schema": {
-                                            "type": "boolean",
-                                            "const": false
-                                        },
-                                        "literal": false
+                                    "end": {
+                                        "line": 6,
+                                        "column": 21,
+                                        "byte": 99
+                                    }
+                                },
+                                "schema": {
+                                    "type": "boolean",
+                                    "const": false
+                                },
+                                "literal": false
+                            },
+                            "hello": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 14,
+                                        "byte": 182
                                     },
-                                    "hello": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 11,
-                                                "column": 14,
-                                                "byte": 182
-                                            },
-                                            "end": {
-                                                "line": 11,
-                                                "column": 19,
-                                                "byte": 187
-                                            }
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 187
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "literal": "hello"
+                            },
+                            "map": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 12,
+                                        "byte": 284
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 308
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "blue": {
+                                            "type": "number",
+                                            "const": 42
                                         },
-                                        "schema": {
+                                        "hello": {
                                             "type": "string",
-                                            "const": "hello"
-                                        },
-                                        "literal": "hello"
+                                            "const": "world"
+                                        }
                                     },
-                                    "map": {
+                                    "type": "object",
+                                    "required": [
+                                        "blue",
+                                        "hello"
+                                    ]
+                                },
+                                "object": {
+                                    "blue": {
                                         "range": {
                                             "environment": "schema",
                                             "begin": {
                                                 "line": 14,
-                                                "column": 12,
-                                                "byte": 284
+                                                "column": 34,
+                                                "byte": 306
                                             },
                                             "end": {
                                                 "line": 14,
@@ -1754,150 +1712,145 @@
                                             }
                                         },
                                         "schema": {
-                                            "properties": {
-                                                "blue": {
-                                                    "type": "number",
-                                                    "const": 42
-                                                },
-                                                "hello": {
-                                                    "type": "string",
-                                                    "const": "world"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "blue",
-                                                "hello"
-                                            ]
-                                        },
-                                        "object": {
-                                            "blue": {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 14,
-                                                        "column": 34,
-                                                        "byte": 306
-                                                    },
-                                                    "end": {
-                                                        "line": 14,
-                                                        "column": 36,
-                                                        "byte": 308
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "number",
-                                                    "const": 42
-                                                },
-                                                "literal": 42
-                                            },
-                                            "hello": {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 14,
-                                                        "column": 21,
-                                                        "byte": 293
-                                                    },
-                                                    "end": {
-                                                        "line": 14,
-                                                        "column": 26,
-                                                        "byte": 298
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "string",
-                                                    "const": "world"
-                                                },
-                                                "literal": "world"
-                                            }
-                                        }
-                                    },
-                                    "null": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 4,
-                                                "column": 15,
-                                                "byte": 54
-                                            },
-                                            "end": {
-                                                "line": 4,
-                                                "column": 19,
-                                                "byte": 58
-                                            }
-                                        },
-                                        "schema": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "number": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 8,
-                                                "column": 15,
-                                                "byte": 133
-                                            },
-                                            "end": {
-                                                "line": 8,
-                                                "column": 17,
-                                                "byte": 135
-                                            }
-                                        },
-                                        "schema": {
                                             "type": "number",
                                             "const": 42
                                         },
                                         "literal": 42
                                     },
-                                    "oneOf": {
+                                    "hello": {
                                         "range": {
                                             "environment": "schema",
                                             "begin": {
-                                                "line": 17,
-                                                "column": 14,
-                                                "byte": 370
+                                                "line": 14,
+                                                "column": 21,
+                                                "byte": 293
                                             },
                                             "end": {
-                                                "line": 17,
-                                                "column": 16,
-                                                "byte": 372
+                                                "line": 14,
+                                                "column": 26,
+                                                "byte": 298
                                             }
                                         },
                                         "schema": {
-                                            "type": "number",
-                                            "const": 42
+                                            "type": "string",
+                                            "const": "world"
                                         },
-                                        "literal": 42
+                                        "literal": "world"
+                                    }
+                                }
+                            },
+                            "null": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 15,
+                                        "byte": 54
                                     },
-                                    "pi": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 9,
-                                                "column": 11,
-                                                "byte": 146
-                                            },
-                                            "end": {
-                                                "line": 9,
-                                                "column": 15,
-                                                "byte": 150
-                                            }
-                                        },
-                                        "schema": {
-                                            "type": "number",
-                                            "const": 3.14
-                                        },
-                                        "literal": 3.14
+                                    "end": {
+                                        "line": 4,
+                                        "column": 19,
+                                        "byte": 58
+                                    }
+                                },
+                                "schema": {
+                                    "type": "null"
+                                }
+                            },
+                            "number": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 15,
+                                        "byte": 133
                                     },
-                                    "record": {
+                                    "end": {
+                                        "line": 8,
+                                        "column": 17,
+                                        "byte": 135
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "literal": 42
+                            },
+                            "oneOf": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 14,
+                                        "byte": 370
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 16,
+                                        "byte": 372
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "literal": 42
+                            },
+                            "pi": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 11,
+                                        "byte": 146
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 15,
+                                        "byte": 150
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 3.14
+                                },
+                                "literal": 3.14
+                            },
+                            "record": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 15,
+                                        "byte": 325
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 25,
+                                        "byte": 335
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "foo": {
+                                            "type": "string",
+                                            "const": "bar"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "foo"
+                                    ]
+                                },
+                                "object": {
+                                    "foo": {
                                         "range": {
                                             "environment": "schema",
                                             "begin": {
                                                 "line": 15,
-                                                "column": 15,
-                                                "byte": 325
+                                                "column": 22,
+                                                "byte": 332
                                             },
                                             "end": {
                                                 "line": 15,
@@ -1906,47 +1859,47 @@
                                             }
                                         },
                                         "schema": {
-                                            "properties": {
-                                                "foo": {
-                                                    "type": "string",
-                                                    "const": "bar"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "foo"
-                                            ]
+                                            "type": "string",
+                                            "const": "bar"
                                         },
-                                        "object": {
-                                            "foo": {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 15,
-                                                        "column": 22,
-                                                        "byte": 332
-                                                    },
-                                                    "end": {
-                                                        "line": 15,
-                                                        "column": 25,
-                                                        "byte": 335
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "string",
-                                                    "const": "bar"
-                                                },
-                                                "literal": "bar"
-                                            }
+                                        "literal": "bar"
+                                    }
+                                }
+                            },
+                            "ref": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 12,
+                                        "byte": 384
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 22,
+                                        "byte": 394
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "baz": {
+                                            "type": "string",
+                                            "const": "qux"
                                         }
                                     },
-                                    "ref": {
+                                    "type": "object",
+                                    "required": [
+                                        "baz"
+                                    ]
+                                },
+                                "object": {
+                                    "baz": {
                                         "range": {
                                             "environment": "schema",
                                             "begin": {
                                                 "line": 18,
-                                                "column": 12,
-                                                "byte": 384
+                                                "column": 19,
+                                                "byte": 391
                                             },
                                             "end": {
                                                 "line": 18,
@@ -1955,87 +1908,109 @@
                                             }
                                         },
                                         "schema": {
-                                            "properties": {
-                                                "baz": {
-                                                    "type": "string",
-                                                    "const": "qux"
-                                                }
-                                            },
-                                            "type": "object",
-                                            "required": [
-                                                "baz"
-                                            ]
-                                        },
-                                        "object": {
-                                            "baz": {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 18,
-                                                        "column": 19,
-                                                        "byte": 391
-                                                    },
-                                                    "end": {
-                                                        "line": 18,
-                                                        "column": 22,
-                                                        "byte": 394
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "string",
-                                                    "const": "qux"
-                                                },
-                                                "literal": "qux"
-                                            }
-                                        }
-                                    },
-                                    "string": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 10,
-                                                "column": 15,
-                                                "byte": 165
-                                            },
-                                            "end": {
-                                                "line": 10,
-                                                "column": 18,
-                                                "byte": 168
-                                            }
-                                        },
-                                        "schema": {
                                             "type": "string",
-                                            "const": "esc"
+                                            "const": "qux"
                                         },
-                                        "literal": "esc"
+                                        "literal": "qux"
+                                    }
+                                }
+                            },
+                            "string": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 15,
+                                        "byte": 165
                                     },
-                                    "true": {
-                                        "range": {
-                                            "environment": "schema",
-                                            "begin": {
-                                                "line": 7,
-                                                "column": 15,
-                                                "byte": 114
-                                            },
-                                            "end": {
-                                                "line": 7,
-                                                "column": 19,
-                                                "byte": 118
-                                            }
-                                        },
-                                        "schema": {
-                                            "type": "boolean",
-                                            "const": true
-                                        },
-                                        "literal": true
+                                    "end": {
+                                        "line": 10,
+                                        "column": 18,
+                                        "byte": 168
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "esc"
+                                },
+                                "literal": "esc"
+                            },
+                            "true": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 15,
+                                        "byte": 114
                                     },
-                                    "tuple": {
+                                    "end": {
+                                        "line": 7,
+                                        "column": 19,
+                                        "byte": 118
+                                    }
+                                },
+                                "schema": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "literal": true
+                            },
+                            "tuple": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 14,
+                                        "byte": 256
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 28,
+                                        "byte": 270
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
                                         "range": {
                                             "environment": "schema",
                                             "begin": {
                                                 "line": 13,
-                                                "column": 14,
-                                                "byte": 256
+                                                "column": 16,
+                                                "byte": 258
+                                            },
+                                            "end": {
+                                                "line": 13,
+                                                "column": 21,
+                                                "byte": 263
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 23,
+                                                "byte": 265
                                             },
                                             "end": {
                                                 "line": 13,
@@ -2044,83 +2019,12 @@
                                             }
                                         },
                                         "schema": {
-                                            "prefixItems": [
-                                                {
-                                                    "type": "string",
-                                                    "const": "hello"
-                                                },
-                                                {
-                                                    "type": "string",
-                                                    "const": "world"
-                                                }
-                                            ],
-                                            "items": false,
-                                            "type": "array"
+                                            "type": "string",
+                                            "const": "world"
                                         },
-                                        "list": [
-                                            {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 13,
-                                                        "column": 16,
-                                                        "byte": 258
-                                                    },
-                                                    "end": {
-                                                        "line": 13,
-                                                        "column": 21,
-                                                        "byte": 263
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "string",
-                                                    "const": "hello"
-                                                },
-                                                "literal": "hello"
-                                            },
-                                            {
-                                                "range": {
-                                                    "environment": "schema",
-                                                    "begin": {
-                                                        "line": 13,
-                                                        "column": 23,
-                                                        "byte": 265
-                                                    },
-                                                    "end": {
-                                                        "line": 13,
-                                                        "column": 28,
-                                                        "byte": 270
-                                                    }
-                                                },
-                                                "schema": {
-                                                    "type": "string",
-                                                    "const": "world"
-                                                },
-                                                "literal": "world"
-                                            }
-                                        ]
+                                        "literal": "world"
                                     }
-                                }
-                            },
-                            "provider": {
-                                "range": {
-                                    "environment": "schema",
-                                    "begin": {
-                                        "line": 3,
-                                        "column": 5,
-                                        "byte": 22
-                                    },
-                                    "end": {
-                                        "line": 3,
-                                        "column": 21,
-                                        "byte": 38
-                                    }
-                                },
-                                "schema": {
-                                    "type": "string",
-                                    "const": "schema"
-                                },
-                                "literal": "schema"
+                                ]
                             }
                         }
                     }
