@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -92,20 +93,31 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 	var interactive bool
 	var duration time.Duration
 
+	shell := valueOrDefault(filepath.Base(envcmd.esc.environ.Get("SHELL")), "sh")
+
 	cmd := &cobra.Command{
-		Use:   "run [<org-name>/]<environment-name> [command]",
+		Use:   "run [<org-name>/]<environment-name> [flags] -- [command]",
 		Args:  cobra.ArbitraryArgs,
-		Short: "Open the environment with the given name and runs a command.",
-		Long: "Open the environment with the given name and runs a command\n" +
-			"\n" +
-			"This command opens the environment with the given name and runs the given command.\n" +
-			"If the opened environment contains a top-level 'environmentVariables' object, each\n" +
-			"key-value pair in the object is made available to the command as an environment\n" +
-			"variable.\n" +
-			"\n" +
-			"By default, the command to run is assumed to be non-interactive and its output\n" +
-			"streams are filtered to remove any secret values. Use the -i flag to run interactive\n" +
-			"commands, which will disable filtering.\n",
+		Short: "Open the environment with the given name and run a command.",
+		Long: fmt.Sprintf("Open the environment with the given name and run a command\n"+
+			"\n"+
+			"This command opens the environment with the given name and runs the given command.\n"+
+			"If the opened environment contains a top-level 'environmentVariables' object, each\n"+
+			"key-value pair in the object is made available to the command as an environment\n"+
+			"variable. Note that commands are not run in a subshell, so environment variable\n"+
+			"references in the command are not expanded by default. You should invoke the command\n"+
+			"inside a shell if you need environment variable expansion:\n"+
+			"\n"+
+			"    run -- %[1]s -c '\"echo $MY_ENV_VAR\"'\n"+
+			"\n"+
+			"The command to run is assumed to be non-interactive by default and its output\n"+
+			"streams are filtered to remove any secret values. Use the -i flag to run interactive\n"+
+			"commands, which will disable filtering.\n"+
+			"\n"+
+			"It is not strictly required that you pass `--`. The `--` indicates that any\n"+
+			"arguments that follow it should be treated as positional arguments instead of flags.\n"+
+			"It is only required if the arguments to the command you would like to run include\n"+
+			"flags of the form `--flag` or `-f`.\n", shell),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()

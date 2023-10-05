@@ -27,7 +27,7 @@ stdout: |
       env         Manage environments
       login       Log in to the Pulumi Cloud
       open        Open the environment with the given name.
-      run         Open the environment with the given name and runs a command.
+      run         Open the environment with the given name and run a command.
       version     Print esc's version number
 
     Flags:
