@@ -1,11 +1,11 @@
 run: env edit test
 process:
-    environ:
-        EDITOR: my-editor
-    commands:
-        my-editor: |
-            echo -e "values:\n  foo: baz\n" >$1
+  environ:
+    EDITOR: my-editor
+  commands:
+    my-editor: |
+      echo -e "values:\n  foo: baz\n" >$1
 environments:
-    test-user/test:
-        values:
-            foo: bar
+  test-user/test:
+    values:
+      foo: bar

@@ -6,20 +6,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 )
 
 func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
-	var preview bool
 	var duration time.Duration
 	var format string
 
@@ -55,27 +50,17 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 			}
 
 			switch format {
-			case "detailed", "flat", "json", "string":
+			case "detailed", "json", "string":
 				// OK
-			case "shell":
+			case "dotenv", "shell":
 				if len(path) != 0 {
-					return fmt.Errorf("output format 'shell' may not be used with a property path")
+					return fmt.Errorf("output format '%s' may not be used with a property path", format)
 				}
 			default:
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			var env *esc.Environment
-			var diags []client.EnvironmentDiagnostic
-			if preview {
-				yaml, _, getErr := envcmd.esc.client.GetEnvironment(ctx, orgName, envName)
-				if getErr != nil {
-					return fmt.Errorf("getting environment: %w", getErr)
-				}
-				env, diags, err = envcmd.esc.client.CheckYAMLEnvironment(ctx, orgName, yaml)
-			} else {
-				env, diags, err = envcmd.openEnvironment(ctx, orgName, envName, duration)
-			}
+			env, diags, err := envcmd.openEnvironment(ctx, orgName, envName, duration)
 			if err != nil {
 				return err
 			}
@@ -102,23 +87,16 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				enc := json.NewEncoder(envcmd.esc.stdout)
 				enc.SetIndent("", "  ")
 				return enc.Encode(val)
-			case "flat":
-				var rows []cmdutil.TableRow
-				visitor := func(path resource.PropertyPath, v esc.Value) error {
-					rows = append(rows, cmdutil.TableRow{Columns: []string{
-						path.String(),
-						fmt.Sprintf("%v", v.Value),
-						fmt.Sprintf("%v:%v:%v", v.Trace.Def.Environment, v.Trace.Def.Begin.Line, v.Trace.Def.Begin.Column),
-					}})
+			case "dotenv":
+				vars, ok := env.Properties["environmentVariables"].Value.(map[string]esc.Value)
+				if !ok {
 					return nil
 				}
-				err = visitLeafValues(nil, val, visitor)
-				contract.IgnoreError(err)
-
-				cmdutil.PrintTable(cmdutil.Table{
-					Headers: []string{"PATH", "VALUE", "DEFINITION"},
-					Rows:    rows,
-				})
+				for k, v := range vars {
+					if strValue, ok := v.Value.(string); ok {
+						fmt.Fprintf(envcmd.esc.stdout, "%v=%q\n", k, strValue)
+					}
+				}
 				return nil
 			case "shell":
 				vars, ok := env.Properties["environmentVariables"].Value.(map[string]esc.Value)
@@ -127,12 +105,12 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				}
 				for k, v := range vars {
 					if strValue, ok := v.Value.(string); ok {
-						fmt.Printf("export %v=%q\n", k, strValue)
+						fmt.Fprintf(envcmd.esc.stdout, "export %v=%q\n", k, strValue)
 					}
 				}
 				return nil
 			case "string":
-				fmt.Printf("%v\n", val.ToString(false))
+				fmt.Fprintf(envcmd.esc.stdout, "%v\n", val.ToString(false))
 				return nil
 			default:
 				// NOTE: we shouldn't get here. This was checked at the beginning of the function.
@@ -146,10 +124,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 		"the lifetime of the opened environment in the form HhMm (e.g. 2h, 1h30m, 15m)")
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "json",
-		"the output format to use. May be 'flat', 'json', 'detailed', or 'shell'")
-	cmd.Flags().BoolVarP(
-		&preview, "preview", "p", false,
-		"true to preview the opened environment")
+		"the output format to use. May be 'dotenv', 'json', 'detailed', or 'shell'")
 
 	return cmd
 }
@@ -169,34 +144,4 @@ func (env *envCommand) openEnvironment(
 	}
 	open, err := env.esc.client.GetOpenEnvironment(ctx, envID)
 	return open, nil, err
-}
-
-func visitLeafValues(
-	path resource.PropertyPath,
-	v esc.Value,
-	visitor func(path resource.PropertyPath, v esc.Value) error,
-) error {
-	switch vv := v.Value.(type) {
-	case []esc.Value:
-		for i, v := range vv {
-			if err := visitLeafValues(append(path, i), v, visitor); err != nil {
-				return err
-			}
-		}
-		return nil
-	case map[string]esc.Value:
-		keys := maps.Keys(vv)
-		sort.Strings(keys)
-		for _, k := range keys {
-			if err := visitLeafValues(append(path, k), vv[k], visitor); err != nil {
-				return err
-			}
-		}
-		return nil
-	default:
-		if err := visitor(path, v); err != nil {
-			return fmt.Errorf("%v: %w", path, err)
-		}
-		return nil
-	}
 }

@@ -1,7 +1,7 @@
 run: env edit test
 error: 'finding "my-editor" on path: command not found'
 process:
-    environ:
-        EDITOR: my-editor
+  environ:
+    EDITOR: my-editor
 stderr: |
-    Error: finding "my-editor" on path: command not found
+  Error: finding "my-editor" on path: command not found

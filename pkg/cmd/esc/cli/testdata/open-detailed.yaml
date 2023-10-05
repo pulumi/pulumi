@@ -1,0 +1,84 @@
+run: open test --format detailed
+environments:
+  test-user/test:
+    imports:
+      - test-2
+    values:
+      foo: bar
+  test-user/test-2:
+    values:
+      foo: baz
+      hello: world
+stdout: |
+  {
+    "value": {
+      "foo": {
+        "value": "bar",
+        "trace": {
+          "def": {
+            "environment": "test",
+            "begin": {
+              "line": 4,
+              "column": 10,
+              "byte": 39
+            },
+            "end": {
+              "line": 4,
+              "column": 13,
+              "byte": 42
+            }
+          },
+          "base": {
+            "value": "baz",
+            "trace": {
+              "def": {
+                "environment": "test-2",
+                "begin": {
+                  "line": 2,
+                  "column": 10,
+                  "byte": 17
+                },
+                "end": {
+                  "line": 2,
+                  "column": 13,
+                  "byte": 20
+                }
+              }
+            }
+          }
+        }
+      },
+      "hello": {
+        "value": "world",
+        "trace": {
+          "def": {
+            "environment": "test-2",
+            "begin": {
+              "line": 3,
+              "column": 12,
+              "byte": 32
+            },
+            "end": {
+              "line": 3,
+              "column": 17,
+              "byte": 37
+            }
+          }
+        }
+      }
+    },
+    "trace": {
+      "def": {
+        "begin": {
+          "line": 0,
+          "column": 0,
+          "byte": 0
+        },
+        "end": {
+          "line": 0,
+          "column": 0,
+          "byte": 0
+        }
+      }
+    }
+  }

@@ -1,9 +1,9 @@
 run: env edit test
 error: 'getting environment definition: not found'
 process:
-    environ:
-        EDITOR: my-editor
-    commands:
-        my-editor: exit 1
+  environ:
+    EDITOR: my-editor
+  commands:
+    my-editor: exit 1
 stderr: |
-    Error: getting environment definition: not found
+  Error: getting environment definition: not found

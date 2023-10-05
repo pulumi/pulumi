@@ -1,0 +1,4 @@
+run: open test --format=flat
+error: unknown output format "flat"
+stderr: |
+  Error: unknown output format "flat"

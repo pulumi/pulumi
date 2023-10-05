@@ -682,10 +682,13 @@ func TestCLI(t *testing.T) {
 				def.Stdout = testcase.stdout.String()
 				def.Stderr = testcase.stderr.String()
 
-				bytes, err := yaml.Marshal(def)
+				var b bytes.Buffer
+				enc := yaml.NewEncoder(&b)
+				enc.SetIndent(2)
+				err := enc.Encode(def)
 				require.NoError(t, err)
 
-				err = os.WriteFile(path, bytes, 0o600)
+				err = os.WriteFile(path, b.Bytes(), 0o600)
 				require.NoError(t, err)
 
 				return

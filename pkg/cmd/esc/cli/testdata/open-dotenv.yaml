@@ -1,0 +1,18 @@
+run: open test --format dotenv
+environments:
+  test-user/test:
+    imports:
+      - test-2
+    values:
+      foo: bar
+      environmentVariables:
+        FOO: ${foo}
+  test-user/test-2:
+    values:
+      foo: baz
+      hello: world
+      environmentVariables:
+        HELLO: ${hello}
+stdout: |
+  FOO="bar"
+  HELLO="world"

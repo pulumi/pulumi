@@ -1,0 +1,16 @@
+run: open test --format json
+environments:
+  test-user/test:
+    imports:
+      - test-2
+    values:
+      foo: bar
+  test-user/test-2:
+    values:
+      foo: baz
+      hello: world
+stdout: |
+  {
+    "foo": "bar",
+    "hello": "world"
+  }

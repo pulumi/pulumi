@@ -1,36 +1,36 @@
 parent: parent
 run: esc
 stdout: |
-    Pulumi ESC - Manage environments, secrets, and configuration
+  Pulumi ESC - Manage environments, secrets, and configuration
 
-    To begin working with Pulumi ESC, run the `parent esc env init` command:
+  To begin working with Pulumi ESC, run the `parent esc env init` command:
 
-        $ parent esc env init
+      $ parent esc env init
 
-    This will prompt you to create a new environment to hold secrets and configuration.
+  This will prompt you to create a new environment to hold secrets and configuration.
 
-    The most common commands from there are:
+  The most common commands from there are:
 
-        - parent esc env get  : Get a property in an environment definition
-        - parent esc env set  : Set a property in an environment definition
-        - parent esc env edit : Edit an environment definition
-        - parent esc env ls   : List available environments
-        - parent esc run      : Run a command within the context of an environment
-        - parent esc open     : Open an environment and access its contents
+      - parent esc env get  : Get a property in an environment definition
+      - parent esc env set  : Set a property in an environment definition
+      - parent esc env edit : Edit an environment definition
+      - parent esc env ls   : List available environments
+      - parent esc run      : Run a command within the context of an environment
+      - parent esc open     : Open an environment and access its contents
 
-    For more information, please visit the project page: https://www.pulumi.com/docs/esc
+  For more information, please visit the project page: https://www.pulumi.com/docs/esc
 
-    Usage:
-      parent esc [command]
+  Usage:
+    parent esc [command]
 
-    Available Commands:
-      env         Manage environments
-      login       Log in to the Pulumi Cloud
-      open        Open the environment with the given name.
-      run         Open the environment with the given name and run a command.
-      version     Print esc's version number
+  Available Commands:
+    env         Manage environments
+    login       Log in to the Pulumi Cloud
+    open        Open the environment with the given name.
+    run         Open the environment with the given name and run a command.
+    version     Print esc's version number
 
-    Flags:
-      -h, --help   help for esc
+  Flags:
+    -h, --help   help for esc
 
-    Use "parent esc [command] --help" for more information about a command.
+  Use "parent esc [command] --help" for more information about a command.
