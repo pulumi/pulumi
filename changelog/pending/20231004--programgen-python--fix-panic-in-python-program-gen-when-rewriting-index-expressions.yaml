@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/python
+  description: Fix panic in python program-gen when rewriting index expressions

@@ -379,6 +379,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "empty-list-property",
 		Description: "Tests compiling empty list expressions of object properties",
 	},
+	{
+		Directory:   "python-regress-14037",
+		Description: "Regression test for rewriting qoutes in python",
+		Skip:        allProgLanguages.Except("python"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
