@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -109,11 +108,10 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
 		if tokenInfo != nil {
-			var tokenType string
+			tokenType := "unknown"
 			if tokenInfo.Team != "" {
 				tokenType = fmt.Sprintf("team: %s", tokenInfo.Team)
-			} else {
-				contract.Assertf(tokenInfo.Organization != "", "token must have an organization or team")
+			} else if tokenInfo.Organization != "" {
 				tokenType = fmt.Sprintf("organization: %s", tokenInfo.Organization)
 			}
 			fmt.Fprintf(cmd.Stdout, "Token type: %s\n", tokenType)
