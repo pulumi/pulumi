@@ -1,7 +1,7 @@
-run: env edit test --editor my-editor
+run: env edit test
 process:
   commands:
-    my-editor: |
+    vi: |
       echo -e "values:\n  foo: baz\n" >$1
 environments:
   test-user/test:

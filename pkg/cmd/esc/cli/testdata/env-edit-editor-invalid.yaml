@@ -1,0 +1,19 @@
+run: env edit test
+process:
+  environ:
+    EDITOR: my-editor
+  commands:
+    my-editor: |
+      echo -e "imports:\n" >$1
+environments:
+  test-user/test:
+    values:
+      foo: bar
+stderr: |
+  Error: imports must be a list
+
+    on test line 1:
+     1: imports:
+
+  Press ENTER to continue editing or ^D to exit
+  Aborting edit.

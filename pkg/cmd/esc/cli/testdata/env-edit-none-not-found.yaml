@@ -1,0 +1,4 @@
+run: env edit test
+error: No available editor. Please use the --editor flag or set one of the VISUAL or EDITOR environment variables.
+stderr: |
+  Error: No available editor. Please use the --editor flag or set one of the VISUAL or EDITOR environment variables.

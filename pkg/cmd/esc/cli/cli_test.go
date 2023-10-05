@@ -480,7 +480,7 @@ func (c *testExec) LookPath(cmd string) (string, error) {
 }
 
 func (c *testExec) Run(cmd *exec.Cmd) error {
-	script, ok := c.commands[cmd.Path]
+	script, ok := c.commands[filepath.Base(cmd.Path)]
 	if !ok {
 		return errors.New("command not found")
 	}
@@ -505,6 +505,9 @@ func (c *testExec) Run(cmd *exec.Cmd) error {
 				f = &fstest.MapFile{Mode: perm}
 				c.fs.MapFS[path] = &fstest.MapFile{Mode: perm}
 			}
+			if flag&os.O_TRUNC != 0 {
+				f.Data = f.Data[:0]
+			}
 			return &testFile{f: f}, nil
 		}),
 		interp.ReadDirHandler(func(ctx context.Context, path string) ([]os.FileInfo, error) {
@@ -515,7 +518,7 @@ func (c *testExec) Run(cmd *exec.Cmd) error {
 		}),
 		interp.StdIO(cmd.Stdin, cmd.Stdout, cmd.Stderr),
 		interp.Env(expand.ListEnviron(cmd.Env...)),
-		interp.Params(cmd.Args[1:]...),
+		interp.Params(append([]string{"--"}, cmd.Args[1:]...)...),
 	)
 	if err != nil {
 		return err
@@ -677,6 +680,8 @@ func TestCLI(t *testing.T) {
 			if accept() {
 				if err != nil {
 					def.Error = err.Error()
+				} else {
+					def.Error = ""
 				}
 
 				def.Stdout = testcase.stdout.String()

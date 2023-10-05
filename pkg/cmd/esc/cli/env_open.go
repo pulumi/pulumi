@@ -6,12 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
@@ -88,25 +90,13 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				enc.SetIndent("", "  ")
 				return enc.Encode(val)
 			case "dotenv":
-				vars, ok := env.Properties["environmentVariables"].Value.(map[string]esc.Value)
-				if !ok {
-					return nil
-				}
-				for k, v := range vars {
-					if strValue, ok := v.Value.(string); ok {
-						fmt.Fprintf(envcmd.esc.stdout, "%v=%q\n", k, strValue)
-					}
+				for _, kvp := range getEnvironmentVariables(env) {
+					fmt.Fprintln(envcmd.esc.stdout, kvp)
 				}
 				return nil
 			case "shell":
-				vars, ok := env.Properties["environmentVariables"].Value.(map[string]esc.Value)
-				if !ok {
-					return nil
-				}
-				for k, v := range vars {
-					if strValue, ok := v.Value.(string); ok {
-						fmt.Fprintf(envcmd.esc.stdout, "export %v=%q\n", k, strValue)
-					}
+				for _, kvp := range getEnvironmentVariables(env) {
+					fmt.Fprintf(envcmd.esc.stdout, "export %v\n", kvp)
 				}
 				return nil
 			case "string":
@@ -127,6 +117,24 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 		"the output format to use. May be 'dotenv', 'json', 'detailed', or 'shell'")
 
 	return cmd
+}
+
+func getEnvironmentVariables(env *esc.Environment) []string {
+	vars, ok := env.Properties["environmentVariables"].Value.(map[string]esc.Value)
+	if !ok {
+		return nil
+	}
+	keys := maps.Keys(vars)
+	sort.Strings(keys)
+
+	var environ []string
+	for _, k := range keys {
+		v := vars[k]
+		if strValue, ok := v.Value.(string); ok {
+			environ = append(environ, fmt.Sprintf("%v=%q", k, strValue))
+		}
+	}
+	return environ
 }
 
 func (env *envCommand) openEnvironment(

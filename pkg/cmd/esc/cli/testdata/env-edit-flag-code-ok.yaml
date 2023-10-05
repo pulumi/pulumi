@@ -1,0 +1,12 @@
+run: env edit test --editor code
+process:
+  commands:
+    code: |
+      if [[ "$1" -ne "-w" ]]; then exit 1; fi
+      echo -e "values:\n  foo: baz\n" >$2
+environments:
+  test-user/test:
+    values:
+      foo: bar
+stdout: |
+  Environment updated.

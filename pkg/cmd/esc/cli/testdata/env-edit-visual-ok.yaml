@@ -9,3 +9,5 @@ environments:
   test-user/test:
     values:
       foo: bar
+stdout: |
+  Environment updated.

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os/exec"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -31,13 +33,15 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "edit [<org-name>/]<environment-name>",
 		Args:  cobra.MaximumNArgs(1),
-		Short: "Open an environment for editing.",
-		Long: "Open an environment for editing\n" +
+		Short: "Edit an environment definition",
+		Long: "Edit an environment definition\n" +
 			"\n" +
 			"This command fetches the current definition for the named environment and opens it\n" +
 			"for editing in an editor. The editor defaults to the value of the VISUAL environment\n" +
 			"variable. If VISUAL is not set, EDITOR is used. These values are interpreted as\n" +
-			"commands to which the name of the temporary file used for the environment is appended.\n",
+			"commands to which the name of the temporary file used for the environment is appended.\n" +
+			"If no editor is specified via the --editor flag or environment variables, edit\n" +
+			"defaults to `vi`.\n",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -62,40 +66,47 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
 
-			var checked []byte
+			var env *esc.Environment
+			var diags []client.EnvironmentDiagnostic
 			if len(yaml) != 0 {
-				env, diags, err := edit.env.esc.client.CheckYAMLEnvironment(ctx, orgName, yaml)
+				env, diags, _ = edit.env.esc.client.CheckYAMLEnvironment(ctx, orgName, yaml)
+			}
+
+			for {
+				newYAML, err := edit.editWithYAMLEditor(editor, envName, yaml, env, diags)
 				if err != nil {
-					checked = []byte(fmt.Sprintf("# checking environment: %v\n", err))
-				} else if len(diags) != 0 {
-					var stderr bytes.Buffer
-					err = edit.env.writeYAMLEnvironmentDiagnostics(&stderr, envName, yaml, diags)
-					contract.IgnoreError(err)
-					checked = stderr.Bytes()
-				} else {
-					var stdout bytes.Buffer
-					enc := json.NewEncoder(&stdout)
-					enc.SetIndent("", "  ")
-					err = enc.Encode(esc.NewValue(env.Properties).ToJSON(false))
-					contract.IgnoreError(err)
-					checked = stdout.Bytes()
+					return err
 				}
-			}
+				if len(bytes.TrimSpace(newYAML)) == 0 {
+					fmt.Fprintln(edit.env.esc.stderr, "Aborting edit due to empty definition.")
+					return nil
+				}
 
-			newYAML, err := edit.editWithYAMLEditor(editor, yaml, checked)
-			if err != nil {
-				return err
-			}
+				diags, err = edit.env.esc.client.UpdateEnvironment(ctx, orgName, envName, newYAML, tag)
+				if err != nil {
+					return fmt.Errorf("updating environment definition: %w", err)
+				}
+				if len(diags) == 0 {
+					fmt.Fprintln(edit.env.esc.stdout, "Environment updated.")
+					return nil
+				}
 
-			diags, err := edit.env.esc.client.UpdateEnvironment(ctx, orgName, envName, newYAML, tag)
-			if err != nil {
-				return fmt.Errorf("updating environment definition: %w", err)
-			}
-			if len(diags) != 0 {
-				return edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, envName, newYAML, diags)
-			}
+				err = edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, envName, newYAML, diags)
+				contract.IgnoreError(err)
 
-			return nil
+				fmt.Fprintln(edit.env.esc.stderr, "Press ENTER to continue editing or ^D to exit")
+
+				var b [1]byte
+				if _, err := edit.env.esc.stdin.Read(b[:]); err != nil {
+					if errors.Is(err, io.EOF) {
+						fmt.Fprintln(edit.env.esc.stderr, "Aborting edit.")
+						return nil
+					}
+					return err
+				}
+
+				yaml = newYAML
+			}
 		},
 	}
 
@@ -147,8 +158,18 @@ func (edit *envEditCommand) getEditor() ([]string, error) {
 		}
 	}
 	if len(args) == 0 {
-		return nil, errors.New("No available editor. Please use the --editor flag or set one of the " +
-			"VISUAL or EDITOR environment variables.")
+		path, err := edit.env.esc.exec.LookPath("vi")
+		if err != nil {
+			return nil, errors.New("No available editor. Please use the --editor flag or set one of the " +
+				"VISUAL or EDITOR environment variables.")
+		}
+		args = []string{path}
+		return args, nil
+	}
+
+	// Automatically add -w to 'code' if it is not present.
+	if args[0] == "code" && len(args) == 1 {
+		args = append(args, "-w")
 	}
 
 	path, err := edit.env.esc.exec.LookPath(args[0])
@@ -160,7 +181,38 @@ func (edit *envEditCommand) getEditor() ([]string, error) {
 	return args, nil
 }
 
-func (edit *envEditCommand) editWithYAMLEditor(editor []string, yaml, checked []byte) ([]byte, error) {
+func (edit *envEditCommand) editWithYAMLEditor(
+	editor []string,
+	envName string,
+	yaml []byte,
+	checked *esc.Environment,
+	diags []client.EnvironmentDiagnostic,
+) ([]byte, error) {
+	var details bytes.Buffer
+	if len(diags) != 0 {
+		var tmp bytes.Buffer
+		fmt.Fprintln(&tmp, "# Diagnostics")
+		fmt.Fprintln(&tmp, "")
+		err := edit.env.writeYAMLEnvironmentDiagnostics(&tmp, envName, yaml, diags)
+		contract.IgnoreError(err)
+
+		fmt.Fprintln(&details, "---")
+		fmt.Fprint(&details, strings.ReplaceAll(tmp.String(), "\n", "\n# "))
+	}
+	if checked != nil {
+		fmt.Fprintln(&details, "---")
+		fmt.Fprintln(&details, "# Please edit the environment definition above.")
+		fmt.Fprintln(&details, "# The object below is the current result of")
+		fmt.Fprintln(&details, "# evaluating the environment and will not be")
+		fmt.Fprintln(&details, "# saved. An empty definition aborts the edit.")
+		fmt.Fprintln(&details, "")
+
+		enc := json.NewEncoder(&details)
+		enc.SetIndent("", "  ")
+		err := enc.Encode(esc.NewValue(checked.Properties).ToJSON(false))
+		contract.IgnoreError(err)
+	}
+
 	filename, err := func() (string, error) {
 		filename, f, err := edit.env.esc.fs.CreateTemp("", "*.yaml")
 		if err != nil {
@@ -174,18 +226,12 @@ func (edit *envEditCommand) editWithYAMLEditor(editor []string, yaml, checked []
 			return "", err
 		}
 
-		if len(checked) != 0 {
+		if details.Len() != 0 {
 			if len(yaml) != 0 && yaml[len(yaml)-1] != '\n' {
 				fmt.Fprintln(f, "")
 			}
 
-			fmt.Fprintln(f, "---")
-			fmt.Fprintln(f, "# Please edit the environment definition above.")
-			fmt.Fprintln(f, "# The object below is the current result of")
-			fmt.Fprintln(f, "# evaluating the environment and will not be")
-			fmt.Fprintln(f, "# saved.")
-			fmt.Fprintln(f, "")
-			if _, err = f.Write(checked); err != nil {
+			if _, err = f.Write(details.Bytes()); err != nil {
 				rmErr := edit.env.esc.fs.Remove(filename)
 				contract.IgnoreError(rmErr)
 				return "", err

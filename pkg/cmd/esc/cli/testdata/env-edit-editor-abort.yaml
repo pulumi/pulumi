@@ -4,10 +4,10 @@ process:
     EDITOR: my-editor
   commands:
     my-editor: |
-      echo -e "values:\n  foo: baz\n" >$1
+      echo -n "" >$1
 environments:
   test-user/test:
     values:
       foo: bar
-stdout: |
-  Environment updated.
+stderr: |
+  Aborting edit due to empty definition.
