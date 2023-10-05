@@ -1276,7 +1276,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 						return result, nil, nil
 					}
 
-					name, err := resource.NewUniqueHex(urn.Name().String(), 8, 512)
+					name, err := resource.NewUniqueHex(urn.Name(), 8, 512)
 					assert.NoError(t, err)
 
 					result := news.Copy()
@@ -1476,7 +1476,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 						if name, has := olds["name"]; has {
 							news["name"] = name
 						} else {
-							name, err := resource.NewUniqueName(randomSeed, urn.Name().String(), -1, -1, nil)
+							name, err := resource.NewUniqueName(randomSeed, urn.Name(), -1, -1, nil)
 							assert.NoError(t, err)
 							generatedName = resource.NewStringProperty(name)
 							news["name"] = generatedName

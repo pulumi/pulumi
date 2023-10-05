@@ -209,7 +209,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	}
 	return &resource.State{
 		Type:     token,
-		URN:      resource.NewURN("stack", "project", parentType, token, tokens.QName(r.Name())),
+		URN:      resource.NewURN("stack", "project", parentType, token, r.Name()),
 		Custom:   true,
 		Inputs:   inputs,
 		Parent:   parent,

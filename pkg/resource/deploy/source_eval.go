@@ -389,7 +389,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 	if denyCreation {
 		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(tokens.QName(string(req.Package().Name()))), nil
+		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
 	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.
@@ -958,7 +958,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, rpcerror.New(codes.InvalidArgument, err.Error())
 	}
 
-	name := tokens.QName(req.GetName())
+	name := req.GetName()
 	parent, err := resource.ParseOptionalURN(req.GetParent())
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
@@ -1178,7 +1178,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
-	name := tokens.QName(req.GetName())
+	name := req.GetName()
 	custom := req.GetCustom()
 	remote := req.GetRemote()
 	parent, err := resource.ParseOptionalURN(req.GetParent())
@@ -1722,7 +1722,7 @@ func (g *registerResourceOutputsEvent) Done() {
 
 type readResourceEvent struct {
 	id                      resource.ID
-	name                    tokens.QName
+	name                    string
 	baseType                tokens.Type
 	provider                string
 	parent                  resource.URN
@@ -1738,7 +1738,7 @@ var _ ReadResourceEvent = (*readResourceEvent)(nil)
 func (g *readResourceEvent) event() {}
 
 func (g *readResourceEvent) ID() resource.ID                  { return g.id }
-func (g *readResourceEvent) Name() tokens.QName               { return g.name }
+func (g *readResourceEvent) Name() string                     { return g.name }
 func (g *readResourceEvent) Type() tokens.Type                { return g.baseType }
 func (g *readResourceEvent) Provider() string                 { return g.provider }
 func (g *readResourceEvent) Parent() resource.URN             { return g.parent }

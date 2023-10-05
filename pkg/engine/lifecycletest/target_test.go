@@ -263,7 +263,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 			if !targetDependents {
 				// We should only perform updates on the entries we have targeted.
 				for _, target := range p.Options.Targets.Literals() {
-					assert.Contains(t, targets, target.Name().String())
+					assert.Contains(t, targets, target.Name())
 				}
 			} else {
 				// We expect to find at least one other resource updates.
@@ -274,8 +274,8 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 				found := false
 				updateList := []string{}
 				for target := range updated {
-					updateList = append(updateList, target.Name().String())
-					if !contains(targets, target.Name().String()) {
+					updateList = append(updateList, target.Name())
+					if !contains(targets, target.Name()) {
 						found = true
 					}
 				}
@@ -793,7 +793,7 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 			register := func(urn, parent resource.URN) resource.ID {
 				_, id, _, err := monitor.RegisterResource(
 					urn.Type(),
-					string(urn.Name()),
+					urn.Name(),
 					urn.Type() != resTypeComponent,
 					deploytest.ResourceOptions{
 						Inputs: nil,

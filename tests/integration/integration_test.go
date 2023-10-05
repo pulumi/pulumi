@@ -823,15 +823,19 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 		Quick:      true,
 		NoParallel: true, // already called by tests
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			gotProviders := make(map[tokens.QName]tokens.QName) // resource name => provider name
+			gotProviders := make(map[string]string) // resource name => provider name
 
 			for _, res := range stackInfo.Deployment.Resources {
 				if res.URN.Type() == "testprovider:index:Random" {
-					gotProviders[res.URN.Name()] = resource.URN(res.Provider).Name()
+					ref, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					if err == nil {
+						gotProviders[res.URN.Name()] = ref.URN().Name()
+					}
 				}
 			}
 
-			assert.Equal(t, map[tokens.QName]tokens.QName{
+			assert.Equal(t, map[string]string{
 				"uses_default":       "default",
 				"uses_provider":      "explicit",
 				"uses_providers":     "explicit",
@@ -850,7 +854,7 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 	runComponentSetup(t, testDir)
 
 	validate := func(t *testing.T, resources []apitype.ResourceV3) {
-		urns := make(map[tokens.QName]resource.URN) // name => URN
+		urns := make(map[string]resource.URN) // name => URN
 		for _, res := range resources {
 			urns[res.URN.Name()] = res.URN
 		}

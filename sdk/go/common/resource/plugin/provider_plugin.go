@@ -1337,7 +1337,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutput
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
-func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, parent resource.URN,
 	inputs resource.PropertyMap, options ConstructOptions,
 ) (ConstructResult, error) {
 	contract.Assertf(typ != "", "Construct requires a type")
@@ -1420,7 +1420,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		Parallel:                int32(info.Parallel),
 		MonitorEndpoint:         info.MonitorAddress,
 		Type:                    string(typ),
-		Name:                    string(name),
+		Name:                    name,
 		Parent:                  string(parent),
 		Inputs:                  minputs,
 		Protect:                 options.Protect,

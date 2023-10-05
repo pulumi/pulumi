@@ -107,7 +107,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 //
 
 func testURN(typ, name string) resource.URN {
-	return resource.NewURN("test", "test", "", tokens.Type(typ), tokens.QName(name))
+	return resource.NewURN("test", "test", "", tokens.Type(typ), name)
 }
 
 func deleteState(typ, name string, outs resource.PropertyMap) *resource.State {

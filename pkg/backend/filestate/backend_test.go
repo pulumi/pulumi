@@ -120,12 +120,12 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.UntypedDeployment, error) {
+func makeUntypedDeployment(name string, phrase, state string) (*apitype.UntypedDeployment, error) {
 	return makeUntypedDeploymentTimestamp(name, phrase, state, nil, nil)
 }
 
 func makeUntypedDeploymentTimestamp(
-	name tokens.QName,
+	name string,
 	phrase, state string,
 	created, modified *time.Time,
 ) (*apitype.UntypedDeployment, error) {

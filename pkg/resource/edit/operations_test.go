@@ -43,7 +43,7 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 	t := tokens.Type("a:b:c")
 	return &resource.State{
 		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, tokens.QName(name)),
+		URN:          resource.NewURN("test", "test", "", t, name),
 		Inputs:       resource.PropertyMap{},
 		Outputs:      resource.PropertyMap{},
 		Dependencies: deps,
@@ -55,7 +55,7 @@ func NewProviderResource(pkg, name, id string, deps ...resource.URN) *resource.S
 	t := providers.MakeProviderType(tokens.Package(pkg))
 	return &resource.State{
 		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, tokens.QName(name)),
+		URN:          resource.NewURN("test", "test", "", t, name),
 		ID:           resource.ID(id),
 		Inputs:       resource.PropertyMap{},
 		Outputs:      resource.PropertyMap{},

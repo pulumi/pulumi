@@ -1764,7 +1764,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 				tokens.PackageName(ctx.Project()),
 				"", // parent
 				tokens.Type(typ),
-				tokens.QName(name),
+				name,
 			)
 
 			snap, err := NewResourceOptions(opts)

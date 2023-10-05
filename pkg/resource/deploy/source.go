@@ -109,7 +109,7 @@ type ReadResourceEvent interface {
 	// ID is the requested ID of this read.
 	ID() resource.ID
 	// Name is the requested name of this read.
-	Name() tokens.QName
+	Name() string
 	// Type is type of the resource being read.
 	Type() tokens.Type
 	// Provider is a reference to the provider instance to use for this read.

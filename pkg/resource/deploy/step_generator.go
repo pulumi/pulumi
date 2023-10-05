@@ -170,7 +170,7 @@ func (sg *stepGenerator) bailDaig(diag *diag.Diag, args ...interface{}) error {
 
 // generateURN generates a URN for a new resource and confirms we haven't seen it before in this deployment.
 func (sg *stepGenerator) generateURN(
-	parent resource.URN, ty tokens.Type, name tokens.QName,
+	parent resource.URN, ty tokens.Type, name string,
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, ty, name)
@@ -365,7 +365,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 
 	n := alias.Name
 	if n == "" {
-		n = string(goal.Name)
+		n = goal.Name
 	}
 	t := alias.Type
 	if t == "" {
@@ -403,7 +403,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 // from the name of the parent, and the parent name changed.
 func (sg *stepGenerator) inheritedChildAlias(
 	childType tokens.Type,
-	childName, parentName tokens.QName,
+	childName, parentName string,
 	parentAlias resource.URN,
 ) resource.URN {
 	// If the child name has the parent name as a prefix, then we make the assumption that
@@ -420,10 +420,8 @@ func (sg *stepGenerator) inheritedChildAlias(
 	// * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
 
 	aliasName := childName
-	if strings.HasPrefix(childName.String(), parentName.String()) {
-		aliasName = tokens.QName(
-			parentAlias.Name().String() +
-				strings.TrimPrefix(childName.String(), parentName.String()))
+	if strings.HasPrefix(childName, parentName) {
+		aliasName = parentAlias.Name() + strings.TrimPrefix(childName, parentName)
 	}
 	return resource.NewURN(
 		sg.deployment.Target().Name.Q(),
