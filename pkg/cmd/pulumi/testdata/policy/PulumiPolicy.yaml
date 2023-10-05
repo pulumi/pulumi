@@ -1,0 +1,6 @@
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+version: 0.0.1
+description: A minimal Policy Pack for AWS using Python.

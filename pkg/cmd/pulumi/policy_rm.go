@@ -39,7 +39,7 @@ func newPolicyRmCmd() *cobra.Command {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, args[0])
+			policyPack, err := requirePolicyPack(ctx, args[0], loginToCloud)
 			if err != nil {
 				return err
 			}

@@ -564,12 +564,7 @@ func readProject() (*workspace.Project, string, error) {
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
 // workspace. If the project is successfully detected and read, it is returned along with the path
 // to its containing directory, which will be used as the root of the project's Pulumi program.
-func readPolicyProject() (*workspace.PolicyPackProject, string, string, error) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return nil, "", "", err
-	}
-
+func readPolicyProject(pwd string) (*workspace.PolicyPackProject, string, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectPolicyPackPathFrom(pwd)
 	if err != nil {

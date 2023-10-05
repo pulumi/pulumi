@@ -165,7 +165,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	fmt.Println("Created Policy Pack!")
 
-	proj, projPath, root, err := readPolicyProject()
+	proj, projPath, root, err := readPolicyProject(cwd)
 	if err != nil {
 		return err
 	}
