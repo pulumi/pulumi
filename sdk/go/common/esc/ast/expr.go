@@ -383,10 +383,10 @@ type OpenExpr struct {
 	builtinNode
 
 	Provider *StringExpr
-	Inputs   *ObjectExpr
+	Inputs   Expr
 }
 
-func OpenSyntax(node *syntax.ObjectNode, name *StringExpr, args *ObjectExpr, provider *StringExpr, inputs *ObjectExpr) *OpenExpr {
+func OpenSyntax(node *syntax.ObjectNode, name *StringExpr, args Expr, provider *StringExpr, inputs Expr) *OpenExpr {
 	return &OpenExpr{
 		builtinNode: builtin(node, name, args),
 		Provider:    provider,
@@ -570,7 +570,7 @@ func parseOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, synt
 		return nil, syntax.Diagnostics{ExprError(args, "the argument to fn::open must be an object containing 'provider' and 'inputs'", "")}
 	}
 
-	var providerExpr, inputsExpr Expr
+	var providerExpr, inputs Expr
 	var diags syntax.Diagnostics
 
 	for i := 0; i < len(obj.Entries); i++ {
@@ -580,7 +580,7 @@ func parseOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, synt
 		case "provider":
 			providerExpr = kvp.Value
 		case "inputs":
-			inputsExpr = kvp.Value
+			inputs = kvp.Value
 		}
 	}
 
@@ -593,13 +593,8 @@ func parseOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, synt
 		}
 	}
 
-	inputs, ok := inputsExpr.(*ObjectExpr)
-	if !ok {
-		if inputsExpr == nil {
-			diags.Extend(ExprError(obj, "missing provider inputs ('inputs')", ""))
-		} else {
-			diags.Extend(ExprError(inputsExpr, "provider inputs ('inputs') must be an object", ""))
-		}
+	if inputs == nil {
+		diags.Extend(ExprError(obj, "missing provider inputs ('inputs')", ""))
 	}
 
 	if diags.HasErrors() {
@@ -612,13 +607,12 @@ func parseOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, synt
 func parseShortOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
 	kvp := node.Index(0)
 	provider := strings.TrimPrefix(kvp.Key.Value(), "fn::open::")
-	inputs, ok := args.(*ObjectExpr)
-	if !ok {
-		return nil, syntax.Diagnostics{ExprError(args, fmt.Sprintf("the argument to fn::open::%s must be an object", provider), "")}
+	if args == nil {
+		return nil, syntax.Diagnostics{ExprError(name, "missing provider inputs", "")}
 	}
 	p := name.Syntax().(*syntax.StringNode)
 
-	return OpenSyntax(node, name, inputs, StringSyntaxValue(p, provider), inputs), nil
+	return OpenSyntax(node, name, args, StringSyntaxValue(p, provider), args), nil
 }
 
 func parseJoin(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {

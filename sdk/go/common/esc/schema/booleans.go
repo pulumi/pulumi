@@ -10,6 +10,18 @@ func Boolean() *BooleanBuilder {
 	return &BooleanBuilder{}
 }
 
+func (b *BooleanBuilder) Ref(ref string) *BooleanBuilder {
+	return buildRef(b, ref)
+}
+
+func (b *BooleanBuilder) AnyOf(anyOf ...Builder) *BooleanBuilder {
+	return buildAnyOf(b, anyOf)
+}
+
+func (b *BooleanBuilder) OneOf(oneOf ...Builder) *BooleanBuilder {
+	return buildOneOf(b, oneOf)
+}
+
 func (b *BooleanBuilder) Const(v bool) *BooleanBuilder {
 	b.s.Const = v
 	return b

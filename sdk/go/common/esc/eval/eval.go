@@ -436,7 +436,10 @@ func (e *evalContext) evaluateExpr(x *expr) *value {
 // fails.
 func (e *evalContext) evaluateTypedExpr(x *expr, accept *schema.Schema) (*value, bool) {
 	v := e.evaluateExpr(x)
-	return v, e.validateValue(v, accept, validationLoc{x: x})
+	vv := validator{}
+	ok := vv.validateValue(v, accept, validationLoc{x: x})
+	e.diags.Extend(vv.diags...)
+	return v, ok
 }
 
 // evaluateList evaluates a list expression.
@@ -731,7 +734,18 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 	if err != nil {
 		e.errorf(repr.syntax(), "%v", err)
 	} else {
-		repr.inputSchema, x.schema = provider.Schema()
+		inputSchema, outputSchema := provider.Schema()
+		if err := inputSchema.Compile(); err != nil {
+			e.errorf(repr.syntax(), "internal error: invalid input schema (%v)", err)
+		} else {
+			repr.inputSchema = inputSchema
+		}
+		if err := outputSchema.Compile(); err != nil {
+			e.errorf(repr.syntax(), "internal error: invalid schema (%v)", err)
+		} else {
+			x.schema = outputSchema
+		}
+
 	}
 	v.schema = x.schema
 

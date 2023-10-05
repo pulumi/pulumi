@@ -5,9 +5,13 @@ package schema
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
+	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type Builder interface {
@@ -22,14 +26,33 @@ func Always() *Schema {
 	return &Schema{Always: true}
 }
 
+func Ref(ref string) *Schema {
+	return &Schema{Ref: ref}
+}
+
+func AnyOf(anyOf ...Builder) *Schema {
+	s := &Schema{}
+	return buildAnyOf(s, anyOf)
+}
+
+func OneOf(oneOf ...Builder) *Schema {
+	s := &Schema{}
+	return buildOneOf(s, oneOf)
+}
+
 type Schema struct {
 	// Core vocabulary
 
 	Never  bool `json:"-"`
 	Always bool `json:"-"`
 
+	Defs map[string]*Schema `json:"$defs,omitempty"`
+
 	// Applicator volcabulary
 
+	Ref                  string             `json:"$ref,omitempty"`
+	AnyOf                []*Schema          `json:"anyOf,omitempty"`
+	OneOf                []*Schema          `json:"oneOf,omitempty"`
 	PrefixItems          []*Schema          `json:"prefixItems,omitempty"`
 	Items                *Schema            `json:"items,omitempty"`
 	AdditionalProperties *Schema            `json:"additionalProperties,omitempty"`
@@ -67,6 +90,7 @@ type Schema struct {
 	// Environments extensions
 	Secret bool `json:"secret,omitempty"`
 
+	ref              *Schema
 	multipleOf       *big.Float
 	maximum          *big.Float
 	exclusiveMaximum *big.Float
@@ -116,7 +140,7 @@ func (s *Schema) Schema() *Schema {
 	return s
 }
 
-func (s *Schema) Item(index int) *Schema {
+func (s *Schema) arrayItem(index int) *Schema {
 	if s.Type != "array" {
 		return Never()
 	}
@@ -126,7 +150,19 @@ func (s *Schema) Item(index int) *Schema {
 	return s.Items
 }
 
-func (s *Schema) Property(name string) *Schema {
+func (s *Schema) Item(index int) *Schema {
+	var oneOf []*Schema
+	for _, x := range s.AnyOf {
+		oneOf = append(oneOf, x.Item(index))
+	}
+	for _, x := range s.OneOf {
+		oneOf = append(oneOf, x.Item(index))
+	}
+	oneOf = append(oneOf, s.arrayItem(index))
+	return union(oneOf)
+}
+
+func (s *Schema) objectProperty(name string) *Schema {
 	if s.Type != "object" {
 		return Never()
 	}
@@ -136,6 +172,19 @@ func (s *Schema) Property(name string) *Schema {
 	return s.AdditionalProperties
 }
 
+func (s *Schema) Property(name string) *Schema {
+	var oneOf []*Schema
+	for _, x := range s.AnyOf {
+		oneOf = append(oneOf, x.Property(name))
+	}
+	for _, x := range s.OneOf {
+		oneOf = append(oneOf, x.Property(name))
+	}
+	oneOf = append(oneOf, s.objectProperty(name))
+	return union(oneOf)
+}
+
+func (s *Schema) GetRef() *Schema                 { return s.ref }
 func (s *Schema) GetMultipleOf() *big.Float       { return s.multipleOf }
 func (s *Schema) GetMaximum() *big.Float          { return s.maximum }
 func (s *Schema) GetExclusiveMaximum() *big.Float { return s.exclusiveMaximum }
@@ -153,26 +202,54 @@ func (s *Schema) Compile() error {
 	if s == nil || s.compiled {
 		return nil
 	}
+
+	return s.compile(s)
+}
+
+func (s *Schema) compile(root *Schema) error {
+	if s == nil || s.compiled {
+		return nil
+	}
 	s.compiled = true
 
-	for _, s := range s.PrefixItems {
-		if err := s.Compile(); err != nil {
+	var err error
+	if s.Ref != "" {
+		if s.ref, err = parseRef(root, s.Ref); err != nil {
+			return err
+		}
+		if err = s.ref.compile(root); err != nil {
 			return err
 		}
 	}
-	if err := s.Items.Compile(); err != nil {
+
+	for _, s := range s.AnyOf {
+		if err := s.compile(root); err != nil {
+			return err
+		}
+	}
+	for _, s := range s.OneOf {
+		if err := s.compile(root); err != nil {
+			return err
+		}
+	}
+
+	for _, s := range s.PrefixItems {
+		if err := s.compile(root); err != nil {
+			return err
+		}
+	}
+	if err := s.Items.compile(root); err != nil {
 		return err
 	}
-	if err := s.AdditionalProperties.Compile(); err != nil {
+	if err := s.AdditionalProperties.compile(root); err != nil {
 		return err
 	}
 	for _, v := range s.Properties {
-		if err := v.Compile(); err != nil {
+		if err := v.compile(root); err != nil {
 			return err
 		}
 	}
 
-	var err error
 	if s.multipleOf, err = parseNumber(s.MultipleOf); err != nil {
 		return err
 	}
@@ -213,6 +290,24 @@ func (s *Schema) Compile() error {
 	return nil
 }
 
+func parseRef(root *Schema, ref string) (*Schema, error) {
+	refName, ok := strings.CutPrefix(ref, "#/$defs/")
+	if !ok || strings.Contains(refName, "/") {
+		return nil, errors.New("only fragment references of the form #/$defs/ref are supported")
+	}
+
+	refName, err := url.PathUnescape(refName)
+	if err != nil {
+		return nil, err
+	}
+
+	s, ok := root.Defs[refName]
+	if !ok {
+		return nil, fmt.Errorf("unknown subschema %v", ref)
+	}
+	return s, nil
+}
+
 func parseNumber(n json.Number) (*big.Float, error) {
 	if n == "" {
 		return nil, nil
@@ -238,4 +333,60 @@ func parseRegexp(pattern string) (*regexp.Regexp, error) {
 		return nil, nil
 	}
 	return regexp.Compile(pattern)
+}
+
+func buildDefs[T Builder](b T, defs map[string]Builder) T {
+	s := b.Schema()
+	s.Defs = make(map[string]*Schema, len(defs))
+	for k, v := range defs {
+		s.Defs[k] = v.Schema()
+	}
+	return b
+}
+
+func buildRef[T Builder](b T, ref string) T {
+	b.Schema().Ref = ref
+	return b
+}
+
+func buildAnyOf[T Builder](b T, anyOf []Builder) T {
+	s := b.Schema()
+	s.AnyOf = make([]*Schema, len(anyOf))
+	for i, b := range anyOf {
+		s.AnyOf[i] = b.Schema()
+	}
+	return b
+}
+
+func buildOneOf[T Builder](b T, oneOf []Builder) T {
+	s := b.Schema()
+	s.OneOf = make([]*Schema, len(oneOf))
+	for i, b := range oneOf {
+		s.OneOf[i] = b.Schema()
+	}
+	return b
+}
+
+func union(oneOf []*Schema) *Schema {
+	// Filter out Never schemas.
+	n := 0
+	for _, s := range oneOf {
+		if s != nil && !s.Never {
+			oneOf[n] = s
+			n++
+		}
+	}
+	oneOf = oneOf[:n]
+
+	switch len(oneOf) {
+	case 0:
+		// If there are no schemas left, return Never.
+		return Never()
+	case 1:
+		// If there is one schema left, return is.
+		return oneOf[0]
+	default:
+		// Otherwise, return a OneOf.
+		return &Schema{OneOf: oneOf}
+	}
 }

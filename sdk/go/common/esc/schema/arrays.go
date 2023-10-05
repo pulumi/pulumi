@@ -19,6 +19,22 @@ func Tuple(prefixItems ...Builder) *ArrayBuilder {
 	return Array().PrefixItems(prefixItems...).Items(Never())
 }
 
+func (b *ArrayBuilder) Defs(defs map[string]Builder) *ArrayBuilder {
+	return buildDefs(b, defs)
+}
+
+func (b *ArrayBuilder) Ref(ref string) *ArrayBuilder {
+	return buildRef(b, ref)
+}
+
+func (b *ArrayBuilder) AnyOf(anyOf ...Builder) *ArrayBuilder {
+	return buildAnyOf(b, anyOf)
+}
+
+func (b *ArrayBuilder) OneOf(oneOf ...Builder) *ArrayBuilder {
+	return buildOneOf(b, oneOf)
+}
+
 func (b *ArrayBuilder) PrefixItems(prefixItems ...Builder) *ArrayBuilder {
 	b.s.PrefixItems = make([]*Schema, len(prefixItems))
 	for i, e := range prefixItems {

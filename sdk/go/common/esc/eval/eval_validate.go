@@ -8,7 +8,9 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/pulumi/esc/ast"
 	"github.com/pulumi/esc/schema"
+	"github.com/pulumi/esc/syntax"
 )
 
 // jsonRepr returns the JSON string representation of the given value.
@@ -30,7 +32,7 @@ func jsonRepr(v any) string {
 type validationLoc struct {
 	x      *expr  // the expression that defines the value
 	path   string // the relative path to the value
-	prefix bool   // true if validationErrorf should include the path as a prefix in errors
+	prefix bool   // true if errorf should include the path as a prefix in errors
 }
 
 // index returns the validationLoc associated with the given index. If the location's expression is an array literal
@@ -75,40 +77,45 @@ func (l validationLoc) property(k string) validationLoc {
 	}
 }
 
-// validationErrorf issues a validation error at the given location.
-func (e *evalContext) validationErrorf(loc validationLoc, format string, args ...any) bool {
+type validator struct {
+	diags syntax.Diagnostics
+}
+
+// errorf issues a validation error at the given location.
+func (e *validator) errorf(loc validationLoc, format string, args ...any) bool {
 	if loc.prefix {
 		format = fmt.Sprintf("%s: %s", loc.path, format)
 	}
-	e.errorf(loc.x.repr.syntax(), format, args...)
+	diag := ast.ExprError(loc.x.repr.syntax(), fmt.Sprintf(format, args...), "")
+	e.diags.Extend(diag)
 	return false
 }
 
 // constError issues an error associated with an invalid value where a constant is expected.
-func (e *evalContext) constError(loc validationLoc, expected any) bool {
-	return e.validationErrorf(loc, "expected %v", jsonRepr(expected))
+func (e *validator) constError(loc validationLoc, expected any) bool {
+	return e.errorf(loc, "expected %v", jsonRepr(expected))
 }
 
 // enumError issues an error associated with an invalid value where an enum is expected.
-func (e *evalContext) enumError(loc validationLoc, expected []any) bool {
+func (e *validator) enumError(loc validationLoc, expected []any) bool {
 	if len(expected) == 1 {
 		return e.constError(loc, expected[0])
 	}
-	return e.validationErrorf(loc, "expected one of %v", jsonRepr(expected))
+	return e.errorf(loc, "expected one of %v", jsonRepr(expected))
 }
 
 // typeError issues an error associated with an invalid type.
-func (e *evalContext) typeError(loc validationLoc, expected, got string) bool {
-	return e.validationErrorf(loc, "expected %s, got %s", expected, got)
+func (e *validator) typeError(loc validationLoc, expected, got string) bool {
+	return e.errorf(loc, "expected %s, got %s", expected, got)
 }
 
 // isAny returns true if a schema is the Always schema.
-func (e *evalContext) isAny(s *schema.Schema) bool {
+func (e *validator) isAny(s *schema.Schema) bool {
 	return s == nil || s.Always
 }
 
 // equalsConst returns true if the JSON value of v is equal to c.
-func (e *evalContext) equalsConst(v *value, c any) bool {
+func (e *validator) equalsConst(v *value, c any) bool {
 	switch c := c.(type) {
 	case nil:
 		return v.repr == nil
@@ -147,27 +154,50 @@ func (e *evalContext) equalsConst(v *value, c any) bool {
 }
 
 // checkType validates the Type field of accept against the given actual type.
-func (e *evalContext) checkType(actual string, accept *schema.Schema, loc validationLoc) bool {
-	if actual != accept.Type {
+func (e *validator) checkType(actual string, accept *schema.Schema, loc validationLoc) bool {
+	if accept.Type != "" && actual != accept.Type {
 		return e.typeError(loc, accept.Type, actual)
 	}
 	return true
 }
 
 // validateSchemaType checks that accept validates x.
-func (e *evalContext) validateSchemaType(x, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateSchemaType(x, accept *schema.Schema, loc validationLoc) bool {
 	if e.isAny(accept) {
 		return true
 	}
 	if accept.Never {
 		return false
 	}
+	if ref := accept.GetRef(); ref != nil && !e.validateSchemaType(x, ref, loc) {
+		return false
+	}
 
 	if e.isAny(x) {
 		return true
 	}
+	if x.Never {
+		return false
+	}
+	if ref := x.GetRef(); ref != nil && !e.validateSchemaType(ref, accept, loc) {
+		return false
+	}
 
-	if !e.checkType(x.Type, accept, loc) {
+	if !e.validateInputSchemaAnyOf(x, accept, loc) {
+		return false
+	}
+	if !e.validateInputSchemaOneOf(x, accept, loc) {
+		return false
+	}
+
+	if x.Type != "" && !e.checkType(x.Type, accept, loc) {
+		return false
+	}
+
+	if !e.validateSchemaAnyOf(x, accept, loc) {
+		return false
+	}
+	if !e.validateSchemaOneOf(x, accept, loc) {
 		return false
 	}
 
@@ -180,6 +210,101 @@ func (e *evalContext) validateSchemaType(x, accept *schema.Schema, loc validatio
 	return true
 }
 
+// validateInputSchemaAnyOf checks that accept validates the input schema x if x has an anyOf directive.
+func (e *validator) validateInputSchemaAnyOf(x, accept *schema.Schema, loc validationLoc) bool {
+	if len(x.AnyOf) == 0 {
+		return true
+	}
+
+	var matched bool
+	var allDiags syntax.Diagnostics
+	for _, x := range x.AnyOf {
+		var ee validator
+		if ee.validateSchemaType(x, accept, loc) {
+			matched = true
+		}
+		allDiags.Extend(ee.diags...)
+	}
+	if !matched {
+		e.diags.Extend(allDiags...)
+		e.errorf(loc, "at least one subschema must match")
+		return false
+	}
+	return true
+}
+
+// validateInputSchemaOneOf checks that accept validates the input schema x if x has an oneOf directive.
+func (e *validator) validateInputSchemaOneOf(x, accept *schema.Schema, loc validationLoc) bool {
+	if len(x.OneOf) == 0 {
+		return true
+	}
+
+	var matched bool
+	var allDiags syntax.Diagnostics
+	for _, x := range x.OneOf {
+		var ee validator
+		if ee.validateSchemaType(x, accept, loc) {
+			matched = true
+		}
+		allDiags.Extend(ee.diags...)
+	}
+	if !matched {
+		e.diags.Extend(allDiags...)
+		e.errorf(loc, "at least one subschema must match")
+		return false
+	}
+	return true
+}
+
+// validateSchemaAnyOf checks that the anyOf schema accept validates the input schema x.
+func (e *validator) validateSchemaAnyOf(x, accept *schema.Schema, loc validationLoc) bool {
+	if len(accept.AnyOf) == 0 {
+		return true
+	}
+
+	var matched bool
+	var allDiags syntax.Diagnostics
+	for _, accept := range accept.AnyOf {
+		var ee validator
+		if ee.validateSchemaType(x, accept, loc) {
+			matched = true
+		}
+		allDiags.Extend(ee.diags...)
+	}
+	if !matched {
+		e.diags.Extend(allDiags...)
+		e.errorf(loc, "at least one subschema must match")
+		return false
+	}
+	return true
+}
+
+// validateSchemaOneOf checks that the oneOf schema accept validates the input schema x.
+//
+// Note that for the purposes of validation we treat oneOf like anyOf in order to deal with schemas that will resolve
+// to a single value.
+func (e *validator) validateSchemaOneOf(x, accept *schema.Schema, loc validationLoc) bool {
+	if len(accept.OneOf) == 0 {
+		return true
+	}
+
+	var matched bool
+	var allDiags syntax.Diagnostics
+	for _, accept := range accept.OneOf {
+		var ee validator
+		if ee.validateSchemaType(x, accept, loc) {
+			matched = true
+		}
+		allDiags.Extend(ee.diags...)
+	}
+	if !matched {
+		e.diags.Extend(allDiags...)
+		e.errorf(loc, "at least one subschema must match")
+		return false
+	}
+	return true
+}
+
 // validateSchemaArray checks that the array-typed schema accept validates the array-typed schema x. In order for accept
 // to validate x:
 //
@@ -187,7 +312,7 @@ func (e *evalContext) validateSchemaType(x, accept *schema.Schema, loc validatio
 // - If accept has more PrefixItems than x, then accept's extra PrefixItems must validate x's Items
 // - If x has more PrefixItems than accept, then accept's Items must validate x's extra PrefixItems
 // - If x's Items is not Never, then accept's Items must validate x's Items
-func (e *evalContext) validateSchemaArray(x, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateSchemaArray(x, accept *schema.Schema, loc validationLoc) bool {
 	allOk := true
 
 	i := 0
@@ -240,7 +365,7 @@ func (e *evalContext) validateSchemaArray(x, accept *schema.Schema, loc validati
 //     Required in x
 //
 // - If x _does_ have AdditionalProperties, then accept's AdditionalProperties must validate x's AdditionalProperties
-func (e *evalContext) validateSchemaObject(x, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateSchemaObject(x, accept *schema.Schema, loc validationLoc) bool {
 	allOk := true
 
 	for name, px := range x.Properties {
@@ -263,7 +388,7 @@ func (e *evalContext) validateSchemaObject(x, accept *schema.Schema, loc validat
 			ok := true
 			for _, name := range ra {
 				if !xreq[name] {
-					e.validationErrorf(loc.property(name), "missing required property")
+					e.errorf(loc.property(name), "missing required property")
 					ok = false
 				}
 			}
@@ -287,14 +412,14 @@ func (e *evalContext) validateSchemaObject(x, accept *schema.Schema, loc validat
 }
 
 // validateValue checks that accept validates value.
-func (e *evalContext) validateValue(v *value, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateValue(v *value, accept *schema.Schema, loc validationLoc) bool {
 	return e.validateElement(v, accept, validationLoc{x: v.def})
 }
 
 // validateElement checks that accept validates value.
-func (e *evalContext) validateElement(v *value, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateElement(v *value, accept *schema.Schema, loc validationLoc) bool {
 	if err := accept.Compile(); err != nil {
-		e.validationErrorf(loc, "internal error: invalid schema: %w", err)
+		e.errorf(loc, "internal error: invalid schema: %w", err)
 		return false
 	}
 
@@ -308,14 +433,67 @@ func (e *evalContext) validateElement(v *value, accept *schema.Schema, loc valid
 		return e.validateSchemaType(v.schema, accept, loc)
 	}
 
+	rok := accept.GetRef() == nil || e.validateElement(v, accept.GetRef(), loc)
+	aok := e.validateAnyOf(v, accept, loc)
+	ook := e.validateOneOf(v, accept, loc)
 	cok := e.validateConst(v, accept, loc)
 	eok := e.validateEnum(v, accept, loc)
 	tok := e.validateType(v, accept, loc)
-	return cok && eok && tok
+	return rok && aok && ook && cok && eok && tok
+}
+
+// validateAnyOf checks that the anyOf schema accept validates the input schema x.
+func (e *validator) validateAnyOf(v *value, accept *schema.Schema, loc validationLoc) bool {
+	if len(accept.AnyOf) == 0 {
+		return true
+	}
+
+	var matched bool
+	var allDiags syntax.Diagnostics
+	for _, accept := range accept.AnyOf {
+		var ee validator
+		if ee.validateElement(v, accept, loc) {
+			matched = true
+		}
+		allDiags.Extend(ee.diags...)
+	}
+	if !matched {
+		e.diags.Extend(allDiags...)
+		e.errorf(loc, "at least one subschema must match")
+		return false
+	}
+	return true
+}
+
+// validateOneOf checks that the oneOf schema accept validates the input schema x.
+func (e *validator) validateOneOf(v *value, accept *schema.Schema, loc validationLoc) bool {
+	if len(accept.OneOf) == 0 {
+		return true
+	}
+
+	var matched *validator
+	var allDiags syntax.Diagnostics
+	for _, accept := range accept.OneOf {
+		var ee validator
+		if ee.validateElement(v, accept, loc) {
+			if matched != nil {
+				e.errorf(loc, "exactly one subschema may match")
+				return false
+			}
+			matched = &ee
+		}
+		allDiags.Extend(ee.diags...)
+	}
+	if matched == nil {
+		e.diags.Extend(allDiags...)
+		e.errorf(loc, "exactly one subschema must match")
+		return false
+	}
+	return true
 }
 
 // validateConst checks that accept's Const validates value.
-func (e *evalContext) validateConst(v *value, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateConst(v *value, accept *schema.Schema, loc validationLoc) bool {
 	if accept.Const == nil || e.equalsConst(v, accept.Const) {
 		return true
 	}
@@ -323,7 +501,7 @@ func (e *evalContext) validateConst(v *value, accept *schema.Schema, loc validat
 }
 
 // validateEnum checks that accept's Enum validates value.
-func (e *evalContext) validateEnum(v *value, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateEnum(v *value, accept *schema.Schema, loc validationLoc) bool {
 	if len(accept.Enum) == 0 {
 		return true
 	}
@@ -336,7 +514,7 @@ func (e *evalContext) validateEnum(v *value, accept *schema.Schema, loc validati
 }
 
 // validateType checks that accept's type-specific clauses validate value.
-func (e *evalContext) validateType(v *value, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateType(v *value, accept *schema.Schema, loc validationLoc) bool {
 	switch repr := v.repr.(type) {
 	case nil:
 		if !e.checkType("null", accept, loc) {
@@ -374,10 +552,10 @@ func (e *evalContext) validateType(v *value, accept *schema.Schema, loc validati
 }
 
 // validateNumber checks that accept's number-specific clauses validate v.
-func (e *evalContext) validateNumber(v json.Number, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateNumber(v json.Number, accept *schema.Schema, loc validationLoc) bool {
 	n, _, err := big.ParseFloat(string(v), 10, 0, big.ToNearestEven)
 	if err != nil {
-		e.validationErrorf(loc, "internal error: invalid number %q (%v)", v, err)
+		e.errorf(loc, "internal error: invalid number %q (%v)", v, err)
 		return false
 	}
 
@@ -386,57 +564,57 @@ func (e *evalContext) validateNumber(v json.Number, accept *schema.Schema, loc v
 		var q big.Float
 		q.Quo(n, m)
 		if !q.IsInt() {
-			e.validationErrorf(loc, "expected a multiple of %v", accept.MultipleOf)
+			e.errorf(loc, "expected a multiple of %v", accept.MultipleOf)
 			ok = false
 		}
 	}
 
 	if m := accept.GetMinimum(); m != nil && n.Cmp(m) > 0 {
-		e.validationErrorf(loc, "expected a number greater than or equal to %v", accept.Minimum)
+		e.errorf(loc, "expected a number greater than or equal to %v", accept.Minimum)
 		ok = false
 	}
 	if m := accept.GetExclusiveMinimum(); m != nil && n.Cmp(m) >= 0 {
-		e.validationErrorf(loc, "expected a number greater than %v", accept.ExclusiveMinimum)
+		e.errorf(loc, "expected a number greater than %v", accept.ExclusiveMinimum)
 		ok = false
 	}
 	if m := accept.GetMaximum(); m != nil && n.Cmp(m) < 0 {
-		e.validationErrorf(loc, "expected a number less than or equal to%v", accept.Maximum)
+		e.errorf(loc, "expected a number less than or equal to%v", accept.Maximum)
 		ok = false
 	}
 	if m := accept.GetExclusiveMaximum(); m != nil && n.Cmp(m) <= 0 {
-		e.validationErrorf(loc, "expected a number less than %v", accept.ExclusiveMaximum)
+		e.errorf(loc, "expected a number less than %v", accept.ExclusiveMaximum)
 		ok = false
 	}
 	return ok
 }
 
 // validateString checks that accept's string-specific clauses validate v.
-func (e *evalContext) validateString(v string, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateString(v string, accept *schema.Schema, loc validationLoc) bool {
 	ok := true
 	if m := accept.GetMinLength(); m != nil && uint(len(v)) < *m {
-		e.validationErrorf(loc, "expected a string of at least length %v", accept.MinLength)
+		e.errorf(loc, "expected a string of at least length %v", accept.MinLength)
 		ok = false
 	}
 	if m := accept.GetMaxLength(); m != nil && uint(len(v)) > *m {
-		e.validationErrorf(loc, "expected a string of at most length %v", accept.MaxLength)
+		e.errorf(loc, "expected a string of at most length %v", accept.MaxLength)
 		ok = false
 	}
 	if p := accept.GetPattern(); p != nil && !p.MatchString(v) {
-		e.validationErrorf(loc, "string must match the pattern %q", p.String())
+		e.errorf(loc, "string must match the pattern %q", p.String())
 		ok = false
 	}
 	return ok
 }
 
 // validateString checks that accept's array-specific clauses validate v.
-func (e *evalContext) validateArray(v []*value, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateArray(v []*value, accept *schema.Schema, loc validationLoc) bool {
 	ok := true
 	if m := accept.GetMinItems(); m != nil && uint(len(v)) < *m {
-		e.validationErrorf(loc, "expected an array with at least %v items", accept.MinItems)
+		e.errorf(loc, "expected an array with at least %v items", accept.MinItems)
 		ok = false
 	}
 	if m := accept.GetMaxItems(); m != nil && uint(len(v)) > *m {
-		e.validationErrorf(loc, "expected an array with at most %v items", accept.MaxItems)
+		e.errorf(loc, "expected an array with at most %v items", accept.MaxItems)
 		ok = false
 	}
 
@@ -454,16 +632,16 @@ func (e *evalContext) validateArray(v []*value, accept *schema.Schema, loc valid
 }
 
 // validateString checks that accept's object-specific clauses validate v.
-func (e *evalContext) validateObject(v *value, accept *schema.Schema, loc validationLoc) bool {
+func (e *validator) validateObject(v *value, accept *schema.Schema, loc validationLoc) bool {
 	keys := v.keys()
 
 	ok := true
 	if m := accept.GetMinProperties(); m != nil && uint(len(keys)) < *m {
-		e.validationErrorf(loc, "expected an object with at least %v properties", accept.MinProperties)
+		e.errorf(loc, "expected an object with at least %v properties", accept.MinProperties)
 		ok = false
 	}
 	if m := accept.GetMaxProperties(); m != nil && uint(len(keys)) > *m {
-		e.validationErrorf(loc, "expected an object with at most %v properties", accept.MaxProperties)
+		e.errorf(loc, "expected an object with at most %v properties", accept.MaxProperties)
 		ok = false
 	}
 
@@ -499,7 +677,7 @@ func (e *evalContext) validateObject(v *value, accept *schema.Schema, loc valida
 		}
 	}
 	if len(missing) != 0 {
-		e.validationErrorf(loc, "missing required properties: %s", strings.Join(missing, ", "))
+		e.errorf(loc, "missing required properties: %s", strings.Join(missing, ", "))
 		ok = false
 	}
 

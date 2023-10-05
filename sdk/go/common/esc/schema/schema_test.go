@@ -4,6 +4,8 @@ package schema
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,6 +65,30 @@ func TestItem(t *testing.T) {
 		assert.Equal(t, s.PrefixItems[1], s.Item(1))
 		assert.Equal(t, s.Items, s.Item(2))
 	})
+
+	t.Run("anyOf", func(t *testing.T) {
+		s := AnyOf(
+			Array().PrefixItems(String(), Number()).Items(Boolean()),
+			Array().PrefixItems(Number(), Boolean()),
+			String(),
+		).Schema()
+
+		assert.Equal(t, OneOf(String(), Number()).Schema(), s.Item(0))
+		assert.Equal(t, OneOf(Number(), Boolean()).Schema(), s.Item(1))
+		assert.Equal(t, Boolean().Schema(), s.Item(2))
+	})
+
+	t.Run("oneOf", func(t *testing.T) {
+		s := OneOf(
+			Array().PrefixItems(String(), Number()).Items(Boolean()),
+			Array().PrefixItems(Number(), Boolean()),
+			String(),
+		).Schema()
+
+		assert.Equal(t, OneOf(String(), Number()).Schema(), s.Item(0))
+		assert.Equal(t, OneOf(Number(), Boolean()).Schema(), s.Item(1))
+		assert.Equal(t, Boolean().Schema(), s.Item(2))
+	})
 }
 
 func TestProperty(t *testing.T) {
@@ -81,4 +107,61 @@ func TestProperty(t *testing.T) {
 		assert.Equal(t, s.Properties["b"], s.Property("b"))
 		assert.Equal(t, s.AdditionalProperties, s.Property("c"))
 	})
+
+	t.Run("anyOf", func(t *testing.T) {
+		a := Object().
+			Properties(map[string]Builder{"a": String(), "b": Number()}).
+			AdditionalProperties(Never()).
+			Schema()
+
+		b := Object().
+			Properties(map[string]Builder{"a": Number(), "b": Boolean()}).
+			AdditionalProperties(Number()).
+			Schema()
+
+		c := String().Schema()
+
+		s := AnyOf(a, b, c).Schema()
+		assert.Equal(t, OneOf(String(), Number()).Schema(), s.Property("a"))
+		assert.Equal(t, OneOf(Number(), Boolean()).Schema(), s.Property("b"))
+		assert.Equal(t, Number().Schema(), s.Property("c"))
+	})
+
+	t.Run("oneOf", func(t *testing.T) {
+		a := Object().
+			Properties(map[string]Builder{"a": String(), "b": Number()}).
+			AdditionalProperties(Never()).
+			Schema()
+
+		b := Object().
+			Properties(map[string]Builder{"a": Number(), "b": Boolean()}).
+			AdditionalProperties(Number()).
+			Schema()
+
+		c := String().Schema()
+
+		s := OneOf(a, b, c).Schema()
+		assert.Equal(t, OneOf(String(), Number()).Schema(), s.Property("a"))
+		assert.Equal(t, OneOf(Number(), Boolean()).Schema(), s.Property("b"))
+		assert.Equal(t, Number().Schema(), s.Property("c"))
+	})
+}
+
+func TestCompile(t *testing.T) {
+	path := "testdata"
+	entries, err := os.ReadDir(path)
+	require.NoError(t, err)
+	for _, e := range entries {
+		t.Run(e.Name(), func(t *testing.T) {
+			bytes, err := os.ReadFile(filepath.Join(path, e.Name()))
+			require.NoError(t, err)
+
+			var schema Schema
+			err = json.Unmarshal(bytes, &schema)
+			require.NoError(t, err)
+
+			err = schema.Compile()
+			assert.NoError(t, err)
+		})
+	}
 }

@@ -15,6 +15,18 @@ func String() *StringBuilder {
 	return &StringBuilder{}
 }
 
+func (b *StringBuilder) Ref(ref string) *StringBuilder {
+	return buildRef(b, ref)
+}
+
+func (b *StringBuilder) AnyOf(anyOf ...Builder) *StringBuilder {
+	return buildAnyOf(b, anyOf)
+}
+
+func (b *StringBuilder) OneOf(oneOf ...Builder) *StringBuilder {
+	return buildOneOf(b, oneOf)
+}
+
 func (b *StringBuilder) Const(n string) *StringBuilder {
 	b.s.Const = n
 	return b

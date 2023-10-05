@@ -1,0 +1,3626 @@
+{
+    "environment": {
+        "exprs": {
+            "accesses": {
+                "range": {
+                    "environment": "schema",
+                    "begin": {
+                        "line": 22,
+                        "column": 5,
+                        "byte": 453
+                    },
+                    "end": {
+                        "line": 27,
+                        "column": 26,
+                        "byte": 597
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        {
+                            "type": "string",
+                            "const": "items"
+                        },
+                        {
+                            "type": "string",
+                            "const": "object"
+                        },
+                        {
+                            "type": "string",
+                            "const": "array"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "schema",
+                            "begin": {
+                                "line": 22,
+                                "column": 7,
+                                "byte": 455
+                            },
+                            "end": {
+                                "line": 22,
+                                "column": 25,
+                                "byte": 473
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "sink",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "record",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "schema",
+                            "begin": {
+                                "line": 23,
+                                "column": 7,
+                                "byte": 480
+                            },
+                            "end": {
+                                "line": 23,
+                                "column": 23,
+                                "byte": 496
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "symbol": [
+                            {
+                                "key": "sink",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "tuple",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "index": 0,
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "schema",
+                            "begin": {
+                                "line": 24,
+                                "column": 7,
+                                "byte": 503
+                            },
+                            "end": {
+                                "line": 24,
+                                "column": 24,
+                                "byte": 520
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "symbol": [
+                            {
+                                "key": "sink",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "map",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "hello",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "schema",
+                            "begin": {
+                                "line": 25,
+                                "column": 7,
+                                "byte": 527
+                            },
+                            "end": {
+                                "line": 25,
+                                "column": 23,
+                                "byte": 543
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "items"
+                        },
+                        "symbol": [
+                            {
+                                "key": "sink",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "index": 1,
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "schema",
+                            "begin": {
+                                "line": 26,
+                                "column": 7,
+                                "byte": 550
+                            },
+                            "end": {
+                                "line": 26,
+                                "column": 28,
+                                "byte": 571
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "object"
+                        },
+                        "symbol": [
+                            {
+                                "key": "sink",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "index": 2,
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "some",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "schema",
+                            "begin": {
+                                "line": 27,
+                                "column": 7,
+                                "byte": 578
+                            },
+                            "end": {
+                                "line": 27,
+                                "column": 26,
+                                "byte": 597
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "array"
+                        },
+                        "symbol": [
+                            {
+                                "key": "sink",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "index": 3,
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            },
+                            {
+                                "index": 0,
+                                "value": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "sink": {
+                "range": {
+                    "environment": "schema",
+                    "begin": {
+                        "line": 20,
+                        "column": 5,
+                        "byte": 409
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 32,
+                        "byte": 436
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "anyOf": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "array": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "items"
+                                },
+                                {
+                                    "properties": {
+                                        "some": {
+                                            "type": "string",
+                                            "const": "object"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "some"
+                                    ]
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "boolean": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "false": {
+                            "type": "boolean",
+                            "const": false
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "map": {
+                            "properties": {
+                                "blue": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "blue",
+                                "hello"
+                            ]
+                        },
+                        "null": {
+                            "type": "null"
+                        },
+                        "number": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "oneOf": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "pi": {
+                            "type": "number",
+                            "const": 3.14
+                        },
+                        "record": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "ref": {
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "const": "esc"
+                        },
+                        "true": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "tuple": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "anyOf",
+                        "array",
+                        "boolean",
+                        "false",
+                        "hello",
+                        "map",
+                        "null",
+                        "number",
+                        "oneOf",
+                        "pi",
+                        "record",
+                        "ref",
+                        "string",
+                        "true",
+                        "tuple"
+                    ]
+                },
+                "builtin": {
+                    "name": "",
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "$defs": {
+                                    "defRecord": {
+                                        "properties": {
+                                            "baz": {
+                                                "type": "string",
+                                                "const": "qux"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "baz"
+                                        ]
+                                    }
+                                },
+                                "properties": {
+                                    "anyOf": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "number"
+                                            }
+                                        ],
+                                        "type": ""
+                                    },
+                                    "array": {
+                                        "items": true,
+                                        "type": "array"
+                                    },
+                                    "boolean": {
+                                        "type": "boolean"
+                                    },
+                                    "false": {
+                                        "type": "boolean",
+                                        "const": false
+                                    },
+                                    "hello": {
+                                        "type": "string",
+                                        "const": "hello"
+                                    },
+                                    "map": {
+                                        "additionalProperties": true,
+                                        "type": "object"
+                                    },
+                                    "null": {
+                                        "type": "null"
+                                    },
+                                    "number": {
+                                        "type": "number"
+                                    },
+                                    "oneOf": {
+                                        "oneOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "number"
+                                            }
+                                        ],
+                                        "type": ""
+                                    },
+                                    "pi": {
+                                        "type": "number",
+                                        "const": 3.14
+                                    },
+                                    "record": {
+                                        "properties": {
+                                            "foo": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "foo"
+                                        ]
+                                    },
+                                    "ref": {
+                                        "$ref": "#/$defs/defRecord",
+                                        "type": ""
+                                    },
+                                    "string": {
+                                        "type": "string"
+                                    },
+                                    "true": {
+                                        "type": "boolean",
+                                        "const": true
+                                    },
+                                    "tuple": {
+                                        "prefixItems": [
+                                            {
+                                                "type": "string",
+                                                "const": "hello"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": "world"
+                                            }
+                                        ],
+                                        "items": false,
+                                        "type": "array"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "provider": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "provider"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 23,
+                                        "byte": 427
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 32,
+                                        "byte": 436
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "anyOf": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "array": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "number",
+                                                    "const": 2
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "items"
+                                                },
+                                                {
+                                                    "properties": {
+                                                        "some": {
+                                                            "type": "string",
+                                                            "const": "object"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "some"
+                                                    ]
+                                                },
+                                                {
+                                                    "prefixItems": [
+                                                        {
+                                                            "type": "string",
+                                                            "const": "array"
+                                                        }
+                                                    ],
+                                                    "items": false,
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "boolean": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "false": {
+                                            "type": "boolean",
+                                            "const": false
+                                        },
+                                        "hello": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "map": {
+                                            "properties": {
+                                                "blue": {
+                                                    "type": "number",
+                                                    "const": 42
+                                                },
+                                                "hello": {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "blue",
+                                                "hello"
+                                            ]
+                                        },
+                                        "null": {
+                                            "type": "null"
+                                        },
+                                        "number": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "oneOf": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "pi": {
+                                            "type": "number",
+                                            "const": 3.14
+                                        },
+                                        "record": {
+                                            "properties": {
+                                                "foo": {
+                                                    "type": "string",
+                                                    "const": "bar"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "foo"
+                                            ]
+                                        },
+                                        "ref": {
+                                            "properties": {
+                                                "baz": {
+                                                    "type": "string",
+                                                    "const": "qux"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "baz"
+                                            ]
+                                        },
+                                        "string": {
+                                            "type": "string",
+                                            "const": "esc"
+                                        },
+                                        "true": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "tuple": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "hello"
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "anyOf",
+                                        "array",
+                                        "boolean",
+                                        "false",
+                                        "hello",
+                                        "map",
+                                        "null",
+                                        "number",
+                                        "oneOf",
+                                        "pi",
+                                        "record",
+                                        "ref",
+                                        "string",
+                                        "true",
+                                        "tuple"
+                                    ]
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "source",
+                                        "value": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 3,
+                                                "column": 5,
+                                                "byte": 22
+                                            },
+                                            "end": {
+                                                "line": 18,
+                                                "column": 22,
+                                                "byte": 394
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            "provider": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 5,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 21,
+                                        "byte": 425
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "schema"
+                                },
+                                "literal": "schema"
+                            }
+                        }
+                    }
+                }
+            },
+            "source": {
+                "range": {
+                    "environment": "schema",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 22
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 22,
+                        "byte": 394
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "anyOf": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "array": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "items"
+                                },
+                                {
+                                    "properties": {
+                                        "some": {
+                                            "type": "string",
+                                            "const": "object"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "some"
+                                    ]
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "boolean": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "false": {
+                            "type": "boolean",
+                            "const": false
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "map": {
+                            "properties": {
+                                "blue": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "blue",
+                                "hello"
+                            ]
+                        },
+                        "null": {
+                            "type": "null"
+                        },
+                        "number": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "oneOf": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "pi": {
+                            "type": "number",
+                            "const": 3.14
+                        },
+                        "record": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "ref": {
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "const": "esc"
+                        },
+                        "true": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "tuple": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "anyOf",
+                        "array",
+                        "boolean",
+                        "false",
+                        "hello",
+                        "map",
+                        "null",
+                        "number",
+                        "oneOf",
+                        "pi",
+                        "record",
+                        "ref",
+                        "string",
+                        "true",
+                        "tuple"
+                    ]
+                },
+                "builtin": {
+                    "name": "",
+                    "argSchema": {
+                        "properties": {
+                            "inputs": {
+                                "$defs": {
+                                    "defRecord": {
+                                        "properties": {
+                                            "baz": {
+                                                "type": "string",
+                                                "const": "qux"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "baz"
+                                        ]
+                                    }
+                                },
+                                "properties": {
+                                    "anyOf": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "number"
+                                            }
+                                        ],
+                                        "type": ""
+                                    },
+                                    "array": {
+                                        "items": true,
+                                        "type": "array"
+                                    },
+                                    "boolean": {
+                                        "type": "boolean"
+                                    },
+                                    "false": {
+                                        "type": "boolean",
+                                        "const": false
+                                    },
+                                    "hello": {
+                                        "type": "string",
+                                        "const": "hello"
+                                    },
+                                    "map": {
+                                        "additionalProperties": true,
+                                        "type": "object"
+                                    },
+                                    "null": {
+                                        "type": "null"
+                                    },
+                                    "number": {
+                                        "type": "number"
+                                    },
+                                    "oneOf": {
+                                        "oneOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "number"
+                                            }
+                                        ],
+                                        "type": ""
+                                    },
+                                    "pi": {
+                                        "type": "number",
+                                        "const": 3.14
+                                    },
+                                    "record": {
+                                        "properties": {
+                                            "foo": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "foo"
+                                        ]
+                                    },
+                                    "ref": {
+                                        "$ref": "#/$defs/defRecord",
+                                        "type": ""
+                                    },
+                                    "string": {
+                                        "type": "string"
+                                    },
+                                    "true": {
+                                        "type": "boolean",
+                                        "const": true
+                                    },
+                                    "tuple": {
+                                        "prefixItems": [
+                                            {
+                                                "type": "string",
+                                                "const": "hello"
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": "world"
+                                            }
+                                        ],
+                                        "items": false,
+                                        "type": "array"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "provider": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "provider"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 46
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 22,
+                                        "byte": 394
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "anyOf": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "array": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "number",
+                                                    "const": 2
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "items"
+                                                },
+                                                {
+                                                    "properties": {
+                                                        "some": {
+                                                            "type": "string",
+                                                            "const": "object"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "some"
+                                                    ]
+                                                },
+                                                {
+                                                    "prefixItems": [
+                                                        {
+                                                            "type": "string",
+                                                            "const": "array"
+                                                        }
+                                                    ],
+                                                    "items": false,
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "boolean": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "false": {
+                                            "type": "boolean",
+                                            "const": false
+                                        },
+                                        "hello": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "map": {
+                                            "properties": {
+                                                "blue": {
+                                                    "type": "number",
+                                                    "const": 42
+                                                },
+                                                "hello": {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "blue",
+                                                "hello"
+                                            ]
+                                        },
+                                        "null": {
+                                            "type": "null"
+                                        },
+                                        "number": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "oneOf": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "pi": {
+                                            "type": "number",
+                                            "const": 3.14
+                                        },
+                                        "record": {
+                                            "properties": {
+                                                "foo": {
+                                                    "type": "string",
+                                                    "const": "bar"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "foo"
+                                            ]
+                                        },
+                                        "ref": {
+                                            "properties": {
+                                                "baz": {
+                                                    "type": "string",
+                                                    "const": "qux"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "baz"
+                                            ]
+                                        },
+                                        "string": {
+                                            "type": "string",
+                                            "const": "esc"
+                                        },
+                                        "true": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "tuple": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "hello"
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "anyOf",
+                                        "array",
+                                        "boolean",
+                                        "false",
+                                        "hello",
+                                        "map",
+                                        "null",
+                                        "number",
+                                        "oneOf",
+                                        "pi",
+                                        "record",
+                                        "ref",
+                                        "string",
+                                        "true",
+                                        "tuple"
+                                    ]
+                                },
+                                "object": {
+                                    "anyOf": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 16,
+                                                "column": 14,
+                                                "byte": 351
+                                            },
+                                            "end": {
+                                                "line": 16,
+                                                "column": 19,
+                                                "byte": 356
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    },
+                                    "array": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 14,
+                                                "byte": 201
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 51,
+                                                "byte": 238
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "number",
+                                                    "const": 2
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "items"
+                                                },
+                                                {
+                                                    "properties": {
+                                                        "some": {
+                                                            "type": "string",
+                                                            "const": "object"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "some"
+                                                    ]
+                                                },
+                                                {
+                                                    "prefixItems": [
+                                                        {
+                                                            "type": "string",
+                                                            "const": "array"
+                                                        }
+                                                    ],
+                                                    "items": false,
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 16,
+                                                        "byte": 203
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 17,
+                                                        "byte": 204
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "number",
+                                                    "const": 2
+                                                },
+                                                "literal": 2
+                                            },
+                                            {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 19,
+                                                        "byte": 206
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 24,
+                                                        "byte": 211
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "items"
+                                                },
+                                                "literal": "items"
+                                            },
+                                            {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 26,
+                                                        "byte": 213
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 40,
+                                                        "byte": 227
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "properties": {
+                                                        "some": {
+                                                            "type": "string",
+                                                            "const": "object"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "some"
+                                                    ]
+                                                },
+                                                "object": {
+                                                    "some": {
+                                                        "range": {
+                                                            "environment": "schema",
+                                                            "begin": {
+                                                                "line": 12,
+                                                                "column": 34,
+                                                                "byte": 221
+                                                            },
+                                                            "end": {
+                                                                "line": 12,
+                                                                "column": 40,
+                                                                "byte": 227
+                                                            }
+                                                        },
+                                                        "schema": {
+                                                            "type": "string",
+                                                            "const": "object"
+                                                        },
+                                                        "literal": "object"
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 44,
+                                                        "byte": 231
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 51,
+                                                        "byte": 238
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "prefixItems": [
+                                                        {
+                                                            "type": "string",
+                                                            "const": "array"
+                                                        }
+                                                    ],
+                                                    "items": false,
+                                                    "type": "array"
+                                                },
+                                                "list": [
+                                                    {
+                                                        "range": {
+                                                            "environment": "schema",
+                                                            "begin": {
+                                                                "line": 12,
+                                                                "column": 46,
+                                                                "byte": 233
+                                                            },
+                                                            "end": {
+                                                                "line": 12,
+                                                                "column": 51,
+                                                                "byte": 238
+                                                            }
+                                                        },
+                                                        "schema": {
+                                                            "type": "string",
+                                                            "const": "array"
+                                                        },
+                                                        "literal": "array"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "boolean": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 16,
+                                                "byte": 74
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 20,
+                                                "byte": 78
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "literal": true
+                                    },
+                                    "false": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 16,
+                                                "byte": 94
+                                            },
+                                            "end": {
+                                                "line": 6,
+                                                "column": 21,
+                                                "byte": 99
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "boolean",
+                                            "const": false
+                                        },
+                                        "literal": false
+                                    },
+                                    "hello": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 11,
+                                                "column": 14,
+                                                "byte": 182
+                                            },
+                                            "end": {
+                                                "line": 11,
+                                                "column": 19,
+                                                "byte": 187
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    },
+                                    "map": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 14,
+                                                "column": 12,
+                                                "byte": 284
+                                            },
+                                            "end": {
+                                                "line": 14,
+                                                "column": 36,
+                                                "byte": 308
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "blue": {
+                                                    "type": "number",
+                                                    "const": 42
+                                                },
+                                                "hello": {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "blue",
+                                                "hello"
+                                            ]
+                                        },
+                                        "object": {
+                                            "blue": {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 14,
+                                                        "column": 34,
+                                                        "byte": 306
+                                                    },
+                                                    "end": {
+                                                        "line": 14,
+                                                        "column": 36,
+                                                        "byte": 308
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "number",
+                                                    "const": 42
+                                                },
+                                                "literal": 42
+                                            },
+                                            "hello": {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 14,
+                                                        "column": 21,
+                                                        "byte": 293
+                                                    },
+                                                    "end": {
+                                                        "line": 14,
+                                                        "column": 26,
+                                                        "byte": 298
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                },
+                                                "literal": "world"
+                                            }
+                                        }
+                                    },
+                                    "null": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 54
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 19,
+                                                "byte": 58
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "number": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 8,
+                                                "column": 15,
+                                                "byte": 133
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 17,
+                                                "byte": 135
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "literal": 42
+                                    },
+                                    "oneOf": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 14,
+                                                "byte": 370
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 16,
+                                                "byte": 372
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "literal": 42
+                                    },
+                                    "pi": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 9,
+                                                "column": 11,
+                                                "byte": 146
+                                            },
+                                            "end": {
+                                                "line": 9,
+                                                "column": 15,
+                                                "byte": 150
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 3.14
+                                        },
+                                        "literal": 3.14
+                                    },
+                                    "record": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 15,
+                                                "byte": 325
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 25,
+                                                "byte": 335
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "foo": {
+                                                    "type": "string",
+                                                    "const": "bar"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "foo"
+                                            ]
+                                        },
+                                        "object": {
+                                            "foo": {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 15,
+                                                        "column": 22,
+                                                        "byte": 332
+                                                    },
+                                                    "end": {
+                                                        "line": 15,
+                                                        "column": 25,
+                                                        "byte": 335
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "bar"
+                                                },
+                                                "literal": "bar"
+                                            }
+                                        }
+                                    },
+                                    "ref": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 18,
+                                                "column": 12,
+                                                "byte": 384
+                                            },
+                                            "end": {
+                                                "line": 18,
+                                                "column": 22,
+                                                "byte": 394
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "baz": {
+                                                    "type": "string",
+                                                    "const": "qux"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "baz"
+                                            ]
+                                        },
+                                        "object": {
+                                            "baz": {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 18,
+                                                        "column": 19,
+                                                        "byte": 391
+                                                    },
+                                                    "end": {
+                                                        "line": 18,
+                                                        "column": 22,
+                                                        "byte": 394
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "qux"
+                                                },
+                                                "literal": "qux"
+                                            }
+                                        }
+                                    },
+                                    "string": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 15,
+                                                "byte": 165
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 18,
+                                                "byte": 168
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "esc"
+                                        },
+                                        "literal": "esc"
+                                    },
+                                    "true": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 15,
+                                                "byte": 114
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 19,
+                                                "byte": 118
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "literal": true
+                                    },
+                                    "tuple": {
+                                        "range": {
+                                            "environment": "schema",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 14,
+                                                "byte": 256
+                                            },
+                                            "end": {
+                                                "line": 13,
+                                                "column": 28,
+                                                "byte": 270
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "hello"
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 13,
+                                                        "column": 16,
+                                                        "byte": 258
+                                                    },
+                                                    "end": {
+                                                        "line": 13,
+                                                        "column": 21,
+                                                        "byte": 263
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "hello"
+                                                },
+                                                "literal": "hello"
+                                            },
+                                            {
+                                                "range": {
+                                                    "environment": "schema",
+                                                    "begin": {
+                                                        "line": 13,
+                                                        "column": 23,
+                                                        "byte": 265
+                                                    },
+                                                    "end": {
+                                                        "line": 13,
+                                                        "column": 28,
+                                                        "byte": 270
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "world"
+                                                },
+                                                "literal": "world"
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            "provider": {
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 21,
+                                        "byte": 38
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "schema"
+                                },
+                                "literal": "schema"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "accesses": {
+                "value": [
+                    {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 22,
+                                    "column": 7,
+                                    "byte": 455
+                                },
+                                "end": {
+                                    "line": 22,
+                                    "column": 25,
+                                    "byte": 473
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 23,
+                                    "column": 7,
+                                    "byte": 480
+                                },
+                                "end": {
+                                    "line": 23,
+                                    "column": 23,
+                                    "byte": 496
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 24,
+                                    "column": 7,
+                                    "byte": 503
+                                },
+                                "end": {
+                                    "line": 24,
+                                    "column": 24,
+                                    "byte": 520
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "items",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 25,
+                                    "column": 7,
+                                    "byte": 527
+                                },
+                                "end": {
+                                    "line": 25,
+                                    "column": 23,
+                                    "byte": 543
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "object",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 26,
+                                    "column": 7,
+                                    "byte": 550
+                                },
+                                "end": {
+                                    "line": 26,
+                                    "column": 28,
+                                    "byte": 571
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "array",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 27,
+                                    "column": 7,
+                                    "byte": 578
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 26,
+                                    "byte": 597
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "schema",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 453
+                        },
+                        "end": {
+                            "line": 27,
+                            "column": 26,
+                            "byte": 597
+                        }
+                    }
+                }
+            },
+            "sink": {
+                "value": {
+                    "anyOf": {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "array": {
+                        "value": [
+                            {
+                                "value": 2,
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": "items",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": {
+                                    "some": {
+                                        "value": "object",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "schema",
+                                                "begin": {
+                                                    "line": 20,
+                                                    "column": 5,
+                                                    "byte": 409
+                                                },
+                                                "end": {
+                                                    "line": 20,
+                                                    "column": 32,
+                                                    "byte": 436
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": [
+                                    {
+                                        "value": "array",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "schema",
+                                                "begin": {
+                                                    "line": 20,
+                                                    "column": 5,
+                                                    "byte": 409
+                                                },
+                                                "end": {
+                                                    "line": 20,
+                                                    "column": 32,
+                                                    "byte": 436
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "boolean": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "false": {
+                        "value": false,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "map": {
+                        "value": {
+                            "blue": {
+                                "value": 42,
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            },
+                            "hello": {
+                                "value": "world",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "null": {
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "number": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "oneOf": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "pi": {
+                        "value": 3.14,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "record": {
+                        "value": {
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "ref": {
+                        "value": {
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "string": {
+                        "value": "esc",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "true": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    },
+                    "tuple": {
+                        "value": [
+                            {
+                                "value": "hello",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": "world",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 5,
+                                            "byte": 409
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 32,
+                                            "byte": 436
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 5,
+                                    "byte": 409
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 32,
+                                    "byte": 436
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "schema",
+                        "begin": {
+                            "line": 20,
+                            "column": 5,
+                            "byte": 409
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 32,
+                            "byte": 436
+                        }
+                    }
+                }
+            },
+            "source": {
+                "value": {
+                    "anyOf": {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "array": {
+                        "value": [
+                            {
+                                "value": 2,
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": "items",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": {
+                                    "some": {
+                                        "value": "object",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "schema",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 5,
+                                                    "byte": 22
+                                                },
+                                                "end": {
+                                                    "line": 18,
+                                                    "column": 22,
+                                                    "byte": 394
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": [
+                                    {
+                                        "value": "array",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "schema",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 5,
+                                                    "byte": 22
+                                                },
+                                                "end": {
+                                                    "line": 18,
+                                                    "column": 22,
+                                                    "byte": 394
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "boolean": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "false": {
+                        "value": false,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "map": {
+                        "value": {
+                            "blue": {
+                                "value": 42,
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            },
+                            "hello": {
+                                "value": "world",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "null": {
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "number": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "oneOf": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "pi": {
+                        "value": 3.14,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "record": {
+                        "value": {
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "ref": {
+                        "value": {
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "string": {
+                        "value": "esc",
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "true": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    },
+                    "tuple": {
+                        "value": [
+                            {
+                                "value": "hello",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": "world",
+                                "trace": {
+                                    "def": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 22,
+                                            "byte": 394
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 22,
+                                    "byte": 394
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "schema",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 22,
+                            "byte": 394
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "accesses": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        {
+                            "type": "string",
+                            "const": "items"
+                        },
+                        {
+                            "type": "string",
+                            "const": "object"
+                        },
+                        {
+                            "type": "string",
+                            "const": "array"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "sink": {
+                    "properties": {
+                        "anyOf": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "array": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "items"
+                                },
+                                {
+                                    "properties": {
+                                        "some": {
+                                            "type": "string",
+                                            "const": "object"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "some"
+                                    ]
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "boolean": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "false": {
+                            "type": "boolean",
+                            "const": false
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "map": {
+                            "properties": {
+                                "blue": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "blue",
+                                "hello"
+                            ]
+                        },
+                        "null": {
+                            "type": "null"
+                        },
+                        "number": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "oneOf": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "pi": {
+                            "type": "number",
+                            "const": 3.14
+                        },
+                        "record": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "ref": {
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "const": "esc"
+                        },
+                        "true": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "tuple": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "anyOf",
+                        "array",
+                        "boolean",
+                        "false",
+                        "hello",
+                        "map",
+                        "null",
+                        "number",
+                        "oneOf",
+                        "pi",
+                        "record",
+                        "ref",
+                        "string",
+                        "true",
+                        "tuple"
+                    ]
+                },
+                "source": {
+                    "properties": {
+                        "anyOf": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "array": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "items"
+                                },
+                                {
+                                    "properties": {
+                                        "some": {
+                                            "type": "string",
+                                            "const": "object"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "some"
+                                    ]
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "boolean": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "false": {
+                            "type": "boolean",
+                            "const": false
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "map": {
+                            "properties": {
+                                "blue": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "blue",
+                                "hello"
+                            ]
+                        },
+                        "null": {
+                            "type": "null"
+                        },
+                        "number": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "oneOf": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "pi": {
+                            "type": "number",
+                            "const": 3.14
+                        },
+                        "record": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "ref": {
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "const": "esc"
+                        },
+                        "true": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "tuple": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "anyOf",
+                        "array",
+                        "boolean",
+                        "false",
+                        "hello",
+                        "map",
+                        "null",
+                        "number",
+                        "oneOf",
+                        "pi",
+                        "record",
+                        "ref",
+                        "string",
+                        "true",
+                        "tuple"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "accesses",
+                "sink",
+                "source"
+            ]
+        }
+    }
+}

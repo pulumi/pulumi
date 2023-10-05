@@ -25,6 +25,22 @@ func Record(m map[string]Builder) *ObjectBuilder {
 	return Object().Properties(m).Required(names...)
 }
 
+func (b *ObjectBuilder) Defs(defs map[string]Builder) *ObjectBuilder {
+	return buildDefs(b, defs)
+}
+
+func (b *ObjectBuilder) Ref(ref string) *ObjectBuilder {
+	return buildRef(b, ref)
+}
+
+func (b *ObjectBuilder) AnyOf(anyOf ...Builder) *ObjectBuilder {
+	return buildAnyOf(b, anyOf)
+}
+
+func (b *ObjectBuilder) OneOf(oneOf ...Builder) *ObjectBuilder {
+	return buildOneOf(b, oneOf)
+}
+
 func (b *ObjectBuilder) Properties(m map[string]Builder) *ObjectBuilder {
 	b.s.Properties = make(map[string]*Schema, len(m))
 	for k, v := range m {

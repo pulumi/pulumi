@@ -10,6 +10,18 @@ func Null() *NullBuilder {
 	return &NullBuilder{}
 }
 
+func (b *NullBuilder) Ref(ref string) *NullBuilder {
+	return buildRef(b, ref)
+}
+
+func (b *NullBuilder) AnyOf(anyOf ...Builder) *NullBuilder {
+	return buildAnyOf(b, anyOf)
+}
+
+func (b *NullBuilder) OneOf(oneOf ...Builder) *NullBuilder {
+	return buildOneOf(b, oneOf)
+}
+
 func (b *NullBuilder) Title(title string) *NullBuilder {
 	b.s.Title = title
 	return b

@@ -34,6 +34,43 @@ func (errorProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc
 	return esc.Value{}, errors.New(inputs["why"].Value.(string))
 }
 
+type testSchemaProvider struct{}
+
+func (testSchemaProvider) Schema() (*schema.Schema, *schema.Schema) {
+	s := schema.Object().
+		Defs(map[string]schema.Builder{
+			"defRecord": schema.Record(map[string]schema.Builder{
+				"baz": schema.String().Const("qux"),
+			}),
+		}).
+		Properties(map[string]schema.Builder{
+			"null":    schema.Null(),
+			"boolean": schema.Boolean(),
+			"false":   schema.Boolean().Const(false),
+			"true":    schema.Boolean().Const(true),
+			"number":  schema.Number(),
+			"pi":      schema.Number().Const("3.14"),
+			"string":  schema.String(),
+			"hello":   schema.String().Const("hello"),
+			"array":   schema.Array().Items(schema.Always()),
+			"tuple":   schema.Tuple(schema.String().Const("hello"), schema.String().Const("world")),
+			"map":     schema.Object().AdditionalProperties(schema.Always()),
+			"record": schema.Record(map[string]schema.Builder{
+				"foo": schema.String(),
+			}),
+			"anyOf": schema.AnyOf(schema.String(), schema.Number()),
+			"oneOf": schema.OneOf(schema.String(), schema.Number()),
+			"ref":   schema.Ref("#/$defs/defRecord"),
+		}).
+		Schema()
+
+	return s, s
+}
+
+func (testSchemaProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.Value, error) {
+	return esc.NewValue(inputs), nil
+}
+
 type testProvider struct{}
 
 func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
@@ -50,6 +87,8 @@ func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provide
 	switch name {
 	case "error":
 		return errorProvider{}, nil
+	case "schema":
+		return testSchemaProvider{}, nil
 	case "test":
 		return testProvider{}, nil
 	}

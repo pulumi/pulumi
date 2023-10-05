@@ -12,6 +12,18 @@ func Number() *NumberBuilder {
 	return &NumberBuilder{}
 }
 
+func (b *NumberBuilder) Ref(ref string) *NumberBuilder {
+	return buildRef(b, ref)
+}
+
+func (b *NumberBuilder) AnyOf(anyOf ...Builder) *NumberBuilder {
+	return buildAnyOf(b, anyOf)
+}
+
+func (b *NumberBuilder) OneOf(oneOf ...Builder) *NumberBuilder {
+	return buildOneOf(b, oneOf)
+}
+
 func (b *NumberBuilder) Const(n json.Number) *NumberBuilder {
 	b.s.Const = n
 	return b
