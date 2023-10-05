@@ -31,8 +31,17 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 		Long: "Manage environments\n" +
 			"\n" +
 			"An environment is a named collection of possibly-secret, possibly-dynamic data.\n" +
-			"Each environment has a definition and may be opened in order to access its contents." +
-			"Opening an environment may involve generating new dynamic data.\n",
+			"Each environment has a definition and may be opened in order to access its contents.\n" +
+			"Opening an environment may involve generating new dynamic data.\n" +
+			"\n" +
+			"To begin working with environments, run the `env init` command:\n" +
+			"\n" +
+			"    env init\n" +
+			"\n" +
+			"This will prompt you to create a new environment to hold secrets and configuration.\n" +
+			"\n" +
+			"For more information, please visit the project page: https://www.pulumi.com/docs/esc",
+
 		Args: cmdutil.NoArgs,
 	}
 

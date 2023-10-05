@@ -87,9 +87,9 @@ func New(opts *Options) *cobra.Command {
 			"    - %[1]s env get  : Get a property in an environment definition\n"+
 			"    - %[1]s env set  : Set a property in an environment definition\n"+
 			"    - %[1]s env edit : Edit an environment definition\n"+
-			"    - %[1]s env run  : Run a command within the context of an environment\n"+
-			"    - %[1]s env open : Open an environment and access its contents\n"+
 			"    - %[1]s env ls   : List available environments\n"+
+			"    - %[1]s run      : Run a command within the context of an environment\n"+
+			"    - %[1]s open     : Open an environment and access its contents\n"+
 			"\n"+
 			"For more information, please visit the project page: https://www.pulumi.com/docs/esc", command),
 	}
@@ -113,14 +113,23 @@ func New(opts *Options) *cobra.Command {
 		esc.newClient = client.New
 	}
 
-	cmd.AddCommand(newEnvCmd(esc))
-
-	if opts.ParentPath == "" {
-		cmd.AddCommand(newLoginCmd(esc))
-		cmd.AddCommand(newVersionCmd(esc))
-	}
+	env := newEnvCmd(esc)
+	cmd.AddCommand(env)
+	cmd.AddCommand(getCommand(env, "open"))
+	cmd.AddCommand(getCommand(env, "run"))
+	cmd.AddCommand(newLoginCmd(esc))
+	cmd.AddCommand(newVersionCmd(esc))
 
 	return cmd
+}
+
+func getCommand(parent *cobra.Command, name string) *cobra.Command {
+	for _, c := range parent.Commands() {
+		if c.Name() == name {
+			return c
+		}
+	}
+	return nil
 }
 
 func valueOrDefault[T comparable](v, def T) T {

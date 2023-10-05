@@ -14,9 +14,9 @@ stdout: |
         - parent esc env get  : Get a property in an environment definition
         - parent esc env set  : Set a property in an environment definition
         - parent esc env edit : Edit an environment definition
-        - parent esc env run  : Run a command within the context of an environment
-        - parent esc env open : Open an environment and access its contents
         - parent esc env ls   : List available environments
+        - parent esc run      : Run a command within the context of an environment
+        - parent esc open     : Open an environment and access its contents
 
     For more information, please visit the project page: https://www.pulumi.com/docs/esc
 
@@ -25,6 +25,10 @@ stdout: |
 
     Available Commands:
       env         Manage environments
+      login       Log in to the Pulumi Cloud
+      open        Open the environment with the given name.
+      run         Open the environment with the given name and runs a command.
+      version     Print esc's version number
 
     Flags:
       -h, --help   help for esc
