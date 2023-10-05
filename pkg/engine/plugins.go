@@ -203,16 +203,26 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 			continue
 		}
 
+		if workspace.IsPluginBundled(plug.Kind, plug.Name) {
+			return fmt.Errorf(
+				"the %v %v plugin is bundled with Pulumi, and cannot be directly installed."+
+					" Reinstall Pulumi via your package manager or install script",
+				plug.Name,
+				plug.Kind,
+			)
+		}
+
+		info := plug // don't close over the loop induction variable
+
 		// If DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set just add an error to the error group and continue.
 		if env.DisableAutomaticPluginAcquisition.Value() {
 			installTasks.Go(func() error {
-				return fmt.Errorf("plugin %s %s not installed", plug.Name, plug.Version)
+				return fmt.Errorf("plugin %s %s not installed", info.Name, info.Version)
 			})
 			continue
 		}
 
 		// Launch an install task asynchronously and add it to the current error group.
-		info := plug // don't close over the loop induction variable
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
@@ -234,11 +244,6 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 // installPlugin installs a plugin from the given backend client.
 func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
-	if plugin.Kind == workspace.LanguagePlugin {
-		logging.V(preparePluginLog).Infof(
-			"installPlugin(%s, %s): is a language plugin, skipping install", plugin.Name, plugin.Version)
-		return nil
-	}
 
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
 	if plugin.Version == nil {
