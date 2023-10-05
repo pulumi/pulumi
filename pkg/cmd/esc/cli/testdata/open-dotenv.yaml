@@ -1,4 +1,4 @@
-run: open test --format dotenv
+run: esc open test --format dotenv
 environments:
   test-user/test:
     imports:

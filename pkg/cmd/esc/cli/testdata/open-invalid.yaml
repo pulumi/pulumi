@@ -1,4 +1,4 @@
-run: open test --format=flat
-error: unknown output format "flat"
+run: esc open test --format=flat
+error: exit status 1
 stderr: |
   Error: unknown output format "flat"

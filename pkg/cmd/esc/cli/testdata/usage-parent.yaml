@@ -1,5 +1,5 @@
 parent: parent
-run: esc
+run: parent esc
 stdout: |
   Pulumi ESC - Manage environments, secrets, and configuration
 

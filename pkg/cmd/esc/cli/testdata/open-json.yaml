@@ -1,4 +1,4 @@
-run: open test --format json
+run: esc open test --format json
 environments:
   test-user/test:
     imports:

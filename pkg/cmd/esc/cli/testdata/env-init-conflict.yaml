@@ -1,5 +1,5 @@
-run: env init dup
-error: already exists
+run: esc env init dup
+error: exit status 1
 environments:
   test-user/dup: arbitrary
 stderr: |

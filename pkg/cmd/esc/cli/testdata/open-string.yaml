@@ -1,4 +1,4 @@
-run: open test --format string
+run: esc open test --format string
 environments:
   test-user/test:
     imports:

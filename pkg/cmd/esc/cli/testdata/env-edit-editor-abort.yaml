@@ -1,4 +1,4 @@
-run: env edit test
+run: esc env edit test
 process:
   environ:
     EDITOR: my-editor

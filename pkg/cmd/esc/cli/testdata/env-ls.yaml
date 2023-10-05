@@ -1,4 +1,4 @@
-run: env ls
+run: esc env ls
 environments:
   test-org-2/env: true
   test-org/env: true

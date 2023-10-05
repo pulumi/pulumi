@@ -5,8 +5,10 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/fs"
 	"os"
@@ -38,7 +40,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
-	"mvdan.cc/sh/v3/shell"
 	shsyntax "mvdan.cc/sh/v3/syntax"
 )
 
@@ -410,6 +411,11 @@ func (c *testPulumiClient) UpdateEnvironment(
 	}
 
 	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml)
+	if err == nil && len(diags) == 0 {
+		env.yaml = yaml
+		env.tag = base64.StdEncoding.EncodeToString(fnv.New32().Sum(yaml))
+	}
+
 	return diags, err
 }
 
@@ -468,7 +474,13 @@ func (c *testPulumiClient) GetOpenProperty(ctx context.Context, openEnvID, prope
 
 type testExec struct {
 	fs       testFS
+	environ  map[string]string
 	commands map[string]string
+
+	parentPath string
+	login      *testLoginManager
+	workspace  *testPulumiWorkspace
+	client     *testPulumiClient
 }
 
 func (c *testExec) LookPath(cmd string) (string, error) {
@@ -484,7 +496,10 @@ func (c *testExec) Run(cmd *exec.Cmd) error {
 	if !ok {
 		return errors.New("command not found")
 	}
+	return c.runScript(script, cmd)
+}
 
+func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 	file, err := shsyntax.NewParser().Parse(strings.NewReader(script), cmd.Path)
 	if err != nil {
 		return err
@@ -493,7 +508,52 @@ func (c *testExec) Run(cmd *exec.Cmd) error {
 	runner, err := interp.New(
 		interp.ExecHandlers(func(_ interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			return func(ctx context.Context, args []string) error {
-				return errors.New("not supported")
+				if args[0] != valueOrDefault(c.parentPath, "esc") {
+					return errors.New("unknown command")
+				}
+
+				hc := interp.HandlerCtx(ctx)
+
+				environ := testEnviron{}
+				for k, v := range c.environ {
+					environ[k] = v
+				}
+				hc.Env.Each(func(name string, vr expand.Variable) bool {
+					environ[name] = vr.String()
+					return true
+				})
+
+				esc := New(&Options{
+					ParentPath:      c.parentPath,
+					Stdin:           hc.Stdin,
+					Stdout:          hc.Stdout,
+					Stderr:          hc.Stderr,
+					Colors:          colors.Never,
+					Login:           c.login,
+					PulumiWorkspace: c.workspace,
+					fs:              c.fs,
+					environ:         environ,
+					exec:            c,
+					newClient: func(_, backendURL, accessToken string, insecure bool) client.Client {
+						return c.client
+					},
+				})
+				if c.parentPath != "" {
+					parent := &cobra.Command{
+						Use: c.parentPath,
+					}
+					parent.AddCommand(esc)
+					esc = parent
+				}
+
+				esc.SetArgs(args[1:])
+				esc.SetIn(hc.Stdin)
+				esc.SetOut(hc.Stdout)
+				esc.SetErr(hc.Stderr)
+				if err := esc.Execute(); err != nil {
+					return interp.NewExitStatus(1)
+				}
+				return nil
 			}
 		}),
 		interp.OpenHandler(func(ctx context.Context, path string, flag int, perm os.FileMode) (io.ReadWriteCloser, error) {
@@ -518,7 +578,7 @@ func (c *testExec) Run(cmd *exec.Cmd) error {
 		}),
 		interp.StdIO(cmd.Stdin, cmd.Stdout, cmd.Stderr),
 		interp.Env(expand.ListEnviron(cmd.Env...)),
-		interp.Params(append([]string{"--"}, cmd.Args[1:]...)...),
+		interp.Params(append([]string{"-e", "-u", "--"}, cmd.Args[1:]...)...),
 	)
 	if err != nil {
 		return err
@@ -550,12 +610,9 @@ type cliTestcaseYAML struct {
 }
 
 type cliTestcase struct {
-	esc *cobra.Command
+	exec *testExec
 
-	stdout *bytes.Buffer
-	stderr *bytes.Buffer
-
-	run            []string
+	script         string
 	expectedStdout string
 	expectedStderr string
 }
@@ -573,7 +630,6 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 	}
 
 	fs := testFS{MapFS: fstest.MapFS{}}
-	environ := testEnviron{}
 	exec := testExec{fs: fs}
 
 	if testcase.Process != nil {
@@ -584,8 +640,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			}
 		}
 
-		environ = testEnviron(testcase.Process.Environ)
-
+		exec.environ = testcase.Process.Environ
 		exec.commands = testcase.Process.Commands
 	}
 
@@ -612,53 +667,18 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 		}
 	}
 
-	login := &testLoginManager{creds: creds}
-
-	run, err := shell.Fields(testcase.Run, func(s string) string { return s })
-	if err != nil {
-		return nil, nil, err
+	exec.parentPath = testcase.Parent
+	exec.workspace = &testPulumiWorkspace{credentials: creds}
+	exec.login = &testLoginManager{creds: creds}
+	exec.client = &testPulumiClient{
+		user:         "test-user",
+		environments: environments,
+		openEnvs:     map[string]*esc.Environment{},
 	}
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-
-	cmd := New(&Options{
-		ParentPath:      testcase.Parent,
-		Stdin:           bytes.NewReader(nil),
-		Stdout:          stdout,
-		Stderr:          stderr,
-		Colors:          colors.Never,
-		Login:           login,
-		PulumiWorkspace: &testPulumiWorkspace{credentials: creds},
-		fs:              fs,
-		environ:         environ,
-		exec:            &exec,
-		newClient: func(_, backendURL, accessToken string, insecure bool) client.Client {
-			return &testPulumiClient{
-				user:         "test-user",
-				environments: environments,
-				openEnvs:     map[string]*esc.Environment{},
-			}
-		},
-	})
-
-	if testcase.Parent != "" {
-		parent := &cobra.Command{
-			Use: testcase.Parent,
-		}
-		parent.AddCommand(cmd)
-		cmd = parent
-	}
-
-	cmd.SetIn(bytes.NewReader(nil))
-	cmd.SetOut(stdout)
-	cmd.SetErr(stderr)
 
 	return &testcase, &cliTestcase{
-		esc:            cmd,
-		stdout:         stdout,
-		stderr:         stderr,
-		run:            run,
+		exec:           &exec,
+		script:         testcase.Run,
 		expectedStdout: testcase.Stdout,
 		expectedStderr: testcase.Stderr,
 	}, nil
@@ -674,8 +694,15 @@ func TestCLI(t *testing.T) {
 			def, testcase, err := loadTestcase(path)
 			require.NoError(t, err)
 
-			testcase.esc.SetArgs(testcase.run)
-			err = testcase.esc.Execute()
+			var stdout, stderr bytes.Buffer
+
+			err = testcase.exec.runScript(testcase.script, &exec.Cmd{
+				Path:   "<script>",
+				Args:   []string{"<script>"},
+				Stdin:  bytes.NewReader(nil),
+				Stdout: &stdout,
+				Stderr: &stderr,
+			})
 
 			if accept() {
 				if err != nil {
@@ -684,8 +711,8 @@ func TestCLI(t *testing.T) {
 					def.Error = ""
 				}
 
-				def.Stdout = testcase.stdout.String()
-				def.Stderr = testcase.stderr.String()
+				def.Stdout = stdout.String()
+				def.Stderr = stderr.String()
 
 				var b bytes.Buffer
 				enc := yaml.NewEncoder(&b)
@@ -705,8 +732,8 @@ func TestCLI(t *testing.T) {
 				assert.Error(t, err)
 			}
 
-			assert.Equal(t, testcase.expectedStdout, testcase.stdout.String())
-			assert.Equal(t, testcase.expectedStderr, testcase.stderr.String())
+			assert.Equal(t, testcase.expectedStdout, stdout.String())
+			assert.Equal(t, testcase.expectedStderr, stderr.String())
 		})
 	}
 }

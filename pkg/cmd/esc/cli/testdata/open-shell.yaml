@@ -1,4 +1,4 @@
-run: open test --format shell
+run: esc open test --format shell
 environments:
   test-user/test:
     imports:

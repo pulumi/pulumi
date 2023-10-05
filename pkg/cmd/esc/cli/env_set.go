@@ -5,7 +5,9 @@ package cli
 import (
 	"context"
 	"fmt"
+	"regexp"
 
+	"github.com/ccojocar/zxcvbn-go"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -14,6 +16,9 @@ import (
 )
 
 func newEnvSetCmd(env *envCommand) *cobra.Command {
+	var secret bool
+	var plaintext bool
+
 	cmd := &cobra.Command{
 		Use:   "set [<org-name>/]<environment-name> <path> <value>",
 		Args:  cobra.RangeArgs(2, 3),
@@ -52,6 +57,20 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("invalid value: %w", err)
 			}
 			yamlValue = *yamlValue.Content[0]
+
+			if looksLikeSecret(path, yamlValue) && !secret && !plaintext {
+				return fmt.Errorf("value looks like a secret; rerun with --secret to mark it as such, or --plaintext if you meant to leave it as plaintext")
+			}
+			if secret {
+				bytes, err := yaml.Marshal(map[string]yaml.Node{"fn::secret": yamlValue})
+				if err != nil {
+					return fmt.Errorf("internal error: marshaling secret: %w", err)
+				}
+				if err = yaml.Unmarshal(bytes, &yamlValue); err != nil {
+					return fmt.Errorf("internal error: marshaling secret: %w", err)
+				}
+				yamlValue = *yamlValue.Content[0]
+			}
 
 			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName)
 			if err != nil {
@@ -103,7 +122,52 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVar(
+		&secret, "secret", false,
+		"true to mark the value as secret")
+	cmd.Flags().BoolVar(
+		&plaintext, "plaintext", false,
+		"true to leave the value in plaintext")
+
 	return cmd
+}
+
+// keyPattern is the regular expression a configuration key must match before we check (and error) if we think
+// it is a password
+var keyPattern = regexp.MustCompile("(?i)passwd|pass|password|pwd|secret|token")
+
+const (
+	// maxEntropyCheckLength is the maximum length of a possible secret for entropy checking.
+	maxEntropyCheckLength = 16
+	// entropyThreshold is the total entropy threshold a potential secret needs to pass before being flagged.
+	entropyThreshold = 80.0
+	// entropyCharThreshold is the per-char entropy threshold a potential secret needs to pass before being flagged.
+	entropyPerCharThreshold = 3.0
+)
+
+// looksLikeSecret returns true if a configuration value "looks" like a secret. This is always going to be a heuristic
+// that suffers from false positives, but is better (a) than our prior approach of unconditionally printing a warning
+// for all plaintext values, and (b)  to be paranoid about such things. Inspired by the gas linter and securego project.
+func looksLikeSecret(path resource.PropertyPath, n yaml.Node) bool {
+	if n.Kind != yaml.ScalarNode || n.Tag != "!!str" {
+		return false
+	}
+	v := n.Value
+
+	key, ok := path[len(path)-1].(string)
+	if !ok || !keyPattern.MatchString(key) {
+		return false
+	}
+
+	if len(v) > maxEntropyCheckLength {
+		v = v[:maxEntropyCheckLength]
+	}
+
+	// Compute the strength use the resulting entropy to flag whether this looks like a secret.
+	info := zxcvbn.PasswordStrength(v, nil)
+	entropyPerChar := info.Entropy / float64(len(v))
+	return info.Entropy >= entropyThreshold ||
+		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
 }
 
 type yamlNode struct {
@@ -149,6 +213,7 @@ func (n yamlNode) set(prefix, path resource.PropertyPath, new yaml.Node) (*yaml.
 	}
 
 	if len(path) == 0 {
+		n.Content = new.Content
 		n.Kind = new.Kind
 		n.Tag = new.Tag
 		n.Value = new.Value

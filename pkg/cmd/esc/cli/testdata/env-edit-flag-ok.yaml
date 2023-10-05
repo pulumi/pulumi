@@ -1,4 +1,6 @@
-run: env edit test --editor my-editor
+run: |
+  esc env edit test --editor my-editor
+  esc env get test
 process:
   commands:
     my-editor: |
@@ -9,3 +11,6 @@ environments:
       foo: bar
 stdout: |
   Environment updated.
+  {
+    "foo": "baz"
+  }

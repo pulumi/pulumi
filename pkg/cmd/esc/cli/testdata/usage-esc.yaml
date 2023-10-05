@@ -1,3 +1,4 @@
+run: esc
 stdout: |
   Pulumi ESC - Manage environments, secrets, and configuration
 
