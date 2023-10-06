@@ -3,6 +3,7 @@ package pulumi
 import (
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -87,7 +88,7 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 
 	// Support for "outputValues" is deliberately disabled for the mock monitor so
 	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
-	hasSupport := id == "secrets" || id == "resourceReferences"
+	hasSupport := os.Getenv("PULUMI_DISABLE_OUTPUT_VALUES") != "true" || id != "outputValues"
 
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
