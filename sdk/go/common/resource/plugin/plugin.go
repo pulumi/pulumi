@@ -189,7 +189,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 	if ctx != nil && ctx.tracingSpan != nil {
 		opts = append(opts, opentracing.ChildOf(ctx.tracingSpan.Context()))
 	}
-	opts = append(opts, opentracing.Tag{Key: "pulumi-decorator", Value: prefix})
+	opts = append(opts, opentracing.Tag{Key: "pulumi-decorator", Value: prefix + ":" + bin})
 	tracingSpan := opentracing.StartSpan("LaunchPlugin", opts...)
 	defer tracingSpan.Finish()
 
