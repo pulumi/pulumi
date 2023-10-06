@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix a panic in `whoami` with tokens missing expected information.

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: "policy publish: default to default-org if possible"

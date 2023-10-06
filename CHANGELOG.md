@@ -1,5 +1,58 @@
 # Changelog
 
+## 3.87.0 (2023-10-06)
+
+
+### Features
+
+- [cli] Users can now set `PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION` to disable the engine trying to auto install missing plugins.
+  [#14083](https://github.com/pulumi/pulumi/pull/14083)
+
+- [pkg] Upgrade pulumi-java to v0.9.8
+
+- [cli/import] Import converters will write out their intermediate import file for manual fixups if needed.
+  [#14067](https://github.com/pulumi/pulumi/pull/14067)
+
+- [sdkgen/go] Generate output-versioned invokes for functions without inputs
+  [#13694](https://github.com/pulumi/pulumi/pull/13694)
+
+- [sdk/python] Add `default` arg to `Config.get_secret`
+  [#12279](https://github.com/pulumi/pulumi/pull/12279)
+
+
+### Bug Fixes
+
+- [cli] policy publish: default to default-org if possible
+  [#14090](https://github.com/pulumi/pulumi/pull/14090)
+
+- [cli] Fix a panic in `whoami` with tokens missing expected information.
+
+- [engine] Calling RegisterResourceOutputs twice no longer panics and returns an error instead.
+  [#14062](https://github.com/pulumi/pulumi/pull/14062)
+
+- [engine] ComponentResources now emit resourceOutputEvent on Deletion. This fixes the time elapsed timer not ending when the resource is deleted.
+  [#14061](https://github.com/pulumi/pulumi/pull/14061)
+
+- [engine] Lifecycle tests shouldn't reuse a closed plugin host.
+  [#14063](https://github.com/pulumi/pulumi/pull/14063)
+
+- [engine] ctrl-c should cause Pulumi to send cancellation signal to providers
+  [#14057](https://github.com/pulumi/pulumi/pull/14057)
+
+- [engine] Fix a race condition in the engine access step event data.
+  [#14049](https://github.com/pulumi/pulumi/pull/14049)
+
+- [engine] Restore elided asset contents into returned inputs and state from Read operations
+
+- [engine] `DISABLE_AUTOMATIC_PLUGIN_ACQUISITION` is respected for deployment operations now.
+  [#14104](https://github.com/pulumi/pulumi/pull/14104)
+
+- [programgen] `pulumi import` supports resources with duplicate names, it will fail if referenced as a provider/parent due to the ambiguity.
+  [#13989](https://github.com/pulumi/pulumi/pull/13989)
+
+- [programgen/dotnet] Fixes compiling an empty list of expressions from object properties
+  [#14027](https://github.com/pulumi/pulumi/pull/14027)
+
 ## 3.86.0 (2023-09-26)
 
 
