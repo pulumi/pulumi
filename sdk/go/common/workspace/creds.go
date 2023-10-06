@@ -126,7 +126,7 @@ type Account struct {
 	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
 }
 
-// Information about the token that was used to authenticate the current user. One of Team or Organization
+// Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
 // will be set, but not both.
 type TokenInformation struct {
 	Name         string `json:"name"`                   // The name of the token.
