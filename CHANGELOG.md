@@ -36,9 +36,6 @@
 - [engine] Provider mapping information lookups are now more efficient. Providers can also support multiple mappings.
   [#13975](https://github.com/pulumi/pulumi/pull/13975)
 
-- [cli/new] `pulumi policy new` now injects `PULUMI_ACCESS_TOKEN` when necessary to support downloading Premium Policies.
-  [#13898](https://github.com/pulumi/pulumi/pull/13898)
-
 - [sdkgen/python] Generate output-versioned invokes for functions without inputs
   [#13685](https://github.com/pulumi/pulumi/pull/13685)
 
