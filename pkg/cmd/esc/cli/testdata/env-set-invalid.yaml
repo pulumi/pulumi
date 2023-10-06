@@ -6,6 +6,14 @@ run: |
   esc env set test string.bar baz || echo -n ""
   esc env set test 'object[0]' foo || echo -n ""
   esc env set test array.foo bar || echo -n ""
+stdout: |
+  > esc env init test
+  > esc env set test string foo
+  > esc env set test object {}
+  > esc env set test array []
+  > esc env set test string.bar baz
+  > esc env set test object[0] foo
+  > esc env set test array.foo bar
 stderr: |
   Error: string.bar: expected an array or an object
   Error: object[0]: key for a map must be a string

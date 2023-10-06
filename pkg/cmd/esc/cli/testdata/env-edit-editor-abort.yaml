@@ -9,5 +9,7 @@ environments:
   test-user/test:
     values:
       foo: bar
+stdout: |
+  > esc env edit test
 stderr: |
   Aborting edit due to empty definition.

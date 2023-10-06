@@ -1,0 +1,360 @@
+run: |
+  esc env rm test null && esc env get test
+  esc env rm test boolean && esc env get test
+  esc env rm test number && esc env get test
+  esc env rm test string && esc env get test
+  esc env rm test 'array[1]' && esc env get test
+  esc env rm test 'array[0]' && esc env get test
+  esc env rm test array && esc env get test
+  esc env rm test object.hello && esc env get test
+  esc env rm test object && esc env get test
+  esc env rm test 'open["fn::open::test"].foo' && esc env get test
+  esc env rm test open && esc env get test
+environments:
+  test-user/a:
+    values:
+      object: {hello: esc, goodbye: world}
+  test-user/b:
+    values:
+      string: foo
+      object: {goodbye: all}
+  test-user/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test:
+          foo: bar
+          baz: qux
+stdout: |+
+  > esc env rm test null
+  > esc env get test
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "boolean": true,
+    "number": 42,
+    "object": {
+      "goodbye": "all",
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    boolean: true
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test boolean
+  > esc env get test
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "number": 42,
+    "object": {
+      "goodbye": "all",
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test number
+  > esc env get test
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "object": {
+      "goodbye": "all",
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test string
+  > esc env get test
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "object": {
+      "goodbye": "all",
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test array[1]
+  > esc env get test
+  # Value
+  ```json
+  {
+    "array": [
+      "hello"
+    ],
+    "object": {
+      "goodbye": "all",
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    array: [hello]
+    object: {hello: world}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test array[0]
+  > esc env get test
+  # Value
+  ```json
+  {
+    "array": [],
+    "object": {
+      "goodbye": "all",
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    array: []
+    object: {hello: world}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test array
+  > esc env get test
+  # Value
+  ```json
+  {
+    "object": {
+      "goodbye": "all",
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    object: {hello: world}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test object.hello
+  > esc env get test
+  # Value
+  ```json
+  {
+    "object": {
+      "goodbye": "all",
+      "hello": "esc"
+    },
+    "open": "[unknown]",
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    object: {}
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test object
+  > esc env get test
+  # Value
+  ```json
+  {
+    "object": {
+      "goodbye": "all",
+      "hello": "esc"
+    },
+    "open": "[unknown]",
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    open:
+      fn::open::test:
+        foo: bar
+        baz: qux
+
+  ```
+
+  > esc env rm test open["fn::open::test"].foo
+  > esc env get test
+  # Value
+  ```json
+  {
+    "object": {
+      "goodbye": "all",
+      "hello": "esc"
+    },
+    "open": "[unknown]",
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    open:
+      fn::open::test:
+        baz: qux
+
+  ```
+
+  > esc env rm test open
+  > esc env get test
+  # Value
+  ```json
+  {
+    "object": {
+      "goodbye": "all",
+      "hello": "esc"
+    },
+    "string": "foo"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values: {}
+
+  ```
+

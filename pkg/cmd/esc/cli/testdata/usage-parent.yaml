@@ -1,6 +1,7 @@
 parent: parent
 run: parent esc
 stdout: |
+  > parent esc
   Pulumi ESC - Manage environments, secrets, and configuration
 
   To begin working with Pulumi ESC, run the `parent esc env init` command:

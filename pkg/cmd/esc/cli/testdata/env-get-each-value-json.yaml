@@ -33,20 +33,31 @@ environments:
       open:
         fn::open::test: echo
 stdout: |
+  > esc env get test --value json null
   null
+  > esc env get test --value json boolean
   true
+  > esc env get test --value json number
   42
+  > esc env get test --value json string
   "esc"
+  > esc env get test --value json array
   [
     "hello",
     "world"
   ]
+  > esc env get test --value json array[0]
   "hello"
+  > esc env get test --value json array[1]
   "world"
+  > esc env get test --value json object
   {
     "goodbye": "all",
     "hello": "world"
   }
+  > esc env get test --value json object.hello
   "world"
+  > esc env get test --value json object.goodbye
   "all"
+  > esc env get test --value json open
   "[unknown]"

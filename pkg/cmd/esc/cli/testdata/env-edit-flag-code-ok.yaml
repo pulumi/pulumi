@@ -11,7 +11,9 @@ environments:
     values:
       foo: bar
 stdout: |+
+  > esc env edit test --editor code
   Environment updated.
+  > esc env get test
   # Value
   ```json
   {

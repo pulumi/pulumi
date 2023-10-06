@@ -17,6 +17,7 @@ environments:
       open:
         fn::open::test: echo
 stdout: |+
+  > esc env get test
   # Value
   ```json
   {

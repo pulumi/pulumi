@@ -14,5 +14,6 @@ environments:
       environmentVariables:
         HELLO: ${hello}
 stdout: |
+  > esc open test --format shell
   export FOO="bar"
   export HELLO="world"

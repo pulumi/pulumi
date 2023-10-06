@@ -33,6 +33,7 @@ environments:
       open:
         fn::open::test: echo
 stdout: |
+  > esc env get test --value detailed null
   {
     "trace": {
       "def": {
@@ -50,6 +51,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed boolean
   {
     "value": true,
     "trace": {
@@ -68,6 +70,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed number
   {
     "value": 42,
     "trace": {
@@ -86,6 +89,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed string
   {
     "value": "esc",
     "trace": {
@@ -122,6 +126,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed array
   {
     "value": [
       {
@@ -177,6 +182,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed array[0]
   {
     "value": "hello",
     "trace": {
@@ -195,6 +201,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed array[1]
   {
     "value": "world",
     "trace": {
@@ -213,6 +220,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed object
   {
     "value": {
       "goodbye": {
@@ -432,6 +440,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed object.hello
   {
     "value": "world",
     "trace": {
@@ -468,6 +477,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed object.goodbye
   {
     "value": "all",
     "trace": {
@@ -504,6 +514,7 @@ stdout: |
       }
     }
   }
+  > esc env get test --value detailed open
   {
     "unknown": true,
     "trace": {

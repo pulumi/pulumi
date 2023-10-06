@@ -5,5 +5,7 @@ process:
     EDITOR: my-editor
   commands:
     my-editor: exit 1
+stdout: |
+  > esc env edit test
 stderr: |
   Error: getting environment definition: not found

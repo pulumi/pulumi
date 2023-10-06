@@ -33,14 +33,24 @@ environments:
       open:
         fn::open::test: echo
 stdout: |
-  ""
+  "> esc env get test --value string null"
+  > esc env get test --value string boolean
   true
+  > esc env get test --value string number
   42
+  > esc env get test --value string string
   esc
+  > esc env get test --value string array
   "hello","world"
+  > esc env get test --value string array[0]
   hello
+  > esc env get test --value string array[1]
   world
+  > esc env get test --value string object
   "goodbye"="all","hello"="world"
+  > esc env get test --value string object.hello
   world
+  > esc env get test --value string object.goodbye
   all
+  > esc env get test --value string open
   [unknown]

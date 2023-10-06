@@ -26,6 +26,7 @@ environments:
         fn::open::test:
           foo: bar
 stdout: |+
+  > esc env get test imports
   # Definition
   ```yaml
   - a
@@ -33,12 +34,14 @@ stdout: |+
 
   ```
 
+  > esc env get test imports[0]
   # Definition
   ```yaml
   a
 
   ```
 
+  > esc env get test imports[1]
   # Definition
   ```yaml
   b

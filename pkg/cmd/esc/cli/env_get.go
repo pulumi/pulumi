@@ -168,6 +168,9 @@ func (get *envGetCommand) getEntireEnvironment(
 	if err != nil {
 		return nil, fmt.Errorf("getting environment metadata: %w", err)
 	}
+	if env == nil {
+		return nil, nil
+	}
 
 	envJSON, err := json.MarshalIndent(esc.NewValue(env.Properties).ToJSON(true), "", "  ")
 	if err != nil {

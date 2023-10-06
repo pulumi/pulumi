@@ -10,4 +10,5 @@ environments:
       foo: baz
       hello: world
 stdout: |
+  > esc open test --format string
   "foo"="bar","hello"="world"

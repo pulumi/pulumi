@@ -3,5 +3,7 @@ error: exit status 1
 process:
   environ:
     EDITOR: my-editor
+stdout: |
+  > esc env edit test
 stderr: |
   Error: finding "my-editor" on path: command not found

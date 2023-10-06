@@ -36,6 +36,7 @@ environments:
         fn::open::test:
           foo: bar
 stdout: |+
+  > esc env get test null
   # Value
   ```json
   null
@@ -49,6 +50,7 @@ stdout: |+
   # Stack
   - test:6:13
 
+  > esc env get test boolean
   # Value
   ```json
   true
@@ -62,6 +64,7 @@ stdout: |+
   # Stack
   - test:7:14
 
+  > esc env get test number
   # Value
   ```json
   42
@@ -75,6 +78,7 @@ stdout: |+
   # Stack
   - test:8:13
 
+  > esc env get test string
   # Value
   ```json
   "esc"
@@ -89,6 +93,7 @@ stdout: |+
   - test:9:13
   - b:2:13
 
+  > esc env get test array
   # Value
   ```json
   [
@@ -105,6 +110,7 @@ stdout: |+
   # Stack
   - test:10:12
 
+  > esc env get test array[0]
   # Value
   ```json
   "hello"
@@ -118,6 +124,7 @@ stdout: |+
   # Stack
   - test:10:13
 
+  > esc env get test array[1]
   # Value
   ```json
   "world"
@@ -131,6 +138,7 @@ stdout: |+
   # Stack
   - test:10:20
 
+  > esc env get test object
   # Value
   ```json
   {
@@ -148,6 +156,7 @@ stdout: |+
   - test:11:13
   - b:3:13
 
+  > esc env get test object.hello
   # Value
   ```json
   "world"
@@ -162,6 +171,7 @@ stdout: |+
   - test:11:21
   - a:2:21
 
+  > esc env get test object.goodbye
   # Value
   ```json
   "all"
@@ -171,6 +181,7 @@ stdout: |+
   - b:3:23
   - a:2:35
 
+  > esc env get test open
   # Value
   ```json
   "[unknown]"
@@ -185,6 +196,7 @@ stdout: |+
   # Stack
   - test:13:9
 
+  > esc env get test open["fn::open::test"]
   # Definition
   ```yaml
   foo: bar
@@ -194,6 +206,7 @@ stdout: |+
   # Stack
   - test:14:13
 
+  > esc env get test open["fn::open::test"].foo
   # Definition
   ```yaml
   bar

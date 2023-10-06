@@ -1,0 +1,5 @@
+run: esc env rm dup -y
+environments:
+  test-user/dup: arbitrary
+stdout: |
+  > esc env rm dup -y

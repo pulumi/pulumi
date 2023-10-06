@@ -1,1 +1,3 @@
 run: esc env init test-env
+stdout: |
+  > esc env init test-env

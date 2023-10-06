@@ -1,4 +1,6 @@
 run: esc open test --format=flat
 error: exit status 1
+stdout: |
+  > esc open test --format=flat
 stderr: |
   Error: unknown output format "flat"

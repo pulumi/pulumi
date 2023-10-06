@@ -546,6 +546,8 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 					esc = parent
 				}
 
+				fmt.Fprintf(hc.Stdout, "> %v\n", strings.Join(args, " "))
+
 				esc.SetArgs(args[1:])
 				esc.SetIn(hc.Stdin)
 				esc.SetOut(hc.Stdout)

@@ -6,6 +6,7 @@ environments:
   test-user/env: true
   test-user/env-2: true
 stdout: |
+  > esc env ls
   env
   env-2
   test-org/env

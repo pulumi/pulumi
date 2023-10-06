@@ -1,5 +1,6 @@
 run: esc
 stdout: |
+  > esc
   Pulumi ESC - Manage environments, secrets, and configuration
 
   To begin working with Pulumi ESC, run the `esc env init` command:

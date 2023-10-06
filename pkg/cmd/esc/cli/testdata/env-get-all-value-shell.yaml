@@ -20,5 +20,6 @@ environments:
         STRING: ${string}
         OBJECT: {'fn::toJSON': "${object}"}
 stdout: |
+  > esc env get test --value=shell
   export OBJECT="{\"hello\":\"world\"}"
   export STRING="esc"

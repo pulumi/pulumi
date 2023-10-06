@@ -10,6 +10,7 @@ environments:
       foo: baz
       hello: world
 stdout: |
+  > esc open test --format detailed
   {
     "value": {
       "foo": {

@@ -91,6 +91,10 @@ func renderValue(
 	path resource.PropertyPath,
 	format string,
 ) error {
+	if env == nil {
+		return nil
+	}
+
 	val := esc.NewValue(env.Properties)
 	if len(path) != 0 {
 		if vv, ok := getEnvValue(val, path); ok {

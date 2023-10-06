@@ -1,0 +1,28 @@
+run: |
+  esc env run test dump-env
+  esc env run -i test dump-env
+  esc env run test echo "secret: \${secret}, plain: \${plain}"
+  esc env run -i test echo "secret: \${secret}, plain: \${plain}"
+process:
+  commands:
+    dump-env: |
+      echo "secret: $SECRET, plain: $PLAIN"
+    echo: |
+      echo $*
+environments:
+  test-user/test:
+    values:
+      secret: {"fn::secret": "hunter2"}
+      plain: plaintext
+      environmentVariables:
+        SECRET: ${secret}
+        PLAIN: ${plain}
+stdout: |
+  > esc env run test dump-env
+  secret: [secret], plain: plaintext
+  > esc env run -i test dump-env
+  secret: hunter2, plain: plaintext
+  > esc env run test echo secret: ${secret}, plain: ${plain}
+  secret: [secret], plain: plaintext
+  > esc env run -i test echo secret: ${secret}, plain: ${plain}
+  secret: hunter2, plain: plaintext
