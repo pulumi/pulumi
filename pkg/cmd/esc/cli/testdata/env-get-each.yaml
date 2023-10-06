@@ -47,7 +47,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:6:13
 
   > esc env get test boolean
@@ -61,7 +61,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:7:14
 
   > esc env get test number
@@ -75,7 +75,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:8:13
 
   > esc env get test string
@@ -89,7 +89,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:9:13
   - b:2:13
 
@@ -107,7 +107,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:10:12
 
   > esc env get test array[0]
@@ -121,7 +121,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:10:13
 
   > esc env get test array[1]
@@ -135,7 +135,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:10:20
 
   > esc env get test object
@@ -152,7 +152,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:11:13
   - b:3:13
 
@@ -167,7 +167,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:11:21
   - a:2:21
 
@@ -177,7 +177,7 @@ stdout: |+
   "all"
   ```
 
-  # Stack
+  # References
   - b:3:23
   - a:2:35
 
@@ -193,7 +193,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:13:9
 
   > esc env get test open["fn::open::test"]
@@ -203,7 +203,7 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:14:13
 
   > esc env get test open["fn::open::test"].foo
@@ -213,6 +213,6 @@ stdout: |+
 
   ```
 
-  # Stack
+  # References
   - test:14:18
 
