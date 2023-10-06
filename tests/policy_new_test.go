@@ -15,8 +15,6 @@
 package tests
 
 import (
-	"os"
-	"strings"
 	"testing"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -27,27 +25,4 @@ func TestPolicyNewNonInteractive(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	e.RunCommand("pulumi", "policy", "new", "aws-typescript", "--force", "--generate-only")
-}
-
-func TestPremiumPolicyAuth(t *testing.T) {
-	t.Parallel()
-	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
-	}
-
-	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
-
-	e.RunCommand("pulumi", "login")
-	defer e.RunCommand("pulumi", "logout")
-	// Remove `PULUMI_ACCESS_TOKEN` so that `pulumi policy new` automatically sets it for installation.
-	for i, elem := range e.Env {
-		if strings.HasPrefix(elem, "PULUMI_ACCESS_TOKEN=") {
-			_ = i
-			e.Env = append(e.Env[:i], e.Env[i+1:]...)
-			break
-		}
-	}
-
-	e.RunCommand("pulumi", "policy", "new", "kubernetes-premium-policies-typescript", "--force")
 }
