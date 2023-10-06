@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix a race condition in the engine access step event data.

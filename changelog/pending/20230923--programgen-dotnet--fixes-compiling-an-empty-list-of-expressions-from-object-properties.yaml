@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet
-  description: Fixes compiling an empty list of expressions from object properties
