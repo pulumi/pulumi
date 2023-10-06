@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is respected for deployment operations now.

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -199,6 +200,14 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
+			continue
+		}
+
+		// If DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set just add an error to the error group and continue.
+		if env.DisableAutomaticPluginAcquisition.Value() {
+			installTasks.Go(func() error {
+				return fmt.Errorf("plugin %s %s not installed", plug.Name, plug.Version)
+			})
 			continue
 		}
 
