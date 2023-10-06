@@ -308,11 +308,11 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
 	if res == nil && !ex.stepExec.Errored() {
-		res := ex.stepGen.AnalyzeResources()
-		if res != nil {
-			if resErr := res.Error(); resErr != nil {
-				logging.V(4).Infof("deploymentExecutor.Execute(...): error analyzing resources: %v", resErr)
-				ex.reportError("", resErr)
+		err := ex.stepGen.AnalyzeResources()
+		if err != nil {
+			if !result.IsBail(err) {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): error analyzing resources: %v", err)
+				ex.reportError("", err)
 			}
 			return nil, result.Bail()
 		}
