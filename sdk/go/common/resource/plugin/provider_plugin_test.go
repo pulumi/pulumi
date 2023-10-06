@@ -239,6 +239,59 @@ func TestNestedSecret(t *testing.T) {
 	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
 }
 
+func TestRestoreElidedAssetContents(t *testing.T) {
+	t.Parallel()
+	textAsset := func(text string) resource.PropertyValue {
+		asset, err := resource.NewTextAsset(text)
+		require.NoError(t, err)
+		return resource.NewAssetProperty(asset)
+	}
+
+	original := resource.PropertyMap{
+		"source": textAsset("Hello world"),
+		"nested": resource.NewObjectProperty(resource.PropertyMap{
+			"another":      textAsset("Another"),
+			"doubleNested": textAsset("Double nested"),
+			"tripleNested": resource.NewObjectProperty(resource.PropertyMap{
+				"secret": resource.MakeSecret(textAsset("Secret content")),
+			}),
+		}),
+		"insideArray": resource.NewArrayProperty([]resource.PropertyValue{
+			textAsset("First"),
+			textAsset("Second"),
+			resource.NewObjectProperty(resource.PropertyMap{
+				"nestedArray": resource.NewArrayProperty([]resource.PropertyValue{
+					textAsset("Nested array"),
+					resource.MakeSecret(textAsset("another secret content")),
+				}),
+			}),
+		}),
+	}
+
+	serialized, err := MarshalProperties(original, MarshalOptions{
+		ElideAssetContents: true,
+		KeepSecrets:        true,
+	})
+	require.NoError(t, err, "failed to marshal properties")
+
+	deserialized, err := UnmarshalProperties(serialized, MarshalOptions{
+		KeepSecrets: true,
+	})
+	require.NoError(t, err, "failed to unmarshal properties")
+
+	originalRaw := original.Mappable()
+	deserializedRaw := deserialized.Mappable()
+
+	// the deserialized properties are not the same as the original, because during marshalling
+	// we skipped the contents of assets with the option `ElideAssetContents` set to true.
+	assert.NotEqual(t, originalRaw, deserializedRaw)
+
+	// but if we restore the elided contents, we should get the original properties back.
+	restoreElidedAssetContents(original, deserialized)
+	deserializedRaw = deserialized.Mappable()
+	assert.Equal(t, originalRaw, deserializedRaw)
+}
+
 func TestPluginConfigPromise(t *testing.T) {
 	t.Parallel()
 
