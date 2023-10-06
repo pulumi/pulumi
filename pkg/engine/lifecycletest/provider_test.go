@@ -25,8 +25,10 @@ import (
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 	t.Parallel()
 
+	startupCount := 0
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			startupCount++
 			return &deploytest.Provider{}, nil
 		}),
 	}
@@ -43,6 +45,10 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
+
+	// We should have started the provider 10 times, twice for each of the steps in the basic lifecycle (one preview,
+	// one up), but zero for the last refresh step where the provider is not needed.
+	assert.Equal(t, 10, startupCount)
 }
 
 func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {

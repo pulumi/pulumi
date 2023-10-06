@@ -32,6 +32,11 @@ import (
 // performing a preview).
 const UnknownID = plugin.UnknownStringValue
 
+// UnconfiguredID is a distinguished token used to indicate that a provider doesn't yet have an ID because it hasn't
+// been configured yet. This should never be returned back to SDKs by the engine but is used for internal tracking so we
+// maximally reuse provider instances but only configure them once.
+const UnconfiguredID = "unconfigured"
+
 // IsProviderType returns true if the supplied type token refers to a Pulumi provider.
 func IsProviderType(typ tokens.Type) bool {
 	// Tokens without a module member are definitely not provider types.

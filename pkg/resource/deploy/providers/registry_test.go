@@ -446,7 +446,7 @@ func TestCRUD(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p.(*testProvider).configured)
 
@@ -454,6 +454,7 @@ func TestCRUD(t *testing.T) {
 		id, outs, status, err := r.Create(urn, inputs, timeout, false)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", id)
+		assert.NotEqual(t, UnconfiguredID, id)
 		assert.NotEqual(t, UnknownID, id)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -481,7 +482,7 @@ func TestCRUD(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -599,7 +600,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// The provider should not be configured: configuration will occur during the previewed Create.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p.(*testProvider).configured)
 	}
@@ -620,7 +621,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// The provider should remain unconfigured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -653,7 +654,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// The provider should remain unconfigured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)

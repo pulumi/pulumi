@@ -421,9 +421,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	logging.V(5).Infof("registered default provider for package %s: %s", req, result.State.URN)
 
 	id := result.State.ID
-	if id == "" {
-		id = providers.UnknownID
-	}
+	contract.Assertf(id != "", "default provider for package %s has no ID", req)
 
 	ref, err = providers.NewReference(result.State.URN, id)
 	contract.Assertf(err == nil, "could not create provider reference with URN %s and ID %s", result.State.URN, id)
@@ -1599,6 +1597,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	// Assert that we never leak the unconfigured provider ID to the language host.
+	contract.Assertf(
+		!providers.IsProviderType(result.State.Type) || result.State.ID != providers.UnconfiguredID,
+		"provider resource %s has unconfigured ID", result.State.URN)
+
 	return &pulumirpc.RegisterResourceResponse{
 		Urn:                  string(result.State.URN),
 		Id:                   string(result.State.ID),
