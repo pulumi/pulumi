@@ -135,7 +135,7 @@ const (
 // IsValid returns true if the EnforcementLevel is a valid value.
 func (el EnforcementLevel) IsValid() bool {
 	switch el {
-	case Advisory, Mandatory, Disabled:
+	case Advisory, Mandatory, Remediate, Disabled:
 		return true
 	}
 	return false

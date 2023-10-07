@@ -372,7 +372,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 			}
 			schema.Properties["enforcementLevel"] = JSONSchema{
 				"type": "string",
-				"enum": []string{"advisory", "mandatory", "disabled"},
+				"enum": []string{"advisory", "mandatory", "remediate", "disabled"},
 			}
 		}
 
@@ -556,6 +556,8 @@ func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementL
 		return pulumirpc.EnforcementLevel_ADVISORY
 	case apitype.Mandatory:
 		return pulumirpc.EnforcementLevel_MANDATORY
+	case apitype.Remediate:
+		return pulumirpc.EnforcementLevel_REMEDIATE
 	case apitype.Disabled:
 		return pulumirpc.EnforcementLevel_DISABLED
 	}
@@ -690,6 +692,8 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Advisory, nil
 	case pulumirpc.EnforcementLevel_MANDATORY:
 		return apitype.Mandatory, nil
+	case pulumirpc.EnforcementLevel_REMEDIATE:
+		return apitype.Remediate, nil
 	case pulumirpc.EnforcementLevel_DISABLED:
 		return apitype.Disabled, nil
 
