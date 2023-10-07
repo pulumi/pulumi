@@ -25,6 +25,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dustin/go-humanize/english"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -625,15 +626,36 @@ func (display *ProgressDisplay) printPolicies() bool {
 		display.println(fmt.Sprintf("    %s %s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset))
 		subItemIndent := "        "
 
-		// First show any remediations since they happen first. Do not sort them -- show them in the
-		// order in which events arrived, since for remediations, the order matters.
-		for _, remediationEvent := range info.RemediationEvents {
-			// Print the individual policy event.
-			remediationLine := renderDiffPolicyRemediationEvent(
-				remediationEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
-			remediationLine = strings.TrimSuffix(remediationLine, "\n")
-			if remediationLine != "" {
-				display.println(remediationLine)
+		// First show any remediations since they happen first.
+		if display.opts.ShowPolicyRemediations {
+			// If the user has requested detailed remediations, print each one. Do not sort them -- show them in the
+			// order in which events arrived, since for remediations, the order matters.
+			for _, remediationEvent := range info.RemediationEvents {
+				// Print the individual policy event.
+				remediationLine := renderDiffPolicyRemediationEvent(
+					remediationEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
+				remediationLine = strings.TrimSuffix(remediationLine, "\n")
+				if remediationLine != "" {
+					display.println(remediationLine)
+				}
+			}
+		} else {
+			// Otherwise, simply print a summary of which remediations ran and how many resources were affected.
+			policyNames := make([]string, 0)
+			policyRemediationCounts := make(map[string]int)
+			for _, e := range info.RemediationEvents {
+				name := e.PolicyName
+				if policyRemediationCounts[name] == 0 {
+					policyNames = append(policyNames, name)
+				}
+				policyRemediationCounts[name]++
+			}
+			sort.Strings(policyKeys)
+			for _, policyName := range policyNames {
+				count := policyRemediationCounts[policyName]
+				display.println(fmt.Sprintf("%s- %s[remediate] %s%s (%d %s)",
+					subItemIndent, colors.SpecInfo, policyName, colors.Reset,
+					count, english.PluralWord(count, "resource", "")))
 			}
 		}
 

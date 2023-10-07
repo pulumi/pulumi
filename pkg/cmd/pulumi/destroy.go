@@ -141,7 +141,7 @@ func newDestroyCmd() *cobra.Command {
 				}
 
 				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
-					nil, refresh, showConfig, showReplacementSteps, showSames, false,
+					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
 					targetDependents, "", stackConfigFile)
 				if err != nil {
