@@ -346,9 +346,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 			policies[p.Name()] = p.Version()
 		}
 		for _, pack := range deployment.Options.LocalPolicyPacks {
-			//path := abbreviateFilePath(pack.Path)
-			packName := pack.Name
-			// How to track (local) without mangling the name/version strings?
+			packName := pack.NameForEvents()
 			policies[packName] = pack.Version
 		}
 	}

@@ -559,6 +559,8 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 }
 
 type policyPackSummary struct {
+	IsLocal           bool
+	LocalPath         string
 	ViolationEvents   []engine.PolicyViolationEventPayload
 	RemediationEvents []engine.PolicyRemediationEventPayload
 }
@@ -577,7 +579,14 @@ func (display *ProgressDisplay) printPolicies() bool {
 
 	// First initialize empty lists for all policy packs just to ensure they show if no events are found.
 	for name, version := range display.summaryEventPayload.PolicyPacks {
-		policyPackInfos[fmt.Sprintf("%s@v%s", name, version)] = policyPackSummary{}
+		var summary policyPackSummary
+		baseName, path := engine.GetLocalPolicyPackInfoFromEventName(name)
+		if baseName != "" {
+			summary.IsLocal = true
+			summary.LocalPath = path
+			name = baseName
+		}
+		policyPackInfos[fmt.Sprintf("%s@v%s", name, version)] = summary
 	}
 
 	// Next associate all violation events with the corresponding policy pack in the list.
@@ -623,7 +632,13 @@ func (display *ProgressDisplay) printPolicies() bool {
 			passFailWarn = "⚠️"
 			// do not break; subsequent mandatory violations will override this.
 		}
-		display.println(fmt.Sprintf("    %s %s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset))
+
+		var localMark string
+		if info.IsLocal {
+			localMark = fmt.Sprintf(" (local: %s)", info.LocalPath)
+		}
+
+		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
 		subItemIndent := "        "
 
 		// First show any remediations since they happen first.

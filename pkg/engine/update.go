@@ -61,6 +61,22 @@ type LocalPolicyPack struct {
 	Config string
 }
 
+// NameForEvents encodes a local policy pack's information in a single string which can
+// be used for engine events. It is done this way so we don't lose path information.
+func (pack LocalPolicyPack) NameForEvents() string {
+	path := abbreviateFilePath(pack.Path)
+	return fmt.Sprintf("%s|local|%s", pack.Name, path)
+}
+
+// GetLocalPolicyPackInfoFromEventName round trips the NameForEvents back into a name/path pair.
+func GetLocalPolicyPackInfoFromEventName(name string) (string, string) {
+	parts := strings.Split(name, "|")
+	if len(parts) != 3 {
+		return "", ""
+	}
+	return parts[0], parts[2]
+}
+
 // MakeLocalPolicyPacks is a helper function for converting the list of local Policy
 // Pack paths to list of LocalPolicyPack. The name of the Local Policy Pack is not set
 // since we must load up the Policy Pack plugin to determine its name.
