@@ -253,14 +253,14 @@ func (pc *client) UpdateEnvironment(
 		header.Set("ETag", tag)
 	}
 
-	var errResp EnvironmentDiagnosticsResponse
+	var errResp EnvironmentErrorResponse
 	path := fmt.Sprintf("/api/preview/environments/%v/%v", orgName, envName)
 	err := pc.restCallWithOptions(ctx, http.MethodPatch, path, nil, json.RawMessage(yaml), nil, httpCallOptions{
 		Header:        header,
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticsResponse
+		var diags *EnvironmentDiagnosticError
 		if errors.As(err, &diags) {
 			return diags.Diagnostics, nil
 		}
@@ -289,13 +289,13 @@ func (pc *client) OpenEnvironment(
 	var resp struct {
 		ID string `json:"id"`
 	}
-	var errResp EnvironmentDiagnosticsResponse
+	var errResp EnvironmentErrorResponse
 	path := fmt.Sprintf("/api/preview/environments/%v/%v/open", orgName, envName)
 	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticsResponse
+		var diags *EnvironmentDiagnosticError
 		if errors.As(err, &diags) {
 			return "", diags.Diagnostics, nil
 		}
@@ -310,13 +310,13 @@ func (pc *client) CheckYAMLEnvironment(
 	yaml []byte,
 ) (*esc.Environment, []EnvironmentDiagnostic, error) {
 	var resp esc.Environment
-	var errResp EnvironmentDiagnosticsResponse
+	var errResp EnvironmentErrorResponse
 	path := fmt.Sprintf("/api/preview/environments/%v/yaml/check", orgName)
 	err := pc.restCallWithOptions(ctx, http.MethodPost, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticsResponse
+		var diags *EnvironmentDiagnosticError
 		if errors.As(err, &diags) {
 			return nil, diags.Diagnostics, nil
 		}
@@ -340,13 +340,13 @@ func (pc *client) OpenYAMLEnvironment(
 	var resp struct {
 		ID string `json:"id"`
 	}
-	var errResp EnvironmentDiagnosticsResponse
+	var errResp EnvironmentErrorResponse
 	path := fmt.Sprintf("/api/preview/environments/%v/yaml/open", orgName)
 	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, json.RawMessage(yaml), &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticsResponse
+		var diags *EnvironmentDiagnosticError
 		if errors.As(err, &diags) {
 			return "", diags.Diagnostics, nil
 		}

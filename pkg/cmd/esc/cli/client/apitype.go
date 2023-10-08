@@ -15,14 +15,32 @@ type EnvironmentDiagnostic struct {
 	Detail  string     `json:"detail,omitempty"`
 }
 
-type EnvironmentDiagnosticsResponse struct {
+type EnvironmentErrorResponse struct {
+	Code        int                     `json:"code,omitempty"`
+	Message     string                  `json:"message,omitempty"`
+	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
+}
+
+func (err EnvironmentErrorResponse) Error() string {
+	errString := fmt.Sprintf("[%d] %s", err.Code, err.Message)
+	if len(err.Diagnostics) > 0 {
+		errString += fmt.Sprintf("\nDiags: %s", diagsErrorString(err.Diagnostics))
+	}
+	return errString
+}
+
+type EnvironmentDiagnosticError struct {
 	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
 }
 
 // Error implements the Error interface.
-func (err EnvironmentDiagnosticsResponse) Error() string {
+func (err EnvironmentDiagnosticError) Error() string {
+	return diagsErrorString(err.Diagnostics)
+}
+
+func diagsErrorString(envDiags []EnvironmentDiagnostic) string {
 	var diags strings.Builder
-	for _, d := range err.Diagnostics {
+	for _, d := range envDiags {
 		fmt.Fprintf(&diags, "%v\n", d.Summary)
 	}
 	return diags.String()
@@ -39,7 +57,7 @@ type ListEnvironmentsResponse struct {
 }
 
 type UpdateEnvironmentResponse struct {
-	EnvironmentDiagnosticsResponse
+	EnvironmentDiagnosticError
 }
 
 type CheckEnvironmentResponse struct {
