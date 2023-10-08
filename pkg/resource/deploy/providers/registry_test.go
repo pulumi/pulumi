@@ -780,9 +780,8 @@ func TestCRUDBadVersion(t *testing.T) {
 	assert.Nil(t, inputs)
 }
 
+//nolint:paralleltest
 func TestLoadProvider_missingError(t *testing.T) {
-	t.Parallel()
-
 	var count int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count++
@@ -798,14 +797,29 @@ func TestLoadProvider_missingError(t *testing.T) {
 		})
 	host := newPluginHost(t, []*providerLoader{loader})
 
-	_, err := loadProvider(
-		"myplugin", &version, srv.URL,
-		nil, host, nil /* builtins */)
-	assert.ErrorContains(t, err,
-		"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
-	assert.ErrorContains(t, err,
-		fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
-	assert.Equal(t, 5, count)
+	t.Run("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+
+		_, err := loadProvider(
+			"myplugin", &version, srv.URL,
+			nil, host, nil /* builtins */)
+		assert.ErrorContains(t, err,
+			"no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v1.2.3")
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+		_, err := loadProvider(
+			"myplugin", &version, srv.URL,
+			nil, host, nil /* builtins */)
+		assert.ErrorContains(t, err,
+			"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
+		assert.ErrorContains(t, err,
+			fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
+		assert.Equal(t, 5, count)
+	})
 }
 
 func TestConcurrentRegistryUsage(t *testing.T) {
