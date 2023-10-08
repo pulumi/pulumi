@@ -20,7 +20,7 @@ require (
 	github.com/rivo/uniseg v0.4.4
 	github.com/rogpeppe/go-internal v1.9.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
-	github.com/spf13/cast v1.4.1
+	github.com/spf13/cast v1.5.1
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.1
 	github.com/texttheater/golang-levenshtein v1.0.1
@@ -33,7 +33,7 @@ require (
 	google.golang.org/grpc v1.57.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.5.5
+	pgregory.net/rapid v0.6.1
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
 )
 
