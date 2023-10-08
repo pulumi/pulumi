@@ -62,7 +62,7 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 
 	acts := newUpdateActions(&Context{
 		Cancel: cancelCtx,
-	}, nil, deploymentOptions{})
+	}, nil, &deploymentOptions{})
 	eventsChan := make(chan Event, 10)
 	acts.Opts.Events.ch = eventsChan
 

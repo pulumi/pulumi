@@ -610,9 +610,11 @@ func (display *ProgressDisplay) printPolicies() bool {
 	}
 
 	// Enumerate all policy packs in a deterministic order:
-	var policyKeys []string
+	policyKeys := make([]string, len(policyPackInfos))
+	policyKeyIndex := 0
 	for key := range policyPackInfos {
-		policyKeys = append(policyKeys, key)
+		policyKeys[policyKeyIndex] = key
+		policyKeyIndex++
 	}
 	sort.Strings(policyKeys)
 

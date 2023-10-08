@@ -646,7 +646,8 @@ func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeD
 }
 
 func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap) {
+	before resource.PropertyMap, after resource.PropertyMap,
+) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
 
@@ -769,7 +770,8 @@ func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.Analyze
 }
 
 func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap) {
+	before resource.PropertyMap, after resource.PropertyMap,
+) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
 

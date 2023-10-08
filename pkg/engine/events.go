@@ -475,7 +475,8 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 }
 
 func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap) {
+	before resource.PropertyMap, after resource.PropertyMap,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(PolicyRemediationEvent, PolicyRemediationEventPayload{

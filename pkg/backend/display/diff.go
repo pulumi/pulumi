@@ -139,8 +139,8 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 }
 
 func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
-	prefix string, detailed bool, opts Options) string {
-
+	prefix string, detailed bool, opts Options,
+) string {
 	// Diff the before/after state. If there is no diff, we show nothing.
 	diff := payload.Before.Diff(payload.After)
 	if diff == nil {
@@ -176,7 +176,8 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 }
 
 func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
-	prefix string, linePrefix string, opts Options) string {
+	prefix string, linePrefix string, opts Options,
+) string {
 	// Colorize mandatory and warning violations differently.
 	c := colors.SpecWarning
 	if payload.EnforcementLevel == apitype.Mandatory {

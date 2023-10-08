@@ -271,7 +271,8 @@ type runActions interface {
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions,
-	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
+	preview bool,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
 	if err != nil {
