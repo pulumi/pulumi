@@ -26,3 +26,6 @@ stdout: |+
 
   ```
 
+stderr: |
+  > esc env edit test --editor my-editor
+  > esc env get test

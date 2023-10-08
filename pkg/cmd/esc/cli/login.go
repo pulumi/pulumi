@@ -67,6 +67,9 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
+				if account == nil {
+					return fmt.Errorf("not currently logged in")
+				}
 				backendURL, shared = account.BackendURL, isShared
 			}
 
@@ -116,9 +119,9 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 			if currentUser, _, _, err := client.GetPulumiAccountDetails(ctx); err == nil {
 				// TODO should we print the token information here? (via team MyTeam token MyToken)
 				consoleURL := esc.cloudConsoleURL(backendURL, currentUser)
-				fmt.Printf("Logged in to %s as %s (%s)\n", backendName, currentUser, consoleURL)
+				fmt.Fprintf(esc.stdout, "Logged in to %s as %s (%s)\n", backendName, currentUser, consoleURL)
 			} else {
-				fmt.Printf("Logged in to %s (%s)\n", backendName, esc.cloudConsoleURL(backendURL))
+				fmt.Fprintf(esc.stdout, "Logged in to %s (%s)\n", backendName, esc.cloudConsoleURL(backendURL))
 			}
 
 			return nil

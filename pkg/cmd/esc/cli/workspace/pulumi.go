@@ -5,6 +5,8 @@ package workspace
 import "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 type PulumiWorkspace interface {
+	DeleteAccount(backendURL string) error
+	DeleteAllAccounts() error
 	SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error
 	GetPulumiConfig() (workspace.PulumiConfig, error)
 	GetPulumiPath(elem ...string) (string, error)
@@ -17,6 +19,14 @@ type defaultPulumiWorkspace int
 
 func DefaultPulumiWorkspace() PulumiWorkspace {
 	return defaultPulumiWorkspace(0)
+}
+
+func (defaultPulumiWorkspace) DeleteAccount(backendURL string) error {
+	return workspace.DeleteAccount(backendURL)
+}
+
+func (defaultPulumiWorkspace) DeleteAllAccounts() error {
+	return workspace.DeleteAllAccounts()
 }
 
 func (defaultPulumiWorkspace) SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {

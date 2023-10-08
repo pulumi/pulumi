@@ -92,6 +92,48 @@ func (w *Workspace) GetCurrentAccount(shared bool) (*Account, bool, error) {
 	}, shared, nil
 }
 
+// DeleteAllAccounts logs out of all accounts.
+func (w *Workspace) DeleteAllAccounts() error {
+	// Clear the current account.
+	if err := w.writeCredsFile(Credentials{}); err != nil {
+		return err
+	}
+
+	// Log out of all accounts.
+	return w.pulumi.DeleteAllAccounts()
+}
+
+// DeleteAccount logs out of the given backend. If the backend is the current account, then the current
+// account is cleared.
+func (w *Workspace) DeleteAccount(backendURL string) error {
+	// Read esc account.
+	currentBackendURL, err := w.getCurrentAccountName()
+	if err != nil {
+		return fmt.Errorf("reading credentials: %w", err)
+	}
+
+	// Read Pulumi creds.
+	pulumiCreds, err := w.pulumi.GetStoredCredentials()
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("reading Pulumi credentials: %w", err)
+	}
+
+	// If there is no current account, default to the current `pulumi` account.
+	if currentBackendURL == "" {
+		currentBackendURL = pulumiCreds.Current
+	}
+
+	// Clear the current account.
+	if currentBackendURL == backendURL {
+		if err := w.writeCredsFile(Credentials{}); err != nil {
+			return err
+		}
+	}
+
+	// Log out of the account.
+	return w.pulumi.DeleteAccount(backendURL)
+}
+
 // SetCurrentAccount sets the currently logged-in account.
 func (w *Workspace) SetCurrentAccount(account Account, shared bool) error {
 	// Store the account in Pulumi creds.
@@ -105,23 +147,7 @@ func (w *Workspace) SetCurrentAccount(account Account, shared bool) error {
 	if shared {
 		current = ""
 	}
-	creds := Credentials{Current: current}
-
-	credsFile, err := w.getCredsFilePath()
-	if err != nil {
-		return err
-	}
-
-	raw, err := json.MarshalIndent(creds, "", "    ")
-	if err != nil {
-		return fmt.Errorf("marshaling credentials: %w", err)
-	}
-
-	if err := w.fs.MkdirAll(path.Dir(credsFile), 0o700); err != nil {
-		return err
-	}
-
-	return w.fs.LockedWrite(credsFile, bytes.NewReader(raw), 0o600)
+	return w.writeCredsFile(Credentials{Current: current})
 }
 
 func (w *Workspace) getCurrentAccountName() (string, error) {
@@ -154,4 +180,22 @@ func (w *Workspace) getCredsFilePath() (string, error) {
 	}
 
 	return path.Join(dir, "credentials.json"), nil
+}
+
+func (w *Workspace) writeCredsFile(creds Credentials) error {
+	credsFile, err := w.getCredsFilePath()
+	if err != nil {
+		return err
+	}
+
+	raw, err := json.MarshalIndent(creds, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshaling credentials: %w", err)
+	}
+
+	if err := w.fs.MkdirAll(path.Dir(credsFile), 0o700); err != nil {
+		return err
+	}
+
+	return w.fs.LockedWrite(credsFile, bytes.NewReader(raw), 0o600)
 }

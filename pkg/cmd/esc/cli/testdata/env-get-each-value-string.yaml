@@ -54,3 +54,15 @@ stdout: |
   all
   > esc env get test --value string open
   [unknown]
+stderr: |
+  > esc env get test --value string null
+  > esc env get test --value string boolean
+  > esc env get test --value string number
+  > esc env get test --value string string
+  > esc env get test --value string array
+  > esc env get test --value string array[0]
+  > esc env get test --value string array[1]
+  > esc env get test --value string object
+  > esc env get test --value string object.hello
+  > esc env get test --value string object.goodbye
+  > esc env get test --value string open

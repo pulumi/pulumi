@@ -53,3 +53,5 @@ stdout: |+
 
   ```
 
+stderr: |
+  > esc env get test

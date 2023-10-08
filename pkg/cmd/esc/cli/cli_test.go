@@ -82,7 +82,7 @@ func (tfs testFS) MkdirAll(name string, perm fs.FileMode) error {
 	if path.Dir(name) == "/" {
 		return nil
 	}
-	if err := tfs.MkdirAll(path.Base(name), perm); err != nil {
+	if err := tfs.MkdirAll(path.Dir(name), perm); err != nil {
 		return err
 	}
 	tfs.MapFS[name] = &fstest.MapFile{
@@ -144,6 +144,20 @@ func (env testEnviron) Vars() []string {
 
 type testPulumiWorkspace struct {
 	credentials workspace.Credentials
+}
+
+func (w *testPulumiWorkspace) DeleteAccount(backendURL string) error {
+	delete(w.credentials.Accounts, backendURL)
+	if w.credentials.Current == backendURL {
+		w.credentials.Current = ""
+	}
+	return nil
+}
+
+func (w *testPulumiWorkspace) DeleteAllAccounts() error {
+	w.credentials.Accounts = map[string]workspace.Account{}
+	w.credentials.Current = ""
+	return nil
 }
 
 func (*testPulumiWorkspace) SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
@@ -224,6 +238,10 @@ type testLoginManager struct {
 
 // Current returns the current cloud backend if one is already logged in.
 func (lm *testLoginManager) Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error) {
+	if lm.creds.Current == "" {
+		return nil, nil
+	}
+
 	acct, ok := lm.creds.Accounts[lm.creds.Current]
 	if !ok {
 		return nil, errors.New("unauthorized")
@@ -547,6 +565,7 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 				}
 
 				fmt.Fprintf(hc.Stdout, "> %v\n", strings.Join(args, " "))
+				fmt.Fprintf(hc.Stderr, "> %v\n", strings.Join(args, " "))
 
 				esc.SetArgs(args[1:])
 				esc.SetIn(hc.Stdin)
@@ -601,8 +620,6 @@ type cliTestcaseYAML struct {
 	Run   string `yaml:"run,omitempty"`
 	Error string `yaml:"error,omitempty"`
 
-	Credentials *workspace.Credentials `yaml:"credentials,omitempty"`
-
 	Process *cliTestcaseProcess `yaml:"process,omitempty"`
 
 	Environments map[string]yaml.Node `yaml:"environments,omitempty"`
@@ -656,17 +673,18 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 		environments[k] = &testEnvironment{yaml: bytes}
 	}
 
-	var creds workspace.Credentials
-	if testcase.Credentials == nil {
-		creds = workspace.Credentials{
-			Current: "http://fake.pulumi.api",
-			Accounts: map[string]workspace.Account{
-				"http://fake.pulumi.api": {
-					Username:    "test-user",
-					AccessToken: "access-token",
-				},
+	creds := workspace.Credentials{
+		Current: "http://fake.pulumi.api",
+		Accounts: map[string]workspace.Account{
+			"https://api.pulumi.com": {
+				Username:    "test-user",
+				AccessToken: "access-token",
 			},
-		}
+			"http://fake.pulumi.api": {
+				Username:    "test-user",
+				AccessToken: "access-token",
+			},
+		},
 	}
 
 	exec.parentPath = testcase.Parent

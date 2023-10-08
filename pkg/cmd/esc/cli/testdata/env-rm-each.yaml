@@ -358,3 +358,26 @@ stdout: |+
 
   ```
 
+stderr: |
+  > esc env rm test null
+  > esc env get test
+  > esc env rm test boolean
+  > esc env get test
+  > esc env rm test number
+  > esc env get test
+  > esc env rm test string
+  > esc env get test
+  > esc env rm test array[1]
+  > esc env get test
+  > esc env rm test array[0]
+  > esc env get test
+  > esc env rm test array
+  > esc env get test
+  > esc env rm test object.hello
+  > esc env get test
+  > esc env rm test object
+  > esc env get test
+  > esc env rm test open["fn::open::test"].foo
+  > esc env get test
+  > esc env rm test open
+  > esc env get test

@@ -17,3 +17,5 @@ stdout: |
   > esc open test --format dotenv
   FOO="bar"
   HELLO="world"
+stderr: |
+  > esc open test --format dotenv

@@ -533,3 +533,15 @@ stdout: |
       }
     }
   }
+stderr: |
+  > esc env get test --value detailed null
+  > esc env get test --value detailed boolean
+  > esc env get test --value detailed number
+  > esc env get test --value detailed string
+  > esc env get test --value detailed array
+  > esc env get test --value detailed array[0]
+  > esc env get test --value detailed array[1]
+  > esc env get test --value detailed object
+  > esc env get test --value detailed object.hello
+  > esc env get test --value detailed object.goodbye
+  > esc env get test --value detailed open

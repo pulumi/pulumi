@@ -3,4 +3,5 @@ error: exit status 1
 stdout: |
   > esc env rm dup -y
 stderr: |
+  > esc env rm dup -y
   Error: not found

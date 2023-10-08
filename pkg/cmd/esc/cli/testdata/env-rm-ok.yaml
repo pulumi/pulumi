@@ -3,3 +3,5 @@ environments:
   test-user/dup: arbitrary
 stdout: |
   > esc env rm dup -y
+stderr: |
+  > esc env rm dup -y

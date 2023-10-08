@@ -83,3 +83,5 @@ stdout: |
       }
     }
   }
+stderr: |
+  > esc open test --format detailed

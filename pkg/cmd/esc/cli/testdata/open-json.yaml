@@ -15,3 +15,5 @@ stdout: |
     "foo": "bar",
     "hello": "world"
   }
+stderr: |
+  > esc open test --format json

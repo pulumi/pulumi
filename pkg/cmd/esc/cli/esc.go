@@ -118,6 +118,7 @@ func New(opts *Options) *cobra.Command {
 	cmd.AddCommand(getCommand(env, "open"))
 	cmd.AddCommand(getCommand(env, "run"))
 	cmd.AddCommand(newLoginCmd(esc))
+	cmd.AddCommand(newLogoutCmd(esc))
 	cmd.AddCommand(newVersionCmd(esc))
 
 	return cmd

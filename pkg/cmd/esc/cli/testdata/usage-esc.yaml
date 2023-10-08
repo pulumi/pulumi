@@ -28,6 +28,7 @@ stdout: |
     env         Manage environments
     help        Help about any command
     login       Log in to the Pulumi Cloud
+    logout      Log out of the Pulumi Cloud
     open        Open the environment with the given name.
     run         Open the environment with the given name and run a command.
     version     Print esc's version number
@@ -36,3 +37,5 @@ stdout: |
     -h, --help   help for esc
 
   Use "esc [command] --help" for more information about a command.
+stderr: |
+  > esc

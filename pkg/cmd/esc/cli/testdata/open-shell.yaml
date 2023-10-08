@@ -17,3 +17,5 @@ stdout: |
   > esc open test --format shell
   export FOO="bar"
   export HELLO="world"
+stderr: |
+  > esc open test --format shell

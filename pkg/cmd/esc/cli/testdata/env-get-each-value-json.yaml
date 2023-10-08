@@ -61,3 +61,15 @@ stdout: |
   "all"
   > esc env get test --value json open
   "[unknown]"
+stderr: |
+  > esc env get test --value json null
+  > esc env get test --value json boolean
+  > esc env get test --value json number
+  > esc env get test --value json string
+  > esc env get test --value json array
+  > esc env get test --value json array[0]
+  > esc env get test --value json array[1]
+  > esc env get test --value json object
+  > esc env get test --value json object.hello
+  > esc env get test --value json object.goodbye
+  > esc env get test --value json open

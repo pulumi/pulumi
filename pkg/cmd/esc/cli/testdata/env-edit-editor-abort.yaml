@@ -12,4 +12,5 @@ environments:
 stdout: |
   > esc env edit test
 stderr: |
+  > esc env edit test
   Aborting edit due to empty definition.

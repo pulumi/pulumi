@@ -12,6 +12,7 @@ environments:
 stdout: |
   > esc env edit test
 stderr: |
+  > esc env edit test
   Error: imports must be a list
 
     on test line 1:

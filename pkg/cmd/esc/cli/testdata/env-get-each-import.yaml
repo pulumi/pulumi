@@ -48,3 +48,7 @@ stdout: |+
 
   ```
 
+stderr: |
+  > esc env get test imports
+  > esc env get test imports[0]
+  > esc env get test imports[1]

@@ -15,6 +15,13 @@ stdout: |
   > esc env set test object[0] foo
   > esc env set test array.foo bar
 stderr: |
+  > esc env init test
+  > esc env set test string foo
+  > esc env set test object {}
+  > esc env set test array []
+  > esc env set test string.bar baz
   Error: string.bar: expected an array or an object
+  > esc env set test object[0] foo
   Error: object[0]: key for a map must be a string
+  > esc env set test array.foo bar
   Error: array.foo: key for an array must be an int

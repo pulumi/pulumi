@@ -216,3 +216,17 @@ stdout: |+
   # References
   - test:14:18
 
+stderr: |
+  > esc env get test null
+  > esc env get test boolean
+  > esc env get test number
+  > esc env get test string
+  > esc env get test array
+  > esc env get test array[0]
+  > esc env get test array[1]
+  > esc env get test object
+  > esc env get test object.hello
+  > esc env get test object.goodbye
+  > esc env get test open
+  > esc env get test open["fn::open::test"]
+  > esc env get test open["fn::open::test"].foo

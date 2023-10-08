@@ -12,3 +12,5 @@ environments:
 stdout: |
   > esc open test --format string
   "foo"="bar","hello"="world"
+stderr: |
+  > esc open test --format string

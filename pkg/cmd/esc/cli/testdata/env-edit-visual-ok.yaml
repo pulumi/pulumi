@@ -28,3 +28,6 @@ stdout: |+
 
   ```
 
+stderr: |
+  > esc env edit test
+  > esc env get test

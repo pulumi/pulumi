@@ -26,3 +26,8 @@ stdout: |
   secret: [secret], plain: plaintext
   > esc env run -i test echo secret: ${secret}, plain: ${plain}
   secret: hunter2, plain: plaintext
+stderr: |
+  > esc env run test dump-env
+  > esc env run -i test dump-env
+  > esc env run test echo secret: ${secret}, plain: ${plain}
+  > esc env run -i test echo secret: ${secret}, plain: ${plain}

@@ -6,4 +6,5 @@ process:
 stdout: |
   > esc env edit test
 stderr: |
+  > esc env edit test
   Error: finding "my-editor" on path: command not found

@@ -12,3 +12,5 @@ stdout: |
   test-org/env
   test-org/env-2
   test-org-2/env
+stderr: |
+  > esc env ls

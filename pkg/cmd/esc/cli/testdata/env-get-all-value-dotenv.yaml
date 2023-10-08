@@ -23,3 +23,5 @@ stdout: |
   > esc env get test --value=dotenv
   OBJECT="{\"hello\":\"world\"}"
   STRING="esc"
+stderr: |
+  > esc env get test --value=dotenv

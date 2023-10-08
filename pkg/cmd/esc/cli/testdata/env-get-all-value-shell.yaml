@@ -23,3 +23,5 @@ stdout: |
   > esc env get test --value=shell
   export OBJECT="{\"hello\":\"world\"}"
   export STRING="esc"
+stderr: |
+  > esc env get test --value=shell

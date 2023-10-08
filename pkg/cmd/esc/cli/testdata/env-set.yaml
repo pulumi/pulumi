@@ -445,3 +445,31 @@ stdout: |+
 
   ```
 
+stderr: |
+  > esc env init test
+  > esc env set test foo.bar.baz qux
+  > esc env get test
+  > esc env set test foo.bar.alpha zed
+  > esc env get test
+  > esc env set test foo.beta[0] gamma
+  > esc env get test
+  > esc env set test foo.beta[1] 42
+  > esc env get test
+  > esc env set test open {"fn::open::test": "esc"}
+  > esc env get test
+  > esc env set test open["fn::open::test"] cse
+  > esc env get test
+  > esc env set test array [hello, world]
+  > esc env get test
+  > esc env set test array[1] esc
+  > esc env get test
+  > esc env set test array[2] {}
+  > esc env get test
+  > esc env set test array[2].foo bar
+  > esc env get test
+  > esc env init test2
+  > esc env set test imports[0] test2
+  > esc env get test
+  > esc env init test3
+  > esc env set test imports[1] test3
+  > esc env get test
