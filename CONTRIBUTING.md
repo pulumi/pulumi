@@ -85,6 +85,10 @@ We make heavy use of integration level tests that invoke `pulumi` to create and 
 
 The tests in this repository do not create any real cloud resources as part of testing but still uses Pulumi.com to store information about some synthetic resources the tests create. Other repositories may require additional setup before running tests. In most cases, this additional setup consists of setting a few environment variables to configure the provider for the the cloud service we are testing. Please see the `CONTRIBUTING.md` file in the relevant repository, which will explain what additional configuration is needed before running tests.
 
+### Regenerate Test Baselines
+
+Numerous tests use baselines that need to be regenerated from time to time. For instance, `pkg/backend/display/testdata` contains the corresponding CLI output for various engine event streams. To regenerate these baselines, run the corresponding test with the `PULUMI_ACCEPT=true` environment variable. For instance, `PULUMI_ACCEPT=true make test_all` from the root. Alternatively, you can generate them individually, for example, running `PULUMI_ACCEPT=true go test ./...` from the `pkg/backend/display` directory.
+
 ### Debugging
 
 The Pulumi tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and adding new logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
