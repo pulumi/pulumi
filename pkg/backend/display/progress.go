@@ -668,7 +668,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 			sort.Strings(policyKeys)
 			for _, policyName := range policyNames {
 				count := policyRemediationCounts[policyName]
-				display.println(fmt.Sprintf("%s- %s[remediate] %s%s (%d %s)",
+				display.println(fmt.Sprintf("%s- %s[remediate]  %s%s  (%d %s)",
 					subItemIndent, colors.SpecInfo, policyName, colors.Reset,
 					count, english.PluralWord(count, "resource", "")))
 			}
