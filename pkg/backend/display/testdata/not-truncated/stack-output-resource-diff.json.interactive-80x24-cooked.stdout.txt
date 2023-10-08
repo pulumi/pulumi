@@ -34,7 +34,6 @@
  <{%reset%}>  <{%reset%}>  ├─ some:demo:Taxi      taxi                          <{%reset%}><{%reset%}>           [K
  <{%reset%}>  <{%reset%}>  └─ some:demo:Vehicles  vehicles                      <{%reset%}><{%reset%}>           [K
 [K
-
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pulumi:pulumi:Stack (pulumi-stack-output-diff-dev):<{%reset%}>
     <{%reset%}>Configuration:<{%reset%}>
