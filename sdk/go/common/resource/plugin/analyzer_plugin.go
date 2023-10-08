@@ -318,22 +318,23 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 		return nil, rpcError
 	}
 
-	var results []Remediation
-	for _, t := range resp.GetRemediations() {
-		tprops, err := UnmarshalProperties(t.GetProperties(),
+	remediations := resp.GetRemediations()
+	results := make([]Remediation, len(remediations))
+	for i, r := range remediations {
+		tprops, err := UnmarshalProperties(r.GetProperties(),
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 		if err != nil {
 			return nil, err
 		}
 
-		results = append(results, Remediation{
-			PolicyName:        t.GetPolicyName(),
-			Description:       t.GetDescription(),
-			PolicyPackName:    t.GetPolicyPackName(),
-			PolicyPackVersion: t.GetPolicyPackVersion(),
+		results[i] = Remediation{
+			PolicyName:        r.GetPolicyName(),
+			Description:       r.GetDescription(),
+			PolicyPackName:    r.GetPolicyPackName(),
+			PolicyPackVersion: r.GetPolicyPackVersion(),
 			Properties:        tprops,
-			Diagnostic:        t.GetDiagnostic(),
-		})
+			Diagnostic:        r.GetDiagnostic(),
+		}
 	}
 
 	logging.V(7).Infof("%s success: #remediations=%d", label, len(results))

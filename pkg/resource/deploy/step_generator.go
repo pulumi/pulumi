@@ -757,7 +757,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				tresults, err := analyzer.Remediate(r)
 				if err != nil {
 					return nil, fmt.Errorf("failed to run remediation: %w", err)
-				} else if tresults != nil && len(tresults) > 0 {
+				} else if len(tresults) > 0 {
 					for _, tresult := range tresults {
 						if tresult.Diagnostic != "" {
 							// If there is a diagnostic, we have a warning to display.
