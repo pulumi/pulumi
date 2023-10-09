@@ -809,7 +809,9 @@ func TestStackTags(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	tags = lsTags()
-	assert.Equal(t, "projectValue", tags["projectTag"], "projectTag should be set to projectValue")
+	assert.Equal(t, "hello", tags["tagS"], "tagS should be set to hello")
+	assert.Equal(t, "true", tags["tagB"], "tagB should be set to true")
+	assert.Equal(t, "42", tags["tagN"], "tagN should be set to 42")
 }
 
 //nolint:paralleltest // pulumi new is not parallel safe

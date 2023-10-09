@@ -79,7 +79,9 @@ class Config:
         config_candidate = self._get(key, self.get_secret, self.get)
         return config_candidate if config_candidate is not None else default
 
-    def get_secret(self, key: str) -> Optional[Output[str]]:
+    def get_secret(
+        self, key: str, default: Optional[str] = None
+    ) -> Optional[Output[str]]:
         """
         Returns an optional configuration value by its key, marked as a secret,
         a default value if that key is unset and a default is provided,
@@ -90,11 +92,11 @@ class Config:
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
-        c = self._get(key)
-        if c is None:
+        config_candidate = self._get(key)
+        v = config_candidate if config_candidate is not None else default
+        if v is None:
             return None
-
-        return Output.secret(c)
+        return Output.secret(v)
 
     def _get_bool(
         self,

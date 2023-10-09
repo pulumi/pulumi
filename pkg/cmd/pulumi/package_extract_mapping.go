@@ -36,7 +36,10 @@ func newExtractMappingCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]
-			provider := args[2]
+			var provider string
+			if len(args) > 2 {
+				provider = args[2]
+			}
 
 			p, err := providerFromSource(source)
 			if err != nil {

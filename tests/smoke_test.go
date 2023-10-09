@@ -214,8 +214,9 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetSchema(t *testing.T) {
-	// Skipping because it gets rate limited in CI
-	t.Skip()
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping because it gets rate limited in CI")
+	}
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	removeRandomFromLocalPlugins := func() {
@@ -268,8 +269,10 @@ func TestPackageGetSchema(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
-	// Skipping because it gets rate limited in CI
-	t.Skip()
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping because it gets rate limited in CI")
+	}
+
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	removeRandomFromLocalPlugins := func() {
@@ -315,4 +318,41 @@ func TestLanguageImportSmoke(t *testing.T) {
 			e.RunCommand("pulumi", "import", "--yes", "random:index/randomId:RandomId", "identifier", "p-9hUg")
 		})
 	}
+}
+
+// Test that PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION disables plugin acquisition in convert.
+//
+//nolint:paralleltest // changes env vars and plugin cache
+func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping because it gets rate limited in CI")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	e.ImportDirectory("testdata/aws_tf")
+
+	// Delete all cached plugins and disable plugin acquisition.
+	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+	// Disable acquisition.
+	e.SetEnvVars("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true")
+
+	// This should fail because of no terraform converter
+	_, stderr := e.RunCommandExpectError(
+		"pulumi", "convert",
+		"--language", "pcl", "--from", "terraform", "--out", "out")
+	assert.Contains(t, stderr, "no converter plugin 'pulumi-converter-terraform' found")
+
+	// Install a _specific_ version of the terraform converter (so this test doesn't change due to a new release)
+	e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.0.8")
+	// This should now convert, but won't use our full aws tokens
+	e.RunCommand(
+		"pulumi", "convert",
+		"--language", "pcl", "--from", "terraform", "--out", "out")
+
+	output, err := os.ReadFile(filepath.Join(e.RootPath, "out", "main.pp"))
+	require.NoError(t, err)
+	// If we had an AWS plugin and mapping this would be "aws:ec2/instance:Instance"
+	assert.Contains(t, string(output), "\"aws:index:instance\"")
 }

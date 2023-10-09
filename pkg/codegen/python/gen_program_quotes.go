@@ -68,7 +68,9 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 
 		if objectKey && isLegalIdentifier(keyVal) {
 			currentTraversal = append(currentTraversal, traverser)
-			currentParts = append(currentParts, parts[i+1])
+			if i < len(traversal)-1 {
+				currentParts = append(currentParts, parts[i+1])
+			}
 			continue
 		}
 

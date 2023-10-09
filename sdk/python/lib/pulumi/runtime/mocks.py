@@ -246,7 +246,7 @@ class MockMonitor:
     def SupportsFeature(self, request):
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
-        has_support = request.id in {"secrets", "resourceReferences"}
+        has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
 

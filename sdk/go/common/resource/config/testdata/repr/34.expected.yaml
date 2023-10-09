@@ -1,0 +1,18 @@
+decrypt:
+  my:outer: '{"inner":"hi"}'
+paths:
+  my:outer:
+    value:
+      inner: hi
+    string: '{"inner":"hi"}'
+    redacted: '{"inner":"hi"}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAY/4IVAAEFaW5uZXIGc3RyaW5nDAQAAmhp
+    secure: false
+    isObject: true
+  my:outer.inner:
+    value: hi
+    string: hi
+    redacted: hi
+    object: DxAABnN0cmluZwwEAAJoaQ==
+    secure: false
+    isObject: false

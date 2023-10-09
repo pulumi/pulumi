@@ -1,0 +1,42 @@
+decrypt:
+  my:name: '["a","b","c","value"]'
+paths:
+  my:name:
+    value:
+    - a
+    - b
+    - c
+    - value
+    string: '["a","b","c","value"]'
+    redacted: '["a","b","c","value"]'
+    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAOf+ENgAEBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFjBnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: true
+  my:name[0]:
+    value: a
+    string: a
+    redacted: a
+    object: DhAABnN0cmluZwwDAAFh
+    secure: false
+    isObject: false
+  my:name[1]:
+    value: b
+    string: b
+    redacted: b
+    object: DhAABnN0cmluZwwDAAFi
+    secure: false
+    isObject: false
+  my:name[2]:
+    value: c
+    string: c
+    redacted: c
+    object: DhAABnN0cmluZwwDAAFj
+    secure: false
+    isObject: false
+  my:name[3]:
+    value: value
+    string: value
+    redacted: value
+    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: false

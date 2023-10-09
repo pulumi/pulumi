@@ -59,6 +59,9 @@ var DisableOutputValues = env.Bool("DISABLE_OUTPUT_VALUES", "")
 var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 	"Discover additional plugins by examining $PATH.")
 
+var DisableAutomaticPluginAcquisition = env.Bool("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION",
+	"Disables the automatic installation of missing plugins.")
+
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
 that a --yes parameter has been set for non-interactive scenarios.

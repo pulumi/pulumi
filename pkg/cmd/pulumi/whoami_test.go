@@ -156,3 +156,35 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		"url": "https://pulumi.example.com"
 	}`, buff.String())
 }
+
+func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
+	t.Parallel()
+
+	var buff bytes.Buffer
+	cmd := whoAmICmd{
+		verbose: true,
+		Stdout:  &buff,
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &backend.MockBackend{
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{
+						Name: "bad-token",
+					}, nil
+				},
+				URLF: func() string {
+					return "https://pulumi.example.com"
+				},
+			}, nil
+		},
+	}
+
+	err := cmd.Run(context.Background())
+	require.NoError(t, err)
+
+	stdout := buff.String()
+	assert.Contains(t, stdout, "User: user2")
+	assert.Contains(t, stdout, "Organizations: org1, org2")
+	assert.Contains(t, stdout, "Backend URL: https://pulumi.example.com")
+	assert.Contains(t, stdout, "Token type: unknown")
+	assert.Contains(t, stdout, "Token name: bad-token")
+}

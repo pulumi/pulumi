@@ -68,7 +68,7 @@ func NewEvent(typ EventType, payload interface{}) Event {
 	contract.Assertf(ok, "invalid payload of type %T for event type %v", payload, typ)
 	return Event{
 		Type:    typ,
-		payload: payload,
+		payload: deepcopy.Copy(payload),
 	}
 }
 
@@ -89,7 +89,7 @@ const (
 )
 
 func (e Event) Payload() interface{} {
-	return deepcopy.Copy(e.payload)
+	return e.payload
 }
 
 func cancelEvent() Event {

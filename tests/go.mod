@@ -14,7 +14,7 @@ require (
 	github.com/grapl-security/pulumi-hcp/sdk v0.1.14
 	github.com/hexops/autogold v1.3.0
 	github.com/pulumi/pulumi/pkg/v3 v3.0.0-00010101000000-000000000000
-	github.com/pulumi/pulumi/sdk/v3 v3.86.0
+	github.com/pulumi/pulumi/sdk/v3 v3.87.0
 	github.com/stretchr/testify v1.8.3
 	google.golang.org/grpc v1.57.0
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
@@ -207,7 +207,7 @@ require (
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect

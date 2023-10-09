@@ -254,8 +254,9 @@ func TestDecrypt(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Config   Map
-		Expected map[Key]string
+		Config     Map
+		Expected   map[Key]string
+		SecureKeys []Key
 	}{
 		{
 			Config: Map{
@@ -272,6 +273,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): "[secret]",
 			},
+			SecureKeys: []Key{MustMakeKey("my", "testKey")},
 		},
 		{
 			Config: Map{
@@ -288,6 +290,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): `{"inner":"[secret]"}`,
 			},
+			SecureKeys: []Key{MustMakeKey("my", "testKey")},
 		},
 		{
 			Config: Map{
@@ -297,6 +300,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): `[{"inner":"[secret]"},"[secret]"]`,
 			},
+			SecureKeys: []Key{MustMakeKey("my", "testKey")},
 		},
 	}
 
@@ -310,6 +314,9 @@ func TestDecrypt(t *testing.T) {
 			actual, err := test.Config.Decrypt(decrypter)
 			assert.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
+
+			assert.Equal(t, len(test.SecureKeys) != 0, test.Config.HasSecureValue())
+			assert.ElementsMatch(t, test.SecureKeys, test.Config.SecureKeys())
 		})
 	}
 }
@@ -653,6 +660,26 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 			Expected: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
+			},
+		},
+		{
+			Key:  `my:outer.inner.nested`,
+			Path: true,
+			Config: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"nested": "value"}}`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{}}`),
+			},
+		},
+		{
+			Key:  `my:outer[0].nested`,
+			Path: true,
+			Config: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`[{"nested": "value"}]`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`[{}]`),
 			},
 		},
 	}
@@ -1225,7 +1252,6 @@ func TestSetFail(t *testing.T) {
 		{Key: "my:root["},
 		{Key: `my:root["nested]`},
 		{Key: "my:root.array[abc]"},
-		{Key: "my:root.[1]"},
 
 		// First path component must be a string.
 		{Key: `my:[""]`},
@@ -1233,7 +1259,6 @@ func TestSetFail(t *testing.T) {
 
 		// Index out of range.
 		{Key: `my:name[-1]`},
-		{Key: `my:name[1]`},
 		{
 			Key: `my:name[4]`,
 			Config: Map{

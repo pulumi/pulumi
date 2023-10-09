@@ -1950,7 +1950,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	return toReplace, nil
 }
 
-func (sg *stepGenerator) AnalyzeResources() result.Result {
+func (sg *stepGenerator) AnalyzeResources() error {
 	var resources []plugin.AnalyzerStackResource
 	sg.deployment.news.mapRange(func(urn resource.URN, v *resource.State) bool {
 		goal, ok := sg.deployment.goals.get(urn)
@@ -1991,9 +1991,9 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
 	for _, analyzer := range analyzers {
-		diagnostics, aErr := analyzer.AnalyzeStack(resources)
-		if aErr != nil {
-			return result.FromError(aErr)
+		diagnostics, err := analyzer.AnalyzeStack(resources)
+		if err != nil {
+			return err
 		}
 		for _, d := range diagnostics {
 			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)

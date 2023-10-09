@@ -68,42 +68,6 @@ func (nopCrypter) EncryptValue(ctx context.Context, plaintext string) (string, e
 	return plaintext, nil
 }
 
-// TrackingDecrypter is a Decrypter that keeps track if decrypted values, which
-// can be retrieved via SecureValues().
-type TrackingDecrypter interface {
-	Decrypter
-	SecureValues() []string
-}
-
-// NewTrackingDecrypter returns a Decrypter that keeps track of decrypted values.
-func NewTrackingDecrypter(decrypter Decrypter) TrackingDecrypter {
-	return &trackingDecrypter{decrypter: decrypter}
-}
-
-type trackingDecrypter struct {
-	decrypter    Decrypter
-	secureValues []string
-}
-
-func (t *trackingDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	v, err := t.decrypter.DecryptValue(ctx, ciphertext)
-	if err != nil {
-		return "", err
-	}
-	t.secureValues = append(t.secureValues, v)
-	return v, nil
-}
-
-func (t *trackingDecrypter) BulkDecrypt(
-	ctx context.Context, ciphertexts []string,
-) (map[string]string, error) {
-	return DefaultBulkDecrypt(ctx, t, ciphertexts)
-}
-
-func (t *trackingDecrypter) SecureValues() []string {
-	return t.secureValues
-}
-
 // BlindingCrypter returns a Crypter that instead of decrypting or encrypting data, just returns "[secret]", it can
 // be used when you want to display configuration information to a user but don't want to prompt for a password
 // so secrets will not be decrypted or encrypted.

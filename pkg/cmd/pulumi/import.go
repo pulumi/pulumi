@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -169,6 +170,27 @@ func readImportFile(p string) (importFile, error) {
 		return importFile{}, err
 	}
 	return result, nil
+}
+
+func writeImportFile(v importFile) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("working directory: %w", err)
+	}
+	f, err := os.CreateTemp(wd, "pulumi-import-*.json")
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+	path := f.Name()
+	defer contract.IgnoreClose(f)
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "    ")
+	err = enc.Encode(v)
+	if err != nil {
+		return "", errors.Join(err, f.Close(), os.Remove(path))
+	}
+	return path, f.Close()
 }
 
 func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, importer.NameTable, error) {
@@ -545,6 +567,11 @@ func newImportCmd() *cobra.Command {
 				pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
 				installProvider := func(provider tokens.Package) *semver.Version {
+					// If auto plugin installs are disabled just return nil, the mapper will still carry on
+					if env.DisableAutomaticPluginAcquisition.Value() {
+						return nil
+					}
+
 					log := func(sev diag.Severity, msg string) {
 						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 					}
@@ -822,6 +849,19 @@ func newImportCmd() *cobra.Command {
 				if res.Error() == context.Canceled {
 					return result.FromError(errors.New("import cancelled"))
 				}
+
+				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
+				// directory so if there's any issues users can manually edit the file and try again with --file
+				if from != "" {
+					path, err := writeImportFile(importFile)
+					if err != nil {
+						return result.FromError(err)
+					}
+					pCtx.Diag.Infof(diag.Message("",
+						"Generated import file written out, edit and rerun import with --file %s"),
+						path, path)
+				}
+
 				return PrintEngineResult(res)
 			}
 			return nil

@@ -601,6 +601,87 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 	}
 }
 
+func traverseProperty(element resource.PropertyValue, f func(resource.PropertyValue)) {
+	f(element)
+	if element.IsSecret() {
+		traverseSecret(element.SecretValue(), f)
+	} else if element.IsObject() {
+		traverseMap(element.ObjectValue(), f)
+	} else if element.IsArray() {
+		traverseArray(element.ArrayValue(), f)
+	}
+}
+
+func traverseArray(elements []resource.PropertyValue, f func(resource.PropertyValue)) {
+	for _, element := range elements {
+		traverseProperty(element, f)
+	}
+}
+
+func traverseSecret(v *resource.Secret, f func(resource.PropertyValue)) {
+	traverseProperty(v.Element, f)
+}
+
+func traverseMap(m resource.PropertyMap, f func(resource.PropertyValue)) {
+	for _, value := range m {
+		traverseProperty(value, f)
+	}
+}
+
+// restoreElidedAssetContents is used to restore contents of assets inside resource property maps after
+// we have skipped serializing contents of assets in order to avoid sending them over the wire to resource
+// providers. Mainly used in `Read` operations after we receive the live inputs from the resource provider plugin.
+// Those inputs may echo back the input assets and the engine writes them out to the state. We need to make sure that
+// we don't write out empty assets to the state, so we restore the asset contents from the original inputs.
+func restoreElidedAssetContents(original resource.PropertyMap, transformed resource.PropertyMap) {
+	isEmptyAsset := func(v *resource.Asset) bool {
+		return v.Text == "" && v.Path == "" && v.URI == ""
+	}
+
+	isEmptyArchive := func(v *resource.Archive) bool {
+		return v.Path == "" && v.URI == "" && v.Assets == nil
+	}
+
+	originalAssets := map[string]*resource.Asset{}
+	originalArchives := map[string]*resource.Archive{}
+
+	traverseMap(original, func(value resource.PropertyValue) {
+		if value.IsAsset() {
+			originalAsset := value.AssetValue()
+			originalAssets[originalAsset.Hash] = originalAsset
+		}
+
+		if value.IsArchive() {
+			originalArchive := value.ArchiveValue()
+			originalArchives[originalArchive.Hash] = originalArchive
+		}
+	})
+
+	traverseMap(transformed, func(value resource.PropertyValue) {
+		if value.IsAsset() {
+			transformedAsset := value.AssetValue()
+			originalAsset, has := originalAssets[transformedAsset.Hash]
+			if has && isEmptyAsset(transformedAsset) {
+				transformedAsset.Sig = originalAsset.Sig
+				transformedAsset.Text = originalAsset.Text
+				transformedAsset.Path = originalAsset.Path
+				transformedAsset.URI = originalAsset.URI
+			}
+		}
+
+		if value.IsArchive() {
+			transformedArchive := value.ArchiveValue()
+			originalArchive, has := originalArchives[transformedArchive.Hash]
+			if has && isEmptyArchive(transformedArchive) {
+				transformedArchive.Sig = originalArchive.Sig
+				transformedArchive.URI = originalArchive.URI
+				transformedArchive.Path = originalArchive.Path
+				transformedArchive.Assets = originalArchive.Assets
+			}
+		}
+	})
+}
+
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
@@ -1090,6 +1171,10 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		annotateSecrets(newState, state)
 	}
 
+	// make sure any echoed properties restore their original asset contents if they have not changed
+	restoreElidedAssetContents(inputs, newInputs)
+	restoreElidedAssetContents(inputs, newState)
+
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResult{
 		ID:      readID,
@@ -1216,7 +1301,6 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	if !pcfg.acceptSecrets {
 		annotateSecrets(outs, newInputs)
 	}
-
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 	if resourceError == nil {
 		return outs, resourceStatus, nil

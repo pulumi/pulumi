@@ -1,9 +1,5 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2023, Pulumi Corporation.  All rights reserved.
 
-import { Resource } from "./resource";
+import * as pulumi from "@pulumi/pulumi";
 
-// Allocate a new resource. When this exists, we should not allow
-// the stack holding it to be `rm`'d without `--force`.
-let a = new Resource("res", { state: 1 });
-
-export let o = a.state;
+export const result = pulumi.output("hello world")

@@ -468,7 +468,8 @@ func update(ctx *Context, info *deploymentContext, opts *deploymentOptions,
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	return deployment.run(ctx, actions, preview)
+	plan, changes, err := deployment.run(ctx, actions, policies, preview)
+	return plan, changes, result.WrapIfNonNil(err)
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.

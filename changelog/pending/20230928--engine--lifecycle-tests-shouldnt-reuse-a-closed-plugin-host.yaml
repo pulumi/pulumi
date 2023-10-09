@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Lifecycle tests shouldn't reuse a closed plugin host.

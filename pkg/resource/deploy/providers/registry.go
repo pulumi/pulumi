@@ -25,6 +25,7 @@ import (
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -163,8 +164,12 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		return nil, err
 	}
 
-	// Try to install the plugin, we have all the specific information we need to do so here while once we
-	// call into `host.Provider` we no longer have the download URL or checksums.
+	// Try to install the plugin, unless auto plugin installs are turned off, we have all the specific information we
+	// need to do so here while once we call into `host.Provider` we no longer have the download URL or checksums.
+	if env.DisableAutomaticPluginAcquisition.Value() {
+		return nil, err
+	}
+
 	pluginSpec := workspace.PluginSpec{
 		Kind:              workspace.ResourcePlugin,
 		Name:              string(pkg),
