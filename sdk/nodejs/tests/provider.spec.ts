@@ -495,7 +495,7 @@ describe("provider", () => {
             it(`deserializes '${test.name}' correctly`, async () => {
                 pulumi.runtime.setMocks(new TestMocks(), "project", "stack", true);
                 pulumi.runtime.registerResourceModule("test", "index", new TestModule());
-                new TestResource("name"); // Create an instance so it can be deserialized.
+                await new TestResource("name"); // Create an instance so it can be deserialized.
 
                 const inputs = { value: test.input };
                 const inputsStruct = gstruct.Struct.fromJavaScript(inputs);

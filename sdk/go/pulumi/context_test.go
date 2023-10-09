@@ -494,10 +494,10 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 			// alias specs.
 			// So if that's needed, wrap the monitor to claim it
 			// does.
-			if tt.supportsAliasSpecs {
+			if !tt.supportsAliasSpecs {
 				opts = append(opts, WrapResourceMonitorClient(
 					func(rmc pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
-						return resourceMonitorClientWithFeatures(rmc, "aliasSpecs")
+						return resourceMonitorClientWithoutFeatures(rmc, "aliasSpecs")
 					}))
 			}
 
@@ -529,23 +529,23 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 type resmonClientWithFeatures struct {
 	pulumirpc.ResourceMonitorClient
 
-	features map[string]struct{}
+	notFeatures map[string]struct{}
 }
 
-// resourceMonitorClientWithFeatures builds a ResourceMonitorClient
-// that reports the provided feature names as supported
-// in addition to those already supported by the client.
-func resourceMonitorClientWithFeatures(
+// resourceMonitorClientWithOutFeatures builds a ResourceMonitorClient
+// that reports the provided feature names as not supported
+// even if it is supported in the client
+func resourceMonitorClientWithoutFeatures(
 	cl pulumirpc.ResourceMonitorClient,
 	features ...string,
 ) pulumirpc.ResourceMonitorClient {
-	featureSet := make(map[string]struct{}, len(features))
+	notFeatureSet := make(map[string]struct{}, len(features))
 	for _, f := range features {
-		featureSet[f] = struct{}{}
+		notFeatureSet[f] = struct{}{}
 	}
 	return &resmonClientWithFeatures{
 		ResourceMonitorClient: cl,
-		features:              featureSet,
+		notFeatures:           notFeatureSet,
 	}
 }
 
@@ -554,9 +554,9 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 	req *pulumirpc.SupportsFeatureRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
-	if _, ok := c.features[req.GetId()]; ok {
+	if _, ok := c.notFeatures[req.GetId()]; ok {
 		return &pulumirpc.SupportsFeatureResponse{
-			HasSupport: ok,
+			HasSupport: false,
 		}, nil
 	}
 	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
