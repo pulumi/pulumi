@@ -43,7 +43,7 @@ type State struct {
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
-	Aliases                 []URN                 // TODO
+	Aliases                 []URN                 // an optional set of URNs for which this resource is an alias.
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.

@@ -722,46 +722,81 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 	}
 
-	// Send the resource off to any Analyzers before being operated on.
+	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
+	// remediatoins, and *then* we do analysis, since we want analyzers to run on the final resource states.
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
-	for _, analyzer := range analyzers {
-		r := plugin.AnalyzerResource{
-			URN:        new.URN,
-			Type:       new.Type,
-			Name:       new.URN.Name(),
-			Properties: inputs,
-			Options: plugin.AnalyzerResourceOptions{
-				Protect:                 new.Protect,
-				IgnoreChanges:           goal.IgnoreChanges,
-				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.GetAliases(),
-				CustomTimeouts:          new.CustomTimeouts,
-			},
-		}
-		providerResource := sg.getProviderResource(new.URN, new.Provider)
-		if providerResource != nil {
-			r.Provider = &plugin.AnalyzerProviderResource{
-				URN:        providerResource.URN,
-				Type:       providerResource.Type,
-				Name:       providerResource.URN.Name(),
-				Properties: providerResource.Inputs,
+	for _, remediate := range []bool{true, false} {
+		for _, analyzer := range analyzers {
+			r := plugin.AnalyzerResource{
+				URN:        new.URN,
+				Type:       new.Type,
+				Name:       new.URN.Name(),
+				Properties: inputs,
+				Options: plugin.AnalyzerResourceOptions{
+					Protect:                 new.Protect,
+					IgnoreChanges:           goal.IgnoreChanges,
+					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+					AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+					Aliases:                 new.GetAliases(),
+					CustomTimeouts:          new.CustomTimeouts,
+				},
 			}
-		}
-
-		diagnostics, err := analyzer.Analyze(r)
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range diagnostics {
-			if d.EnforcementLevel == apitype.Mandatory {
-				if !sg.deployment.preview {
-					invalid = true
+			providerResource := sg.getProviderResource(new.URN, new.Provider)
+			if providerResource != nil {
+				r.Provider = &plugin.AnalyzerProviderResource{
+					URN:        providerResource.URN,
+					Type:       providerResource.Type,
+					Name:       providerResource.URN.Name(),
+					Properties: providerResource.Inputs,
 				}
-				sg.sawError = true
 			}
-			// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
-			sg.opts.Events.OnPolicyViolation(new.URN, d)
+
+			if remediate {
+				// During the first pass, perform remediations. This ensures subsequent analyzers run
+				// against the transformed properties, ensuring nothing circumvents the analysis checks.
+				tresults, err := analyzer.Remediate(r)
+				if err != nil {
+					return nil, fmt.Errorf("failed to run remediation: %w", err)
+				} else if len(tresults) > 0 {
+					for _, tresult := range tresults {
+						if tresult.Diagnostic != "" {
+							// If there is a diagnostic, we have a warning to display.
+							sg.opts.Events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
+								PolicyName:        tresult.PolicyName,
+								PolicyPackName:    tresult.PolicyPackName,
+								PolicyPackVersion: tresult.PolicyPackVersion,
+								Description:       tresult.Description,
+								Message:           tresult.Diagnostic,
+								EnforcementLevel:  apitype.Advisory,
+								URN:               new.URN,
+							})
+						} else if tresult.Properties != nil {
+							// Emit a nice message so users know what was remediated.
+							sg.opts.Events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
+							// Use the transformed inputs rather than the old ones from this point onwards.
+							inputs = tresult.Properties
+							new.Inputs = tresult.Properties
+						}
+					}
+				}
+			} else {
+				// During the second pass, perform analysis. This happens after remediations so that
+				// analyzers see properties as they were after the transformations have occurred.
+				diagnostics, err := analyzer.Analyze(r)
+				if err != nil {
+					return nil, fmt.Errorf("failed to run policy: %w", err)
+				}
+				for _, d := range diagnostics {
+					if d.EnforcementLevel == apitype.Mandatory {
+						if !sg.deployment.preview {
+							invalid = true
+						}
+						sg.sawError = true
+					}
+					// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
+					sg.opts.Events.OnPolicyViolation(new.URN, d)
+				}
+			}
 		}
 	}
 

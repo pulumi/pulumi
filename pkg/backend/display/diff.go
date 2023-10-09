@@ -21,12 +21,14 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize/english"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -103,7 +105,7 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
 		const wroteDiagnosticHeader = false
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -118,8 +120,10 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
+	case engine.PolicyRemediationEvent:
+		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
-		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), opts)
+		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -134,26 +138,91 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload, opts Options) string {
-	return opts.Color.Colorize(payload.Prefix + payload.Message)
+func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
+	prefix string, detailed bool, opts Options,
+) string {
+	// Diff the before/after state. If there is no diff, we show nothing.
+	diff := payload.Before.Diff(payload.After)
+	if diff == nil {
+		return ""
+	}
+
+	// Print the individual remediation's name and target resource type/name.
+	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
+		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
+
+	// If there is already a prefix string requested, use it, otherwise fall back to a default.
+	if prefix == "" {
+		remediationLine = fmt.Sprintf("    %s%s@v%s %s%s",
+			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, remediationLine)
+	} else {
+		remediationLine = fmt.Sprintf("%s%s", prefix, remediationLine)
+	}
+
+	// Render the event's diff; if a detailed diff is requested, a full object diff is emitted, otherwise
+	// a short diff summary similar to what is show for an update row is emitted.
+	if detailed {
+		var b bytes.Buffer
+		PrintObjectDiff(&b, *diff, nil,
+			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/)
+		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
+	} else {
+		var b bytes.Buffer
+		writeShortDiff(&b, diff, nil)
+		remediationLine = fmt.Sprintf("%s [%s]", remediationLine, b.String())
+	}
+
+	return opts.Color.Colorize(remediationLine + "\n")
+}
+
+func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
+	prefix string, linePrefix string, opts Options,
+) string {
+	// Colorize mandatory and warning violations differently.
+	c := colors.SpecWarning
+	if payload.EnforcementLevel == apitype.Mandatory {
+		c = colors.SpecError
+	}
+
+	// Print the individual policy's name and target resource type/name.
+	policyLine := fmt.Sprintf("%s[%s]  %s%s  (%s: %s)",
+		c, payload.EnforcementLevel, payload.PolicyName, colors.Reset,
+		payload.ResourceURN.Type(), payload.ResourceURN.Name())
+
+	// If there is already a prefix string requested, use it, otherwise fall back to a default.
+	if prefix == "" {
+		policyLine = fmt.Sprintf("    %s%s@v%s %s%s",
+			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, policyLine)
+	} else {
+		policyLine = fmt.Sprintf("%s%s", prefix, policyLine)
+	}
+
+	// If there is a line prefix, separate the heading and lines with a newline.
+	if linePrefix != "" {
+		policyLine += "\n"
+	}
+
+	// The message may span multiple lines, so we massage it so it will be indented properly.
+	message := strings.TrimSuffix(payload.Message, "\n")
+	message = strings.ReplaceAll(message, "\n", fmt.Sprintf("\n%s", linePrefix))
+	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
+	return opts.Color.Colorize(policyLine + "\n")
 }
 
 func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffStyleSummary bool, opts Options) string {
 	changes := event.ResourceChanges
 
-	out := &bytes.Buffer{}
-
-	// If this is a failed preview, we only render the Policy Packs that ran. This is because rendering the summary
-	// for a failed preview may be surprising/misleading, as it does not describe the totality of the proposed changes
-	// (as the preview may have aborted when the error occurred).
+	// If this is a failed preview, do not render anything. It could be surprising/misleading as it doesn't
+	// describe the totality of the proposed changes (for instance, could be missing resources if it errored early).
 	if event.IsPreview && hasError {
-		renderPolicyPacks(out, event.PolicyPacks, opts)
-		return out.String()
+		return ""
 	}
+
+	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
 
@@ -221,8 +290,13 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Op
 		fprintIgnoreError(out, "\n")
 	}
 
-	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
-	renderPolicyPacks(out, event.PolicyPacks, opts)
+	if diffStyleSummary {
+		// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
+		// This is only shown during the diff view, because in the progress view we have a nicer
+		// summarization and grouping of all violations and remediations that have occurred. The
+		// diff view renders events incrementally as we go, so it cannot do this.
+		renderPolicyPacks(out, event.PolicyPacks, opts)
+	}
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {

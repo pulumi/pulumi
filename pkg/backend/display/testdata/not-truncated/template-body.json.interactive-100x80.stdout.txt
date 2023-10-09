@@ -4113,7 +4113,6 @@
  <{%fg 3%}>~ <{%reset%}>     ├─ aws:cloudformation:Stack          cluster-nodes                              <{%fg 3%}>updated<{%reset%}>    [K
  <{%reset%}>  <{%reset%}>     └─ pulumi:providers:kubernetes       cluster-provider                           <{%reset%}><{%reset%}>           [K
 [K
-
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pulumi:pulumi:Stack (aws-ts-eks-dev):<{%reset%}>
     <{%reset%}>Configuration:<{%reset%}>

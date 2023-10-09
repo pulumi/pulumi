@@ -138,7 +138,7 @@ func newRefreshCmd() *cobra.Command {
 				}
 
 				err = validateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
-					nil, "", showConfig, showReplacementSteps, showSames, false,
+					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
 					false, "", stackConfigFile)
 				if err != nil {

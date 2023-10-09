@@ -1096,6 +1096,7 @@ func TestBundledPluginSearch(t *testing.T) {
 	bundledPath := filepath.Join(filepath.Dir(exe), "pulumi-language-nodejs")
 	err = os.WriteFile(bundledPath, []byte{}, 0o700) //nolint: gosec // we intended to write an executable file here
 	require.NoError(t, err)
+	bundledPath, _ = filepath.EvalSymlinks(bundledPath)
 	t.Cleanup(func() {
 		err := os.Remove(bundledPath)
 		require.NoError(t, err)

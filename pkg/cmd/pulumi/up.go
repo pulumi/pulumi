@@ -68,6 +68,7 @@ func newUpCmd() *cobra.Command {
 	var parallel int
 	var refresh string
 	var showConfig bool
+	var showPolicyRemediations bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
@@ -436,18 +437,19 @@ func newUpCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				ShowReads:            showReads,
-				SuppressOutputs:      suppressOutputs,
-				TruncateOutput:       !showFullOutput,
-				IsInteractive:        interactive,
-				Type:                 displayType,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
-				JSONDisplay:          jsonDisplay,
+				Color:                  cmdutil.GetGlobalColorization(),
+				ShowConfig:             showConfig,
+				ShowPolicyRemediations: showPolicyRemediations,
+				ShowReplacementSteps:   showReplacementSteps,
+				ShowSameResources:      showSames,
+				ShowReads:              showReads,
+				SuppressOutputs:        suppressOutputs,
+				TruncateOutput:         !showFullOutput,
+				IsInteractive:          interactive,
+				Type:                   displayType,
+				EventLogPath:           eventLogPath,
+				Debug:                  debug,
+				JSONDisplay:            jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -464,8 +466,8 @@ func newUpCmd() *cobra.Command {
 				}
 
 				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
-					policyPackConfigPaths, refresh, showConfig, showReplacementSteps, showSames, showReads,
-					suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
+					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
+					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
 					targetDependents, planFilePath, stackConfigFile)
 				if err != nil {
 					return result.FromError(err)
@@ -564,6 +566,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
+	cmd.PersistentFlags().BoolVar(
+		&showPolicyRemediations, "show-policy-remediations", false,
+		"Show per-resource policy remediation details instead of a summary")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")

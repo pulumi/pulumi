@@ -56,7 +56,7 @@ func Destroy(
 		return nil, nil, result.FromError(err)
 	}
 
-	return update(ctx, info, deploymentOptions{
+	return update(ctx, info, &deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
 		Events:        emitter,
@@ -67,7 +67,7 @@ func Destroy(
 
 func newDestroySource(
 	ctx context.Context,
-	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
+	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to delete everything in the snapshot.

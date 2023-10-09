@@ -852,8 +852,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	contract.Assertf(urn != "", "Diff requires a URN")
 	contract.Assertf(id != "", "Diff requires an ID")
 	contract.Assertf(oldInputs != nil, "Diff requires old input properties")
-	contract.Assertf(newInputs != nil, "Diff requires old output properties")
-	contract.Assertf(oldOutputs != nil, "Diff requires new properties")
+	contract.Assertf(newInputs != nil, "Diff requires new input properties")
+	contract.Assertf(oldOutputs != nil, "Diff requires old output properties")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",

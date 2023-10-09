@@ -49,7 +49,6 @@
  <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>             [K
  <{%fg 13%}>+-<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%fg 13%}>replaced<{%reset%}>     [diff: <{%fg 3%}>~userD<{%reset%}>[K
 [K
-
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pulumi:pulumi:Stack (aws-ts-webserver-dev):<{%reset%}>
     <{%reset%}>Configuration:<{%reset%}>

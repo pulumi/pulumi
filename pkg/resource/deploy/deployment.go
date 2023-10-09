@@ -185,6 +185,7 @@ type StepExecutorEvents interface {
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
 	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
+	OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
 }
 
 // Events is an interface that can be used to hook interesting engine events.
