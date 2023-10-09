@@ -17,7 +17,6 @@ Mocks for testing.
 """
 import functools
 import logging
-import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
 
@@ -247,7 +246,7 @@ class MockMonitor:
     def SupportsFeature(self, request):
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
-        has_support = os.environ.get('PULUMI_DISABLE_OUTPUT_VALUES') != "true" or request.id != "outputValues"
+        has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
 
