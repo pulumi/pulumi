@@ -1,0 +1,33 @@
+run: |
+  esc env edit test
+  esc env get test
+process:
+  environ:
+    EDITOR: my-editor
+  commands:
+    my-editor: |
+      echo -e "values:\n  foo: baz\n---\n extra YAML doc" >$1
+environments:
+  test-user/test:
+    values:
+      foo: bar
+stdout: |+
+  > esc env edit test
+  Environment updated.
+  > esc env get test
+  # Value
+  ```json
+  {
+    "foo": "baz"
+  }
+  ```
+  # Definition
+  ```yaml
+  values:
+    foo: baz
+
+  ```
+
+stderr: |
+  > esc env edit test
+  > esc env get test
