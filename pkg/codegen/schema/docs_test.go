@@ -123,15 +123,14 @@ func getDocsForPackage(pkg *Package) []doc {
 	return allDocs
 }
 
+//nolint:paralleltest // needs to set plugin acquisition env var
 func TestParseAndRenderDocs(t *testing.T) {
-	t.Parallel()
-
 	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	//nolint:paralleltest // needs to set plugin acquisition env var
 	for _, f := range files {
 		f := f
 		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {
@@ -139,7 +138,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 		}
 
 		t.Run(f.Name(), func(t *testing.T) {
-			t.Parallel()
+			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 			path := filepath.Join(testdataPath, f.Name())
 			contents, err := os.ReadFile(path)
