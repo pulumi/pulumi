@@ -1,0 +1,103 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "\"imports\" is a reserved key",
+            "Detail": "",
+            "Subject": {
+                "Filename": "reserved-keys",
+                "Start": {
+                    "Line": 2,
+                    "Column": 3,
+                    "Byte": 10
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 10,
+                    "Byte": 17
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "\"context\" is a reserved key",
+            "Detail": "",
+            "Subject": {
+                "Filename": "reserved-keys",
+                "Start": {
+                    "Line": 3,
+                    "Column": 3,
+                    "Byte": 25
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 10,
+                    "Byte": 32
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        }
+    ],
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "\"imports\" is a reserved key",
+            "Detail": "",
+            "Subject": {
+                "Filename": "reserved-keys",
+                "Start": {
+                    "Line": 2,
+                    "Column": 3,
+                    "Byte": 10
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 10,
+                    "Byte": 17
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "\"context\" is a reserved key",
+            "Detail": "",
+            "Subject": {
+                "Filename": "reserved-keys",
+                "Start": {
+                    "Line": 3,
+                    "Column": 3,
+                    "Byte": 25
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 10,
+                    "Byte": 32
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        }
+    ],
+    "environment": {
+        "schema": {
+            "type": "object"
+        }
+    }
+}

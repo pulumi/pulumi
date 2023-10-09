@@ -152,6 +152,50 @@ func sortEnvironmentDiagnostics(diags syntax.Diagnostics) {
 	})
 }
 
+func normalizeSlice[T any](ts []T, each func(t T) T) []T {
+	if len(ts) == 0 {
+		return nil
+	}
+	if each != nil {
+		for i, t := range ts {
+			ts[i] = each(t)
+		}
+	}
+	return ts
+}
+
+func normalizeMap[T any](ts map[string]T, each func(t T) T) map[string]T {
+	if len(ts) == 0 {
+		return nil
+	}
+	if each != nil {
+		for k, t := range ts {
+			ts[k] = each(t)
+		}
+	}
+	return ts
+}
+
+func normalizeSchema(s *schema.Schema) *schema.Schema {
+	if s == nil {
+		return s
+	}
+
+	s.Defs = normalizeMap(s.Defs, normalizeSchema)
+	s.AnyOf = normalizeSlice(s.AnyOf, normalizeSchema)
+	s.OneOf = normalizeSlice(s.OneOf, normalizeSchema)
+	s.PrefixItems = normalizeSlice(s.PrefixItems, normalizeSchema)
+	normalizeSchema(s.Items)
+	normalizeSchema(s.AdditionalProperties)
+	s.Properties = normalizeMap(s.Properties, normalizeSchema)
+
+	s.Enum = normalizeSlice(s.Enum, nil)
+	s.Required = normalizeSlice(s.Required, nil)
+	s.DependentRequired = normalizeMap(s.DependentRequired, func(s []string) []string { return normalizeSlice(s, nil) })
+
+	return s
+}
+
 func TestEval(t *testing.T) {
 	type expectedData struct {
 		LoadDiags   syntax.Diagnostics `json:"loadDiags,omitempty"`
@@ -224,6 +268,13 @@ func TestEval(t *testing.T) {
 			dec.UseNumber()
 			err = dec.Decode(&actual)
 			require.NoError(t, err)
+
+			// work around a comparison issue when comparing nil slices/maps against zero-length slices/maps
+			if actual != nil {
+				actual.Exprs = normalizeMap(actual.Exprs, nil)
+				actual.Properties = normalizeMap(actual.Properties, nil)
+				normalizeSchema(actual.Schema)
+			}
 
 			assert.Equal(t, expected.Environment, actual)
 		})

@@ -262,6 +262,15 @@ func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 	}
 }
 
+func (e *evalContext) isReserveTopLevelKey(k string) bool {
+	switch k {
+	case "imports", "context":
+		return true
+	default:
+		return false
+	}
+}
+
 // evaluate drives the evaluation of the evalContext's environment.
 func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	// Evaluate imports. We do this prior to declaration so that we can plumb base values as part of declaration.
@@ -282,8 +291,8 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	for _, entry := range e.env.Values.GetEntries() {
 		key := entry.Key.GetValue()
 
-		if key == "imports" {
-			e.errorf(entry.Key, "imports is a reserved key")
+		if e.isReserveTopLevelKey(key) {
+			e.errorf(entry.Key, "%q is a reserved key", key)
 		} else if _, ok := properties[key]; ok {
 			e.errorf(entry.Key, "duplicate key %q", key)
 		} else {
