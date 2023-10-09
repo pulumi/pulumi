@@ -68,7 +68,7 @@ const (
 
 const windowsOS = "windows"
 
-var ErrTestCanceled = errors.New("test canceled")
+var ErrTestFailed = errors.New("test failed")
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
@@ -796,7 +796,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
-	if !errors.Is(err, ErrTestCanceled) {
+	if !errors.Is(err, ErrTestFailed) {
 		assert.NoError(t, err)
 	}
 }
@@ -1162,7 +1162,7 @@ func (pt *ProgramTester) TestLifeCyclePrepare() error {
 func (pt *ProgramTester) checkTestFailure() error {
 	if !pt.opts.ExpectTestFailure && pt.t.Failed() {
 		pt.t.Logf("Canceling further steps due to test failure")
-		return ErrTestCanceled
+		return ErrTestFailed
 	}
 	return nil
 }
