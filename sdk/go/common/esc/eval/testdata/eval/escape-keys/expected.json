@@ -1,0 +1,210 @@
+{
+    "environment": {
+        "exprs": {
+            "object": {
+                "range": {
+                    "environment": "escape-keys",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 22
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 22,
+                        "byte": 83
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "\"quoted\"": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "0leadingDigit": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "with-hyphen": {
+                            "type": "string",
+                            "const": "foo"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "\"quoted\"",
+                        "0leadingDigit",
+                        "with-hyphen"
+                    ]
+                },
+                "object": {
+                    "\"quoted\"": {
+                        "range": {
+                            "environment": "escape-keys",
+                            "begin": {
+                                "line": 5,
+                                "column": 19,
+                                "byte": 80
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 22,
+                                "byte": 83
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "literal": "baz"
+                    },
+                    "0leadingDigit": {
+                        "range": {
+                            "environment": "escape-keys",
+                            "begin": {
+                                "line": 4,
+                                "column": 20,
+                                "byte": 58
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 23,
+                                "byte": 61
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    },
+                    "with-hyphen": {
+                        "range": {
+                            "environment": "escape-keys",
+                            "begin": {
+                                "line": 3,
+                                "column": 18,
+                                "byte": 35
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 21,
+                                "byte": 38
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        "literal": "foo"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "object": {
+                "value": {
+                    "\"quoted\"": {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "escape-keys",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 19,
+                                    "byte": 80
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 22,
+                                    "byte": 83
+                                }
+                            }
+                        }
+                    },
+                    "0leadingDigit": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "escape-keys",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 20,
+                                    "byte": 58
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 23,
+                                    "byte": 61
+                                }
+                            }
+                        }
+                    },
+                    "with-hyphen": {
+                        "value": "foo",
+                        "trace": {
+                            "def": {
+                                "environment": "escape-keys",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 18,
+                                    "byte": 35
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 21,
+                                    "byte": 38
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "escape-keys",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 22,
+                            "byte": 83
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "object": {
+                    "properties": {
+                        "\"quoted\"": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "0leadingDigit": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "with-hyphen": {
+                            "type": "string",
+                            "const": "foo"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "\"quoted\"",
+                        "0leadingDigit",
+                        "with-hyphen"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "object"
+            ]
+        }
+    }
+}

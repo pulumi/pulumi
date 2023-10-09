@@ -1,0 +1,4200 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "receiver must be an array or an object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 29,
+                    "Column": 7,
+                    "Byte": 517
+                },
+                "End": {
+                    "Line": 29,
+                    "Column": 20,
+                    "Byte": 530
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 30,
+                    "Column": 7,
+                    "Byte": 537
+                },
+                "End": {
+                    "Line": 30,
+                    "Column": 19,
+                    "Byte": 549
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 31,
+                    "Column": 7,
+                    "Byte": 556
+                },
+                "End": {
+                    "Line": 31,
+                    "Column": 22,
+                    "Byte": 571
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "array index 3 out-of-bounds for array of length 3",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 32,
+                    "Column": 7,
+                    "Byte": 578
+                },
+                "End": {
+                    "Line": 32,
+                    "Column": 18,
+                    "Byte": 589
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "array indices must not be negative",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 33,
+                    "Column": 7,
+                    "Byte": 596
+                },
+                "End": {
+                    "Line": 33,
+                    "Column": 19,
+                    "Byte": 608
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 34,
+                    "Column": 7,
+                    "Byte": 615
+                },
+                "End": {
+                    "Line": 34,
+                    "Column": 19,
+                    "Byte": 627
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"bar\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 35,
+                    "Column": 7,
+                    "Byte": 634
+                },
+                "End": {
+                    "Line": 35,
+                    "Column": 20,
+                    "Byte": 647
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"bar\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 36,
+                    "Column": 7,
+                    "Byte": 654
+                },
+                "End": {
+                    "Line": 36,
+                    "Column": 22,
+                    "Byte": 669
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 37,
+                    "Column": 7,
+                    "Byte": 676
+                },
+                "End": {
+                    "Line": 37,
+                    "Column": 24,
+                    "Byte": 693
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "receiver must be an array or an object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 38,
+                    "Column": 7,
+                    "Byte": 700
+                },
+                "End": {
+                    "Line": 38,
+                    "Column": 25,
+                    "Byte": 718
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 39,
+                    "Column": 7,
+                    "Byte": 725
+                },
+                "End": {
+                    "Line": 39,
+                    "Column": 24,
+                    "Byte": 742
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 40,
+                    "Column": 7,
+                    "Byte": 749
+                },
+                "End": {
+                    "Line": 40,
+                    "Column": 27,
+                    "Byte": 769
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 41,
+                    "Column": 7,
+                    "Byte": 776
+                },
+                "End": {
+                    "Line": 41,
+                    "Column": 24,
+                    "Byte": 793
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        }
+    ],
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "receiver must be an array or an object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 29,
+                    "Column": 7,
+                    "Byte": 517
+                },
+                "End": {
+                    "Line": 29,
+                    "Column": 20,
+                    "Byte": 530
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 30,
+                    "Column": 7,
+                    "Byte": 537
+                },
+                "End": {
+                    "Line": 30,
+                    "Column": 19,
+                    "Byte": 549
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 31,
+                    "Column": 7,
+                    "Byte": 556
+                },
+                "End": {
+                    "Line": 31,
+                    "Column": 22,
+                    "Byte": 571
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "array index 3 out-of-bounds for array of length 3",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 32,
+                    "Column": 7,
+                    "Byte": 578
+                },
+                "End": {
+                    "Line": 32,
+                    "Column": 18,
+                    "Byte": 589
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "array indices must not be negative",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 33,
+                    "Column": 7,
+                    "Byte": 596
+                },
+                "End": {
+                    "Line": 33,
+                    "Column": 19,
+                    "Byte": 608
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 34,
+                    "Column": 7,
+                    "Byte": 615
+                },
+                "End": {
+                    "Line": 34,
+                    "Column": 19,
+                    "Byte": 627
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"bar\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 35,
+                    "Column": 7,
+                    "Byte": 634
+                },
+                "End": {
+                    "Line": 35,
+                    "Column": 20,
+                    "Byte": 647
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"bar\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 36,
+                    "Column": 7,
+                    "Byte": 654
+                },
+                "End": {
+                    "Line": 36,
+                    "Column": 22,
+                    "Byte": 669
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 37,
+                    "Column": 7,
+                    "Byte": 676
+                },
+                "End": {
+                    "Line": 37,
+                    "Column": 24,
+                    "Byte": 693
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "receiver must be an array or an object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 38,
+                    "Column": 7,
+                    "Byte": 700
+                },
+                "End": {
+                    "Line": 38,
+                    "Column": 25,
+                    "Byte": 718
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 39,
+                    "Column": 7,
+                    "Byte": 725
+                },
+                "End": {
+                    "Line": 39,
+                    "Column": 24,
+                    "Byte": 742
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an array element using a property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 40,
+                    "Column": 7,
+                    "Byte": 749
+                },
+                "End": {
+                    "Line": 40,
+                    "Column": 27,
+                    "Byte": 769
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access",
+                "Start": {
+                    "Line": 41,
+                    "Column": 7,
+                    "Byte": 776
+                },
+                "End": {
+                    "Line": 41,
+                    "Column": 24,
+                    "Byte": 793
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        }
+    ],
+    "environment": {
+        "exprs": {
+            "array": {
+                "range": {
+                    "environment": "invalid-access",
+                    "begin": {
+                        "line": 6,
+                        "column": 10,
+                        "byte": 52
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 18,
+                        "byte": 60
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "number",
+                            "const": 1
+                        },
+                        {
+                            "type": "number",
+                            "const": 2
+                        },
+                        {
+                            "type": "number",
+                            "const": 3
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 6,
+                                "column": 11,
+                                "byte": 53
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 12,
+                                "byte": 54
+                            }
+                        },
+                        "schema": {
+                            "type": "number",
+                            "const": 1
+                        },
+                        "literal": 1
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 6,
+                                "column": 14,
+                                "byte": 56
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 15,
+                                "byte": 57
+                            }
+                        },
+                        "schema": {
+                            "type": "number",
+                            "const": 2
+                        },
+                        "literal": 2
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 6,
+                                "column": 17,
+                                "byte": 59
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 18,
+                                "byte": 60
+                            }
+                        },
+                        "schema": {
+                            "type": "number",
+                            "const": 3
+                        },
+                        "literal": 3
+                    }
+                ]
+            },
+            "errors": {
+                "range": {
+                    "environment": "invalid-access",
+                    "begin": {
+                        "line": 29,
+                        "column": 5,
+                        "byte": 515
+                    },
+                    "end": {
+                        "line": 41,
+                        "column": 24,
+                        "byte": 793
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 29,
+                                "column": 7,
+                                "byte": 517
+                            },
+                            "end": {
+                                "line": 29,
+                                "column": 20,
+                                "byte": 530
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "string",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 39
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 14,
+                                        "byte": 42
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 29,
+                                        "column": 7,
+                                        "byte": 517
+                                    },
+                                    "end": {
+                                        "line": 29,
+                                        "column": 20,
+                                        "byte": 530
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 30,
+                                "column": 7,
+                                "byte": 537
+                            },
+                            "end": {
+                                "line": 30,
+                                "column": 19,
+                                "byte": 549
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 10,
+                                        "byte": 52
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 18,
+                                        "byte": 60
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 30,
+                                        "column": 7,
+                                        "byte": 537
+                                    },
+                                    "end": {
+                                        "line": 30,
+                                        "column": 19,
+                                        "byte": 549
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 31,
+                                "column": 7,
+                                "byte": 556
+                            },
+                            "end": {
+                                "line": 31,
+                                "column": 22,
+                                "byte": 571
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 10,
+                                        "byte": 52
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 18,
+                                        "byte": 60
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 31,
+                                        "column": 7,
+                                        "byte": 556
+                                    },
+                                    "end": {
+                                        "line": 31,
+                                        "column": 22,
+                                        "byte": 571
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 32,
+                                "column": 7,
+                                "byte": 578
+                            },
+                            "end": {
+                                "line": 32,
+                                "column": 18,
+                                "byte": 589
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 10,
+                                        "byte": 52
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 18,
+                                        "byte": 60
+                                    }
+                                }
+                            },
+                            {
+                                "index": 3,
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 32,
+                                        "column": 7,
+                                        "byte": 578
+                                    },
+                                    "end": {
+                                        "line": 32,
+                                        "column": 18,
+                                        "byte": 589
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 33,
+                                "column": 7,
+                                "byte": 596
+                            },
+                            "end": {
+                                "line": 33,
+                                "column": 19,
+                                "byte": 608
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 10,
+                                        "byte": 52
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 18,
+                                        "byte": 60
+                                    }
+                                }
+                            },
+                            {
+                                "index": -1,
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 33,
+                                        "column": 7,
+                                        "byte": 596
+                                    },
+                                    "end": {
+                                        "line": 33,
+                                        "column": 19,
+                                        "byte": 608
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 34,
+                                "column": 7,
+                                "byte": 615
+                            },
+                            "end": {
+                                "line": 34,
+                                "column": 19,
+                                "byte": 627
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "object",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 5,
+                                        "byte": 76
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 17,
+                                        "byte": 88
+                                    }
+                                }
+                            },
+                            {
+                                "index": 1,
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 34,
+                                        "column": 7,
+                                        "byte": 615
+                                    },
+                                    "end": {
+                                        "line": 34,
+                                        "column": 19,
+                                        "byte": 627
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 35,
+                                "column": 7,
+                                "byte": 634
+                            },
+                            "end": {
+                                "line": 35,
+                                "column": 20,
+                                "byte": 647
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "object",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 5,
+                                        "byte": 76
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 17,
+                                        "byte": 88
+                                    }
+                                }
+                            },
+                            {
+                                "key": "bar",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 35,
+                                        "column": 7,
+                                        "byte": 634
+                                    },
+                                    "end": {
+                                        "line": 35,
+                                        "column": 20,
+                                        "byte": 647
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 36,
+                                "column": 7,
+                                "byte": 654
+                            },
+                            "end": {
+                                "line": 36,
+                                "column": 22,
+                                "byte": 669
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "myObject",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 5,
+                                        "byte": 105
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 13,
+                                        "byte": 113
+                                    }
+                                }
+                            },
+                            {
+                                "key": "bar",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 36,
+                                        "column": 7,
+                                        "byte": 654
+                                    },
+                                    "end": {
+                                        "line": 36,
+                                        "column": 22,
+                                        "byte": 669
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 37,
+                                "column": 7,
+                                "byte": 676
+                            },
+                            "end": {
+                                "line": 37,
+                                "column": 24,
+                                "byte": 693
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "otherObject",
+                                "value": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 50
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 58
+                                    }
+                                }
+                            },
+                            {
+                                "index": 0,
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 37,
+                                        "column": 7,
+                                        "byte": 676
+                                    },
+                                    "end": {
+                                        "line": 37,
+                                        "column": 24,
+                                        "byte": 693
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 38,
+                                "column": 7,
+                                "byte": 700
+                            },
+                            "end": {
+                                "line": 38,
+                                "column": 25,
+                                "byte": 718
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "key": "string",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 38,
+                                        "column": 7,
+                                        "byte": 700
+                                    },
+                                    "end": {
+                                        "line": 38,
+                                        "column": 25,
+                                        "byte": 718
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 39,
+                                "column": 7,
+                                "byte": 725
+                            },
+                            "end": {
+                                "line": 39,
+                                "column": 24,
+                                "byte": 742
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 39,
+                                        "column": 7,
+                                        "byte": 725
+                                    },
+                                    "end": {
+                                        "line": 39,
+                                        "column": 24,
+                                        "byte": 742
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 40,
+                                "column": 7,
+                                "byte": 749
+                            },
+                            "end": {
+                                "line": 40,
+                                "column": 27,
+                                "byte": 769
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "key": "array",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 40,
+                                        "column": 7,
+                                        "byte": 749
+                                    },
+                                    "end": {
+                                        "line": 40,
+                                        "column": 27,
+                                        "byte": 769
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 41,
+                                "column": 7,
+                                "byte": 776
+                            },
+                            "end": {
+                                "line": 41,
+                                "column": 24,
+                                "byte": 793
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "key": "record",
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 5,
+                                        "byte": 126
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                }
+                            },
+                            {
+                                "index": 1,
+                                "value": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 7,
+                                        "byte": 776
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 24,
+                                        "byte": 793
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "myObject": {
+                "range": {
+                    "environment": "invalid-access",
+                    "begin": {
+                        "line": 10,
+                        "column": 5,
+                        "byte": 105
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 13,
+                        "byte": 113
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 10,
+                                "column": 10,
+                                "byte": 110
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 13,
+                                "byte": 113
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    }
+                }
+            },
+            "object": {
+                "range": {
+                    "environment": "invalid-access",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 76
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 17,
+                        "byte": 88
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "hello"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 13,
+                            "byte": 30
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "baz": {
+                                "type": "string",
+                                "const": "qux"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "baz"
+                        ]
+                    },
+                    "object": {
+                        "baz": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 10,
+                                    "byte": 27
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 30
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "qux"
+                            },
+                            "literal": "qux"
+                        }
+                    }
+                },
+                "object": {
+                    "hello": {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 8,
+                                "column": 12,
+                                "byte": 83
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 17,
+                                "byte": 88
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    }
+                }
+            },
+            "open": {
+                "range": {
+                    "environment": "invalid-access",
+                    "begin": {
+                        "line": 12,
+                        "column": 5,
+                        "byte": 126
+                    },
+                    "end": {
+                        "line": 27,
+                        "column": 22,
+                        "byte": 498
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "anyOf": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "array": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "items"
+                                },
+                                {
+                                    "properties": {
+                                        "some": {
+                                            "type": "string",
+                                            "const": "object"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "some"
+                                    ]
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "boolean": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "false": {
+                            "type": "boolean",
+                            "const": false
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "map": {
+                            "properties": {
+                                "blue": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "blue",
+                                "hello"
+                            ]
+                        },
+                        "null": {
+                            "type": "null"
+                        },
+                        "number": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "oneOf": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "pi": {
+                            "type": "number",
+                            "const": 3.14
+                        },
+                        "record": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "ref": {
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "const": "esc"
+                        },
+                        "true": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "tuple": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "anyOf",
+                        "array",
+                        "boolean",
+                        "false",
+                        "hello",
+                        "map",
+                        "null",
+                        "number",
+                        "oneOf",
+                        "pi",
+                        "record",
+                        "ref",
+                        "string",
+                        "true",
+                        "tuple"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::open::schema",
+                    "argSchema": {
+                        "$defs": {
+                            "defRecord": {
+                                "properties": {
+                                    "baz": {
+                                        "type": "string",
+                                        "const": "qux"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "baz"
+                                ]
+                            }
+                        },
+                        "properties": {
+                            "always": true,
+                            "anyOf": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "type": ""
+                            },
+                            "array": {
+                                "items": true,
+                                "type": "array"
+                            },
+                            "boolean": {
+                                "type": "boolean"
+                            },
+                            "const-array": {
+                                "type": "array",
+                                "const": [
+                                    "hello",
+                                    42
+                                ]
+                            },
+                            "const-object": {
+                                "type": "object",
+                                "const": {
+                                    "hello": "world"
+                                }
+                            },
+                            "dependentReq": {
+                                "properties": {
+                                    "bar": {
+                                        "type": "number"
+                                    },
+                                    "foo": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "dependentRequired": {
+                                    "foo": [
+                                        "bar"
+                                    ]
+                                }
+                            },
+                            "double": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "enum": {
+                                "type": "string",
+                                "enum": [
+                                    "foo",
+                                    "bar"
+                                ]
+                            },
+                            "exclusiveMaximum": {
+                                "type": "number",
+                                "exclusiveMaximum": 1
+                            },
+                            "exclusiveMinimum": {
+                                "type": "number",
+                                "exclusiveMinimum": 1
+                            },
+                            "false": {
+                                "type": "boolean",
+                                "const": false
+                            },
+                            "hello": {
+                                "type": "string",
+                                "const": "hello"
+                            },
+                            "map": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "maxItems": {
+                                "type": "array",
+                                "maxItems": 2
+                            },
+                            "maxLength": {
+                                "type": "string",
+                                "maxLength": 1
+                            },
+                            "maxProperties": {
+                                "type": "object",
+                                "maxProperties": 1
+                            },
+                            "maximum": {
+                                "type": "number",
+                                "maximum": 1
+                            },
+                            "minItems": {
+                                "type": "array",
+                                "minItems": 3
+                            },
+                            "minLength": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "minProperties": {
+                                "type": "object",
+                                "minProperties": 1
+                            },
+                            "minimum": {
+                                "type": "number",
+                                "minimum": 1
+                            },
+                            "multiple": {
+                                "type": "number",
+                                "multipleOf": 2
+                            },
+                            "never": false,
+                            "null": {
+                                "type": "null"
+                            },
+                            "number": {
+                                "type": "number"
+                            },
+                            "oneOf": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "type": ""
+                            },
+                            "pattern": {
+                                "type": "string",
+                                "pattern": "^foo[0-9]+$"
+                            },
+                            "pi": {
+                                "type": "number",
+                                "const": 3.14
+                            },
+                            "record": {
+                                "properties": {
+                                    "foo": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "foo"
+                                ]
+                            },
+                            "ref": {
+                                "$ref": "#/$defs/defRecord",
+                                "type": ""
+                            },
+                            "string": {
+                                "type": "string"
+                            },
+                            "triple": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "number"
+                                    },
+                                    {
+                                        "type": "boolean"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "true": {
+                                "type": "boolean",
+                                "const": true
+                            },
+                            "tuple": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string",
+                                        "const": "hello"
+                                    },
+                                    {
+                                        "type": "string",
+                                        "const": "world"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "invalid-access",
+                            "begin": {
+                                "line": 13,
+                                "column": 7,
+                                "byte": 150
+                            },
+                            "end": {
+                                "line": 27,
+                                "column": 22,
+                                "byte": 498
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "anyOf": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "array": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "items"
+                                        },
+                                        {
+                                            "properties": {
+                                                "some": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "some"
+                                            ]
+                                        },
+                                        {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "array"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "boolean": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "false": {
+                                    "type": "boolean",
+                                    "const": false
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "map": {
+                                    "properties": {
+                                        "blue": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "hello": {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "blue",
+                                        "hello"
+                                    ]
+                                },
+                                "null": {
+                                    "type": "null"
+                                },
+                                "number": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "oneOf": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "pi": {
+                                    "type": "number",
+                                    "const": 3.14
+                                },
+                                "record": {
+                                    "properties": {
+                                        "foo": {
+                                            "type": "string",
+                                            "const": "bar"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "foo"
+                                    ]
+                                },
+                                "ref": {
+                                    "properties": {
+                                        "baz": {
+                                            "type": "string",
+                                            "const": "qux"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "baz"
+                                    ]
+                                },
+                                "string": {
+                                    "type": "string",
+                                    "const": "esc"
+                                },
+                                "true": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "tuple": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "anyOf",
+                                "array",
+                                "boolean",
+                                "false",
+                                "hello",
+                                "map",
+                                "null",
+                                "number",
+                                "oneOf",
+                                "pi",
+                                "record",
+                                "ref",
+                                "string",
+                                "true",
+                                "tuple"
+                            ]
+                        },
+                        "object": {
+                            "anyOf": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 25,
+                                        "column": 14,
+                                        "byte": 455
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 19,
+                                        "byte": 460
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "literal": "hello"
+                            },
+                            "array": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 21,
+                                        "column": 14,
+                                        "byte": 305
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 51,
+                                        "byte": 342
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "items"
+                                        },
+                                        {
+                                            "properties": {
+                                                "some": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "some"
+                                            ]
+                                        },
+                                        {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "array"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 21,
+                                                "column": 16,
+                                                "byte": 307
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 17,
+                                                "byte": 308
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 2
+                                        },
+                                        "literal": 2
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 21,
+                                                "column": 19,
+                                                "byte": 310
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 24,
+                                                "byte": 315
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "items"
+                                        },
+                                        "literal": "items"
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 21,
+                                                "column": 26,
+                                                "byte": 317
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 40,
+                                                "byte": 331
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "some": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "some"
+                                            ]
+                                        },
+                                        "object": {
+                                            "some": {
+                                                "range": {
+                                                    "environment": "invalid-access",
+                                                    "begin": {
+                                                        "line": 21,
+                                                        "column": 34,
+                                                        "byte": 325
+                                                    },
+                                                    "end": {
+                                                        "line": 21,
+                                                        "column": 40,
+                                                        "byte": 331
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "object"
+                                                },
+                                                "literal": "object"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 21,
+                                                "column": 44,
+                                                "byte": 335
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 51,
+                                                "byte": 342
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "array"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "invalid-access",
+                                                    "begin": {
+                                                        "line": 21,
+                                                        "column": 46,
+                                                        "byte": 337
+                                                    },
+                                                    "end": {
+                                                        "line": 21,
+                                                        "column": 51,
+                                                        "byte": 342
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "array"
+                                                },
+                                                "literal": "array"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            "boolean": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 16,
+                                        "byte": 178
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 182
+                                    }
+                                },
+                                "schema": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "literal": true
+                            },
+                            "false": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 16,
+                                        "byte": 198
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 21,
+                                        "byte": 203
+                                    }
+                                },
+                                "schema": {
+                                    "type": "boolean",
+                                    "const": false
+                                },
+                                "literal": false
+                            },
+                            "hello": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 14,
+                                        "byte": 286
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 19,
+                                        "byte": 291
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "literal": "hello"
+                            },
+                            "map": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 12,
+                                        "byte": 388
+                                    },
+                                    "end": {
+                                        "line": 23,
+                                        "column": 36,
+                                        "byte": 412
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "blue": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "hello": {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "blue",
+                                        "hello"
+                                    ]
+                                },
+                                "object": {
+                                    "blue": {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 23,
+                                                "column": 34,
+                                                "byte": 410
+                                            },
+                                            "end": {
+                                                "line": 23,
+                                                "column": 36,
+                                                "byte": 412
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "number",
+                                            "const": 42
+                                        },
+                                        "literal": 42
+                                    },
+                                    "hello": {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 23,
+                                                "column": 21,
+                                                "byte": 397
+                                            },
+                                            "end": {
+                                                "line": 23,
+                                                "column": 26,
+                                                "byte": 402
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "world"
+                                        },
+                                        "literal": "world"
+                                    }
+                                }
+                            },
+                            "null": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 15,
+                                        "byte": 158
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 19,
+                                        "byte": 162
+                                    }
+                                },
+                                "schema": {
+                                    "type": "null"
+                                }
+                            },
+                            "number": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 15,
+                                        "byte": 237
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 17,
+                                        "byte": 239
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "literal": 42
+                            },
+                            "oneOf": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 26,
+                                        "column": 14,
+                                        "byte": 474
+                                    },
+                                    "end": {
+                                        "line": 26,
+                                        "column": 16,
+                                        "byte": 476
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "literal": 42
+                            },
+                            "pi": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 11,
+                                        "byte": 250
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 15,
+                                        "byte": 254
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 3.14
+                                },
+                                "literal": 3.14
+                            },
+                            "record": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 24,
+                                        "column": 15,
+                                        "byte": 429
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 25,
+                                        "byte": 439
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "foo": {
+                                            "type": "string",
+                                            "const": "bar"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "foo"
+                                    ]
+                                },
+                                "object": {
+                                    "foo": {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 24,
+                                                "column": 22,
+                                                "byte": 436
+                                            },
+                                            "end": {
+                                                "line": 24,
+                                                "column": 25,
+                                                "byte": 439
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "bar"
+                                        },
+                                        "literal": "bar"
+                                    }
+                                }
+                            },
+                            "ref": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 27,
+                                        "column": 12,
+                                        "byte": 488
+                                    },
+                                    "end": {
+                                        "line": 27,
+                                        "column": 22,
+                                        "byte": 498
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "baz": {
+                                            "type": "string",
+                                            "const": "qux"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "baz"
+                                    ]
+                                },
+                                "object": {
+                                    "baz": {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 27,
+                                                "column": 19,
+                                                "byte": 495
+                                            },
+                                            "end": {
+                                                "line": 27,
+                                                "column": 22,
+                                                "byte": 498
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "qux"
+                                        },
+                                        "literal": "qux"
+                                    }
+                                }
+                            },
+                            "string": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 15,
+                                        "byte": 269
+                                    },
+                                    "end": {
+                                        "line": 19,
+                                        "column": 18,
+                                        "byte": 272
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "esc"
+                                },
+                                "literal": "esc"
+                            },
+                            "true": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 15,
+                                        "byte": 218
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 19,
+                                        "byte": 222
+                                    }
+                                },
+                                "schema": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "literal": true
+                            },
+                            "tuple": {
+                                "range": {
+                                    "environment": "invalid-access",
+                                    "begin": {
+                                        "line": 22,
+                                        "column": 14,
+                                        "byte": 360
+                                    },
+                                    "end": {
+                                        "line": 22,
+                                        "column": 28,
+                                        "byte": 374
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "world"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 22,
+                                                "column": 16,
+                                                "byte": 362
+                                            },
+                                            "end": {
+                                                "line": 22,
+                                                "column": 21,
+                                                "byte": 367
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "invalid-access",
+                                            "begin": {
+                                                "line": 22,
+                                                "column": 23,
+                                                "byte": 369
+                                            },
+                                            "end": {
+                                                "line": 22,
+                                                "column": 28,
+                                                "byte": 374
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "world"
+                                        },
+                                        "literal": "world"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "string": {
+                "range": {
+                    "environment": "invalid-access",
+                    "begin": {
+                        "line": 5,
+                        "column": 11,
+                        "byte": 39
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 14,
+                        "byte": 42
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "esc"
+                },
+                "literal": "esc"
+            }
+        },
+        "properties": {
+            "array": {
+                "value": [
+                    {
+                        "value": 1,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 11,
+                                    "byte": 53
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 12,
+                                    "byte": 54
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": 2,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 14,
+                                    "byte": 56
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 15,
+                                    "byte": 57
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": 3,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 59
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 18,
+                                    "byte": 60
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access",
+                        "begin": {
+                            "line": 6,
+                            "column": 10,
+                            "byte": 52
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 18,
+                            "byte": 60
+                        }
+                    }
+                }
+            },
+            "errors": {
+                "value": [
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 7,
+                                    "byte": 517
+                                },
+                                "end": {
+                                    "line": 29,
+                                    "column": 20,
+                                    "byte": 530
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 30,
+                                    "column": 7,
+                                    "byte": 537
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 19,
+                                    "byte": 549
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 31,
+                                    "column": 7,
+                                    "byte": 556
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 22,
+                                    "byte": 571
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 32,
+                                    "column": 7,
+                                    "byte": 578
+                                },
+                                "end": {
+                                    "line": 32,
+                                    "column": 18,
+                                    "byte": 589
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 33,
+                                    "column": 7,
+                                    "byte": 596
+                                },
+                                "end": {
+                                    "line": 33,
+                                    "column": 19,
+                                    "byte": 608
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 34,
+                                    "column": 7,
+                                    "byte": 615
+                                },
+                                "end": {
+                                    "line": 34,
+                                    "column": 19,
+                                    "byte": 627
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 35,
+                                    "column": 7,
+                                    "byte": 634
+                                },
+                                "end": {
+                                    "line": 35,
+                                    "column": 20,
+                                    "byte": 647
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 36,
+                                    "column": 7,
+                                    "byte": 654
+                                },
+                                "end": {
+                                    "line": 36,
+                                    "column": 22,
+                                    "byte": 669
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 37,
+                                    "column": 7,
+                                    "byte": 676
+                                },
+                                "end": {
+                                    "line": 37,
+                                    "column": 24,
+                                    "byte": 693
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 38,
+                                    "column": 7,
+                                    "byte": 700
+                                },
+                                "end": {
+                                    "line": 38,
+                                    "column": 25,
+                                    "byte": 718
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 39,
+                                    "column": 7,
+                                    "byte": 725
+                                },
+                                "end": {
+                                    "line": 39,
+                                    "column": 24,
+                                    "byte": 742
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 7,
+                                    "byte": 749
+                                },
+                                "end": {
+                                    "line": 40,
+                                    "column": 27,
+                                    "byte": 769
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 41,
+                                    "column": 7,
+                                    "byte": 776
+                                },
+                                "end": {
+                                    "line": 41,
+                                    "column": 24,
+                                    "byte": 793
+                                }
+                            }
+                        }
+                    }
+                ],
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access",
+                        "begin": {
+                            "line": 29,
+                            "column": 5,
+                            "byte": 515
+                        },
+                        "end": {
+                            "line": 41,
+                            "column": 24,
+                            "byte": 793
+                        }
+                    }
+                }
+            },
+            "myObject": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 10,
+                                    "byte": 110
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 13,
+                                    "byte": 113
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 105
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 13,
+                            "byte": 113
+                        }
+                    }
+                }
+            },
+            "object": {
+                "value": {
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 10,
+                                    "byte": 27
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 30
+                                }
+                            },
+                            "base": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 10,
+                                            "byte": 27
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 30
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 12,
+                                    "byte": 83
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 17,
+                                    "byte": 88
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 76
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 17,
+                            "byte": 88
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 10,
+                                            "byte": 27
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 30
+                                        }
+                                    },
+                                    "base": {
+                                        "value": "qux",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 10,
+                                                    "byte": 27
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 13,
+                                                    "byte": 30
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 22
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 30
+                                }
+                            },
+                            "base": {
+                                "value": {
+                                    "baz": {
+                                        "value": "qux",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 10,
+                                                    "byte": 27
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 13,
+                                                    "byte": 30
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 22
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 30
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "open": {
+                "value": {
+                    "anyOf": {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "array": {
+                        "value": [
+                            {
+                                "value": 2,
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": "items",
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": {
+                                    "some": {
+                                        "value": "object",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "invalid-access",
+                                                "begin": {
+                                                    "line": 12,
+                                                    "column": 5,
+                                                    "byte": 126
+                                                },
+                                                "end": {
+                                                    "line": 27,
+                                                    "column": 22,
+                                                    "byte": 498
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": [
+                                    {
+                                        "value": "array",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "invalid-access",
+                                                "begin": {
+                                                    "line": 12,
+                                                    "column": 5,
+                                                    "byte": 126
+                                                },
+                                                "end": {
+                                                    "line": 27,
+                                                    "column": 22,
+                                                    "byte": 498
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "boolean": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "false": {
+                        "value": false,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "map": {
+                        "value": {
+                            "blue": {
+                                "value": 42,
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            },
+                            "hello": {
+                                "value": "world",
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "null": {
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "number": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "oneOf": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "pi": {
+                        "value": 3.14,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "record": {
+                        "value": {
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "ref": {
+                        "value": {
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "string": {
+                        "value": "esc",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "true": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    },
+                    "tuple": {
+                        "value": [
+                            {
+                                "value": "hello",
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": "world",
+                                "trace": {
+                                    "def": {
+                                        "environment": "invalid-access",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 5,
+                                            "byte": 126
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 22,
+                                            "byte": 498
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 126
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 22,
+                                    "byte": 498
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access",
+                        "begin": {
+                            "line": 12,
+                            "column": 5,
+                            "byte": 126
+                        },
+                        "end": {
+                            "line": 27,
+                            "column": 22,
+                            "byte": 498
+                        }
+                    }
+                }
+            },
+            "otherObject": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 55
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 58
+                                }
+                            },
+                            "base": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 10,
+                                            "byte": 55
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 13,
+                                            "byte": 58
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 50
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 58
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 10,
+                                            "byte": 55
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 13,
+                                            "byte": 58
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 5,
+                                    "byte": 50
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 58
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "string": {
+                "value": "esc",
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access",
+                        "begin": {
+                            "line": 5,
+                            "column": 11,
+                            "byte": 39
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 14,
+                            "byte": 42
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "array": {
+                    "prefixItems": [
+                        {
+                            "type": "number",
+                            "const": 1
+                        },
+                        {
+                            "type": "number",
+                            "const": 2
+                        },
+                        {
+                            "type": "number",
+                            "const": 3
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "errors": {
+                    "prefixItems": [
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "myObject": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "object": {
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "hello"
+                    ]
+                },
+                "open": {
+                    "properties": {
+                        "anyOf": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "array": {
+                            "prefixItems": [
+                                {
+                                    "type": "number",
+                                    "const": 2
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "items"
+                                },
+                                {
+                                    "properties": {
+                                        "some": {
+                                            "type": "string",
+                                            "const": "object"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "some"
+                                    ]
+                                },
+                                {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "array"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "boolean": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "false": {
+                            "type": "boolean",
+                            "const": false
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "map": {
+                            "properties": {
+                                "blue": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "hello": {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "blue",
+                                "hello"
+                            ]
+                        },
+                        "null": {
+                            "type": "null"
+                        },
+                        "number": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "oneOf": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "pi": {
+                            "type": "number",
+                            "const": 3.14
+                        },
+                        "record": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "ref": {
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "const": "esc"
+                        },
+                        "true": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "tuple": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "world"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "anyOf",
+                        "array",
+                        "boolean",
+                        "false",
+                        "hello",
+                        "map",
+                        "null",
+                        "number",
+                        "oneOf",
+                        "pi",
+                        "record",
+                        "ref",
+                        "string",
+                        "true",
+                        "tuple"
+                    ]
+                },
+                "string": {
+                    "type": "string",
+                    "const": "esc"
+                }
+            },
+            "type": "object",
+            "required": [
+                "array",
+                "errors",
+                "myObject",
+                "object",
+                "open",
+                "string"
+            ]
+        }
+    }
+}

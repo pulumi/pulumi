@@ -1,0 +1,253 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 3,
+                    "Column": 3,
+                    "Byte": 21
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 6,
+                    "Byte": 24
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 6,
+                    "Column": 5,
+                    "Byte": 54
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 8,
+                    "Byte": 57
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        }
+    ],
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 3,
+                    "Column": 3,
+                    "Byte": 21
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 6,
+                    "Byte": 24
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 6,
+                    "Column": 5,
+                    "Byte": 54
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 8,
+                    "Byte": 57
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        }
+    ],
+    "environment": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "duplicate-keys",
+                    "begin": {
+                        "line": 2,
+                        "column": 8,
+                        "byte": 15
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "qux": {
+                "range": {
+                    "environment": "duplicate-keys",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 41
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 13,
+                        "byte": 62
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 46
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 49
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    }
+                }
+            },
+            "qux": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "duplicate-keys",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 46
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 49
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 41
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 13,
+                            "byte": 62
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "qux": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo",
+                "qux"
+            ]
+        }
+    }
+}
