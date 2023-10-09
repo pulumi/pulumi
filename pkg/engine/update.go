@@ -468,7 +468,7 @@ func update(ctx *Context, info *deploymentContext, opts *deploymentOptions,
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	plan, changes, err := deployment.run(ctx, actions, policies, preview)
+	plan, changes, err := deployment.run(ctx, actions, preview)
 	return plan, changes, result.WrapIfNonNil(err)
 }
 
