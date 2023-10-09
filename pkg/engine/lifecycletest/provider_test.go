@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -118,8 +118,10 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 
 	isRefresh := false
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, res result.Result,
-	) result.Result {
+		_ []Event, err error,
+	) error {
+		require.NoError(t, err)
+
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
 		for _, entry := range entries {
@@ -137,7 +139,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 		snap, err := entries.Snap(target.Snapshot)
 		require.NoError(t, err)
 		assert.Len(t, snap.Resources, 2)
-		return res
+		return err
 	}
 
 	// Run a single update step using the base snapshot.
@@ -154,8 +156,10 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
+			require.NoError(t, err)
+
 			// Should see two deletes:  the default provider should be injected into the old state before the update
 			// runs.
 			deleted := make(map[resource.URN]bool)
@@ -172,7 +176,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 			snap, err := entries.Snap(target.Snapshot)
 			require.NoError(t, err)
 			assert.Len(t, snap.Resources, 0)
-			return res
+			return err
 		},
 	}}
 	p.Run(t, old)
@@ -228,8 +232,8 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			provURN := p.NewProviderURN("pkgA", "default", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -252,7 +256,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 			assert.True(t, replacedProvider)
 			assert.True(t, replacedResource)
 
-			return res
+			return err
 		},
 	}}
 
@@ -323,8 +327,8 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -347,7 +351,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 			assert.True(t, replacedProvider)
 			assert.True(t, replacedResource)
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -561,14 +565,14 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			for _, entry := range entries {
 				if entry.Step.Op() != deploy.OpSame {
 					t.Fatalf("update should contain no changes: %v", entry.Step.URN())
 				}
 			}
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -578,8 +582,8 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			provURN := p.NewProviderURN("pkgA", providerName, "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -628,7 +632,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, "first", deleterID)
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -698,8 +702,8 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -742,7 +746,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 			assert.True(t, deletedProvider)
 			assert.True(t, deletedResource)
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -794,8 +798,8 @@ func TestDefaultProviderDiff(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result,
-					) result.Result {
+						events []Event, err error,
+					) error {
 						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
 								continue
@@ -806,7 +810,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 								assert.Equal(t, expectedStep, entry.Step.Op())
 							}
 						}
-						return res
+						return err
 					},
 				},
 			},
@@ -921,8 +925,8 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result,
-					) result.Result {
+						events []Event, err error,
+					) error {
 						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
 								continue
@@ -936,7 +940,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 									[]display.StepOp{deploy.OpCreate, deploy.OpSame}, []display.StepOp{entry.Step.Op()})
 							}
 						}
-						return res
+						return err
 					},
 				},
 			},
@@ -1204,12 +1208,12 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 
 	steps := MakeBasicLifecycleSteps(t, 2)
 	steps[0].ValidateAnd(func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, res result.Result,
-	) result.Result {
+		_ []Event, err error,
+	) error {
 		for _, e := range entries {
 			r := e.Step.New()
 			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAPluginDownloadURL {
-				return result.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
+				return fmt.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
 			}
 		}
 		return nil
@@ -1461,8 +1465,10 @@ func TestProviderVersionAssignment(t *testing.T) {
 
 			update := []TestStep{{Op: Update, Validate: func(
 				project workspace.Project, target deploy.Target, entries JournalEntries,
-				events []Event, res result.Result,
-			) result.Result {
+				events []Event, err error,
+			) error {
+				require.NoError(t, err)
+
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, 3)
@@ -1521,11 +1527,11 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	for _, res := range snap.Resources[1:] {
 		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
-	assert.Nil(t, res)
+	assert.Nil(t, err)
 }
 
 // TestDeletedWithOptionInheritanceMLC checks that an MLC's DeletedWith option is propagated to resources that
@@ -1590,9 +1596,9 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	for _, res := range snap.Resources[1:] {
 		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
-	assert.Nil(t, res)
+	assert.Nil(t, err)
 }

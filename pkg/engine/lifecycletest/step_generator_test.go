@@ -42,8 +42,8 @@ func TestDuplicateURN(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
+	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, err)
 }
 
 // TestDuplicateAlias tests that multiple new resources may not claim to be aliases for the same old resource.
@@ -73,8 +73,8 @@ func TestDuplicateAlias(t *testing.T) {
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
@@ -89,8 +89,8 @@ func TestDuplicateAlias(t *testing.T) {
 		return nil
 	}
 
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, err)
 }
 
 func TestSecretMasked(t *testing.T) {
@@ -128,8 +128,8 @@ func TestSecretMasked(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, err)
 
 	assert.NotNil(t, snap)
 	if snap != nil {

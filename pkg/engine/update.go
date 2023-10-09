@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -185,7 +184,7 @@ func HasChanges(changes display.ResourceChanges) bool {
 }
 
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
-	*deploy.Plan, display.ResourceChanges, result.Result,
+	*deploy.Plan, display.ResourceChanges, error,
 ) {
 	contract.Requiref(u != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
@@ -194,13 +193,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 
 	info, err := newDeploymentContext(u, "update", ctx.ParentSpan)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer emitter.Close()
 
@@ -451,7 +450,7 @@ func newUpdateSource(ctx context.Context,
 
 func update(ctx *Context, info *deploymentContext, opts *deploymentOptions,
 	preview bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	// Create an appropriate set of event listeners.
 	var actions runActions
 	if preview {
@@ -463,13 +462,12 @@ func update(ctx *Context, info *deploymentContext, opts *deploymentOptions,
 	// Initialize our deployment object with the context and options.
 	deployment, err := newDeployment(ctx, info, opts, preview)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	plan, changes, err := deployment.run(ctx, actions, preview)
-	return plan, changes, result.WrapIfNonNil(err)
+	return deployment.run(ctx, actions, preview)
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.

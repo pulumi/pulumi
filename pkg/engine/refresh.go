@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -31,7 +30,7 @@ func Refresh(
 	ctx *Context,
 	opts UpdateOptions,
 	dryRun bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
@@ -39,13 +38,13 @@ func Refresh(
 
 	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer emitter.Close()
 
@@ -56,7 +55,7 @@ func Refresh(
 	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
 
 	if err := checkTargets(opts.Targets, u.GetTarget().Snapshot); err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
 	return update(ctx, info, &deploymentOptions{
