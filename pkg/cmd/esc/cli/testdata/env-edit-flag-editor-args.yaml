@@ -1,0 +1,33 @@
+run: |
+  esc env edit test --editor 'editor --some-flag --other-flag="a\"b"'
+  esc env get test
+process:
+  commands:
+    editor: |
+      if [[ "$1" -ne "--some-flag" ]]; then exit 1; fi
+      if [[ "$2" -ne '--other-flag=a\"b' ]]; then exit 1; fi
+      echo -e "values:\n  foo: baz\n" >$2
+environments:
+  test-user/test:
+    values:
+      foo: bar
+stdout: |+
+  > esc env edit test --editor editor --some-flag --other-flag="a\"b"
+  Environment updated.
+  > esc env get test
+  # Value
+  ```json
+  {
+    "foo": "bar"
+  }
+  ```
+  # Definition
+  ```yaml
+  values:
+    foo: bar
+
+  ```
+
+stderr: |
+  > esc env edit test --editor editor --some-flag --other-flag="a\"b"
+  > esc env get test

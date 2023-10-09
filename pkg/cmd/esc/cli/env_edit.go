@@ -115,6 +115,38 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	return cmd
 }
 
+func parseEditorCommand(editor string) []string {
+	var command []string
+	for {
+		editor = strings.TrimLeftFunc(editor, unicode.IsSpace)
+		if len(editor) == 0 {
+			return command
+		}
+
+		var arg strings.Builder
+		i, quoted := 0, false
+		for ; i < len(editor); i++ {
+			c := editor[i]
+			if c == '"' {
+				quoted = !quoted
+				continue
+			}
+
+			if !quoted && unicode.IsSpace(rune(c)) {
+				break
+			} else if i+1 < len(editor) && c == '\\' && editor[i+1] == '"' {
+				arg.WriteByte('"')
+				i++
+			} else {
+				arg.WriteByte(c)
+			}
+		}
+
+		command = append(command, arg.String())
+		editor = editor[i:]
+	}
+}
+
 func (edit *envEditCommand) getEditor() ([]string, error) {
 	editor := edit.editorFlag
 
@@ -125,38 +157,7 @@ func (edit *envEditCommand) getEditor() ([]string, error) {
 		}
 	}
 
-	var args []string
-	for {
-		editor = strings.TrimLeftFunc(editor, unicode.IsSpace)
-		if len(editor) == 0 {
-			break
-		}
-
-		if editor[0] == '"' {
-			var arg strings.Builder
-			for i := 1; i != len(editor); {
-				c := editor[i]
-				if c == '"' {
-					editor = editor[i+1:]
-					break
-				} else if i+1 < len(editor) && c == '\\' && editor[i+1] == '"' {
-					arg.WriteByte('"')
-					i += 2
-				} else {
-					arg.WriteByte(editor[i])
-					i++
-				}
-			}
-			args = append(args, arg.String())
-		} else {
-			sep := strings.IndexFunc(editor, unicode.IsSpace)
-			if sep == -1 {
-				args = append(args, editor)
-				break
-			}
-			args, editor = append(args, editor[:sep]), editor[sep+1:]
-		}
-	}
+	args := parseEditorCommand(editor)
 	if len(args) == 0 {
 		path, err := edit.env.esc.exec.LookPath("vi")
 		if err != nil {
