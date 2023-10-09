@@ -92,15 +92,20 @@ class ConvertStateResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     RESOURCES_FIELD_NUMBER: builtins.int
+    DIAGNOSTICS_FIELD_NUMBER: builtins.int
     @property
     def resources(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ResourceImport]:
         """a list of resources to import."""
+    @property
+    def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
+        """any diagnostics from state conversion."""
     def __init__(
         self,
         *,
         resources: collections.abc.Iterable[global___ResourceImport] | None = ...,
+        diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["resources", b"resources"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics", "resources", b"resources"]) -> None: ...
 
 global___ConvertStateResponse = ConvertStateResponse
 

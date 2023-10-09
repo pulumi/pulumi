@@ -57,8 +57,12 @@ message ResourceImport {
 }
 
 message ConvertStateResponse {
+
     // a list of resources to import.
     repeated ResourceImport resources = 1;
+
+    // any diagnostics from state conversion.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 2;
 }
 
 message ConvertProgramRequest {
