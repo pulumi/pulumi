@@ -55,7 +55,7 @@ type PolicyEvent struct {
 	PolicyPackVersion    string `json:"policyPackVersion"`
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
 
-	// EnforcementLevel is one of "warning" or "mandatory".
+	// EnforcementLevel is one of "warning", "mandatory", "remediate", or "none".
 	EnforcementLevel string `json:"enforcementLevel"`
 }
 
