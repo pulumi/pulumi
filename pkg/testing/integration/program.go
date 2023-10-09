@@ -184,8 +184,6 @@ type ProgramTestOptions struct {
 	// ExpectRefreshChanges may be set to true if a test is expected to have changes yielded by an immediate refresh.
 	// This could occur, for example, is a resource's state is constantly changing outside of Pulumi (e.g., timestamps).
 	ExpectRefreshChanges bool
-	// ExpectTestFailure is true if we should continue with steps after a test failure.
-	ExpectTestFailure bool
 	// RetryFailedSteps indicates that failed updates, refreshes, and destroys should be retried after a brief
 	// intermission. A maximum of 3 retries will be attempted.
 	RetryFailedSteps bool
@@ -1160,7 +1158,7 @@ func (pt *ProgramTester) TestLifeCyclePrepare() error {
 }
 
 func (pt *ProgramTester) checkTestFailure() error {
-	if !pt.opts.ExpectTestFailure && pt.t.Failed() {
+	if pt.t.Failed() {
 		pt.t.Logf("Canceling further steps due to test failure")
 		return ErrTestFailed
 	}
