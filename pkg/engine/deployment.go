@@ -36,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -272,11 +271,11 @@ type runActions interface {
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
 	preview bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer chdir()
 
@@ -296,7 +295,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 
 	done := make(chan bool)
 	var newPlan *deploy.Plan
-	var walkResult result.Result
+	var walkError error
 	go func() {
 		opts := deploy.Options{
 			Events:                    actions,
@@ -312,7 +311,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 			DisableOutputValues:       deployment.Options.DisableOutputValues,
 			GeneratePlan:              deployment.Options.UpdateOptions.GeneratePlan,
 		}
-		newPlan, walkResult = deployment.Deployment.Execute(ctx, opts, preview)
+		newPlan, walkError = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -328,13 +327,12 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	}()
 
 	// Wait for the deployment to finish executing or for the user to terminate the run.
-	var res result.Result
 	select {
 	case <-cancelCtx.Cancel.Terminated():
-		res = result.WrapIfNonNil(cancelCtx.Cancel.TerminateErr())
+		err = cancelCtx.Cancel.TerminateErr()
 
 	case <-done:
-		res = walkResult
+		err = walkError
 	}
 
 	duration := time.Since(start)
@@ -343,7 +341,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policyPacks)
 
-	return newPlan, changes, res
+	return newPlan, changes, err
 }
 
 func (deployment *deployment) Close() error {
