@@ -217,6 +217,8 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetSchema(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	removeRandomFromLocalPlugins := func() {
@@ -269,6 +271,8 @@ func TestPackageGetSchema(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	removeRandomFromLocalPlugins := func() {
@@ -294,6 +298,8 @@ func TestPackageGetMapping(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageImportSmoke(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
