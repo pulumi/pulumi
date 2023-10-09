@@ -30,6 +30,9 @@ var Languages = map[string]string{
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageNewSmoke(t *testing.T) {
+	// make sure we can download needed plugins
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
