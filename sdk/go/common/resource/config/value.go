@@ -67,6 +67,18 @@ func (c Value) Decrypt(ctx context.Context, decrypter Decrypter) (Plaintext, err
 	return obj.Decrypt(ctx, decrypter)
 }
 
+func (c Value) Merge(base Value) (Value, error) {
+	obj, err := c.unmarshalObject()
+	if err != nil {
+		return Value{}, err
+	}
+	baseObj, err := base.unmarshalObject()
+	if err != nil {
+		return Value{}, err
+	}
+	return obj.Merge(baseObj).marshalValue()
+}
+
 func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
 	obj, err := c.unmarshalObject()
 	if err != nil {

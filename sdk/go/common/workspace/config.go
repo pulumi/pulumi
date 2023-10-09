@@ -1,12 +1,15 @@
 package workspace
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func formatMissingKeys(missingKeys []string) string {
@@ -98,6 +101,17 @@ func validateStackConfigValue(
 	return nil
 }
 
+func parseConfigKey(projectName, key string) (config.Key, error) {
+	if strings.Contains(key, ":") {
+		// key is already namespaced
+		return config.ParseKey(key)
+	}
+
+	// key is not namespaced
+	// use the project as default namespace
+	return config.MustMakeKey(projectName, key), nil
+}
+
 func createConfigValue(rawValue interface{}) (config.Value, error) {
 	if isPrimitiveValue(rawValue) {
 		configValueContent := fmt.Sprintf("%v", rawValue)
@@ -114,10 +128,47 @@ func createConfigValue(rawValue interface{}) (config.Value, error) {
 	return config.NewObjectValue(string(configValueJSON)), nil
 }
 
+func envConfigValue(v esc.Value) config.Plaintext {
+	switch repr := v.Value.(type) {
+	case bool:
+		return config.NewPlaintext(repr)
+	case json.Number:
+		if i, err := repr.Int64(); err == nil {
+			return config.NewPlaintext(i)
+		} else if f, err := repr.Float64(); err == nil {
+			return config.NewPlaintext(f)
+		}
+		// TODO(pdg): this disagrees with config unmarshaling semantics. Should probably fail.
+		return config.NewPlaintext(string(repr))
+	case string:
+		if v.Secret {
+			return config.NewSecurePlaintext(repr)
+		}
+		return config.NewPlaintext(repr)
+	case []esc.Value:
+		vs := make([]config.Plaintext, len(repr))
+		for i, v := range repr {
+			vs[i] = envConfigValue(v)
+		}
+		return config.NewPlaintext(vs)
+	case map[string]esc.Value:
+		vs := make(map[string]config.Plaintext, len(repr))
+		for k, v := range repr {
+			vs[k] = envConfigValue(v)
+		}
+		return config.NewPlaintext(vs)
+	default:
+		contract.Failf("unexpected environments value of type %T", repr)
+		return config.Plaintext{}
+	}
+}
+
 func mergeConfig(
 	stackName string,
 	project *Project,
+	stackEnv esc.Value,
 	stackConfig config.Map,
+	encrypter config.Encrypter,
 	decrypter config.Decrypter,
 	validate bool,
 ) error {
@@ -130,27 +181,51 @@ func mergeConfig(
 	}
 	sort.Strings(keys)
 
+	// First merge the stack environment and the stack config together.
+	if envMap, ok := stackEnv.Value.(map[string]esc.Value); ok {
+		for rawKey, value := range envMap {
+			key, err := parseConfigKey(projectName, rawKey)
+			if err != nil {
+				return err
+			}
+
+			envValue, err := envConfigValue(value).Encrypt(context.TODO(), encrypter)
+			if err != nil {
+				return err
+			}
+
+			stackValue, foundOnStack, err := stackConfig.Get(key, false)
+			if err != nil {
+				return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
+			}
+
+			if !foundOnStack {
+				err = stackConfig.Set(key, envValue, false)
+			} else {
+				merged, mergeErr := stackValue.Merge(envValue)
+				if mergeErr != nil {
+					return fmt.Errorf("merging environment config for key '%v': %w", key.String(), err)
+				}
+				err = stackConfig.Set(key, merged, false)
+			}
+			if err != nil {
+				return fmt.Errorf("setting merged config value for key '%v': %w", key.String(), err)
+			}
+		}
+	}
+
+	// Next validate the merged config and merge in the project config.
 	for _, projectConfigKey := range keys {
 		projectConfigType := project.Config[projectConfigKey]
 
-		var key config.Key
-		if strings.Contains(projectConfigKey, ":") {
-			// key is already namespaced
-			parsedKey, parseError := config.ParseKey(projectConfigKey)
-			if parseError != nil {
-				return parseError
-			}
-
-			key = parsedKey
-		} else {
-			// key is not namespaced
-			// use the project as default namespace
-			key = config.MustMakeKey(projectName, projectConfigKey)
+		key, err := parseConfigKey(projectName, projectConfigKey)
+		if err != nil {
+			return err
 		}
 
 		stackValue, foundOnStack, err := stackConfig.Get(key, true)
 		if err != nil {
-			return fmt.Errorf("Error while getting stack config value for key '%v': %v", key.String(), err)
+			return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
 		}
 
 		hasDefault := projectConfigType.Default != nil
@@ -208,16 +283,24 @@ func mergeConfig(
 func ValidateStackConfigAndApplyProjectConfig(
 	stackName string,
 	project *Project,
+	stackEnv esc.Value,
 	stackConfig config.Map,
+	encrypter config.Encrypter,
 	decrypter config.Decrypter,
 ) error {
-	return mergeConfig(stackName, project, stackConfig, decrypter, true)
+	return mergeConfig(stackName, project, stackEnv, stackConfig, encrypter, decrypter, true)
 }
 
 // ApplyConfigDefaults applies the default values for the project configuration onto the stack configuration
 // without validating the contents of stack config values.
 // This is because sometimes during pulumi config ls and pulumi config get, if users are
 // using PassphraseDecrypter, we don't want to always prompt for the values when not necessary
-func ApplyProjectConfig(stackName string, project *Project, stackConfig config.Map) error {
-	return mergeConfig(stackName, project, stackConfig, nil, false)
+func ApplyProjectConfig(
+	stackName string,
+	project *Project,
+	stackEnv esc.Value,
+	stackConfig config.Map,
+	encrypter config.Encrypter,
+) error {
+	return mergeConfig(stackName, project, stackEnv, stackConfig, encrypter, nil, false)
 }

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -214,6 +215,17 @@ type Backend interface {
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
 }
 
+// EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
+type EnvironmentsBackend interface {
+	// OpenYAMLEnvironment opens a literal environment.
+	OpenYAMLEnvironment(
+		ctx context.Context,
+		org string,
+		yaml []byte,
+		duration time.Duration,
+	) (*esc.Environment, []apitype.EnvironmentDiagnostic, error)
+}
+
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
 // ability to export a specific versions of a stack's deployment. This isn't a requirement for all backends and
 // should be checked for dynamically.
@@ -251,8 +263,9 @@ type QueryOperation struct {
 
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
 type StackConfiguration struct {
-	Config    config.Map
-	Decrypter config.Decrypter
+	Environment esc.Value
+	Config      config.Map
+	Decrypter   config.Decrypter
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.

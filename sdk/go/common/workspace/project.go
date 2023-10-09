@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -573,6 +574,36 @@ func (proj *PluginProject) Validate() error {
 	return nil
 }
 
+type Environment struct {
+	envs    []string
+	message json.RawMessage
+	node    *yaml.Node
+}
+
+func (e Environment) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.message)
+}
+
+func (e *Environment) UnmarshalJSON(b []byte) error {
+	if err := json.Unmarshal(b, &e.envs); err == nil {
+		return nil
+	}
+	return json.Unmarshal(b, &e.message)
+}
+
+func (e Environment) MarshalYAML() (any, error) {
+	return e.node, nil
+}
+
+func (e *Environment) UnmarshalYAML(n *yaml.Node) error {
+	if err := n.Decode(&e.envs); err == nil {
+		e.node = n
+		return nil
+	}
+	e.node = n
+	return nil
+}
+
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
@@ -585,9 +616,38 @@ type ProjectStack struct {
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	// Environment is an optional environment definition or list of environments.
+	Environment *Environment `json:"environment,omitempty" yaml:"environment,omitempty"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
 	raw []byte
+}
+
+func (ps ProjectStack) EnvironmentBytes() []byte {
+	switch {
+	case ps.Environment == nil:
+		// If there's no environment, return nil.
+		return nil
+	case len(ps.Environment.envs) != 0:
+		// If the environment was a list of environments, create an anonymous environment and return it.
+		bytes, err := json.Marshal(map[string]any{"imports": ps.Environment.envs})
+		if err != nil {
+			return nil
+		}
+		return bytes
+	case ps.Environment.message != nil:
+		// If the environment was encoded as JSON, return the raw JSON.
+		return ps.Environment.message
+	case ps.Environment.node != nil:
+		// Re-encode the YAML and return it.
+		bytes, err := yaml.Marshal(ps.Environment.node)
+		if err != nil {
+			return nil
+		}
+		return bytes
+	default:
+		return nil
+	}
 }
 
 func (ps ProjectStack) RawValue() []byte {

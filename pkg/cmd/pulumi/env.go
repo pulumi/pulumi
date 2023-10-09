@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,64 +12,62 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A small library for creating consistent and documented environmental variable accesses.
-//
-// Public environmental variables should be declared as a module level variable.
-
 package main
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/esc/cmd/esc/cli"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newEnvCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "env",
-		Short: "An overview of the environmental variables used by pulumi",
-		Args:  cmdutil.NoArgs,
-		// Since most variables won't be included here, we hide the command. We will
-		// unhide once most existing variables are using the new env var framework and
-		// show up here.
-		Hidden: !env.Experimental.Value(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			table := cmdutil.Table{
-				Headers: []string{"Variable", "Description", "Value"},
-			}
-			var foundError bool
-			for _, v := range declared.Variables() {
-				foundError = foundError || emitEnvVarDiag(v)
-				table.Rows = append(table.Rows, cmdutil.TableRow{
-					Columns: []string{v.Name(), v.Description, v.Value.String()},
-				})
-			}
-			cmdutil.PrintTable(table)
-			if foundError {
-				return errors.New("invalid environmental variables found")
-			}
-			return nil
-		}),
-	}
+	escCLI := cli.New(&cli.Options{
+		ParentPath:      "pulumi",
+		Colors:          cmdutil.GetGlobalColorization(),
+		Login:           httpstate.NewLoginManager(),
+		PulumiWorkspace: defaultESCWorkspace(0),
+		UserAgent:       client.UserAgent(),
+	})
+
+	// Add the `env` command to the root.
+	envCommand := escCLI.Commands()[0]
+	return envCommand
 }
 
-func emitEnvVarDiag(val declared.Var) bool {
-	err := val.Value.Validate()
-	if err.Error != nil {
-		cmdutil.Diag().Errorf(&diag.Diag{
-			Message: fmt.Sprintf("%s: %v", val.Name(), err.Error),
-		})
-	}
-	if err.Warning != nil {
-		cmdutil.Diag().Warningf(&diag.Diag{
-			Message: fmt.Sprintf("%s: %v", val.Name(), err.Warning),
-		})
-	}
-	return err.Error != nil
+type defaultESCWorkspace int
+
+func (defaultESCWorkspace) DeleteAccount(backendURL string) error {
+	return workspace.DeleteAccount(backendURL)
+}
+
+func (defaultESCWorkspace) DeleteAllAccounts() error {
+	return workspace.DeleteAllAccounts()
+}
+
+func (defaultESCWorkspace) SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
+	return workspace.SetBackendConfigDefaultOrg(backendURL, defaultOrg)
+}
+
+func (defaultESCWorkspace) GetPulumiConfig() (workspace.PulumiConfig, error) {
+	return workspace.GetPulumiConfig()
+}
+
+func (defaultESCWorkspace) GetPulumiPath(elem ...string) (string, error) {
+	return workspace.GetPulumiPath(elem...)
+}
+
+func (defaultESCWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
+	return workspace.GetStoredCredentials()
+}
+
+func (defaultESCWorkspace) StoreAccount(key string, account workspace.Account, current bool) error {
+	return workspace.StoreAccount(key, account, current)
+}
+
+func (defaultESCWorkspace) GetAccount(key string) (workspace.Account, error) {
+	return workspace.GetAccount(key)
 }
