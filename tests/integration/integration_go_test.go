@@ -763,7 +763,11 @@ func TestConstructProviderGo(t *testing.T) {
 }
 
 func TestGetResourceGo(t *testing.T) {
+	// This uses the random plugin so needs to be able to download it
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel: true,
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
