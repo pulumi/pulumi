@@ -97,3 +97,10 @@ var (
 var (
 	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
 )
+
+// Environment variables which affect Pulumi AI integrations
+var (
+	AIServiceEndpoint  = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
+	AIErrorSuggestions = env.Bool("AI_ERROR_SUGGESTIONS",
+		"Prompts user to view error solution suggestions in the Pulumi CLI")
+)
