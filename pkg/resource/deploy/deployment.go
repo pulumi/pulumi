@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -560,8 +559,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 }
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
-func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (*Plan, result.Result) {
+func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (*Plan, error) {
 	deploymentExec := &deploymentExecutor{deployment: d}
-	plan, err := deploymentExec.Execute(ctx, opts, preview)
-	return plan, result.WrapIfNonNil(err)
+	return deploymentExec.Execute(ctx, opts, preview)
 }
