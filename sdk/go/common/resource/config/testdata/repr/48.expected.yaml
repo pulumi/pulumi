@@ -1,0 +1,27 @@
+decrypt:
+  my:outer: '{"inner":{"nested":"value"}}'
+paths:
+  my:outer:
+    value:
+      inner:
+        nested: value
+    string: '{"inner":{"nested":"value"}}'
+    redacted: '{"inner":{"nested":"value"}}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA//4I8AAEFaW5uZXIXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/ghkAAQZuZXN0ZWQGc3RyaW5nDAcABXZhbHVl
+    secure: false
+    isObject: true
+  my:outer.inner:
+    value:
+      nested: value
+    string: '{"nested":"value"}'
+    redacted: '{"nested":"value"}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAc/4IZAAEGbmVzdGVkBnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: true
+  my:outer.inner.nested:
+    value: value
+    string: value
+    redacted: value
+    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: false

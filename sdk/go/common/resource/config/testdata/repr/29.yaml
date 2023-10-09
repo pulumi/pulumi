@@ -1,0 +1,3 @@
+my:outer:
+  inner:
+    nested: foo

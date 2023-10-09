@@ -746,9 +746,6 @@ func TestSetFail(t *testing.T) {
 			Array: []string{`my:name[-1]=value`},
 		},
 		{
-			Array: []string{`my:name[1]=value`},
-		},
-		{
 			Array: []string{`my:key.secure=value`},
 		},
 	}

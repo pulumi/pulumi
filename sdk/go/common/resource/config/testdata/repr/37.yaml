@@ -1,0 +1,3 @@
+my:foo:
+  bar: baz
+  secure: myvalue
