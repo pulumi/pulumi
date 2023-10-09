@@ -244,13 +244,13 @@ export function readResource(
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
 ): void {
-    const id: Input<ID> | undefined = opts.id;
-    if (!id) {
+    if (!opts.id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
     }
+    const id: Promise<Input<ID>> = output(opts.id).promise(true);
 
     const label = `resource:${name}[${t}]#...`;
-    log.debug(`Reading resource: id=${Output.isInstance(id) ? "Output<T>" : id}, t=${t}, name=${name}`);
+    log.debug(`Reading resource: t=${t}, name=${name}`);
 
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, parent, true, false, props, opts);
@@ -258,7 +258,7 @@ export function readResource(
     const preallocError = new Error();
     debuggablePromise(
         resopAsync.then(async (resop) => {
-            const resolvedID = await serializeProperty(label, id, new Set(), { keepOutputValues: false });
+            const resolvedID = await serializeProperty(label, await id, new Set(), { keepOutputValues: false });
             log.debug(
                 `ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
