@@ -17,7 +17,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -131,9 +130,9 @@ func destroySpecificTargets(
 		Op:            Destroy,
 		ExpectFailure: !targetDependents,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			assert.True(t, len(entries) > 0)
 
 			deleted := make(map[resource.URN]bool)
@@ -147,7 +146,7 @@ func destroySpecificTargets(
 			}
 
 			validate(urns, deleted)
-			return res
+			return err
 		},
 	}}
 
@@ -240,9 +239,9 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			assert.True(t, len(entries) > 0)
 
 			updated := make(map[resource.URN]bool)
@@ -289,7 +288,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 			if expectedUpdates > -1 {
 				assert.Equal(t, expectedUpdates, len(updated), "Updates = %#v", updated)
 			}
-			return res
+			return err
 		},
 	}}
 	p.Run(t, old)
@@ -390,9 +389,9 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			assert.True(t, len(entries) > 0)
 
 			for _, entry := range entries {
@@ -403,7 +402,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 				}
 			}
 
-			return res
+			return err
 		},
 	}}
 	p.Run(t, snap1)
@@ -452,9 +451,9 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			assert.True(t, len(entries) > 0)
 
 			for _, entry := range entries {
@@ -462,7 +461,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 				assert.Equal(t, deploy.OpSame, entry.Step.Op())
 			}
 
-			return res
+			return err
 		},
 	}}
 	p.Run(t, snap1)
@@ -625,16 +624,16 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			assert.True(t, len(entries) > 0)
 
 			for _, entry := range entries {
 				assert.Equal(t, deploy.OpSame, entry.Step.Op())
 			}
 
-			return res
+			return err
 		},
 	}}
 	p.Run(t, snap1)
@@ -690,9 +689,9 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			assert.True(t, len(entries) > 0)
 
 			replaced := make(map[resource.URN]bool)
@@ -713,7 +712,7 @@ func TestReplaceSpecificTargets(t *testing.T) {
 				assert.NotContains(t, sames, target)
 			}
 
-			return res
+			return err
 		},
 	}}
 
@@ -929,9 +928,9 @@ func destroySpecificTargetsWithChildren(
 		Op:            Destroy,
 		ExpectFailure: !targetDependents,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			assert.True(t, len(entries) > 0)
 
 			deleted := make(map[resource.URN]bool)
@@ -945,7 +944,7 @@ func destroySpecificTargetsWithChildren(
 			}
 
 			validate(urns, deleted)
-			return res
+			return err
 		},
 	}}
 
@@ -1008,8 +1007,8 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 			}),
 		},
 	}
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	assert.Nil(t, err)
 
 	// Check that the default provider was created.
 	var foundDefaultProvider bool
@@ -1080,8 +1079,8 @@ func TestEnsureUntargetedSame(t *testing.T) {
 
 	// Set up stack with initial two resources.
 	options := TestUpdateOptions{HostF: hostF}
-	origSnap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
-	require.Nil(t, res)
+	origSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	require.Nil(t, err)
 
 	// Target only `resA` and run a targeted update.
 	options = TestUpdateOptions{
@@ -1092,8 +1091,8 @@ func TestEnsureUntargetedSame(t *testing.T) {
 			}),
 		},
 	}
-	finalSnap, res := TestOp(Update).Run(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil)
-	require.Nil(t, res)
+	finalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil)
+	require.Nil(t, err)
 
 	// Check that `resB` (untargeted) is the same between the two snapshots.
 	{
@@ -1160,10 +1159,10 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 
 	project := p.GetProject()
 
-	old, res := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	old, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: p.Options.HostF,
 	}, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	assert.Nil(t, err)
 
 	// Configure next update.
 	fooVal = "changed-from-bar" // This triggers a replace
@@ -1178,7 +1177,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	t.Run("EnsureUntargetedIsSame", func(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
-		plan, res := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1193,7 +1192,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 				}),
 			},
 		}, p.BackendClient, nil)
-		assert.Nil(t, res)
+		assert.Nil(t, err)
 		assert.NotNil(t, plan)
 
 		// Ensure resB is in the plan.
@@ -1218,7 +1217,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	t.Run("EnsureReplaceTargetIsReplacedAndNotTargeted", func(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
-		plan, res := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1231,7 +1230,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 				}),
 			},
 		}, p.BackendClient, nil)
-		assert.Nil(t, res)
+		assert.Nil(t, err)
 		assert.NotNil(t, plan)
 
 		foundResA := false
@@ -1264,7 +1263,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	t.Run("EnsureUntargetedReplaceTargetIsNotReplaced", func(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
-		plan, res := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1278,7 +1277,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 				}),
 			},
 		}, p.BackendClient, nil)
-		assert.Nil(t, res)
+		assert.Nil(t, err)
 		assert.NotNil(t, plan)
 
 		foundResA := false
@@ -1335,27 +1334,27 @@ func TestTargetDependents(t *testing.T) {
 	project := p.GetProject()
 
 	// Target only resA and check only A is created
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
 			TargetDependents: false,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, res)
+	require.Nil(t, err)
 	// Check we only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again), and target only resA and check
 	// only A is created but also turn on --target-dependents.
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
 			TargetDependents: true,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, res)
+	require.Nil(t, err)
 	// Check we still only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
 }
@@ -1405,27 +1404,27 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 	project := p.GetProject()
 
 	// Target only the explicit provider and check that only the provider is created
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
 			TargetDependents: false,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, res)
+	require.Nil(t, err)
 	// Check we only have two resources, stack, and provider
 	require.Equal(t, 2, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again), and target only the provider
 	// but turn on  --target-dependents and check the provider, A, and B are created
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
 			TargetDependents: true,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, res)
+	require.Nil(t, err)
 	// Check we still only have four resources, stack, provider, resA, and resB.
 	require.Equal(t, 4, len(snap.Resources))
 }

@@ -1059,21 +1059,22 @@ func (b *localBackend) apply(
 	start := time.Now().Unix()
 	var plan *deploy.Plan
 	var changes sdkDisplay.ResourceChanges
-	var updateRes result.Result
+	var updateErr error
 	switch kind {
 	case apitype.PreviewUpdate:
-		plan, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
+		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.ResourceImportUpdate:
-		_, changes, updateRes = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
+		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
-		_, changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
-		_, changes, updateRes = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
+	updateRes := result.WrapIfNonNil(updateErr)
 	end := time.Now().Unix()
 
 	// Wait for the display to finish showing all the events.
