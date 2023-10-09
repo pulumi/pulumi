@@ -120,6 +120,7 @@ func New(opts *Options) *cobra.Command {
 	cmd.AddCommand(newLoginCmd(esc))
 	cmd.AddCommand(newLogoutCmd(esc))
 	cmd.AddCommand(newVersionCmd(esc))
+	cmd.AddCommand(newGenDocsCmd(cmd))
 
 	return cmd
 }
