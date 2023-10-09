@@ -169,9 +169,6 @@ func (e *validator) validateSchemaType(x, accept *schema.Schema, loc validationL
 	if accept.Never {
 		return false
 	}
-	if ref := accept.GetRef(); ref != nil && !e.validateSchemaType(x, ref, loc) {
-		return false
-	}
 
 	if e.isAny(x) {
 		return true
@@ -179,35 +176,24 @@ func (e *validator) validateSchemaType(x, accept *schema.Schema, loc validationL
 	if x.Never {
 		return false
 	}
-	if ref := x.GetRef(); ref != nil && !e.validateSchemaType(ref, accept, loc) {
-		return false
-	}
 
-	if !e.validateInputSchemaAnyOf(x, accept, loc) {
-		return false
-	}
-	if !e.validateInputSchemaOneOf(x, accept, loc) {
-		return false
-	}
+	refOK := accept.GetRef() == nil || e.validateSchemaType(x, accept.GetRef(), loc)
+	xRefOK := x.GetRef() == nil || e.validateSchemaType(x.GetRef(), accept, loc)
+	xAnyOfOK := e.validateInputSchemaAnyOf(x, accept, loc)
+	xOneOfOK := e.validateInputSchemaOneOf(x, accept, loc)
+	typeOK := x.Type == "" || e.checkType(x.Type, accept, loc)
+	anyOfOK := e.validateSchemaAnyOf(x, accept, loc)
+	oneOfOK := e.validateSchemaOneOf(x, accept, loc)
 
-	if x.Type != "" && !e.checkType(x.Type, accept, loc) {
-		return false
-	}
-
-	if !e.validateSchemaAnyOf(x, accept, loc) {
-		return false
-	}
-	if !e.validateSchemaOneOf(x, accept, loc) {
-		return false
-	}
-
+	complexOK := true
 	switch x.Type {
 	case "array":
-		return e.validateSchemaArray(x, accept, loc)
+		complexOK = e.validateSchemaArray(x, accept, loc)
 	case "object":
-		return e.validateSchemaObject(x, accept, loc)
+		complexOK = e.validateSchemaObject(x, accept, loc)
 	}
-	return true
+
+	return refOK && xRefOK && xAnyOfOK && xOneOfOK && typeOK && anyOfOK && oneOfOK && complexOK
 }
 
 // validateInputSchemaAnyOf checks that accept validates the input schema x if x has an anyOf directive.
@@ -569,19 +555,19 @@ func (e *validator) validateNumber(v json.Number, accept *schema.Schema, loc val
 		}
 	}
 
-	if m := accept.GetMinimum(); m != nil && n.Cmp(m) > 0 {
+	if m := accept.GetMinimum(); m != nil && n.Cmp(m) < 0 {
 		e.errorf(loc, "expected a number greater than or equal to %v", accept.Minimum)
 		ok = false
 	}
-	if m := accept.GetExclusiveMinimum(); m != nil && n.Cmp(m) >= 0 {
+	if m := accept.GetExclusiveMinimum(); m != nil && n.Cmp(m) <= 0 {
 		e.errorf(loc, "expected a number greater than %v", accept.ExclusiveMinimum)
 		ok = false
 	}
-	if m := accept.GetMaximum(); m != nil && n.Cmp(m) < 0 {
+	if m := accept.GetMaximum(); m != nil && n.Cmp(m) > 0 {
 		e.errorf(loc, "expected a number less than or equal to%v", accept.Maximum)
 		ok = false
 	}
-	if m := accept.GetExclusiveMaximum(); m != nil && n.Cmp(m) <= 0 {
+	if m := accept.GetExclusiveMaximum(); m != nil && n.Cmp(m) >= 0 {
 		e.errorf(loc, "expected a number less than %v", accept.ExclusiveMaximum)
 		ok = false
 	}

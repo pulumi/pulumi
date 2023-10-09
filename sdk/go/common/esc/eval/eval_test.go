@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/pulumi/esc"
@@ -61,6 +62,32 @@ func (testSchemaProvider) Schema() (*schema.Schema, *schema.Schema) {
 			"anyOf": schema.AnyOf(schema.String(), schema.Number()),
 			"oneOf": schema.OneOf(schema.String(), schema.Number()),
 			"ref":   schema.Ref("#/$defs/defRecord"),
+
+			// Complex cases
+			"const-array":  &schema.Schema{Type: "array", Const: []any{"hello", json.Number("42")}},
+			"const-object": &schema.Schema{Type: "object", Const: map[string]any{"hello": "world"}},
+			"enum":         schema.String().Enum("foo", "bar"),
+			"never":        schema.Never(),
+			"always":       schema.Always(),
+			"double":       schema.Tuple(schema.String(), schema.Number()),
+			"triple":       schema.Tuple(schema.String(), schema.Number(), schema.Boolean()),
+			"dependentReq": schema.Object().
+				Properties(map[string]schema.Builder{
+					"foo": schema.String(),
+					"bar": schema.Number(),
+				}).DependentRequired(map[string][]string{"foo": {"bar"}}),
+			"multiple":         schema.Number().MultipleOf(json.Number("2")),
+			"minimum":          schema.Number().Minimum(json.Number("1")),
+			"exclusiveMinimum": schema.Number().ExclusiveMinimum(json.Number("1")),
+			"maximum":          schema.Number().Maximum(json.Number("1")),
+			"exclusiveMaximum": schema.Number().ExclusiveMaximum(json.Number("1")),
+			"minLength":        schema.String().MinLength(1),
+			"maxLength":        schema.String().MaxLength(1),
+			"pattern":          schema.String().Pattern(`^foo[0-9]+$`),
+			"minItems":         schema.Array().MinItems(3),
+			"maxItems":         schema.Array().MaxItems(2),
+			"minProperties":    schema.Object().MinProperties(1),
+			"maxProperties":    schema.Object().MaxProperties(1),
 		}).
 		Schema()
 
@@ -103,6 +130,28 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]
 	return os.ReadFile(filepath.Join(e.root, name+".yaml"))
 }
 
+func sortEnvironmentDiagnostics(diags syntax.Diagnostics) {
+	sort.Slice(diags, func(i, j int) bool {
+		di, dj := diags[i], diags[j]
+		if di.Subject == nil {
+			if dj.Subject == nil {
+				return di.Summary < dj.Summary
+			}
+			return true
+		}
+		if dj.Subject == nil {
+			return false
+		}
+		if di.Subject.Filename != dj.Subject.Filename {
+			return di.Subject.Filename < dj.Subject.Filename
+		}
+		if di.Subject.Start.Line != dj.Subject.Start.Line {
+			return di.Subject.Start.Line < dj.Subject.Start.Line
+		}
+		return di.Subject.Start.Column < dj.Subject.Start.Column
+	})
+}
+
 func TestEval(t *testing.T) {
 	type expectedData struct {
 		LoadDiags   syntax.Diagnostics `json:"loadDiags,omitempty"`
@@ -125,10 +174,13 @@ func TestEval(t *testing.T) {
 			if accept() {
 				env, loadDiags, err := LoadYAMLBytes(e.Name(), envBytes)
 				require.NoError(t, err)
+				sortEnvironmentDiagnostics(loadDiags)
 
 				_, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+				sortEnvironmentDiagnostics(checkDiags)
 
 				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+				sortEnvironmentDiagnostics(evalDiags)
 
 				bytes, err := json.MarshalIndent(expectedData{
 					LoadDiags:   loadDiags,
@@ -154,12 +206,15 @@ func TestEval(t *testing.T) {
 
 			env, diags, err := LoadYAMLBytes(e.Name(), envBytes)
 			require.NoError(t, err)
+			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.LoadDiags, diags)
 
 			_, diags = CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
 			actual, diags := EvalEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
 
 			// work around a schema comparison issue due to the 'compiled' field by roundtripping through JSON
