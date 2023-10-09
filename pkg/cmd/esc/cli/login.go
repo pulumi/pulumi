@@ -30,7 +30,7 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 			"\n" +
 			"The Pulumi Cloud manages your Pulumi ESC environments. Simply run\n" +
 			"\n" +
-			"    $ pulumi login\n" +
+			"    $ esc login\n" +
 			"\n" +
 			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
 			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
@@ -38,7 +38,7 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 			"By default, this will log in to the managed Pulumi Cloud backend.\n" +
 			"If you prefer to log in to a self-hosted Pulumi Cloud backend, specify a URL. For example, run\n" +
 			"\n" +
-			"    $ pulumi login https://api.pulumi.acmecorp.com\n" +
+			"    $ esc login https://api.pulumi.acmecorp.com\n" +
 			"\n" +
 			"to log in to a self-hosted Pulumi Cloud running at the api.pulumi.acmecorp.com domain.\n" +
 			"\n" +
@@ -76,7 +76,7 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 			switch {
 			case isInvalidSelfHostedURL(backendURL):
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
-					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", backendURL)
+					"use `esc login` without arguments to log into the Pulumi Cloud backend", backendURL)
 			case filestate.IsFileStateBackendURL(backendURL):
 				return fmt.Errorf("%s does not support Pulumi ESC.", backendURL)
 			}
