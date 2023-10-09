@@ -227,7 +227,7 @@ export class MockMonitor {
 
         // Support for "outputValues" is deliberately disabled for the mock monitor so
         // instances of `Output` don't show up in `MockResourceArgs` inputs.
-        const hasSupport = id === "secrets" || id === "resourceReferences";
+        const hasSupport = id !== "outputValues";
 
         callback(null, {
             getHassupport: () => hasSupport,
