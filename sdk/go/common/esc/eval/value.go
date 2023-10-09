@@ -174,7 +174,7 @@ func (v *value) merge(base *value) {
 // secret.
 func (v *value) toString() (str string, unknown bool, secret bool) {
 	if v.unknown {
-		return "<unknown>", true, v.secret
+		return "[unknown]", true, v.secret
 	}
 
 	s, unknown, secret := "", false, v.secret

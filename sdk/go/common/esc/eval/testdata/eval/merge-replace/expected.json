@@ -1,0 +1,152 @@
+{
+    "environment": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "merge-replace",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 34
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 13,
+                        "byte": 42
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "bar": {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "bar"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    },
+                    "schema": {
+                        "type": "string",
+                        "const": "bar"
+                    },
+                    "literal": "bar"
+                },
+                "object": {
+                    "bar": {
+                        "range": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 42
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "literal": "baz"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": {
+                    "bar": {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "merge-replace",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 42
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "merge-replace",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 42
+                        }
+                    },
+                    "base": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 2,
+                                    "column": 8,
+                                    "byte": 15
+                                },
+                                "end": {
+                                    "line": 2,
+                                    "column": 11,
+                                    "byte": 18
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "properties": {
+                        "bar": {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "bar"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        }
+    }
+}

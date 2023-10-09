@@ -501,7 +501,7 @@ func (e *evalContext) evaluateInterpolate(x *expr, repr *interpolateExpr) *value
 	if !v.unknown {
 		v.repr = b.String()
 	} else {
-		v.repr = "<unknown>"
+		v.repr = "[unknown]"
 	}
 	return v
 }
