@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: ignore unexpected types instead of erroring out
