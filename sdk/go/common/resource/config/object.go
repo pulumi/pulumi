@@ -118,7 +118,8 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 	case nil:
 		return Plaintext{}, nil
 	default:
-		return Plaintext{}, errors.New(fmt.Sprintf("unrepresentable type: %T", v))
+		contract.Failf("unexpected value of type %T", v)
+		return Plaintext{}, nil
 	}
 }
 
@@ -492,7 +493,8 @@ func unmarshalObject(v any) (object, error) {
 	case nil:
 		return object{}, nil
 	default:
-		return object{}, errors.New(fmt.Sprintf("unrepresentable type: %T", v))
+		contract.Failf("unexpected wire type %T", v)
+		return object{}, nil
 	}
 }
 
