@@ -14,7 +14,7 @@ require (
 	github.com/grapl-security/pulumi-hcp/sdk v0.1.14
 	github.com/hexops/autogold v1.3.0
 	github.com/pulumi/pulumi/pkg/v3 v3.78.2-0.20230926151835-2b44cf6ec1be
-	github.com/pulumi/pulumi/sdk/v3 v3.87.0
+	github.com/pulumi/pulumi/sdk/v3 v3.88.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.57.0
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
