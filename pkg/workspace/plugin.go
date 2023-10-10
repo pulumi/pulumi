@@ -68,7 +68,8 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 	}
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		log(diag.Info, fmt.Sprintf("Downloading provider: %s", pluginSpec.Name))
+		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
+		log(diag.Infoerr, fmt.Sprintf("Downloading provider: %s", pluginSpec.Name))
 		return stream
 	}
 
