@@ -1,0 +1,18 @@
+decrypt:
+  my:test: '[null]'
+paths:
+  my:test:
+    value:
+    - null
+    string: '[null]'
+    redacted: '[null]'
+    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAABv+EAwABAA==
+    secure: false
+    isObject: true
+  my:test[0]:
+    value: !!str 'null'
+    string: "null"
+    redacted: "null"
+    object: AxAAAA==
+    secure: false
+    isObject: false
