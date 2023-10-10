@@ -226,7 +226,6 @@ export function hasMonitor(): boolean {
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
 export function getMonitor(): Object | undefined {
-    runSxSCheck();
     const { settings } = getStore();
     const addr = options().monitorAddr;
     if (getLocalStore() === undefined) {
@@ -330,7 +329,6 @@ export function serialize(): boolean {
 
  */
 function options(): Options {
-    runSxSCheck();
     const { settings } = getStore();
 
     return settings.options;
@@ -524,40 +522,4 @@ export async function monitorSupportsDeletedWith(): Promise<boolean> {
  */
 export async function monitorSupportsAliasSpecs(): Promise<boolean> {
     return monitorSupportsFeature("aliasSpecs");
-}
-
-// sxsRandomIdentifier is a module level global that is transfered to process.env.
-// the goal is to detect side by side (sxs) pulumi/pulumi situations for inline programs
-// and fail fast. See https://github.com/pulumi/pulumi/issues/7333 for details.
-const sxsRandomIdentifier = Math.random().toString();
-
-// indicates that the current runtime context is via an inline program via automation api.
-let isInline = false;
-
-/** @internal only used by the internal inline language host implementation */
-export function setInline() {
-    isInline = true;
-}
-
-const pulumiSxSEnv = "PULUMI_NODEJS_SXS_FLAG";
-
-/**
- * runSxSCheck checks an identifier stored in the environment to detect multiple versions of pulumi.
- * if we're running in inline mode, it will throw an error to fail fast due to global state collisions that can occur.
- */
-function runSxSCheck() {
-    const envSxS = process.env[pulumiSxSEnv];
-    process.env[pulumiSxSEnv] = sxsRandomIdentifier;
-
-    if (!isInline) {
-        return;
-    }
-
-    // if we see a different identifier, another version of pulumi has been loaded and we should fail.
-    if (!!envSxS && envSxS !== sxsRandomIdentifier) {
-        throw new Error(
-            "Detected multiple versions of '@pulumi/pulumi' in use in an inline automation api program.\n" +
-                "Use the yarn 'resolutions' field to pin to a single version: https://github.com/pulumi/pulumi/issues/5449.",
-        );
-    }
 }

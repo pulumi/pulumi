@@ -37,10 +37,6 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
     constructor(program: () => Promise<T>) {
         this.program = program;
-
-        // set a bit in runtime settings to indicate that we're running in inline mode.
-        // this allows us to detect and fail fast for side by side pulumi scenarios.
-        settings.setInline();
     }
 
     onPulumiExit(hasError: boolean) {
