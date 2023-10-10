@@ -121,6 +121,24 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 	}
 }
 
+// Merge merges the receiver onto the given base using JSON merge patch semantics. Merge does not modify the receiver or
+// the base.
+func (c object) Merge(base object) object {
+	if co, ok := c.value.(map[string]object); ok {
+		if bo, ok := base.value.(map[string]object); ok {
+			mo := make(map[string]object, len(co))
+			for k, v := range bo {
+				mo[k] = v
+			}
+			for k, v := range co {
+				mo[k] = v.Merge(mo[k])
+			}
+			return newObject(mo)
+		}
+	}
+	return c
+}
+
 // Get gets the member value at path. The path to the receiver is prefix.
 func (c object) Get(path resource.PropertyPath) (_ object, ok bool, err error) {
 	if len(path) == 0 {

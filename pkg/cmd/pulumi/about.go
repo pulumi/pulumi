@@ -73,6 +73,9 @@ func newAboutCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.AddCommand(newAboutEnvCmd())
+
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(

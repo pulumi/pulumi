@@ -17,7 +17,9 @@ package backend
 import (
 	"context"
 	"strings"
+	"time"
 
+	"github.com/pulumi/esc"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -357,12 +359,36 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 	panic("not implemented")
 }
 
+type MockEnvironmentsBackend struct {
+	MockBackend
+
+	OpenYAMLEnvironmentF func(
+		ctx context.Context,
+		org string,
+		yaml []byte,
+		duration time.Duration,
+	) (*esc.Environment, []apitype.EnvironmentDiagnostic, error)
+}
+
+func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
+	ctx context.Context,
+	org string,
+	yaml []byte,
+	duration time.Duration,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	if be.OpenYAMLEnvironmentF != nil {
+		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration)
+	}
+	panic("not implemented")
+}
+
 //
 // Mock stack.
 //
 
 type MockStack struct {
 	RefF      func() StackReference
+	OrgNameF  func() string
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	TagsF     func() map[apitype.StackTagName]string
@@ -389,6 +415,13 @@ var _ Stack = (*MockStack)(nil)
 func (ms *MockStack) Ref() StackReference {
 	if ms.RefF != nil {
 		return ms.RefF()
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) OrgName() string {
+	if ms.OrgNameF != nil {
+		return ms.OrgNameF()
 	}
 	panic("not implemented")
 }
