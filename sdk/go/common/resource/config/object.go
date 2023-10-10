@@ -115,8 +115,10 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 			vs[k] = pv
 		}
 		return NewPlaintext(vs), nil
-	default:
+	case nil:
 		return Plaintext{}, nil
+	default:
+		return Plaintext{}, errors.New(fmt.Sprintf("unrepresentable type: %T", v))
 	}
 }
 
@@ -487,8 +489,10 @@ func unmarshalObject(v any) (object, error) {
 			a[i] = sv
 		}
 		return newObject(a), nil
-	default:
+	case nil:
 		return object{}, nil
+	default:
+		return object{}, errors.New(fmt.Sprintf("unrepresentable type: %T", v))
 	}
 }
 
