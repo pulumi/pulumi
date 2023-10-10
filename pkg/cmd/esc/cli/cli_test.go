@@ -430,8 +430,11 @@ func (c *testPulumiClient) UpdateEnvironment(
 
 	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml)
 	if err == nil && len(diags) == 0 {
+		h := fnv.New32()
+		h.Write(yaml)
+
 		env.yaml = yaml
-		env.tag = base64.StdEncoding.EncodeToString(fnv.New32().Sum(yaml))
+		env.tag = base64.StdEncoding.EncodeToString(h.Sum(nil))
 	}
 
 	return diags, err

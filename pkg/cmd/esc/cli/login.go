@@ -73,12 +73,8 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 				backendURL, shared = account.BackendURL, isShared
 			}
 
-			switch {
-			case isInvalidSelfHostedURL(backendURL):
-				return fmt.Errorf("%s is not a valid self-hosted backend, "+
-					"use `esc login` without arguments to log into the Pulumi Cloud backend", backendURL)
-			case filestate.IsFileStateBackendURL(backendURL):
-				return fmt.Errorf("%s does not support Pulumi ESC.", backendURL)
+			if err := checkBackendURL(backendURL); err != nil {
+				return err
 			}
 
 			account, err := esc.login.Login(
@@ -141,10 +137,29 @@ func isInvalidSelfHostedURL(url string) bool {
 	return strings.HasPrefix(url, "app.pulumi.com/") || strings.HasPrefix(url, "pulumi.com")
 }
 
+func checkBackendURL(url string) error {
+	switch {
+	case isInvalidSelfHostedURL(url):
+		return fmt.Errorf("%s is not a valid self-hosted backend, "+
+			"use `esc login` without arguments to log into the Pulumi Cloud backend", url)
+	case filestate.IsFileStateBackendURL(url):
+		return fmt.Errorf("%s does not support Pulumi ESC.", url)
+	default:
+		return nil
+	}
+}
+
 func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	account, _, err := esc.workspace.GetCurrentAccount(false)
 	if err != nil {
 		return fmt.Errorf("could not determine current cloud: %w", err)
+	}
+	if account == nil {
+		return fmt.Errorf("no credentials. Please run `esc login` to log in.")
+	}
+
+	if err := checkBackendURL(account.BackendURL); err != nil {
+		return err
 	}
 
 	ok, err := esc.getCachedCredentials(ctx, account.BackendURL, account.Insecure)
