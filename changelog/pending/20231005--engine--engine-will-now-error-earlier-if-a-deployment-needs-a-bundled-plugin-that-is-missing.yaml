@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Engine will now error earlier if a deployment needs a bundled plugin that is missing.

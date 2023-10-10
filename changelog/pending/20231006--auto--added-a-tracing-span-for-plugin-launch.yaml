@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto
-  description: Added a tracing span for plugin launch

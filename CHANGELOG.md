@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.88.0 (2023-10-10)
+
+
+### Features
+
+- [engine] Add the new policy remediations feature.
+  [#14080](https://github.com/pulumi/pulumi/pull/14080)
+
+- [auto] Added a tracing span for plugin launch
+  [#14100](https://github.com/pulumi/pulumi/pull/14100)
+
+### Bug Fixes
+
+- [cli/package] Fix a panic in get-mapping when not passing a provider name.
+  [#14124](https://github.com/pulumi/pulumi/pull/14124)
+
+- [engine] Engine will now error earlier if a deployment needs a bundled plugin that is missing.
+  [#14103](https://github.com/pulumi/pulumi/pull/14103)
+
+- [sdk/{go,nodejs,python}] Fix MockMonitor reporting DeletedWith wasn't supported
+  [#14118](https://github.com/pulumi/pulumi/pull/14118)
+
+- [programgen/python] Fix panic in python program-gen when rewriting index expressions
+  [#14099](https://github.com/pulumi/pulumi/pull/14099)
+
 ## 3.87.0 (2023-10-06)
 
 
