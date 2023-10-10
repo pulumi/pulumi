@@ -116,7 +116,6 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 		}
 		return NewPlaintext(vs), nil
 	default:
-		contract.Failf("unexpected value of type %T", v)
 		return Plaintext{}, nil
 	}
 }
@@ -489,7 +488,6 @@ func unmarshalObject(v any) (object, error) {
 		}
 		return newObject(a), nil
 	default:
-		contract.Failf("unexpected wire type %T", v)
 		return object{}, nil
 	}
 }
