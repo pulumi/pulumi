@@ -6,4 +6,4 @@ stdout: |
   > esc env init dup
 stderr: |
   > esc env init dup
-  Error: already exists
+  Error: creating environment: already exists

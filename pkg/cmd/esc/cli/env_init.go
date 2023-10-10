@@ -4,11 +4,17 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"io/fs"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
 func newEnvInitCmd(env *envCommand) *cobra.Command {
+	var file string
+
 	cmd := &cobra.Command{
 		Use:   "init [<org-name>/]<environment-name>",
 		Args:  cobra.MaximumNArgs(1),
@@ -34,8 +40,42 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 			}
 			_ = args
 
-			return env.esc.client.CreateEnvironment(ctx, orgName, envName)
+			var yaml []byte
+			switch file {
+			case "":
+				// OK
+			case "-":
+				yaml, err = io.ReadAll(env.esc.stdin)
+			default:
+				yaml, err = fs.ReadFile(env.esc.fs, file)
+			}
+			if err != nil {
+				return fmt.Errorf("reading environment definition: %w", err)
+			}
+
+			if err := env.esc.client.CreateEnvironment(ctx, orgName, envName); err != nil {
+				return fmt.Errorf("creating environment: %w", err)
+			}
+			fmt.Fprintln(env.esc.stdout, "Environment created.")
+			if len(yaml) != 0 {
+				diags, err := env.esc.client.UpdateEnvironment(ctx, orgName, envName, yaml, "")
+				if err != nil {
+					return fmt.Errorf("updating environment definition: %w", err)
+				}
+				if len(diags) != 0 {
+					err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, envName, yaml, diags)
+					contract.IgnoreError(err)
+
+					return fmt.Errorf("updating environment definition: too many errors")
+				}
+			}
+			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&file,
+		"file", "f", "",
+		"the file to use to initialize the environment, if any. Pass `-` to read from standard input.")
+
 	return cmd
 }

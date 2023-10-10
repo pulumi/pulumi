@@ -1,0 +1,15 @@
+run: |
+  echo '{"values":{"foo":"${bar}"}}' | esc env init test-stdin -f=-
+  esc env get test-stdin
+error: exit status 1
+stdout: |
+  > esc env init test-stdin -f=-
+  Environment created.
+stderr: |
+  > esc env init test-stdin -f=-
+  Error: unknown property "bar"
+
+    on test-stdin line 1:
+     1: {"values":{"foo":"${bar}"}}
+
+  Error: updating environment definition: too many errors

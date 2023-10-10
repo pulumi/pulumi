@@ -587,7 +587,7 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 					return nil, os.ErrNotExist
 				}
 				f = &fstest.MapFile{Mode: perm}
-				c.fs.MapFS[path] = &fstest.MapFile{Mode: perm}
+				c.fs.MapFS[path] = f
 			}
 			if flag&os.O_TRUNC != 0 {
 				f.Data = f.Data[:0]
