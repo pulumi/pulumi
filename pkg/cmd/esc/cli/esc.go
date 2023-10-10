@@ -49,7 +49,8 @@ type escCommand struct {
 	stdout io.Writer
 	stderr io.Writer
 
-	colors colors.Colorization
+	command string
+	colors  colors.Colorization
 
 	login     httpstate.LoginManager
 	workspace *workspace.Workspace
@@ -103,6 +104,7 @@ func New(opts *Options) *cobra.Command {
 		stdin:     valueOrDefault(opts.Stdin, io.Reader(os.Stdin)),
 		stdout:    valueOrDefault(opts.Stdout, io.Writer(os.Stdout)),
 		stderr:    valueOrDefault(opts.Stderr, io.Writer(os.Stderr)),
+		command:   valueOrDefault(opts.ParentPath, "esc"),
 		colors:    valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
 		login:     valueOrDefault(opts.Login, httpstate.NewLoginManager()),
 		workspace: workspace.New(fs, valueOrDefault(opts.PulumiWorkspace, workspace.DefaultPulumiWorkspace())),
