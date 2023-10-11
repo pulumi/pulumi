@@ -1267,21 +1267,22 @@ func (b *cloudBackend) runEngineAction(
 
 	var plan *deploy.Plan
 	var changes sdkDisplay.ResourceChanges
-	var res result.Result
+	var updateErr error
 	switch kind {
 	case apitype.PreviewUpdate:
-		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
+		plan, changes, updateErr = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		plan, changes, updateErr = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.ResourceImportUpdate:
-		_, changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
+		_, changes, updateErr = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:
-		_, changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
-		_, changes, res = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, updateErr = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
+	res := result.WrapIfNonNil(updateErr)
 
 	// Wait for dependent channels to finish processing engineEvents before closing.
 	<-displayDone

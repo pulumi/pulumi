@@ -17,7 +17,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -244,8 +243,10 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
+			require.NoError(t, err)
+
 			foundRes1 := false
 			foundRes2 := false
 			foundRes2Child := false
@@ -298,7 +299,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			assert.True(t, foundRes2Child)
 			assert.True(t, foundRes3)
 			assert.True(t, foundRes4Child)
-			return res
+			return err
 		},
 	}}
 
@@ -363,15 +364,15 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result,
-					) result.Result {
+						events []Event, err error,
+					) error {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
 								assert.Equal(t, []display.StepOp{deploy.OpCreate}, []display.StepOp{payload.Metadata.Op})
 							}
 						}
-						return res
+						return err
 					},
 				},
 			},
@@ -465,9 +466,9 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: stackURN},
@@ -477,7 +478,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -489,9 +490,9 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.Nil(t, err)
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: stackURN},
 				{Op: deploy.OpSame, URN: provURN},
@@ -500,7 +501,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnA},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	p.Run(t, snap)
@@ -552,9 +553,9 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						evts []Event, res result.Result,
-					) result.Result {
-						assert.Nil(t, res)
+						evts []Event, err error,
+					) error {
+						assert.Nil(t, err)
 
 						AssertSameSteps(t, []StepSummary{
 							{Op: deploy.OpCreate, URN: stackURN},
@@ -562,7 +563,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 							{Op: deploy.OpRead, URN: urnA},
 						}, SuccessfulSteps(entries))
 
-						return res
+						return err
 					},
 				},
 			},
@@ -801,8 +802,8 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 			{
 				Op: Update,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-					events []Event, res result.Result,
-				) result.Result {
+					events []Event, err error,
+				) error {
 					collectedOps := make([]display.StepOp, 0)
 					for _, event := range events {
 						if event.Type == ResourcePreEvent {
@@ -815,7 +816,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 					assert.Equal(t, expectedOps, collectedOps)
 
-					return res
+					return err
 				},
 			},
 		},

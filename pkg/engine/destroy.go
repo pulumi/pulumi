@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -31,7 +30,7 @@ func Destroy(
 	ctx *Context,
 	opts UpdateOptions,
 	dryRun bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
@@ -39,13 +38,13 @@ func Destroy(
 
 	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer emitter.Close()
 
@@ -53,7 +52,7 @@ func Destroy(
 	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
 
 	if err := checkTargets(opts.Targets, u.GetTarget().Snapshot); err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
 	return update(ctx, info, &deploymentOptions{
