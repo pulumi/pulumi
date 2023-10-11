@@ -106,6 +106,12 @@ jobs:
           token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
           repository: pulumi/docs
           path: docs
+      - name: Check out registry
+        uses: actions/checkout@v2
+        with:
+          repository: pulumi/registry
+          path: registry
+
 
       - name: Regenerate resource docs
         id: regenerate-resource-docs
@@ -113,23 +119,28 @@ jobs:
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
 
+          pushd registry/tools/resourcedocsgen
+
+          go mod edit -replace github.com/pulumi/pulumi/pkg/v3=../../../pulumi/pkg
+          go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../../../pulumi/sdk
+
+          go mod tidy
+
+          if [ -z "${GOPATH:-}" ]; then
+            echo "GOPATH is empty. Defaulting to ${HOME}/go"
+            GOPATH="${HOME}/go"
+          fi
+          go build -o "${GOPATH}/bin/resourcedocsgen" .
+          export PATH="${GOPATH}/bin/":$PATH
+
+          popd
+
           # If generating docs for more providers here, be sure to update
           # the description of the draft PR that is opened in the next step.
           pushd docs
 
-          pushd tools/resourcedocsgen
-          go mod edit -replace github.com/pulumi/pulumi/pkg/v3=../../../pulumi/pkg
-          go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../../../pulumi/sdk
-          popd
-
           ./scripts/gen_resource_docs.sh aws true v5.42.0
           ./scripts/gen_resource_docs.sh kubernetes true
-
-          # Undo the changes to the go.mod and go.sum files since we don't want the PR
-          # to contain local overrides or the PR build in docs repo would fail.
-          pushd tools/resourcedocsgen
-          git checkout .
-          popd
 
           popd
 
