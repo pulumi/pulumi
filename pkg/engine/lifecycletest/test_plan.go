@@ -147,13 +147,24 @@ func (op TestOp) runWithContext(
 		return plan, nil, errors.Join(errs...)
 	}
 
-	snap, err := journal.Snap(target.Snapshot)
-	if err != nil {
-		errs = append(errs, err)
-	} else {
+	entries := journal.Entries()
+	// Check that each possible snapshot we could have created is valid
+	var snap *deploy.Snapshot
+	for i := 0; i <= len(entries); i++ {
+		var err error
+		snap, err = entries[0:i].Snap(target.Snapshot)
+		if err != nil {
+			// if any snapshot fails to create just return this error, don't keep going
+			errs = append(errs, err)
+			snap = nil
+			break
+		}
 		err = snap.VerifyIntegrity()
 		if err != nil {
+			// Likewise as soon as one snapshot fails to validate stop checking
 			errs = append(errs, err)
+			snap = nil
+			break
 		}
 	}
 
