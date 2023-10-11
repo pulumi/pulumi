@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Pull in fixes from esc v0.5.2
