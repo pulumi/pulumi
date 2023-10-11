@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/nodejs
+  description: Remove unneeded SxS check for inline programs
