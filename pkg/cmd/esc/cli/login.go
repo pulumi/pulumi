@@ -68,9 +68,11 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 				if account == nil {
-					return fmt.Errorf("not currently logged in")
+					backendURL = "https://api.pulumi.com"
+				} else {
+					backendURL = account.BackendURL
 				}
-				backendURL, shared = account.BackendURL, isShared
+				shared = isShared
 			}
 
 			if err := esc.checkBackendURL(backendURL); err != nil {

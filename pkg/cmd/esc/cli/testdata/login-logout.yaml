@@ -17,21 +17,19 @@ stdout: |
   > esc logout
   Logged out of http://fake.pulumi.api
   > esc login
-  ok
+  Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
   > esc login https://api.pulumi.com
   Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
   > esc logout --all
   Logged out of all clouds
   > esc login
-  ok
+  Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
 stderr: |
   > esc login
   > esc login https://api.pulumi.com
   > esc login http://fake.pulumi.api
   > esc logout
   > esc login
-  Error: not currently logged in
   > esc login https://api.pulumi.com
   > esc logout --all
   > esc login
-  Error: not currently logged in
