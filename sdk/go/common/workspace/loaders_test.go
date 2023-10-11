@@ -40,3 +40,20 @@ config:
 	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
 	assert.NoError(t, err)
 }
+
+func TestUnmarshalTime(t *testing.T) {
+	t.Parallel()
+	modifiedProjectStack := []byte(`
+config:
+  aws:region: us-east-1
+  aws:time: 2020-01-01T00:00:00Z
+`)
+	marshaller, err := marshallerForPath(".yaml")
+	require.NoError(t, err)
+	var projectStack ProjectStack
+	err = marshaller.Unmarshal(modifiedProjectStack, &projectStack)
+	assert.NoError(t, err)
+
+	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
+	assert.NoError(t, err)
+}

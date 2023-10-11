@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -461,6 +462,8 @@ func unmarshalObject(v any) (object, error) {
 		return newObject(v), nil
 	case string:
 		return newObject(v), nil
+	case time.Time:
+		return newObject(v.String()), nil
 	case map[string]any:
 		if ok, ciphertext := isSecureValue(v); ok {
 			return newSecureObject(ciphertext), nil
