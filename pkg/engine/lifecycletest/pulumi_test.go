@@ -3926,7 +3926,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 
