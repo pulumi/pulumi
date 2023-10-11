@@ -75,7 +75,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestSimpleAnalyzeResourceFailure(t *testing.T) {
@@ -119,7 +119,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestSimpleAnalyzeStackFailure(t *testing.T) {
@@ -163,7 +163,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 // TestResourceRemediation tests a very simple sequence of remediations. We register two, to ensure that

@@ -46,7 +46,7 @@ func TestBasicOutputs(t *testing.T) {
 			resolve(42)
 		}()
 		v, known, secret, deps, err := await(out)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Nil(t, deps)
@@ -59,7 +59,7 @@ func TestBasicOutputs(t *testing.T) {
 			reject(errors.New("boom"))
 		}()
 		v, _, _, _, err := await(out)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 	}
 }

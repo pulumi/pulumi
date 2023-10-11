@@ -40,7 +40,7 @@ func TestParseSince(t *testing.T) {
 	assert.Equal(t, "2006-01-02T00:00:00Z", d.UTC().Format(time.RFC3339))
 
 	pst, err := time.LoadLocation("America/Los_Angeles")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	e, _ := parseSince("2006-01-02T15:04:05-08:00", time.Now().In(pst))
 	assert.Equal(t, "2006-01-02T15:04:05-08:00", e.In(pst).Format(time.RFC3339))

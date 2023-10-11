@@ -43,7 +43,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 	}
@@ -58,7 +58,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		_, known, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.False(t, known)
 	}
 	// Test that rejected outputs do not run the apply, and instead flow the error.
@@ -72,7 +72,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 	}
 	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
@@ -88,7 +88,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 
@@ -100,7 +100,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 44)
 	}
@@ -117,7 +117,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 
 		app = out.ApplyT(func(v int) (interface{}, error) {
@@ -128,7 +128,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
@@ -667,7 +667,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err := await(res)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"qux", "zed"}, v)
 
@@ -675,7 +675,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res2)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"foo", "bar"}, v)
 
@@ -683,7 +683,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res3)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed", v)
 
@@ -691,12 +691,12 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res4)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, &myStructType{foo: 42, bar: "hello"}, v)
 
 		v, known, _, _, err = await(res5)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed;42;hello", v)
 	}

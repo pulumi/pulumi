@@ -132,7 +132,7 @@ func destroySpecificTargets(
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
 
 			deleted := make(map[resource.URN]bool)
@@ -241,7 +241,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
 
 			updated := make(map[resource.URN]bool)
@@ -391,7 +391,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
 
 			for _, entry := range entries {
@@ -453,7 +453,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
 
 			for _, entry := range entries {
@@ -626,7 +626,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
 
 			for _, entry := range entries {
@@ -691,7 +691,7 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
 
 			replaced := make(map[resource.URN]bool)
@@ -930,7 +930,7 @@ func destroySpecificTargetsWithChildren(
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
 
 			deleted := make(map[resource.URN]bool)
@@ -1008,7 +1008,7 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 		},
 	}
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Check that the default provider was created.
 	var foundDefaultProvider bool
@@ -1080,7 +1080,7 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	// Set up stack with initial two resources.
 	options := TestUpdateOptions{HostF: hostF}
 	origSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Target only `resA` and run a targeted update.
 	options = TestUpdateOptions{
@@ -1092,7 +1092,7 @@ func TestEnsureUntargetedSame(t *testing.T) {
 		},
 	}
 	finalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Check that `resB` (untargeted) is the same between the two snapshots.
 	{
@@ -1162,7 +1162,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	old, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
 		HostF: p.Options.HostF,
 	}, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Configure next update.
 	fooVal = "changed-from-bar" // This triggers a replace
@@ -1192,7 +1192,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 				}),
 			},
 		}, p.BackendClient, nil)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.NotNil(t, plan)
 
 		// Ensure resB is in the plan.
@@ -1230,7 +1230,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 				}),
 			},
 		}, p.BackendClient, nil)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.NotNil(t, plan)
 
 		foundResA := false
@@ -1277,7 +1277,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 				}),
 			},
 		}, p.BackendClient, nil)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.NotNil(t, plan)
 
 		foundResA := false
@@ -1341,7 +1341,7 @@ func TestTargetDependents(t *testing.T) {
 			TargetDependents: false,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// Check we only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
 
@@ -1354,7 +1354,7 @@ func TestTargetDependents(t *testing.T) {
 			TargetDependents: true,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// Check we still only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
 }
@@ -1411,7 +1411,7 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 			TargetDependents: false,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// Check we only have two resources, stack, and provider
 	require.Equal(t, 2, len(snap.Resources))
 
@@ -1424,7 +1424,7 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 			TargetDependents: true,
 		},
 	}, false, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// Check we still only have four resources, stack, provider, resA, and resB.
 	require.Equal(t, 4, len(snap.Resources))
 }

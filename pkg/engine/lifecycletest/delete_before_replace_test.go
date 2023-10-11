@@ -175,7 +175,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			replaced := make(map[resource.URN]bool)
 			for _, entry := range entries {
@@ -348,7 +348,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -372,7 +372,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -397,7 +397,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -421,7 +421,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -445,7 +445,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -471,7 +471,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -570,7 +570,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 				assert.True(t, len(entries) > 0)
 
 				resBDeleted, resBSame := false, false

@@ -2088,7 +2088,7 @@ func TestMinimumVersion(t *testing.T) {
 				assert.Error(t, err)
 				assert.Regexp(t, tt.expectedError, err.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -2112,9 +2112,9 @@ func TestProjectSettingsRespected(t *testing.T) {
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	projectSettings, err := stack.workspace.ProjectSettings(ctx)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, projectSettings.Name, tokens.PackageName("correct_project"))
 	assert.Equal(t, *projectSettings.Description, "This is a description")
 }

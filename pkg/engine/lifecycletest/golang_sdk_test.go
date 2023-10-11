@@ -468,7 +468,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: stackURN},
@@ -492,7 +492,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: stackURN},
 				{Op: deploy.OpSame, URN: provURN},
@@ -555,7 +555,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						evts []Event, err error,
 					) error {
-						assert.Nil(t, err)
+						assert.NoError(t, err)
 
 						AssertSameSteps(t, []StepSummary{
 							{Op: deploy.OpCreate, URN: stackURN},

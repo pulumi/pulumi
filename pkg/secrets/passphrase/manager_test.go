@@ -82,7 +82,7 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
+	assert.Error(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
 		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
 }
 
@@ -127,6 +127,6 @@ func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
+	assert.Error(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
 		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
 }

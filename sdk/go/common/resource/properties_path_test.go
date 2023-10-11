@@ -358,7 +358,7 @@ func TestAddResizePropertyPath(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/5871:
 	// Ensure that adding a new element beyond the size of an array will resize it.
 	path, err := ParsePropertyPath("[1]")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	_, ok := path.Add(NewArrayProperty([]PropertyValue{}), NewNumberProperty(42))
 	assert.True(t, ok)
 }
