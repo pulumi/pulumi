@@ -30,7 +30,9 @@ class ConfigMap(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              config: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if config is not None:
             _setter("config", config)
 
@@ -85,7 +87,11 @@ class Object(dict):
              foo: Optional['Resource'] = None,
              others: Optional[Sequence[Sequence['outputs.SomeOtherObject']]] = None,
              still_others: Optional[Mapping[str, Sequence['outputs.SomeOtherObject']]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'stillOthers' in kwargs:
+            still_others = kwargs['stillOthers']
+
         if bar is not None:
             _setter("bar", bar)
         if configs is not None:
@@ -144,7 +150,9 @@ class ObjectWithNodeOptionalInputs(dict):
              _setter: Callable[[Any, Any], None],
              foo: str,
              bar: Optional[int] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("foo", foo)
         if bar is not None:
             _setter("bar", bar)
@@ -172,7 +180,9 @@ class SomeOtherObject(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              baz: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if baz is not None:
             _setter("baz", baz)
 

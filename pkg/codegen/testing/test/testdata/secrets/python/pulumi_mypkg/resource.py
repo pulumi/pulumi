@@ -43,7 +43,17 @@ class ResourceArgs:
              foo: pulumi.Input[str],
              foo_array: pulumi.Input[Sequence[pulumi.Input[str]]],
              foo_map: pulumi.Input[Mapping[str, pulumi.Input[str]]],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'configArray' in kwargs:
+            config_array = kwargs['configArray']
+        if 'configMap' in kwargs:
+            config_map = kwargs['configMap']
+        if 'fooArray' in kwargs:
+            foo_array = kwargs['fooArray']
+        if 'fooMap' in kwargs:
+            foo_map = kwargs['fooMap']
+
         _setter("config", config)
         _setter("config_array", config_array)
         _setter("config_map", config_map)

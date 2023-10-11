@@ -40,7 +40,13 @@ class FooArgs:
              argument: Optional[str] = None,
              kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
              settings: Optional[pulumi.Input['LayeredTypeArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'backupKubeClientSettings' in kwargs:
+            backup_kube_client_settings = kwargs['backupKubeClientSettings']
+        if 'kubeClientSettings' in kwargs:
+            kube_client_settings = kwargs['kubeClientSettings']
+
         _setter("backup_kube_client_settings", backup_kube_client_settings)
         if argument is not None:
             _setter("argument", argument)

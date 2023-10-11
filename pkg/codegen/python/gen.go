@@ -2614,10 +2614,22 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		fmt.Fprintf(w, "\n             %s: %s%s,", pname, ty, defaultValue)
 	}
 	// Catch ResourceOptions being expanded by `**kwargs`.
-	fmt.Fprintf(w, "\n             opts: Optional[pulumi.ResourceOptions]=None):\n")
+	fmt.Fprintf(w, "\n             opts: Optional[pulumi.ResourceOptions]=None,")
+	fmt.Fprintf(w, "\n             **kwargs):\n")
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}
+
+	// Handle original property names. (i.e. propName -> prop_name)
+	for _, prop := range props {
+		if pname := PyName(prop.Name); pname != prop.Name {
+			// Original property name different from python name and could be in the kwargs.
+			fmt.Fprintf(w, "        if '%s' in kwargs:\n", prop.Name)
+			fmt.Fprintf(w, "            %s = kwargs['%s']\n", pname, prop.Name)
+		}
+	}
+	fmt.Fprintf(w, "\n")
+
 	for _, prop := range props {
 		pname := PyName(prop.Name)
 		var arg interface{}

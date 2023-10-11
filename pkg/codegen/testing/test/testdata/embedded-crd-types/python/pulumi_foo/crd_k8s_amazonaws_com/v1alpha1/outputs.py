@@ -45,7 +45,11 @@ class ENIConfigSpec(dict):
              _setter: Callable[[Any, Any], None],
              security_groups: Optional[Sequence[str]] = None,
              subnet: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'securityGroups' in kwargs:
+            security_groups = kwargs['securityGroups']
+
         if security_groups is not None:
             _setter("security_groups", security_groups)
         if subnet is not None:

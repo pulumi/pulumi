@@ -32,7 +32,11 @@ class StaticPageArgs:
              _setter: Callable[[Any, Any], None],
              index_content: pulumi.Input[str],
              foo: Optional['FooArgs'] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'indexContent' in kwargs:
+            index_content = kwargs['indexContent']
+
         _setter("index_content", index_content)
         if foo is not None:
             _setter("foo", foo)

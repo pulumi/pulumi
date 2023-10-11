@@ -31,7 +31,9 @@ class CatArgs:
              _setter: Callable[[Any, Any], None],
              age: Optional[pulumi.Input[int]] = None,
              pet: Optional[pulumi.Input['PetArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if age is not None:
             _setter("age", age)
         if pet is not None:

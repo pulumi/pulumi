@@ -44,7 +44,19 @@ class PetArgs:
              name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
              name_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
              name_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'requiredName' in kwargs:
+            required_name = kwargs['requiredName']
+        if 'requiredNameArray' in kwargs:
+            required_name_array = kwargs['requiredNameArray']
+        if 'requiredNameMap' in kwargs:
+            required_name_map = kwargs['requiredNameMap']
+        if 'nameArray' in kwargs:
+            name_array = kwargs['nameArray']
+        if 'nameMap' in kwargs:
+            name_map = kwargs['nameMap']
+
         _setter("required_name", required_name)
         _setter("required_name_array", required_name_array)
         _setter("required_name_map", required_name_map)

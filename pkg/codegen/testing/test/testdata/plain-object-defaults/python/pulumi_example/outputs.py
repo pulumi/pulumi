@@ -57,7 +57,11 @@ class KubeClientSettings(dict):
              burst: Optional[int] = None,
              qps: Optional[float] = None,
              rec_test: Optional['outputs.KubeClientSettings'] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'recTest' in kwargs:
+            rec_test = kwargs['recTest']
+
         if burst is None:
             burst = _utilities.get_env_int('PULUMI_K8S_CLIENT_BURST')
         if burst is not None:

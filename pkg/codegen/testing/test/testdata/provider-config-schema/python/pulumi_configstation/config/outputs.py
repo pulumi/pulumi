@@ -28,7 +28,9 @@ class Sandwich(dict):
              _setter: Callable[[Any, Any], None],
              bread: Optional[str] = None,
              veggies: Optional[Sequence[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if bread is not None:
             _setter("bread", bread)
         if veggies is not None:

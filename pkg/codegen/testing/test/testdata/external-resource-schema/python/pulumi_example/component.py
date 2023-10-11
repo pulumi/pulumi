@@ -43,7 +43,19 @@ class ComponentArgs:
              metadata: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']] = None,
              metadata_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None,
              metadata_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'requiredMetadata' in kwargs:
+            required_metadata = kwargs['requiredMetadata']
+        if 'requiredMetadataArray' in kwargs:
+            required_metadata_array = kwargs['requiredMetadataArray']
+        if 'requiredMetadataMap' in kwargs:
+            required_metadata_map = kwargs['requiredMetadataMap']
+        if 'metadataArray' in kwargs:
+            metadata_array = kwargs['metadataArray']
+        if 'metadataMap' in kwargs:
+            metadata_map = kwargs['metadataMap']
+
         _setter("required_metadata", required_metadata)
         _setter("required_metadata_array", required_metadata_array)
         _setter("required_metadata_map", required_metadata_map)

@@ -35,7 +35,9 @@ class ContainerArgs:
              brightness: Optional[pulumi.Input['ContainerBrightness']] = None,
              color: Optional[pulumi.Input[Union['ContainerColor', str]]] = None,
              material: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if size is None:
             size = 4
         _setter("size", size)

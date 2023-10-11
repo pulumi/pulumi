@@ -28,7 +28,9 @@ class ProviderCertmanagerArgs:
              _setter: Callable[[Any, Any], None],
              mtls_cert_pem: pulumi.Input[str],
              mtls_key_pem: pulumi.Input[str],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("mtls_cert_pem", mtls_cert_pem)
         _setter("mtls_key_pem", mtls_key_pem)
 

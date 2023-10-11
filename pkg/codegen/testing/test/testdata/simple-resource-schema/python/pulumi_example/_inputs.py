@@ -29,7 +29,9 @@ class ConfigMapArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              config: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if config is not None:
             _setter("config", config)
 
@@ -58,7 +60,9 @@ class ObjectWithNodeOptionalInputsArgs:
              _setter: Callable[[Any, Any], None],
              foo: pulumi.Input[str],
              bar: Optional[pulumi.Input[int]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("foo", foo)
         if bar is not None:
             _setter("bar", bar)
@@ -110,7 +114,11 @@ class ObjectArgs:
              foo: Optional[pulumi.Input['Resource']] = None,
              others: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
              still_others: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'stillOthers' in kwargs:
+            still_others = kwargs['stillOthers']
+
         if bar is not None:
             _setter("bar", bar)
         if configs is not None:
@@ -186,7 +194,9 @@ class SomeOtherObjectArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              baz: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if baz is not None:
             _setter("baz", baz)
 

@@ -39,7 +39,9 @@ class TypeUsesArgs:
              baz: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']] = None,
              foo: Optional[pulumi.Input['ObjectArgs']] = None,
              qux: Optional[pulumi.Input['RubberTreeVariety']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if bar is not None:
             _setter("bar", bar)
         if baz is not None:

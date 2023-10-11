@@ -25,7 +25,9 @@ class FooArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              a: Optional[pulumi.Input[bool]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if a is not None:
             _setter("a", a)
 

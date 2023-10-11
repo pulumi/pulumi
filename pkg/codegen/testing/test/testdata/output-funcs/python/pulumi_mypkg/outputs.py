@@ -52,7 +52,15 @@ class SsisEnvironmentReferenceResponse(dict):
              environment_name: Optional[str] = None,
              id: Optional[float] = None,
              reference_type: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'environmentFolderName' in kwargs:
+            environment_folder_name = kwargs['environmentFolderName']
+        if 'environmentName' in kwargs:
+            environment_name = kwargs['environmentName']
+        if 'referenceType' in kwargs:
+            reference_type = kwargs['referenceType']
+
         if environment_folder_name is not None:
             _setter("environment_folder_name", environment_folder_name)
         if environment_name is not None:
@@ -135,7 +143,11 @@ class SsisEnvironmentResponse(dict):
              id: Optional[float] = None,
              name: Optional[str] = None,
              variables: Optional[Sequence['outputs.SsisVariableResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'folderId' in kwargs:
+            folder_id = kwargs['folderId']
+
         _setter("type", 'Environment')
         if description is not None:
             _setter("description", description)
@@ -230,7 +242,9 @@ class SsisFolderResponse(dict):
              description: Optional[str] = None,
              id: Optional[float] = None,
              name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("type", 'Folder')
         if description is not None:
             _setter("description", description)
@@ -321,7 +335,15 @@ class SsisPackageResponse(dict):
              parameters: Optional[Sequence['outputs.SsisParameterResponse']] = None,
              project_id: Optional[float] = None,
              project_version: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'folderId' in kwargs:
+            folder_id = kwargs['folderId']
+        if 'projectId' in kwargs:
+            project_id = kwargs['projectId']
+        if 'projectVersion' in kwargs:
+            project_version = kwargs['projectVersion']
+
         _setter("type", 'Package')
         if description is not None:
             _setter("description", description)
@@ -467,7 +489,21 @@ class SsisParameterResponse(dict):
              value_set: Optional[bool] = None,
              value_type: Optional[str] = None,
              variable: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'dataType' in kwargs:
+            data_type = kwargs['dataType']
+        if 'defaultValue' in kwargs:
+            default_value = kwargs['defaultValue']
+        if 'designDefaultValue' in kwargs:
+            design_default_value = kwargs['designDefaultValue']
+        if 'sensitiveDefaultValue' in kwargs:
+            sensitive_default_value = kwargs['sensitiveDefaultValue']
+        if 'valueSet' in kwargs:
+            value_set = kwargs['valueSet']
+        if 'valueType' in kwargs:
+            value_type = kwargs['valueType']
+
         if data_type is not None:
             _setter("data_type", data_type)
         if default_value is not None:
@@ -638,7 +674,13 @@ class SsisProjectResponse(dict):
              name: Optional[str] = None,
              parameters: Optional[Sequence['outputs.SsisParameterResponse']] = None,
              version: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'environmentRefs' in kwargs:
+            environment_refs = kwargs['environmentRefs']
+        if 'folderId' in kwargs:
+            folder_id = kwargs['folderId']
+
         _setter("type", 'Project')
         if description is not None:
             _setter("description", description)
@@ -764,7 +806,13 @@ class SsisVariableResponse(dict):
              sensitive: Optional[bool] = None,
              sensitive_value: Optional[str] = None,
              value: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'dataType' in kwargs:
+            data_type = kwargs['dataType']
+        if 'sensitiveValue' in kwargs:
+            sensitive_value = kwargs['sensitiveValue']
+
         if data_type is not None:
             _setter("data_type", data_type)
         if description is not None:
@@ -868,7 +916,13 @@ class StorageAccountKeyResponse(dict):
              key_name: str,
              permissions: str,
              value: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'creationTime' in kwargs:
+            creation_time = kwargs['creationTime']
+        if 'keyName' in kwargs:
+            key_name = kwargs['keyName']
+
         _setter("creation_time", creation_time)
         _setter("key_name", key_name)
         _setter("permissions", permissions)

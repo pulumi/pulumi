@@ -45,7 +45,13 @@ class StorageAccountKeyResponseResult(dict):
              key_name: str,
              permissions: str,
              value: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'creationTime' in kwargs:
+            creation_time = kwargs['creationTime']
+        if 'keyName' in kwargs:
+            key_name = kwargs['keyName']
+
         _setter("creation_time", creation_time)
         _setter("key_name", key_name)
         _setter("permissions", permissions)
@@ -99,7 +105,9 @@ class GetAmiIdsFilterResult(dict):
              _setter: Callable[[Any, Any], None],
              name: str,
              values: Sequence[str],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("name", name)
         _setter("values", values)
 

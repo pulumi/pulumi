@@ -29,7 +29,9 @@ class BastionShareableLink:
     def _configure(
              _setter: Callable[[Any, Any], None],
              vm: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("vm", vm)
 
     @property

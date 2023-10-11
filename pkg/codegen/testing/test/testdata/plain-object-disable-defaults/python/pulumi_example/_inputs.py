@@ -43,7 +43,13 @@ class HelmReleaseSettings:
              required_arg: str,
              driver: Optional[str] = None,
              plugins_path: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'requiredArg' in kwargs:
+            required_arg = kwargs['requiredArg']
+        if 'pluginsPath' in kwargs:
+            plugins_path = kwargs['pluginsPath']
+
         _setter("required_arg", required_arg)
         if driver is None:
             driver = (_utilities.get_env('PULUMI_K8S_HELM_DRIVER') or 'secret')
@@ -115,7 +121,13 @@ class HelmReleaseSettingsArgs:
              required_arg: pulumi.Input[str],
              driver: Optional[pulumi.Input[str]] = None,
              plugins_path: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'requiredArg' in kwargs:
+            required_arg = kwargs['requiredArg']
+        if 'pluginsPath' in kwargs:
+            plugins_path = kwargs['pluginsPath']
+
         _setter("required_arg", required_arg)
         if driver is None:
             driver = (_utilities.get_env('PULUMI_K8S_HELM_DRIVER') or 'secret')
@@ -186,7 +198,11 @@ class KubeClientSettingsArgs:
              burst: Optional[pulumi.Input[int]] = None,
              qps: Optional[pulumi.Input[float]] = None,
              rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'recTest' in kwargs:
+            rec_test = kwargs['recTest']
+
         if burst is None:
             burst = _utilities.get_env_int('PULUMI_K8S_CLIENT_BURST')
         if burst is not None:
@@ -266,7 +282,11 @@ class LayeredTypeArgs:
              plain_other: Optional['HelmReleaseSettingsArgs'] = None,
              question: Optional[pulumi.Input[str]] = None,
              recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'plainOther' in kwargs:
+            plain_other = kwargs['plainOther']
+
         _setter("other", other)
         if thinker is None:
             thinker = 'not a good interaction'
@@ -372,7 +392,9 @@ class TypArgs:
              mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
              mod2: Optional[pulumi.Input['_mod2.TypArgs']] = None,
              val: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if mod1 is not None:
             _setter("mod1", mod1)
         if mod2 is not None:

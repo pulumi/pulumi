@@ -55,7 +55,11 @@ class ComponentArgs:
              d: Optional[int] = None,
              f: Optional[str] = None,
              foo: Optional[pulumi.Input['FooArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'bazMap' in kwargs:
+            baz_map = kwargs['bazMap']
+
         _setter("a", a)
         _setter("c", c)
         _setter("e", e)

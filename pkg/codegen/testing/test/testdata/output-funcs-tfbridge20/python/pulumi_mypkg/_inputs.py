@@ -28,7 +28,9 @@ class GetAmiIdsFilterArgs:
              _setter: Callable[[Any, Any], None],
              name: str,
              values: Sequence[str],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("name", name)
         _setter("values", values)
 

@@ -37,7 +37,9 @@ class Chew(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              owner: Optional['Dog'] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if owner is not None:
             _setter("owner", owner)
 
@@ -71,7 +73,9 @@ class Laser(dict):
              animal: Optional['Cat'] = None,
              batteries: Optional[bool] = None,
              light: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if animal is not None:
             _setter("animal", animal)
         if batteries is not None:
@@ -107,7 +111,9 @@ class Rec(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              rec1: Optional['outputs.Rec'] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if rec1 is not None:
             _setter("rec1", rec1)
 
@@ -141,7 +147,9 @@ class Toy(dict):
              associated: Optional['outputs.Toy'] = None,
              color: Optional[str] = None,
              wear: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if associated is not None:
             _setter("associated", associated)
         if color is not None:

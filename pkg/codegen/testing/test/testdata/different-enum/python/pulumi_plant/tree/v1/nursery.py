@@ -32,7 +32,9 @@ class NurseryArgs:
              _setter: Callable[[Any, Any], None],
              varieties: pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]],
              sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("varieties", varieties)
         if sizes is not None:
             _setter("sizes", sizes)
