@@ -68,6 +68,8 @@ const (
 
 const windowsOS = "windows"
 
+var ErrTestFailed = errors.New("test failed")
+
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
@@ -792,7 +794,9 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
-	assert.NoError(t, err)
+	if !errors.Is(err, ErrTestFailed) {
+		assert.NoError(t, err)
+	}
 }
 
 // ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
@@ -1153,6 +1157,14 @@ func (pt *ProgramTester) TestLifeCyclePrepare() error {
 	return err
 }
 
+func (pt *ProgramTester) checkTestFailure() error {
+	if pt.t.Failed() {
+		pt.t.Logf("Canceling further steps due to test failure")
+		return ErrTestFailed
+	}
+	return nil
+}
+
 // TestCleanUp cleans up the temporary directory that a test used
 func (pt *ProgramTester) TestCleanUp() {
 	testFinished := pt.TestFinished
@@ -1438,6 +1450,10 @@ func (pt *ProgramTester) exportImport(dir string) error {
 		}
 		pt.t.Logf("Calling ExportStateValidator")
 		f(pt.t, bytes)
+
+		if err := pt.checkTestFailure(); err != nil {
+			return err
+		}
 	}
 
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
@@ -1724,7 +1740,8 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	pt.t.Log("Performing extra runtime validation.")
 	extraRuntimeValidation(pt.t, stackInfo)
 	pt.t.Log("Extra runtime validation complete.")
-	return nil
+
+	return pt.checkTestFailure()
 }
 
 func (pt *ProgramTester) readUpdateEventLog() ([]apitype.EngineEvent, error) {
