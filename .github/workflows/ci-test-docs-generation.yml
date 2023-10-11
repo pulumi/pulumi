@@ -74,7 +74,7 @@ jobs:
         with:
           python-version: ${{ fromJson(needs.matrix.outputs.version-set).python }}
       - name: Set up DotNet
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ fromJson(needs.matrix.outputs.version-set).dotnet }}
           dotnet-quality: ga
