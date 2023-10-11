@@ -115,6 +115,8 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 			vs[k] = pv
 		}
 		return NewPlaintext(vs), nil
+	case nil:
+		return Plaintext{}, nil
 	default:
 		contract.Failf("unexpected value of type %T", v)
 		return Plaintext{}, nil
