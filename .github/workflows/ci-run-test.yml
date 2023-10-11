@@ -165,7 +165,7 @@ jobs:
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
           dotnet-quality: ga
