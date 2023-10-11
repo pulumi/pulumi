@@ -68,6 +68,10 @@ type stepGenerator struct {
 	aliased map[resource.URN]resource.URN
 	// a map from current URN of the resource to the old URN that it was aliased from.
 	aliases map[resource.URN]resource.URN
+
+	// targetsActual is the set of targets actually targeted by the engine, this can be different from opts.targets if
+	// --target-dependents is true.
+	targetsActual UrnTargets
 }
 
 // isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
@@ -80,24 +84,13 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 		return false
 	}
 
-	if ref := res.Provider; ref != "" {
-		proivderRef, err := providers.ParseReference(ref)
-		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
-		providerURN := proivderRef.URN()
-		// We don't follow default provider dependents, as default providers are internally managed and are
-		// always targeted. See https://github.com/pulumi/pulumi/issues/13557 for context of what happens if
-		// we do follow these.
-		if !providers.IsDefaultProvider(providerURN) && sg.opts.Targets.Contains(providerURN) {
-			return true
-		}
-	}
 	if res.Parent != "" {
-		if sg.opts.Targets.Contains(res.Parent) {
+		if sg.targetsActual.Contains(res.Parent) {
 			return true
 		}
 	}
 	for _, dep := range res.Dependencies {
-		if dep != "" && sg.opts.Targets.Contains(dep) {
+		if dep != "" && sg.targetsActual.Contains(dep) {
 			return true
 		}
 	}
@@ -857,7 +850,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	if isTargeted {
 		// Transitive dependencies are not initially targeted, ensure that they are in the Targets so that the
 		// deployment_executor identifies that the URN is targeted if applicable
-		sg.opts.Targets.addLiteral(urn)
+		sg.targetsActual.addLiteral(urn)
 	}
 
 	// Case 3: hasOld
@@ -2036,5 +2029,6 @@ func newStepGenerator(
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 		aliases:              make(map[resource.URN]resource.URN),
+		targetsActual:        opts.Targets.Clone(),
 	}
 }
