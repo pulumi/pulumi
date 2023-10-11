@@ -1595,7 +1595,8 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, ""),
     querymode: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
-    organization: jspb.Message.getFieldWithDefault(msg, 12, "")
+    organization: jspb.Message.getFieldWithDefault(msg, 12, ""),
+    configtypesMap: (f = msg.getConfigtypesMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -1681,6 +1682,12 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 12:
       var value = /** @type {string} */ (reader.readString());
       msg.setOrganization(value);
+      break;
+    case 13:
+      var value = msg.getConfigtypesMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -1791,6 +1798,10 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
       12,
       f
     );
+  }
+  f = message.getConfigtypesMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(13, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -2051,6 +2062,28 @@ proto.pulumirpc.RunRequest.prototype.getOrganization = function() {
 proto.pulumirpc.RunRequest.prototype.setOrganization = function(value) {
   return jspb.Message.setProto3StringField(this, 12, value);
 };
+
+
+/**
+ * map<string, string> configTypes = 13;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.RunRequest.prototype.getConfigtypesMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 13, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.clearConfigtypesMap = function() {
+  this.getConfigtypesMap().clear();
+  return this;};
 
 
 

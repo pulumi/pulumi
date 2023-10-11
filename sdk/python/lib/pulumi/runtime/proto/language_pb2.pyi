@@ -202,6 +202,22 @@ class RunRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class ConfigTypesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int
     PWD_FIELD_NUMBER: builtins.int
@@ -214,6 +230,7 @@ class RunRequest(google.protobuf.message.Message):
     QUERYMODE_FIELD_NUMBER: builtins.int
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
+    CONFIGTYPES_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -241,6 +258,9 @@ class RunRequest(google.protobuf.message.Message):
         """the configuration keys that have secret values."""
     organization: builtins.str
     """the organization of the stack being deployed into."""
+    @property
+    def configTypes(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """the type of each configuration variable."""
     def __init__(
         self,
         *,
@@ -256,8 +276,9 @@ class RunRequest(google.protobuf.message.Message):
         queryMode: builtins.bool = ...,
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
+        configTypes: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "configTypes", b"configTypes", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 

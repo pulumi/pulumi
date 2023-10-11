@@ -104,6 +104,7 @@ message RunRequest {
     bool queryMode = 10;            // true if we're only doing a query.
     repeated string configSecretKeys = 11; // the configuration keys that have secret values.
     string organization = 12;       // the organization of the stack being deployed into.
+    map<string, string> configTypes = 13; // the type of each configuration variable.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
