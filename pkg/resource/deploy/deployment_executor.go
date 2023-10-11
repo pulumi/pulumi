@@ -311,7 +311,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
-	if err == nil && !ex.stepExec.Errored() {
+	stepExecutorError := ex.stepExec.Errored()
+	if err == nil && stepExecutorError == nil {
 		err := ex.stepGen.AnalyzeResources()
 		if err != nil {
 			if !result.IsBail(err) {
@@ -323,15 +324,15 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if err != nil || ex.stepExec.Errored() || ex.stepGen.Errored() {
+	if err != nil || stepExecutorError != nil || ex.stepGen.Errored() {
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
 		ex.reportExecResult("failed", preview)
 		if err != nil {
 			return nil, result.BailError(err)
 		}
-		if ex.stepExec.Errored() {
-			return nil, result.BailErrorf("step executor errored")
+		if stepExecutorError != nil {
+			return nil, result.BailErrorf("step executor errored: %w", stepExecutorError)
 		}
 		return nil, result.BailErrorf("step generator errored")
 	} else if canceled {
@@ -455,7 +456,8 @@ func (ex *deploymentExecutor) importResources(
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
 
-	if err != nil || stepExec.Errored() {
+	stepExecutorError := stepExec.Errored()
+	if err != nil || stepExecutorError != nil {
 		if err != nil && !result.IsBail(err) {
 			ex.reportExecResult(fmt.Sprintf("failed: %s", err), preview)
 		} else {
@@ -464,7 +466,7 @@ func (ex *deploymentExecutor) importResources(
 		if err != nil {
 			return nil, result.BailError(err)
 		}
-		return nil, result.BailErrorf("step executor errored")
+		return nil, result.BailErrorf("step executor errored: %w", stepExecutorError)
 	} else if canceled {
 		ex.reportExecResult("canceled", preview)
 		return nil, result.BailErrorf("canceled")
@@ -516,9 +518,10 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
 
-	if stepExec.Errored() {
+	stepExecutorError := stepExec.Errored()
+	if stepExecutorError != nil {
 		ex.reportExecResult("failed", preview)
-		return result.BailErrorf("step executor errored")
+		return result.BailErrorf("step executor errored: %w", stepExecutorError)
 	} else if canceled {
 		ex.reportExecResult("canceled", preview)
 		return result.BailErrorf("canceled")

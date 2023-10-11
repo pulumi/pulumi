@@ -131,7 +131,7 @@ func (i *importer) executeParallel(ctx context.Context, steps ...Step) bool {
 
 func (i *importer) wait(ctx context.Context, token completionToken) bool {
 	token.Wait(ctx)
-	return ctx.Err() == nil && !i.executor.Errored()
+	return ctx.Err() == nil && i.executor.Errored() == nil
 }
 
 func (i *importer) registerExistingResources(ctx context.Context) bool {
