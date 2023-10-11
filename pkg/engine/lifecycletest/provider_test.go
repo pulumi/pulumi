@@ -1531,7 +1531,7 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 	for _, res := range snap.Resources[1:] {
 		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 // TestDeletedWithOptionInheritanceMLC checks that an MLC's DeletedWith option is propagated to resources that
@@ -1600,5 +1600,5 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	for _, res := range snap.Resources[1:] {
 		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }

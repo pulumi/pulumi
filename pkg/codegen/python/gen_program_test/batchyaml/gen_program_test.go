@@ -15,7 +15,7 @@ import (
 func TestGenerateProgram(t *testing.T) {
 	t.Parallel()
 	err := os.Chdir("../../../python") // chdir into codegen/python
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{

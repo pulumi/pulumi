@@ -476,7 +476,7 @@ func TestAliases(t *testing.T) {
 
 	var err error
 	_, err = snap.NormalizeURNReferences()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Start again with a parent and child.
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1012,7 +1012,7 @@ func TestAliasURNs(t *testing.T) {
 
 	var err error
 	_, err = snap.NormalizeURNReferences()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Start again with a parent and child.
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1198,7 +1198,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 
 	// Run an update to create the starting A resource
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1206,7 +1206,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Set mode to try and create A then a B that aliases to it, this should fail
 	mode = 1
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1214,7 +1214,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Set mode to try and create B first then a A, this should fail
 	mode = 2
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	// Because we made the B first that's what should end up in the state file
@@ -1294,7 +1294,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 
 	// Run an update for initial state with "resA", "resB with resA as its parent", and "resB with no parent".
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
@@ -1305,7 +1305,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 	// Run the next case, with "resA" and "resB with no parent and alias to have resA as its parent".
 	mode = 1
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)
@@ -1371,7 +1371,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
 	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
@@ -1391,7 +1391,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	}
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	// Assert that A is now a custom
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	// Now two because we'll have a provider now
 	assert.Len(t, snap.Resources, 2)
@@ -1412,7 +1412,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	}
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	// Assert that A is now a custom
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	// Back to one because the provider should have been cleaned up as well
 	assert.Len(t, snap.Resources, 1)
@@ -1488,7 +1488,7 @@ func TestParentAlias(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 
@@ -1503,7 +1503,7 @@ func TestParentAlias(t *testing.T) {
 			}
 			return err
 		})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 }
@@ -1608,7 +1608,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 
 	// Run an update for initial state with "resA", "resB", and "resC".
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
@@ -1625,7 +1625,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	// registered.
 	mode = 1
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 4)
@@ -1638,7 +1638,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 
 	mode = 2
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)
@@ -1742,7 +1742,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 
 	// Run an update for initial state with "resA"
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 2)
@@ -1751,7 +1751,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	// Run the next case, resA should be aliased
 	mode = 1
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 2)
@@ -1761,7 +1761,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	// resAX at this point because we're not being sent aliases.
 	mode = 2
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	assert.Len(t, snap.Resources, 3)

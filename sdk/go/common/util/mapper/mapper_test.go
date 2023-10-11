@@ -47,60 +47,60 @@ func TestFieldMapper(t *testing.T) {
 	// Try some simple primitive decodes.
 	var s bag
 	err := md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.Bool, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["b"], s.Bool)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.BoolP, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["b"], *s.BoolP)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "s", &s.String, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["s"], s.String)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "s", &s.StringP, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["s"], *s.StringP)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "f", &s.Float64, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["f"], s.Float64)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "f", &s.Float64P, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["f"], *s.Float64P)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "ss", &s.Strings, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["ss"], s.Strings)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "ss", &s.StringsP, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, tree["ss"], *s.StringsP)
 
 	// Ensure interface{} conversions work:
 	var sif string
 	err = md.DecodeValue(map[string]interface{}{"x": interface{}("hello")},
 		reflect.TypeOf(bag{}), "x", &sif, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "hello", sif)
 
 	var sifs []string
 	err = md.DecodeValue(map[string]interface{}{"arr": []interface{}{"a", "b", "c"}},
 		reflect.TypeOf(bag{}), "arr", &sifs, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, sifs)
 
 	// Ensure missing optional fields are ignored:
 	s.String = "x"
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "missing", &s.String, true)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "x", s.String)
 
 	// Try some error conditions; first, wrong type:
 	s.String = "x"
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.String, false)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, "Field 'b' on 'mapper.bag' must be a 'string'; got 'bool' instead", err.Error())
 	assert.Equal(t, "x", s.String)
 
 	// Next, missing required field:
 	s.String = "x"
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "missing", &s.String, false)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, "Missing required field 'missing' on 'mapper.bag'", err.Error())
 	assert.Equal(t, "x", s.String)
 }
@@ -125,14 +125,14 @@ func TestMapperEncode(t *testing.T) {
 
 	md := New(nil)
 	m, err := md.Encode(bag)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "something", m["s"])
 	assert.Equal(t, "ohmv", m["so"])
 
 	// Encode a nil interface
 
 	m, err = md.Encode((AnInterface)(nil))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Len(t, m, 0)
 }
 
@@ -150,7 +150,7 @@ func TestMapperDecode(t *testing.T) {
 		"so":  "ohmy",
 		"sco": "ohmynada",
 	}, &b1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "something", b1.String)
 	assert.Equal(t, "", b1.StringSkip)
 	assert.Equal(t, "ohmy", b1.StringOpt)
@@ -162,7 +162,7 @@ func TestMapperDecode(t *testing.T) {
 		"s":  "something",
 		"sc": "nothing",
 	}, &b2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "something", b2.String)
 	assert.Equal(t, "", b2.StringSkip)
 	assert.Equal(t, "", b2.StringOpt)
@@ -174,7 +174,7 @@ func TestMapperDecode(t *testing.T) {
 		"s":  true,
 		"sc": "",
 	}, &b3)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, "1 failures decoding:\n"+
 		"\ts: Field 's' on 'mapper.bagtag' must be a 'string'; got 'bool' instead", err.Error())
 	assert.Equal(t, "", b3.String)
@@ -182,7 +182,7 @@ func TestMapperDecode(t *testing.T) {
 	// Next, missing required field:
 	var b4 bagtag
 	err = md.Decode(map[string]interface{}{}, &b4)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, "1 failures decoding:\n"+
 		"\ts: Missing required field 's' on 'mapper.bagtag'", err.Error())
 	assert.Equal(t, "", b4.String)
@@ -220,7 +220,7 @@ func TestNestedMapper(t *testing.T) {
 			{"num": float64(84)},
 		},
 	}, &b)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, float64(99), b.Boggy.Num)
 	assert.NotNil(t, b.BoggyP)
 	assert.Equal(t, float64(180), b.BoggyP.Num)
@@ -284,7 +284,7 @@ func TestMultiplyNestedMapper(t *testing.T) {
 			},
 		},
 	}, &ber)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(ber.Bogs))
 	b := ber.Bogs["a"]
@@ -351,7 +351,7 @@ func TestMapMapper(t *testing.T) {
 			"y": map[string]interface{}{"title": "secondp"},
 		},
 	}, &hm)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(hm.Entries))
 	assert.Equal(t, "first", hm.Entries["a"].Title)
 	assert.Equal(t, "second", hm.Entries["b"].Title)
@@ -401,7 +401,7 @@ func TestCustomMapper(t *testing.T) {
 			"y": float64(247.9),
 		},
 	}, &w)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, float64(-99.2), w.C.X)
 	assert.Equal(t, float64(127.127), w.C.Y)
 	assert.NotNil(t, w.CI)
@@ -505,7 +505,7 @@ func TestBasicUnmap(t *testing.T) {
 	// Unmap returns a JSON-like dictionary object representing the above structure.
 	for _, e := range []interface{}{o, &o} {
 		um, err := Unmap(e)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.NotNil(t, um)
 
 		// check outer:

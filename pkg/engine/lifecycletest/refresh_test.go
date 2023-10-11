@@ -775,7 +775,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 
 	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, 1, len(refreshed))
 
 	provURN := p.NewProviderURN("pkgA", "default", "")

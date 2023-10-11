@@ -75,7 +75,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestSimpleAnalyzeResourceFailure(t *testing.T) {
@@ -119,7 +119,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestSimpleAnalyzeStackFailure(t *testing.T) {
@@ -163,7 +163,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 // TestResourceRemediation tests a very simple sequence of remediations. We register two, to ensure that
@@ -224,10 +224,10 @@ func TestResourceRemediation(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	// Expect no error, valid snapshot, two resources:
-	assert.Nil(t, res)
+	assert.Nil(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
 
@@ -281,10 +281,10 @@ func TestRemediationDiagnostic(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	// Expect no error, valid snapshot, two resources:
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
 }

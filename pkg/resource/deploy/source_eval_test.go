@@ -213,13 +213,13 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	assert.NoError(t, err)
 
 	processed := 0
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 
 		if event == nil {
 			break
@@ -296,13 +296,13 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	assert.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 
 		if event == nil {
 			break
@@ -409,13 +409,13 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, program)
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	assert.NoError(t, err)
 
 	reads := 0
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 		if event == nil {
 			break
 		}
@@ -484,13 +484,13 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	assert.NoError(t, err)
 
 	reads, registers := 0, 0
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 
 		if event == nil {
 			break
@@ -661,12 +661,12 @@ func TestDisableDefaultProviders(t *testing.T) {
 			ctx, err := newTestPluginContext(t, program)
 			assert.NoError(t, err)
 
-			iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-			assert.Nil(t, res)
+			iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+			assert.NoError(t, err)
 
 			for {
-				event, res := iter.Next()
-				assert.Nil(t, res)
+				event, err := iter.Next()
+				assert.NoError(t, err)
 				if event == nil {
 					break
 				}
@@ -974,12 +974,12 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 
 // 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-// 	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-// 	assert.Nil(t, res)
+// 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+// 	assert.NoError(t, err)
 // 	registrations, reads := 0, 0
 // 	for {
-// 		event, res := iter.Next()
-// 		assert.Nil(t, res)
+// 		event, err := iter.Next()
+// 		assert.NoError(t, err)
 
 // 		if event == nil {
 // 			break
@@ -1064,12 +1064,12 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 
 // 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-// 	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-// 	assert.Nil(t, res)
+// 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+// 	assert.NoError(t, err)
 // 	registered181, registered182 := false, false
 // 	for {
-// 		event, res := iter.Next()
-// 		assert.Nil(t, res)
+// 		event, err := iter.Next()
+// 		assert.NoError(t, err)
 
 // 		if event == nil {
 // 			break

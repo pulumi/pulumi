@@ -33,7 +33,7 @@ func TestTranspiledExampleTestsCovered(t *testing.T) {
 	// Check that all synced tests from pulumi/yaml are in test list
 	syncDir := filepath.Join("testdata", transpiledExamplesDir)
 	untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(syncDir, PulumiPulumiYAMLProgramTests)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Emptyf(t, untestedTranspiledExamples,
 		"Untested examples in %s: %v", syncDir, untestedTranspiledExamples)
 }
