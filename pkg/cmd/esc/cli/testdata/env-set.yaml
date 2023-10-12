@@ -10,6 +10,7 @@ run: |
   esc env set test 'array[1]' esc && esc env get test
   esc env set test 'array[2]' '{}' && esc env get test
   esc env set test 'array[2].foo' bar && esc env get test
+  esc env set test 'array[2].foo' '' && esc env get test
   esc env init test2
   esc env set test 'imports[0]' test2 && esc env get test
   esc env init test3
@@ -351,9 +352,7 @@ stdout: |+
 
   ```
 
-  > esc env init test2
-  Environment created.
-  > esc env set test imports[0] test2
+  > esc env set test array[2].foo 
   > esc env get test
   # Value
   ```json
@@ -362,7 +361,7 @@ stdout: |+
       "hello",
       "esc",
       {
-        "foo": "bar"
+        "foo": ""
       }
     ],
     "foo": {
@@ -393,7 +392,53 @@ stdout: |+
     array:
       - hello
       - esc
-      - {foo: bar}
+      - {foo: ""}
+
+  ```
+
+  > esc env init test2
+  Environment created.
+  > esc env set test imports[0] test2
+  > esc env get test
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "esc",
+      {
+        "foo": ""
+      }
+    ],
+    "foo": {
+      "bar": {
+        "alpha": "zed",
+        "baz": "qux"
+      },
+      "beta": [
+        "gamma",
+        42
+      ]
+    },
+    "open": "[unknown]"
+  }
+  ```
+  # Definition
+  ```yaml
+  values:
+    foo:
+      bar:
+        baz: qux
+        alpha: zed
+      beta:
+        - gamma
+        - 42
+    open:
+      "fn::open::test": "cse"
+    array:
+      - hello
+      - esc
+      - {foo: ""}
   imports:
     - test2
 
@@ -410,7 +455,7 @@ stdout: |+
       "hello",
       "esc",
       {
-        "foo": "bar"
+        "foo": ""
       }
     ],
     "foo": {
@@ -441,7 +486,7 @@ stdout: |+
     array:
       - hello
       - esc
-      - {foo: bar}
+      - {foo: ""}
   imports:
     - test2
     - test3
@@ -469,6 +514,8 @@ stderr: |
   > esc env set test array[2] {}
   > esc env get test
   > esc env set test array[2].foo bar
+  > esc env get test
+  > esc env set test array[2].foo 
   > esc env get test
   > esc env init test2
   > esc env set test imports[0] test2

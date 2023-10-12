@@ -56,6 +56,12 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			if err := yaml.Unmarshal([]byte(args[1]), &yamlValue); err != nil {
 				return fmt.Errorf("invalid value: %w", err)
 			}
+			if len(yamlValue.Content) == 0 {
+				// This can happen when the value is empty (e.g. when "" is present on the command line). Treat this
+				// as the empty string.
+				err = yaml.Unmarshal([]byte(`""`), &yamlValue)
+				contract.IgnoreError(err)
+			}
 			yamlValue = *yamlValue.Content[0]
 
 			if looksLikeSecret(path, yamlValue) && !secret && !plaintext {
