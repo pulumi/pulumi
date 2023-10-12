@@ -1489,3 +1489,118 @@ func TestUndefinedStackOutputNode(t *testing.T) {
 		},
 	})
 }
+
+// Tests basic environments from the perspective of a Pulumi program.
+func TestEnvironmentsBasicNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:            filepath.Join("environments_basic"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		Quick:          true,
+		RequireService: true,
+		CreateEnvironments: []integration.Environment{{
+			Name: "basic",
+			Definition: map[string]any{
+				"values": map[string]any{
+					"pulumiConfig": map[string]any{
+						"aConfigValue": "this value is a value",
+						"bEncryptedSecret": map[string]any{
+							"fn::secret": "this super secret is encrypted",
+						},
+						"outer": map[string]any{
+							"inner": "value",
+						},
+						"names": []any{"a", "b", "c", map[string]any{"fn::secret": "super secret name"}},
+						"servers": []any{
+							map[string]any{
+								"port": 80,
+								"host": "example",
+							},
+						},
+						"a": map[string]any{
+							"b": []any{
+								map[string]any{"c": true},
+								map[string]any{"c": false},
+							},
+						},
+						"tokens": []any{
+							map[string]any{
+								"fn::secret": "shh",
+							},
+						},
+						"foo": map[string]any{
+							"bar": map[string]any{
+								"fn::secret": "don't tell",
+							},
+						},
+					},
+				},
+			},
+		}},
+		Environments: []string{"basic"},
+	})
+}
+
+// Tests merged environments from the perspective of a Pulumi program.
+func TestEnvironmentsMergeNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:            filepath.Join("environments_merge"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		Quick:          true,
+		RequireService: true,
+		CreateEnvironments: []integration.Environment{
+			{
+				Name: "merge-0",
+				Definition: map[string]any{
+					"values": map[string]any{
+						"pulumiConfig": map[string]any{
+							"outer": map[string]any{
+								"inner": "not-a-value",
+							},
+							"names": []any{"a", "b", "c", map[string]any{"fn::secret": "super secret name"}},
+							"servers": []any{
+								map[string]any{
+									"port": 80,
+									"host": "example",
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "merge-1",
+				Definition: map[string]any{
+					"values": map[string]any{
+						"pulumiConfig": map[string]any{
+							"a": map[string]any{
+								"b": []any{
+									map[string]any{"c": true},
+									map[string]any{"c": false},
+								},
+							},
+							"tokens": []any{
+								map[string]any{
+									"fn::secret": "shh",
+								},
+							},
+							"foo": map[string]any{
+								"bar": "not so secret",
+							},
+						},
+					},
+				},
+			},
+		},
+		Environments: []string{"merge-0", "merge-1"},
+		Config: map[string]string{
+			"aConfigValue": "this value is a value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super secret is encrypted",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
+	})
+}

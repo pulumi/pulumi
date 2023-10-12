@@ -23,6 +23,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"os"
 	"os/exec"
@@ -135,6 +136,14 @@ type TestStatsReporter interface {
 	ReportCommand(stats TestCommandStats)
 }
 
+// Environment is used to create environments for use by test programs.
+type Environment struct {
+	// The name of the environment.
+	Name string
+	// The definition of the environment.
+	Definition map[string]any
+}
+
 // ConfigValue is used to provide config values to a test program.
 type ConfigValue struct {
 	// The config key to pass to `pulumi config`.
@@ -156,6 +165,10 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
+	// List of environments to create in order.
+	CreateEnvironments []Environment
+	// List of environments to use.
+	Environments []string
 	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Config map[string]string
 	// Map of secure config keys and values to set (e.g. {"aws:region": "us-east-2"}).
@@ -392,6 +405,26 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	return tokens.QName(opts.StackName)
 }
 
+// getEnvName returns the uniquified name for the given environment. The name is made unique by appending the FNV hash
+// of the associated stack's name. This ensures that the name is both unique and deterministic. The name must be
+// deterministic because it is computed by both LifeCycleInitialize and TestLifeCycleDestroy.
+func (opts *ProgramTestOptions) getEnvName(name string) string {
+	h := fnv.New32()
+	_, err := h.Write([]byte(opts.GetStackName()))
+	contract.IgnoreError(err)
+
+	suffix := hex.EncodeToString(h.Sum(nil))
+	return fmt.Sprintf("%v-%v", name, suffix)
+}
+
+func (opts *ProgramTestOptions) getEnvNameWithOwner(name string) string {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+	if opts.RequireService && owner != "" {
+		return fmt.Sprintf("%v/%v", owner, opts.getEnvName(name))
+	}
+	return opts.getEnvName(name)
+}
+
 // Returns the md5 hash of the file at the given path as a string
 func hashFile(path string) (string, error) {
 	file, err := os.Open(path)
@@ -442,6 +475,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Overrides != nil {
 		opts.Overrides = overrides.Overrides
+	}
+	if len(overrides.CreateEnvironments) != 0 {
+		opts.CreateEnvironments = append(opts.CreateEnvironments, overrides.CreateEnvironments...)
+	}
+	if len(overrides.Environments) != 0 {
+		opts.Environments = append(opts.Environments, overrides.Environments...)
 	}
 	for k, v := range overrides.Config {
 		if opts.Config == nil {
@@ -1337,6 +1376,62 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 		}
 	}
 
+	// Environments
+	for _, env := range pt.opts.CreateEnvironments {
+		name := pt.opts.getEnvNameWithOwner(env.Name)
+
+		envFile, err := func() (string, error) {
+			temp, err := os.CreateTemp(pt.t.TempDir(), fmt.Sprintf("pulumi-env-%v-*", env.Name))
+			if err != nil {
+				return "", err
+			}
+			defer contract.IgnoreClose(temp)
+
+			enc := yaml.NewEncoder(temp)
+			enc.SetIndent(2)
+			if err = enc.Encode(env.Definition); err != nil {
+				return "", err
+			}
+			return temp.Name(), nil
+		}()
+		if err != nil {
+			return err
+		}
+
+		initArgs := []string{"env", "init", name, "-f", envFile}
+		if err := pt.runPulumiCommand("pulumi-env-init", initArgs, dir, false); err != nil {
+			return err
+		}
+	}
+
+	if len(pt.opts.Environments) != 0 {
+		envs := make([]string, len(pt.opts.Environments))
+		for i, e := range pt.opts.Environments {
+			envs[i] = pt.opts.getEnvName(e)
+		}
+
+		stackFile := filepath.Join(dir, fmt.Sprintf("Pulumi.%v.yaml", stackName))
+		bytes, err := os.ReadFile(stackFile)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+
+		var stack workspace.ProjectStack
+		if err := yaml.Unmarshal(bytes, &stack); err != nil {
+			return err
+		}
+		stack.Environment = workspace.NewEnvironment(envs)
+
+		bytes, err = yaml.Marshal(stack)
+		if err != nil {
+			return err
+		}
+
+		if err = os.WriteFile(stackFile, bytes, 0o600); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1365,7 +1460,18 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		}
 
 		if !pt.opts.SkipStackRemoval {
-			return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
+			err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, env := range pt.opts.CreateEnvironments {
+			name := pt.opts.getEnvNameWithOwner(env.Name)
+			err := pt.runPulumiCommand("pulumi-env-rm", []string{"env", "rm", "--yes", name}, pt.projdir, false)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
