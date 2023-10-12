@@ -255,8 +255,13 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 		return model.StaticFunctionSignature{}, fmt.Errorf("Function %s does not have an Output version", fn.Token)
 	}
 
-	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.ReturnType != nil`.
-	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
+	// Given `fn.NeedsOutputVersion()==true` `fn.ReturnType != nil`.
+	var argsType model.Type
+	if fn.Inputs != nil {
+		argsType = b.schemaTypeToType(fn.Inputs.InputShape)
+	} else {
+		argsType = model.NewObjectType(map[string]model.Type{})
+	}
 	returnType := b.schemaTypeToType(fn.ReturnType)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }
