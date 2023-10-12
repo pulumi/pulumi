@@ -262,7 +262,15 @@ func (lm *testLoginManager) Login(
 ) (*workspace.Account, error) {
 	acct, ok := lm.creds.Accounts[cloudURL]
 	if !ok {
-		return nil, errors.New("unauthorized")
+		if cloudURL != "https://api.pulumi.com" {
+			return nil, errors.New("unauthorized")
+		}
+		acct := workspace.Account{
+			Username:    "test-user",
+			AccessToken: "access-token",
+		}
+		lm.creds.Accounts[cloudURL] = acct
+		return &acct, nil
 	}
 	return &acct, nil
 }

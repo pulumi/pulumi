@@ -47,6 +47,10 @@ func newLogoutCmd(esc *escCommand) *cobra.Command {
 					if err != nil {
 						return fmt.Errorf("getting current account: %w", err)
 					}
+					if account == nil {
+						fmt.Fprintf(esc.stdout, "Already logged out.\n")
+						return nil
+					}
 					backendURL = account.BackendURL
 				}
 				if err := esc.workspace.DeleteAccount(backendURL); err != nil {

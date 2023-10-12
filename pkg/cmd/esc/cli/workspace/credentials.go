@@ -148,8 +148,18 @@ func (w *Workspace) DeleteAccount(backendURL string) error {
 
 // SetCurrentAccount sets the currently logged-in account.
 func (w *Workspace) SetCurrentAccount(account Account, shared bool) error {
+	// Read Pulumi creds.
+	pulumiCreds, err := w.pulumi.GetStoredCredentials()
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("reading Pulumi credentials: %w", err)
+	}
+
+	// If there is no current Pulumi account and we want to share the current Pulumi account, then we need to set the
+	// current Pulumi account.
+	setCurrent := shared && pulumiCreds.Current == ""
+
 	// Store the account in Pulumi creds.
-	if err := w.pulumi.StoreAccount(account.BackendURL, account.Account, false); err != nil {
+	if err := w.pulumi.StoreAccount(account.BackendURL, account.Account, setCurrent); err != nil {
 		return fmt.Errorf("writing Pulumi credentials: %w", err)
 	}
 
