@@ -225,15 +225,19 @@ func newQueryResourceMonitor(
 				providerRegErrChan <- err
 				return
 			}
-			_, _, _, err = reg.Create(urn, inputs, 9999, false)
+			id, _, _, err := reg.Create(urn, inputs, 9999, false)
 			if err != nil {
 				providerRegErrChan <- err
 				return
 			}
 
+			contract.Assertf(id != "", "expected non-empty provider ID")
+			contract.Assertf(id != providers.UnknownID, "expected non-unknown provider ID")
+
 			e.done <- &RegisterResult{State: &resource.State{
 				Type: e.goal.Type,
 				URN:  urn,
+				ID:   id,
 			}}
 		}
 	}()
