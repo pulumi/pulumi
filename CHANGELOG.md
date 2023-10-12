@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.88.1 (2023-10-11)
+
+
+### Bug Fixes
+
+- [cli] allow unmarshalling nil as a config value.
+  [#14149](https://github.com/pulumi/pulumi/pull/14149)
+
+- [auto/nodejs] Remove unneeded SxS check for inline programs
+  [#14154](https://github.com/pulumi/pulumi/pull/14154)
+
+
+### Miscellaneous
+
+- [cli] Pull in fixes from esc v0.5.2
+  [#14155](https://github.com/pulumi/pulumi/pull/14155)
+
+
 ## 3.88.0 (2023-10-10)
 
 
