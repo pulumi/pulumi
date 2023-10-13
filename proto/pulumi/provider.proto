@@ -104,6 +104,7 @@ message ConfigureRequest {
     bool acceptSecrets  = 3;           // when true, operations should return secrets as strongly typed.
     bool acceptResources = 4;          // when true, operations should return resources as strongly typed values to the provider.
     bool sends_old_inputs = 5;         // when true, diff and update will be called with the old outputs and the old inputs.
+    bool sends_old_inputs_to_delete = 6; // when true, delete will be called with the old outputs and the old inputs.
 }
 
 message ConfigureResponse {
@@ -317,6 +318,7 @@ message DeleteRequest {
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current properties on the resource.
     double timeout = 4;                    // the delete request timeout represented in seconds.
+    google.protobuf.Struct old_inputs = 5; // the old input values of the resource to delete.
 }
 
 message ConstructRequest {

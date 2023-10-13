@@ -74,7 +74,7 @@ func (p *UnimplementedProvider) Update(urn resource.URN, id resource.ID, oldInpu
 	return resource.PropertyMap{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Update is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
+func (p *UnimplementedProvider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64) (resource.Status, error) {
 	return resource.StatusUnknown, status.Error(codes.Unimplemented, "Delete is not yet implemented")
 }
 

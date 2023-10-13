@@ -90,6 +90,7 @@ class ConfigureRequest(google.protobuf.message.Message):
     ACCEPTSECRETS_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_FIELD_NUMBER: builtins.int
+    SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """a map of configuration keys to values."""
@@ -102,6 +103,8 @@ class ConfigureRequest(google.protobuf.message.Message):
     """when true, operations should return resources as strongly typed values to the provider."""
     sends_old_inputs: builtins.bool
     """when true, diff and update will be called with the old outputs and the old inputs."""
+    sends_old_inputs_to_delete: builtins.bool
+    """when true, delete will be called with the old outputs and the old inputs."""
     def __init__(
         self,
         *,
@@ -110,9 +113,10 @@ class ConfigureRequest(google.protobuf.message.Message):
         acceptSecrets: builtins.bool = ...,
         acceptResources: builtins.bool = ...,
         sends_old_inputs: builtins.bool = ...,
+        sends_old_inputs_to_delete: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "variables", b"variables"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "variables", b"variables"]) -> None: ...
 
 global___ConfigureRequest = ConfigureRequest
 
@@ -902,6 +906,7 @@ class DeleteRequest(google.protobuf.message.Message):
     URN_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     TIMEOUT_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to delete."""
     urn: builtins.str
@@ -911,6 +916,9 @@ class DeleteRequest(google.protobuf.message.Message):
         """the current properties on the resource."""
     timeout: builtins.float
     """the delete request timeout represented in seconds."""
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the old input values of the resource to delete."""
     def __init__(
         self,
         *,
@@ -918,9 +926,10 @@ class DeleteRequest(google.protobuf.message.Message):
         urn: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         timeout: builtins.float = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "properties", b"properties", "timeout", b"timeout", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["old_inputs", b"old_inputs", "properties", b"properties"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "old_inputs", b"old_inputs", "properties", b"properties", "timeout", b"timeout", "urn", b"urn"]) -> None: ...
 
 global___DeleteRequest = DeleteRequest
 

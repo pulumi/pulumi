@@ -411,12 +411,17 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
 	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
-	state, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("state"))
+	inputs, err := UnmarshalProperties(req.GetOldInputs(), p.unmarshalOptions("inputs"))
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err = p.provider.Delete(urn, id, state, req.GetTimeout()); err != nil {
+	outputs, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("outputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = p.provider.Delete(urn, id, inputs, outputs, req.GetTimeout()); err != nil {
 		return nil, err
 	}
 

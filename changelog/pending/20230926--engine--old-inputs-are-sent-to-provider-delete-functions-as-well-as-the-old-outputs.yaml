@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Old inputs are sent to provider Delete functions, as well as the old outputs.

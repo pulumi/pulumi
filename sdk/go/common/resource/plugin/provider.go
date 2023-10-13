@@ -73,8 +73,9 @@ type Provider interface {
 	Update(urn resource.URN, id resource.ID,
 		oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
-	// Delete tears down an existing resource.
-	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
+	// Delete tears down an existing resource. The inputs and outputs are the last recorded ones from state.
+	Delete(urn resource.URN, id resource.ID,
+		inputs, outputs resource.PropertyMap, timeout float64) (resource.Status, error)
 
 	// Construct creates a new component resource.
 	Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap,

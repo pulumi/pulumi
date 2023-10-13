@@ -392,7 +392,7 @@ func (p *configurableProvider) create(urn resource.URN, inputs resource.Property
 	return id, inputs, resource.StatusOK, nil
 }
 
-func (p *configurableProvider) delete(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+func (p *configurableProvider) delete(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	p.deletes.Store(id, p.id)

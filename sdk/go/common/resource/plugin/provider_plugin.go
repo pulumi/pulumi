@@ -736,11 +736,12 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
-			AcceptSecrets:   true,
-			AcceptResources: true,
-			SendsOldInputs:  true,
-			Variables:       config,
-			Args:            minputs,
+			AcceptSecrets:          true,
+			AcceptResources:        true,
+			SendsOldInputs:         true,
+			SendsOldInputsToDelete: true,
+			Variables:              config,
+			Args:                   minputs,
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
@@ -1309,14 +1310,14 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(urn != "", "Delete requires a URN")
 	contract.Assertf(id != "", "Delete requires an ID")
 
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
-	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, len(oldInputs), len(oldOutputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1328,7 +1329,17 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	// We should never call delete at preview time, so we should never see unknowns here
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
-	mprops, err := MarshalProperties(props, MarshalOptions{
+	minputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
+	})
+	if err != nil {
+		return resource.StatusOK, err
+	}
+
+	moutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
@@ -1344,8 +1355,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
-		Properties: mprops,
+		Properties: moutputs,
 		Timeout:    timeout,
+		OldInputs:  minputs,
 	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcErr)

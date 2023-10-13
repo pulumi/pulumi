@@ -1334,7 +1334,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 					return id, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN,
-					id resource.ID, olds resource.PropertyMap, timeout float64,
+					id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 				) (resource.Status, error) {
 					return resource.StatusOK, nil
 				},
@@ -1689,7 +1689,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					// We should only delete things in the last pass

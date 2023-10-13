@@ -16,14 +16,12 @@ package convert
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -38,107 +36,14 @@ func (ws *testWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
 }
 
 type testProvider struct {
+	plugin.UnimplementedProvider
 	pkg      tokens.Package
 	mapping  func(key, provider string) ([]byte, string, error)
 	mappings func(key string) ([]string, error)
 }
 
-func (prov *testProvider) SignalCancellation() error {
-	return nil
-}
-
-func (prov *testProvider) Close() error {
-	return nil
-}
-
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
-}
-
-func (prov *testProvider) GetSchema(version int) ([]byte, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (prov *testProvider) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return nil, nil, errors.New("unsupported")
-}
-
-func (prov *testProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	return plugin.DiffResult{}, errors.New("unsupported")
-}
-
-func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
-	return nil
-}
-
-func (prov *testProvider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool, _ []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return nil, nil, errors.New("unsupported")
-}
-
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
-	preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	return "", nil, resource.StatusOK, errors.New("unsupported")
-}
-
-func (prov *testProvider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
-	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
-}
-
-func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, _ []string,
-) (plugin.DiffResult, error) {
-	return plugin.DiffResult{}, errors.New("unsupported")
-}
-
-func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool,
-) (resource.PropertyMap, resource.Status, error) {
-	return nil, resource.StatusOK, errors.New("unsupported")
-}
-
-func (prov *testProvider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap, timeout float64,
-) (resource.Status, error) {
-	return resource.StatusOK, errors.New("unsupported")
-}
-
-func (prov *testProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions,
-) (plugin.ConstructResult, error) {
-	return plugin.ConstructResult{}, errors.New("unsupported")
-}
-
-func (prov *testProvider) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return nil, nil, errors.New("unsupported")
-}
-
-func (prov *testProvider) StreamInvoke(
-	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error,
-) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-func (prov *testProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions,
-) (plugin.CallResult, error) {
-	return plugin.CallResult{}, errors.New("unsupported")
-}
-
-func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{}, errors.New("unsupported")
 }
 
 func (prov *testProvider) GetMapping(key, provider string) ([]byte, string, error) {

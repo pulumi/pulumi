@@ -215,7 +215,7 @@ func TestUnplannedDelete(t *testing.T) {
 				DeleteF: func(
 					urn resource.URN,
 					id resource.ID,
-					olds resource.PropertyMap,
+					oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					return resource.StatusOK, nil
@@ -292,7 +292,7 @@ func TestExpectedDelete(t *testing.T) {
 				DeleteF: func(
 					urn resource.URN,
 					id resource.ID,
-					olds resource.PropertyMap,
+					oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					return resource.StatusOK, nil
@@ -561,7 +561,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 				DeleteF: func(
 					urn resource.URN,
 					id resource.ID,
-					olds resource.PropertyMap,
+					oldInputs, oldOutputs resource.PropertyMap,
 					timeout float64,
 				) (resource.Status, error) {
 					return resource.StatusOK, nil

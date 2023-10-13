@@ -52,8 +52,9 @@ type Provider struct {
 		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
 	UpdateF func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
-	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
-	ReadF   func(urn resource.URN, id resource.ID,
+	DeleteF func(urn resource.URN, id resource.ID,
+		oldInputs, oldOutputs resource.PropertyMap, timeout float64) (resource.Status, error)
+	ReadF func(urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
 
 	ConstructF func(monitor *ResourceMonitor, typ, name string, parent resource.URN, inputs resource.PropertyMap,
@@ -172,12 +173,12 @@ func (prov *Provider) Update(urn resource.URN, id resource.ID, oldInputs, oldOut
 }
 
 func (prov *Provider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap, timeout float64,
+	id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	if prov.DeleteF == nil {
 		return resource.StatusOK, nil
 	}
-	return prov.DeleteF(urn, id, props, timeout)
+	return prov.DeleteF(urn, id, oldInputs, oldOutputs, timeout)
 }
 
 func (prov *Provider) Read(urn resource.URN, id resource.ID,
