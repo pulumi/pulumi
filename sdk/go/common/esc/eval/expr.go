@@ -141,6 +141,18 @@ func (x *expr) export(environment string) esc.Expr {
 				Accessors: []esc.Accessor{accessor},
 			}
 		}
+	case *fromBase64Expr:
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			ArgSchema: schema.String().Schema(),
+			Arg:       repr.string.export(environment),
+		}
+	case *fromJSONExpr:
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			ArgSchema: schema.Always().Schema(),
+			Arg:       repr.string.export(environment),
+		}
 	case *joinExpr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
@@ -319,6 +331,17 @@ func (x *toJSONExpr) syntax() ast.Expr {
 	return x.node
 }
 
+// fromJSONExpr represents a call from the fn::fromJSON builtin.
+type fromJSONExpr struct {
+	node *ast.FromJSONExpr
+
+	string *expr
+}
+
+func (x *fromJSONExpr) syntax() ast.Expr {
+	return x.node
+}
+
 // toStringExpr represents a call to the fn::toString builtin.
 type toStringExpr struct {
 	node *ast.ToStringExpr
@@ -361,5 +384,16 @@ type toBase64Expr struct {
 }
 
 func (x *toBase64Expr) syntax() ast.Expr {
+	return x.node
+}
+
+// fromBase64Expr represents a call from the fn::fromBase64 builtin.
+type fromBase64Expr struct {
+	node *ast.FromBase64Expr
+
+	string *expr
+}
+
+func (x *fromBase64Expr) syntax() ast.Expr {
 	return x.node
 }

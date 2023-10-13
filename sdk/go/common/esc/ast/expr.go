@@ -440,6 +440,25 @@ func ToJSON(value Expr) *ToJSONExpr {
 	return ToJSONSyntax(nil, name, value)
 }
 
+// FromJSON deserializes a JSON string into a value.
+type FromJSONExpr struct {
+	builtinNode
+
+	String Expr
+}
+
+func FromJSONSyntax(node *syntax.ObjectNode, name *StringExpr, args Expr) *FromJSONExpr {
+	return &FromJSONExpr{
+		builtinNode: builtin(node, name, args),
+		String:      args,
+	}
+}
+
+func FromJSON(value Expr) *FromJSONExpr {
+	name := String("fn::fromJSON")
+	return FromJSONSyntax(nil, name, value)
+}
+
 // ToString returns the underlying structure as a string.
 type ToStringExpr struct {
 	builtinNode
@@ -520,6 +539,25 @@ func ToBase64Syntax(node *syntax.ObjectNode, name *StringExpr, args Expr) *ToBas
 	}
 }
 
+// FromBase64 decodes a Base64 string.
+type FromBase64Expr struct {
+	builtinNode
+
+	String Expr
+}
+
+func FromBase64Syntax(node *syntax.ObjectNode, name *StringExpr, args Expr) *FromBase64Expr {
+	return &FromBase64Expr{
+		builtinNode: builtin(node, name, args),
+		String:      args,
+	}
+}
+
+func FromBase64(value Expr) *FromBase64Expr {
+	name := String("fn::fromBase64")
+	return FromBase64Syntax(nil, name, value)
+}
+
 func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) {
 	if node.Len() != 1 {
 		return nil, nil, false
@@ -530,6 +568,10 @@ func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) 
 	var parse func(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics)
 	var diags syntax.Diagnostics
 	switch kvp.Key.Value() {
+	case "fn::fromJSON":
+		parse = parseFromJSON
+	case "fn::fromBase64":
+		parse = parseFromBase64
 	case "fn::join":
 		parse = parseJoin
 	case "fn::open":
@@ -640,12 +682,20 @@ func parseToJSON(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, sy
 	return ToJSONSyntax(node, name, args), nil
 }
 
+func parseFromJSON(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
+	return FromJSONSyntax(node, name, args), nil
+}
+
 func parseToString(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
 	return ToStringSyntax(node, name, args), nil
 }
 
 func parseToBase64(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
 	return ToBase64Syntax(node, name, args), nil
+}
+
+func parseFromBase64(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
+	return FromBase64Syntax(node, name, args), nil
 }
 
 func parseSecret(node *syntax.ObjectNode, name *StringExpr, value Expr) (Expr, syntax.Diagnostics) {

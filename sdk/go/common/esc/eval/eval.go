@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/internal/util"
 	"github.com/pulumi/esc/schema"
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/esc/syntax/encoding"
@@ -185,10 +186,13 @@ func (e *evalContext) errorf(expr ast.Expr, format string, a ...any) {
 // - {Null, Boolean, Number, String}Expr -> literalExpr
 // - InterpolateExpr                     -> interpolateExpr
 // - SymbolExpr                          -> symbolExpr
+// - FromBase64Expr                      -> fromBase64Expr
+// - FromJSONExpr                        -> fromJSONExpr
 // - JoinExpr                            -> joinExpr
 // - OpenExpr                            -> openExpr
 // - SecretExpr                          -> secretExpr
 // - ToBase64Expr                        -> toBase64Expr
+// - ToJSONExpr                          -> toJSONExpr
 // - ListExpr                            -> listExpr
 // - ObjectExpr                          -> objectExpr
 func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
@@ -222,6 +226,12 @@ func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 		}
 		property := &propertyAccess{accessors: accessors}
 		return newExpr(path, &symbolExpr{node: x, property: property}, schema.Always().Schema(), base)
+	case *ast.FromBase64Expr:
+		repr := &fromBase64Expr{node: x, string: e.declare("", x.String, nil)}
+		return newExpr(path, repr, schema.String().Schema(), base)
+	case *ast.FromJSONExpr:
+		repr := &fromJSONExpr{node: x, string: e.declare("", x.String, nil)}
+		return newExpr(path, repr, schema.Always(), base)
 	case *ast.JoinExpr:
 		repr := &joinExpr{
 			node:      x,
@@ -264,7 +274,7 @@ func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 			if _, ok := properties[k]; ok {
 				e.errorf(entry.Key, "duplicate key %q", k)
 			} else {
-				properties[k] = e.declare(joinKey(path, k), entry.Value, base.property(entry.Key, k))
+				properties[k] = e.declare(util.JoinKey(path, k), entry.Value, base.property(entry.Key, k))
 			}
 		}
 		repr := &objectExpr{node: x, properties: properties}
@@ -423,6 +433,10 @@ func (e *evalContext) evaluateExpr(x *expr) *value {
 		val = e.evaluateInterpolate(x, repr)
 	case *symbolExpr:
 		val = e.evaluatePropertyAccess(x, repr.property.accessors)
+	case *fromBase64Expr:
+		val = e.evaluateBuiltinFromBase64(x, repr)
+	case *fromJSONExpr:
+		val = e.evaluateBuiltinFromJSON(x, repr)
 	case *joinExpr:
 		val = e.evaluateBuiltinJoin(x, repr)
 	case *openExpr:
@@ -807,6 +821,63 @@ func (e *evalContext) evaluateBuiltinJoin(x *expr, repr *joinExpr) *value {
 	return v
 }
 
+// evaluateBuiltinFromBase64 evaluates a call from the fn::fromBase64 builtin.
+func (e *evalContext) evaluateBuiltinFromBase64(x *expr, repr *fromBase64Expr) *value {
+	v := &value{def: x, schema: x.schema}
+
+	str, ok := e.evaluateTypedExpr(repr.string, schema.String().Schema())
+	if !ok {
+		v.unknown = true
+		return v
+	}
+
+	v.combine(str)
+	if !v.unknown {
+		b, err := base64.StdEncoding.DecodeString(str.repr.(string))
+		if err != nil {
+			e.errorf(repr.syntax(), "decoding base64 string: %v", err)
+			v.unknown = true
+			return v
+		}
+		v.repr = string(b)
+	}
+	return v
+}
+
+// evaluateBuiltinFromJSON evaluates a call from the fn::fromJSON builtin.
+func (e *evalContext) evaluateBuiltinFromJSON(x *expr, repr *fromJSONExpr) *value {
+	v := &value{def: x, schema: x.schema}
+
+	str, ok := e.evaluateTypedExpr(repr.string, schema.String().Schema())
+	if !ok {
+		v.unknown = true
+		return v
+	}
+
+	v.combine(str)
+	if !v.unknown {
+		dec := json.NewDecoder(strings.NewReader(str.repr.(string)))
+		dec.UseNumber()
+
+		var jv any
+		if err := dec.Decode(&jv); err != nil {
+			e.errorf(repr.syntax(), "decoding JSON string: %v", err)
+			v.unknown = true
+			return v
+		}
+
+		ev, err := esc.FromJSON(jv)
+		if err != nil {
+			e.errorf(repr.syntax(), "internal error: decoding JSON value: %v", err)
+			v.unknown = true
+			return v
+		}
+
+		return unexport(ev, x)
+	}
+	return v
+}
+
 // evaluateBuiltinToBase64 evaluates a call to the fn::toBase64 builtin.
 func (e *evalContext) evaluateBuiltinToBase64(x *expr, repr *toBase64Expr) *value {
 	v := &value{def: x, schema: x.schema}
@@ -855,42 +926,4 @@ func (e *evalContext) evaluateBuiltinToString(x *expr, repr *toStringExpr) *valu
 		v.repr = s
 	}
 	return v
-}
-
-// joinKey joins an object property key with the path to its parents, quoting and escaping appropriately.
-func joinKey(root, k string) string {
-	if !mustEscapeKey(k) {
-		if root == "" {
-			return k
-		}
-		return root + "." + k
-	}
-
-	var b strings.Builder
-	b.WriteString(`["`)
-	for _, r := range k {
-		if r == '"' {
-			b.WriteByte('\\')
-		}
-		b.WriteRune(r)
-	}
-	b.WriteString(`"]`)
-	return root + b.String()
-}
-
-// mustEscapeKey returns true if the given key needs to be escaped.
-func mustEscapeKey(k string) bool {
-	for i, r := range k {
-		switch {
-		case r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '_':
-			// OK
-		case r >= '0' && r <= '9':
-			if i == 0 {
-				return true
-			}
-		default:
-			return true
-		}
-	}
-	return false
 }

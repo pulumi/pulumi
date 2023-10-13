@@ -5,14 +5,14 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 21,
+                        "line": 29,
                         "column": 11,
-                        "byte": 336
+                        "byte": 481
                     },
                     "end": {
-                        "line": 21,
+                        "line": 29,
                         "column": 25,
-                        "byte": 350
+                        "byte": 495
                     }
                 },
                 "schema": {
@@ -25,14 +25,14 @@
                         "value": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 7,
+                                "line": 11,
                                 "column": 5,
-                                "byte": 79
+                                "byte": 165
                             },
                             "end": {
-                                "line": 8,
+                                "line": 16,
                                 "column": 15,
-                                "byte": 109
+                                "byte": 254
                             }
                         }
                     },
@@ -41,31 +41,188 @@
                         "value": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 7,
+                                "line": 11,
                                 "column": 5,
-                                "byte": 79
+                                "byte": 165
                             },
                             "end": {
-                                "line": 8,
+                                "line": 16,
                                 "column": 15,
-                                "byte": 109
+                                "byte": 254
                             }
                         }
                     }
                 ]
             },
+            "fromBase64": {
+                "range": {
+                    "environment": "omnibus",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 41
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 32,
+                        "byte": 68
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::fromBase64",
+                    "argSchema": {
+                        "type": "string"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "omnibus",
+                            "begin": {
+                                "line": 5,
+                                "column": 21,
+                                "byte": 57
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 32,
+                                "byte": 68
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "symbol": [
+                            {
+                                "key": "toBase64",
+                                "value": {
+                                    "environment": "omnibus",
+                                    "begin": {
+                                        "line": 21,
+                                        "column": 5,
+                                        "byte": 311
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 26,
+                                        "byte": 332
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "fromJSON": {
+                "range": {
+                    "environment": "omnibus",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 85
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 28,
+                        "byte": 108
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "a": {
+                            "type": "null"
+                        },
+                        "b": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "c": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "d": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "b",
+                        "baz",
+                        "c",
+                        "d",
+                        "foo"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::fromJSON",
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "omnibus",
+                            "begin": {
+                                "line": 7,
+                                "column": 19,
+                                "byte": 99
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 28,
+                                "byte": 108
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "symbol": [
+                            {
+                                "key": "toJSON",
+                                "value": {
+                                    "environment": "omnibus",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 5,
+                                        "byte": 347
+                                    },
+                                    "end": {
+                                        "line": 23,
+                                        "column": 24,
+                                        "byte": 366
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
             "interp": {
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 20,
+                        "line": 28,
                         "column": 11,
-                        "byte": 307
+                        "byte": 452
                     },
                     "end": {
-                        "line": 20,
+                        "line": 28,
                         "column": 29,
-                        "byte": 325
+                        "byte": 470
                     }
                 },
                 "schema": {
@@ -80,14 +237,14 @@
                                 "value": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 17,
+                                        "line": 25,
                                         "column": 5,
-                                        "byte": 238
+                                        "byte": 383
                                     },
                                     "end": {
-                                        "line": 17,
+                                        "line": 25,
                                         "column": 26,
-                                        "byte": 259
+                                        "byte": 404
                                     }
                                 }
                             }
@@ -99,14 +256,14 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 5,
+                        "line": 9,
                         "column": 5,
-                        "byte": 35
+                        "byte": 121
                     },
                     "end": {
-                        "line": 5,
+                        "line": 9,
                         "column": 32,
-                        "byte": 62
+                        "byte": 148
                     }
                 },
                 "schema": {
@@ -147,14 +304,14 @@
                                 "range": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 5,
+                                        "line": 9,
                                         "column": 17,
-                                        "byte": 47
+                                        "byte": 133
                                     },
                                     "end": {
-                                        "line": 5,
+                                        "line": 9,
                                         "column": 18,
-                                        "byte": 48
+                                        "byte": 134
                                     }
                                 },
                                 "schema": {
@@ -167,14 +324,14 @@
                                 "range": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 5,
+                                        "line": 9,
                                         "column": 22,
-                                        "byte": 52
+                                        "byte": 138
                                     },
                                     "end": {
-                                        "line": 5,
+                                        "line": 9,
                                         "column": 32,
-                                        "byte": 62
+                                        "byte": 148
                                     }
                                 },
                                 "schema": {
@@ -218,21 +375,42 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 7,
+                        "line": 11,
                         "column": 5,
-                        "byte": 79
+                        "byte": 165
                     },
                     "end": {
-                        "line": 8,
+                        "line": 16,
                         "column": 15,
-                        "byte": 109
+                        "byte": 254
                     }
                 },
                 "schema": {
                     "properties": {
+                        "a": {
+                            "type": "null"
+                        },
+                        "b": {
+                            "type": "boolean",
+                            "const": true
+                        },
                         "baz": {
                             "type": "string",
                             "const": "qux"
+                        },
+                        "c": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "d": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
                         },
                         "foo": {
                             "type": "string",
@@ -241,7 +419,11 @@
                     },
                     "type": "object",
                     "required": [
+                        "a",
+                        "b",
                         "baz",
+                        "c",
+                        "d",
                         "foo"
                     ]
                 },
@@ -301,41 +483,104 @@
                         "range": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 8,
+                                "line": 12,
                                 "column": 7,
-                                "byte": 101
+                                "byte": 187
                             },
                             "end": {
-                                "line": 8,
+                                "line": 16,
                                 "column": 15,
-                                "byte": 109
+                                "byte": 254
                             }
                         },
                         "schema": {
                             "properties": {
+                                "a": {
+                                    "type": "null"
+                                },
+                                "b": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
                                 "baz": {
                                     "type": "string",
                                     "const": "qux"
+                                },
+                                "c": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "d": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
                                 }
                             },
                             "type": "object",
                             "required": [
-                                "baz"
+                                "a",
+                                "b",
+                                "baz",
+                                "c",
+                                "d"
                             ]
                         },
                         "object": {
+                            "a": {
+                                "range": {
+                                    "environment": "omnibus",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 10,
+                                        "byte": 190
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 14,
+                                        "byte": 194
+                                    }
+                                },
+                                "schema": {
+                                    "type": "null"
+                                }
+                            },
+                            "b": {
+                                "range": {
+                                    "environment": "omnibus",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 10,
+                                        "byte": 204
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 14,
+                                        "byte": 208
+                                    }
+                                },
+                                "schema": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
+                                "literal": true
+                            },
                             "baz": {
                                 "range": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 8,
+                                        "line": 16,
                                         "column": 12,
-                                        "byte": 106
+                                        "byte": 251
                                     },
                                     "end": {
-                                        "line": 8,
+                                        "line": 16,
                                         "column": 15,
-                                        "byte": 109
+                                        "byte": 254
                                     }
                                 },
                                 "schema": {
@@ -343,6 +588,73 @@
                                     "const": "qux"
                                 },
                                 "literal": "qux"
+                            },
+                            "c": {
+                                "range": {
+                                    "environment": "omnibus",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 10,
+                                        "byte": 218
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 12,
+                                        "byte": 220
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "literal": 42
+                            },
+                            "d": {
+                                "range": {
+                                    "environment": "omnibus",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 10,
+                                        "byte": 230
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 17,
+                                        "byte": 237
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "omnibus",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 12,
+                                                "byte": 232
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 17,
+                                                "byte": 237
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "hello"
+                                        },
+                                        "literal": "hello"
+                                    }
+                                ]
                             }
                         }
                     }
@@ -352,21 +664,42 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 19,
+                        "line": 27,
                         "column": 5,
-                        "byte": 273
+                        "byte": 418
                     },
                     "end": {
-                        "line": 19,
+                        "line": 27,
                         "column": 28,
-                        "byte": 296
+                        "byte": 441
                     }
                 },
                 "schema": {
                     "properties": {
+                        "a": {
+                            "type": "null"
+                        },
+                        "b": {
+                            "type": "boolean",
+                            "const": true
+                        },
                         "baz": {
                             "type": "string",
                             "const": "qux"
+                        },
+                        "c": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "d": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
                         },
                         "foo": {
                             "type": "string",
@@ -375,7 +708,11 @@
                     },
                     "type": "object",
                     "required": [
+                        "a",
+                        "b",
                         "baz",
+                        "c",
+                        "d",
                         "foo"
                     ]
                 },
@@ -386,21 +723,42 @@
                         "range": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 19,
+                                "line": 27,
                                 "column": 21,
-                                "byte": 289
+                                "byte": 434
                             },
                             "end": {
-                                "line": 19,
+                                "line": 27,
                                 "column": 28,
-                                "byte": 296
+                                "byte": 441
                             }
                         },
                         "schema": {
                             "properties": {
+                                "a": {
+                                    "type": "null"
+                                },
+                                "b": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
                                 "baz": {
                                     "type": "string",
                                     "const": "qux"
+                                },
+                                "c": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "d": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
                                 },
                                 "foo": {
                                     "type": "string",
@@ -409,7 +767,11 @@
                             },
                             "type": "object",
                             "required": [
+                                "a",
+                                "b",
                                 "baz",
+                                "c",
+                                "d",
                                 "foo"
                             ]
                         },
@@ -419,14 +781,14 @@
                                 "value": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 7,
+                                        "line": 11,
                                         "column": 5,
-                                        "byte": 79
+                                        "byte": 165
                                     },
                                     "end": {
-                                        "line": 8,
+                                        "line": 16,
                                         "column": 15,
-                                        "byte": 109
+                                        "byte": 254
                                     }
                                 }
                             }
@@ -438,14 +800,14 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 10,
+                        "line": 18,
                         "column": 5,
-                        "byte": 124
+                        "byte": 269
                     },
                     "end": {
-                        "line": 11,
+                        "line": 19,
                         "column": 14,
-                        "byte": 149
+                        "byte": 294
                     }
                 },
                 "schema": {
@@ -459,14 +821,14 @@
                         "range": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 11,
+                                "line": 19,
                                 "column": 7,
-                                "byte": 142
+                                "byte": 287
                             },
                             "end": {
-                                "line": 11,
+                                "line": 19,
                                 "column": 14,
-                                "byte": 149
+                                "byte": 294
                             }
                         },
                         "schema": {
@@ -481,14 +843,14 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 13,
+                        "line": 21,
                         "column": 5,
-                        "byte": 166
+                        "byte": 311
                     },
                     "end": {
-                        "line": 13,
+                        "line": 21,
                         "column": 26,
-                        "byte": 187
+                        "byte": 332
                     }
                 },
                 "schema": {
@@ -503,14 +865,14 @@
                         "range": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 13,
+                                "line": 21,
                                 "column": 19,
-                                "byte": 180
+                                "byte": 325
                             },
                             "end": {
-                                "line": 13,
+                                "line": 21,
                                 "column": 26,
-                                "byte": 187
+                                "byte": 332
                             }
                         },
                         "schema": {
@@ -522,14 +884,14 @@
                                 "value": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 5,
+                                        "line": 9,
                                         "column": 5,
-                                        "byte": 35
+                                        "byte": 121
                                     },
                                     "end": {
-                                        "line": 5,
+                                        "line": 9,
                                         "column": 32,
-                                        "byte": 62
+                                        "byte": 148
                                     }
                                 }
                             }
@@ -541,14 +903,14 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 15,
+                        "line": 23,
                         "column": 5,
-                        "byte": 202
+                        "byte": 347
                     },
                     "end": {
-                        "line": 15,
+                        "line": 23,
                         "column": 24,
-                        "byte": 221
+                        "byte": 366
                     }
                 },
                 "schema": {
@@ -561,21 +923,42 @@
                         "range": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 15,
+                                "line": 23,
                                 "column": 17,
-                                "byte": 214
+                                "byte": 359
                             },
                             "end": {
-                                "line": 15,
+                                "line": 23,
                                 "column": 24,
-                                "byte": 221
+                                "byte": 366
                             }
                         },
                         "schema": {
                             "properties": {
+                                "a": {
+                                    "type": "null"
+                                },
+                                "b": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
                                 "baz": {
                                     "type": "string",
                                     "const": "qux"
+                                },
+                                "c": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "d": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
                                 },
                                 "foo": {
                                     "type": "string",
@@ -584,7 +967,11 @@
                             },
                             "type": "object",
                             "required": [
+                                "a",
+                                "b",
                                 "baz",
+                                "c",
+                                "d",
                                 "foo"
                             ]
                         },
@@ -594,14 +981,14 @@
                                 "value": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 7,
+                                        "line": 11,
                                         "column": 5,
-                                        "byte": 79
+                                        "byte": 165
                                     },
                                     "end": {
-                                        "line": 8,
+                                        "line": 16,
                                         "column": 15,
-                                        "byte": 109
+                                        "byte": 254
                                     }
                                 }
                             }
@@ -613,14 +1000,14 @@
                 "range": {
                     "environment": "omnibus",
                     "begin": {
-                        "line": 17,
+                        "line": 25,
                         "column": 5,
-                        "byte": 238
+                        "byte": 383
                     },
                     "end": {
-                        "line": 17,
+                        "line": 25,
                         "column": 26,
-                        "byte": 259
+                        "byte": 404
                     }
                 },
                 "schema": {
@@ -633,21 +1020,42 @@
                         "range": {
                             "environment": "omnibus",
                             "begin": {
-                                "line": 17,
+                                "line": 25,
                                 "column": 19,
-                                "byte": 252
+                                "byte": 397
                             },
                             "end": {
-                                "line": 17,
+                                "line": 25,
                                 "column": 26,
-                                "byte": 259
+                                "byte": 404
                             }
                         },
                         "schema": {
                             "properties": {
+                                "a": {
+                                    "type": "null"
+                                },
+                                "b": {
+                                    "type": "boolean",
+                                    "const": true
+                                },
                                 "baz": {
                                     "type": "string",
                                     "const": "qux"
+                                },
+                                "c": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "d": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "hello"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
                                 },
                                 "foo": {
                                     "type": "string",
@@ -656,7 +1064,11 @@
                             },
                             "type": "object",
                             "required": [
+                                "a",
+                                "b",
                                 "baz",
+                                "c",
+                                "d",
                                 "foo"
                             ]
                         },
@@ -666,14 +1078,14 @@
                                 "value": {
                                     "environment": "omnibus",
                                     "begin": {
-                                        "line": 7,
+                                        "line": 11,
                                         "column": 5,
-                                        "byte": 79
+                                        "byte": 165
                                     },
                                     "end": {
-                                        "line": 8,
+                                        "line": 16,
                                         "column": 15,
-                                        "byte": 109
+                                        "byte": 254
                                     }
                                 }
                             }
@@ -689,32 +1101,195 @@
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 21,
+                            "line": 29,
                             "column": 11,
-                            "byte": 336
+                            "byte": 481
                         },
                         "end": {
-                            "line": 21,
+                            "line": 29,
                             "column": 25,
-                            "byte": 350
+                            "byte": 495
+                        }
+                    }
+                }
+            },
+            "fromBase64": {
+                "value": "hello,world",
+                "trace": {
+                    "def": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 41
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 32,
+                            "byte": 68
+                        }
+                    }
+                }
+            },
+            "fromJSON": {
+                "value": {
+                    "a": {
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 28,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    },
+                    "b": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 28,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    },
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 28,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    },
+                    "c": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 28,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    },
+                    "d": {
+                        "value": [
+                            {
+                                "value": "hello",
+                                "trace": {
+                                    "def": {
+                                        "environment": "omnibus",
+                                        "begin": {
+                                            "line": 7,
+                                            "column": 5,
+                                            "byte": 85
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 28,
+                                            "byte": 108
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 28,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 28,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 85
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 28,
+                            "byte": 108
                         }
                     }
                 }
             },
             "interp": {
-                "value": "hello, \"baz\"=\"qux\"",
+                "value": "hello, \"a\"=\"\",\"b\"=\"true\",\"baz\"=\"qux\",\"c\"=\"42\",\"d\"=\"\\\"hello\\\"\"",
                 "trace": {
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 20,
+                            "line": 28,
                             "column": 11,
-                            "byte": 307
+                            "byte": 452
                         },
                         "end": {
-                            "line": 20,
+                            "line": 28,
                             "column": 29,
-                            "byte": 325
+                            "byte": 470
                         }
                     }
                 }
@@ -725,34 +1300,124 @@
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 5,
+                            "line": 9,
                             "column": 5,
-                            "byte": 35
+                            "byte": 121
                         },
                         "end": {
-                            "line": 5,
+                            "line": 9,
                             "column": 32,
-                            "byte": 62
+                            "byte": 148
                         }
                     }
                 }
             },
             "open": {
                 "value": {
+                    "a": {
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 5,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 15,
+                                    "byte": 254
+                                }
+                            }
+                        }
+                    },
+                    "b": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 5,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 15,
+                                    "byte": 254
+                                }
+                            }
+                        }
+                    },
                     "baz": {
                         "value": "qux",
                         "trace": {
                             "def": {
                                 "environment": "omnibus",
                                 "begin": {
-                                    "line": 7,
+                                    "line": 11,
                                     "column": 5,
-                                    "byte": 79
+                                    "byte": 165
                                 },
                                 "end": {
-                                    "line": 8,
+                                    "line": 16,
                                     "column": 15,
-                                    "byte": 109
+                                    "byte": 254
+                                }
+                            }
+                        }
+                    },
+                    "c": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 5,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 15,
+                                    "byte": 254
+                                }
+                            }
+                        }
+                    },
+                    "d": {
+                        "value": [
+                            {
+                                "value": "hello",
+                                "trace": {
+                                    "def": {
+                                        "environment": "omnibus",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 5,
+                                            "byte": 165
+                                        },
+                                        "end": {
+                                            "line": 16,
+                                            "column": 15,
+                                            "byte": 254
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 5,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 15,
+                                    "byte": 254
                                 }
                             }
                         }
@@ -780,14 +1445,14 @@
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 7,
+                            "line": 11,
                             "column": 5,
-                            "byte": 79
+                            "byte": 165
                         },
                         "end": {
-                            "line": 8,
+                            "line": 16,
                             "column": 15,
-                            "byte": 109
+                            "byte": 254
                         }
                     },
                     "base": {
@@ -831,20 +1496,110 @@
             },
             "open2": {
                 "value": {
+                    "a": {
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 27,
+                                    "column": 5,
+                                    "byte": 418
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 28,
+                                    "byte": 441
+                                }
+                            }
+                        }
+                    },
+                    "b": {
+                        "value": true,
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 27,
+                                    "column": 5,
+                                    "byte": 418
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 28,
+                                    "byte": 441
+                                }
+                            }
+                        }
+                    },
                     "baz": {
                         "value": "qux",
                         "trace": {
                             "def": {
                                 "environment": "omnibus",
                                 "begin": {
-                                    "line": 19,
+                                    "line": 27,
                                     "column": 5,
-                                    "byte": 273
+                                    "byte": 418
                                 },
                                 "end": {
-                                    "line": 19,
+                                    "line": 27,
                                     "column": 28,
-                                    "byte": 296
+                                    "byte": 441
+                                }
+                            }
+                        }
+                    },
+                    "c": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 27,
+                                    "column": 5,
+                                    "byte": 418
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 28,
+                                    "byte": 441
+                                }
+                            }
+                        }
+                    },
+                    "d": {
+                        "value": [
+                            {
+                                "value": "hello",
+                                "trace": {
+                                    "def": {
+                                        "environment": "omnibus",
+                                        "begin": {
+                                            "line": 27,
+                                            "column": 5,
+                                            "byte": 418
+                                        },
+                                        "end": {
+                                            "line": 27,
+                                            "column": 28,
+                                            "byte": 441
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 27,
+                                    "column": 5,
+                                    "byte": 418
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 28,
+                                    "byte": 441
                                 }
                             }
                         }
@@ -855,14 +1610,14 @@
                             "def": {
                                 "environment": "omnibus",
                                 "begin": {
-                                    "line": 19,
+                                    "line": 27,
                                     "column": 5,
-                                    "byte": 273
+                                    "byte": 418
                                 },
                                 "end": {
-                                    "line": 19,
+                                    "line": 27,
                                     "column": 28,
-                                    "byte": 296
+                                    "byte": 441
                                 }
                             }
                         }
@@ -872,14 +1627,14 @@
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 19,
+                            "line": 27,
                             "column": 5,
-                            "byte": 273
+                            "byte": 418
                         },
                         "end": {
-                            "line": 19,
+                            "line": 27,
                             "column": 28,
-                            "byte": 296
+                            "byte": 441
                         }
                     }
                 }
@@ -891,14 +1646,14 @@
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 11,
+                            "line": 19,
                             "column": 7,
-                            "byte": 142
+                            "byte": 287
                         },
                         "end": {
-                            "line": 11,
+                            "line": 19,
                             "column": 14,
-                            "byte": 149
+                            "byte": 294
                         }
                     }
                 }
@@ -964,50 +1719,50 @@
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 13,
+                            "line": 21,
                             "column": 5,
-                            "byte": 166
+                            "byte": 311
                         },
                         "end": {
-                            "line": 13,
+                            "line": 21,
                             "column": 26,
-                            "byte": 187
+                            "byte": 332
                         }
                     }
                 }
             },
             "toJSON": {
-                "value": "{\"baz\":\"qux\",\"foo\":\"bar\"}",
+                "value": "{\"a\":null,\"b\":true,\"baz\":\"qux\",\"c\":42,\"d\":[\"hello\"],\"foo\":\"bar\"}",
                 "trace": {
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 15,
+                            "line": 23,
                             "column": 5,
-                            "byte": 202
+                            "byte": 347
                         },
                         "end": {
-                            "line": 15,
+                            "line": 23,
                             "column": 24,
-                            "byte": 221
+                            "byte": 366
                         }
                     }
                 }
             },
             "toString": {
-                "value": "\"baz\"=\"qux\"",
+                "value": "\"a\"=\"\",\"b\"=\"true\",\"baz\"=\"qux\",\"c\"=\"42\",\"d\"=\"\\\"hello\\\"\"",
                 "trace": {
                     "def": {
                         "environment": "omnibus",
                         "begin": {
-                            "line": 17,
+                            "line": 25,
                             "column": 5,
-                            "byte": 238
+                            "byte": 383
                         },
                         "end": {
-                            "line": 17,
+                            "line": 25,
                             "column": 26,
-                            "byte": 259
+                            "byte": 404
                         }
                     }
                 }
@@ -1019,6 +1774,51 @@
                     "type": "string",
                     "const": "qux"
                 },
+                "fromBase64": {
+                    "type": "string"
+                },
+                "fromJSON": {
+                    "properties": {
+                        "a": {
+                            "type": "null"
+                        },
+                        "b": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "c": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "d": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "b",
+                        "baz",
+                        "c",
+                        "d",
+                        "foo"
+                    ]
+                },
                 "interp": {
                     "type": "string"
                 },
@@ -1027,9 +1827,30 @@
                 },
                 "open": {
                     "properties": {
+                        "a": {
+                            "type": "null"
+                        },
+                        "b": {
+                            "type": "boolean",
+                            "const": true
+                        },
                         "baz": {
                             "type": "string",
                             "const": "qux"
+                        },
+                        "c": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "d": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
                         },
                         "foo": {
                             "type": "string",
@@ -1038,15 +1859,40 @@
                     },
                     "type": "object",
                     "required": [
+                        "a",
+                        "b",
                         "baz",
+                        "c",
+                        "d",
                         "foo"
                     ]
                 },
                 "open2": {
                     "properties": {
+                        "a": {
+                            "type": "null"
+                        },
+                        "b": {
+                            "type": "boolean",
+                            "const": true
+                        },
                         "baz": {
                             "type": "string",
                             "const": "qux"
+                        },
+                        "c": {
+                            "type": "number",
+                            "const": 42
+                        },
+                        "d": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "hello"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
                         },
                         "foo": {
                             "type": "string",
@@ -1055,7 +1901,11 @@
                     },
                     "type": "object",
                     "required": [
+                        "a",
+                        "b",
                         "baz",
+                        "c",
+                        "d",
                         "foo"
                     ]
                 },
@@ -1076,6 +1926,8 @@
             "type": "object",
             "required": [
                 "access",
+                "fromBase64",
+                "fromJSON",
                 "interp",
                 "join",
                 "open",

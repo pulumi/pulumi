@@ -264,7 +264,7 @@ func (v *value) export(environment string) esc.Value {
 // unexport creates a value from a Value. This is used when interacting with providers, as the Provider API works on
 // Values, but the evaluator needs values.
 func unexport(v esc.Value, x *expr) *value {
-	vv := &value{def: x, secret: v.Secret, unknown: v.Unknown}
+	vv := &value{def: x, secret: v.Secret || x.secret, unknown: v.Unknown}
 	switch pv := v.Value.(type) {
 	case nil:
 		vv.repr, vv.schema = nil, schema.Null().Schema()

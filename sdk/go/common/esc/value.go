@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pulumi/esc/internal/util"
 	"golang.org/x/exp/maps"
 )
 
@@ -105,6 +106,49 @@ func (v *Value) UnmarshalJSON(data []byte) error {
 		}
 	}
 	return nil
+}
+
+// FromJSON converts a plain-old-JSON value (i.e. a value of type nil, bool, json.Number, string, []any, or
+// map[string]any) into a Value.
+func FromJSON(v any) (Value, error) {
+	return fromJSON("", v)
+}
+
+func fromJSON(path string, v any) (Value, error) {
+	switch v := v.(type) {
+	case nil:
+		return Value{}, nil
+	case bool:
+		return NewValue(v), nil
+	case json.Number:
+		return NewValue(v), nil
+	case string:
+		return NewValue(v), nil
+	case []any:
+		vs := make([]Value, len(v))
+		for i, v := range v {
+			vv, err := fromJSON(fmt.Sprintf("[%v]", i), v)
+			if err != nil {
+				return Value{}, err
+			}
+			vs[i] = vv
+		}
+		return NewValue(vs), nil
+	case map[string]any:
+		keys := maps.Keys(v)
+		sort.Strings(keys)
+		vs := make(map[string]Value, len(keys))
+		for _, k := range keys {
+			vv, err := fromJSON(util.JoinKey(path, k), v[k])
+			if err != nil {
+				return Value{}, err
+			}
+			vs[k] = vv
+		}
+		return NewValue(vs), nil
+	default:
+		return Value{}, fmt.Errorf("%v: unsupported value of type %T", path, v)
+	}
 }
 
 // ToJSON converts a Value into a plain-old-JSON value (i.e. a value of type nil, bool, json.Number, string, []any, or

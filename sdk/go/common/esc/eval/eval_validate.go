@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/internal/util"
 	"github.com/pulumi/esc/schema"
 	"github.com/pulumi/esc/syntax"
 )
@@ -78,13 +79,13 @@ func (l validationLoc) property(k string) validationLoc {
 		if v, ok := obj.properties[k]; ok {
 			return validationLoc{
 				x:    v,
-				path: joinKey("", k),
+				path: util.JoinKey("", k),
 			}
 		}
 	}
 	return validationLoc{
 		x:      l.x,
-		path:   joinKey(l.path, k),
+		path:   util.JoinKey(l.path, k),
 		prefix: true,
 	}
 }
