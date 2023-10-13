@@ -381,7 +381,7 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		got, err := TryGetVCSInfo(test.Remote)
 		// Only assert the returned error if we don't expect to get an error.
 		if test.WantVCSInfo != nil {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		}
 		assert.Equal(t, test.WantVCSInfo, got)
 	}

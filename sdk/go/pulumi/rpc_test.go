@@ -176,7 +176,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	customURN := resource.NewURN("stack", "project", "", "test:index:custom", "test")
 	componentURN := resource.NewURN("stack", "project", "", "test:index:component", "test")
@@ -234,9 +234,9 @@ func TestMarshalRoundtrip(t *testing.T) {
 
 	// Marshal those inputs.
 	resolved, pdeps, deps, err := marshalInputs(inputs)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
 		assert.Equal(t, 10, len(deps))
 		assert.Equal(t, 25, len(pdeps))
@@ -244,7 +244,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 		// Now just unmarshal and ensure the resulting map matches.
 		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 		assert.False(t, secret)
-		if assert.Nil(t, err) {
+		if assert.NoError(t, err) {
 			if assert.NotNil(t, resV) {
 				res := resV.(map[string]interface{})
 				assert.Equal(t, "a string", res["s"])
@@ -418,7 +418,7 @@ func TestResourceState(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	var theResource testResource
 	state := ctx.makeResourceState("", "", &theResource, nil, nil, "", "", nil, nil)
@@ -460,7 +460,7 @@ func TestResourceState(t *testing.T) {
 		Nested:  theResource.Nested,
 	}
 	resolved, pdeps, deps, err := marshalInputs(input)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, map[string][]URN{
 		"urn":     {"foo"},
 		"id":      {"foo"},
@@ -478,7 +478,7 @@ func TestResourceState(t *testing.T) {
 	assert.Equal(t, []URN{"foo"}, deps)
 
 	res, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.False(t, secret)
 	assert.Equal(t, map[string]interface{}{
 		"urn":     "foo",
@@ -503,17 +503,17 @@ func TestUnmarshalSecret(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
 	_, isSecret, err := unmarshalPropertyValue(ctx, secret)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, isSecret)
 
 	var sv string
 	isSecret, err = unmarshalOutput(ctx, secret, reflect.ValueOf(&sv).Elem())
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "foo", sv)
 	assert.True(t, isSecret)
 }
@@ -522,7 +522,7 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	m := make(map[string]interface{})
 	m["foo"] = "bar"
@@ -531,7 +531,7 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 
 	var mv map[string]string
 	_, err = unmarshalOutput(ctx, pmap, reflect.ValueOf(&mv).Elem())
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	val, ok := mv["foo"]
 	assert.True(t, ok)
 	assert.Equal(t, "bar", val)
@@ -546,7 +546,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
@@ -579,9 +579,9 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 
 	// Marshal those inputs.
 	resolved, pdeps, deps, err := marshalInputs(inputs)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		// The value we marshaled above omits the 10 Resource-typed fields, so we don't expect those fields to appear
 		// in the unmarshaled value.
 		const resourceFields = 10
@@ -592,7 +592,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		// Now just unmarshal and ensure the resulting map matches.
 		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 		assert.True(t, secret)
-		if assert.Nil(t, err) {
+		if assert.NoError(t, err) {
 			if assert.NotNil(t, resV) {
 				res := resV.(map[string]interface{})
 				assert.Equal(t, "a string", res["s"])
@@ -840,7 +840,7 @@ func TestInvalidAsset(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	var d Asset
 	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
@@ -856,7 +856,7 @@ func TestInvalidArchive(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	var d Archive
 	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
@@ -872,7 +872,7 @@ func TestDependsOnComponent(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	registerResource := func(name string, res Resource, custom bool, options ...ResourceOption) (Resource, []string) {
 		opts := merge(options...)
@@ -924,7 +924,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	values := []struct {
 		value    interface{}
@@ -1216,7 +1216,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	RegisterOutputType(TemplateOptionsOutput{})
 	RegisterOutputType(TemplateOptionsPtrOutput{})
@@ -1722,7 +1722,7 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	RegisterOutputType(TreeSizeOutput{})
 	RegisterOutputType(TreeSizePtrOutput{})

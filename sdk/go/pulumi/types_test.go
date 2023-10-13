@@ -36,7 +36,7 @@ func await(out Output) (interface{}, bool, bool, []Resource, error) {
 func assertApplied(t *testing.T, out Output) {
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func newIntOutput() IntOutput {
@@ -53,7 +53,7 @@ func TestBasicOutputs(t *testing.T) {
 			resolve(42)
 		}()
 		v, known, secret, deps, err := await(out)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Nil(t, deps)
@@ -66,7 +66,7 @@ func TestBasicOutputs(t *testing.T) {
 			reject(errors.New("boom"))
 		}()
 		v, _, _, _, err := await(out)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 	}
 }
@@ -235,7 +235,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 			go func() { rejectOther(errors.New("boom")) }()
 		}()
 		v, _, _, _, err := await(out)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 	}
 }
@@ -521,7 +521,7 @@ func TestUnsecret(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case err := <-errChan:
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			break
 		case r := <-resultChan:
 			assert.Equal(t, "foo", r)
@@ -561,7 +561,7 @@ func TestSecrets(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case err := <-errChan:
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			break
 		case r := <-resultChan:
 			assert.Equal(t, "foo", r)
@@ -606,7 +606,7 @@ func TestSecretApply(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		select {
 		case err := <-errChan:
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			break
 		case r := <-resultChan:
 			assert.Equal(t, "foobar", r)
@@ -864,7 +864,7 @@ func TestApplyTOutput(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
 	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
@@ -910,7 +910,7 @@ func TestApplyTOutputJoinDeps(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	rA := newSimpleCustomResource(ctx, URN("urnA"), ID("idA"))
 	rB := newSimpleCustomResource(ctx, URN("urnB"), ID("idB"))
 
@@ -938,7 +938,7 @@ func TestApplyTOutputJoin(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
 	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
@@ -1089,7 +1089,7 @@ func TestJSONMarshalBasic(t *testing.T) {
 	}()
 	json := JSONMarshal(out)
 	v, known, secret, deps, err := await(json)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
@@ -1133,7 +1133,7 @@ func TestJSONUnmarshalBasic(t *testing.T) {
 	}).(StringOutput)
 	json := JSONUnmarshal(str)
 	v, known, secret, deps, err := await(json)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)

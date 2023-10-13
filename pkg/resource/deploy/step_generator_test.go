@@ -125,11 +125,11 @@ func TestIgnoreChanges(t *testing.T) {
 				expected = resource.NewPropertyMapFromMap(c.expected)
 			}
 
-			processed, res := processIgnoreChanges(news, olds, c.ignoreChanges)
+			processed, err := processIgnoreChanges(news, olds, c.ignoreChanges)
 			if c.expectFailure {
-				assert.NotNil(t, res)
+				assert.Error(t, err)
 			} else {
-				assert.Nil(t, res)
+				assert.NoError(t, err)
 				assert.Equal(t, expected, processed)
 			}
 		})

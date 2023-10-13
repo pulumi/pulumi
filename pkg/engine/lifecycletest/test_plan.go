@@ -276,24 +276,24 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 			// Don't run validate on the preview step
 			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 				continue
 			}
 
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		}
 
 		var err error
 		target := p.GetTarget(t, snap)
 		snap, err = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 			continue
 		}
 
 		if err != nil {
 			if result.IsBail(err) {
-				t.Logf("Got unexpected bail result")
+				t.Logf("Got unexpected bail result: %v", err)
 				t.FailNow()
 			} else {
 				t.Logf("Got unexpected error result: %v", err)
@@ -301,7 +301,7 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 			}
 		}
 
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	}
 
 	return snap

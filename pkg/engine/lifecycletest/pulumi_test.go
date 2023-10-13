@@ -88,7 +88,7 @@ func ExpectDiagMessage(t *testing.T, messagePattern string) ValidateFunc {
 		entries JournalEntries, events []Event,
 		err error,
 	) error {
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 
 		for i := range events {
 			if events[i].Type == "diag" {
@@ -182,7 +182,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
@@ -202,7 +202,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			assert.True(t, found)
 			return err
 		})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 // Test that ensures that we log diagnostics for resources that receive an error from Check. (Note that this
@@ -338,7 +338,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 				sawExitCode := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
@@ -401,7 +401,7 @@ func TestBrokenDecrypter(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
-				assert.NotNil(t, err)
+				assert.Error(t, err)
 				decryptErr := err.(DecryptError)
 				assert.Equal(t, key, decryptErr.Key)
 				assert.Contains(t, decryptErr.Err.Error(), msg)
@@ -529,7 +529,7 @@ func TestProviderCancellation(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	// Wait for the program to finish.
 	<-done
@@ -586,7 +586,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 	// A preview should succeed despite the pending operations.
 	_, err := op.Run(project, target, options, true, nil, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 // Tests that a refresh works for a stack with pending operations.
@@ -641,16 +641,16 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	withRefresh := options
 	withRefresh.Refresh = true
 	new, err := op.Run(project, target, withRefresh, false, nil, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Len(t, new.PendingOperations, 0)
 
 	// Similarly, the update should succeed if performed after a separate refresh.
 	new, err = TestOp(Refresh).Run(project, target, options, false, nil, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Len(t, new.PendingOperations, 0)
 
 	_, err = op.Run(project, p.GetTarget(t, new), options, false, nil, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 // Test to make sure that if we pulumi refresh
@@ -719,7 +719,7 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	withRefresh := options
 	withRefresh.Refresh = true
 	new, err := op.Run(project, target, withRefresh, false, nil, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	// Assert that pending CREATE operation was preserved
 	assert.Len(t, new.PendingOperations, 1)
 	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
@@ -873,7 +873,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
@@ -982,7 +982,7 @@ func TestStackReference(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
@@ -1117,7 +1117,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, err := op.Run(project, target, options, true, nil, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	close(sinkWriter.channel)
 	close(release)
@@ -1294,7 +1294,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1306,7 +1306,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	}
 
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1320,7 +1320,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	}
 
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1332,7 +1332,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	}
 
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1349,7 +1349,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	}
 
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 type DiffFunc = func(urn resource.URN, id resource.ID,
@@ -1530,7 +1530,7 @@ func TestPersistentDiff(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
@@ -1551,7 +1551,7 @@ func TestPersistentDiff(t *testing.T) {
 			assert.True(t, found)
 			return err
 		})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Next, enable legacy diff behavior. We should see no changes to the resource.
 	p.Options.UseLegacyDiff = true
@@ -1572,7 +1572,7 @@ func TestPersistentDiff(t *testing.T) {
 			assert.True(t, found)
 			return err
 		})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestDetailedDiffReplace(t *testing.T) {
@@ -1613,7 +1613,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
@@ -1633,7 +1633,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 			assert.True(t, found)
 			return err
 		})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestCustomTimeouts(t *testing.T) {
@@ -1866,19 +1866,19 @@ func TestProviderPreview(t *testing.T) {
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, sawPreview)
 }
 
@@ -1954,19 +1954,19 @@ func TestProviderPreviewGrpc(t *testing.T) {
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.True(t, sawPreview)
 }
 
@@ -2107,20 +2107,20 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	// provider has unknown inputs.
 	preview, sawPreview = true, false
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should not be propagated to the outputs during the update because the provider
 	// has unknown inputs.
 	preview, sawPreview = true, false
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, sawPreview)
 }
 
@@ -2299,7 +2299,7 @@ func TestLanguageClient(t *testing.T) {
 	assert.NoError(t, err)
 
 	snap, err := update.Finish(nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
 }
 
@@ -2418,7 +2418,7 @@ func TestConfigSecrets(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	if !assert.Len(t, snap.Resources, 2) {
 		return
@@ -2727,7 +2727,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 
 				firstIndex, nestedIndex, sgIndex, secondIndex, ruleIndex := -1, -1, -1, -1, -1
 
@@ -2829,7 +2829,7 @@ func TestProtect(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -2862,7 +2862,7 @@ func TestProtect(t *testing.T) {
 		"foo": "baz",
 	})
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -2875,7 +2875,7 @@ func TestProtect(t *testing.T) {
 		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -2887,7 +2887,7 @@ func TestProtect(t *testing.T) {
 	createResource = true
 	shouldProtect = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
@@ -2897,7 +2897,7 @@ func TestProtect(t *testing.T) {
 	// Run a new update to add the protect flag, nothing else should change
 	shouldProtect = true
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
@@ -2910,7 +2910,7 @@ func TestProtect(t *testing.T) {
 		"foo": "daz",
 	})
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
@@ -2984,7 +2984,7 @@ func TestRetainOnDelete(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -2994,7 +2994,7 @@ func TestRetainOnDelete(t *testing.T) {
 		"foo": "baz",
 	})
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
@@ -3002,7 +3002,7 @@ func TestRetainOnDelete(t *testing.T) {
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
 	createResource = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }
@@ -3091,7 +3091,7 @@ func TestDeletedWith(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -3104,7 +3104,7 @@ func TestDeletedWith(t *testing.T) {
 		"foo": "baz",
 	})
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-3", snap.Resources[1].ID.String())
@@ -3114,7 +3114,7 @@ func TestDeletedWith(t *testing.T) {
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete for anything but aURN
 	createResource = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }
@@ -3195,7 +3195,7 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -3204,7 +3204,7 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 
 	// Run again to update DeleteWith for resA
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -3214,7 +3214,7 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
 	createResource = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }
@@ -3245,7 +3245,7 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>"))
 
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
 }
@@ -3410,7 +3410,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 		return fmt.Errorf("Expected a diagnostic message, got none")
 	}
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Should have the provider and resA
 	assert.Len(t, snap.Resources, 2)
@@ -3463,7 +3463,7 @@ func TestDefaultParents(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 
@@ -3611,7 +3611,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 
@@ -3622,7 +3622,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 	})
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	// Assert that this fails, we should have two copies of A now, one new one and one old one pending delete
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
@@ -3633,7 +3633,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 	// Now allow B to create and try again
 	failCreationOfTypB = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 }
@@ -3777,7 +3777,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 
@@ -3785,7 +3785,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	inB = "inactive"
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	// Assert that this fails, we should have two B's one marked to delete
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
@@ -3802,7 +3802,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	failDeletionOfTypB = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	// Assert this is ok, we should have just one A and B
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
@@ -4061,7 +4061,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
@@ -4082,7 +4082,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	})
 	firstUpdate = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	resA = snap.Resources[1]
@@ -4148,7 +4148,7 @@ func TestResourceNames(t *testing.T) {
 
 			snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::"+tt), snap.Resources[1].URN)
 		})
@@ -4201,7 +4201,7 @@ func TestSourcePositions(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 3)
 
@@ -4302,7 +4302,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 			project := p.GetProject()
 
 			snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.NotNil(t, snap)
 		})
 	}
@@ -4344,7 +4344,7 @@ func TestProviderChecksums(t *testing.T) {
 
 	// Run an update
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	// Check the checksum was saved in the provider resource
@@ -4354,7 +4354,7 @@ func TestProviderChecksums(t *testing.T) {
 	// Delete the resource and ensure the checksums are passed to EnsurePlugins
 	createResource = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }

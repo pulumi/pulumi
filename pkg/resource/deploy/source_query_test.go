@@ -38,12 +38,12 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	qs1.forkRun()
 
-	res := qs1.Wait()
-	assert.Nil(t, res)
+	err := qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
-	res = qs1.Wait()
-	assert.Nil(t, res)
+	err = qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
 	// Failure case.
@@ -54,14 +54,14 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	qs2.forkRun()
 
-	res = qs2.Wait()
-	assert.False(t, result.IsBail(res))
-	assert.NotNil(t, res.Error())
+	err = qs2.Wait()
+	assert.False(t, result.IsBail(err))
+	assert.Error(t, err)
 	assert.False(t, resmon2.cancelled)
 
-	res = qs2.Wait()
-	assert.False(t, result.IsBail(res))
-	assert.NotNil(t, res.Error())
+	err = qs2.Wait()
+	assert.False(t, result.IsBail(err))
+	assert.Error(t, err)
 	assert.False(t, resmon2.cancelled)
 }
 
@@ -92,12 +92,12 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	}()
 
 	// Wait for querySource to complete.
-	res := qs1.Wait()
-	assert.Nil(t, res)
+	err := qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
-	res = qs1.Wait()
-	assert.Nil(t, res)
+	err = qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
 	// Cancellation case.
@@ -123,12 +123,12 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	}()
 
 	// Wait for querySource to complete.
-	res = qs2.Wait()
-	assert.Nil(t, res)
+	err = qs2.Wait()
+	assert.NoError(t, err)
 	assert.True(t, resmon2.cancelled)
 
-	res = qs2.Wait()
-	assert.Nil(t, res)
+	err = qs2.Wait()
+	assert.NoError(t, err)
 	assert.True(t, resmon2.cancelled)
 }
 

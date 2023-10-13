@@ -237,7 +237,7 @@ func TestDrillError(t *testing.T) {
 		t.Fatalf("unexpected error %v when parsing stack reference", err)
 	}
 	_, err = b.GetStack(ctx, stackRef)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestCancel(t *testing.T) {

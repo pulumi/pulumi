@@ -28,7 +28,7 @@ func TestNewUniqueHex(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+randlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -40,9 +40,9 @@ func TestNewUniqueHexNonDeterminism(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id1, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	id2, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotEqual(t, id1, id2)
 }
 
@@ -53,7 +53,7 @@ func TestNewUniqueHexMaxLen2(t *testing.T) {
 	randlen := 8
 	maxlen := 13
 	_, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
@@ -64,7 +64,7 @@ func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
 	randlen := 8
 	maxlen := 14
 	id, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, maxlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -74,7 +74,7 @@ func TestNewUniqueDefaults(t *testing.T) {
 
 	prefix := "prefix"
 	id, err := NewUniqueHex(prefix, -1, -1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -86,7 +86,7 @@ func TestNewUniqueHexID(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id, err := NewUniqueHexID(prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
@@ -98,7 +98,7 @@ func TestNewUniqueHexMaxLenID(t *testing.T) {
 	randlen := 8
 	maxlen := 20
 	id, err := NewUniqueHexID(prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
@@ -108,7 +108,7 @@ func TestNewUniqueDefaultsID(t *testing.T) {
 
 	prefix := "prefix"
 	id, err := NewUniqueHexID(prefix, -1, -1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
@@ -122,7 +122,7 @@ func TestNewUniqueV2HexFallback(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id, err := NewUniqueHexV2(urn, sequenceNumber, prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+randlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -136,7 +136,7 @@ func TestNewUniqueV2Hex(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id, err := NewUniqueHexV2(urn, sequenceNumber, prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+randlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -150,7 +150,7 @@ func TestNewUniqueHexV2MaxLen2(t *testing.T) {
 	randlen := 8
 	maxlen := 13
 	_, err := NewUniqueHexV2(urn, sequenceNumber, prefix, randlen, maxlen)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestNewUniqueHexV2EnsureRandomness2(t *testing.T) {
@@ -163,7 +163,7 @@ func TestNewUniqueHexV2EnsureRandomness2(t *testing.T) {
 	randlen := 8
 	maxlen := 14
 	id, err := NewUniqueHexV2(urn, sequenceNumber, prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, maxlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -175,7 +175,7 @@ func TestNewUniqueV2Defaults(t *testing.T) {
 	sequenceNumber := 1
 	prefix := "prefix"
 	id, err := NewUniqueHexV2(urn, sequenceNumber, prefix, -1, -1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -189,12 +189,12 @@ func TestNewUniqueV2HexDeterminism(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id1, err := NewUniqueHexV2(urn, sequenceNumber, prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	id2, err := NewUniqueHexV2(urn, sequenceNumber, prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, id1, id2)
 	id3, err := NewUniqueHexV2(urn, sequenceNumber+1, prefix, randlen, maxlen)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotEqual(t, id2, id3)
 }
 
@@ -207,7 +207,7 @@ func TestUniqueNameDeterminism(t *testing.T) {
 	maxlen := 100
 	randchars := []rune("xyzw")
 	name, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, randchars)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "prefixywzwwyz", name)
 }
 
@@ -221,12 +221,12 @@ func TestUniqueNameNonDeterminism(t *testing.T) {
 		randlen := 4
 		maxlen := 100
 		name, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, nil)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, strings.HasPrefix(name, prefix), "%s does not have prefix %s", name, prefix)
 		assert.Len(t, name, len(prefix)+randlen)
 
 		name2, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, nil)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, strings.HasPrefix(name2, prefix), "%s does not have prefix %s", name2, prefix)
 		assert.Len(t, name2, len(prefix)+randlen)
 		assert.NotEqual(t, name, name2)
