@@ -121,6 +121,26 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 	}
 }
 
+func (c object) Type() string {
+	switch c.value.(type) {
+	case bool:
+		return "boolean"
+	case int64:
+		return "integer"
+	case float64:
+		return "number"
+	case string:
+		return "string"
+	case []object:
+		return "array"
+	case map[string]object:
+		return "map"
+	default:
+		contract.Failf("unexpected value of type %T", c.value)
+		return ""
+	}
+}
+
 // Merge merges the receiver onto the given base using JSON merge patch semantics. Merge does not modify the receiver or
 // the base.
 func (c object) Merge(base object) object {

@@ -104,6 +104,7 @@ type RunInfo struct {
 	Program          string                // the path to the program to execute.
 	Args             []string              // any arguments to pass to the program.
 	Config           map[config.Key]string // the configuration variables to apply before running.
+	ConfigTypes      map[config.Key]string // the types of the configuration variables
 	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
 	DryRun           bool                  // true if we are performing a dry-run (preview).
 	QueryMode        bool                  // true if we're only doing a query.

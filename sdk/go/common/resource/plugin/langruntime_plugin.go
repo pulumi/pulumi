@@ -197,6 +197,10 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	for i, k := range info.ConfigSecretKeys {
 		configSecretKeys[i] = k.String()
 	}
+	configTypes := make(map[string]string, len(info.ConfigTypes))
+	for k, v := range info.ConfigTypes {
+		configTypes[k.String()] = v
+	}
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
 		MonitorAddress:   info.MonitorAddress,
 		Pwd:              info.Pwd,
@@ -205,6 +209,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		Project:          info.Project,
 		Stack:            info.Stack,
 		Config:           config,
+		ConfigTypes:      configTypes,
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           info.DryRun,
 		QueryMode:        info.QueryMode,
