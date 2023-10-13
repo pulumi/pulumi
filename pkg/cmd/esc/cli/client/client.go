@@ -15,16 +15,24 @@
 package client
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"path"
+	"strings"
 	"time"
 
+	"github.com/google/go-querystring/query"
 	"github.com/pulumi/esc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -91,34 +99,29 @@ type client struct {
 	apiOrgs    []string
 	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
 	insecure   bool
-	restClient restClient
+	userAgent  string
 	httpClient *http.Client
 }
 
-// newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
-// function so it can be set to a different implementation at runtime, if necessary.
-var newClient = func(userAgent, apiURL, apiToken string, insecure bool) *client {
-	var httpClient *http.Client
+func newHTTPClient(insecure bool) *http.Client {
 	if insecure {
-		tr := &http.Transport{
-			//nolint:gosec // The user has explicitly opted into setting this
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		return &http.Client{
+			Transport: &http.Transport{
+				//nolint:gosec // The user has explicitly opted into setting this
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
 		}
-		httpClient = &http.Client{Transport: tr}
-	} else {
-		httpClient = http.DefaultClient
 	}
+	return http.DefaultClient
+}
 
+// newClient creates a new ESC API client with the given user agent, URL, API token, and HTTP client.
+func newClient(userAgent, apiURL, apiToken string, httpClient *http.Client) *client {
 	return &client{
 		apiURL:     apiURL,
 		apiToken:   apiToken,
+		userAgent:  userAgent,
 		httpClient: httpClient,
-		restClient: &defaultRESTClient{
-			client: &defaultHTTPClient{
-				client: httpClient,
-			},
-			userAgent: userAgent,
-		},
 	}
 }
 
@@ -129,27 +132,12 @@ func (pc *client) Insecure() bool {
 
 // New creates a new Pulumi API client with the given URL and API token.
 func New(userAgent, apiURL, apiToken string, insecure bool) Client {
-	return newClient(userAgent, apiURL, apiToken, insecure)
+	return newClient(userAgent, apiURL, apiToken, newHTTPClient(insecure))
 }
 
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *client) URL() string {
 	return pc.apiURL
-}
-
-// restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
-// object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
-	return pc.restClient.Call(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
-		httpCallOptions{})
-}
-
-// restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
-// object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
-	respObj interface{}, opts httpCallOptions,
-) error {
-	return pc.restClient.Call(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
@@ -245,7 +233,7 @@ func (pc *client) GetEnvironment(ctx context.Context, orgName, envName string) (
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
 		return nil, "", err
 	}
-	yaml, err := readBody(resp)
+	yaml, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", err
 	}
@@ -272,8 +260,8 @@ func (pc *client) UpdateEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticError
-		if errors.As(err, &diags) {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
 			return diags.Diagnostics, nil
 		}
 		return nil, err
@@ -307,8 +295,8 @@ func (pc *client) OpenEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticError
-		if errors.As(err, &diags) {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -328,8 +316,8 @@ func (pc *client) CheckYAMLEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticError
-		if errors.As(err, &diags) {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
 			return nil, diags.Diagnostics, nil
 		}
 		return nil, nil, err
@@ -358,8 +346,8 @@ func (pc *client) OpenYAMLEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentDiagnosticError
-		if errors.As(err, &diags) {
+		var diags *EnvironmentErrorResponse
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -391,4 +379,230 @@ func (pc *client) GetOpenProperty(ctx context.Context, orgName, envName, openSes
 		return nil, err
 	}
 	return &resp, nil
+}
+
+type httpCallOptions struct {
+	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
+	//
+	// By default, only GET requests are retried.
+	RetryPolicy retryPolicy
+
+	// GzipCompress compresses the request using gzip before sending it.
+	GzipCompress bool
+
+	// Header is any additional headers to add to the request.
+	Header http.Header
+
+	// ErrorResponse is an optional response body for errors.
+	ErrorResponse any
+}
+
+// restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
+// object. If a response object is provided, the server's response is deserialized into that object.
+func (pc *client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
+	return pc.restCallWithOptions(ctx, method, path, queryObj, reqObj, respObj, httpCallOptions{})
+}
+
+// restCallWithOptions makes a REST-style request to the Pulumi API using the given method, path, query object, and
+// request object. If a response object is provided, the server's response is deserialized into that object.
+func (pc *client) restCallWithOptions(
+	ctx context.Context,
+	method string,
+	path string,
+	queryObj any,
+	reqObj any,
+	respObj any,
+	opts httpCallOptions,
+) error {
+	// Compute query string from query object
+	querystring := ""
+	if queryObj != nil {
+		queryValues, err := query.Values(queryObj)
+		if err != nil {
+			return fmt.Errorf("marshalling query object as JSON: %w", err)
+		}
+		query := queryValues.Encode()
+		if len(query) > 0 {
+			querystring = "?" + query
+		}
+	}
+
+	// Compute request body from request object
+	var reqBody []byte
+	var err error
+	if reqObj != nil {
+		// Send verbatim if already marshalled. This is
+		// important when sending indented JSON is needed.
+		if raw, ok := reqObj.(json.RawMessage); ok {
+			reqBody = []byte(raw)
+		} else {
+			reqBody, err = json.Marshal(reqObj)
+			if err != nil {
+				return fmt.Errorf("marshalling request object as JSON: %w", err)
+			}
+		}
+	}
+
+	// Make API call
+	resp, err := pc.httpCall(ctx, method, path+querystring, reqBody, opts)
+	if err != nil {
+		return err
+	}
+	if respPtr, ok := respObj.(**http.Response); ok {
+		*respPtr = resp
+		return nil
+	}
+
+	// Read API response
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("reading response from API: %w", err)
+	}
+
+	if respObj != nil {
+		switch respObj := respObj.(type) {
+		case *[]byte:
+			// Return the raw bytes of the response body.
+			*respObj = respBody
+		case []byte:
+			return fmt.Errorf("Can't unmarshal response body to []byte. Try *[]byte")
+		default:
+			// Else, unmarshal as JSON.
+			if err = json.Unmarshal(respBody, respObj); err != nil {
+				return fmt.Errorf("unmarshalling response object: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// httpCall makes an HTTP request to the Pulumi API.
+func (pc *client) httpCall(ctx context.Context, method, path string, body []byte, opts httpCallOptions) (*http.Response, error) {
+	// Normalize URL components
+	cloudAPI := strings.TrimSuffix(pc.apiURL, "/")
+	path = cleanPath(path)
+
+	url := cloudAPI + path
+	var bodyReader io.Reader
+	if opts.GzipCompress {
+		// If we're being asked to compress the payload, go ahead and do it here to an intermediate buffer.
+		//
+		// If this becomes a performance bottleneck, we may want to consider marshaling json directly to this
+		// gzip.Writer instead of marshaling to a byte array and compressing it to another buffer.
+		var buf bytes.Buffer
+		writer := gzip.NewWriter(&buf)
+		defer contract.IgnoreClose(writer)
+		if _, err := writer.Write(body); err != nil {
+			return nil, fmt.Errorf("compressing payload: %w", err)
+		}
+
+		// gzip.Writer will not actually write anything unless it is flushed,
+		//  and it will not actually write the GZip footer unless it is closed. (Close also flushes)
+		// Without this, the compressed bytes do not decompress properly e.g. in python.
+		if err := writer.Close(); err != nil {
+			return nil, fmt.Errorf("closing compressed payload: %w", err)
+		}
+
+		bodyReader = &buf
+	} else {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequest(method, url, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("creating new HTTP request: %w", err)
+	}
+
+	req = req.WithContext(ctx)
+	req.Header.Set("Content-Type", "application/json")
+
+	// Set headers from the incoming options.
+	for k, v := range opts.Header {
+		req.Header[k] = v
+	}
+
+	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
+	// backwards compatibility.
+	req.Header.Set("User-Agent", pc.userAgent)
+	// Specify the specific API version we accept.
+	req.Header.Set("Accept", "application/vnd.pulumi+8")
+
+	// Apply credentials if provided.
+	if pc.apiToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+	}
+
+	if opts.GzipCompress {
+		// If we're sending something that's gzipped, set that header too.
+		req.Header.Set("Content-Encoding", "gzip")
+	}
+
+	resp, err := doWithRetry(pc.httpClient, req, opts.RetryPolicy)
+	if err != nil {
+		// Don't wrap *apitype.ErrorResponse.
+		if _, ok := err.(*apitype.ErrorResponse); ok {
+			return nil, err
+		}
+		return nil, fmt.Errorf("performing HTTP request: %w", err)
+	}
+
+	// Provide a better error if using an authenticated call without having logged in first.
+	if resp.StatusCode == 401 && pc.apiToken == "" {
+		return nil, errors.New("this command requires logging in; try running `esc login` first")
+	}
+
+	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
+	if resp.StatusCode == 429 {
+		return nil, errors.New("esc: request rate-limit exceeded")
+	}
+
+	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.
+	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
+		// 4xx and 5xx responses should be of type ErrorResponse. See if we can unmarshal as that
+		// type, and if not just return the raw response text.
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("API call failed (%s), could not read response: %w", resp.Status, err)
+		}
+		return nil, decodeError(respBody, resp.StatusCode, opts)
+	}
+
+	return resp, nil
+}
+
+func decodeError(respBody []byte, statusCode int, opts httpCallOptions) error {
+	if opts.ErrorResponse != nil {
+		if err := json.Unmarshal(respBody, opts.ErrorResponse); err == nil {
+			return opts.ErrorResponse.(error)
+		}
+	}
+
+	var errResp apitype.ErrorResponse
+	if err := json.Unmarshal(respBody, &errResp); err != nil {
+		errResp.Code = statusCode
+		errResp.Message = strings.TrimSpace(string(respBody))
+	}
+	return &errResp
+}
+
+// cleanPath returns the canonical path for p, eliminating . and .. elements.
+// Borrowed from gorilla/mux.
+func cleanPath(p string) string {
+	if p == "" {
+		return "/"
+	}
+
+	if p[0] != '/' {
+		p = "/" + p
+	}
+	np := path.Clean(p)
+
+	// path.Clean removes trailing slash except for root;
+	// put the trailing slash back if necessary.
+	if p[len(p)-1] == '/' && np != "/" {
+		np += "/"
+	}
+
+	return np
 }
