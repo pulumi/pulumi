@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a panic in the engine when same steps failed due to provider errors.
