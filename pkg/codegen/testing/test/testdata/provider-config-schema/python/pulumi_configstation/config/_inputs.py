@@ -28,7 +28,9 @@ class SandwichArgs:
              _setter: Callable[[Any, Any], None],
              bread: Optional[pulumi.Input[str]] = None,
              veggies: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if bread is not None:
             _setter("bread", bread)
         if veggies is not None:

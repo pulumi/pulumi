@@ -29,7 +29,11 @@ class ReplicatedBucketArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              destination_region: pulumi.Input[str],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'destinationRegion' in kwargs:
+            destination_region = kwargs['destinationRegion']
+
         _setter("destination_region", destination_region)
 
     @property

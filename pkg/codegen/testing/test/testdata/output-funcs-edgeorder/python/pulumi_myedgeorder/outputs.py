@@ -57,7 +57,15 @@ class AvailabilityInformationResponse(dict):
              availability_stage: str,
              disabled_reason: str,
              disabled_reason_message: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'availabilityStage' in kwargs:
+            availability_stage = kwargs['availabilityStage']
+        if 'disabledReason' in kwargs:
+            disabled_reason = kwargs['disabledReason']
+        if 'disabledReasonMessage' in kwargs:
+            disabled_reason_message = kwargs['disabledReasonMessage']
+
         _setter("availability_stage", availability_stage)
         _setter("disabled_reason", disabled_reason)
         _setter("disabled_reason_message", disabled_reason_message)
@@ -118,7 +126,13 @@ class BillingMeterDetailsResponse(dict):
              meter_details: Any,
              metering_type: str,
              name: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'meterDetails' in kwargs:
+            meter_details = kwargs['meterDetails']
+        if 'meteringType' in kwargs:
+            metering_type = kwargs['meteringType']
+
         _setter("frequency", frequency)
         _setter("meter_details", meter_details)
         _setter("metering_type", metering_type)
@@ -208,7 +222,21 @@ class ConfigurationResponse(dict):
              hierarchy_information: 'outputs.HierarchyInformationResponse',
              image_information: Sequence['outputs.ImageInformationResponse'],
              specifications: Sequence['outputs.SpecificationResponse'],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'availabilityInformation' in kwargs:
+            availability_information = kwargs['availabilityInformation']
+        if 'costInformation' in kwargs:
+            cost_information = kwargs['costInformation']
+        if 'displayName' in kwargs:
+            display_name = kwargs['displayName']
+        if 'filterableProperties' in kwargs:
+            filterable_properties = kwargs['filterableProperties']
+        if 'hierarchyInformation' in kwargs:
+            hierarchy_information = kwargs['hierarchyInformation']
+        if 'imageInformation' in kwargs:
+            image_information = kwargs['imageInformation']
+
         _setter("availability_information", availability_information)
         _setter("cost_information", cost_information)
         _setter("description", description)
@@ -315,7 +343,13 @@ class CostInformationResponse(dict):
              _setter: Callable[[Any, Any], None],
              billing_info_url: str,
              billing_meter_details: Sequence['outputs.BillingMeterDetailsResponse'],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'billingInfoUrl' in kwargs:
+            billing_info_url = kwargs['billingInfoUrl']
+        if 'billingMeterDetails' in kwargs:
+            billing_meter_details = kwargs['billingMeterDetails']
+
         _setter("billing_info_url", billing_info_url)
         _setter("billing_meter_details", billing_meter_details)
 
@@ -375,7 +409,15 @@ class DescriptionResponse(dict):
              links: Sequence['outputs.LinkResponse'],
              long_description: str,
              short_description: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'descriptionType' in kwargs:
+            description_type = kwargs['descriptionType']
+        if 'longDescription' in kwargs:
+            long_description = kwargs['longDescription']
+        if 'shortDescription' in kwargs:
+            short_description = kwargs['shortDescription']
+
         _setter("attributes", attributes)
         _setter("description_type", description_type)
         _setter("keywords", keywords)
@@ -475,7 +517,13 @@ class DimensionsResponse(dict):
              weight: float,
              weight_unit: str,
              width: float,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'lengthHeightUnit' in kwargs:
+            length_height_unit = kwargs['lengthHeightUnit']
+        if 'weightUnit' in kwargs:
+            weight_unit = kwargs['weightUnit']
+
         _setter("depth", depth)
         _setter("height", height)
         _setter("length", length)
@@ -564,7 +612,11 @@ class FilterablePropertyResponse(dict):
              _setter: Callable[[Any, Any], None],
              supported_values: Sequence[str],
              type: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'supportedValues' in kwargs:
+            supported_values = kwargs['supportedValues']
+
         _setter("supported_values", supported_values)
         _setter("type", type)
 
@@ -616,7 +668,17 @@ class HierarchyInformationResponse(dict):
              product_family_name: Optional[str] = None,
              product_line_name: Optional[str] = None,
              product_name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'configurationName' in kwargs:
+            configuration_name = kwargs['configurationName']
+        if 'productFamilyName' in kwargs:
+            product_family_name = kwargs['productFamilyName']
+        if 'productLineName' in kwargs:
+            product_line_name = kwargs['productLineName']
+        if 'productName' in kwargs:
+            product_name = kwargs['productName']
+
         if configuration_name is not None:
             _setter("configuration_name", configuration_name)
         if product_family_name is not None:
@@ -682,7 +744,13 @@ class ImageInformationResponse(dict):
              _setter: Callable[[Any, Any], None],
              image_type: str,
              image_url: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'imageType' in kwargs:
+            image_type = kwargs['imageType']
+        if 'imageUrl' in kwargs:
+            image_url = kwargs['imageUrl']
+
         _setter("image_type", image_type)
         _setter("image_url", image_url)
 
@@ -726,7 +794,13 @@ class LinkResponse(dict):
              _setter: Callable[[Any, Any], None],
              link_type: str,
              link_url: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'linkType' in kwargs:
+            link_type = kwargs['linkType']
+        if 'linkUrl' in kwargs:
+            link_url = kwargs['linkUrl']
+
         _setter("link_type", link_type)
         _setter("link_url", link_url)
 
@@ -779,7 +853,15 @@ class Pav2MeterDetailsResponse(dict):
              charging_type: str,
              meter_guid: str,
              multiplier: float,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'billingType' in kwargs:
+            billing_type = kwargs['billingType']
+        if 'chargingType' in kwargs:
+            charging_type = kwargs['chargingType']
+        if 'meterGuid' in kwargs:
+            meter_guid = kwargs['meterGuid']
+
         _setter("billing_type", 'Pav2')
         _setter("charging_type", charging_type)
         _setter("meter_guid", meter_guid)
@@ -866,7 +948,23 @@ class ProductFamilyResponse(dict):
              hierarchy_information: 'outputs.HierarchyInformationResponse',
              image_information: Sequence['outputs.ImageInformationResponse'],
              product_lines: Sequence['outputs.ProductLineResponse'],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'availabilityInformation' in kwargs:
+            availability_information = kwargs['availabilityInformation']
+        if 'costInformation' in kwargs:
+            cost_information = kwargs['costInformation']
+        if 'displayName' in kwargs:
+            display_name = kwargs['displayName']
+        if 'filterableProperties' in kwargs:
+            filterable_properties = kwargs['filterableProperties']
+        if 'hierarchyInformation' in kwargs:
+            hierarchy_information = kwargs['hierarchyInformation']
+        if 'imageInformation' in kwargs:
+            image_information = kwargs['imageInformation']
+        if 'productLines' in kwargs:
+            product_lines = kwargs['productLines']
+
         _setter("availability_information", availability_information)
         _setter("cost_information", cost_information)
         _setter("description", description)
@@ -988,7 +1086,21 @@ class ProductLineResponse(dict):
              hierarchy_information: 'outputs.HierarchyInformationResponse',
              image_information: Sequence['outputs.ImageInformationResponse'],
              products: Sequence['outputs.ProductResponse'],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'availabilityInformation' in kwargs:
+            availability_information = kwargs['availabilityInformation']
+        if 'costInformation' in kwargs:
+            cost_information = kwargs['costInformation']
+        if 'displayName' in kwargs:
+            display_name = kwargs['displayName']
+        if 'filterableProperties' in kwargs:
+            filterable_properties = kwargs['filterableProperties']
+        if 'hierarchyInformation' in kwargs:
+            hierarchy_information = kwargs['hierarchyInformation']
+        if 'imageInformation' in kwargs:
+            image_information = kwargs['imageInformation']
+
         _setter("availability_information", availability_information)
         _setter("cost_information", cost_information)
         _setter("description", description)
@@ -1110,7 +1222,21 @@ class ProductResponse(dict):
              filterable_properties: Sequence['outputs.FilterablePropertyResponse'],
              hierarchy_information: 'outputs.HierarchyInformationResponse',
              image_information: Sequence['outputs.ImageInformationResponse'],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'availabilityInformation' in kwargs:
+            availability_information = kwargs['availabilityInformation']
+        if 'costInformation' in kwargs:
+            cost_information = kwargs['costInformation']
+        if 'displayName' in kwargs:
+            display_name = kwargs['displayName']
+        if 'filterableProperties' in kwargs:
+            filterable_properties = kwargs['filterableProperties']
+        if 'hierarchyInformation' in kwargs:
+            hierarchy_information = kwargs['hierarchyInformation']
+        if 'imageInformation' in kwargs:
+            image_information = kwargs['imageInformation']
+
         _setter("availability_information", availability_information)
         _setter("configurations", configurations)
         _setter("cost_information", cost_information)
@@ -1225,7 +1351,19 @@ class PurchaseMeterDetailsResponse(dict):
              product_id: str,
              sku_id: str,
              term_id: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'billingType' in kwargs:
+            billing_type = kwargs['billingType']
+        if 'chargingType' in kwargs:
+            charging_type = kwargs['chargingType']
+        if 'productId' in kwargs:
+            product_id = kwargs['productId']
+        if 'skuId' in kwargs:
+            sku_id = kwargs['skuId']
+        if 'termId' in kwargs:
+            term_id = kwargs['termId']
+
         _setter("billing_type", 'Purchase')
         _setter("charging_type", charging_type)
         _setter("multiplier", multiplier)
@@ -1306,7 +1444,9 @@ class SpecificationResponse(dict):
              _setter: Callable[[Any, Any], None],
              name: str,
              value: str,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         _setter("name", name)
         _setter("value", value)
 

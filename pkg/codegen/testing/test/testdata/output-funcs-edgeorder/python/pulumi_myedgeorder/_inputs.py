@@ -38,7 +38,13 @@ class ConfigurationFilters:
              _setter: Callable[[Any, Any], None],
              hierarchy_information: 'HierarchyInformation',
              filterable_property: Optional[Sequence['FilterableProperty']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'hierarchyInformation' in kwargs:
+            hierarchy_information = kwargs['hierarchyInformation']
+        if 'filterableProperty' in kwargs:
+            filterable_property = kwargs['filterableProperty']
+
         _setter("hierarchy_information", hierarchy_information)
         if filterable_property is not None:
             _setter("filterable_property", filterable_property)
@@ -92,7 +98,15 @@ class CustomerSubscriptionDetails:
              quota_id: str,
              location_placement_id: Optional[str] = None,
              registered_features: Optional[Sequence['CustomerSubscriptionRegisteredFeatures']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'quotaId' in kwargs:
+            quota_id = kwargs['quotaId']
+        if 'locationPlacementId' in kwargs:
+            location_placement_id = kwargs['locationPlacementId']
+        if 'registeredFeatures' in kwargs:
+            registered_features = kwargs['registeredFeatures']
+
         _setter("quota_id", quota_id)
         if location_placement_id is not None:
             _setter("location_placement_id", location_placement_id)
@@ -156,7 +170,9 @@ class CustomerSubscriptionRegisteredFeatures:
              _setter: Callable[[Any, Any], None],
              name: Optional[str] = None,
              state: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if name is not None:
             _setter("name", name)
         if state is not None:
@@ -207,7 +223,11 @@ class FilterableProperty:
              _setter: Callable[[Any, Any], None],
              supported_values: Sequence[str],
              type: Union[str, 'SupportedFilterTypes'],
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'supportedValues' in kwargs:
+            supported_values = kwargs['supportedValues']
+
         _setter("supported_values", supported_values)
         _setter("type", type)
 
@@ -264,7 +284,17 @@ class HierarchyInformation:
              product_family_name: Optional[str] = None,
              product_line_name: Optional[str] = None,
              product_name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'configurationName' in kwargs:
+            configuration_name = kwargs['configurationName']
+        if 'productFamilyName' in kwargs:
+            product_family_name = kwargs['productFamilyName']
+        if 'productLineName' in kwargs:
+            product_line_name = kwargs['productLineName']
+        if 'productName' in kwargs:
+            product_name = kwargs['productName']
+
         if configuration_name is not None:
             _setter("configuration_name", configuration_name)
         if product_family_name is not None:

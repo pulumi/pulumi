@@ -31,7 +31,9 @@ class ComponentArgs:
              _setter: Callable[[Any, Any], None],
              local: Optional[pulumi.Input['Component2']] = None,
              main: Optional[pulumi.Input['MainComponent']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if local is not None:
             _setter("local", local)
         if main is not None:

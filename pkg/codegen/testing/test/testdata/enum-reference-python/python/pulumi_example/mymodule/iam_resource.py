@@ -27,7 +27,9 @@ class IamResourceArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              config: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if config is not None:
             _setter("config", config)
 

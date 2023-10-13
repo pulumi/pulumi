@@ -75,7 +75,9 @@ class ModuleResourceArgs:
              plain_optional_const: Optional[str] = None,
              plain_optional_number: Optional[float] = None,
              plain_optional_string: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if plain_required_bool is None:
             plain_required_bool = True
         _setter("plain_required_bool", plain_required_bool)

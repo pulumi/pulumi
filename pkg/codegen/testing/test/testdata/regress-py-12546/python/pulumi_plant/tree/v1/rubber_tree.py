@@ -42,7 +42,9 @@ class RubberTreeArgs:
              container: Optional[pulumi.Input['_root_inputs.ContainerArgs']] = None,
              farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
              size: Optional[pulumi.Input['TreeSize']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if diameter is not None:
             warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
             pulumi.log.warn("""diameter is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
@@ -145,7 +147,9 @@ class _RubberTreeState:
     def _configure(
              _setter: Callable[[Any, Any], None],
              farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+
         if farm is None:
             farm = '(unknown)'
         if farm is not None:

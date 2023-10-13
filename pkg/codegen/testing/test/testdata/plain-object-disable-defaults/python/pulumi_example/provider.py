@@ -28,7 +28,11 @@ class ProviderArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None):
+             opts: Optional[pulumi.ResourceOptions]=None,
+             **kwargs):
+        if 'helmReleaseSettings' in kwargs:
+            helm_release_settings = kwargs['helmReleaseSettings']
+
         if helm_release_settings is not None:
             _setter("helm_release_settings", helm_release_settings)
 
