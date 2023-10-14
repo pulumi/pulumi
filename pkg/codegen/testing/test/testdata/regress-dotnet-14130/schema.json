@@ -1,0 +1,50 @@
+{
+    "version": "1.2.3",
+    "name": "example",
+    "allowedPackageNames": ["foo", "bar"],
+    "description": "An example schema to test how property name overrides are handled in constructors",
+    "pluginDownloadURL": "example.com/download",
+    "types": {
+      "example::ExampleType": {
+        "properties": {
+          "bar": {
+            "type": "string",
+            "language": {
+                "csharp": {
+                    "name": "myBar"
+                }
+            }
+          },
+          "input_data": {
+            "type": "string",
+            "language": {
+                "csharp": {
+                    "name": "InputData"
+                }
+            }
+          }
+        },
+        "type": "object"
+      }
+    },
+    "resources": {
+      "example::ExampleResource": {
+        "properties": {
+          "foo": {
+            "$ref": "#/types/example::ExampleType"
+          }
+        },
+        "inputProperties": {
+          "foo": {
+            "$ref": "#/types/example::ExampleType"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "language": {
+      "csharp": {
+        "respectSchemaVersion": true
+      }
+    }
+}

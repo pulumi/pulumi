@@ -368,6 +368,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Checks that python _configure handles camelcased and snakecased prop names correctly",
 		Skip:        allLanguages.Except(python),
 	},
+	{
+		Directory:   "regress-dotnet-14130",
+		Description: "Test for https://github.com/pulumi/pulumi/issues/14130",
+		Skip:        allLanguages.Except("dotnet/any"),
+	},
 }
 
 var genSDKOnly bool
