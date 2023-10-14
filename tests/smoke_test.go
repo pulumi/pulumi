@@ -10,6 +10,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,6 +31,9 @@ var Languages = map[string]string{
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageNewSmoke(t *testing.T) {
+	// make sure we can download needed plugins
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
@@ -214,9 +218,8 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetSchema(t *testing.T) {
-	if os.Getenv("CI") != "" {
-		t.Skip("Skipping because it gets rate limited in CI")
-	}
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	removeRandomFromLocalPlugins := func() {
@@ -256,9 +259,10 @@ func TestPackageGetSchema(t *testing.T) {
 	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
+	pulumiHome, err := workspace.GetPulumiHomeDir()
+	require.NoError(t, err)
 	binaryPath := filepath.Join(
-		os.Getenv("HOME"),
-		".pulumi",
+		pulumiHome,
 		"plugins",
 		"resource-random-v4.13.0",
 		"pulumi-resource-random")
@@ -269,9 +273,7 @@ func TestPackageGetSchema(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
-	if os.Getenv("CI") != "" {
-		t.Skip("Skipping because it gets rate limited in CI")
-	}
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
@@ -298,6 +300,8 @@ func TestPackageGetMapping(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageImportSmoke(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
@@ -324,10 +328,6 @@ func TestLanguageImportSmoke(t *testing.T) {
 //
 //nolint:paralleltest // changes env vars and plugin cache
 func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
-	if os.Getenv("CI") != "" {
-		t.Skip("Skipping because it gets rate limited in CI")
-	}
-
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 
