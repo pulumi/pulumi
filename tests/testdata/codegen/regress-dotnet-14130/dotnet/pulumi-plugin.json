@@ -1,0 +1,6 @@
+{
+  "resource": true,
+  "name": "example",
+  "version": "1.2.3",
+  "server": "example.com/download"
+}

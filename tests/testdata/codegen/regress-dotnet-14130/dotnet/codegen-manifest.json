@@ -1,0 +1,14 @@
+{
+  "emittedFiles": [
+    "ExampleResource.cs",
+    "Inputs/ExampleTypeArgs.cs",
+    "Outputs/ExampleType.cs",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json",
+    "version.txt"
+  ]
+}
