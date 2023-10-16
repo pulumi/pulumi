@@ -1617,7 +1617,7 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
 			diff.ChangedKeys = tmp.ChangedKeys()
-			diff.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(tmp)
+			diff.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(tmp /* inputDiff*/, true)
 		} else {
 			diff.Changes = plugin.DiffNone
 		}

@@ -123,7 +123,7 @@ func TestNewDetailedDiff(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			actual := NewDetailedDiffFromObjectDiff(c.diff)
+			actual := NewDetailedDiffFromObjectDiff(c.diff, false)
 			assert.Equal(t, c.expected, actual)
 		})
 	}
