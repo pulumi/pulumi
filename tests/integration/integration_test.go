@@ -500,7 +500,7 @@ func TestConfigPaths(t *testing.T) {
 		`[""]`,
 		"[0]",
 		".foo",
-		".[0],
+		".[0]",
 
 		// Index out of range.
 		"names[-1]",
