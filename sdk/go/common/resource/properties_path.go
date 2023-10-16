@@ -53,6 +53,9 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 	// pathIndex := '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']'
 	// path := { pathElement | pathIndex }
 	var elements []interface{}
+	if len(path) > 0 && path[0] == '.' {
+		return nil, errors.New("expected property path to start with a name or index")
+	}
 	for len(path) > 0 {
 		switch path[0] {
 		case '.':
