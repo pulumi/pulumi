@@ -499,6 +499,8 @@ func TestConfigPaths(t *testing.T) {
 		// First path segment must be a non-empty string.
 		`[""]`,
 		"[0]",
+		".foo",
+		".[0],
 
 		// Index out of range.
 		"names[-1]",
