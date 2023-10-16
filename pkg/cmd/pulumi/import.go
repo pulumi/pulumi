@@ -564,8 +564,6 @@ func newImportCmd() *cobra.Command {
 				}
 				defer contract.IgnoreClose(converter)
 
-				pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
-
 				installProvider := func(provider tokens.Package) *semver.Version {
 					// If auto plugin installs are disabled just return nil, the mapper will still carry on
 					if env.DisableAutomaticPluginAcquisition.Value() {
