@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Fixes panic when binding the signature of output-versioned invokes without input arguments 
