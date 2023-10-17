@@ -607,6 +607,13 @@ func newImportCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
+				printDiagnostics(sink, resp.Diagnostics)
+				if resp.Diagnostics.HasErrors() {
+					// If we've got error diagnostics then state conversion failed, we've printed the error above so
+					// just return a plain message here.
+					return result.Error("conversion failed")
+				}
+
 				f, err := makeImportFileFromResourceList(resp.Resources)
 				if err != nil {
 					return result.FromError(err)
