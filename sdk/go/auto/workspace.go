@@ -117,6 +117,9 @@ type Workspace interface {
 	// ListStacks returns all Stacks created under the current Project.
 	// This queries underlying backend and may return stacks not present in the Workspace.
 	ListStacks(context.Context) ([]StackSummary, error)
+	// ListStacks returns all Stacks created under the scope of the current Pulumi Access Token.
+	// This queries underlying backend and may return stacks not present in the Workspace.
+	ListAllStacks(context.Context) ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version.
 	InstallPlugin(context.Context, string, string) error
 	// InstallPluginFromServer acquires the plugin matching the specified name and version.

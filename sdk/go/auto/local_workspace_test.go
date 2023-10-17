@@ -2945,3 +2945,133 @@ func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.Engi
 	})()
 	return &wg
 }
+
+func TestListAllStacksFunction(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	createStack := func(ctx context.Context, project string) Stack {
+		opts := []LocalWorkspaceOption{
+			SecretsProvider("passphrase"),
+			EnvVars(map[string]string{
+				"PULUMI_CONFIG_PASSPHRASE": "password",
+			}),
+		}
+
+		name := randomStackName()
+		sName := FullyQualifiedStackName(pulumiOrg, project, name)
+
+		// initialize
+		pDir := filepath.Join(".", "test", project)
+		s, err := NewStackLocalSource(ctx, sName, pDir, opts...)
+		if err != nil {
+			t.Errorf("failed to initialize stack, err: %v", err)
+			t.FailNow()
+		}
+
+		return s
+	}
+
+	// it's possible we will encounter additional stacks across other projects, however,
+	// we will validate we can see these two stacks across different projects
+	s1 := createStack(ctx, "testproj")
+	s2 := createStack(ctx, "correct_project")
+
+	ws, err := NewLocalWorkspace(ctx)
+	if err != nil {
+		t.Errorf("unable to create local workspace, err: %v", err)
+	}
+
+	stacks, err := ws.ListAllStacks(ctx)
+	if err != nil {
+		t.Errorf("failed to list all stacks, err: %v", err)
+		t.FailNow()
+	}
+
+	var sName1Out string
+	var sName2Out string
+
+	// pulumi stack ls --all --json returns fully qualified stack names
+	for _, s := range stacks {
+		if s.Name == s1.Name() {
+			sName1Out = s.Name
+		} else if s.Name == s2.Name() {
+			sName2Out = s.Name
+		}
+	}
+
+	assert.NotEmpty(t, sName1Out)
+	assert.Equal(t, s1.Name(), sName1Out)
+	assert.NotEmpty(t, sName2Out)
+	assert.Equal(t, s2.Name(), sName2Out)
+
+	err = s1.workspace.RemoveStack(ctx, s1.Name())
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	err = s2.workspace.RemoveStack(ctx, s2.Name())
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func TestListStacksFunction(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	// we are going to validate our command will return
+	// a stack from `testproject` project
+	// we will also validate we cannot see a stack
+	// underneath the `correct_project` project
+	s1 := newListStacksSource(ctx, t, "testproj")
+	s2 := newListStacksSource(ctx, t, "correct_project")
+
+	stacks, err := s1.Workspace().ListStacks(ctx)
+	if err != nil {
+		t.Errorf("failed to list all stacks, err: %v", err)
+		t.FailNow()
+	}
+
+	// we expect to find stack 1 and expect to not find stack 2
+	var sName1Out string
+	var sName2Out string
+
+	// pulumi stack ls --json returns org/stack (not fully qualified)
+	for _, s := range stacks {
+		fqName := FullyQualifiedStackName(pulumiOrg, "testproj", s.Name)
+		if fqName == s1.Name() {
+			sName1Out = fqName
+		} else if fqName == s2.Name() {
+			sName2Out = fqName
+		}
+	}
+
+	assert.NotEmpty(t, sName1Out)
+	assert.Equal(t, sName1Out, s1.Name())
+	assert.Empty(t, sName2Out)
+	assert.Equal(t, sName2Out, "")
+
+	err = s1.workspace.RemoveStack(ctx, s1.Name())
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	err = s2.workspace.RemoveStack(ctx, s2.Name())
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func newListStacksSource(ctx context.Context, t *testing.T, project string) Stack {
+	opts := []LocalWorkspaceOption{
+		SecretsProvider("passphrase"),
+		EnvVars(map[string]string{
+			"PULUMI_CONFIG_PASSPHRASE": "password",
+		}),
+	}
+
+	name := randomStackName()
+	sName := FullyQualifiedStackName(pulumiOrg, project, name)
+
+	// initialize
+	pDir := filepath.Join(".", "test", project)
+	s, err := NewStackLocalSource(ctx, sName, pDir, opts...)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	return s
+}
