@@ -75,6 +75,29 @@ func (m Map) HasSecureValue() bool {
 	return false
 }
 
+// AsPropertyMap returns the config as a property map.
+func (m Map) AsPropertyMap() (resource.PropertyMap, error) {
+	pm := resource.PropertyMap{}
+	for k, v := range m {
+		prop := resource.NewPropertyValueRepl(v, nil, func(interface{}) (resource.PropertyValue, bool) {
+			if v.Object() {
+				return resource.NewPropertyValue(v.value), true
+			}
+			newV, err := adjustObjectValue(v)
+			if err != nil {
+				return resource.PropertyValue{}, false
+			}
+			val := resource.NewPropertyValue(newV.value)
+			if newV.Secure() {
+				val = resource.MakeSecret(val)
+			}
+			return val, true
+		})
+		pm[resource.PropertyKey(k.String())] = prop
+	}
+	return pm, nil
+}
+
 // Get gets the value for a given key. If path is true, the key's name portion is treated as a path.
 func (m Map) Get(k Key, path bool) (_ Value, ok bool, err error) {
 	// If the key isn't a path, go ahead and lookup the value.

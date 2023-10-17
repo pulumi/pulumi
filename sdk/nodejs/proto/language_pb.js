@@ -21,6 +21,8 @@ var pulumi_plugin_pb = require('./plugin_pb.js');
 goog.object.extend(proto, pulumi_plugin_pb);
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
+var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
+goog.object.extend(proto, google_protobuf_struct_pb);
 goog.exportSymbol('proto.pulumirpc.AboutResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.DependencyInfo', null, global);
 goog.exportSymbol('proto.pulumirpc.GeneratePackageRequest', null, global);
@@ -1595,7 +1597,8 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, ""),
     querymode: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
-    organization: jspb.Message.getFieldWithDefault(msg, 12, "")
+    organization: jspb.Message.getFieldWithDefault(msg, 12, ""),
+    configpropertymap: (f = msg.getConfigpropertymap()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1681,6 +1684,11 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 12:
       var value = /** @type {string} */ (reader.readString());
       msg.setOrganization(value);
+      break;
+    case 13:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setConfigpropertymap(value);
       break;
     default:
       reader.skipField();
@@ -1790,6 +1798,14 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
     writer.writeString(
       12,
       f
+    );
+  }
+  f = message.getConfigpropertymap();
+  if (f != null) {
+    writer.writeMessage(
+      13,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -2050,6 +2066,43 @@ proto.pulumirpc.RunRequest.prototype.getOrganization = function() {
  */
 proto.pulumirpc.RunRequest.prototype.setOrganization = function(value) {
   return jspb.Message.setProto3StringField(this, 12, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct configPropertyMap = 13;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.RunRequest.prototype.getConfigpropertymap = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 13));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+*/
+proto.pulumirpc.RunRequest.prototype.setConfigpropertymap = function(value) {
+  return jspb.Message.setWrapperField(this, 13, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.clearConfigpropertymap = function() {
+  return this.setConfigpropertymap(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RunRequest.prototype.hasConfigpropertymap = function() {
+  return jspb.Message.getField(this, 13) != null;
 };
 
 
