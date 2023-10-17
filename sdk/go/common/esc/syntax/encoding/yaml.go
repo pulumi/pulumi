@@ -48,6 +48,7 @@ func (s YAMLSyntax) Range() *hcl.Range {
 
 type linePosition struct {
 	offset int
+	ascii  bool
 	line   []byte
 }
 
@@ -55,11 +56,23 @@ type positionIndex struct {
 	lines []linePosition
 }
 
+// isASCII returns true if s only contains ASCII bytes. ASCII bytes are in the range [0x00,0x7f]. Any byte outside this
+// range (i.e. any byte with the high bit set) is non-ASCII.
+func isASCII(s []byte) bool {
+	for _, b := range s {
+		if b&0x80 != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func newPositionIndex(yaml []byte) positionIndex {
 	offset, lines := 0, []linePosition(nil)
 	for {
 		line, rest, found := bytes.Cut(yaml, []byte{'\n'})
-		lines = append(lines, linePosition{offset: offset, line: line})
+
+		lines = append(lines, linePosition{offset: offset, ascii: isASCII(line), line: line})
 		if !found {
 			return positionIndex{lines}
 		}
@@ -73,9 +86,13 @@ func (p positionIndex) pos(line, column int) hcl.Pos {
 	}
 
 	l := p.lines[line-1]
+	if l.ascii {
+		b := l.offset + column - 1
+		return hcl.Pos{Byte: b, Line: line, Column: column}
+	}
 
 	b, rest, state, c := l.offset, l.line, -1, 1
-	for c < column {
+	for len(rest) > 0 && c < column {
 		cluster, r, w, s := uniseg.Step(rest, state)
 		b, c = b+len(cluster), c+w>>uniseg.ShiftWidth
 		rest, state = r, s
