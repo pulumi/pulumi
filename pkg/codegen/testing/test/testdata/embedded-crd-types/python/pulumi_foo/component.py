@@ -33,7 +33,7 @@ class ComponentArgs:
              pod: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'eniConfig' in kwargs:
+        if eni_config is None and 'eniConfig' in kwargs:
             eni_config = kwargs['eniConfig']
 
         if eni_config is not None:

@@ -30,7 +30,7 @@ class ProviderArgs:
              helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'helmReleaseSettings' in kwargs:
+        if helm_release_settings is None and 'helmReleaseSettings' in kwargs:
             helm_release_settings = kwargs['helmReleaseSettings']
 
         if helm_release_settings is not None:

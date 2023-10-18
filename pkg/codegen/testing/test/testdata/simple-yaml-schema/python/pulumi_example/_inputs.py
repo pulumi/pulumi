@@ -59,10 +59,12 @@ class ObjectWithNodeOptionalInputsArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             foo: pulumi.Input[str],
+             foo: Optional[pulumi.Input[str]] = None,
              bar: Optional[pulumi.Input[int]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
+        if foo is None:
+            raise TypeError("Missing 'foo' argument")
 
         _setter("foo", foo)
         if bar is not None:
@@ -117,7 +119,7 @@ class ObjectArgs:
              still_others: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'stillOthers' in kwargs:
+        if still_others is None and 'stillOthers' in kwargs:
             still_others = kwargs['stillOthers']
 
         if bar is not None:

@@ -36,13 +36,15 @@ class ConfigurationFilters:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             hierarchy_information: 'HierarchyInformation',
+             hierarchy_information: Optional['HierarchyInformation'] = None,
              filterable_property: Optional[Sequence['FilterableProperty']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'hierarchyInformation' in kwargs:
+        if hierarchy_information is None and 'hierarchyInformation' in kwargs:
             hierarchy_information = kwargs['hierarchyInformation']
-        if 'filterableProperty' in kwargs:
+        if hierarchy_information is None:
+            raise TypeError("Missing 'hierarchy_information' argument")
+        if filterable_property is None and 'filterableProperty' in kwargs:
             filterable_property = kwargs['filterableProperty']
 
         _setter("hierarchy_information", hierarchy_information)
@@ -95,16 +97,18 @@ class CustomerSubscriptionDetails:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             quota_id: str,
+             quota_id: Optional[str] = None,
              location_placement_id: Optional[str] = None,
              registered_features: Optional[Sequence['CustomerSubscriptionRegisteredFeatures']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'quotaId' in kwargs:
+        if quota_id is None and 'quotaId' in kwargs:
             quota_id = kwargs['quotaId']
-        if 'locationPlacementId' in kwargs:
+        if quota_id is None:
+            raise TypeError("Missing 'quota_id' argument")
+        if location_placement_id is None and 'locationPlacementId' in kwargs:
             location_placement_id = kwargs['locationPlacementId']
-        if 'registeredFeatures' in kwargs:
+        if registered_features is None and 'registeredFeatures' in kwargs:
             registered_features = kwargs['registeredFeatures']
 
         _setter("quota_id", quota_id)
@@ -221,12 +225,16 @@ class FilterableProperty:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             supported_values: Sequence[str],
-             type: Union[str, 'SupportedFilterTypes'],
+             supported_values: Optional[Sequence[str]] = None,
+             type: Optional[Union[str, 'SupportedFilterTypes']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'supportedValues' in kwargs:
+        if supported_values is None and 'supportedValues' in kwargs:
             supported_values = kwargs['supportedValues']
+        if supported_values is None:
+            raise TypeError("Missing 'supported_values' argument")
+        if type is None:
+            raise TypeError("Missing 'type' argument")
 
         _setter("supported_values", supported_values)
         _setter("type", type)
@@ -286,13 +294,13 @@ class HierarchyInformation:
              product_name: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'configurationName' in kwargs:
+        if configuration_name is None and 'configurationName' in kwargs:
             configuration_name = kwargs['configurationName']
-        if 'productFamilyName' in kwargs:
+        if product_family_name is None and 'productFamilyName' in kwargs:
             product_family_name = kwargs['productFamilyName']
-        if 'productLineName' in kwargs:
+        if product_line_name is None and 'productLineName' in kwargs:
             product_line_name = kwargs['productLineName']
-        if 'productName' in kwargs:
+        if product_name is None and 'productName' in kwargs:
             product_name = kwargs['productName']
 
         if configuration_name is not None:

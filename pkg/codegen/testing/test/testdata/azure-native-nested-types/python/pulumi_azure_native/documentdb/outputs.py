@@ -98,7 +98,7 @@ class IndexingPolicyResponse(dict):
              composite_indexes: Optional[Sequence[Sequence['outputs.CompositePathResponse']]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'compositeIndexes' in kwargs:
+        if composite_indexes is None and 'compositeIndexes' in kwargs:
             composite_indexes = kwargs['compositeIndexes']
 
         if composite_indexes is not None:
@@ -147,7 +147,7 @@ class SqlContainerGetPropertiesResponseResource(dict):
              indexing_policy: Optional['outputs.IndexingPolicyResponse'] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'indexingPolicy' in kwargs:
+        if indexing_policy is None and 'indexingPolicy' in kwargs:
             indexing_policy = kwargs['indexingPolicy']
 
         if indexing_policy is not None:

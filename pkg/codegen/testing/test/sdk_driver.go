@@ -366,7 +366,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "configure-prop-names",
 		Description: "Checks that python _configure handles camelcased and snakecased prop names correctly",
-		Skip:        allLanguages.Except(python),
+		Skip:        allLanguages.Except("python/any"),
 	},
 }
 

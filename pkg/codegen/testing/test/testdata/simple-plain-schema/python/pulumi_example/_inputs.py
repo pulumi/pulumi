@@ -35,14 +35,20 @@ class Foo:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             a: bool,
-             c: int,
-             e: str,
+             a: Optional[bool] = None,
+             c: Optional[int] = None,
+             e: Optional[str] = None,
              b: Optional[bool] = None,
              d: Optional[int] = None,
              f: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
+        if a is None:
+            raise TypeError("Missing 'a' argument")
+        if c is None:
+            raise TypeError("Missing 'c' argument")
+        if e is None:
+            raise TypeError("Missing 'e' argument")
 
         _setter("a", a)
         _setter("c", c)
@@ -130,14 +136,20 @@ class FooArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             a: bool,
-             c: int,
-             e: str,
+             a: Optional[bool] = None,
+             c: Optional[int] = None,
+             e: Optional[str] = None,
              b: Optional[bool] = None,
              d: Optional[int] = None,
              f: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
+        if a is None:
+            raise TypeError("Missing 'a' argument")
+        if c is None:
+            raise TypeError("Missing 'c' argument")
+        if e is None:
+            raise TypeError("Missing 'e' argument")
 
         _setter("a", a)
         _setter("c", c)

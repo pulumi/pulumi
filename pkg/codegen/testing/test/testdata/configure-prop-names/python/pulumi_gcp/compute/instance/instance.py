@@ -28,11 +28,13 @@ class InstanceArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             boot_disk: pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs'],
+             boot_disk: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'bootDisk' in kwargs:
+        if boot_disk is None and 'bootDisk' in kwargs:
             boot_disk = kwargs['bootDisk']
+        if boot_disk is None:
+            raise TypeError("Missing 'boot_disk' argument")
 
         _setter("boot_disk", boot_disk)
 
@@ -69,7 +71,7 @@ class _InstanceState:
              boot_disk: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'bootDisk' in kwargs:
+        if boot_disk is None and 'bootDisk' in kwargs:
             boot_disk = kwargs['bootDisk']
 
         if boot_disk is not None:

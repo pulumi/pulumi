@@ -34,7 +34,7 @@ class InstanceBootDisk(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 initialize_params: Optional['_compute.instancebootdiskinitializeparams.outputs.InstanceBootDiskInitializeParams'] = None):
+                 initialize_params: '_compute.instancebootdiskinitializeparams.outputs.InstanceBootDiskInitializeParams'):
         """
         :param '_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs' initialize_params: Parameters for a new disk that will be created
                alongside the new instance. Either `initialize_params` or `source` must be set.
@@ -50,15 +50,16 @@ class InstanceBootDisk(dict):
              initialize_params: Optional['_compute.instancebootdiskinitializeparams.outputs.InstanceBootDiskInitializeParams'] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'initializeParams' in kwargs:
+        if initialize_params is None and 'initializeParams' in kwargs:
             initialize_params = kwargs['initializeParams']
+        if initialize_params is None:
+            raise TypeError("Missing 'initialize_params' argument")
 
-        if initialize_params is not None:
-            _setter("initialize_params", initialize_params)
+        _setter("initialize_params", initialize_params)
 
     @property
     @pulumi.getter(name="initializeParams")
-    def initialize_params(self) -> Optional['_compute.instancebootdiskinitializeparams.outputs.InstanceBootDiskInitializeParams']:
+    def initialize_params(self) -> '_compute.instancebootdiskinitializeparams.outputs.InstanceBootDiskInitializeParams':
         """
         Parameters for a new disk that will be created
         alongside the new instance. Either `initialize_params` or `source` must be set.

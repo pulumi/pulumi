@@ -36,15 +36,17 @@ class FooArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             backup_kube_client_settings: pulumi.Input['KubeClientSettingsArgs'],
+             backup_kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
              argument: Optional[str] = None,
              kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
              settings: Optional[pulumi.Input['LayeredTypeArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'backupKubeClientSettings' in kwargs:
+        if backup_kube_client_settings is None and 'backupKubeClientSettings' in kwargs:
             backup_kube_client_settings = kwargs['backupKubeClientSettings']
-        if 'kubeClientSettings' in kwargs:
+        if backup_kube_client_settings is None:
+            raise TypeError("Missing 'backup_kube_client_settings' argument")
+        if kube_client_settings is None and 'kubeClientSettings' in kwargs:
             kube_client_settings = kwargs['kubeClientSettings']
 
         _setter("backup_kube_client_settings", backup_kube_client_settings)
