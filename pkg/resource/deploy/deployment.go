@@ -113,6 +113,19 @@ func NewUrnTargetsFromUrns(urns []resource.URN) UrnTargets {
 	return UrnTargets{urns, nil}
 }
 
+// Return a copy of the UrnTargets
+func (t UrnTargets) Clone() UrnTargets {
+	newLiterals := append(make([]resource.URN, 0, len(t.literals)), t.literals...)
+	newGlobs := make(map[string]*regexp.Regexp, len(t.globs))
+	for k, v := range t.globs {
+		newGlobs[k] = v
+	}
+	return UrnTargets{
+		literals: newLiterals,
+		globs:    newGlobs,
+	}
+}
+
 // Return if the target set constrains the set of acceptable URNs.
 func (t UrnTargets) IsConstrained() bool {
 	return len(t.literals) > 0 || len(t.globs) > 0
