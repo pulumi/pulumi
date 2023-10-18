@@ -64,41 +64,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// TODO[pulumi/pulumi#12539]:
-// This section contains names of environment variables
-// that affect the behavior of the backend.
-//
-// These must all be registered in common/env so that they're available
-// with the 'pulumi env' command.
-// However, we don't currently use env.Value() to access their values
-// because it prevents us from overriding the definition of os.Getenv
-// in tests.
-var (
-	// PulumiFilestateNoLegacyWarningEnvVar is an env var that must be truthy
-	// to disable the warning printed by the filestate backend
-	// when it detects that the state has both, project-scoped and legacy stacks.
-	PulumiFilestateNoLegacyWarningEnvVar = env.SelfManagedStateNoLegacyWarning.Var().Name()
-
-	// PulumiFilestateLegacyLayoutEnvVar is the name of an environment variable
-	// that can be set to force the use of the legacy layout
-	// when initializing an empty bucket for filestate.
-	//
-	// This opt-out is intended to be removed in a future release.
-	PulumiFilestateLegacyLayoutEnvVar = env.SelfManagedStateLegacyLayout.Var().Name()
-
-	// PulumiFilestateGzipEnvVar is an env var that must be truthy
-	// to enable gzip compression when using the filestate backend.
-	PulumiFilestateGzipEnvVar = env.SelfManagedGzip.Var().Name()
-
-	// PulumiFilestateRetainCheckpoints is an env var that must be truthy
-	// to write out timestamped state files.
-	PulumiFilestateRetainCheckpoints = env.SelfManagedRetainCheckpoints.Var().Name()
-
-	// PulumiFilestateRetainCheckpoints is an env var that must be truthy
-	// to disable checkpoint backups.
-	PulumiFilestateDisableCheckpointBackups = env.SelfManagedDisableCheckpointBackups.Var().Name()
-)
-
 // UpgradeOptions customizes the behavior of the upgrade operation.
 type UpgradeOptions struct {
 	// ProjectsForDetachedStacks is an optional function that is able to
@@ -143,7 +108,7 @@ type localBackend struct {
 
 	gzip bool
 
-	Getenv func(string) string // == os.Getenv
+	Env env.Env
 
 	// The current project, if any.
 	currentProject atomic.Pointer[workspace.Project]
@@ -232,10 +197,10 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 }
 
 type localBackendOptions struct {
-	// Getenv specifies how to get environment variables.
+	// Env specifies how to get environment variables.
 	//
-	// Defaults to os.Getenv.
-	Getenv func(string) string
+	// Defaults to env.Global
+	Env env.Env
 }
 
 // newLocalBackend builds a filestate backend implementation
@@ -247,8 +212,8 @@ func newLocalBackend(
 	if opts == nil {
 		opts = &localBackendOptions{}
 	}
-	if opts.Getenv == nil {
-		opts.Getenv = os.Getenv
+	if opts.Env == nil {
+		opts.Env = env.Global()
 	}
 
 	if !IsFileStateBackendURL(originalURL) {
@@ -299,7 +264,7 @@ func newLocalBackend(
 		return nil, err
 	}
 
-	gzipCompression := cmdutil.IsTruthy(opts.Getenv(PulumiFilestateGzipEnvVar))
+	gzipCompression := opts.Env.GetBool(env.SelfManagedGzip)
 
 	wbucket := &wrappedBucket{bucket: bucket}
 	bucket = nil // prevent accidental use of unwrapped bucket
@@ -311,14 +276,14 @@ func newLocalBackend(
 		bucket:      wbucket,
 		lockID:      lockID.String(),
 		gzip:        gzipCompression,
-		Getenv:      opts.Getenv,
+		Env:         opts.Env,
 	}
 	backend.currentProject.Store(project)
 
 	// Read the Pulumi state metadata
 	// and ensure that it is compatible with this version of the CLI.
 	// The version in the metadata file informs which store we use.
-	meta, err := ensurePulumiMeta(ctx, wbucket, opts.Getenv)
+	meta, err := ensurePulumiMeta(ctx, wbucket, opts.Env)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +314,7 @@ func newLocalBackend(
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
-	if !projectMode || cmdutil.IsTruthy(opts.Getenv(PulumiFilestateNoLegacyWarningEnvVar)) {
+	if !projectMode || opts.Env.GetBool(env.SelfManagedStateNoLegacyWarning) {
 		return backend, nil
 	}
 	// Otherwise, warn about any old stack files.

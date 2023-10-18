@@ -40,11 +40,11 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -734,7 +734,8 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", filestate.PulumiFilestateDisableCheckpointBackups))
+	disableCheckpointBackups := env.SelfManagedDisableCheckpointBackups.Var().Name()
+	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", disableCheckpointBackups))
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
 	if !opts.NoParallel && !opts.DestroyOnCleanup {
