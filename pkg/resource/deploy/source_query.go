@@ -147,9 +147,6 @@ func runLangPlugin(src *querySource) error {
 	}
 	contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
-	// Make sure to clean up before exiting.
-	defer contract.IgnoreClose(langhost)
-
 	// Decrypt the configuration.
 	var config map[config.Key]string
 	if src.runinfo.Target != nil {
