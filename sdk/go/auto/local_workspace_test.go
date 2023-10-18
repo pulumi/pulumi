@@ -1045,8 +1045,6 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 func TestNestedStackFails(t *testing.T) {
 	t.Parallel()
 
-	// FIXME: see https://github.com/pulumi/pulumi/issues/5301
-	t.Skip("skipping test, see pulumi/pulumi#5301")
 	testCtx := context.Background()
 	sName := randomStackName()
 	parentstackName := FullyQualifiedStackName(pulumiOrg, "parent", sName)
