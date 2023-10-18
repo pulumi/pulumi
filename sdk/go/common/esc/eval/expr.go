@@ -206,7 +206,7 @@ func (x *expr) export(environment string) esc.Expr {
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
-	case *listExpr:
+	case *arrayExpr:
 		ex.List = make([]esc.Expr, len(repr.elements))
 		for i, el := range repr.elements {
 			ex.List[i] = el.export(environment)
@@ -284,14 +284,14 @@ func (x *accessExpr) syntax() ast.Expr {
 	return x.node
 }
 
-// listExpr represents a list literal.
-type listExpr struct {
-	node *ast.ListExpr
+// arrayExpr represents an array literal.
+type arrayExpr struct {
+	node *ast.ArrayExpr
 
 	elements []*expr
 }
 
-func (x *listExpr) syntax() ast.Expr {
+func (x *arrayExpr) syntax() ast.Expr {
 	return x.node
 }
 

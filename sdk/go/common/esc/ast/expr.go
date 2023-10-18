@@ -226,24 +226,24 @@ func (n *SymbolExpr) String() string {
 	return fmt.Sprintf("${%v}", n.Property)
 }
 
-// A ListExpr represents a list of expressions.
-type ListExpr struct {
+// A ArrayExpr represents a list of expressions.
+type ArrayExpr struct {
 	exprNode
 
 	Elements []Expr
 }
 
-// ListSyntax creates a new list expression with the given elements and associated syntax.
-func ListSyntax(node *syntax.ListNode, elements ...Expr) *ListExpr {
-	return &ListExpr{
+// ArraySyntax creates a new list expression with the given elements and associated syntax.
+func ArraySyntax(node *syntax.ArrayNode, elements ...Expr) *ArrayExpr {
+	return &ArrayExpr{
 		exprNode: expr(node),
 		Elements: elements,
 	}
 }
 
-// List creates a new list expression with the given elements.
-func List(elements ...Expr) *ListExpr {
-	return ListSyntax(syntax.List(), elements...)
+// Array creates a new list expression with the given elements.
+func Array(elements ...Expr) *ArrayExpr {
+	return ArraySyntax(syntax.Array(), elements...)
 }
 
 // An ObjectExpr represents an object.
@@ -278,7 +278,7 @@ func Object(entries ...ObjectProperty) *ObjectExpr {
 // The syntax tree is parsed using the following rules:
 //
 //   - *syntax.{Null,Boolean,Number}Node is parsed as a *{Null,Boolean,Number}Expr.
-//   - *syntax.ListNode is parsed as a *ListExpr.
+//   - *syntax.ArrayNode is parsed as a *ArrayExpr.
 //   - *syntax.StringNode is parsed as an *InterpolateExpr, a *SymbolExpr, or a *StringExpr. The node's literal is first
 //     parsed as an interpolated string. If the result contains a single property access with no surrounding text, (i.e.
 //     the string is of the form "${resource.property}", it is treated as a symbol. If the result contains no property
@@ -316,7 +316,7 @@ func ParseExpr(node syntax.Node) (Expr, syntax.Diagnostics) {
 		}
 
 		return interpolate, diags
-	case *syntax.ListNode:
+	case *syntax.ArrayNode:
 		var diags syntax.Diagnostics
 
 		elements := make([]Expr, node.Len())
@@ -325,7 +325,7 @@ func ParseExpr(node syntax.Node) (Expr, syntax.Diagnostics) {
 			diags.Extend(xdiags...)
 			elements[i] = x
 		}
-		return ListSyntax(node, elements...), diags
+		return ArraySyntax(node, elements...), diags
 	case *syntax.ObjectNode:
 
 		var diags syntax.Diagnostics
@@ -487,7 +487,7 @@ type JoinExpr struct {
 	Values    Expr
 }
 
-func JoinSyntax(node *syntax.ObjectNode, name *StringExpr, args *ListExpr, delimiter Expr, values Expr) *JoinExpr {
+func JoinSyntax(node *syntax.ObjectNode, name *StringExpr, args *ArrayExpr, delimiter Expr, values Expr) *JoinExpr {
 	return &JoinExpr{
 		builtinNode: builtin(node, name, args),
 		Delimiter:   delimiter,
@@ -495,10 +495,10 @@ func JoinSyntax(node *syntax.ObjectNode, name *StringExpr, args *ListExpr, delim
 	}
 }
 
-func Join(delimiter Expr, values *ListExpr) *JoinExpr {
+func Join(delimiter Expr, values *ArrayExpr) *JoinExpr {
 	name := String("fn::join")
 	return &JoinExpr{
-		builtinNode: builtin(nil, name, List(delimiter, values)),
+		builtinNode: builtin(nil, name, Array(delimiter, values)),
 		Delimiter:   delimiter,
 		Values:      values,
 	}
@@ -670,7 +670,7 @@ func parseShortOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr,
 }
 
 func parseJoin(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
-	list, ok := args.(*ListExpr)
+	list, ok := args.(*ArrayExpr)
 	if !ok || len(list.Elements) != 2 {
 		return nil, syntax.Diagnostics{ExprError(args, "the argument to fn::join must be a two-valued list", "")}
 	}

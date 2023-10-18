@@ -32,6 +32,7 @@ import (
 //     *syntax.NullNode.
 //   - Boolean values decode as *syntax.BooleanNode.
 //   - Floating point and integer values decode as *syntax.NumberNode.
+//   - json.Number values decode as *syntax.NumberNode.
 //   - String values decode as *syntax.StringNode.
 //   - Arrays and slices decode as *syntax.ListNode. Nil slices are decoded as *syntax.NullNode.
 //   - Maps are decoded as *syntax.ObjectNode. Map keys must be strings. Nil maps are deocded as *syntax.NullNode.
@@ -59,10 +60,13 @@ func decodeValue(v reflect.Value) (syntax.Node, syntax.Diagnostics) {
 		case reflect.Float32, reflect.Float64:
 			return syntax.Number(v.Float()), nil
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return syntax.Number(float64(v.Int())), nil
+			return syntax.Number(v.Int()), nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			return syntax.Number(float64(v.Uint())), nil
+			return syntax.Number(v.Uint()), nil
 		case reflect.String:
+			if v.Type() == jsonNumberType {
+				return syntax.Number(json.Number(v.String())), nil
+			}
 			return syntax.String(v.String()), nil
 		case reflect.Array, reflect.Slice:
 			if v.IsNil() {
@@ -80,7 +84,7 @@ func decodeValue(v reflect.Value) (syntax.Node, syntax.Diagnostics) {
 					elements[i] = e
 				}
 			}
-			return syntax.List(elements...), diags
+			return syntax.Array(elements...), diags
 		case reflect.Map:
 			if v.Type().Key().Kind() != reflect.String {
 				return nil, syntax.Diagnostics{syntax.Error(nil, fmt.Sprintf("cannot decode value of type %v (map keys must be strings)", v.Type()), "")}
@@ -117,6 +121,16 @@ func decodeValue(v reflect.Value) (syntax.Node, syntax.Diagnostics) {
 				entries = make([]syntax.ObjectPropertyDef, 0, t.NumField())
 
 				for i := 0; i < t.NumField(); i++ {
+					ft := t.Field(i)
+
+					k := ft.Name
+					if tag, ok := ft.Tag.Lookup("syntax"); ok {
+						if tag == "-" {
+							continue
+						}
+						k = tag
+					}
+
 					vn, fdiags := decodeValue(v.Field(i))
 					diags.Extend(fdiags...)
 
@@ -124,17 +138,11 @@ func decodeValue(v reflect.Value) (syntax.Node, syntax.Diagnostics) {
 						continue
 					}
 
-					ft := t.Field(i)
 					if obj, ok := vn.(*syntax.ObjectNode); ok && ft.Anonymous {
 						for i := 0; i < obj.Len(); i++ {
 							entries = append(entries, obj.Index(i))
 						}
 						continue
-					}
-
-					k := ft.Name
-					if tag, ok := ft.Tag.Lookup("syntax"); ok {
-						k = tag
 					}
 
 					kn := syntax.String(k)
@@ -168,7 +176,7 @@ func getStructFields(fields map[string]reflect.Value, v reflect.Value) reflect.V
 			}
 		} else {
 			k := f.Name
-			if tag, ok := f.Tag.Lookup("object"); ok {
+			if tag, ok := f.Tag.Lookup("syntax"); ok {
 				if tag == "-" {
 					nodeField = v.Field(i)
 					continue
@@ -189,18 +197,6 @@ var nodeType = reflect.TypeOf((*syntax.Node)(nil)).Elem()
 var jsonNumberType = reflect.TypeOf((*json.Number)(nil)).Elem()
 
 func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
-	if v.Type().AssignableTo(nodeType) {
-		if v.CanSet() {
-			nv := reflect.ValueOf(n)
-			if !nv.Type().AssignableTo(v.Type()) {
-				rng := n.Syntax().Range()
-				return syntax.Diagnostics{syntax.Error(rng, fmt.Sprintf("cannot encode %v into location of type %v", nv.Type(), v.Type()), "")}
-			}
-			v.Set(nv)
-			return nil
-		}
-	}
-
 	if _, isNull := n.(*syntax.NullNode); isNull {
 		if v.CanSet() {
 			v.Set(reflect.Zero(v.Type()))
@@ -217,6 +213,18 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 			v.Set(el)
 		}
 		v = v.Elem()
+	}
+
+	if v.Type().AssignableTo(nodeType) {
+		if v.CanSet() {
+			nv := reflect.ValueOf(n)
+			if !nv.Type().AssignableTo(v.Type()) {
+				rng := n.Syntax().Range()
+				return syntax.Diagnostics{syntax.Error(rng, fmt.Sprintf("cannot encode %v into location of type %v", nv.Type(), v.Type()), "")}
+			}
+			v.Set(nv)
+			return nil
+		}
 	}
 
 	if !v.CanSet() {
@@ -239,7 +247,7 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 		return nil
 	case *syntax.NumberNode:
 		if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
-			ev := reflect.New(reflect.TypeOf((*float64)(nil)).Elem()).Elem()
+			ev := reflect.New(jsonNumberType).Elem()
 			defer v.Set(ev)
 			v = ev
 		}
@@ -325,7 +333,7 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 		}
 		v.SetString(n.Value())
 		return nil
-	case *syntax.ListNode:
+	case *syntax.ArrayNode:
 		if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
 			ev := reflect.New(reflect.TypeOf((*[]interface{})(nil)).Elem()).Elem()
 			defer v.Set(ev)

@@ -1,0 +1,9 @@
+fold: >
+  replace
+  newlines
+  with
+  spaces
+literal: |
+  keep
+  newlines
+  intact

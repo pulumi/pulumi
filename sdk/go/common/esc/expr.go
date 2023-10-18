@@ -44,7 +44,7 @@ type Expr struct {
 	// The access, if this is an access expression
 	Access *AccessExpr `json:"access,omitempty"`
 
-	// The list elements, if this isa list expression
+	// The list elements, if this is a list expression
 	List []Expr `json:"list,omitempty"`
 
 	// The object properties, if this is an object expression.

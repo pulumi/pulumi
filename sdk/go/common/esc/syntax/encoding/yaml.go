@@ -129,7 +129,7 @@ func (p positionIndex) yamlEndPos(n *yaml.Node) hcl.Pos {
 		case yaml.TaggedStyle:
 			col += len(n.Tag) + 1
 		}
-		return p.pos(n.Line, col+len(s))
+		return p.pos(line, col+len(s))
 	}
 }
 
@@ -163,7 +163,7 @@ func unmarshalYAMLNode(filename string, positions positionIndex, n *yaml.Node, t
 				elements[i] = e
 			}
 		}
-		return syntax.ListSyntax(YAMLSyntax{n, rng, nil}, elements...), diags
+		return syntax.ArraySyntax(YAMLSyntax{n, rng, nil}, elements...), diags
 	case yaml.MappingNode:
 		var entries []syntax.ObjectPropertyDef
 		if len(n.Content) != 0 {
@@ -250,6 +250,10 @@ func unmarshalYAML(filename string, positions positionIndex, n *yaml.Node, tags 
 // the tag, style, and comments on the result will be pulled from the YAMLSyntax. The marshaling process otherwise
 // follows the inverse of the unmarshaling process described in the documentation for UnmarshalYAML.
 func MarshalYAML(n syntax.Node) (*yaml.Node, syntax.Diagnostics) {
+	if n == nil {
+		return &yaml.Node{}, syntax.Diagnostics{syntax.Error(nil, "nil nodes are not supported", "")}
+	}
+
 	var yamlNode yaml.Node
 	var originalValue interface{}
 	switch s := n.Syntax().(type) {
@@ -314,7 +318,7 @@ func MarshalYAML(n syntax.Node) (*yaml.Node, syntax.Diagnostics) {
 		if originalValue != value {
 			yamlNode.Value = value
 		}
-	case *syntax.ListNode:
+	case *syntax.ArrayNode:
 		if yamlNode.Kind != yaml.SequenceNode && yamlNode.Kind != yaml.DocumentNode {
 			yamlNode.Kind = yaml.SequenceNode
 		}

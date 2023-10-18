@@ -193,7 +193,7 @@ func (e *evalContext) errorf(expr ast.Expr, format string, a ...any) {
 // - SecretExpr                          -> secretExpr
 // - ToBase64Expr                        -> toBase64Expr
 // - ToJSONExpr                          -> toJSONExpr
-// - ListExpr                            -> listExpr
+// - ArrayExpr                           -> arrayExpr
 // - ObjectExpr                          -> objectExpr
 func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 	switch x := x.(type) {
@@ -260,12 +260,12 @@ func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 	case *ast.ToStringExpr:
 		repr := &toStringExpr{node: x, value: e.declare("", x.Value, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
-	case *ast.ListExpr:
+	case *ast.ArrayExpr:
 		elements := make([]*expr, len(x.Elements))
 		for i, x := range x.Elements {
 			elements[i] = e.declare(fmt.Sprintf("%v[%d]", path, i), x, nil)
 		}
-		repr := &listExpr{node: x, elements: elements}
+		repr := &arrayExpr{node: x, elements: elements}
 		return newExpr(path, repr, schema.Array().Items(schema.Always()).Schema(), base)
 	case *ast.ObjectExpr:
 		properties := make(map[string]*expr, len(x.Entries))
@@ -449,8 +449,8 @@ func (e *evalContext) evaluateExpr(x *expr) *value {
 		val = e.evaluateBuiltinToJSON(x, repr)
 	case *toStringExpr:
 		val = e.evaluateBuiltinToString(x, repr)
-	case *listExpr:
-		val = e.evaluateList(x, repr)
+	case *arrayExpr:
+		val = e.evaluateArray(x, repr)
 	case *objectExpr:
 		val = e.evaluateObject(x, repr)
 	default:
@@ -477,8 +477,8 @@ func (e *evalContext) evaluateTypedExpr(x *expr, accept *schema.Schema) (*value,
 	return v, ok
 }
 
-// evaluateList evaluates a list expression.
-func (e *evalContext) evaluateList(x *expr, repr *listExpr) *value {
+// evaluateArray evaluates an array expression.
+func (e *evalContext) evaluateArray(x *expr, repr *arrayExpr) *value {
 	v := &value{def: x}
 
 	array, items := make([]*value, len(repr.elements)), make([]schema.Builder, len(repr.elements))
@@ -566,7 +566,7 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor)
 	for len(accessors) > 0 {
 		accessor := accessors[0]
 		switch repr := receiver.repr.(type) {
-		case *listExpr:
+		case *arrayExpr:
 			index, ok := e.arrayIndex(x.repr.syntax(), accessor.accessor, len(repr.elements))
 			if !ok {
 				return e.invalidPropertyAccess(x.repr.syntax(), accessors)

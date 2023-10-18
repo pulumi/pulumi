@@ -56,21 +56,21 @@ type nonNilDecl interface {
 	defaultValue() interface{}
 }
 
-type ListDecl[T Node] struct {
+type ArrayDecl[T Node] struct {
 	declNode
 
 	Elements []T
 }
 
-func (d *ListDecl[T]) GetElements() []T {
+func (d *ArrayDecl[T]) GetElements() []T {
 	if d == nil {
 		return nil
 	}
 	return d.Elements
 }
 
-func (d *ListDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
-	list, ok := node.(*syntax.ListNode)
+func (d *ArrayDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
+	list, ok := node.(*syntax.ArrayNode)
 	if !ok {
 		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be a list", name), "")}
 	}
@@ -181,7 +181,7 @@ func (d *ImportDecl) parse(name string, node syntax.Node) syntax.Diagnostics {
 	}
 }
 
-type ImportListDecl = *ListDecl[*ImportDecl]
+type ImportListDecl = *ArrayDecl[*ImportDecl]
 type PropertyMapEntry = MapEntry[Expr]
 type PropertyMapDecl = *MapDecl[Expr]
 
@@ -372,8 +372,8 @@ func exprFieldTypeMismatchError(name string, expected interface{}, actual Expr) 
 		typeName = "a symbol"
 	case *InterpolateExpr:
 		typeName = "an interpolated string"
-	case *ListExpr:
-		typeName = "a list"
+	case *ArrayExpr:
+		typeName = "an array"
 	case *ObjectExpr:
 		typeName = "an object"
 	case BuiltinExpr:

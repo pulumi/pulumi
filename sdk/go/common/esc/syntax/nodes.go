@@ -19,13 +19,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A Node represents a single node in an object tree.
 type Node interface {
 	fmt.Stringer
+	fmt.GoStringer
 
 	Syntax() Syntax
 
@@ -61,6 +60,10 @@ func Null() *NullNode {
 	return NullSyntax(NoSyntax)
 }
 
+func (*NullNode) GoString() string {
+	return "syntax.Null()"
+}
+
 func (*NullNode) String() string {
 	return "null"
 }
@@ -80,6 +83,10 @@ func BooleanSyntax(syntax Syntax, value bool) *BooleanNode {
 // Boolean creates a new boolean literal node with the given value.
 func Boolean(value bool) *BooleanNode {
 	return BooleanSyntax(NoSyntax, value)
+}
+
+func (n *BooleanNode) GoString() string {
+	return fmt.Sprintf("syntax.Boolean(%#v)", n.value)
 }
 
 func (n *BooleanNode) String() string {
@@ -155,6 +162,10 @@ func (n *NumberNode) Value() json.Number {
 	return n.value
 }
 
+func (n *NumberNode) GoString() string {
+	return fmt.Sprintf("syntax.Number(json.Number(%q))", string(n.value))
+}
+
 func (n *NumberNode) String() string {
 	return n.value.String()
 }
@@ -179,6 +190,10 @@ func String(value string) *StringNode {
 	return StringSyntax(NoSyntax, value)
 }
 
+func (n *StringNode) GoString() string {
+	return fmt.Sprintf("syntax.String(%q)", n.value)
+}
+
 // String returns the string literal's value.
 func (n *StringNode) String() string {
 	return n.value
@@ -189,34 +204,52 @@ func (n *StringNode) Value() string {
 	return n.value
 }
 
-// A ListNode represents a list of nodes.
-type ListNode struct {
+// A ArrayNode represents an array of nodes.
+type ArrayNode struct {
 	node
 
 	elements []Node
 }
 
-// ListSyntax creates a new list node with the given elements and associated syntax.
-func ListSyntax(syntax Syntax, elements ...Node) *ListNode {
-	return &ListNode{node: node{syntax: syntax}, elements: elements}
+// ArraySyntax creates a new array node with the given elements and associated syntax.
+func ArraySyntax(syntax Syntax, elements ...Node) *ArrayNode {
+	return &ArrayNode{node: node{syntax: syntax}, elements: elements}
 }
 
-// List creates a new list node with the given elements.
-func List(elements ...Node) *ListNode {
-	return ListSyntax(NoSyntax, elements...)
+// Array creates a new array node with the given elements.
+func Array(elements ...Node) *ArrayNode {
+	return ArraySyntax(NoSyntax, elements...)
 }
 
-// Len returns the number of elements in the list.
-func (n *ListNode) Len() int {
+// Len returns the number of elements in the array.
+func (n *ArrayNode) Len() int {
 	return len(n.elements)
 }
 
-// Index returns the i'th element of the list.
-func (n *ListNode) Index(i int) Node {
+// Index returns the i'th element of the array.
+func (n *ArrayNode) Index(i int) Node {
 	return n.elements[i]
 }
 
-func (n *ListNode) String() string {
+// SetIndex sets the i'th property of the array.
+func (n *ArrayNode) SetIndex(i int, v Node) {
+	n.elements[i] = v
+}
+
+func (n *ArrayNode) GoString() string {
+	var b strings.Builder
+	b.WriteString("syntax.Array(")
+	for i, n := range n.elements {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(n.GoString())
+	}
+	b.WriteString(")")
+	return b.String()
+}
+
+func (n *ArrayNode) String() string {
 	if len(n.elements) == 0 {
 		return "[ ]"
 	}
@@ -242,6 +275,10 @@ type ObjectPropertyDef struct {
 	Value  Node        // The value of the property.
 }
 
+func (d ObjectPropertyDef) GoString() string {
+	return fmt.Sprintf("syntax.ObjectProperty(%#v, %#v)", d.Key, d.Value)
+}
+
 // ObjectPropertySyntax creates a new object property definition with the given key, value, and associated syntax.
 func ObjectPropertySyntax(syntax Syntax, key *StringNode, value Node) ObjectPropertyDef {
 	return ObjectPropertyDef{
@@ -259,7 +296,9 @@ func ObjectProperty(key *StringNode, value Node) ObjectPropertyDef {
 
 // ObjectSyntax creates a new object node with the given properties and associated syntax.
 func ObjectSyntax(syntax Syntax, entries ...ObjectPropertyDef) *ObjectNode {
-	contract.Assertf(syntax != nil, "Syntax cannot be nil, use NoSyntax instead")
+	if syntax == nil {
+		panic("Syntax cannot be nil, use NoSyntax instead")
+	}
 	return &ObjectNode{node: node{syntax: syntax}, entries: entries}
 }
 
@@ -276,6 +315,24 @@ func (n *ObjectNode) Len() int {
 // Index returns the i'th property of the object.
 func (n *ObjectNode) Index(i int) ObjectPropertyDef {
 	return n.entries[i]
+}
+
+// SetIndex sets the i'th property of the object.
+func (n *ObjectNode) SetIndex(i int, prop ObjectPropertyDef) {
+	n.entries[i] = prop
+}
+
+func (n *ObjectNode) GoString() string {
+	var b strings.Builder
+	b.WriteString("syntax.Object(")
+	for i, p := range n.entries {
+		if i != 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(p.GoString())
+	}
+	b.WriteString(")")
+	return b.String()
 }
 
 func (n *ObjectNode) String() string {

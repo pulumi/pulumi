@@ -52,7 +52,7 @@ type validationLoc struct {
 // and the index is in range, then the returned location will refer to the array element at the given index. Otherwise,
 // the returned location will refer to the original expression, but will include an appropriate path prefix.
 func (l validationLoc) index(i int) validationLoc {
-	list, isLiteral := l.x.repr.(*listExpr)
+	list, isLiteral := l.x.repr.(*arrayExpr)
 	if isLiteral && i < len(list.elements) {
 		return validationLoc{
 			x:    list.elements[i],
