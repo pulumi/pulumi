@@ -117,8 +117,15 @@ func New(opts *Options) *cobra.Command {
 
 	env := newEnvCmd(esc)
 	cmd.AddCommand(env)
-	cmd.AddCommand(getCommand(env, "open"))
-	cmd.AddCommand(getCommand(env, "run"))
+
+	// Add top-level open/run aliases. We copy the commands to new struct values because
+	// `AddCommand` mutates the command, modifying its parent, which can cause issues
+	// with generated docs.
+	openCmdCopy := *getCommand(env, "open")
+	runCmdCopy := *getCommand(env, "run")
+	cmd.AddCommand(&openCmdCopy)
+	cmd.AddCommand(&runCmdCopy)
+
 	cmd.AddCommand(newLoginCmd(esc))
 	cmd.AddCommand(newLogoutCmd(esc))
 	cmd.AddCommand(newVersionCmd(esc))
