@@ -523,3 +523,29 @@ func isSecureValue(v any) (bool, string) {
 	}
 	return false, ""
 }
+
+func (c object) toPropertyValue() resource.PropertyValue {
+	var prop resource.PropertyValue
+	switch v := c.value.(type) {
+	case bool, int64, float64, string:
+		prop = resource.NewPropertyValue(v)
+	case []object:
+		var values []resource.PropertyValue
+		for _, v := range v {
+			values = append(values, v.toPropertyValue())
+		}
+		prop = resource.NewArrayProperty(values)
+	case map[string]object:
+		values := make(resource.PropertyMap)
+		for k, v := range v {
+			values[resource.PropertyKey(k)] = v.toPropertyValue()
+		}
+		prop = resource.NewObjectProperty(values)
+	default:
+		contract.Failf("unexpected value type %T", v)
+	}
+	if c.secure {
+		prop = resource.MakeSecret(prop)
+	}
+	return prop
+}

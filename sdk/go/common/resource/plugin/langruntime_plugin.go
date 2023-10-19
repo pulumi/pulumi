@@ -198,7 +198,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		configSecretKeys[i] = k.String()
 	}
 	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return "", false, err
 	}

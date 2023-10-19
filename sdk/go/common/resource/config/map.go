@@ -78,22 +78,13 @@ func (m Map) HasSecureValue() bool {
 // AsPropertyMap returns the config as a property map.
 func (m Map) AsPropertyMap() (resource.PropertyMap, error) {
 	pm := resource.PropertyMap{}
+
 	for k, v := range m {
-		prop := resource.NewPropertyValueRepl(v, nil, func(interface{}) (resource.PropertyValue, bool) {
-			if v.Object() {
-				return resource.NewPropertyValue(v.value), true
-			}
-			newV, err := adjustObjectValue(v)
-			if err != nil {
-				return resource.PropertyValue{}, false
-			}
-			val := resource.NewPropertyValue(newV.value)
-			if newV.Secure() {
-				val = resource.MakeSecret(val)
-			}
-			return val, true
-		})
-		pm[resource.PropertyKey(k.String())] = prop
+		newV, err := adjustObjectValue(v)
+		if err != nil {
+			return resource.PropertyMap{}, err
+		}
+		pm[resource.PropertyKey(k.String())] = newV.toPropertyValue()
 	}
 	return pm, nil
 }
