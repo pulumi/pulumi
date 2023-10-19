@@ -1491,7 +1491,8 @@ func TestPropertyMap(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
-			propMap, err := test.Config.AsPropertyMap()
+			decrypter := nopCrypter{}
+			propMap, err := test.Config.AsDecryptedPropertyMap(decrypter)
 			assert.NoError(t, err)
 
 			assert.Equal(t, test.Expected, propMap)

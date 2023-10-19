@@ -413,6 +413,36 @@ func TestBrokenDecrypter(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestConfigPropertyMapMatches(t *testing.T) {
+	t.Parallel()
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Check that the config property map matches what we expect.
+		assert.Equal(t, 1, len(info.Config))
+		assert.Equal(t, 1, len(info.ConfigPropertyMap))
+		assert.Equal(t, "hunter2", info.Config[config.MustMakeKey("pkgA", "secret")])
+		assert.True(t, info.ConfigPropertyMap["pkgA:secret"].IsSecret())
+		assert.Equal(t, "hunter2", info.ConfigPropertyMap["pkgA:secret"].SecretValue().Element.StringValue())
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+	crypter := config.NewSymmetricCrypter(make([]byte, 32))
+	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
+	assert.NoError(t, err)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+		Steps:   MakeBasicLifecycleSteps(t, 0),
+		Config: config.Map{
+			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
+		},
+		Decrypter: crypter,
+	}
+
+	p.Run(t, nil)
+}
+
 func TestBadResourceType(t *testing.T) {
 	t.Parallel()
 

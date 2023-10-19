@@ -75,8 +75,8 @@ func (m Map) HasSecureValue() bool {
 	return false
 }
 
-// AsPropertyMap returns the config as a property map.
-func (m Map) AsPropertyMap() (resource.PropertyMap, error) {
+// AsDecryptedPropertyMap returns the config as a property map, with secret values decrypted.
+func (m Map) AsDecryptedPropertyMap(decrypter Decrypter) (resource.PropertyMap, error) {
 	pm := resource.PropertyMap{}
 
 	for k, v := range m {
@@ -84,7 +84,7 @@ func (m Map) AsPropertyMap() (resource.PropertyMap, error) {
 		if err != nil {
 			return resource.PropertyMap{}, err
 		}
-		pm[resource.PropertyKey(k.String())] = newV.toPropertyValue()
+		pm[resource.PropertyKey(k.String())] = newV.toDecryptedPropertyValue(decrypter)
 	}
 	return pm, nil
 }
