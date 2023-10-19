@@ -262,6 +262,12 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 	return &empty.Empty{}, nil
 }
 
+func (m *mockMonitor) RegisterStackTransformation(ctx context.Context, in *pulumirpc.Callback,
+	opts ...grpc.CallOption,
+) (*empty.Empty, error) {
+	panic("not implemented")
+}
+
 type mockEngine struct {
 	logger       *log.Logger
 	rootResource string

@@ -21,6 +21,7 @@ import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
 import typing
+import pulumi.callback_pb2
 import pulumi.provider_pb2
 import pulumi.resource_pb2
 
@@ -54,6 +55,10 @@ class ResourceMonitorStub:
     ]
     RegisterResourceOutputs: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterResourceOutputsRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    RegisterStackTransformation: grpc.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.Callback,
         google.protobuf.empty_pb2.Empty,
     ]
 
@@ -100,6 +105,12 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     def RegisterResourceOutputs(
         self,
         request: pulumi.resource_pb2.RegisterResourceOutputsRequest,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty: ...
+    
+    def RegisterStackTransformation(
+        self,
+        request: pulumi.callback_pb2.Callback,
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty: ...
 

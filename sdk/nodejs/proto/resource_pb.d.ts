@@ -10,6 +10,7 @@ import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/stru
 import * as pulumi_provider_pb from "./provider_pb";
 import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_source_pb from "./source_pb";
+import * as pulumi_callback_pb from "./callback_pb";
 
 export class SupportsFeatureRequest extends jspb.Message { 
     getId(): string;
@@ -233,6 +234,10 @@ export class RegisterResourceRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): RegisterResourceRequest;
+    clearTransformationsList(): void;
+    getTransformationsList(): Array<pulumi_callback_pb.Callback>;
+    setTransformationsList(value: Array<pulumi_callback_pb.Callback>): RegisterResourceRequest;
+    addTransformations(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -279,6 +284,7 @@ export namespace RegisterResourceRequest {
         deletedwith: string,
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        transformationsList: Array<pulumi_callback_pb.Callback.AsObject>,
     }
 
 

@@ -25,6 +25,8 @@ var pulumi_alias_pb = require('./alias_pb.js');
 goog.object.extend(proto, pulumi_alias_pb);
 var pulumi_source_pb = require('./source_pb.js');
 goog.object.extend(proto, pulumi_source_pb);
+var pulumi_callback_pb = require('./callback_pb.js');
+goog.object.extend(proto, pulumi_callback_pb);
 goog.exportSymbol('proto.pulumirpc.ReadResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceOutputsRequest', null, global);
@@ -1324,7 +1326,7 @@ proto.pulumirpc.ReadResourceResponse.prototype.hasProperties = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26,39];
 
 
 
@@ -1387,7 +1389,9 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     pulumi_alias_pb.Alias.toObject, includeInstance),
     deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
     aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+    transformationsList: jspb.Message.toObjectList(msg.getTransformationsList(),
+    pulumi_callback_pb.Callback.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -1553,6 +1557,11 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 39:
+      var value = new pulumi_callback_pb.Callback;
+      reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
+      msg.addTransformations(value);
       break;
     default:
       reader.skipField();
@@ -1786,6 +1795,14 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       29,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getTransformationsList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      39,
+      f,
+      pulumi_callback_pb.Callback.serializeBinaryToWriter
     );
   }
 };
@@ -2858,6 +2875,44 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearSourceposition = function
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.hasSourceposition = function() {
   return jspb.Message.getField(this, 29) != null;
+};
+
+
+/**
+ * repeated Callback transformations = 39;
+ * @return {!Array<!proto.pulumirpc.Callback>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getTransformationsList = function() {
+  return /** @type{!Array<!proto.pulumirpc.Callback>} */ (
+    jspb.Message.getRepeatedWrapperField(this, pulumi_callback_pb.Callback, 39));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.Callback>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+*/
+proto.pulumirpc.RegisterResourceRequest.prototype.setTransformationsList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 39, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.Callback=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.Callback}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addTransformations = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 39, opt_value, proto.pulumirpc.Callback, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearTransformationsList = function() {
+  return this.setTransformationsList([]);
 };
 
 

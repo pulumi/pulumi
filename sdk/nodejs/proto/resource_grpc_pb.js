@@ -23,6 +23,7 @@ var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_
 var pulumi_provider_pb = require('./provider_pb.js');
 var pulumi_alias_pb = require('./alias_pb.js');
 var pulumi_source_pb = require('./source_pb.js');
+var pulumi_callback_pb = require('./callback_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
@@ -55,6 +56,17 @@ function serialize_pulumirpc_CallResponse(arg) {
 
 function deserialize_pulumirpc_CallResponse(buffer_arg) {
   return pulumi_provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_Callback(arg) {
+  if (!(arg instanceof pulumi_callback_pb.Callback)) {
+    throw new Error('Expected argument of type pulumirpc.Callback');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_Callback(buffer_arg) {
+  return pulumi_callback_pb.Callback.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_InvokeResponse(arg) {
@@ -233,6 +245,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_RegisterResourceOutputsRequest,
     requestDeserialize: deserialize_pulumirpc_RegisterResourceOutputsRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  registerStackTransformation: {
+    path: '/pulumirpc.ResourceMonitor/RegisterStackTransformation',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_callback_pb.Callback,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_Callback,
+    requestDeserialize: deserialize_pulumirpc_Callback,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

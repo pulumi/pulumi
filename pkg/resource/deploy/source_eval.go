@@ -30,9 +30,11 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -511,10 +513,34 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 	return res.ref, res.err
 }
 
+// A transformation function that can be applied to a resource.
+type TransformationFunction func(
+	ctx context.Context,
+	name, typ string,
+	props resource.PropertyMap,
+) (resource.PropertyMap, error)
+
+type CallbacksClient struct {
+	pulumirpc.CallbacksClient
+
+	conn *grpc.ClientConn
+}
+
+func (c *CallbacksClient) Close() error {
+	return c.conn.Close()
+}
+
+func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
+	return &CallbacksClient{
+		CallbacksClient: pulumirpc.NewCallbacksClient(conn),
+		conn:            conn,
+	}
+}
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	pulumirpc.UnimplementedResourceMonitorServer
+	pulumirpc.UnsafeResourceMonitorServer
 
 	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
 	resGoalsLock              sync.Mutex                         // locks the resGoals map.
@@ -532,6 +558,13 @@ type resmon struct {
 	done                      <-chan error                       // a channel that resolves when the server completes.
 	disableResourceReferences bool                               // true if resource references are disabled.
 	disableOutputValues       bool                               // true if output values are disabled.
+
+	stackTransformationsLock    sync.Mutex
+	stackTransformations        []TransformationFunction // stack transformation functions
+	resourceTransformationsLock sync.Mutex
+	resourceTransformations     map[resource.URN][]TransformationFunction // option transformation functions per resource
+	callbacksLock               sync.Mutex
+	callbacks                   map[string]*CallbacksClient // callbacks clients per target address
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -568,6 +601,8 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		cancel:                    cancel,
 		disableResourceReferences: opts.DisableResourceReferences,
 		disableOutputValues:       opts.DisableOutputValues,
+		callbacks:                 map[string]*CallbacksClient{},
+		resourceTransformations:   map[resource.URN][]TransformationFunction{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -599,6 +634,25 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 	return resmon, nil
 }
 
+// Get or allocate a new grpc client for the given callback address.
+func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
+	rm.callbacksLock.Lock()
+	defer rm.callbacksLock.Unlock()
+
+	if client, has := rm.callbacks[target]; has {
+		return client, nil
+	}
+
+	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
+	client := NewCallbacksClient(conn)
+	rm.callbacks[target] = client
+	return client, nil
+}
+
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
 	return rm.constructInfo.MonitorAddress
@@ -607,7 +661,11 @@ func (rm *resmon) Address() string {
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
 func (rm *resmon) Cancel() error {
 	close(rm.cancel)
-	return <-rm.done
+	errs := []error{<-rm.done}
+	for _, client := range rm.callbacks {
+		errs = append(errs, client.Close())
+	}
+	return errors.Join(errs...)
 }
 
 func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span) []grpc.ServerOption {
@@ -1054,6 +1112,78 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}, nil
 }
 
+func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	token := cb.Token
+	return func(ctx context.Context, name, typ string, props resource.PropertyMap) (resource.PropertyMap, error) {
+		opts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+
+		mprops, err := plugin.MarshalProperties(props, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		// The argumetns for a transform are always the same
+		args := []*structpb.Value{
+			structpb.NewStringValue(name),
+			structpb.NewStringValue(typ),
+			structpb.NewStructValue(mprops),
+		}
+
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:     token,
+			Arguments: args,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// The response for a transform is always the same, the first argument is the new props (or nil)
+		if len(resp.Returns) == 0 {
+			return nil, nil
+		}
+		sprops := resp.Returns[0].GetStructValue()
+		if sprops == nil && resp.Returns[0].Kind != nil {
+			return nil, fmt.Errorf("expected struct value, got %t", resp.Returns[0].Kind)
+		}
+		if sprops == nil {
+			return nil, nil
+		}
+		newProps, err := plugin.UnmarshalProperties(sprops, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return newProps, nil
+	}, nil
+}
+
+func (rm *resmon) RegisterStackTransformation(ctx context.Context, cb *pulumirpc.Callback) (*pbempty.Empty, error) {
+	rm.stackTransformationsLock.Lock()
+	defer rm.stackTransformationsLock.Unlock()
+
+	if cb.Target == "" {
+		return nil, errors.New("target must be specified")
+	}
+
+	wrapped, err := rm.wrapTransformCallback(cb)
+	if err != nil {
+		return nil, err
+	}
+
+	rm.stackTransformations = append(rm.stackTransformations, wrapped)
+	return &pbempty.Empty{}, nil
+}
+
 // inheritFromParent returns a new goal that inherits from the given parent goal.
 // Currently only inherits DeletedWith from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
@@ -1212,6 +1342,79 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		t = tokens.Type(req.GetType())
 	}
 
+	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
+	props, err := plugin.UnmarshalProperties(
+		req.GetObject(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+			KeepResources:      true,
+			// To initially scope the use of this new feature, we only keep output values when unmarshaling
+			// properties for RegisterResource (when remote is true for multi-lang components) and Call.
+			KeepOutputValues: remote,
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	// Before we calculate anything else run the transformations. First run the transforms for this resource,
+	// then it's parents etc etc
+	transformations, err := slice.MapError(req.Transformations, rm.wrapTransformCallback)
+	if err != nil {
+		return nil, err
+	}
+	for _, transform := range transformations {
+		newProps, err := transform(ctx, string(name), string(t), props)
+		if err != nil {
+			return nil, err
+		}
+		props = newProps
+	}
+	// Lookup our parents transformations and run those
+	err = func() error {
+		// Function exists to scope the lock
+		rm.resourceTransformationsLock.Lock()
+		defer rm.resourceTransformationsLock.Unlock()
+
+		parent := resource.URN(req.Parent)
+		for parent != "" {
+			if transforms, ok := rm.resourceTransformations[parent]; ok {
+				for _, transform := range transforms {
+					newProps, err := transform(ctx, string(name), string(t), props)
+					if err != nil {
+						return err
+					}
+					props = newProps
+				}
+			}
+			parent = rm.resGoals[parent].Parent
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// Then lock the stack transformations and run all of those
+	err = func() error {
+		// Function exists to scope the lock
+		rm.stackTransformationsLock.Lock()
+		defer rm.stackTransformationsLock.Unlock()
+
+		for _, transform := range rm.stackTransformations {
+			newProps, err := transform(ctx, string(name), string(t), props)
+			if err != nil {
+				return err
+			}
+			props = newProps
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
 	// We handle updating the providers map to include the providers field of the parent if
 	// both the current resource and its parent is a component resource.
 	func() {
@@ -1230,8 +1433,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		}
 	}()
-
-	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 
 	var providerRef providers.Reference
 	var providerRefs map[string]string
@@ -1313,20 +1514,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		dependencies = append(dependencies, urn)
 	}
 
-	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{
-			Label:              label,
-			KeepUnknowns:       true,
-			ComputeAssetHashes: true,
-			KeepSecrets:        true,
-			KeepResources:      true,
-			// To initially scope the use of this new feature, we only keep output values when unmarshaling
-			// properties for RegisterResource (when remote is true for multi-lang components) and Call.
-			KeepOutputValues: remote,
-		})
-	if err != nil {
-		return nil, err
-	}
 	if providers.IsProviderType(t) {
 		if req.GetVersion() != "" {
 			version, err := semver.Parse(req.GetVersion())
@@ -1515,6 +1702,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			rm.resGoalsLock.Unlock()
 		}
 	}
+
+	// We've got a safe URN now, safe the transformations
+	func() {
+		rm.resourceTransformationsLock.Lock()
+		defer rm.resourceTransformationsLock.Unlock()
+		rm.resourceTransformations[result.State.URN] = transformations
+	}()
 
 	if !custom && result != nil && result.State != nil && result.State.URN != "" {
 		func() {

@@ -19,6 +19,7 @@ import "google/protobuf/struct.proto";
 import "pulumi/provider.proto";
 import "pulumi/alias.proto";
 import "pulumi/source.proto";
+import "pulumi/callback.proto";
 
 package pulumirpc;
 
@@ -33,6 +34,8 @@ service ResourceMonitor {
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
+
+    rpc RegisterStackTransformation(Callback) returns (google.protobuf.Empty) {}
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -134,6 +137,8 @@ message RegisterResourceRequest {
     bool aliasSpecs = 28;
 
     SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
+
+    repeated Callback transformations = 39; // a list of transformations to apply to the resource before registering it.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
