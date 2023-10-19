@@ -433,6 +433,7 @@ func TestConfigPropertyMapMatches(t *testing.T) {
 		assert.Equal(t, 1234.0, info.ConfigPropertyMap["pkgA:int"].NumberValue())
 
 		assert.Equal(t, "12.34", info.Config[config.MustMakeKey("pkgA", "float")])
+		// This is a string because adjustObjectValue only parses integers, not floats.
 		assert.Equal(t, "12.34", info.ConfigPropertyMap["pkgA:float"].StringValue())
 
 		assert.Equal(t, "012345", info.Config[config.MustMakeKey("pkgA", "string")])
