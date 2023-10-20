@@ -60,7 +60,7 @@ type Schema struct {
 
 	Defs map[string]*Schema `json:"$defs,omitempty"`
 
-	// Applicator volcabulary
+	// Applicator vocabulary
 
 	Ref                  string             `json:"$ref,omitempty"`
 	AnyOf                []*Schema          `json:"anyOf,omitempty"`
@@ -136,7 +136,7 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	return dec.Decode((*rawSchema)(s))
 }
 
-func (s Schema) MarshalJSON() ([]byte, error) {
+func (s *Schema) MarshalJSON() ([]byte, error) {
 	switch {
 	case s.Never:
 		return []byte("false"), nil
@@ -144,7 +144,7 @@ func (s Schema) MarshalJSON() ([]byte, error) {
 		return []byte("true"), nil
 	default:
 		type rawSchema Schema
-		return json.Marshal((rawSchema)(s))
+		return json.Marshal((*rawSchema)(s))
 	}
 }
 
