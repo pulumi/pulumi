@@ -1115,3 +1115,22 @@ func missingNonInteractiveArg(args ...string) error {
 			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
 	}
 }
+
+func promptUser(msg string, options []string, defaultOption string, colorization colors.Colorization) string {
+	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
+	surveycore.DisableColor = true
+	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question = survey.Icon{}
+		icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
+	})
+
+	var response string
+	if err := survey.AskOne(&survey.Select{
+		Message: prompt,
+		Options: options,
+		Default: defaultOption,
+	}, &response, surveyIcons); err != nil {
+		return ""
+	}
+	return response
+}
