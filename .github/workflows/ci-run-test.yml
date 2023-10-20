@@ -314,6 +314,7 @@ jobs:
       - name: run tests
         id: test
         run: ${{ inputs.test-command }}
+        shell: bash
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi

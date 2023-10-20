@@ -241,15 +241,15 @@ func TestPackageGetSchema(t *testing.T) {
 	// Make sure the random provider is not installed locally
 	// So that we can test the `package get-schema` command works if the plugin
 	// is not installed locally on first run.
-	out, err := e.RunCommand("pulumi", "plugin", "ls")
-	require.NoError(t, err)
+	out, stderr := e.RunCommand("pulumi", "plugin", "ls")
+	fmt.Println(stderr)
 	if strings.Contains(out, "random  resource") {
 		removeRandomFromLocalPlugins()
 	}
 
 	// get the schema and bind it
-	schemaJSON, err := e.RunCommand("pulumi", "package", "get-schema", "random")
-	require.NoError(t, err)
+	schemaJSON, stderr := e.RunCommand("pulumi", "package", "get-schema", "random")
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 
 	// try again using a specific version
@@ -273,15 +273,14 @@ func TestPackageGetSchema(t *testing.T) {
 		"pulumi-resource-random")
 
 	// TODO: remove this, it's for debugging only.
-	entries, err := os.ReadDir(pulumiHome)
-	require.NoError(t, err)
+	entries, _ := os.ReadDir(pulumiHome)
 
 	for _, e := range entries {
 		fmt.Println(e.Name())
 	}
 
-	schemaJSON, err = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
-	require.NoError(t, err)
+	schemaJSON, stderr = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 }
 
