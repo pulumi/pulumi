@@ -264,8 +264,9 @@ func TestPackageGetSchema(t *testing.T) {
 	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
-	pulumiHome, stderr := workspace.GetPulumiHomeDir()
-	fmt.Println(stderr)
+	pulumiHome, err := workspace.GetPulumiHomeDir()
+	assert.NoError(t, err)
+	fmt.Println(pulumiHome)
 	binaryPath := filepath.Join(
 		pulumiHome,
 		"plugins",

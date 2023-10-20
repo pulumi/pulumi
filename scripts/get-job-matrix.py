@@ -172,6 +172,8 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
     # $ go test -tags all --list ./tests/integration
     # no Go files in /home/friel/c/github.com/pulumi/pulumi
     # ```
+    print("# test list", tags)
+    print("# pkgdir", pkg_dir)
     try:
         cmd = sp.run(
             ["go", "test", "-tags", " ".join(tags), "--list", "."],
