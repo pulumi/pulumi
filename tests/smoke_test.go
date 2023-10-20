@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -266,6 +267,9 @@ func TestPackageGetSchema(t *testing.T) {
 		"plugins",
 		"resource-random-v4.13.0",
 		"pulumi-resource-random")
+	if runtime.GOOS == "windows" {
+		binaryPath += ".exe"
+	}
 
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
 	bindSchema(schemaJSON)
