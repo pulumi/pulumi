@@ -234,7 +234,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_csharp" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager/v1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager.<wbr>V1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

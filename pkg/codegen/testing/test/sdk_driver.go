@@ -95,9 +95,8 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
-		Directory:        "nested-module",
-		Description:      "Nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "nested-module",
+		Description: "Nested module",
 	},
 	{
 		Directory:   "simplified-invokes",
@@ -105,9 +104,8 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("python/any", "go/any"),
 	},
 	{
-		Directory:        "nested-module-thirdparty",
-		Description:      "Third-party nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "nested-module-thirdparty",
+		Description: "Third-party nested module",
 	},
 	{
 		Directory:   "plain-schema-gh6957",

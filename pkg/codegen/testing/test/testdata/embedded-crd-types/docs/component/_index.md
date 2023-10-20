@@ -226,7 +226,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#eniconfig_csharp" style="color: inherit; text-decoration: inherit;">Eni<wbr>Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Kubernetes.<wbr>Crd.k8s.amazonaws.com/v1alpha1.<wbr>Inputs.<wbr>ENIConfig<wbr>Spec<wbr>Args&gt;</span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Kubernetes.<wbr>Crd.k8s.amazonaws.com.<wbr>V1alpha1.<wbr>Inputs.<wbr>ENIConfig<wbr>Spec<wbr>Args&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

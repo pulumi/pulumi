@@ -1,9 +1,9 @@
 {
   "emittedFiles": [
+    "Deeply/Nested/Module/README.md",
+    "Deeply/Nested/Module/Resource.cs",
+    "Deeply/Nested/README.md",
     "Deeply/README.md",
-    "Deeply/nested/README.md",
-    "Deeply/nested/module/README.md",
-    "Deeply/nested/module/Resource.cs",
     "Provider.cs",
     "Pulumi.FooBar.csproj",
     "README.md",
