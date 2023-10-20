@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: protobuf
+  description: Add a config as property map field to RunRequest and pass that to the SDK

@@ -120,6 +120,11 @@ func (src *evalSource) Iterate(
 	// Keep track of any config keys that have secure values.
 	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
 
+	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(src.runinfo.Target.Decrypter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert config to map: %w", err)
+	}
+
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
@@ -142,7 +147,7 @@ func (src *evalSource) Iterate(
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(opts, config, configSecretKeys)
+	iter.forkRun(opts, config, configSecretKeys, configMap)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -206,7 +211,9 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 }
 
 // forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
-func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]string, configSecretKeys []config.Key) {
+func (iter *evalSourceIterator) forkRun(
+	opts Options, config map[config.Key]string, configSecretKeys []config.Key, configPropertyMap resource.PropertyMap,
+) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
@@ -222,17 +229,18 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress:   iter.mon.Address(),
-				Stack:            string(iter.src.runinfo.Target.Name),
-				Project:          string(iter.src.runinfo.Proj.Name),
-				Pwd:              iter.src.runinfo.Pwd,
-				Program:          iter.src.runinfo.Program,
-				Args:             iter.src.runinfo.Args,
-				Config:           config,
-				ConfigSecretKeys: configSecretKeys,
-				DryRun:           iter.src.dryRun,
-				Parallel:         opts.Parallel,
-				Organization:     string(iter.src.runinfo.Target.Organization),
+				MonitorAddress:    iter.mon.Address(),
+				Stack:             string(iter.src.runinfo.Target.Name),
+				Project:           string(iter.src.runinfo.Proj.Name),
+				Pwd:               iter.src.runinfo.Pwd,
+				Program:           iter.src.runinfo.Program,
+				Args:              iter.src.runinfo.Args,
+				Config:            config,
+				ConfigSecretKeys:  configSecretKeys,
+				ConfigPropertyMap: configPropertyMap,
+				DryRun:            iter.src.dryRun,
+				Parallel:          opts.Parallel,
+				Organization:      string(iter.src.runinfo.Target.Organization),
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that

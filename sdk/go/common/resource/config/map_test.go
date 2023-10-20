@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -1394,6 +1395,107 @@ func TestCopyMap(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, test.Expected, newConfig)
+		})
+	}
+}
+
+func TestPropertyMap(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		Config   Map
+		Expected resource.PropertyMap
+	}{
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("testValue"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewStringProperty("testValue"),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("1"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewNumberProperty(1.0),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("true"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewBoolProperty(true),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewSecureValue("stackAsecurevalue"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`{"inner":"value"}`),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewObjectProperty(resource.PropertyMap{
+					"inner": resource.NewStringProperty("value"),
+				}),
+			},
+		},
+		{
+			Config: Map{
+				//nolint:lll
+				MustMakeKey("my", "testKey"): NewSecureObjectValue(`[{"inner":{"secure":"stackAsecurevalue"}},{"secure":"stackAsecurevalue2"}]`),
+			},
+			Expected: resource.PropertyMap{
+				//nolint:lll
+				"my:testKey": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"inner": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
+					}),
+					resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue2")),
+				}),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "test.Key"): NewValue("testValue"),
+			},
+			Expected: resource.PropertyMap{
+				"my:test.Key": resource.NewStringProperty("testValue"),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
+			},
+			Expected: resource.PropertyMap{
+				"my:name": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewStringProperty("value"),
+					}),
+				}),
+			},
+		},
+	}
+
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
+			decrypter := nopCrypter{}
+			propMap, err := test.Config.AsDecryptedPropertyMap(decrypter)
+			assert.NoError(t, err)
+
+			assert.Equal(t, test.Expected, propMap)
 		})
 	}
 }

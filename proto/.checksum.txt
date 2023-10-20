@@ -15,7 +15,7 @@
 3523370423 3027 proto/pulumi/converter.proto
 2889436496 3240 proto/pulumi/engine.proto
 3421371250 793 proto/pulumi/errors.proto
-10996825 8394 proto/pulumi/language.proto
+3702875883 8541 proto/pulumi/language.proto
 2893249402 1992 proto/pulumi/plugin.proto
 2539158637 24561 proto/pulumi/provider.proto
 1320626516 12214 proto/pulumi/resource.proto

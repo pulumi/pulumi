@@ -17,6 +17,7 @@ syntax = "proto3";
 import "pulumi/codegen/hcl.proto";
 import "pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
@@ -104,6 +105,7 @@ message RunRequest {
     bool queryMode = 10;            // true if we're only doing a query.
     repeated string configSecretKeys = 11; // the configuration keys that have secret values.
     string organization = 12;       // the organization of the stack being deployed into.
+    google.protobuf.Struct configPropertyMap = 13; // the configuration variables to apply before running.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.

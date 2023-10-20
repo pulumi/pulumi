@@ -20,6 +20,7 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
+import google.protobuf.struct_pb2
 import pulumi.codegen.hcl_pb2
 import pulumi.plugin_pb2
 import sys
@@ -214,6 +215,7 @@ class RunRequest(google.protobuf.message.Message):
     QUERYMODE_FIELD_NUMBER: builtins.int
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
+    CONFIGPROPERTYMAP_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -241,6 +243,9 @@ class RunRequest(google.protobuf.message.Message):
         """the configuration keys that have secret values."""
     organization: builtins.str
     """the organization of the stack being deployed into."""
+    @property
+    def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
+        """the configuration variables to apply before running."""
     def __init__(
         self,
         *,
@@ -256,8 +261,10 @@ class RunRequest(google.protobuf.message.Message):
         queryMode: builtins.bool = ...,
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
+        configPropertyMap: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["configPropertyMap", b"configPropertyMap"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 
