@@ -114,3 +114,10 @@ func TestGenerateTypeNames(t *testing.T) {
 		}
 	})
 }
+
+func TestParseNamespaces(t *testing.T) {
+	t.Parallel()
+
+	ns := namespaceName(map[string]string{}, "ns1/ns2/item")
+	assert.Equal(t, "Ns1Ns2Item", ns)
+}
