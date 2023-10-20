@@ -859,12 +859,18 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	case *model.MapType:
 		valType := g.argumentTypeName(nil, destType.ElementType, isInput)
 		if isInput {
+			if Title(valType) == "pulumi.Any" {
+				return "pulumi.Map"
+			}
 			return fmt.Sprintf("pulumi.%sMap", Title(valType))
 		}
 		return fmt.Sprintf("map[string]%s", valType)
 	case *model.ListType:
 		argTypeName := g.argumentTypeName(nil, destType.ElementType, isInput)
 		if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
+			if argTypeName == "pulumi.Any" {
+				return "pulumi.Array"
+			}
 			return fmt.Sprintf("%sArray", argTypeName)
 		}
 		return fmt.Sprintf("[]%s", argTypeName)
@@ -890,6 +896,9 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		if elmType != nil {
 			argTypeName := g.argumentTypeName(nil, elmType, isInput)
 			if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
+				if argTypeName == "pulumi.Any" {
+					return "pulumi.Array"
+				}
 				return fmt.Sprintf("%sArray", argTypeName)
 			}
 			return fmt.Sprintf("[]%s", argTypeName)
