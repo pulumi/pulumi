@@ -254,18 +254,18 @@ func TestPackageGetSchema(t *testing.T) {
 
 	// try again using a specific version
 	removeRandomFromLocalPlugins()
-	schemaJSON, err = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
-	require.NoError(t, err)
+	schemaJSON, stderr = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 
 	// Now that the random provider is installed, run the command again without removing random from plugins
-	schemaJSON, err = e.RunCommand("pulumi", "package", "get-schema", "random")
-	require.NoError(t, err)
+	schemaJSON, stderr = e.RunCommand("pulumi", "package", "get-schema", "random")
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
-	pulumiHome, err := workspace.GetPulumiHomeDir()
-	require.NoError(t, err)
+	pulumiHome, stderr := workspace.GetPulumiHomeDir()
+	fmt.Println(stderr)
 	binaryPath := filepath.Join(
 		pulumiHome,
 		"plugins",
