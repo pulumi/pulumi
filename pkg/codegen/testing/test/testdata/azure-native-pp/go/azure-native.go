@@ -29,7 +29,7 @@ func main() {
 			DeliveryPolicy: &cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs{
 				Rules: []cdn.DeliveryRuleArgs{
 					{
-						Actions: pulumi.AnyArray{
+						Actions: pulumi.Array{
 							{
 								Name: "CacheExpiration",
 								Parameters: {
@@ -58,7 +58,7 @@ func main() {
 								},
 							},
 						},
-						Conditions: pulumi.AnyArray{
+						Conditions: pulumi.Array{
 							{
 								Name: "RemoteAddress",
 								Parameters: {
