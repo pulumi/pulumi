@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -240,22 +241,26 @@ func TestPackageGetSchema(t *testing.T) {
 	// Make sure the random provider is not installed locally
 	// So that we can test the `package get-schema` command works if the plugin
 	// is not installed locally on first run.
-	out, _ := e.RunCommand("pulumi", "plugin", "ls")
+	out, err := e.RunCommand("pulumi", "plugin", "ls")
+	require.NoError(t, err)
 	if strings.Contains(out, "random  resource") {
 		removeRandomFromLocalPlugins()
 	}
 
 	// get the schema and bind it
-	schemaJSON, _ := e.RunCommand("pulumi", "package", "get-schema", "random")
+	schemaJSON, err := e.RunCommand("pulumi", "package", "get-schema", "random")
+	require.NoError(t, err)
 	bindSchema(schemaJSON)
 
 	// try again using a specific version
 	removeRandomFromLocalPlugins()
-	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
+	schemaJSON, err = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
+	require.NoError(t, err)
 	bindSchema(schemaJSON)
 
 	// Now that the random provider is installed, run the command again without removing random from plugins
-	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random")
+	schemaJSON, err = e.RunCommand("pulumi", "package", "get-schema", "random")
+	require.NoError(t, err)
 	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
@@ -267,7 +272,16 @@ func TestPackageGetSchema(t *testing.T) {
 		"resource-random-v4.13.0",
 		"pulumi-resource-random")
 
-	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
+	// TODO: remove this, it's for debugging only.
+	entries, err := os.ReadDir(pulumiHome)
+	require.NoError(t, err)
+
+	for _, e := range entries {
+		fmt.Println(e.Name())
+	}
+
+	schemaJSON, err = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
+	require.NoError(t, err)
 	bindSchema(schemaJSON)
 }
 
