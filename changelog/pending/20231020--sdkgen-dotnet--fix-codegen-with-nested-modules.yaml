@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/dotnet
+  description: Fix codegen with nested modules.
