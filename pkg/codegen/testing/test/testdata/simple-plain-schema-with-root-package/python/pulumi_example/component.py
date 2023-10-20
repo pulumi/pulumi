@@ -43,9 +43,9 @@ class ComponentArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             a: bool,
-             c: int,
-             e: str,
+             a: Optional[bool] = None,
+             c: Optional[int] = None,
+             e: Optional[str] = None,
              b: Optional[bool] = None,
              bar: Optional['FooArgs'] = None,
              baz: Optional[Sequence[pulumi.Input['FooArgs']]] = None,
@@ -54,6 +54,12 @@ class ComponentArgs:
              foo: Optional[pulumi.Input['FooArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
+        if a is None:
+            raise TypeError("Missing 'a' argument")
+        if c is None:
+            raise TypeError("Missing 'c' argument")
+        if e is None:
+            raise TypeError("Missing 'e' argument")
 
         _setter("a", a)
         _setter("c", c)

@@ -28,9 +28,11 @@ class BastionShareableLink:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             vm: str,
+             vm: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
+        if vm is None:
+            raise TypeError("Missing 'vm' argument")
 
         _setter("vm", vm)
 

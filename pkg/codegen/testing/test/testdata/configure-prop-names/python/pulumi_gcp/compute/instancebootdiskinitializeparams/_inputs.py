@@ -16,9 +16,9 @@ __all__ = [
 @pulumi.input_type
 class InstanceBootDiskInitializeParamsArgs:
     def __init__(__self__, *,
-                 image: Optional[pulumi.Input[str]] = None):
+                 image_name: Optional[pulumi.Input[str]] = None):
         """
-        :param pulumi.Input[str] image: The image from which to initialize this disk. This can be
+        :param pulumi.Input[str] image_name: The image from which to initialize this disk. This can be
                one of: the image's `self_link`, `projects/{project}/global/images/{image}`,
                `projects/{project}/global/images/family/{family}`, `global/images/{image}`,
                `global/images/family/{family}`, `family/{family}`, `{project}/{family}`,
@@ -30,23 +30,23 @@ class InstanceBootDiskInitializeParamsArgs:
         """
         InstanceBootDiskInitializeParamsArgs._configure(
             lambda key, value: pulumi.set(__self__, key, value),
-            image=image,
+            image_name=image_name,
         )
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             image: Optional[pulumi.Input[str]] = None,
+             image_name: Optional[pulumi.Input[str]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'image' in kwargs:
-            image = kwargs['image']
+        if image_name is None and 'imageName' in kwargs:
+            image_name = kwargs['imageName']
 
-        if image is not None:
-            _setter("image", image)
+        if image_name is not None:
+            _setter("image_name", image_name)
 
     @property
-    @pulumi.getter
-    def image(self) -> Optional[pulumi.Input[str]]:
+    @pulumi.getter(name="imageName")
+    def image_name(self) -> Optional[pulumi.Input[str]]:
         """
         The image from which to initialize this disk. This can be
         one of: the image's `self_link`, `projects/{project}/global/images/{image}`,
@@ -58,10 +58,10 @@ class InstanceBootDiskInitializeParamsArgs:
         For instance, the image `centos-6-v20180104` includes its family name `centos-6`.
         These images can be referred by family name here.
         """
-        return pulumi.get(self, "image")
+        return pulumi.get(self, "image_name")
 
-    @image.setter
-    def image(self, value: Optional[pulumi.Input[str]]):
-        pulumi.set(self, "image", value)
+    @image_name.setter
+    def image_name(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "image_name", value)
 
 

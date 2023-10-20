@@ -44,7 +44,7 @@ class Bar(dict):
              has_a_hyphen: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'has-a-hyphen' in kwargs:
+        if has_a_hyphen is None and 'has-a-hyphen' in kwargs:
             has_a_hyphen = kwargs['has-a-hyphen']
 
         if has_a_hyphen is not None:

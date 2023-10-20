@@ -47,7 +47,7 @@ class ENIConfigSpec(dict):
              subnet: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'securityGroups' in kwargs:
+        if security_groups is None and 'securityGroups' in kwargs:
             security_groups = kwargs['securityGroups']
 
         if security_groups is not None:
