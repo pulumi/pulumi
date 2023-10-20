@@ -342,7 +342,7 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 					fieldNames = append(fieldNames, fmt.Sprintf("'%s'", camel(f.Name)))
 				}
 			}
-			formatter := yamldiags.NonExistantFieldFormatter{
+			formatter := yamldiags.NonExistentFieldFormatter{
 				ParentLabel: fmt.Sprintf("Object '%s'", objName),
 				Fields:      fieldNames,
 			}
