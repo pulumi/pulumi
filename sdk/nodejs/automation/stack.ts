@@ -165,6 +165,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
+            if (opts.refresh) {
+                args.push("--refresh");
+            }
             if (opts.diff) {
                 args.push("--diff");
             }
@@ -867,6 +870,10 @@ export interface UpOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
+    /**
+     * Refresh the state of the stack's resources before this update.
+     */
+    refresh?: boolean;
     diff?: boolean;
     replace?: string[];
     policyPacks?: string[];
