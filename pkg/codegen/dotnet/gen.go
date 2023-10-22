@@ -190,6 +190,13 @@ func resourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
+
+	if val1, ok := r.Language["csharp"]; ok {
+		val2, ok := val1.(CSharpResourceInfo)
+		contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+		return Title(val2.Name)
+	}
+
 	return tokenToName(r.Token)
 }
 
