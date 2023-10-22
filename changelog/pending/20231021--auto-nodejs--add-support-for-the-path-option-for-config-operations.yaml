@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/nodejs
+  description: Add support for the path option for config operations
