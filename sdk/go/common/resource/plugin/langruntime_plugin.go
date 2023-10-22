@@ -197,19 +197,25 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	for i, k := range info.ConfigSecretKeys {
 		configSecretKeys[i] = k.String()
 	}
+	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
+		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	if err != nil {
+		return "", false, err
+	}
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress:   info.MonitorAddress,
-		Pwd:              info.Pwd,
-		Program:          info.Program,
-		Args:             info.Args,
-		Project:          info.Project,
-		Stack:            info.Stack,
-		Config:           config,
-		ConfigSecretKeys: configSecretKeys,
-		DryRun:           info.DryRun,
-		QueryMode:        info.QueryMode,
-		Parallel:         int32(info.Parallel),
-		Organization:     info.Organization,
+		MonitorAddress:    info.MonitorAddress,
+		Pwd:               info.Pwd,
+		Program:           info.Program,
+		Args:              info.Args,
+		Project:           info.Project,
+		Stack:             info.Stack,
+		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
+		ConfigPropertyMap: configPropertyMap,
+		DryRun:            info.DryRun,
+		QueryMode:         info.QueryMode,
+		Parallel:          int32(info.Parallel),
+		Organization:      info.Organization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

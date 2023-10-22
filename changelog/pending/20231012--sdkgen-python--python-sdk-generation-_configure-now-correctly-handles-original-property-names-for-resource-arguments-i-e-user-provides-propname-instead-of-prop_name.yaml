@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/python
-  description: Python SDK generation _configure now correctly handles original property names for resource arguments (i.e. user provides `propName` instead of `prop_name`).

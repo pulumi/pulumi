@@ -575,7 +575,7 @@ proto.pulumirpc.ResourceImport.prototype.setPlugindownloadurl = function(value) 
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ConvertStateResponse.repeatedFields_ = [1];
+proto.pulumirpc.ConvertStateResponse.repeatedFields_ = [1,2];
 
 
 
@@ -609,7 +609,9 @@ proto.pulumirpc.ConvertStateResponse.prototype.toObject = function(opt_includeIn
 proto.pulumirpc.ConvertStateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     resourcesList: jspb.Message.toObjectList(msg.getResourcesList(),
-    proto.pulumirpc.ResourceImport.toObject, includeInstance)
+    proto.pulumirpc.ResourceImport.toObject, includeInstance),
+    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+    pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -651,6 +653,11 @@ proto.pulumirpc.ConvertStateResponse.deserializeBinaryFromReader = function(msg,
       reader.readMessage(value,proto.pulumirpc.ResourceImport.deserializeBinaryFromReader);
       msg.addResources(value);
       break;
+    case 2:
+      var value = new pulumi_codegen_hcl_pb.Diagnostic;
+      reader.readMessage(value,pulumi_codegen_hcl_pb.Diagnostic.deserializeBinaryFromReader);
+      msg.addDiagnostics(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -686,6 +693,14 @@ proto.pulumirpc.ConvertStateResponse.serializeBinaryToWriter = function(message,
       1,
       f,
       proto.pulumirpc.ResourceImport.serializeBinaryToWriter
+    );
+  }
+  f = message.getDiagnosticsList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      2,
+      f,
+      pulumi_codegen_hcl_pb.Diagnostic.serializeBinaryToWriter
     );
   }
 };
@@ -726,6 +741,44 @@ proto.pulumirpc.ConvertStateResponse.prototype.addResources = function(opt_value
  */
 proto.pulumirpc.ConvertStateResponse.prototype.clearResourcesList = function() {
   return this.setResourcesList([]);
+};
+
+
+/**
+ * repeated codegen.Diagnostic diagnostics = 2;
+ * @return {!Array<!proto.pulumirpc.codegen.Diagnostic>}
+ */
+proto.pulumirpc.ConvertStateResponse.prototype.getDiagnosticsList = function() {
+  return /** @type{!Array<!proto.pulumirpc.codegen.Diagnostic>} */ (
+    jspb.Message.getRepeatedWrapperField(this, pulumi_codegen_hcl_pb.Diagnostic, 2));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.codegen.Diagnostic>} value
+ * @return {!proto.pulumirpc.ConvertStateResponse} returns this
+*/
+proto.pulumirpc.ConvertStateResponse.prototype.setDiagnosticsList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 2, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.codegen.Diagnostic=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.codegen.Diagnostic}
+ */
+proto.pulumirpc.ConvertStateResponse.prototype.addDiagnostics = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.codegen.Diagnostic, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConvertStateResponse} returns this
+ */
+proto.pulumirpc.ConvertStateResponse.prototype.clearDiagnosticsList = function() {
+  return this.setDiagnosticsList([]);
 };
 
 

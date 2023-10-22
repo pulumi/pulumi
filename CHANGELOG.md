@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.89.0 (2023-10-16)
+
+
+### Features
+
+- [engine] Old inputs are sent to provider Delete functions, as well as the old outputs.
+  [#14051](https://github.com/pulumi/pulumi/pull/14051)
+
+
+### Bug Fixes
+
+- [engine] Fix a panic in the engine when same steps failed due to provider errors.
+  [#14076](https://github.com/pulumi/pulumi/pull/14076)
+
+- [engine] Engine is now more efficent about starting up provider processes, generally saving at least one process startup per deployment.
+  [#14127](https://github.com/pulumi/pulumi/pull/14127)
+
+- [programgen] Fixes panic when binding the signature of output-versioned invokes without input arguments
+  [#14234](https://github.com/pulumi/pulumi/pull/14234)
+
+- [sdkgen/python] Python SDK generation _configure now correctly handles original property names for resource arguments (i.e. user provides `propName` instead of `prop_name`).
+  [#14235](https://github.com/pulumi/pulumi/pull/14235)
+
 ## 3.88.1 (2023-10-11)
 
 

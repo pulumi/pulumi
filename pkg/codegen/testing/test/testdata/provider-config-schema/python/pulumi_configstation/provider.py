@@ -35,9 +35,9 @@ class ProviderArgs:
              secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'favoriteColor' in kwargs:
+        if favorite_color is None and 'favoriteColor' in kwargs:
             favorite_color = kwargs['favoriteColor']
-        if 'secretSandwiches' in kwargs:
+        if secret_sandwiches is None and 'secretSandwiches' in kwargs:
             secret_sandwiches = kwargs['secretSandwiches']
 
         if favorite_color is None:

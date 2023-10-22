@@ -40,14 +40,16 @@ class HelmReleaseSettings:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             required_arg: str,
+             required_arg: Optional[str] = None,
              driver: Optional[str] = None,
              plugins_path: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'requiredArg' in kwargs:
+        if required_arg is None and 'requiredArg' in kwargs:
             required_arg = kwargs['requiredArg']
-        if 'pluginsPath' in kwargs:
+        if required_arg is None:
+            raise TypeError("Missing 'required_arg' argument")
+        if plugins_path is None and 'pluginsPath' in kwargs:
             plugins_path = kwargs['pluginsPath']
 
         _setter("required_arg", required_arg)
@@ -118,14 +120,16 @@ class HelmReleaseSettingsArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             required_arg: pulumi.Input[str],
+             required_arg: Optional[pulumi.Input[str]] = None,
              driver: Optional[pulumi.Input[str]] = None,
              plugins_path: Optional[pulumi.Input[str]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'requiredArg' in kwargs:
+        if required_arg is None and 'requiredArg' in kwargs:
             required_arg = kwargs['requiredArg']
-        if 'pluginsPath' in kwargs:
+        if required_arg is None:
+            raise TypeError("Missing 'required_arg' argument")
+        if plugins_path is None and 'pluginsPath' in kwargs:
             plugins_path = kwargs['pluginsPath']
 
         _setter("required_arg", required_arg)
@@ -200,7 +204,7 @@ class KubeClientSettingsArgs:
              rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'recTest' in kwargs:
+        if rec_test is None and 'recTest' in kwargs:
             rec_test = kwargs['recTest']
 
         if burst is None:
@@ -276,7 +280,7 @@ class LayeredTypeArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             other: pulumi.Input['HelmReleaseSettingsArgs'],
+             other: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None,
              thinker: Optional[pulumi.Input[str]] = None,
              answer: Optional[pulumi.Input[float]] = None,
              plain_other: Optional['HelmReleaseSettingsArgs'] = None,
@@ -284,7 +288,9 @@ class LayeredTypeArgs:
              recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'plainOther' in kwargs:
+        if other is None:
+            raise TypeError("Missing 'other' argument")
+        if plain_other is None and 'plainOther' in kwargs:
             plain_other = kwargs['plainOther']
 
         _setter("other", other)

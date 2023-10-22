@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: `pulumi new` now allows users to bypass existing project name checks.

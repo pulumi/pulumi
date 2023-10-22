@@ -209,6 +209,93 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
         assert.strictEqual(values2["config_flag_like:secret-key"].secret, true);
     });
+    it(`Config path`, async () => {
+        const projectName = "node_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+
+        // test backward compatibility
+        await stack.setConfig("key1", { value: "value1" });
+        // test new flag without subPath
+        await stack.setConfig("key2", { value: "value2" }, false);
+        // test new flag with subPath
+        await stack.setConfig("key3.subKey1", { value: "value3" }, true);
+        // test secret
+        await stack.setConfig("key4", { value: "value4", secret: true });
+        // test subPath and key as secret
+        await stack.setConfig("key5.subKey1", { value: "value5", secret: true }, true);
+        // test string with dots
+        await stack.setConfig("key6.subKey1", { value: "value6", secret: true });
+        // test string with dots
+        await stack.setConfig("key7.subKey1", { value: "value7", secret: true }, false);
+        // test subPath
+        await stack.setConfig("key7.subKey2", { value: "value8" }, true);
+        // test subPath
+        await stack.setConfig("key7.subKey3", { value: "value9" }, true);
+
+        // test backward compatibility
+        const cv1 = await stack.getConfig("key1");
+        assert.strictEqual(cv1.value, "value1");
+        assert.strictEqual(cv1.secret, false);
+
+        // test new flag without subPath
+        const cv2 = await stack.getConfig("key2", false);
+        assert.strictEqual(cv2.value, "value2");
+        assert.strictEqual(cv2.secret, false);
+
+        // test new flag with subPath
+        const cv3 = await stack.getConfig("key3.subKey1", true);
+        assert.strictEqual(cv3.value, "value3");
+        assert.strictEqual(cv3.secret, false);
+
+        // test secret
+        const cv4 = await stack.getConfig("key4");
+        assert.strictEqual(cv4.value, "value4");
+        assert.strictEqual(cv4.secret, true);
+
+        // test subPath and key as secret
+        const cv5 = await stack.getConfig("key5.subKey1", true);
+        assert.strictEqual(cv5.value, "value5");
+        assert.strictEqual(cv5.secret, true);
+
+        // test string with dots
+        const cv6 = await stack.getConfig("key6.subKey1");
+        assert.strictEqual(cv6.value, "value6");
+        assert.strictEqual(cv6.secret, true);
+
+        // test string with dots
+        const cv7 = await stack.getConfig("key7.subKey1", false);
+        assert.strictEqual(cv7.value, "value7");
+        assert.strictEqual(cv7.secret, true);
+
+        // test string with dots
+        const cv8 = await stack.getConfig("key7.subKey2", true);
+        assert.strictEqual(cv8.value, "value8");
+        assert.strictEqual(cv8.secret, false);
+
+        // test string with dots
+        const cv9 = await stack.getConfig("key7.subKey3", true);
+        assert.strictEqual(cv9.value, "value9");
+        assert.strictEqual(cv9.secret, false);
+
+        await stack.removeConfig("key1");
+        await stack.removeConfig("key2", false);
+        await stack.removeConfig("key3", false);
+        await stack.removeConfig("key4", false);
+        await stack.removeConfig("key5", false);
+        await stack.removeConfig("key6.subKey1", false);
+        await stack.removeConfig("key7.subKey1", false);
+
+        const cfg = await stack.getAllConfig();
+        assert.strictEqual(cfg["node_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}');
+
+        await ws.removeStack(stackName);
+    });
     it(`nested_config`, async () => {
         if (getTestOrg() !== "pulumi-test") {
             return;

@@ -75,6 +75,20 @@ func (m Map) HasSecureValue() bool {
 	return false
 }
 
+// AsDecryptedPropertyMap returns the config as a property map, with secret values decrypted.
+func (m Map) AsDecryptedPropertyMap(decrypter Decrypter) (resource.PropertyMap, error) {
+	pm := resource.PropertyMap{}
+
+	for k, v := range m {
+		newV, err := adjustObjectValue(v)
+		if err != nil {
+			return resource.PropertyMap{}, err
+		}
+		pm[resource.PropertyKey(k.String())] = newV.toDecryptedPropertyValue(decrypter)
+	}
+	return pm, nil
+}
+
 // Get gets the value for a given key. If path is true, the key's name portion is treated as a path.
 func (m Map) Get(k Key, path bool) (_ Value, ok bool, err error) {
 	// If the key isn't a path, go ahead and lookup the value.

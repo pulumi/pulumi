@@ -26,10 +26,14 @@ class ProviderCertmanagerArgs:
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             mtls_cert_pem: pulumi.Input[str],
-             mtls_key_pem: pulumi.Input[str],
+             mtls_cert_pem: Optional[pulumi.Input[str]] = None,
+             mtls_key_pem: Optional[pulumi.Input[str]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
+        if mtls_cert_pem is None:
+            raise TypeError("Missing 'mtls_cert_pem' argument")
+        if mtls_key_pem is None:
+            raise TypeError("Missing 'mtls_key_pem' argument")
 
         _setter("mtls_cert_pem", mtls_cert_pem)
         _setter("mtls_key_pem", mtls_key_pem)

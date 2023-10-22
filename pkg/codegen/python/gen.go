@@ -2602,16 +2602,9 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	fmt.Fprintf(w, "\n             _setter: Callable[[Any, Any], None],")
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, input, false /*acceptMapping*/)
-		if prop.DefaultValue != nil {
-			ty = mod.typeString(codegen.OptionalType(prop), input, false /*acceptMapping*/)
-		}
-
-		var defaultValue string
-		if !prop.IsRequired() || prop.DefaultValue != nil {
-			defaultValue = " = None"
-		}
-		fmt.Fprintf(w, "\n             %s: %s%s,", pname, ty, defaultValue)
+		// Mark all props as optional as they will be set to None.
+		ty := mod.typeString(codegen.OptionalType(prop), input, false /*acceptMapping*/)
+		fmt.Fprintf(w, "\n             %s: %s = None,", pname, ty)
 	}
 	// Catch ResourceOptions being expanded by `**kwargs`.
 	fmt.Fprintf(w, "\n             opts: Optional[pulumi.ResourceOptions]=None,")
@@ -2622,10 +2615,16 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	// Handle original property names. (i.e. propName -> prop_name)
 	for _, prop := range props {
-		if pname := PyName(prop.Name); pname != prop.Name {
-			// Original property name different from python name and could be in the kwargs.
-			fmt.Fprintf(w, "        if '%s' in kwargs:\n", prop.Name)
+		pname := PyName(prop.Name)
+		// Original property name different from python name and could be in the kwargs.
+		if pname != prop.Name {
+			fmt.Fprintf(w, "        if %s is None and '%s' in kwargs:\n", pname, prop.Name)
 			fmt.Fprintf(w, "            %s = kwargs['%s']\n", pname, prop.Name)
+		}
+		// Handle required argument not set.
+		if prop.IsRequired() && prop.DefaultValue == nil {
+			fmt.Fprintf(w, "        if %s is None:\n", pname)
+			fmt.Fprintf(w, `            raise TypeError("Missing '%s' argument")`+"\n", pname)
 		}
 	}
 	fmt.Fprintf(w, "\n")

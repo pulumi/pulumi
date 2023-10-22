@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Foo.Nested/module
+namespace Pulumi.Foo.Nested.Module
 {
     [FooResourceType("foo:nested/module:Resource")]
     public partial class Resource : global::Pulumi.CustomResource

@@ -556,9 +556,15 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 		return pkg.resolveEnumType(t)
 	case *schema.ArrayType:
 		en := pkg.argsTypeImpl(t.ElementType)
+		if en == "pulumi.Any" {
+			en = strings.TrimSuffix(en, "Any")
+		}
 		return strings.TrimSuffix(en, "Args") + "Array"
 	case *schema.MapType:
 		en := pkg.argsTypeImpl(t.ElementType)
+		if en == "pulumi.Any" {
+			en = strings.TrimSuffix(en, "Any")
+		}
 		return strings.TrimSuffix(en, "Args") + "Map"
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)

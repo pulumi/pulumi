@@ -523,3 +523,35 @@ func isSecureValue(v any) (bool, string) {
 	}
 	return false, ""
 }
+
+func (c object) toDecryptedPropertyValue(decrypter Decrypter) resource.PropertyValue {
+	var prop resource.PropertyValue
+	switch v := c.value.(type) {
+	case bool, int64, float64, string:
+		if c.secure {
+			plaintext, err := decrypter.DecryptValue(context.Background(), v.(string))
+			contract.AssertNoErrorf(err, "failed to decrypt config")
+			prop = resource.NewPropertyValue(plaintext)
+		} else {
+			prop = resource.NewPropertyValue(v)
+		}
+	case []object:
+		var values []resource.PropertyValue
+		for _, v := range v {
+			values = append(values, v.toDecryptedPropertyValue(decrypter))
+		}
+		prop = resource.NewArrayProperty(values)
+	case map[string]object:
+		values := make(resource.PropertyMap)
+		for k, v := range v {
+			values[resource.PropertyKey(k)] = v.toDecryptedPropertyValue(decrypter)
+		}
+		prop = resource.NewObjectProperty(values)
+	default:
+		contract.Failf("unexpected value type %T", v)
+	}
+	if c.secure {
+		prop = resource.MakeSecret(prop)
+	}
+	return prop
+}

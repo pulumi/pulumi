@@ -91,7 +91,7 @@ class Object(dict):
              still_others: Optional[Mapping[str, Sequence['outputs.SomeOtherObject']]] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'stillOthers' in kwargs:
+        if still_others is None and 'stillOthers' in kwargs:
             still_others = kwargs['stillOthers']
 
         if bar is not None:
@@ -150,10 +150,12 @@ class ObjectWithNodeOptionalInputs(dict):
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             foo: str,
+             foo: Optional[str] = None,
              bar: Optional[int] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
+        if foo is None:
+            raise TypeError("Missing 'foo' argument")
 
         _setter("foo", foo)
         if bar is not None:

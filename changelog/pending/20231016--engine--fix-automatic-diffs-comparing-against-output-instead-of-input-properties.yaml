@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix automatic diffs comparing against output instead of input properties.

@@ -21,6 +21,7 @@ var pulumi_language_pb = require('./language_pb.js');
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 var pulumi_plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
+var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {

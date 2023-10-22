@@ -53,6 +53,7 @@ func (c *testConverterClient) ConvertState(
 				PluginDownloadURL: "test:pluginDownloadURL",
 			},
 		},
+		Diagnostics: c.diagnostics,
 	}, nil
 }
 
@@ -81,7 +82,15 @@ func TestConverterPlugin_State(t *testing.T) {
 	t.Parallel()
 
 	plugin := &converter{
-		clientRaw: &testConverterClient{},
+		clientRaw: &testConverterClient{
+			diagnostics: []*codegenrpc.Diagnostic{
+				{
+					Severity: codegenrpc.DiagnosticSeverity_DIAG_ERROR,
+					Summary:  "test:summary",
+					Detail:   "test:detail",
+				},
+			},
+		},
 	}
 
 	resp, err := plugin.ConvertState(context.Background(), &ConvertStateRequest{
@@ -98,6 +107,11 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, "test:id", res.ID)
 	assert.Equal(t, "test:version", res.Version)
 	assert.Equal(t, "test:pluginDownloadURL", res.PluginDownloadURL)
+
+	diag := resp.Diagnostics[0]
+	assert.Equal(t, hcl.DiagError, diag.Severity)
+	assert.Equal(t, "test:summary", diag.Summary)
+	assert.Equal(t, "test:detail", diag.Detail)
 }
 
 func TestConverterPlugin_Program(t *testing.T) {

@@ -15,10 +15,27 @@ __all__ = [
 
 @pulumi.output_type
 class InstanceBootDiskInitializeParams(dict):
+    @staticmethod
+    def __key_warning(key: str):
+        suggest = None
+        if key == "imageName":
+            suggest = "image_name"
+
+        if suggest:
+            pulumi.log.warn(f"Key '{key}' not found in InstanceBootDiskInitializeParams. Access the value via the '{suggest}' property getter instead.")
+
+    def __getitem__(self, key: str) -> Any:
+        InstanceBootDiskInitializeParams.__key_warning(key)
+        return super().__getitem__(key)
+
+    def get(self, key: str, default = None) -> Any:
+        InstanceBootDiskInitializeParams.__key_warning(key)
+        return super().get(key, default)
+
     def __init__(__self__, *,
-                 image: Optional[str] = None):
+                 image_name: Optional[str] = None):
         """
-        :param str image: The image from which to initialize this disk. This can be
+        :param str image_name: The image from which to initialize this disk. This can be
                one of: the image's `self_link`, `projects/{project}/global/images/{image}`,
                `projects/{project}/global/images/family/{family}`, `global/images/{image}`,
                `global/images/family/{family}`, `family/{family}`, `{project}/{family}`,
@@ -30,23 +47,23 @@ class InstanceBootDiskInitializeParams(dict):
         """
         InstanceBootDiskInitializeParams._configure(
             lambda key, value: pulumi.set(__self__, key, value),
-            image=image,
+            image_name=image_name,
         )
     @staticmethod
     def _configure(
              _setter: Callable[[Any, Any], None],
-             image: Optional[str] = None,
+             image_name: Optional[str] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'image' in kwargs:
-            image = kwargs['image']
+        if image_name is None and 'imageName' in kwargs:
+            image_name = kwargs['imageName']
 
-        if image is not None:
-            _setter("image", image)
+        if image_name is not None:
+            _setter("image_name", image_name)
 
     @property
-    @pulumi.getter
-    def image(self) -> Optional[str]:
+    @pulumi.getter(name="imageName")
+    def image_name(self) -> Optional[str]:
         """
         The image from which to initialize this disk. This can be
         one of: the image's `self_link`, `projects/{project}/global/images/{image}`,
@@ -58,6 +75,6 @@ class InstanceBootDiskInitializeParams(dict):
         For instance, the image `centos-6-v20180104` includes its family name `centos-6`.
         These images can be referred by family name here.
         """
-        return pulumi.get(self, "image")
+        return pulumi.get(self, "image_name")
 
 

@@ -81,7 +81,7 @@ func newRefreshCmd() *cobra.Command {
 			"This command compares the current stack's resource state with the state known to exist in\n" +
 			"the actual cloud provider. Any such changes are adopted into the current stack. Note that if\n" +
 			"the program text isn't updated accordingly, subsequent updates may still appear to be out of\n" +
-			"synch with respect to the cloud provider's source of truth.\n" +
+			"sync with respect to the cloud provider's source of truth.\n" +
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",

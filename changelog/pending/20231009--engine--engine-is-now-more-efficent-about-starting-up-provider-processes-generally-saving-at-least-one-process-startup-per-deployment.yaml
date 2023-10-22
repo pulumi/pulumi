@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Engine is now more efficent about starting up provider processes, generally saving at least one process startup per deployment.

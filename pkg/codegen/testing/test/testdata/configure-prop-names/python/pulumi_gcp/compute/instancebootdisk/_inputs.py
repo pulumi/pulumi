@@ -17,7 +17,7 @@ __all__ = [
 @pulumi.input_type
 class InstanceBootDiskArgs:
     def __init__(__self__, *,
-                 initialize_params: Optional[pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']] = None):
+                 initialize_params: pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']):
         """
         :param pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs'] initialize_params: Parameters for a new disk that will be created
                alongside the new instance. Either `initialize_params` or `source` must be set.
@@ -33,15 +33,16 @@ class InstanceBootDiskArgs:
              initialize_params: Optional[pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']] = None,
              opts: Optional[pulumi.ResourceOptions]=None,
              **kwargs):
-        if 'initializeParams' in kwargs:
+        if initialize_params is None and 'initializeParams' in kwargs:
             initialize_params = kwargs['initializeParams']
+        if initialize_params is None:
+            raise TypeError("Missing 'initialize_params' argument")
 
-        if initialize_params is not None:
-            _setter("initialize_params", initialize_params)
+        _setter("initialize_params", initialize_params)
 
     @property
     @pulumi.getter(name="initializeParams")
-    def initialize_params(self) -> Optional[pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']]:
+    def initialize_params(self) -> pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']:
         """
         Parameters for a new disk that will be created
         alongside the new instance. Either `initialize_params` or `source` must be set.
@@ -50,7 +51,7 @@ class InstanceBootDiskArgs:
         return pulumi.get(self, "initialize_params")
 
     @initialize_params.setter
-    def initialize_params(self, value: Optional[pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']]):
+    def initialize_params(self, value: pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']):
         pulumi.set(self, "initialize_params", value)
 
 

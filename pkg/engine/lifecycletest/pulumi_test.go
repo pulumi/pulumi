@@ -413,6 +413,70 @@ func TestBrokenDecrypter(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestConfigPropertyMapMatches(t *testing.T) {
+	t.Parallel()
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Check that the config property map matches what we expect.
+		assert.Equal(t, 8, len(info.Config))
+		assert.Equal(t, 8, len(info.ConfigPropertyMap))
+
+		assert.Equal(t, "hunter2", info.Config[config.MustMakeKey("pkgA", "secret")])
+		assert.True(t, info.ConfigPropertyMap["pkgA:secret"].IsSecret())
+		assert.Equal(t, "hunter2", info.ConfigPropertyMap["pkgA:secret"].SecretValue().Element.StringValue())
+
+		assert.Equal(t, "all I see is ******", info.Config[config.MustMakeKey("pkgA", "plain")])
+		assert.False(t, info.ConfigPropertyMap["pkgA:plain"].IsSecret())
+		assert.Equal(t, "all I see is ******", info.ConfigPropertyMap["pkgA:plain"].StringValue())
+
+		assert.Equal(t, "1234", info.Config[config.MustMakeKey("pkgA", "int")])
+		assert.Equal(t, 1234.0, info.ConfigPropertyMap["pkgA:int"].NumberValue())
+
+		assert.Equal(t, "12.34", info.Config[config.MustMakeKey("pkgA", "float")])
+		// This is a string because adjustObjectValue only parses integers, not floats.
+		assert.Equal(t, "12.34", info.ConfigPropertyMap["pkgA:float"].StringValue())
+
+		assert.Equal(t, "012345", info.Config[config.MustMakeKey("pkgA", "string")])
+		assert.Equal(t, "012345", info.ConfigPropertyMap["pkgA:string"].StringValue())
+
+		assert.Equal(t, "true", info.Config[config.MustMakeKey("pkgA", "bool")])
+		assert.Equal(t, true, info.ConfigPropertyMap["pkgA:bool"].BoolValue())
+
+		assert.Equal(t, "[1,2,3]", info.Config[config.MustMakeKey("pkgA", "array")])
+		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[0].NumberValue())
+		assert.Equal(t, 2.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[1].NumberValue())
+		assert.Equal(t, 3.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[2].NumberValue())
+
+		assert.Equal(t, `{"bar":"02","foo":1}`, info.Config[config.MustMakeKey("pkgA", "map")])
+		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:map"].ObjectValue()["foo"].NumberValue())
+		assert.Equal(t, "02", info.ConfigPropertyMap["pkgA:map"].ObjectValue()["bar"].StringValue())
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+	crypter := config.NewSymmetricCrypter(make([]byte, 32))
+	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
+	assert.NoError(t, err)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+		Steps:   MakeBasicLifecycleSteps(t, 0),
+		Config: config.Map{
+			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
+			config.MustMakeKey("pkgA", "plain"):  config.NewValue("all I see is ******"),
+			config.MustMakeKey("pkgA", "int"):    config.NewValue("1234"),
+			config.MustMakeKey("pkgA", "float"):  config.NewValue("12.34"),
+			config.MustMakeKey("pkgA", "string"): config.NewValue("012345"),
+			config.MustMakeKey("pkgA", "bool"):   config.NewValue("true"),
+			config.MustMakeKey("pkgA", "array"):  config.NewObjectValue("[1, 2, 3]"),
+			config.MustMakeKey("pkgA", "map"):    config.NewObjectValue(`{"foo": 1, "bar": "02"}`),
+		},
+		Decrypter: crypter,
+	}
+
+	p.Run(t, nil)
+}
+
 func TestBadResourceType(t *testing.T) {
 	t.Parallel()
 
@@ -1482,7 +1546,7 @@ func TestReplaceOnChanges(t *testing.T) {
 			if diff == nil {
 				return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 			}
-			detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff)
+			detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff, false)
 			changedKeys := diff.ChangedKeys()
 
 			return plugin.DiffResult{
@@ -3263,7 +3327,7 @@ func TestEventSecrets(t *testing.T) {
 					if diff == nil {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
-					detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff)
+					detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff, false)
 					changedKeys := diff.ChangedKeys()
 
 					return plugin.DiffResult{
@@ -4380,4 +4444,69 @@ func TestProviderChecksums(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/14040, ensure the step generators automatic
+// diff is tagged as an input diff.
+func TestAutomaticDiff(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{
+		"foo": resource.NewNumberProperty(1),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// Change the inputs and run again
+	inputs = resource.PropertyMap{
+		"foo": resource.NewNumberProperty(2),
+	}
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
+			events []Event, err error,
+		) error {
+			found := false
+			for _, e := range events {
+				if e.Type == ResourcePreEvent {
+					p := e.Payload().(ResourcePreEventPayload).Metadata
+					if p.URN == resURN {
+						// Should find an update op with the diff set to an input diff
+						assert.Equal(t, deploy.OpUpdate, p.Op)
+						assert.Equal(t, []resource.PropertyKey{"foo"}, p.Diffs)
+						assert.Equal(t, map[string]plugin.PropertyDiff{
+							"foo": {
+								Kind:      plugin.DiffUpdate,
+								InputDiff: true,
+							},
+						}, p.DetailedDiff)
+						found = true
+					}
+				}
+			}
+			assert.True(t, found)
+			return err
+		})
+	assert.NoError(t, err)
 }

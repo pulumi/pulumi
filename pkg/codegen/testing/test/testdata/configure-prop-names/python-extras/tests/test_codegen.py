@@ -38,17 +38,48 @@ class MyMocks(pulumi.runtime.Mocks):
 
         :param MockResourceArgs args.
         """
-        assert args.inputs['bootDisk']['initializeParams']['image'] == "debian-cloud/debian-11"
+        assert args.inputs['bootDisk']['initializeParams']['imageName'] == "debian-cloud/debian-11"
         return 'foo', args.inputs
 
 @pulumi.runtime.test
 def test_func_with_default_value(my_mocks):
     compute.instance.Instance(
-        "instance-old",
+        "instance-1",
         boot_disk={
             "initializeParams": {
-                "image": "debian-cloud/debian-11",
+                "imageName": "debian-cloud/debian-11",
             },
         },
     )
+    compute.instance.Instance(
+        "instance-2",
+        boot_disk={
+            "initialize_params": {
+                "image_name": "debian-cloud/debian-11",
+            },
+        },
+    )
+    compute.instance.Instance(
+        "instance-3",
+        boot_disk={
+            "initializeParams": {
+                "image_name": "debian-cloud/debian-11",
+            },
+        },
+    )
+    compute.instance.Instance(
+        "instance-4",
+        boot_disk={
+            "initialize_params": {
+                "imageName": "debian-cloud/debian-11",
+            },
+        },
+    )
+    with pytest.raises(TypeError):
+        # Check that this fails as it is missing "initialize_params".
+        compute.instance.Instance(
+            "will-fail",
+            boot_disk={},
+        )
+
 
