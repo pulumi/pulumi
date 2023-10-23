@@ -443,7 +443,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		if typ != "" {
 			typ += "."
 		}
-		return typ + tokenToName(t.Token)
+		return typ + resourceName(t.Resource)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -2504,7 +2504,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 			lr := LanguageResource{
 				Resource: r,
 				Package:  namespaceName(info.Namespaces, modName),
-				Name:     tokenToName(r.Token),
+				Name:     resourceName(r),
 			}
 			resources[r.Token] = lr
 		}
