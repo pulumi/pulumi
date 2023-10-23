@@ -212,7 +212,9 @@ type stackSummaryJSON struct {
 	URL              string `json:"url,omitempty"`
 }
 
-func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary, stdout io.Writer) error {
+func formatStackSummariesJSON(
+	b backend.Backend, currentStack string, stackSummaries []backend.StackSummary, stdout io.Writer,
+) error {
 	output := make([]stackSummaryJSON, len(stackSummaries))
 	for idx, summary := range stackSummaries {
 		summaryJSON := stackSummaryJSON{

@@ -110,9 +110,8 @@ type stackLSOutputs struct {
 	outContToken backend.ContinuationToken
 }
 
+//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksPagination(t *testing.T) {
-	t.Parallel()
-
 	// We mock out the ListStacks call so that it will return 4x well-known responses, and
 	// keep track of the parameters used for validation.
 	var requestsMade []stackLSInputs
@@ -190,6 +189,7 @@ func TestListStacksPagination(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksJsonProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
@@ -235,7 +235,6 @@ func TestListStacksJsonProgress(t *testing.T) {
 	err := runStackLS(ctx, args)
 	assert.NoError(t, err)
 
-	// Confirm the output is valid JSON.
 	assert.JSONEq(t, `[
 			{
 				"name": "stack-in-page-1",
@@ -255,6 +254,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 		]`, buff.String())
 }
 
+//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksJsonNoProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
@@ -293,7 +293,6 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 	err := runStackLS(ctx, args)
 	assert.NoError(t, err)
 
-	// Confirm the output is valid JSON.
 	assert.JSONEq(t, `[
 			{
 				"name": "stack-in-page-1",
