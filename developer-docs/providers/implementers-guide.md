@@ -6,7 +6,7 @@
 
 The core functionality of a resource provider is the management of custom resources and
 construction of component resources within the scope of a Pulumi stack. Custom resources
-have a well-defined lifecycle built around the differences between their acutal state and
+have a well-defined lifecycle built around the differences between their actual state and
 the desired state described by their inputs and implemented using create, read, update,
 and delete (CRUD) operations defined by the provider. Component resources have no
 associated lifecycle, and are constructed by registering child custom or component
@@ -50,7 +50,7 @@ is not known because it has not yet been created. Critically, a custom resource 
 
 #### Component Resources
 
-A component resource is a logical conatiner for other resources. Besides its URN, a
+A component resource is a logical container for other resources. Besides its URN, a
 component resource has a set of inputs, a set of outputs, and a tree of children. Its
 only lifecycle semantics are those of its children; its inputs and outputs are not
 related in the same way a [custom resource's](#custom-resources) inputs and state are
@@ -163,7 +163,7 @@ resource. Provider resources are custom resources that are managed by the Pulumi
 and obey the usual [custom resource lifecycle](#custom-resource-lifecycle). The `Check`
 and `Diff` methods for a provider resource are implemented using the
 [`CheckConfig`](#checkconfig) and [`DiffConfig`](#diffconfig) methods of the resource's
-provider instance. The latter is criticially important to the user experience: if
+provider instance. The latter is critically important to the user experience: if
 [`DiffConfig`](#diffconfig) indicates that the provider resource must be replaced, all of
 the custom resources managed by the provider resource will _also_ be replaced. Thus,
 `DiffConfig` should only indicate that replacement is required if the provider's
@@ -172,7 +172,7 @@ configuration.
 
 ### Lookup
 
-Before a provider can be used, it must be instantiated. Instatiating a provider requires
+Before a provider can be used, it must be instantiated. Instantiating a provider requires
 a `(package, semver)` tuple, which is used to find an appropriate provider factory. The
 lookup process proceeds as follows:
 
@@ -240,7 +240,7 @@ replaced. Because replacing a provider will require that all of the resources wi
 which it is associated are _also_ replaced, replacement semantics should be reserved
 for changes to configuration properties that are guaranteed to make old resources
 unmanagable (e.g. a change to an AWS access key should not require replacement, as the
-set of resources accesible via an access key is easily knowable).
+set of resources accessible via an access key is easily knowable).
 
 #### Configure
 
@@ -265,7 +265,7 @@ None.
 Once a client has finished using a resource provider, it must shut the provider down.
 A client requests that a provider shut down gracefully by calling its `SignalCancellation`
 method. In response to this method, a provider should cancel all outstanding resource
-operations and funtion calls. After calling `SignalCancellation`, the client calls
+operations and function calls. After calling `SignalCancellation`, the client calls
 `Close` to inform the provider that it should release any resources it holds.
 
 `SignalCancellation` is advisory and non-blocking; it is up to the client to decide how
@@ -286,7 +286,7 @@ to fetch the resource's current state. This call to [`Read`](#read) includes the
 any state provided by the user that may be necessary to read the resource.
 
 If the resource is being imported, the engine first calls the provider's [`Read`](#read) method
-to fetch the resource's current state and inputs. This call to [`Read`](#read) only inclues the
+to fetch the resource's current state and inputs. This call to [`Read`](#read) only includes the
 ID of the resource to import; that is, _any importable resource must be identifiable using
 its ID alone_. If the [`Read`](#read) succeeds, the engine calls the provider's [`Check`](#check) method with
 the inputs returned by [`Read`](#read) and the inputs supplied by the user. If any of the inputs
@@ -335,14 +335,14 @@ the engine creates the replacement resource by calling [`Create`](#create) with 
 inputs.
 
 If a managed resource registered by a Pulumi program is not re-registered by the next
-successful execution of a Pulumi progam in the resource's stack, the engine deletes the
+successful execution of a Pulumi program in the resource's stack, the engine deletes the
 resource by calling the resource's provider's [`Delete`](#delete) method with the resource's ID and
 last refereshed state.
 
 The diagram below summarizes the custom resource lifecycle. Detailed descriptions of each
 resource operation follow.
 
-![Custom Resource Lifeycle Diagram](./resource-lifecycle.svg)
+![Custom Resource Lifecycle Diagram](./resource-lifecycle.svg)
 
 ### Lifecycle Methods
 
