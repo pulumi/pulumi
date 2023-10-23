@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Tightened the parser for property paths to be less prone to typos

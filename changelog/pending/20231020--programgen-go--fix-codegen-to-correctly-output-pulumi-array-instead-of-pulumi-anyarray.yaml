@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/go
-  description: Fix codegen to correctly output pulumi.Array instead of pulumi.AnyArray
