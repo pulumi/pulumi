@@ -8,6 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	s3V1 "github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/golang/glog"
+	"github.com/pulumi/pulumi/pkg/v3/util"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
@@ -32,8 +39,20 @@ type wrappedBucket struct {
 	bucket *blob.Bucket
 }
 
+const (
+	s3BucketEncryptionTypeEnvVarKey = "PULUMI_S3_BUCKET_ENCRYPTION_TYPE"
+	s3BucketKmsKeyIDEnvVarKey       = "PULUMI_S3_BUCKET_ENCRYPTION_KMS_KEY_ID"
+)
+
 func (b *wrappedBucket) Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error) {
-	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), opts)
+	var optsCopy blob.CopyOptions
+	if opts != nil {
+		optsCopy = *opts
+	} else {
+		optsCopy = blob.CopyOptions{}
+	}
+	optsCopy.BeforeCopy = beforeMutation
+	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), &optsCopy)
 }
 
 func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {
@@ -55,7 +74,14 @@ func (b *wrappedBucket) ReadAll(ctx context.Context, key string) (_ []byte, err 
 }
 
 func (b *wrappedBucket) WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error) {
-	return b.bucket.WriteAll(ctx, filepath.ToSlash(key), p, opts)
+	var optsCopy blob.WriterOptions
+	if opts != nil {
+		optsCopy = *opts
+	} else {
+		optsCopy = blob.WriterOptions{}
+	}
+	optsCopy.BeforeWrite = beforeMutation
+	return b.bucket.WriteAll(ctx, filepath.ToSlash(key), p, &optsCopy)
 }
 
 func (b *wrappedBucket) Exists(ctx context.Context, key string) (bool, error) {
@@ -105,6 +131,77 @@ func removeAllByPrefix(ctx context.Context, bucket Bucket, dir string) error {
 		if err != nil {
 			logging.V(5).Infof("error deleting object: %v (%v) skipping", file.Key, err)
 		}
+	}
+
+	return nil
+}
+
+var beforeMutation = func(as func(interface{}) bool) error {
+	loggingLevel := glog.Level(7)
+
+	environmentVariables := util.GetEnvironmentVariables()
+
+	var bucketEncryptionType *string
+	if v, exists := environmentVariables[s3BucketEncryptionTypeEnvVarKey]; exists {
+		logging.V(loggingLevel).Infof("Setting bucket encryption type to %s", v)
+		bucketEncryptionType = &v
+	}
+
+	var bucketEncryptionKMSKeyID *string
+	if v, exists := environmentVariables[s3BucketKmsKeyIDEnvVarKey]; exists {
+		logging.V(loggingLevel).Infof("Setting bucket encryption id to %s", v)
+		bucketEncryptionKMSKeyID = &v
+	}
+
+	// No encryption settings specified, don't bother proceeding since we won't need
+	// to set a value anyway
+	if bucketEncryptionType == nil && bucketEncryptionKMSKeyID == nil {
+		logging.V(loggingLevel).Info("No 'PULUMI_S3_BUCKET' environment variables are set")
+		return nil
+	}
+
+	// Support AWS SDK V1
+	var copyObjectInputV1 *s3V1.CopyObjectInput
+	if as(&copyObjectInputV1) {
+		logging.V(loggingLevel).Infof("Request was (v1) s3.CopyObjectInput")
+		copyObjectInputV1.ServerSideEncryption = bucketEncryptionType
+		copyObjectInputV1.SSEKMSKeyId = bucketEncryptionKMSKeyID
+
+		return nil
+	}
+
+	// Support AWS SDK V2
+	var copyObjectInputV2 *s3.CopyObjectInput
+	if as(&copyObjectInputV2) {
+		logging.V(loggingLevel).Infof("Request was s3.CopyObjectInput")
+		if bucketEncryptionType != nil {
+			copyObjectInputV2.ServerSideEncryption = types.ServerSideEncryption(*bucketEncryptionType)
+		}
+		copyObjectInputV2.SSEKMSKeyId = bucketEncryptionKMSKeyID
+
+		return nil
+	}
+
+	// Support AWS SDK V1
+	var uploadInput *s3manager.UploadInput
+	if as(&uploadInput) {
+		logging.V(loggingLevel).Infof("Request was s3manager.UploadInput")
+		uploadInput.ServerSideEncryption = bucketEncryptionType
+		uploadInput.SSEKMSKeyId = bucketEncryptionKMSKeyID
+
+		return nil
+	}
+
+	// Support AWS SDK V2
+	var putObjectInput *s3.PutObjectInput
+	if as(&putObjectInput) {
+		logging.V(loggingLevel).Infof("Request was s3.PutObjectInput")
+		if bucketEncryptionType != nil {
+			putObjectInput.ServerSideEncryption = types.ServerSideEncryption(*bucketEncryptionType)
+		}
+		putObjectInput.SSEKMSKeyId = bucketEncryptionKMSKeyID
+
+		return nil
 	}
 
 	return nil
