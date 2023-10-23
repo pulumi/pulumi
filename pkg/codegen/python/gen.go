@@ -1348,8 +1348,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		// Emit logic to configure schema.ObjectType args that have defaults and deprecation messages.
 		if objType, ok := unwrapped.(*schema.ObjectType); ok {
 			expectedObjType := mod.objectClassRef(objType, true)
-			fmt.Fprintf(w, "            if %[1]s is not None and not isinstance(%[1]s, %s):\n",
-				InitParamName(prop.Name), expectedObjType)
+			// If it's an external type, add a runtime check to ensure it has a static `_configure` method.
+			// We do this because the external type may not have the latest codegen which adds `_configure`.
+			var runtimeCheckForExternalTypes string
+			if !codegen.PkgEquals(objType.PackageReference, mod.pkg) {
+				runtimeCheckForExternalTypes = fmt.Sprintf(" and hasattr(%s, '_configure')", expectedObjType)
+			}
+			fmt.Fprintf(w, "            if %[1]s is not None and not isinstance(%[1]s, %s)%s:\n",
+				InitParamName(prop.Name), expectedObjType, runtimeCheckForExternalTypes)
 			fmt.Fprintf(w, "                %[1]s = %[1]s or {}\n", InitParamName(prop.Name))
 			fmt.Fprintf(w, "                def _setter(key, value):\n")
 			fmt.Fprintf(w, "                    %s[key] = value\n", InitParamName(prop.Name))
