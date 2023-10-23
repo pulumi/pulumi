@@ -36,6 +36,10 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		URL:        repoArgs.URL,
 	}
 
+	if repoArgs.Shallow {
+		cloneOptions.Depth = 1
+	}
+
 	if repoArgs.Auth != nil {
 		authDetails := repoArgs.Auth
 		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
