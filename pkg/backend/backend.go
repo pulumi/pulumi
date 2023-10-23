@@ -148,6 +148,9 @@ type Backend interface {
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 
+	// SupportsProgress tells whether the backend supports showing whether an operation is currently in progress
+	SupportsProgress() bool
+
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -75,7 +76,8 @@ func newContToken(s string) backend.ContinuationToken {
 
 // mockStackSummary implements the backend.StackSummary interface.
 type mockStackSummary struct {
-	name string
+	name        string
+	LastUpdateF func() *time.Time
 }
 
 func (mss *mockStackSummary) Name() backend.StackReference {
@@ -88,6 +90,9 @@ func (mss *mockStackSummary) Name() backend.StackReference {
 }
 
 func (mss *mockStackSummary) LastUpdate() *time.Time {
+	if mss.LastUpdateF != nil {
+		return mss.LastUpdateF()
+	}
 	return nil
 }
 
@@ -115,7 +120,7 @@ func TestListStacksPagination(t *testing.T) {
 		// Page 1.
 		{
 			summaries: []backend.StackSummary{
-				&mockStackSummary{"stack-in-page-1"},
+				&mockStackSummary{name: "stack-in-page-1"},
 			},
 			outContToken: newContToken("first-cont-token-response"),
 		},
@@ -128,8 +133,8 @@ func TestListStacksPagination(t *testing.T) {
 		// Page 4.
 		{
 			summaries: []backend.StackSummary{
-				&mockStackSummary{"stack-in-page-4"},
-				&mockStackSummary{"stack-in-page-4"},
+				&mockStackSummary{name: "stack-in-page-4"},
+				&mockStackSummary{name: "stack-in-page-4"},
 			},
 			outContToken: nil,
 		},
@@ -183,4 +188,121 @@ func TestListStacksPagination(t *testing.T) {
 			"Continuation token for request %d was not the same token returned from call %d.",
 			callIdx, callIdx-1)
 	}
+}
+
+func TestListStacksJsonProgress(t *testing.T) {
+	mockTime := time.Unix(1, 0)
+
+	backendInstance = &backend.MockBackend{
+		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
+			[]backend.StackSummary, backend.ContinuationToken, error,
+		) {
+			return []backend.StackSummary{
+				&mockStackSummary{
+					name: "stack-in-page-1",
+					LastUpdateF: func() *time.Time {
+						t := mockTime
+						return &t
+					},
+				},
+				&mockStackSummary{
+					name: "stack-in-page-2",
+					LastUpdateF: func() *time.Time {
+						t := time.Unix(0, 0)
+						return &t
+					},
+				},
+				&mockStackSummary{
+					name: "stack-in-page-3",
+					LastUpdateF: func() *time.Time {
+						return nil
+					},
+				},
+			}, nil, nil
+		},
+		SupportsProgressF: func() bool {
+			return true
+		},
+	}
+
+	var buff bytes.Buffer
+	ctx := context.Background()
+	args := stackLSArgs{
+		jsonOut:   true,
+		allStacks: true,
+		stdout:    &buff,
+	}
+	err := runStackLS(ctx, args)
+	assert.NoError(t, err)
+
+	// Confirm the output is valid JSON.
+	assert.JSONEq(t, `[
+			{
+				"name": "stack-in-page-1",
+				"updateInProgress": false,
+				"lastUpdate": "1970-01-01T00:00:01.000Z",
+				"current": false
+			},
+			{
+				"name": "stack-in-page-2",
+				"updateInProgress": true,
+				"current": false
+			},
+			{
+				"name": "stack-in-page-3",
+				"current": false
+			}
+		]`, buff.String())
+}
+
+func TestListStacksJsonNoProgress(t *testing.T) {
+	mockTime := time.Unix(1, 0)
+
+	backendInstance = &backend.MockBackend{
+		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
+			[]backend.StackSummary, backend.ContinuationToken, error,
+		) {
+			return []backend.StackSummary{
+				&mockStackSummary{
+					name: "stack-in-page-1",
+					LastUpdateF: func() *time.Time {
+						t := mockTime
+						return &t
+					},
+				},
+				&mockStackSummary{
+					name: "stack-in-page-2",
+					LastUpdateF: func() *time.Time {
+						return nil
+					},
+				},
+			}, nil, nil
+		},
+		SupportsProgressF: func() bool {
+			return false
+		},
+	}
+
+	var buff bytes.Buffer
+	ctx := context.Background()
+	args := stackLSArgs{
+		jsonOut:   true,
+		allStacks: true,
+		stdout:    &buff,
+	}
+	err := runStackLS(ctx, args)
+	assert.NoError(t, err)
+
+	// Confirm the output is valid JSON.
+	assert.JSONEq(t, `[
+			{
+				"name": "stack-in-page-1",
+				"lastUpdate": "1970-01-01T00:00:01.000Z",
+				"current": false
+			},
+			{
+				"name": "stack-in-page-2",
+				"current": false
+			}
+		]`, buff.String())
 }
