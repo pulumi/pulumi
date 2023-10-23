@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.90.0 (2023-10-23)
+
+
+### Features
+
+- [auto/nodejs] Add support for the path option for config operations
+  [#14305](https://github.com/pulumi/pulumi/pull/14305)
+
+- [engine] Converters can return diagnostics from `ConvertState`.
+  [#14135](https://github.com/pulumi/pulumi/pull/14135)
+
+
+### Bug Fixes
+
+- [cli] Tightened the parser for property paths to be less prone to typos
+  [#14257](https://github.com/pulumi/pulumi/pull/14257)
+
+- [engine] Fix handling of explicit providers and --target-dependents.
+  [#14238](https://github.com/pulumi/pulumi/pull/14238)
+
+- [engine] Fix automatic diffs comparing against output instead of input properties.
+  [#14256](https://github.com/pulumi/pulumi/pull/14256)
+
+- [sdkgen/dotnet] Fix codegen with nested modules.
+  [#14297](https://github.com/pulumi/pulumi/pull/14297)
+
+- [programgen/go] Fix codegen to correctly output pulumi.Array instead of pulumi.AnyArray
+  [#14299](https://github.com/pulumi/pulumi/pull/14299)
+
+- [cli/new] `pulumi new` now allows users to bypass existing project name checks.
+  [#14081](https://github.com/pulumi/pulumi/pull/14081)
+
+- [sdk/nodejs] Nodejs now supports unknown resource IDs.
+  [#14137](https://github.com/pulumi/pulumi/pull/14137)
+
+- [sdkgen/python] Fix `_configure` failing due to required args mismatch.
+  [#14281](https://github.com/pulumi/pulumi/pull/14281)
+
+
+### Miscellaneous
+
+- [cli] Pull in fixes from esc v0.5.6
+  [#14284](https://github.com/pulumi/pulumi/pull/14284)
+
+- [protobuf] Add a config as property map field to RunRequest and pass that to the SDK
+  [#14273](https://github.com/pulumi/pulumi/pull/14273)
+
+- [sdk/python] updates grpcio dependency
+  [#14259](https://github.com/pulumi/pulumi/pull/14259)
+
 ## 3.89.0 (2023-10-16)
 
 
