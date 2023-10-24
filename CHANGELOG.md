@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.90.1 (2023-10-24)
+
+
+### Bug Fixes
+
+- [cli/config] Don't crash on empty config values
+  [#14328](https://github.com/pulumi/pulumi/pull/14328)
+
+- [sdkgen/python] Fix issue calling nonexistent `_configure` method on external types
+  [#14318](https://github.com/pulumi/pulumi/pull/14318)
+
+- [sdkgen/python] Fix calling `_configure` with an Output value
+  [#14321](https://github.com/pulumi/pulumi/pull/14321)
+
 ## 3.90.0 (2023-10-23)
 
 
