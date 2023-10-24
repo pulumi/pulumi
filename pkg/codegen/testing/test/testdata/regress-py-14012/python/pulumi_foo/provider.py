@@ -27,7 +27,7 @@ class ProviderArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              certmanager: Optional[pulumi.Input['ProviderCertmanagerArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if certmanager is not None:
@@ -92,11 +92,7 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
-            if certmanager is not None and not isinstance(certmanager, ProviderCertmanagerArgs):
-                certmanager = certmanager or {}
-                def _setter(key, value):
-                    certmanager[key] = value
-                ProviderCertmanagerArgs._configure(_setter, **certmanager)
+            certmanager = _utilities.configure(certmanager, ProviderCertmanagerArgs, True)
             __props__.__dict__["certmanager"] = pulumi.Output.from_input(certmanager).apply(pulumi.runtime.to_json) if certmanager is not None else None
         super(Provider, __self__).__init__(
             'foo',

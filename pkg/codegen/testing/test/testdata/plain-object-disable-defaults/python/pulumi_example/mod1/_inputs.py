@@ -28,7 +28,7 @@ class TypArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              val: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if val is None:

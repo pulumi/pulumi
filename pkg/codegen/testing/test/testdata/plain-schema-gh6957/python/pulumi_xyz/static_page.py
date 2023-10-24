@@ -32,7 +32,7 @@ class StaticPageArgs:
              _setter: Callable[[Any, Any], None],
              index_content: Optional[pulumi.Input[str]] = None,
              foo: Optional['FooArgs'] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if index_content is None and 'indexContent' in kwargs:
             index_content = kwargs['indexContent']
@@ -119,11 +119,7 @@ class StaticPage(pulumi.ComponentResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = StaticPageArgs.__new__(StaticPageArgs)
 
-            if foo is not None and not isinstance(foo, FooArgs):
-                foo = foo or {}
-                def _setter(key, value):
-                    foo[key] = value
-                FooArgs._configure(_setter, **foo)
+            foo = _utilities.configure(foo, FooArgs, False)
             __props__.__dict__["foo"] = foo
             if index_content is None and not opts.urn:
                 raise TypeError("Missing required property 'index_content'")

@@ -32,7 +32,7 @@ class TypArgs:
              _setter: Callable[[Any, Any], None],
              mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
              val: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if mod1 is not None:

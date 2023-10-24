@@ -29,7 +29,7 @@ class InstanceArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              boot_disk: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if boot_disk is None and 'bootDisk' in kwargs:
             boot_disk = kwargs['bootDisk']
@@ -69,7 +69,7 @@ class _InstanceState:
     def _configure(
              _setter: Callable[[Any, Any], None],
              boot_disk: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if boot_disk is None and 'bootDisk' in kwargs:
             boot_disk = kwargs['bootDisk']
@@ -144,11 +144,7 @@ class Instance(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = InstanceArgs.__new__(InstanceArgs)
 
-            if boot_disk is not None and not isinstance(boot_disk, _compute.instancebootdisk.InstanceBootDiskArgs):
-                boot_disk = boot_disk or {}
-                def _setter(key, value):
-                    boot_disk[key] = value
-                _compute.instancebootdisk.InstanceBootDiskArgs._configure(_setter, **boot_disk)
+            boot_disk = _utilities.configure(boot_disk, _compute.instancebootdisk.InstanceBootDiskArgs, True)
             if boot_disk is None and not opts.urn:
                 raise TypeError("Missing required property 'boot_disk'")
             __props__.__dict__["boot_disk"] = boot_disk

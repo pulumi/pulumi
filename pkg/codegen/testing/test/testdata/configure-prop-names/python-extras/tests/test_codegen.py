@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pulumi
+import asyncio
 import pytest
 
-from pulumi_gcp import compute
+import pulumi
+
+from pulumi_gcp.compute.instance import Instance, InstanceArgs
+from pulumi_gcp.compute.instancebootdisk import InstanceBootDiskArgs
+from pulumi_gcp.compute.instancebootdiskinitializeparams import InstanceBootDiskInitializeParamsArgs
+
 
 @pytest.fixture
 def my_mocks():
@@ -32,54 +37,90 @@ class MyMocks(pulumi.runtime.Mocks):
     def call(self, args):
         return {}
     def new_resource(self, args):
-        """
-        new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
-        for the resource being constructed.
+        assert args.inputs == {
+            "bootDisk": {
+                "initializeParams": {
+                    "imageName": "debian-cloud/debian-11",
+                },
+            },
+        }
+        return "foo", args.inputs
 
-        :param MockResourceArgs args.
-        """
-        assert args.inputs['bootDisk']['initializeParams']['imageName'] == "debian-cloud/debian-11"
-        return 'foo', args.inputs
+
+def identity(x):
+    return x
+
+
+def wrap_output(x):
+    return pulumi.Output.from_input(x)
+
+
+def wrap_future(x):
+    future = asyncio.Future()
+    future.set_result(x)
+    return future
+
+
+@pytest.mark.parametrize("boot_disk_wrap", [identity, wrap_output, wrap_future])
+@pytest.mark.parametrize("initialize_params_wrap", [identity, wrap_output, wrap_future])
+@pytest.mark.parametrize("image_name_wrap", [identity, wrap_output, wrap_future])
+@pytest.mark.parametrize("initialize_params", ["initialize_params", "initializeParams"])
+@pytest.mark.parametrize("image_name", ["image_name", "imageName"])
+@pulumi.runtime.test
+def test_dict(
+    my_mocks,
+    boot_disk_wrap,
+    initialize_params_wrap,
+    image_name_wrap,
+    initialize_params,
+    image_name,
+):
+    Instance(
+        "instance-1",
+        boot_disk=boot_disk_wrap({
+            initialize_params: initialize_params_wrap({
+                image_name: image_name_wrap("debian-cloud/debian-11"),
+            }),
+        }),
+    )
+
 
 @pulumi.runtime.test
-def test_func_with_default_value(my_mocks):
-    compute.instance.Instance(
-        "instance-1",
-        boot_disk={
-            "initializeParams": {
-                "imageName": "debian-cloud/debian-11",
-            },
-        },
-    )
-    compute.instance.Instance(
-        "instance-2",
-        boot_disk={
-            "initialize_params": {
-                "image_name": "debian-cloud/debian-11",
-            },
-        },
-    )
-    compute.instance.Instance(
-        "instance-3",
-        boot_disk={
-            "initializeParams": {
-                "image_name": "debian-cloud/debian-11",
-            },
-        },
-    )
-    compute.instance.Instance(
-        "instance-4",
-        boot_disk={
-            "initialize_params": {
-                "imageName": "debian-cloud/debian-11",
-            },
-        },
-    )
-    with pytest.raises(TypeError):
+def test_dict_raises(my_mocks):
+    with pytest.raises(TypeError, match="Missing 'initialize_params' argument"):
         # Check that this fails as it is missing "initialize_params".
-        compute.instance.Instance(
+        Instance(
             "will-fail",
             boot_disk={},
         )
 
 
+@pytest.mark.parametrize("boot_disk_wrap", [identity, wrap_output, wrap_future])
+@pytest.mark.parametrize("initialize_params_wrap", [identity, wrap_output, wrap_future])
+@pytest.mark.parametrize("image_name_wrap", [identity, wrap_output, wrap_future])
+@pulumi.runtime.test
+def test_input_types(
+    my_mocks,
+    boot_disk_wrap,
+    initialize_params_wrap,
+    image_name_wrap,
+):
+    Instance(
+        "instance-1",
+        boot_disk=boot_disk_wrap(InstanceBootDiskArgs(
+            initialize_params=initialize_params_wrap(InstanceBootDiskInitializeParamsArgs(
+                image_name=image_name_wrap("debian-cloud/debian-11"),
+            )),
+        )),
+    )
+
+    Instance(
+        "instance-2",
+        InstanceArgs(
+            boot_disk=boot_disk_wrap(InstanceBootDiskArgs(
+                initialize_params=initialize_params_wrap(InstanceBootDiskInitializeParamsArgs(
+                    image_name=image_name_wrap("debian-cloud/debian-11"),
+                )),
+            )),
+        ),
+    )

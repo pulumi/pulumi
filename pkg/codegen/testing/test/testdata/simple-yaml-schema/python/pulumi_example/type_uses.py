@@ -39,7 +39,7 @@ class TypeUsesArgs:
              baz: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']] = None,
              foo: Optional[pulumi.Input['ObjectArgs']] = None,
              qux: Optional[pulumi.Input['RubberTreeVariety']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if bar is not None:
@@ -143,23 +143,11 @@ class TypeUses(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
 
-            if bar is not None and not isinstance(bar, SomeOtherObjectArgs):
-                bar = bar or {}
-                def _setter(key, value):
-                    bar[key] = value
-                SomeOtherObjectArgs._configure(_setter, **bar)
+            bar = _utilities.configure(bar, SomeOtherObjectArgs, True)
             __props__.__dict__["bar"] = bar
-            if baz is not None and not isinstance(baz, ObjectWithNodeOptionalInputsArgs):
-                baz = baz or {}
-                def _setter(key, value):
-                    baz[key] = value
-                ObjectWithNodeOptionalInputsArgs._configure(_setter, **baz)
+            baz = _utilities.configure(baz, ObjectWithNodeOptionalInputsArgs, True)
             __props__.__dict__["baz"] = baz
-            if foo is not None and not isinstance(foo, ObjectArgs):
-                foo = foo or {}
-                def _setter(key, value):
-                    foo[key] = value
-                ObjectArgs._configure(_setter, **foo)
+            foo = _utilities.configure(foo, ObjectArgs, True)
             __props__.__dict__["foo"] = foo
             __props__.__dict__["qux"] = qux
             __props__.__dict__["alpha"] = None

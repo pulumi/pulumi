@@ -40,7 +40,7 @@ class Foo(dict):
              b: Optional[bool] = None,
              d: Optional[int] = None,
              f: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if a is None:
             raise TypeError("Missing 'a' argument")

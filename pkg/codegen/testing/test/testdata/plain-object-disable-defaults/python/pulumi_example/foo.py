@@ -40,7 +40,7 @@ class FooArgs:
              argument: Optional[str] = None,
              kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
              settings: Optional[pulumi.Input['LayeredTypeArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if backup_kube_client_settings is None and 'backupKubeClientSettings' in kwargs:
             backup_kube_client_settings = kwargs['backupKubeClientSettings']
@@ -164,25 +164,13 @@ class Foo(pulumi.CustomResource):
             __props__ = FooArgs.__new__(FooArgs)
 
             __props__.__dict__["argument"] = argument
-            if backup_kube_client_settings is not None and not isinstance(backup_kube_client_settings, KubeClientSettingsArgs):
-                backup_kube_client_settings = backup_kube_client_settings or {}
-                def _setter(key, value):
-                    backup_kube_client_settings[key] = value
-                KubeClientSettingsArgs._configure(_setter, **backup_kube_client_settings)
+            backup_kube_client_settings = _utilities.configure(backup_kube_client_settings, KubeClientSettingsArgs, True)
             if backup_kube_client_settings is None and not opts.urn:
                 raise TypeError("Missing required property 'backup_kube_client_settings'")
             __props__.__dict__["backup_kube_client_settings"] = backup_kube_client_settings
-            if kube_client_settings is not None and not isinstance(kube_client_settings, KubeClientSettingsArgs):
-                kube_client_settings = kube_client_settings or {}
-                def _setter(key, value):
-                    kube_client_settings[key] = value
-                KubeClientSettingsArgs._configure(_setter, **kube_client_settings)
+            kube_client_settings = _utilities.configure(kube_client_settings, KubeClientSettingsArgs, True)
             __props__.__dict__["kube_client_settings"] = kube_client_settings
-            if settings is not None and not isinstance(settings, LayeredTypeArgs):
-                settings = settings or {}
-                def _setter(key, value):
-                    settings[key] = value
-                LayeredTypeArgs._configure(_setter, **settings)
+            settings = _utilities.configure(settings, LayeredTypeArgs, True)
             __props__.__dict__["settings"] = settings
             __props__.__dict__["default_kube_client_settings"] = None
         super(Foo, __self__).__init__(

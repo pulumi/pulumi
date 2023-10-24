@@ -25,7 +25,7 @@ class PetArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              name: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if name is not None:

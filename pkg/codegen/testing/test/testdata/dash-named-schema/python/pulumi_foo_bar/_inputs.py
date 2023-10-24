@@ -25,7 +25,7 @@ class TopLevelArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              buzz: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if buzz is not None:

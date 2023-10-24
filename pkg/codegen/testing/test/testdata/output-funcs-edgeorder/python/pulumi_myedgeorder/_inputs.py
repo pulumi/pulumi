@@ -38,7 +38,7 @@ class ConfigurationFilters:
              _setter: Callable[[Any, Any], None],
              hierarchy_information: Optional['HierarchyInformation'] = None,
              filterable_property: Optional[Sequence['FilterableProperty']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if hierarchy_information is None and 'hierarchyInformation' in kwargs:
             hierarchy_information = kwargs['hierarchyInformation']
@@ -100,7 +100,7 @@ class CustomerSubscriptionDetails:
              quota_id: Optional[str] = None,
              location_placement_id: Optional[str] = None,
              registered_features: Optional[Sequence['CustomerSubscriptionRegisteredFeatures']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if quota_id is None and 'quotaId' in kwargs:
             quota_id = kwargs['quotaId']
@@ -174,7 +174,7 @@ class CustomerSubscriptionRegisteredFeatures:
              _setter: Callable[[Any, Any], None],
              name: Optional[str] = None,
              state: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if name is not None:
@@ -227,7 +227,7 @@ class FilterableProperty:
              _setter: Callable[[Any, Any], None],
              supported_values: Optional[Sequence[str]] = None,
              type: Optional[Union[str, 'SupportedFilterTypes']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if supported_values is None and 'supportedValues' in kwargs:
             supported_values = kwargs['supportedValues']
@@ -292,7 +292,7 @@ class HierarchyInformation:
              product_family_name: Optional[str] = None,
              product_line_name: Optional[str] = None,
              product_name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if configuration_name is None and 'configurationName' in kwargs:
             configuration_name = kwargs['configurationName']

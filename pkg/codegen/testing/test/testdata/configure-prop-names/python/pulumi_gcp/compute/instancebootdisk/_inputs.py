@@ -31,7 +31,7 @@ class InstanceBootDiskArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              initialize_params: Optional[pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if initialize_params is None and 'initializeParams' in kwargs:
             initialize_params = kwargs['initializeParams']

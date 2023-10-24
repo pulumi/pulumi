@@ -25,7 +25,7 @@ class GetPolicyDocumentStatementResult(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              actions: Optional[Sequence[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if actions is not None:

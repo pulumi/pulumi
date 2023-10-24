@@ -42,7 +42,7 @@ class RubberTreeArgs:
              container: Optional[pulumi.Input['_root_inputs.ContainerArgs']] = None,
              farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
              size: Optional[pulumi.Input['TreeSize']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if diameter is not None:
@@ -147,7 +147,7 @@ class _RubberTreeState:
     def _configure(
              _setter: Callable[[Any, Any], None],
              farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if farm is None:
@@ -222,11 +222,7 @@ class RubberTree(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = RubberTreeArgs.__new__(RubberTreeArgs)
 
-            if container is not None and not isinstance(container, _root_inputs.ContainerArgs):
-                container = container or {}
-                def _setter(key, value):
-                    container[key] = value
-                _root_inputs.ContainerArgs._configure(_setter, **container)
+            container = _utilities.configure(container, _root_inputs.ContainerArgs, True)
             __props__.__dict__["container"] = container
             if diameter is None:
                 diameter = 6

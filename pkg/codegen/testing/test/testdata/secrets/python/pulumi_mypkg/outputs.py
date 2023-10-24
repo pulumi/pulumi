@@ -25,7 +25,7 @@ class Config(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              foo: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if foo is not None:

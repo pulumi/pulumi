@@ -52,7 +52,7 @@ class ComponentArgs:
              d: Optional[int] = None,
              f: Optional[str] = None,
              foo: Optional[pulumi.Input['FooArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if a is None:
             raise TypeError("Missing 'a' argument")
@@ -230,11 +230,7 @@ class Component(pulumi.ComponentResource):
                 raise TypeError("Missing required property 'a'")
             __props__.__dict__["a"] = a
             __props__.__dict__["b"] = b
-            if bar is not None and not isinstance(bar, FooArgs):
-                bar = bar or {}
-                def _setter(key, value):
-                    bar[key] = value
-                FooArgs._configure(_setter, **bar)
+            bar = _utilities.configure(bar, FooArgs, False)
             __props__.__dict__["bar"] = bar
             __props__.__dict__["baz"] = baz
             if c is None and not opts.urn:
@@ -245,11 +241,7 @@ class Component(pulumi.ComponentResource):
                 raise TypeError("Missing required property 'e'")
             __props__.__dict__["e"] = e
             __props__.__dict__["f"] = f
-            if foo is not None and not isinstance(foo, FooArgs):
-                foo = foo or {}
-                def _setter(key, value):
-                    foo[key] = value
-                FooArgs._configure(_setter, **foo)
+            foo = _utilities.configure(foo, FooArgs, True)
             __props__.__dict__["foo"] = foo
         super(Component, __self__).__init__(
             'example::Component',

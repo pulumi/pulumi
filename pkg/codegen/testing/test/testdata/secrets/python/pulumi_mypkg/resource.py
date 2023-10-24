@@ -43,7 +43,7 @@ class ResourceArgs:
              foo: Optional[pulumi.Input[str]] = None,
              foo_array: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
              foo_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if config is None:
             raise TypeError("Missing 'config' argument")
@@ -187,11 +187,7 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
-            if config is not None and not isinstance(config, ConfigArgs):
-                config = config or {}
-                def _setter(key, value):
-                    config[key] = value
-                ConfigArgs._configure(_setter, **config)
+            config = _utilities.configure(config, ConfigArgs, True)
             if config is None and not opts.urn:
                 raise TypeError("Missing required property 'config'")
             __props__.__dict__["config"] = None if config is None else pulumi.Output.secret(config)

@@ -57,7 +57,7 @@ class AvailabilityInformationResponse(dict):
              availability_stage: Optional[str] = None,
              disabled_reason: Optional[str] = None,
              disabled_reason_message: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if availability_stage is None and 'availabilityStage' in kwargs:
             availability_stage = kwargs['availabilityStage']
@@ -132,7 +132,7 @@ class BillingMeterDetailsResponse(dict):
              meter_details: Optional[Any] = None,
              metering_type: Optional[str] = None,
              name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if frequency is None:
             raise TypeError("Missing 'frequency' argument")
@@ -236,7 +236,7 @@ class ConfigurationResponse(dict):
              hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
              image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
              specifications: Optional[Sequence['outputs.SpecificationResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if availability_information is None and 'availabilityInformation' in kwargs:
             availability_information = kwargs['availabilityInformation']
@@ -375,7 +375,7 @@ class CostInformationResponse(dict):
              _setter: Callable[[Any, Any], None],
              billing_info_url: Optional[str] = None,
              billing_meter_details: Optional[Sequence['outputs.BillingMeterDetailsResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if billing_info_url is None and 'billingInfoUrl' in kwargs:
             billing_info_url = kwargs['billingInfoUrl']
@@ -445,7 +445,7 @@ class DescriptionResponse(dict):
              links: Optional[Sequence['outputs.LinkResponse']] = None,
              long_description: Optional[str] = None,
              short_description: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if attributes is None:
             raise TypeError("Missing 'attributes' argument")
@@ -565,7 +565,7 @@ class DimensionsResponse(dict):
              weight: Optional[float] = None,
              weight_unit: Optional[str] = None,
              width: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if depth is None:
             raise TypeError("Missing 'depth' argument")
@@ -674,7 +674,7 @@ class FilterablePropertyResponse(dict):
              _setter: Callable[[Any, Any], None],
              supported_values: Optional[Sequence[str]] = None,
              type: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if supported_values is None and 'supportedValues' in kwargs:
             supported_values = kwargs['supportedValues']
@@ -734,7 +734,7 @@ class HierarchyInformationResponse(dict):
              product_family_name: Optional[str] = None,
              product_line_name: Optional[str] = None,
              product_name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if configuration_name is None and 'configurationName' in kwargs:
             configuration_name = kwargs['configurationName']
@@ -810,7 +810,7 @@ class ImageInformationResponse(dict):
              _setter: Callable[[Any, Any], None],
              image_type: Optional[str] = None,
              image_url: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if image_type is None and 'imageType' in kwargs:
             image_type = kwargs['imageType']
@@ -864,7 +864,7 @@ class LinkResponse(dict):
              _setter: Callable[[Any, Any], None],
              link_type: Optional[str] = None,
              link_url: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if link_type is None and 'linkType' in kwargs:
             link_type = kwargs['linkType']
@@ -927,7 +927,7 @@ class Pav2MeterDetailsResponse(dict):
              charging_type: Optional[str] = None,
              meter_guid: Optional[str] = None,
              multiplier: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if billing_type is None and 'billingType' in kwargs:
             billing_type = kwargs['billingType']
@@ -1030,7 +1030,7 @@ class ProductFamilyResponse(dict):
              hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
              image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
              product_lines: Optional[Sequence['outputs.ProductLineResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if availability_information is None and 'availabilityInformation' in kwargs:
             availability_information = kwargs['availabilityInformation']
@@ -1184,7 +1184,7 @@ class ProductLineResponse(dict):
              hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
              image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
              products: Optional[Sequence['outputs.ProductResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if availability_information is None and 'availabilityInformation' in kwargs:
             availability_information = kwargs['availabilityInformation']
@@ -1336,7 +1336,7 @@ class ProductResponse(dict):
              filterable_properties: Optional[Sequence['outputs.FilterablePropertyResponse']] = None,
              hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
              image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if availability_information is None and 'availabilityInformation' in kwargs:
             availability_information = kwargs['availabilityInformation']
@@ -1481,7 +1481,7 @@ class PurchaseMeterDetailsResponse(dict):
              product_id: Optional[str] = None,
              sku_id: Optional[str] = None,
              term_id: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if billing_type is None and 'billingType' in kwargs:
             billing_type = kwargs['billingType']
@@ -1586,7 +1586,7 @@ class SpecificationResponse(dict):
              _setter: Callable[[Any, Any], None],
              name: Optional[str] = None,
              value: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if name is None:
             raise TypeError("Missing 'name' argument")

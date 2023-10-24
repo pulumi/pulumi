@@ -46,7 +46,7 @@ class NodePoolAutoscaling(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              location_policy: Optional['pulumi_google_native.container.v1.NodePoolAutoscalingLocationPolicy'] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if location_policy is None and 'locationPolicy' in kwargs:
             location_policy = kwargs['locationPolicy']

@@ -28,7 +28,7 @@ class ProviderArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if helm_release_settings is None and 'helmReleaseSettings' in kwargs:
             helm_release_settings = kwargs['helmReleaseSettings']
@@ -101,11 +101,7 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
-            if helm_release_settings is not None and not isinstance(helm_release_settings, HelmReleaseSettingsArgs):
-                helm_release_settings = helm_release_settings or {}
-                def _setter(key, value):
-                    helm_release_settings[key] = value
-                HelmReleaseSettingsArgs._configure(_setter, **helm_release_settings)
+            helm_release_settings = _utilities.configure(helm_release_settings, HelmReleaseSettingsArgs, True)
             __props__.__dict__["helm_release_settings"] = pulumi.Output.from_input(helm_release_settings).apply(pulumi.runtime.to_json) if helm_release_settings is not None else None
         super(Provider, __self__).__init__(
             'example',

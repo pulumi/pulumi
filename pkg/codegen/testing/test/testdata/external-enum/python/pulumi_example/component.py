@@ -31,7 +31,7 @@ class ComponentArgs:
              _setter: Callable[[Any, Any], None],
              local_enum: Optional[pulumi.Input['local.MyEnum']] = None,
              remote_enum: Optional[pulumi.Input['pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if local_enum is None and 'localEnum' in kwargs:
             local_enum = kwargs['localEnum']
