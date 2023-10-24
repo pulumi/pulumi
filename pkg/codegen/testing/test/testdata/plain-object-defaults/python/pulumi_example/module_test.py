@@ -32,7 +32,7 @@ class ModuleTestArgs:
              _setter: Callable[[Any, Any], None],
              mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
              val: Optional[pulumi.Input['TypArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if mod1 is not None:
@@ -110,17 +110,9 @@ class ModuleTest(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleTestArgs.__new__(ModuleTestArgs)
 
-            if mod1 is not None and not isinstance(mod1, _mod1.TypArgs):
-                mod1 = mod1 or {}
-                def _setter(key, value):
-                    mod1[key] = value
-                _mod1.TypArgs._configure(_setter, **mod1)
+            mod1 = _utilities.configure(mod1, _mod1.TypArgs, True)
             __props__.__dict__["mod1"] = mod1
-            if val is not None and not isinstance(val, TypArgs):
-                val = val or {}
-                def _setter(key, value):
-                    val[key] = value
-                TypArgs._configure(_setter, **val)
+            val = _utilities.configure(val, TypArgs, True)
             __props__.__dict__["val"] = val
         super(ModuleTest, __self__).__init__(
             'example:index:moduleTest',

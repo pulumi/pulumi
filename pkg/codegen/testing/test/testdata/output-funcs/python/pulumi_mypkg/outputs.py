@@ -52,7 +52,7 @@ class SsisEnvironmentReferenceResponse(dict):
              environment_name: Optional[str] = None,
              id: Optional[float] = None,
              reference_type: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if environment_folder_name is None and 'environmentFolderName' in kwargs:
             environment_folder_name = kwargs['environmentFolderName']
@@ -143,7 +143,7 @@ class SsisEnvironmentResponse(dict):
              id: Optional[float] = None,
              name: Optional[str] = None,
              variables: Optional[Sequence['outputs.SsisVariableResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if type is None:
             raise TypeError("Missing 'type' argument")
@@ -244,7 +244,7 @@ class SsisFolderResponse(dict):
              description: Optional[str] = None,
              id: Optional[float] = None,
              name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if type is None:
             raise TypeError("Missing 'type' argument")
@@ -339,7 +339,7 @@ class SsisPackageResponse(dict):
              parameters: Optional[Sequence['outputs.SsisParameterResponse']] = None,
              project_id: Optional[float] = None,
              project_version: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if type is None:
             raise TypeError("Missing 'type' argument")
@@ -495,7 +495,7 @@ class SsisParameterResponse(dict):
              value_set: Optional[bool] = None,
              value_type: Optional[str] = None,
              variable: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if data_type is None and 'dataType' in kwargs:
             data_type = kwargs['dataType']
@@ -680,7 +680,7 @@ class SsisProjectResponse(dict):
              name: Optional[str] = None,
              parameters: Optional[Sequence['outputs.SsisParameterResponse']] = None,
              version: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if type is None:
             raise TypeError("Missing 'type' argument")
@@ -814,7 +814,7 @@ class SsisVariableResponse(dict):
              sensitive: Optional[bool] = None,
              sensitive_value: Optional[str] = None,
              value: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if data_type is None and 'dataType' in kwargs:
             data_type = kwargs['dataType']
@@ -924,7 +924,7 @@ class StorageAccountKeyResponse(dict):
              key_name: Optional[str] = None,
              permissions: Optional[str] = None,
              value: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if creation_time is None and 'creationTime' in kwargs:
             creation_time = kwargs['creationTime']

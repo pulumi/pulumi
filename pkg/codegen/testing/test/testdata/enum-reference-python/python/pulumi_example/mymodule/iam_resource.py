@@ -27,7 +27,7 @@ class IamResourceArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              config: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if config is not None:
@@ -94,11 +94,7 @@ class IamResource(pulumi.ComponentResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = IamResourceArgs.__new__(IamResourceArgs)
 
-            if config is not None and not isinstance(config, pulumi_google_native.iam.v1.AuditConfigArgs) and hasattr(pulumi_google_native.iam.v1.AuditConfigArgs, '_configure'):
-                config = config or {}
-                def _setter(key, value):
-                    config[key] = value
-                pulumi_google_native.iam.v1.AuditConfigArgs._configure(_setter, **config)
+            config = _utilities.configure(config, pulumi_google_native.iam.v1.AuditConfigArgs, True)
             __props__.__dict__["config"] = config
         super(IamResource, __self__).__init__(
             'example:myModule:IamResource',

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/python
+  description: Fix calling `_configure` with an Output value

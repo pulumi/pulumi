@@ -57,7 +57,7 @@ class KubeClientSettings(dict):
              burst: Optional[int] = None,
              qps: Optional[float] = None,
              rec_test: Optional['outputs.KubeClientSettings'] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if rec_test is None and 'recTest' in kwargs:
             rec_test = kwargs['recTest']

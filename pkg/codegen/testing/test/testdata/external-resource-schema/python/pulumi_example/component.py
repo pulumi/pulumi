@@ -43,7 +43,7 @@ class ComponentArgs:
              metadata: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']] = None,
              metadata_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None,
              metadata_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if required_metadata is None and 'requiredMetadata' in kwargs:
             required_metadata = kwargs['requiredMetadata']
@@ -186,19 +186,11 @@ class Component(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ComponentArgs.__new__(ComponentArgs)
 
-            if metadata is not None and not isinstance(metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs) and hasattr(pulumi_kubernetes.meta.v1.ObjectMetaArgs, '_configure'):
-                metadata = metadata or {}
-                def _setter(key, value):
-                    metadata[key] = value
-                pulumi_kubernetes.meta.v1.ObjectMetaArgs._configure(_setter, **metadata)
+            metadata = _utilities.configure(metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs, True)
             __props__.__dict__["metadata"] = metadata
             __props__.__dict__["metadata_array"] = metadata_array
             __props__.__dict__["metadata_map"] = metadata_map
-            if required_metadata is not None and not isinstance(required_metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs) and hasattr(pulumi_kubernetes.meta.v1.ObjectMetaArgs, '_configure'):
-                required_metadata = required_metadata or {}
-                def _setter(key, value):
-                    required_metadata[key] = value
-                pulumi_kubernetes.meta.v1.ObjectMetaArgs._configure(_setter, **required_metadata)
+            required_metadata = _utilities.configure(required_metadata, pulumi_kubernetes.meta.v1.ObjectMetaArgs, True)
             if required_metadata is None and not opts.urn:
                 raise TypeError("Missing required property 'required_metadata'")
             __props__.__dict__["required_metadata"] = required_metadata

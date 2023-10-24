@@ -43,7 +43,7 @@ class HelmReleaseSettings:
              required_arg: Optional[str] = None,
              driver: Optional[str] = None,
              plugins_path: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if required_arg is None and 'requiredArg' in kwargs:
             required_arg = kwargs['requiredArg']
@@ -123,7 +123,7 @@ class HelmReleaseSettingsArgs:
              required_arg: Optional[pulumi.Input[str]] = None,
              driver: Optional[pulumi.Input[str]] = None,
              plugins_path: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if required_arg is None and 'requiredArg' in kwargs:
             required_arg = kwargs['requiredArg']
@@ -202,7 +202,7 @@ class KubeClientSettingsArgs:
              burst: Optional[pulumi.Input[int]] = None,
              qps: Optional[pulumi.Input[float]] = None,
              rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if rec_test is None and 'recTest' in kwargs:
             rec_test = kwargs['recTest']
@@ -286,7 +286,7 @@ class LayeredTypeArgs:
              plain_other: Optional['HelmReleaseSettingsArgs'] = None,
              question: Optional[pulumi.Input[str]] = None,
              recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if other is None:
             raise TypeError("Missing 'other' argument")
@@ -398,7 +398,7 @@ class TypArgs:
              mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
              mod2: Optional[pulumi.Input['_mod2.TypArgs']] = None,
              val: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if mod1 is not None:

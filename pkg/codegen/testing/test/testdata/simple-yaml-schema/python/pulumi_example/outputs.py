@@ -32,7 +32,7 @@ class ConfigMap(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              config: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if config is not None:
@@ -89,7 +89,7 @@ class Object(dict):
              foo: Optional['Resource'] = None,
              others: Optional[Sequence[Sequence['outputs.SomeOtherObject']]] = None,
              still_others: Optional[Mapping[str, Sequence['outputs.SomeOtherObject']]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if still_others is None and 'stillOthers' in kwargs:
             still_others = kwargs['stillOthers']
@@ -152,7 +152,7 @@ class ObjectWithNodeOptionalInputs(dict):
              _setter: Callable[[Any, Any], None],
              foo: Optional[str] = None,
              bar: Optional[int] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if foo is None:
             raise TypeError("Missing 'foo' argument")
@@ -184,7 +184,7 @@ class OutputOnlyObjectType(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              foo: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if foo is not None:
@@ -208,7 +208,7 @@ class SomeOtherObject(dict):
     def _configure(
              _setter: Callable[[Any, Any], None],
              baz: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if baz is not None:

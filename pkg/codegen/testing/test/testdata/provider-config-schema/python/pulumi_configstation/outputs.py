@@ -29,7 +29,7 @@ class Child(dict):
              _setter: Callable[[Any, Any], None],
              age: Optional[int] = None,
              name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if age is not None:

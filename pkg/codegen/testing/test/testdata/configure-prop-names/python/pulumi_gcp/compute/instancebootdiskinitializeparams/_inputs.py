@@ -36,7 +36,7 @@ class InstanceBootDiskInitializeParamsArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              image_name: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if image_name is None and 'imageName' in kwargs:
             image_name = kwargs['imageName']

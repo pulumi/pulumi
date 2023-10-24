@@ -31,7 +31,7 @@ class ComponentArgs:
              _setter: Callable[[Any, Any], None],
              eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]] = None,
              pod: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if eni_config is None and 'eniConfig' in kwargs:
             eni_config = kwargs['eniConfig']
@@ -114,11 +114,7 @@ class Component(pulumi.ComponentResource):
             __props__ = ComponentArgs.__new__(ComponentArgs)
 
             __props__.__dict__["eni_config"] = eni_config
-            if pod is not None and not isinstance(pod, pulumi_kubernetes.core.v1.PodArgs) and hasattr(pulumi_kubernetes.core.v1.PodArgs, '_configure'):
-                pod = pod or {}
-                def _setter(key, value):
-                    pod[key] = value
-                pulumi_kubernetes.core.v1.PodArgs._configure(_setter, **pod)
+            pod = _utilities.configure(pod, pulumi_kubernetes.core.v1.PodArgs, True)
             __props__.__dict__["pod"] = pod
         super(Component, __self__).__init__(
             'foo:index:Component',

@@ -45,7 +45,7 @@ class StorageAccountKeyResponseResult(dict):
              key_name: Optional[str] = None,
              permissions: Optional[str] = None,
              value: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if creation_time is None and 'creationTime' in kwargs:
             creation_time = kwargs['creationTime']
@@ -113,7 +113,7 @@ class GetAmiIdsFilterResult(dict):
              _setter: Callable[[Any, Any], None],
              name: Optional[str] = None,
              values: Optional[Sequence[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if name is None:
             raise TypeError("Missing 'name' argument")

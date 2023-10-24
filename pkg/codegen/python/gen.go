@@ -1348,18 +1348,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		// Emit logic to configure schema.ObjectType args that have defaults and deprecation messages.
 		if objType, ok := unwrapped.(*schema.ObjectType); ok {
 			expectedObjType := mod.objectClassRef(objType, true)
-			// If it's an external type, add a runtime check to ensure it has a static `_configure` method.
-			// We do this because the external type may not have the latest codegen which adds `_configure`.
-			var runtimeCheckForExternalTypes string
-			if !codegen.PkgEquals(objType.PackageReference, mod.pkg) {
-				runtimeCheckForExternalTypes = fmt.Sprintf(" and hasattr(%s, '_configure')", expectedObjType)
+			input := "False"
+			if codegen.IsNOptionalInput(prop.Type) {
+				input = "True"
 			}
-			fmt.Fprintf(w, "            if %[1]s is not None and not isinstance(%[1]s, %s)%s:\n",
-				InitParamName(prop.Name), expectedObjType, runtimeCheckForExternalTypes)
-			fmt.Fprintf(w, "                %[1]s = %[1]s or {}\n", InitParamName(prop.Name))
-			fmt.Fprintf(w, "                def _setter(key, value):\n")
-			fmt.Fprintf(w, "                    %s[key] = value\n", InitParamName(prop.Name))
-			fmt.Fprintf(w, "                %s._configure(_setter, **%s)\n", expectedObjType, InitParamName(prop.Name))
+			fmt.Fprintf(w, "            %[1]s = _utilities.configure(%[1]s, %s, %s)\n",
+				InitParamName(prop.Name), expectedObjType, input)
 		}
 
 		// Fill in computed defaults for arguments.
@@ -2613,7 +2607,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		fmt.Fprintf(w, "\n             %s: %s = None,", pname, ty)
 	}
 	// Catch ResourceOptions being expanded by `**kwargs`.
-	fmt.Fprintf(w, "\n             opts: Optional[pulumi.ResourceOptions]=None,")
+	fmt.Fprintf(w, "\n             opts: Optional[pulumi.ResourceOptions] = None,")
 	fmt.Fprintf(w, "\n             **kwargs):\n")
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
@@ -3514,4 +3508,23 @@ def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
                                             **resolved_args['kwargs']))
 
     return (lambda _: lifted_func)
+
+
+def configure(val, cls: type, input: bool):
+    def _apply(v):
+        if isinstance(v, typing.Mapping):
+            def _setter(key, value):
+                v[key] = value
+            cls._configure(_setter, **v)
+        return v
+
+    # Check that cls has a static _configure method. External classes may
+    # not have it if it was generated with older codegen.
+    if hasattr(cls, "_configure"):
+        if isinstance(val, typing.Mapping):
+            return _apply(val)
+        elif input and val is not None and not isinstance(val, cls):
+            return pulumi.Output.from_input(val).apply(_apply)
+
+    return val
 `

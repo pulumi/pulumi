@@ -28,7 +28,7 @@ class RegistryGeoReplicationArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              resource_group: Optional[pulumi.Input['pulumi_azure_native.resources.ResourceGroup']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if resource_group is None and 'resourceGroup' in kwargs:
             resource_group = kwargs['resourceGroup']

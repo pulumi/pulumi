@@ -28,7 +28,7 @@ class ProviderCertmanagerArgs:
              _setter: Callable[[Any, Any], None],
              mtls_cert_pem: Optional[pulumi.Input[str]] = None,
              mtls_key_pem: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if mtls_cert_pem is None:
             raise TypeError("Missing 'mtls_cert_pem' argument")

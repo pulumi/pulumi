@@ -28,7 +28,7 @@ class GetAmiIdsFilterArgs:
              _setter: Callable[[Any, Any], None],
              name: Optional[str] = None,
              values: Optional[Sequence[str]] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if name is None:
             raise TypeError("Missing 'name' argument")

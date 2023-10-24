@@ -35,7 +35,7 @@ class Container(dict):
              brightness: Optional['ContainerBrightness'] = None,
              color: Optional[str] = None,
              material: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
         if size is None:
             raise TypeError("Missing 'size' argument")

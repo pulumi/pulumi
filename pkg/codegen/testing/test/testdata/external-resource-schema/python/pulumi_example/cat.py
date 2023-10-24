@@ -31,7 +31,7 @@ class CatArgs:
              _setter: Callable[[Any, Any], None],
              age: Optional[pulumi.Input[int]] = None,
              pet: Optional[pulumi.Input['PetArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if age is not None:
@@ -110,11 +110,7 @@ class Cat(pulumi.CustomResource):
             __props__ = CatArgs.__new__(CatArgs)
 
             __props__.__dict__["age"] = age
-            if pet is not None and not isinstance(pet, PetArgs):
-                pet = pet or {}
-                def _setter(key, value):
-                    pet[key] = value
-                PetArgs._configure(_setter, **pet)
+            pet = _utilities.configure(pet, PetArgs, True)
             __props__.__dict__["pet"] = pet
             __props__.__dict__["name"] = None
         super(Cat, __self__).__init__(

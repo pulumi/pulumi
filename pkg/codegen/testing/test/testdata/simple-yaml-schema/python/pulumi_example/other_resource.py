@@ -30,7 +30,7 @@ class OtherResourceArgs:
              _setter: Callable[[Any, Any], None],
              bar: Optional[Sequence[pulumi.Input[str]]] = None,
              foo: Optional[pulumi.Input['Resource']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if bar is not None:

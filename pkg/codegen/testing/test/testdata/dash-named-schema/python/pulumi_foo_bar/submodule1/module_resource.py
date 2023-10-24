@@ -28,7 +28,7 @@ class ModuleResourceArgs:
     def _configure(
              _setter: Callable[[Any, Any], None],
              thing: Optional[pulumi.Input['_root_inputs.TopLevelArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions]=None,
+             opts: Optional[pulumi.ResourceOptions] = None,
              **kwargs):
 
         if thing is not None:
@@ -93,11 +93,7 @@ class ModuleResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
-            if thing is not None and not isinstance(thing, _root_inputs.TopLevelArgs):
-                thing = thing or {}
-                def _setter(key, value):
-                    thing[key] = value
-                _root_inputs.TopLevelArgs._configure(_setter, **thing)
+            thing = _utilities.configure(thing, _root_inputs.TopLevelArgs, True)
             __props__.__dict__["thing"] = thing
         super(ModuleResource, __self__).__init__(
             'foo-bar:submodule1:ModuleResource',
