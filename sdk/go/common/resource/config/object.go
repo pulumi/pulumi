@@ -547,6 +547,8 @@ func (c object) toDecryptedPropertyValue(decrypter Decrypter) resource.PropertyV
 			values[resource.PropertyKey(k)] = v.toDecryptedPropertyValue(decrypter)
 		}
 		prop = resource.NewObjectProperty(values)
+	case nil:
+		prop = resource.NewNullProperty()
 	default:
 		contract.Failf("unexpected value type %T", v)
 	}

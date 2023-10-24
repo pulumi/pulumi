@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/config
+  description: Don't crash on empty config values
