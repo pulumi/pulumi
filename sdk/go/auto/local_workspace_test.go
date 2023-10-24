@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	git "github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1967,6 +1968,61 @@ func TestSupportsStackOutputs(t *testing.T) {
 	}
 
 	assert.Equal(t, 0, len(outputsAfterDestroy))
+}
+
+func TestShallowClone(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name string
+		repo GitRepo
+	}{
+		{
+			name: "no ref provided",
+			repo: GitRepo{},
+		},
+		{
+			name: "branch provided",
+			repo: GitRepo{Branch: "master"},
+		},
+		{
+			name: "commit provided",
+			repo: GitRepo{CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
+		},
+		{
+			name: "branch and commit provided",
+			repo: GitRepo{Branch: "master", CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			repo := GitRepo{
+				URL:         "https://github.com/pulumi/test-repo.git",
+				ProjectPath: "goproj",
+				Shallow:     true,
+				Branch:      tt.repo.Branch,
+				CommitHash:  tt.repo.CommitHash,
+			}
+			ws, err := NewLocalWorkspace(ctx, Repo(repo))
+			require.NoError(t, err)
+
+			fmt.Println(ws.WorkDir())
+
+			r, err := git.PlainOpenWithOptions(ws.WorkDir(), &git.PlainOpenOptions{DetectDotGit: true})
+			require.NoError(t, err)
+
+			hashes, err := r.Storer.Shallow()
+			require.NoError(t, err)
+
+			assert.Equal(t, 1, len(hashes))
+		})
+	}
 }
 
 func TestPulumiVersion(t *testing.T) {

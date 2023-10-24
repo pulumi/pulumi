@@ -38,6 +38,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 
 	if repoArgs.Shallow {
 		cloneOptions.Depth = 1
+		cloneOptions.SingleBranch = true
 	}
 
 	if repoArgs.Auth != nil {
@@ -142,6 +143,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		err = repo.FetchContext(ctx, &git.FetchOptions{
 			RemoteName: "origin",
 			Auth:       cloneOptions.Auth,
+			Depth:      cloneOptions.Depth,
 			RefSpecs:   []config.RefSpec{config.RefSpec(repoArgs.CommitHash + ":" + repoArgs.CommitHash)},
 		})
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, git.ErrExactSHA1NotSupported) {
