@@ -2012,8 +2012,6 @@ func TestShallowClone(t *testing.T) {
 			ws, err := NewLocalWorkspace(ctx, Repo(repo))
 			require.NoError(t, err)
 
-			fmt.Println(ws.WorkDir())
-
 			r, err := git.PlainOpenWithOptions(ws.WorkDir(), &git.PlainOpenOptions{DetectDotGit: true})
 			require.NoError(t, err)
 
