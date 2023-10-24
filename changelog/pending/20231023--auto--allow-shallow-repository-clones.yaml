@@ -1,4 +1,4 @@
 changes:
-- type: chore
-  scope: auto
-  description: Allow shallow repository clones
+  - type: feat
+    scope: auto
+    description: Allow shallow repository clones in NewLocalWorkspace
