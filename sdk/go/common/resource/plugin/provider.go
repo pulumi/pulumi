@@ -16,7 +16,6 @@ package plugin
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -243,16 +242,15 @@ func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff, inputDiff bool) ma
 		return map[string]PropertyDiff{}
 	}
 	out := map[string]PropertyDiff{}
-	objectDiffToDetailedDiff("", diff, inputDiff, out)
+	objectDiffToDetailedDiff(nil, diff, inputDiff, out)
 	return out
 }
 
-func objectDiffToDetailedDiff(prefix string, diff *resource.ObjectDiff, inputDiff bool, acc map[string]PropertyDiff) {
-	getPrefix := func(k resource.PropertyKey) string {
-		if prefix == "" {
-			return string(k)
-		}
-		return fmt.Sprintf("%s.%s", prefix, string(k))
+func objectDiffToDetailedDiff(
+	prefix resource.PropertyPath, diff *resource.ObjectDiff, inputDiff bool, acc map[string]PropertyDiff,
+) {
+	getPrefix := func(k resource.PropertyKey) resource.PropertyPath {
+		return append(prefix, string(k))
 	}
 
 	for k, vd := range diff.Updates {
@@ -262,29 +260,35 @@ func objectDiffToDetailedDiff(prefix string, diff *resource.ObjectDiff, inputDif
 
 	for k := range diff.Adds {
 		nestedPrefix := getPrefix(k)
-		acc[nestedPrefix] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+		acc[nestedPrefix.String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
 	}
 
 	for k := range diff.Deletes {
 		nestedPrefix := getPrefix(k)
-		acc[nestedPrefix] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+		acc[nestedPrefix.String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
 	}
 }
 
-func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff, inputDiff bool, acc map[string]PropertyDiff) {
-	nestedPrefix := func(i int) string { return fmt.Sprintf("%s[%d]", prefix, i) }
+func arrayDiffToDetailedDiff(
+	prefix resource.PropertyPath, d *resource.ArrayDiff, inputDiff bool, acc map[string]PropertyDiff,
+) {
+	nestedPrefix := func(i int) resource.PropertyPath {
+		return append(prefix, i)
+	}
 	for i, vd := range d.Updates {
 		valueDiffToDetailedDiff(nestedPrefix(i), vd, inputDiff, acc)
 	}
 	for i := range d.Adds {
-		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+		acc[nestedPrefix(i).String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
 	}
 	for i := range d.Deletes {
-		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+		acc[nestedPrefix(i).String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
 	}
 }
 
-func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff, inputDiff bool, acc map[string]PropertyDiff) {
+func valueDiffToDetailedDiff(
+	prefix resource.PropertyPath, vd resource.ValueDiff, inputDiff bool, acc map[string]PropertyDiff,
+) {
 	if vd.Object != nil {
 		objectDiffToDetailedDiff(prefix, vd.Object, inputDiff, acc)
 	} else if vd.Array != nil {
@@ -292,11 +296,11 @@ func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff, inputDiff boo
 	} else {
 		switch {
 		case vd.Old.V == nil && vd.New.V != nil:
-			acc[prefix] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+			acc[prefix.String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
 		case vd.Old.V != nil && vd.New.V == nil:
-			acc[prefix] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+			acc[prefix.String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
 		default:
-			acc[prefix] = PropertyDiff{Kind: DiffUpdate, InputDiff: inputDiff}
+			acc[prefix.String()] = PropertyDiff{Kind: DiffUpdate, InputDiff: inputDiff}
 		}
 	}
 }
