@@ -1,7 +1,7 @@
 import pulumi
-from .another_component import AnotherComponent
-from .exampleComponent import ExampleComponent
-from .simpleComponent import SimpleComponent
+from another_component import AnotherComponent
+from exampleComponent import ExampleComponent
+from simpleComponent import SimpleComponent
 
 simple_component = SimpleComponent("simpleComponent")
 another_component = AnotherComponent("anotherComponent")

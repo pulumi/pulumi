@@ -533,7 +533,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		if component, ok := node.(*pcl.Component); ok {
 			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
 			componentName := component.DeclarationName()
-			imports = append(imports, fmt.Sprintf("from .%s import %s", componentPath, componentName))
+			imports = append(imports, fmt.Sprintf("from %s import %s", componentPath, componentName))
 		}
 	}
 

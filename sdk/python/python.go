@@ -233,28 +233,41 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		}
 	}
 
-	printmsg("Creating virtual environment...")
+	if venvDir != "" {
+		printmsg("Creating virtual environment...")
 
-	// Create the virtual environment by running `python -m venv <venvDir>`.
-	if !filepath.IsAbs(venvDir) {
-		venvDir = filepath.Join(root, venvDir)
-	}
-
-	cmd, err := Command(ctx, "-m", "venv", venvDir)
-	if err != nil {
-		return err
-	}
-	if output, err := cmd.CombinedOutput(); err != nil {
-		if len(output) > 0 {
-			fmt.Fprintf(errorWriter, "%s\n", string(output))
+		// Create the virtual environment by running `python -m venv <venvDir>`.
+		if !filepath.IsAbs(venvDir) {
+			venvDir = filepath.Join(root, venvDir)
 		}
-		return fmt.Errorf("creating virtual environment at %s: %w", venvDir, err)
-	}
 
-	printmsg("Finished creating virtual environment")
+		cmd, err := Command(ctx, "-m", "venv", venvDir)
+		if err != nil {
+			return err
+		}
+		if output, err := cmd.CombinedOutput(); err != nil {
+			if len(output) > 0 {
+				fmt.Fprintf(errorWriter, "%s\n", string(output))
+			}
+			return fmt.Errorf("creating virtual environment at %s: %w", venvDir, err)
+		}
+
+		printmsg("Finished creating virtual environment")
+	}
 
 	runPipInstall := func(errorMsg string, arg ...string) error {
-		pipCmd := VirtualEnvCommand(venvDir, "python", append([]string{"-m", "pip", "install"}, arg...)...)
+		args := append([]string{"-m", "pip", "install"}, arg...)
+
+		var pipCmd *exec.Cmd
+		if venvDir == "" {
+			var err error
+			pipCmd, err = Command(ctx, args...)
+			if err != nil {
+				return err
+			}
+		} else {
+			pipCmd = VirtualEnvCommand(venvDir, "python", args...)
+		}
 		pipCmd.Dir = root
 		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
@@ -283,7 +296,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 
 	printmsg("Updating pip, setuptools, and wheel in virtual environment...")
 
-	err = runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
+	err := runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
 	if err != nil {
 		return err
 	}
