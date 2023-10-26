@@ -54,7 +54,7 @@ require (
 	golang.org/x/sync v0.2.0
 	google.golang.org/api v0.126.0
 	google.golang.org/genproto v0.0.0-20230726155614-23370e0ffb3e
-	google.golang.org/grpc v1.57.0
+	google.golang.org/grpc v1.57.1
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.6.1
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
