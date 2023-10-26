@@ -68,6 +68,19 @@
                     },
                     "builtin": {
                         "name": "fn::open::test",
+                        "nameRange": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 20
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 19,
+                                "byte": 34
+                            }
+                        },
                         "argSchema": true,
                         "arg": {
                             "range": {
@@ -95,6 +108,21 @@
                                     "baz"
                                 ]
                             },
+                            "keyRanges": {
+                                "baz": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 10,
+                                        "byte": 45
+                                    }
+                                }
+                            },
                             "object": {
                                 "baz": {
                                     "range": {
@@ -117,6 +145,34 @@
                                     "literal": "qux"
                                 }
                             }
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "baz": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 8,
+                            "byte": 51
+                        }
+                    },
+                    "foo": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 38
                         }
                     }
                 },
@@ -175,6 +231,19 @@
                             },
                             "builtin": {
                                 "name": "fn::open::test",
+                                "nameRange": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 19,
+                                        "byte": 34
+                                    }
+                                },
                                 "argSchema": true,
                                 "arg": {
                                     "range": {
@@ -202,6 +271,21 @@
                                             "baz"
                                         ]
                                     },
+                                    "keyRanges": {
+                                        "baz": {
+                                            "environment": "a",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 7,
+                                                "byte": 42
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 10,
+                                                "byte": 45
+                                            }
+                                        }
+                                    },
                                     "object": {
                                         "baz": {
                                             "range": {
@@ -224,6 +308,21 @@
                                             "literal": "qux"
                                         }
                                     }
+                                }
+                            }
+                        },
+                        "keyRanges": {
+                            "qux": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 59
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 62
                                 }
                             }
                         },

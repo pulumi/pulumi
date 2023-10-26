@@ -43,6 +43,19 @@
                 "schema": true,
                 "builtin": {
                     "name": "fn::open::error",
+                    "nameRange": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 74
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 20,
+                            "byte": 89
+                        }
+                    },
                     "argSchema": {
                         "properties": {
                             "why": {
@@ -76,6 +89,21 @@
                             "required": [
                                 "why"
                             ]
+                        },
+                        "keyRanges": {
+                            "why": {
+                                "environment": "open-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 97
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 100
+                                }
+                            }
                         },
                         "object": {
                             "why": {
@@ -133,6 +161,19 @@
                 "schema": true,
                 "builtin": {
                     "name": "fn::open::error",
+                    "nameRange": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 20,
+                            "byte": 36
+                        }
+                    },
                     "argSchema": {
                         "properties": {
                             "why": {
@@ -169,6 +210,21 @@
                             "required": [
                                 "why"
                             ]
+                        },
+                        "keyRanges": {
+                            "why": {
+                                "environment": "open-unknown",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 44
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 10,
+                                    "byte": 47
+                                }
+                            }
                         },
                         "object": {
                             "why": {

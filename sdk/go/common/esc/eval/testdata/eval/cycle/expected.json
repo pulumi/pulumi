@@ -120,6 +120,21 @@
                         "p"
                     ]
                 },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 18
+                        }
+                    }
+                },
                 "object": {
                     "p": {
                         "range": {
@@ -196,6 +211,21 @@
                         "p"
                     ]
                 },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 36
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 6,
+                            "byte": 37
+                        }
+                    }
+                },
                 "object": {
                     "p": {
                         "range": {
@@ -271,6 +301,21 @@
                     "required": [
                         "p"
                     ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 55
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 6,
+                            "byte": 56
+                        }
+                    }
                 },
                 "object": {
                     "p": {

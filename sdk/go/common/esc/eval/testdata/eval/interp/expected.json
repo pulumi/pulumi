@@ -56,6 +56,60 @@
                         "t"
                     ]
                 },
+                "keyRanges": {
+                    "p": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 18
+                        }
+                    },
+                    "q": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 31
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 6,
+                            "byte": 32
+                        }
+                    },
+                    "s": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 42
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 6,
+                            "byte": 43
+                        }
+                    },
+                    "t": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 75
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 6,
+                            "byte": 76
+                        }
+                    }
+                },
                 "object": {
                     "p": {
                         "range": {
@@ -156,6 +210,19 @@
                         },
                         "builtin": {
                             "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "interp",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 47
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 20,
+                                    "byte": 57
+                                }
+                            },
                             "argSchema": true,
                             "arg": {
                                 "range": {
@@ -234,6 +301,19 @@
                         },
                         "builtin": {
                             "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "interp",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 10,
+                                    "byte": 80
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 20,
+                                    "byte": 90
+                                }
+                            },
                             "argSchema": true,
                             "arg": {
                                 "range": {
@@ -260,6 +340,21 @@
                                     "required": [
                                         "password"
                                     ]
+                                },
+                                "keyRanges": {
+                                    "password": {
+                                        "environment": "interp",
+                                        "begin": {
+                                            "line": 6,
+                                            "column": 24,
+                                            "byte": 94
+                                        },
+                                        "end": {
+                                            "line": 6,
+                                            "column": 32,
+                                            "byte": 102
+                                        }
+                                    }
                                 },
                                 "object": {
                                     "password": {
@@ -313,6 +408,21 @@
                     "required": [
                         "p"
                     ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 125
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 6,
+                            "byte": 126
+                        }
+                    }
                 },
                 "object": {
                     "p": {
@@ -427,6 +537,47 @@
                         "b",
                         "s"
                     ]
+                },
+                "keyRanges": {
+                    "a": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 144
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 6,
+                            "byte": 145
+                        }
+                    },
+                    "b": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 14,
+                            "column": 5,
+                            "byte": 210
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 6,
+                            "byte": 211
+                        }
+                    },
+                    "s": {
+                        "environment": "interp",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 224
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 6,
+                            "byte": 225
+                        }
+                    }
                 },
                 "object": {
                     "a": {

@@ -17,6 +17,7 @@ package eval
 import (
 	"fmt"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/ast"
 	"github.com/pulumi/esc/schema"
@@ -51,16 +52,21 @@ func newExpr(path string, repr exprRepr, s *schema.Schema, base *value) *expr {
 	return &expr{path: path, repr: repr, schema: s, base: base}
 }
 
-// defRange returns the source range for the expression. If the expression does not have source information, it
-// returns a range that only refers to the given environment.
-func (x *expr) defRange(environment string) esc.Range {
+// convertRange converts an HCL2 range to an ESC range.
+func convertRange(r *hcl.Range, environment string) esc.Range {
 	rng := esc.Range{Environment: environment}
-	if r := x.repr.syntax().Syntax().Syntax().Range(); r != nil {
+	if r != nil {
 		rng.Environment = r.Filename
 		rng.Begin = esc.Pos{Line: r.Start.Line, Column: r.Start.Column, Byte: r.Start.Byte}
 		rng.End = esc.Pos{Line: r.End.Line, Column: r.End.Column, Byte: r.End.Byte}
 	}
 	return rng
+}
+
+// defRange returns the source range for the expression. If the expression does not have source information, it
+// returns a range that only refers to the given environment.
+func (x *expr) defRange(environment string) esc.Range {
+	return convertRange(x.repr.syntax().Syntax().Syntax().Range(), environment)
 }
 
 func exportAccessor(accessor ast.PropertyAccessor) esc.Accessor {
@@ -144,26 +150,34 @@ func (x *expr) export(environment string) esc.Expr {
 	case *fromBase64Expr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.String().Schema(),
 			Arg:       repr.string.export(environment),
 		}
 	case *fromJSONExpr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.string.export(environment),
 		}
 	case *joinExpr:
+		argRange := convertRange(repr.node.Args().Syntax().Syntax().Range(), environment)
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.Tuple(schema.String(), schema.Array().Items(schema.String())).Schema(),
-			Arg:       esc.Expr{List: []esc.Expr{repr.delimiter.export(environment), repr.values.export(environment)}},
+			Arg: esc.Expr{
+				Range: argRange,
+				List:  []esc.Expr{repr.delimiter.export(environment), repr.values.export(environment)},
+			},
 		}
 	case *openExpr:
 		name := repr.node.Name().Value
 		if name == "fn::open" {
 			ex.Builtin = &esc.BuiltinExpr{
-				Name: name,
+				Name:      name,
+				NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 				ArgSchema: schema.Record(map[string]schema.Builder{
 					"provider": schema.String(),
 					"inputs":   repr.inputSchema,
@@ -178,6 +192,7 @@ func (x *expr) export(environment string) esc.Expr {
 		} else {
 			ex.Builtin = &esc.BuiltinExpr{
 				Name:      name,
+				NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 				ArgSchema: repr.inputSchema,
 				Arg:       repr.inputs.export(environment),
 			}
@@ -185,24 +200,28 @@ func (x *expr) export(environment string) esc.Expr {
 	case *secretExpr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toBase64Expr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.String().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toJSONExpr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
 	case *toStringExpr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
@@ -212,6 +231,11 @@ func (x *expr) export(environment string) esc.Expr {
 			ex.List[i] = el.export(environment)
 		}
 	case *objectExpr:
+		ex.KeyRanges = make(map[string]esc.Range, len(repr.node.Entries))
+		for _, kvp := range repr.node.Entries {
+			ex.KeyRanges[kvp.Key.Value] = convertRange(kvp.Key.Syntax().Syntax().Range(), environment)
+		}
+
 		ex.Object = make(map[string]esc.Expr, len(repr.properties))
 		for k, v := range repr.properties {
 			ex.Object[k] = v.export(environment)

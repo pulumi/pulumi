@@ -230,6 +230,47 @@
                             "foo"
                         ]
                     },
+                    "keyRanges": {
+                        "alpha": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 9,
+                                "column": 5,
+                                "byte": 89
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 10,
+                                "byte": 94
+                            }
+                        },
+                        "baz": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 8,
+                                "column": 5,
+                                "byte": 76
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 8,
+                                "byte": 79
+                            }
+                        },
+                        "foo": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 7,
+                                "column": 5,
+                                "byte": 63
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 8,
+                                "byte": 66
+                            }
+                        }
+                    },
                     "object": {
                         "alpha": {
                             "range": {
@@ -290,6 +331,73 @@
                                 "const": "bar"
                             },
                             "literal": "bar"
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "alpha": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 13,
+                            "column": 5,
+                            "byte": 168
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 10,
+                            "byte": 173
+                        }
+                    },
+                    "beta": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 14,
+                            "column": 5,
+                            "byte": 184
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 9,
+                            "byte": 188
+                        }
+                    },
+                    "goodbye": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 12,
+                            "column": 5,
+                            "byte": 147
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 12,
+                            "byte": 154
+                        }
+                    },
+                    "hello": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 130
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 10,
+                            "byte": 135
+                        }
+                    },
+                    "zed": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 211
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 8,
+                            "byte": 214
                         }
                     }
                 },

@@ -817,6 +817,19 @@
                 },
                 "builtin": {
                     "name": "fn::open::schema",
+                    "nameRange": {
+                        "environment": "schema",
+                        "begin": {
+                            "line": 37,
+                            "column": 5,
+                            "byte": 847
+                        },
+                        "end": {
+                            "line": 37,
+                            "column": 21,
+                            "byte": 863
+                        }
+                    },
                     "argSchema": {
                         "$defs": {
                             "defRecord": {
@@ -1701,6 +1714,19 @@
                 },
                 "builtin": {
                     "name": "fn::open::schema",
+                    "nameRange": {
+                        "environment": "schema",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 21,
+                            "byte": 38
+                        }
+                    },
                     "argSchema": {
                         "$defs": {
                             "defRecord": {
@@ -2241,6 +2267,424 @@
                                 "tuple"
                             ]
                         },
+                        "keyRanges": {
+                            "always": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 22,
+                                    "column": 7,
+                                    "byte": 489
+                                },
+                                "end": {
+                                    "line": 22,
+                                    "column": 13,
+                                    "byte": 495
+                                }
+                            },
+                            "anyOf": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 7,
+                                    "byte": 344
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 12,
+                                    "byte": 349
+                                }
+                            },
+                            "array": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 194
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 12,
+                                    "byte": 199
+                                }
+                            },
+                            "boolean": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 65
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 14,
+                                    "byte": 72
+                                }
+                            },
+                            "const-array": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 19,
+                                    "column": 7,
+                                    "byte": 403
+                                },
+                                "end": {
+                                    "line": 19,
+                                    "column": 18,
+                                    "byte": 414
+                                }
+                            },
+                            "const-object": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 7,
+                                    "byte": 436
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 19,
+                                    "byte": 448
+                                }
+                            },
+                            "dependentReq": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 25,
+                                    "column": 7,
+                                    "byte": 568
+                                },
+                                "end": {
+                                    "line": 25,
+                                    "column": 19,
+                                    "byte": 580
+                                }
+                            },
+                            "double": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 23,
+                                    "column": 7,
+                                    "byte": 506
+                                },
+                                "end": {
+                                    "line": 23,
+                                    "column": 13,
+                                    "byte": 512
+                                }
+                            },
+                            "enum": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 21,
+                                    "column": 7,
+                                    "byte": 473
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 11,
+                                    "byte": 477
+                                }
+                            },
+                            "exclusiveMaximum": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 30,
+                                    "column": 7,
+                                    "byte": 688
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 23,
+                                    "byte": 704
+                                }
+                            },
+                            "exclusiveMinimum": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 28,
+                                    "column": 7,
+                                    "byte": 645
+                                },
+                                "end": {
+                                    "line": 28,
+                                    "column": 23,
+                                    "byte": 661
+                                }
+                            },
+                            "false": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 12,
+                                    "byte": 90
+                                }
+                            },
+                            "hello": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 7,
+                                    "byte": 175
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 12,
+                                    "byte": 180
+                                }
+                            },
+                            "map": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 7,
+                                    "byte": 279
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 10,
+                                    "byte": 282
+                                }
+                            },
+                            "maxLength": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 32,
+                                    "column": 7,
+                                    "byte": 733
+                                },
+                                "end": {
+                                    "line": 32,
+                                    "column": 16,
+                                    "byte": 742
+                                }
+                            },
+                            "maxProperties": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 35,
+                                    "column": 7,
+                                    "byte": 807
+                                },
+                                "end": {
+                                    "line": 35,
+                                    "column": 20,
+                                    "byte": 820
+                                }
+                            },
+                            "maximum": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 7,
+                                    "byte": 671
+                                },
+                                "end": {
+                                    "line": 29,
+                                    "column": 14,
+                                    "byte": 678
+                                }
+                            },
+                            "minLength": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 31,
+                                    "column": 7,
+                                    "byte": 714
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 16,
+                                    "byte": 723
+                                }
+                            },
+                            "minProperties": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 34,
+                                    "column": 7,
+                                    "byte": 773
+                                },
+                                "end": {
+                                    "line": 34,
+                                    "column": 20,
+                                    "byte": 786
+                                }
+                            },
+                            "minimum": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 27,
+                                    "column": 7,
+                                    "byte": 628
+                                },
+                                "end": {
+                                    "line": 27,
+                                    "column": 14,
+                                    "byte": 635
+                                }
+                            },
+                            "multiple": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 26,
+                                    "column": 7,
+                                    "byte": 610
+                                },
+                                "end": {
+                                    "line": 26,
+                                    "column": 15,
+                                    "byte": 618
+                                }
+                            },
+                            "null": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 46
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 11,
+                                    "byte": 50
+                                }
+                            },
+                            "number": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 125
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 13,
+                                    "byte": 131
+                                }
+                            },
+                            "oneOf": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 7,
+                                    "byte": 363
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 12,
+                                    "byte": 368
+                                }
+                            },
+                            "pattern": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 33,
+                                    "column": 7,
+                                    "byte": 752
+                                },
+                                "end": {
+                                    "line": 33,
+                                    "column": 14,
+                                    "byte": 759
+                                }
+                            },
+                            "pi": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 142
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 144
+                                }
+                            },
+                            "record": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 7,
+                                    "byte": 317
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 13,
+                                    "byte": 323
+                                }
+                            },
+                            "ref": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 18,
+                                    "column": 7,
+                                    "byte": 379
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 10,
+                                    "byte": 382
+                                }
+                            },
+                            "string": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 157
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 13,
+                                    "byte": 163
+                                }
+                            },
+                            "triple": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 24,
+                                    "column": 7,
+                                    "byte": 534
+                                },
+                                "end": {
+                                    "line": 24,
+                                    "column": 13,
+                                    "byte": 540
+                                }
+                            },
+                            "true": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 106
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 11,
+                                    "byte": 110
+                                }
+                            },
+                            "tuple": {
+                                "environment": "schema",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 7,
+                                    "byte": 249
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 12,
+                                    "byte": 254
+                                }
+                            }
+                        },
                         "object": {
                             "always": {
                                 "range": {
@@ -2396,6 +2840,21 @@
                                             "required": [
                                                 "some"
                                             ]
+                                        },
+                                        "keyRanges": {
+                                            "some": {
+                                                "environment": "schema",
+                                                "begin": {
+                                                    "line": 12,
+                                                    "column": 28,
+                                                    "byte": 215
+                                                },
+                                                "end": {
+                                                    "line": 12,
+                                                    "column": 32,
+                                                    "byte": 219
+                                                }
+                                            }
                                         },
                                         "object": {
                                             "some": {
@@ -2586,6 +3045,21 @@
                                         "hello"
                                     ]
                                 },
+                                "keyRanges": {
+                                    "hello": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 20,
+                                            "column": 23,
+                                            "byte": 452
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 28,
+                                            "byte": 457
+                                        }
+                                    }
+                                },
                                 "object": {
                                     "hello": {
                                         "range": {
@@ -2639,6 +3113,34 @@
                                         "bar",
                                         "foo"
                                     ]
+                                },
+                                "keyRanges": {
+                                    "bar": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 25,
+                                            "column": 33,
+                                            "byte": 594
+                                        },
+                                        "end": {
+                                            "line": 25,
+                                            "column": 36,
+                                            "byte": 597
+                                        }
+                                    },
+                                    "foo": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 25,
+                                            "column": 23,
+                                            "byte": 584
+                                        },
+                                        "end": {
+                                            "line": 25,
+                                            "column": 26,
+                                            "byte": 587
+                                        }
+                                    }
                                 },
                                 "object": {
                                     "bar": {
@@ -2885,6 +3387,34 @@
                                         "hello"
                                     ]
                                 },
+                                "keyRanges": {
+                                    "blue": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 14,
+                                            "column": 28,
+                                            "byte": 300
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 32,
+                                            "byte": 304
+                                        }
+                                    },
+                                    "hello": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 14,
+                                            "column": 14,
+                                            "byte": 286
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 19,
+                                            "byte": 291
+                                        }
+                                    }
+                                },
                                 "object": {
                                     "blue": {
                                         "range": {
@@ -2974,6 +3504,21 @@
                                         "foo"
                                     ]
                                 },
+                                "keyRanges": {
+                                    "foo": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 35,
+                                            "column": 24,
+                                            "byte": 824
+                                        },
+                                        "end": {
+                                            "line": 35,
+                                            "column": 27,
+                                            "byte": 827
+                                        }
+                                    }
+                                },
                                 "object": {
                                     "foo": {
                                         "range": {
@@ -3062,6 +3607,21 @@
                                     "required": [
                                         "foo"
                                     ]
+                                },
+                                "keyRanges": {
+                                    "foo": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 34,
+                                            "column": 24,
+                                            "byte": 790
+                                        },
+                                        "end": {
+                                            "line": 34,
+                                            "column": 27,
+                                            "byte": 793
+                                        }
+                                    }
                                 },
                                 "object": {
                                     "foo": {
@@ -3250,6 +3810,21 @@
                                         "foo"
                                     ]
                                 },
+                                "keyRanges": {
+                                    "foo": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 15,
+                                            "column": 17,
+                                            "byte": 327
+                                        },
+                                        "end": {
+                                            "line": 15,
+                                            "column": 20,
+                                            "byte": 330
+                                        }
+                                    }
+                                },
                                 "object": {
                                     "foo": {
                                         "range": {
@@ -3298,6 +3873,21 @@
                                     "required": [
                                         "baz"
                                     ]
+                                },
+                                "keyRanges": {
+                                    "baz": {
+                                        "environment": "schema",
+                                        "begin": {
+                                            "line": 18,
+                                            "column": 14,
+                                            "byte": 386
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 17,
+                                            "byte": 389
+                                        }
+                                    }
                                 },
                                 "object": {
                                     "baz": {

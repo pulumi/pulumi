@@ -161,6 +161,34 @@
                         "hello"
                     ]
                 },
+                "keyRanges": {
+                    "goodbye": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 156
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 12,
+                            "byte": 163
+                        }
+                    },
+                    "hello": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 139
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 10,
+                            "byte": 144
+                        }
+                    }
+                },
                 "object": {
                     "goodbye": {
                         "range": {

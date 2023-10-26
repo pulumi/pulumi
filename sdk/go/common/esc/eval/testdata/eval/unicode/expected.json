@@ -27,6 +27,21 @@
                         "hovedstad"
                     ]
                 },
+                "keyRanges": {
+                    "hovedstad": {
+                        "environment": "unicode",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 89
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 14,
+                            "byte": 98
+                        }
+                    }
+                },
                 "object": {
                     "hovedstad": {
                         "range": {

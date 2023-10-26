@@ -73,6 +73,19 @@
                 },
                 "builtin": {
                     "name": "fn::fromBase64",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 41
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 19,
+                            "byte": 55
+                        }
+                    },
                     "argSchema": {
                         "type": "string"
                     },
@@ -172,6 +185,19 @@
                 },
                 "builtin": {
                     "name": "fn::fromJSON",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 85
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 17,
+                            "byte": 97
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -271,6 +297,19 @@
                 },
                 "builtin": {
                     "name": "fn::join",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 13,
+                            "byte": 129
+                        }
+                    },
                     "argSchema": {
                         "prefixItems": [
                             {
@@ -288,15 +327,16 @@
                     },
                     "arg": {
                         "range": {
+                            "environment": "omnibus",
                             "begin": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 9,
+                                "column": 15,
+                                "byte": 131
                             },
                             "end": {
-                                "line": 0,
-                                "column": 0,
-                                "byte": 0
+                                "line": 9,
+                                "column": 32,
+                                "byte": 148
                             }
                         },
                         "list": [
@@ -453,6 +493,21 @@
                             "foo"
                         ]
                     },
+                    "keyRanges": {
+                        "foo": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 20
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 8,
+                                "byte": 23
+                            }
+                        }
+                    },
                     "object": {
                         "foo": {
                             "range": {
@@ -478,6 +533,19 @@
                 },
                 "builtin": {
                     "name": "fn::open::test",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 165
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 19,
+                            "byte": 179
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -529,6 +597,73 @@
                                 "c",
                                 "d"
                             ]
+                        },
+                        "keyRanges": {
+                            "a": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 187
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 8,
+                                    "byte": 188
+                                }
+                            },
+                            "b": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 7,
+                                    "byte": 201
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 8,
+                                    "byte": 202
+                                }
+                            },
+                            "baz": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 7,
+                                    "byte": 246
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 10,
+                                    "byte": 249
+                                }
+                            },
+                            "c": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 7,
+                                    "byte": 215
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 8,
+                                    "byte": 216
+                                }
+                            },
+                            "d": {
+                                "environment": "omnibus",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 7,
+                                    "byte": 227
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 8,
+                                    "byte": 228
+                                }
+                            }
                         },
                         "object": {
                             "a": {
@@ -718,6 +853,19 @@
                 },
                 "builtin": {
                     "name": "fn::open::test",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 27,
+                            "column": 5,
+                            "byte": 418
+                        },
+                        "end": {
+                            "line": 27,
+                            "column": 19,
+                            "byte": 432
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -816,6 +964,19 @@
                 },
                 "builtin": {
                     "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 18,
+                            "column": 5,
+                            "byte": 269
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 15,
+                            "byte": 279
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -858,6 +1019,19 @@
                 },
                 "builtin": {
                     "name": "fn::toBase64",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 21,
+                            "column": 5,
+                            "byte": 311
+                        },
+                        "end": {
+                            "line": 21,
+                            "column": 17,
+                            "byte": 323
+                        }
+                    },
                     "argSchema": {
                         "type": "string"
                     },
@@ -918,6 +1092,19 @@
                 },
                 "builtin": {
                     "name": "fn::toJSON",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 347
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 15,
+                            "byte": 357
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -1015,6 +1202,19 @@
                 },
                 "builtin": {
                     "name": "fn::toString",
+                    "nameRange": {
+                        "environment": "omnibus",
+                        "begin": {
+                            "line": 25,
+                            "column": 5,
+                            "byte": 383
+                        },
+                        "end": {
+                            "line": 25,
+                            "column": 17,
+                            "byte": 395
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {

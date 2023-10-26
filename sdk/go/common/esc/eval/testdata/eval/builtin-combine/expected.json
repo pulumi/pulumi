@@ -53,6 +53,19 @@
                         },
                         "builtin": {
                             "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 9,
+                                    "byte": 107
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 17,
+                                    "byte": 115
+                                }
+                            },
                             "argSchema": {
                                 "prefixItems": [
                                     {
@@ -70,15 +83,16 @@
                             },
                             "arg": {
                                 "range": {
+                                    "environment": "builtin-combine",
                                     "begin": {
-                                        "line": 0,
-                                        "column": 0,
-                                        "byte": 0
+                                        "line": 7,
+                                        "column": 19,
+                                        "byte": 117
                                     },
                                     "end": {
-                                        "line": 0,
-                                        "column": 0,
-                                        "byte": 0
+                                        "line": 7,
+                                        "column": 53,
+                                        "byte": 151
                                     }
                                 },
                                 "list": [
@@ -246,6 +260,19 @@
                         },
                         "builtin": {
                             "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 9,
+                                    "byte": 168
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 180
+                                }
+                            },
                             "argSchema": {
                                 "type": "string"
                             },
@@ -347,6 +374,19 @@
                         },
                         "builtin": {
                             "name": "fn::toJSON",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 218
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 19,
+                                    "byte": 228
+                                }
+                            },
                             "argSchema": true,
                             "arg": {
                                 "range": {
@@ -446,6 +486,19 @@
                         },
                         "builtin": {
                             "name": "fn::toString",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 9,
+                                    "byte": 266
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 278
+                                }
+                            },
                             "argSchema": true,
                             "arg": {
                                 "range": {
@@ -556,6 +609,19 @@
                 },
                 "builtin": {
                     "name": "fn::open::test",
+                    "nameRange": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 19,
+                            "byte": 34
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {
@@ -582,6 +648,21 @@
                             "required": [
                                 "foo"
                             ]
+                        },
+                        "keyRanges": {
+                            "foo": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 42
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 10,
+                                    "byte": 45
+                                }
+                            }
                         },
                         "object": {
                             "foo": {
@@ -628,6 +709,19 @@
                 },
                 "builtin": {
                     "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 5,
+                            "column": 15,
+                            "byte": 65
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 25,
+                            "byte": 75
+                        }
+                    },
                     "argSchema": true,
                     "arg": {
                         "range": {

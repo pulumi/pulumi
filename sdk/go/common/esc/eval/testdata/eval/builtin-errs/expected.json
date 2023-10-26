@@ -384,6 +384,19 @@
                         "schema": true,
                         "builtin": {
                             "name": "fn::open::test",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 9,
+                                    "byte": 41
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 23,
+                                    "byte": 55
+                                }
+                            },
                             "argSchema": true,
                             "arg": {
                                 "range": {
@@ -440,6 +453,19 @@
                         },
                         "builtin": {
                             "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 9,
+                                    "byte": 80
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 17,
+                                    "byte": 88
+                                }
+                            },
                             "argSchema": {
                                 "prefixItems": [
                                     {
@@ -457,15 +483,16 @@
                             },
                             "arg": {
                                 "range": {
+                                    "environment": "builtin-errs",
                                     "begin": {
-                                        "line": 0,
-                                        "column": 0,
-                                        "byte": 0
+                                        "line": 5,
+                                        "column": 19,
+                                        "byte": 90
                                     },
                                     "end": {
-                                        "line": 0,
-                                        "column": 0,
-                                        "byte": 0
+                                        "line": 5,
+                                        "column": 35,
+                                        "byte": 106
                                     }
                                 },
                                 "list": [
@@ -546,6 +573,19 @@
                         },
                         "builtin": {
                             "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 9,
+                                    "byte": 121
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 129
+                                }
+                            },
                             "argSchema": {
                                 "prefixItems": [
                                     {
@@ -563,15 +603,16 @@
                             },
                             "arg": {
                                 "range": {
+                                    "environment": "builtin-errs",
                                     "begin": {
-                                        "line": 0,
-                                        "column": 0,
-                                        "byte": 0
+                                        "line": 6,
+                                        "column": 19,
+                                        "byte": 131
                                     },
                                     "end": {
-                                        "line": 0,
-                                        "column": 0,
-                                        "byte": 0
+                                        "line": 6,
+                                        "column": 36,
+                                        "byte": 148
                                     }
                                 },
                                 "list": [
@@ -682,6 +723,19 @@
                         },
                         "builtin": {
                             "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 9,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 21,
+                                    "byte": 177
+                                }
+                            },
                             "argSchema": {
                                 "type": "string"
                             },
@@ -740,6 +794,19 @@
                         },
                         "builtin": {
                             "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 9,
+                                    "byte": 202
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 214
+                                }
+                            },
                             "argSchema": {
                                 "type": "string"
                             },
@@ -801,6 +868,19 @@
                         },
                         "builtin": {
                             "name": "fn::toJSON",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 238
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 19,
+                                    "byte": 248
+                                }
+                            },
                             "argSchema": true,
                             "arg": {
                                 "range": {
@@ -857,6 +937,19 @@
                         },
                         "builtin": {
                             "name": "fn::toString",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 9,
+                                    "byte": 273
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 285
+                                }
+                            },
                             "argSchema": true,
                             "arg": {
                                 "range": {

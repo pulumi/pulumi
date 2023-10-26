@@ -47,6 +47,21 @@
                     },
                     "literal": "bar"
                 },
+                "keyRanges": {
+                    "bar": {
+                        "environment": "merge-replace",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 37
+                        }
+                    }
+                },
                 "object": {
                     "bar": {
                         "range": {
