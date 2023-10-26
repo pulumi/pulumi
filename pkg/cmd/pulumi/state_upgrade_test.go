@@ -226,7 +226,11 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 	go func() {
 		defer close(donec)
 
-		stacks := []tokens.Name{"foo", "bar", "baz"}
+		stacks := []tokens.StackName{
+			tokens.MustParseStackName("foo"),
+			tokens.MustParseStackName("bar"),
+			tokens.MustParseStackName("baz"),
+		}
 		projects := make([]tokens.Name, len(stacks))
 
 		err := (&stateUpgradeProjectNameWidget{
@@ -307,14 +311,18 @@ func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
 		Stdin:  tty,
 		Stdout: tty,
 		Stderr: iotest.LogWriterPrefixed(t, "[stderr] "),
-	}).Prompt([]tokens.Name{}, []tokens.Name{})
+	}).Prompt([]tokens.StackName{}, []tokens.Name{})
 	require.NoError(t, err)
 }
 
 func TestStateUpgradeProjectNameWidget_notATerminal(t *testing.T) {
 	t.Parallel()
 
-	stacks := []tokens.Name{"foo", "bar", "baz"}
+	stacks := []tokens.StackName{
+		tokens.MustParseStackName("foo"),
+		tokens.MustParseStackName("bar"),
+		tokens.MustParseStackName("baz"),
+	}
 	projects := make([]tokens.Name, len(stacks))
 
 	err := (&stateUpgradeProjectNameWidget{

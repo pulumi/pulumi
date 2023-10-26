@@ -49,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -80,7 +79,7 @@ type UpgradeOptions struct {
 	//
 	// If this function is not specified,
 	// stacks without projects will be skipped during the upgrade.
-	ProjectsForDetachedStacks func(stacks []tokens.Name) (projects []tokens.Name, err error)
+	ProjectsForDetachedStacks func(stacks []tokens.StackName) (projects []tokens.Name, err error)
 }
 
 // Backend extends the base backend interface with specific information about local backends.
@@ -121,7 +120,7 @@ type localBackend struct {
 }
 
 type localBackendReference struct {
-	name    tokens.Name
+	name    tokens.StackName
 	project tokens.Name
 
 	// A thread-safe way to get the current project.
@@ -139,7 +138,7 @@ type localBackendReference struct {
 func (r *localBackendReference) String() string {
 	// If project is blank this is a legacy non-project scoped stack reference, just return the name.
 	if r.project == "" {
-		return string(r.name)
+		return r.name.String()
 	}
 
 	if r.currentProject != nil {
@@ -148,7 +147,7 @@ func (r *localBackendReference) String() string {
 		// we take the current project (if present) into account.
 		// If the project names match, we can elide them.
 		if proj != nil && string(r.project) == string(proj.Name) {
-			return string(r.name)
+			return r.name.String()
 		}
 	}
 
@@ -156,7 +155,7 @@ func (r *localBackendReference) String() string {
 	return fmt.Sprintf("organization/%s/%s", r.project, r.name)
 }
 
-func (r *localBackendReference) Name() tokens.Name {
+func (r *localBackendReference) Name() tokens.StackName {
 	return r.name
 }
 
@@ -355,7 +354,7 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 		return fmt.Errorf("read old references: %w", err)
 	}
 	sort.Slice(olds, func(i, j int) bool {
-		return olds[i].Name() < olds[j].Name()
+		return olds[i].Name().String() < olds[j].Name().String()
 	})
 
 	// There's no limit to the number of stacks we need to upgrade.
@@ -392,7 +391,7 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 	if opts.ProjectsForDetachedStacks != nil {
 		var (
 			// Names of stacks in 'olds' that don't have a project
-			detached []tokens.Name
+			detached []tokens.StackName
 
 			// reverseIdx[i] is the index of detached[i]
 			// in olds and projects.
@@ -700,10 +699,6 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	if err = validation.ValidateStackProperties(stackName.Name().String(), nil); err != nil {
-		return nil, fmt.Errorf("validating stack properties: %w", err)
-	}
-
 	_, err = b.saveStack(ctx, localStackRef, nil, nil)
 	if err != nil {
 		return nil, err
@@ -973,7 +968,6 @@ func (b *localBackend) apply(
 		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
 	}
 
-	stackName := stackRef.FullyQualifiedName()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
@@ -992,7 +986,7 @@ func (b *localBackend) apply(
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go display.ShowEvents(
-		strings.ToLower(actionLabel), kind, stackName.Name(), op.Proj.Name, "",
+		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.

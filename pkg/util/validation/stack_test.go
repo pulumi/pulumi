@@ -9,52 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateStackName(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		title     string
-		stackName string
-		error     string
-	}{
-		{"empty", "", "a stack name may not be empty"},
-		{"valid", "foo", ""},
-		{
-			title:     "slash",
-			stackName: "foo/bar",
-			error: "a stack name may only contain alphanumeric, hyphens, " +
-				"underscores, or periods: invalid character '/'" +
-				" at position 3",
-		},
-		{"long", strings.Repeat("a", 100), ""},
-		{
-			title:     "too-long",
-			stackName: strings.Repeat("a", 101),
-			error:     "a stack name cannot exceed 100 characters",
-		},
-		{
-			title:     "first-char-invalid",
-			stackName: "@stack-name",
-			error: "a stack name may only contain alphanumeric, hyphens, " +
-				"underscores, or periods: invalid character '@' " +
-				"at position 0",
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.title, func(t *testing.T) {
-			t.Parallel()
-			err := ValidateStackName(tt.stackName)
-			if tt.error == "" {
-				assert.NoError(t, err)
-			} else {
-				assert.ErrorContains(t, err, tt.error)
-			}
-		})
-	}
-}
-
 func TestValidateStackTag(t *testing.T) {
 	t.Parallel()
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ func printPermalink(out io.Writer, opts Options, message, permalink string) {
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
 func ShowEvents(
-	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
+	op string, action apitype.UpdateKind, stack tokens.StackName, proj tokens.PackageName,
 	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
 	if opts.EventLogPath != "" {

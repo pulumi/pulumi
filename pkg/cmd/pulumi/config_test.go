@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
 					StringV:             "org/project/name",
-					NameV:               "name",
+					NameV:               tokens.MustParseStackName("name"),
 					ProjectV:            "project",
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
@@ -94,7 +94,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
 					StringV:             "org/project/name",
-					NameV:               "name",
+					NameV:               tokens.MustParseStackName("name"),
 					ProjectV:            "project",
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
