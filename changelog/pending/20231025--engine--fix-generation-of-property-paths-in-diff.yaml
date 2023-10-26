@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix generation of property paths in diff.

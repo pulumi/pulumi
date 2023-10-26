@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Adds a new `pulumi install` command which will install packages and plugins for a project.
