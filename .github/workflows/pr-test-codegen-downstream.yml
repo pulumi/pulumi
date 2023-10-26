@@ -1,0 +1,54 @@
+name: Downstream Codegen Tests
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      pull_request_number:
+        required: true
+        description: "Pull request number"
+        type: string
+  repository_dispatch:
+    types: [ run-codegen-command ]
+  pull_request:
+    paths:
+    - 'pkg/codegen/**'
+    - '!pkg/codegen/docs/**'
+    - '.github/workflows/pr-test-codegen-downstream.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  comment-notification:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'repository_dispatch' }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Update with Result
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            Please view the results of the downstream codegen tests [Here](https://app.slack.com/client/T4PBPMA8J/C052BQ410UA)
+  downstream-test:
+    name: Run terraform bridge upgrade test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger upgrade
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          repository: pulumi/pulumi-terraform-bridge
+          event-type: upgrade-providers-test
+          client-payload: |-
+            {
+               "pulumiVersion": ${{ toJSON(inputs.ref) }}
+            }
