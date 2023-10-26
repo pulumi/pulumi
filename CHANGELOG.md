@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.91.0 (2023-10-25)
+
+
+### Features
+
+- [cli] Adds a new `pulumi install` command which will install packages and plugins for a project.
+  [#13081](https://github.com/pulumi/pulumi/pull/13081)
+
+
+### Bug Fixes
+
+- [engine] Fix generation of property paths in diff.
+  [#14337](https://github.com/pulumi/pulumi/pull/14337)
+
 ## 3.90.1 (2023-10-24)
 
 
