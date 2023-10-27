@@ -619,6 +619,11 @@
   resolved "https://registry.yarnpkg.com/@sinonjs/text-encoding/-/text-encoding-0.7.2.tgz#5981a8db18b56ba38ef0efb7d995b12aa7b51918"
   integrity sha512-sXXKG+uL9IrKqViTtao2Ws6dy0znu9sOaP1di/jKGW1M6VssO8vlpXCQcpZ+jisQ1tTFAC5Jo/EOzFbggBagFQ==
 
+"@types/google-protobuf@^3.15.5":
+  version "3.15.9"
+  resolved "https://registry.yarnpkg.com/@types/google-protobuf/-/google-protobuf-3.15.9.tgz#a983fc4bc35acb2b84a824d2ec8107d084e8603f"
+  integrity sha512-l51aVJnCNNMBkmSUQddSStXinB2qSXqfrmY9zkdcE9sqPzDneQ3BGg/hu7LfeOCUeGHOu+Rly89YhuDhvbmmPw==
+
 "@types/ini@^1.3.31":
   version "1.3.31"
   resolved "https://registry.yarnpkg.com/@types/ini/-/ini-1.3.31.tgz#c78541a187bd88d5c73e990711c9d85214800d1b"

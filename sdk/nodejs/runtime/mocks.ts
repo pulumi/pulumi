@@ -15,9 +15,10 @@
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { getProject, getStack, setMockOptions } from "./settings";
 
+import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+
 const provproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
 /**
  * MockResourceArgs is used to construct a newResource Mock.
@@ -110,7 +111,7 @@ export interface Mocks {
 }
 
 export class MockMonitor {
-    readonly resources = new Map<string, { urn: string; id: string | undefined; state: any }>();
+    readonly resources = new Map<string, { urn: string; id: string | null; state: any }>();
 
     constructor(readonly mocks: Mocks) {}
 
@@ -171,7 +172,7 @@ export class MockMonitor {
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);
 
-            this.resources.set(urn, { urn, id: result.id, state: serializedState });
+            this.resources.set(urn, { urn, id: result.id ?? null, state: serializedState });
 
             const response = new resproto.ReadResourceResponse();
             response.setUrn(urn);
@@ -196,7 +197,7 @@ export class MockMonitor {
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);
 
-            this.resources.set(urn, { urn, id: result.id, state: serializedState });
+            this.resources.set(urn, { urn, id: result.id ?? null, state: serializedState });
 
             const response = new resproto.RegisterResourceResponse();
             response.setUrn(urn);

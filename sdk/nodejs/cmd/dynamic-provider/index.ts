@@ -18,10 +18,11 @@ import * as dynamic from "../../dynamic";
 import * as rpc from "../../runtime/rpc";
 import { version } from "../../version";
 
+import * as anyproto from "google-protobuf/google/protobuf/any_pb";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
+import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+
 const requireFromString = require("require-from-string");
-const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
-const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const provproto = require("../../proto/provider_pb.js");
 const provrpc = require("../../proto/provider_grpc_pb.js");
 const plugproto = require("../../proto/plugin_pb.js");
