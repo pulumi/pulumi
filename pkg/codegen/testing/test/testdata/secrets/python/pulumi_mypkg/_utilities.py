@@ -246,24 +246,5 @@ def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
 
     return (lambda _: lifted_func)
 
-
-def configure(val, cls: type, input: bool):
-    def _apply(v):
-        if isinstance(v, typing.Mapping):
-            def _setter(key, value):
-                v[key] = value
-            cls._configure(_setter, **v)
-        return v
-
-    # Check that cls has a static _configure method. External classes may
-    # not have it if it was generated with older codegen.
-    if hasattr(cls, "_configure"):
-        if isinstance(val, typing.Mapping):
-            return _apply(val)
-        elif input and val is not None and not isinstance(val, cls):
-            return pulumi.Output.from_input(val).apply(_apply)
-
-    return val
-
 def get_plugin_download_url():
 	return None

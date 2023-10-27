@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -26,36 +26,13 @@ class FooArgs:
         :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input['LayeredTypeArgs'] settings: describing things
         """
-        FooArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            backup_kube_client_settings=backup_kube_client_settings,
-            argument=argument,
-            kube_client_settings=kube_client_settings,
-            settings=settings,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             backup_kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
-             argument: Optional[str] = None,
-             kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
-             settings: Optional[pulumi.Input['LayeredTypeArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if backup_kube_client_settings is None and 'backupKubeClientSettings' in kwargs:
-            backup_kube_client_settings = kwargs['backupKubeClientSettings']
-        if backup_kube_client_settings is None:
-            raise TypeError("Missing 'backup_kube_client_settings' argument")
-        if kube_client_settings is None and 'kubeClientSettings' in kwargs:
-            kube_client_settings = kwargs['kubeClientSettings']
-
-        _setter("backup_kube_client_settings", backup_kube_client_settings)
+        pulumi.set(__self__, "backup_kube_client_settings", backup_kube_client_settings)
         if argument is not None:
-            _setter("argument", argument)
+            pulumi.set(__self__, "argument", argument)
         if kube_client_settings is not None:
-            _setter("kube_client_settings", kube_client_settings)
+            pulumi.set(__self__, "kube_client_settings", kube_client_settings)
         if settings is not None:
-            _setter("settings", settings)
+            pulumi.set(__self__, "settings", settings)
 
     @property
     @pulumi.getter(name="backupKubeClientSettings")
@@ -141,10 +118,6 @@ class Foo(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
-            kwargs = kwargs or {}
-            def _setter(key, value):
-                kwargs[key] = value
-            FooArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -164,13 +137,10 @@ class Foo(pulumi.CustomResource):
             __props__ = FooArgs.__new__(FooArgs)
 
             __props__.__dict__["argument"] = argument
-            backup_kube_client_settings = _utilities.configure(backup_kube_client_settings, KubeClientSettingsArgs, True)
             if backup_kube_client_settings is None and not opts.urn:
                 raise TypeError("Missing required property 'backup_kube_client_settings'")
             __props__.__dict__["backup_kube_client_settings"] = backup_kube_client_settings
-            kube_client_settings = _utilities.configure(kube_client_settings, KubeClientSettingsArgs, True)
             __props__.__dict__["kube_client_settings"] = kube_client_settings
-            settings = _utilities.configure(settings, LayeredTypeArgs, True)
             __props__.__dict__["settings"] = settings
             __props__.__dict__["default_kube_client_settings"] = None
         super(Foo, __self__).__init__(

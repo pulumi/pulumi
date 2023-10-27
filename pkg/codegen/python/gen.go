@@ -219,10 +219,6 @@ func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input boo
 }
 
 func (mod *modContext) objectType(t *schema.ObjectType, input bool) string {
-	return "'" + mod.objectClassRef(t, input) + "'"
-}
-
-func (mod *modContext) objectClassRef(t *schema.ObjectType, input bool) string {
 	var prefix string
 	if !input {
 		prefix = "outputs."
@@ -232,7 +228,7 @@ func (mod *modContext) objectClassRef(t *schema.ObjectType, input bool) string {
 
 	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
 		modName, name := mod.modNameAndName(t.PackageReference, t, input)
-		return fmt.Sprintf("%s.%s%s%s", pyPack(t.PackageReference.Name()), modName, prefix, name)
+		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.PackageReference.Name()), modName, prefix, name)
 	}
 
 	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input)
@@ -241,7 +237,7 @@ func (mod *modContext) objectClassRef(t *schema.ObjectType, input bool) string {
 		if input {
 			rootModName = "_root_inputs."
 		}
-		return fmt.Sprintf("%s%s", rootModName, name)
+		return fmt.Sprintf("'%s%s'", rootModName, name)
 	}
 
 	if modName == mod.mod {
@@ -251,7 +247,7 @@ func (mod *modContext) objectClassRef(t *schema.ObjectType, input bool) string {
 		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
 	}
 
-	return fmt.Sprintf("%s%s%s", modName, prefix, name)
+	return fmt.Sprintf("'%s%s%s'", modName, prefix, name)
 }
 
 func (mod *modContext) enumType(enum *schema.EnumType) string {
@@ -394,7 +390,6 @@ func genStandardHeader(w io.Writer, tool string) {
 func typingImports() []string {
 	return []string{
 		"Any",
-		"Callable",
 		"Mapping",
 		"Optional",
 		"Sequence",
@@ -1298,10 +1293,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "        if resource_args is not None:\n")
 	fmt.Fprintf(w, "            __self__._internal_init(resource_name, opts, **resource_args.__dict__)\n")
 	fmt.Fprintf(w, "        else:\n")
-	fmt.Fprintf(w, "            kwargs = kwargs or {}\n")
-	fmt.Fprintf(w, "            def _setter(key, value):\n")
-	fmt.Fprintf(w, "                kwargs[key] = value\n")
-	fmt.Fprintf(w, "            %s._configure(_setter, **kwargs)\n", resourceArgsName)
 	fmt.Fprintf(w, "            __self__._internal_init(resource_name, *args, **kwargs)\n")
 	fmt.Fprintf(w, "\n")
 
@@ -1335,26 +1326,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		pname := InitParamName(prop.Name)
 		var arg interface{}
 		var err error
-
-		unwrapped := prop.Type
-		for {
-			cur := codegen.UnwrapType(unwrapped)
-			if cur == unwrapped {
-				break
-			}
-			unwrapped = cur
-		}
-
-		// Emit logic to configure schema.ObjectType args that have defaults and deprecation messages.
-		if objType, ok := unwrapped.(*schema.ObjectType); ok {
-			expectedObjType := mod.objectClassRef(objType, true)
-			input := "False"
-			if codegen.IsNOptionalInput(prop.Type) {
-				input = "True"
-			}
-			fmt.Fprintf(w, "            %[1]s = _utilities.configure(%[1]s, %s, %s)\n",
-				InitParamName(prop.Name), expectedObjType, input)
-		}
 
 		// Fill in computed defaults for arguments.
 		if prop.DefaultValue != nil {
@@ -1781,12 +1752,11 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if returnType != nil {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
-		fmt.Fprintf(w, "    '%s',\n", name)
-		fmt.Fprintf(w, "    '%s_output',\n", name)
-	} else {
-		fmt.Fprintf(w, "    '%s',\n", name)
 	}
-
+	fmt.Fprintf(w, "    '%s',\n", name)
+	if fun.NeedsOutputVersion() {
+		fmt.Fprintf(w, "    '%s_output',\n", name)
+	}
 	fmt.Fprintf(w, "]\n\n")
 
 	if fun.DeprecationMessage != "" {
@@ -1931,16 +1901,19 @@ func returnTypeObject(fun *schema.Function) *schema.ObjectType {
 // Generates `def ${fn}_output(..) version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
 func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
-	returnType := returnTypeObject(fun)
-
-	if returnType == nil {
-		// do not generate an output version if the function does not return an object
+	if !fun.NeedsOutputVersion() {
 		return
 	}
 
+	returnType := returnTypeObject(fun)
+
 	var retTypeName string
-	originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
-	retTypeName = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
+	if returnType != nil {
+		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
+		retTypeName = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
+	} else {
+		retTypeName = "pulumi.Output[void]"
+	}
 
 	originalName := PyName(tokenToName(fun.Token))
 	outputSuffixedName := fmt.Sprintf("%s_output", originalName)
@@ -2585,50 +2558,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	mod.genTypeDocstring(w, comment, props)
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
-	} else {
-		fmt.Fprintf(w, "        %s._configure(\n", name)
-		fmt.Fprintf(w, "            lambda key, value: pulumi.set(__self__, key, value),\n")
-		for _, prop := range props {
-			pname := PyName(prop.Name)
-			fmt.Fprintf(w, "            %[1]s=%[1]s,\n", pname)
-		}
-		fmt.Fprintf(w, "        )\n")
 	}
-
-	// Define method signature
-	fmt.Fprintf(w, "    @staticmethod\n")
-	fmt.Fprintf(w, "    def _configure(")
-	// This setter allows the caller to explicitly control mutation of arguments.
-	fmt.Fprintf(w, "\n             _setter: Callable[[Any, Any], None],")
-	for _, prop := range props {
-		pname := PyName(prop.Name)
-		// Mark all props as optional as they will be set to None.
-		ty := mod.typeString(codegen.OptionalType(prop), input, false /*acceptMapping*/)
-		fmt.Fprintf(w, "\n             %s: %s = None,", pname, ty)
-	}
-	// Catch ResourceOptions being expanded by `**kwargs`.
-	fmt.Fprintf(w, "\n             opts: Optional[pulumi.ResourceOptions] = None,")
-	fmt.Fprintf(w, "\n             **kwargs):\n")
-	if len(props) == 0 {
-		fmt.Fprintf(w, "        pass\n")
-	}
-
-	// Handle original property names. (i.e. propName -> prop_name)
-	for _, prop := range props {
-		pname := PyName(prop.Name)
-		// Original property name different from python name and could be in the kwargs.
-		if pname != prop.Name {
-			fmt.Fprintf(w, "        if %s is None and '%s' in kwargs:\n", pname, prop.Name)
-			fmt.Fprintf(w, "            %s = kwargs['%s']\n", pname, prop.Name)
-		}
-		// Handle required argument not set.
-		if prop.IsRequired() && prop.DefaultValue == nil {
-			fmt.Fprintf(w, "        if %s is None:\n", pname)
-			fmt.Fprintf(w, `            raise TypeError("Missing '%s' argument")`+"\n", pname)
-		}
-	}
-	fmt.Fprintf(w, "\n")
-
 	for _, prop := range props {
 		pname := PyName(prop.Name)
 		var arg interface{}
@@ -2668,7 +2598,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 			indent = "    "
 		}
 
-		fmt.Fprintf(w, "%s        _setter(\"%s\", %s)\n", indent, pname, arg)
+		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, pname, arg)
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -3508,23 +3438,4 @@ def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
                                             **resolved_args['kwargs']))
 
     return (lambda _: lifted_func)
-
-
-def configure(val, cls: type, input: bool):
-    def _apply(v):
-        if isinstance(v, typing.Mapping):
-            def _setter(key, value):
-                v[key] = value
-            cls._configure(_setter, **v)
-        return v
-
-    # Check that cls has a static _configure method. External classes may
-    # not have it if it was generated with older codegen.
-    if hasattr(cls, "_configure"):
-        if isinstance(val, typing.Mapping):
-            return _apply(val)
-        elif input and val is not None and not isinstance(val, cls):
-            return pulumi.Output.from_input(val).apply(_apply)
-
-    return val
 `

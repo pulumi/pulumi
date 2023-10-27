@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._inputs import *
 import pulumi_random
@@ -21,23 +21,10 @@ class CatArgs:
         """
         The set of arguments for constructing a Cat resource.
         """
-        CatArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            age=age,
-            pet=pet,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             age: Optional[pulumi.Input[int]] = None,
-             pet: Optional[pulumi.Input['PetArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if age is not None:
-            _setter("age", age)
+            pulumi.set(__self__, "age", age)
         if pet is not None:
-            _setter("pet", pet)
+            pulumi.set(__self__, "pet", pet)
 
     @property
     @pulumi.getter
@@ -89,10 +76,6 @@ class Cat(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
-            kwargs = kwargs or {}
-            def _setter(key, value):
-                kwargs[key] = value
-            CatArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -110,7 +93,6 @@ class Cat(pulumi.CustomResource):
             __props__ = CatArgs.__new__(CatArgs)
 
             __props__.__dict__["age"] = age
-            pet = _utilities.configure(pet, PetArgs, True)
             __props__.__dict__["pet"] = pet
             __props__.__dict__["name"] = None
         super(Cat, __self__).__init__(

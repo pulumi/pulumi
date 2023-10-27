@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -25,53 +25,12 @@ class ResourceArgs:
         """
         The set of arguments for constructing a Resource resource.
         """
-        ResourceArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            config=config,
-            config_array=config_array,
-            config_map=config_map,
-            foo=foo,
-            foo_array=foo_array,
-            foo_map=foo_map,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             config: Optional[pulumi.Input['ConfigArgs']] = None,
-             config_array: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigArgs']]]] = None,
-             config_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['ConfigArgs']]]] = None,
-             foo: Optional[pulumi.Input[str]] = None,
-             foo_array: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
-             foo_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if config is None:
-            raise TypeError("Missing 'config' argument")
-        if config_array is None and 'configArray' in kwargs:
-            config_array = kwargs['configArray']
-        if config_array is None:
-            raise TypeError("Missing 'config_array' argument")
-        if config_map is None and 'configMap' in kwargs:
-            config_map = kwargs['configMap']
-        if config_map is None:
-            raise TypeError("Missing 'config_map' argument")
-        if foo is None:
-            raise TypeError("Missing 'foo' argument")
-        if foo_array is None and 'fooArray' in kwargs:
-            foo_array = kwargs['fooArray']
-        if foo_array is None:
-            raise TypeError("Missing 'foo_array' argument")
-        if foo_map is None and 'fooMap' in kwargs:
-            foo_map = kwargs['fooMap']
-        if foo_map is None:
-            raise TypeError("Missing 'foo_map' argument")
-
-        _setter("config", config)
-        _setter("config_array", config_array)
-        _setter("config_map", config_map)
-        _setter("foo", foo)
-        _setter("foo_array", foo_array)
-        _setter("foo_map", foo_map)
+        pulumi.set(__self__, "config", config)
+        pulumi.set(__self__, "config_array", config_array)
+        pulumi.set(__self__, "config_map", config_map)
+        pulumi.set(__self__, "foo", foo)
+        pulumi.set(__self__, "foo_array", foo_array)
+        pulumi.set(__self__, "foo_map", foo_map)
 
     @property
     @pulumi.getter
@@ -163,10 +122,6 @@ class Resource(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
-            kwargs = kwargs or {}
-            def _setter(key, value):
-                kwargs[key] = value
-            ResourceArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -187,7 +142,6 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
-            config = _utilities.configure(config, ConfigArgs, True)
             if config is None and not opts.urn:
                 raise TypeError("Missing required property 'config'")
             __props__.__dict__["config"] = None if config is None else pulumi.Output.secret(config)

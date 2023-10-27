@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -22,42 +22,15 @@ class FooArgs:
                  b: Optional[bool] = None,
                  d: Optional[int] = None,
                  f: Optional[str] = None):
-        FooArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            a=a,
-            c=c,
-            e=e,
-            b=b,
-            d=d,
-            f=f,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             a: Optional[bool] = None,
-             c: Optional[int] = None,
-             e: Optional[str] = None,
-             b: Optional[bool] = None,
-             d: Optional[int] = None,
-             f: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if a is None:
-            raise TypeError("Missing 'a' argument")
-        if c is None:
-            raise TypeError("Missing 'c' argument")
-        if e is None:
-            raise TypeError("Missing 'e' argument")
-
-        _setter("a", a)
-        _setter("c", c)
-        _setter("e", e)
+        pulumi.set(__self__, "a", a)
+        pulumi.set(__self__, "c", c)
+        pulumi.set(__self__, "e", e)
         if b is not None:
-            _setter("b", b)
+            pulumi.set(__self__, "b", b)
         if d is not None:
-            _setter("d", d)
+            pulumi.set(__self__, "d", d)
         if f is not None:
-            _setter("f", f)
+            pulumi.set(__self__, "f", f)
 
     @property
     @pulumi.getter

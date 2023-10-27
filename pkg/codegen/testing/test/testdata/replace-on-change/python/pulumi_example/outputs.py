@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from .cat import Cat
@@ -29,19 +29,8 @@ class Chew(dict):
         """
         A toy for a dog
         """
-        Chew._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            owner=owner,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             owner: Optional['Dog'] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if owner is not None:
-            _setter("owner", owner)
+            pulumi.set(__self__, "owner", owner)
 
     @property
     @pulumi.getter
@@ -61,27 +50,12 @@ class Laser(dict):
         """
         A Toy for a cat
         """
-        Laser._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            animal=animal,
-            batteries=batteries,
-            light=light,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             animal: Optional['Cat'] = None,
-             batteries: Optional[bool] = None,
-             light: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if animal is not None:
-            _setter("animal", animal)
+            pulumi.set(__self__, "animal", animal)
         if batteries is not None:
-            _setter("batteries", batteries)
+            pulumi.set(__self__, "batteries", batteries)
         if light is not None:
-            _setter("light", light)
+            pulumi.set(__self__, "light", light)
 
     @property
     @pulumi.getter
@@ -103,19 +77,8 @@ class Laser(dict):
 class Rec(dict):
     def __init__(__self__, *,
                  rec1: Optional['outputs.Rec'] = None):
-        Rec._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            rec1=rec1,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             rec1: Optional['outputs.Rec'] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if rec1 is not None:
-            _setter("rec1", rec1)
+            pulumi.set(__self__, "rec1", rec1)
 
     @property
     @pulumi.getter
@@ -135,27 +98,12 @@ class Toy(dict):
         """
         This is a toy
         """
-        Toy._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            associated=associated,
-            color=color,
-            wear=wear,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             associated: Optional['outputs.Toy'] = None,
-             color: Optional[str] = None,
-             wear: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if associated is not None:
-            _setter("associated", associated)
+            pulumi.set(__self__, "associated", associated)
         if color is not None:
-            _setter("color", color)
+            pulumi.set(__self__, "color", color)
         if wear is not None:
-            _setter("wear", wear)
+            pulumi.set(__self__, "wear", wear)
 
     @property
     @pulumi.getter

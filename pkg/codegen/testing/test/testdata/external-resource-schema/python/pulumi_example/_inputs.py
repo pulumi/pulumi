@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 import pulumi_random
 
@@ -24,56 +24,17 @@ class PetArgs:
                  name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
                  name_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
                  name_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None):
-        PetArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            required_name=required_name,
-            required_name_array=required_name_array,
-            required_name_map=required_name_map,
-            age=age,
-            name=name,
-            name_array=name_array,
-            name_map=name_map,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             required_name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
-             required_name_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
-             required_name_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None,
-             age: Optional[pulumi.Input[int]] = None,
-             name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
-             name_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
-             name_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if required_name is None and 'requiredName' in kwargs:
-            required_name = kwargs['requiredName']
-        if required_name is None:
-            raise TypeError("Missing 'required_name' argument")
-        if required_name_array is None and 'requiredNameArray' in kwargs:
-            required_name_array = kwargs['requiredNameArray']
-        if required_name_array is None:
-            raise TypeError("Missing 'required_name_array' argument")
-        if required_name_map is None and 'requiredNameMap' in kwargs:
-            required_name_map = kwargs['requiredNameMap']
-        if required_name_map is None:
-            raise TypeError("Missing 'required_name_map' argument")
-        if name_array is None and 'nameArray' in kwargs:
-            name_array = kwargs['nameArray']
-        if name_map is None and 'nameMap' in kwargs:
-            name_map = kwargs['nameMap']
-
-        _setter("required_name", required_name)
-        _setter("required_name_array", required_name_array)
-        _setter("required_name_map", required_name_map)
+        pulumi.set(__self__, "required_name", required_name)
+        pulumi.set(__self__, "required_name_array", required_name_array)
+        pulumi.set(__self__, "required_name_map", required_name_map)
         if age is not None:
-            _setter("age", age)
+            pulumi.set(__self__, "age", age)
         if name is not None:
-            _setter("name", name)
+            pulumi.set(__self__, "name", name)
         if name_array is not None:
-            _setter("name_array", name_array)
+            pulumi.set(__self__, "name_array", name_array)
         if name_map is not None:
-            _setter("name_map", name_map)
+            pulumi.set(__self__, "name_map", name_map)
 
     @property
     @pulumi.getter(name="requiredName")

@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._enums import *
 
@@ -21,34 +21,17 @@ class ContainerArgs:
                  brightness: Optional[pulumi.Input['ContainerBrightness']] = None,
                  color: Optional[pulumi.Input[Union['ContainerColor', str]]] = None,
                  material: Optional[pulumi.Input[str]] = None):
-        ContainerArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            size=size,
-            brightness=brightness,
-            color=color,
-            material=material,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             size: Optional[pulumi.Input['ContainerSize']] = None,
-             brightness: Optional[pulumi.Input['ContainerBrightness']] = None,
-             color: Optional[pulumi.Input[Union['ContainerColor', str]]] = None,
-             material: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if size is None:
             size = 4
-        _setter("size", size)
+        pulumi.set(__self__, "size", size)
         if brightness is None:
             brightness = 1
         if brightness is not None:
-            _setter("brightness", brightness)
+            pulumi.set(__self__, "brightness", brightness)
         if color is not None:
-            _setter("color", color)
+            pulumi.set(__self__, "color", color)
         if material is not None:
-            _setter("material", material)
+            pulumi.set(__self__, "material", material)
 
     @property
     @pulumi.getter

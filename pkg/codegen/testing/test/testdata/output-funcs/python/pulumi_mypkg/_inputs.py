@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -21,20 +21,7 @@ class BastionShareableLink:
         Bastion Shareable Link.
         :param str vm: Reference of the virtual machine resource.
         """
-        BastionShareableLink._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            vm=vm,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             vm: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if vm is None:
-            raise TypeError("Missing 'vm' argument")
-
-        _setter("vm", vm)
+        pulumi.set(__self__, "vm", vm)
 
     @property
     @pulumi.getter
