@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._enums import *
@@ -45,36 +45,9 @@ class AvailabilityInformationResponse(dict):
         :param str disabled_reason: Reason why the product is disabled.
         :param str disabled_reason_message: Message for why the product is disabled.
         """
-        AvailabilityInformationResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            availability_stage=availability_stage,
-            disabled_reason=disabled_reason,
-            disabled_reason_message=disabled_reason_message,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             availability_stage: Optional[str] = None,
-             disabled_reason: Optional[str] = None,
-             disabled_reason_message: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if availability_stage is None and 'availabilityStage' in kwargs:
-            availability_stage = kwargs['availabilityStage']
-        if availability_stage is None:
-            raise TypeError("Missing 'availability_stage' argument")
-        if disabled_reason is None and 'disabledReason' in kwargs:
-            disabled_reason = kwargs['disabledReason']
-        if disabled_reason is None:
-            raise TypeError("Missing 'disabled_reason' argument")
-        if disabled_reason_message is None and 'disabledReasonMessage' in kwargs:
-            disabled_reason_message = kwargs['disabledReasonMessage']
-        if disabled_reason_message is None:
-            raise TypeError("Missing 'disabled_reason_message' argument")
-
-        _setter("availability_stage", availability_stage)
-        _setter("disabled_reason", disabled_reason)
-        _setter("disabled_reason_message", disabled_reason_message)
+        pulumi.set(__self__, "availability_stage", availability_stage)
+        pulumi.set(__self__, "disabled_reason", disabled_reason)
+        pulumi.set(__self__, "disabled_reason_message", disabled_reason_message)
 
     @property
     @pulumi.getter(name="availabilityStage")
@@ -118,39 +91,10 @@ class BillingMeterDetailsResponse(dict):
         :param str metering_type: Represents Metering type (eg one-time or recurrent)
         :param str name: Represents Billing type name
         """
-        BillingMeterDetailsResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            frequency=frequency,
-            meter_details=meter_details,
-            metering_type=metering_type,
-            name=name,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             frequency: Optional[str] = None,
-             meter_details: Optional[Any] = None,
-             metering_type: Optional[str] = None,
-             name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if frequency is None:
-            raise TypeError("Missing 'frequency' argument")
-        if meter_details is None and 'meterDetails' in kwargs:
-            meter_details = kwargs['meterDetails']
-        if meter_details is None:
-            raise TypeError("Missing 'meter_details' argument")
-        if metering_type is None and 'meteringType' in kwargs:
-            metering_type = kwargs['meteringType']
-        if metering_type is None:
-            raise TypeError("Missing 'metering_type' argument")
-        if name is None:
-            raise TypeError("Missing 'name' argument")
-
-        _setter("frequency", frequency)
-        _setter("meter_details", meter_details)
-        _setter("metering_type", metering_type)
-        _setter("name", name)
+        pulumi.set(__self__, "frequency", frequency)
+        pulumi.set(__self__, "meter_details", meter_details)
+        pulumi.set(__self__, "metering_type", metering_type)
+        pulumi.set(__self__, "name", name)
 
     @property
     @pulumi.getter
@@ -212,72 +156,15 @@ class ConfigurationResponse(dict):
         :param Sequence['ImageInformationResponse'] image_information: Image information for the product system.
         :param Sequence['SpecificationResponse'] specifications: Specifications of the configuration
         """
-        ConfigurationResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            availability_information=availability_information,
-            cost_information=cost_information,
-            description=description,
-            dimensions=dimensions,
-            display_name=display_name,
-            filterable_properties=filterable_properties,
-            hierarchy_information=hierarchy_information,
-            image_information=image_information,
-            specifications=specifications,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             availability_information: Optional['outputs.AvailabilityInformationResponse'] = None,
-             cost_information: Optional['outputs.CostInformationResponse'] = None,
-             description: Optional['outputs.DescriptionResponse'] = None,
-             dimensions: Optional['outputs.DimensionsResponse'] = None,
-             display_name: Optional[str] = None,
-             filterable_properties: Optional[Sequence['outputs.FilterablePropertyResponse']] = None,
-             hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
-             image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
-             specifications: Optional[Sequence['outputs.SpecificationResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if availability_information is None and 'availabilityInformation' in kwargs:
-            availability_information = kwargs['availabilityInformation']
-        if availability_information is None:
-            raise TypeError("Missing 'availability_information' argument")
-        if cost_information is None and 'costInformation' in kwargs:
-            cost_information = kwargs['costInformation']
-        if cost_information is None:
-            raise TypeError("Missing 'cost_information' argument")
-        if description is None:
-            raise TypeError("Missing 'description' argument")
-        if dimensions is None:
-            raise TypeError("Missing 'dimensions' argument")
-        if display_name is None and 'displayName' in kwargs:
-            display_name = kwargs['displayName']
-        if display_name is None:
-            raise TypeError("Missing 'display_name' argument")
-        if filterable_properties is None and 'filterableProperties' in kwargs:
-            filterable_properties = kwargs['filterableProperties']
-        if filterable_properties is None:
-            raise TypeError("Missing 'filterable_properties' argument")
-        if hierarchy_information is None and 'hierarchyInformation' in kwargs:
-            hierarchy_information = kwargs['hierarchyInformation']
-        if hierarchy_information is None:
-            raise TypeError("Missing 'hierarchy_information' argument")
-        if image_information is None and 'imageInformation' in kwargs:
-            image_information = kwargs['imageInformation']
-        if image_information is None:
-            raise TypeError("Missing 'image_information' argument")
-        if specifications is None:
-            raise TypeError("Missing 'specifications' argument")
-
-        _setter("availability_information", availability_information)
-        _setter("cost_information", cost_information)
-        _setter("description", description)
-        _setter("dimensions", dimensions)
-        _setter("display_name", display_name)
-        _setter("filterable_properties", filterable_properties)
-        _setter("hierarchy_information", hierarchy_information)
-        _setter("image_information", image_information)
-        _setter("specifications", specifications)
+        pulumi.set(__self__, "availability_information", availability_information)
+        pulumi.set(__self__, "cost_information", cost_information)
+        pulumi.set(__self__, "description", description)
+        pulumi.set(__self__, "dimensions", dimensions)
+        pulumi.set(__self__, "display_name", display_name)
+        pulumi.set(__self__, "filterable_properties", filterable_properties)
+        pulumi.set(__self__, "hierarchy_information", hierarchy_information)
+        pulumi.set(__self__, "image_information", image_information)
+        pulumi.set(__self__, "specifications", specifications)
 
     @property
     @pulumi.getter(name="availabilityInformation")
@@ -365,29 +252,8 @@ class CostInformationResponse(dict):
         :param str billing_info_url: Default url to display billing information
         :param Sequence['BillingMeterDetailsResponse'] billing_meter_details: Details on the various billing aspects for the product system.
         """
-        CostInformationResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            billing_info_url=billing_info_url,
-            billing_meter_details=billing_meter_details,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             billing_info_url: Optional[str] = None,
-             billing_meter_details: Optional[Sequence['outputs.BillingMeterDetailsResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if billing_info_url is None and 'billingInfoUrl' in kwargs:
-            billing_info_url = kwargs['billingInfoUrl']
-        if billing_info_url is None:
-            raise TypeError("Missing 'billing_info_url' argument")
-        if billing_meter_details is None and 'billingMeterDetails' in kwargs:
-            billing_meter_details = kwargs['billingMeterDetails']
-        if billing_meter_details is None:
-            raise TypeError("Missing 'billing_meter_details' argument")
-
-        _setter("billing_info_url", billing_info_url)
-        _setter("billing_meter_details", billing_meter_details)
+        pulumi.set(__self__, "billing_info_url", billing_info_url)
+        pulumi.set(__self__, "billing_meter_details", billing_meter_details)
 
     @property
     @pulumi.getter(name="billingInfoUrl")
@@ -427,51 +293,12 @@ class DescriptionResponse(dict):
         :param str long_description: Long description of the product system.
         :param str short_description: Short description of the product system.
         """
-        DescriptionResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            attributes=attributes,
-            description_type=description_type,
-            keywords=keywords,
-            links=links,
-            long_description=long_description,
-            short_description=short_description,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             attributes: Optional[Sequence[str]] = None,
-             description_type: Optional[str] = None,
-             keywords: Optional[Sequence[str]] = None,
-             links: Optional[Sequence['outputs.LinkResponse']] = None,
-             long_description: Optional[str] = None,
-             short_description: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if attributes is None:
-            raise TypeError("Missing 'attributes' argument")
-        if description_type is None and 'descriptionType' in kwargs:
-            description_type = kwargs['descriptionType']
-        if description_type is None:
-            raise TypeError("Missing 'description_type' argument")
-        if keywords is None:
-            raise TypeError("Missing 'keywords' argument")
-        if links is None:
-            raise TypeError("Missing 'links' argument")
-        if long_description is None and 'longDescription' in kwargs:
-            long_description = kwargs['longDescription']
-        if long_description is None:
-            raise TypeError("Missing 'long_description' argument")
-        if short_description is None and 'shortDescription' in kwargs:
-            short_description = kwargs['shortDescription']
-        if short_description is None:
-            raise TypeError("Missing 'short_description' argument")
-
-        _setter("attributes", attributes)
-        _setter("description_type", description_type)
-        _setter("keywords", keywords)
-        _setter("links", links)
-        _setter("long_description", long_description)
-        _setter("short_description", short_description)
+        pulumi.set(__self__, "attributes", attributes)
+        pulumi.set(__self__, "description_type", description_type)
+        pulumi.set(__self__, "keywords", keywords)
+        pulumi.set(__self__, "links", links)
+        pulumi.set(__self__, "long_description", long_description)
+        pulumi.set(__self__, "short_description", short_description)
 
     @property
     @pulumi.getter
@@ -545,54 +372,13 @@ class DimensionsResponse(dict):
         :param str weight_unit: Unit for the dimensions of weight.
         :param float width: Width of the device.
         """
-        DimensionsResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            depth=depth,
-            height=height,
-            length=length,
-            length_height_unit=length_height_unit,
-            weight=weight,
-            weight_unit=weight_unit,
-            width=width,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             depth: Optional[float] = None,
-             height: Optional[float] = None,
-             length: Optional[float] = None,
-             length_height_unit: Optional[str] = None,
-             weight: Optional[float] = None,
-             weight_unit: Optional[str] = None,
-             width: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if depth is None:
-            raise TypeError("Missing 'depth' argument")
-        if height is None:
-            raise TypeError("Missing 'height' argument")
-        if length is None:
-            raise TypeError("Missing 'length' argument")
-        if length_height_unit is None and 'lengthHeightUnit' in kwargs:
-            length_height_unit = kwargs['lengthHeightUnit']
-        if length_height_unit is None:
-            raise TypeError("Missing 'length_height_unit' argument")
-        if weight is None:
-            raise TypeError("Missing 'weight' argument")
-        if weight_unit is None and 'weightUnit' in kwargs:
-            weight_unit = kwargs['weightUnit']
-        if weight_unit is None:
-            raise TypeError("Missing 'weight_unit' argument")
-        if width is None:
-            raise TypeError("Missing 'width' argument")
-
-        _setter("depth", depth)
-        _setter("height", height)
-        _setter("length", length)
-        _setter("length_height_unit", length_height_unit)
-        _setter("weight", weight)
-        _setter("weight_unit", weight_unit)
-        _setter("width", width)
+        pulumi.set(__self__, "depth", depth)
+        pulumi.set(__self__, "height", height)
+        pulumi.set(__self__, "length", length)
+        pulumi.set(__self__, "length_height_unit", length_height_unit)
+        pulumi.set(__self__, "weight", weight)
+        pulumi.set(__self__, "weight_unit", weight_unit)
+        pulumi.set(__self__, "width", width)
 
     @property
     @pulumi.getter
@@ -664,27 +450,8 @@ class FilterablePropertyResponse(dict):
         :param Sequence[str] supported_values: Values to be filtered.
         :param str type: Type of product filter.
         """
-        FilterablePropertyResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            supported_values=supported_values,
-            type=type,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             supported_values: Optional[Sequence[str]] = None,
-             type: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if supported_values is None and 'supportedValues' in kwargs:
-            supported_values = kwargs['supportedValues']
-        if supported_values is None:
-            raise TypeError("Missing 'supported_values' argument")
-        if type is None:
-            raise TypeError("Missing 'type' argument")
-
-        _setter("supported_values", supported_values)
-        _setter("type", type)
+        pulumi.set(__self__, "supported_values", supported_values)
+        pulumi.set(__self__, "type", type)
 
     @property
     @pulumi.getter(name="supportedValues")
@@ -720,39 +487,14 @@ class HierarchyInformationResponse(dict):
         :param str product_line_name: Represents product line name that uniquely identifies product line
         :param str product_name: Represents product name that uniquely identifies product
         """
-        HierarchyInformationResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            configuration_name=configuration_name,
-            product_family_name=product_family_name,
-            product_line_name=product_line_name,
-            product_name=product_name,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             configuration_name: Optional[str] = None,
-             product_family_name: Optional[str] = None,
-             product_line_name: Optional[str] = None,
-             product_name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if configuration_name is None and 'configurationName' in kwargs:
-            configuration_name = kwargs['configurationName']
-        if product_family_name is None and 'productFamilyName' in kwargs:
-            product_family_name = kwargs['productFamilyName']
-        if product_line_name is None and 'productLineName' in kwargs:
-            product_line_name = kwargs['productLineName']
-        if product_name is None and 'productName' in kwargs:
-            product_name = kwargs['productName']
-
         if configuration_name is not None:
-            _setter("configuration_name", configuration_name)
+            pulumi.set(__self__, "configuration_name", configuration_name)
         if product_family_name is not None:
-            _setter("product_family_name", product_family_name)
+            pulumi.set(__self__, "product_family_name", product_family_name)
         if product_line_name is not None:
-            _setter("product_line_name", product_line_name)
+            pulumi.set(__self__, "product_line_name", product_line_name)
         if product_name is not None:
-            _setter("product_name", product_name)
+            pulumi.set(__self__, "product_name", product_name)
 
     @property
     @pulumi.getter(name="configurationName")
@@ -800,29 +542,8 @@ class ImageInformationResponse(dict):
         :param str image_type: Type of the image
         :param str image_url: Url of the image
         """
-        ImageInformationResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            image_type=image_type,
-            image_url=image_url,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             image_type: Optional[str] = None,
-             image_url: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if image_type is None and 'imageType' in kwargs:
-            image_type = kwargs['imageType']
-        if image_type is None:
-            raise TypeError("Missing 'image_type' argument")
-        if image_url is None and 'imageUrl' in kwargs:
-            image_url = kwargs['imageUrl']
-        if image_url is None:
-            raise TypeError("Missing 'image_url' argument")
-
-        _setter("image_type", image_type)
-        _setter("image_url", image_url)
+        pulumi.set(__self__, "image_type", image_type)
+        pulumi.set(__self__, "image_url", image_url)
 
     @property
     @pulumi.getter(name="imageType")
@@ -854,29 +575,8 @@ class LinkResponse(dict):
         :param str link_type: Type of link
         :param str link_url: Url of the link
         """
-        LinkResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            link_type=link_type,
-            link_url=link_url,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             link_type: Optional[str] = None,
-             link_url: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if link_type is None and 'linkType' in kwargs:
-            link_type = kwargs['linkType']
-        if link_type is None:
-            raise TypeError("Missing 'link_type' argument")
-        if link_url is None and 'linkUrl' in kwargs:
-            link_url = kwargs['linkUrl']
-        if link_url is None:
-            raise TypeError("Missing 'link_url' argument")
-
-        _setter("link_type", link_type)
-        _setter("link_url", link_url)
+        pulumi.set(__self__, "link_type", link_type)
+        pulumi.set(__self__, "link_url", link_url)
 
     @property
     @pulumi.getter(name="linkType")
@@ -913,41 +613,10 @@ class Pav2MeterDetailsResponse(dict):
         :param str meter_guid: Validation status of requested data center and transport.
         :param float multiplier: Billing unit applicable for Pav2 billing
         """
-        Pav2MeterDetailsResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            billing_type=billing_type,
-            charging_type=charging_type,
-            meter_guid=meter_guid,
-            multiplier=multiplier,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             billing_type: Optional[str] = None,
-             charging_type: Optional[str] = None,
-             meter_guid: Optional[str] = None,
-             multiplier: Optional[float] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if billing_type is None and 'billingType' in kwargs:
-            billing_type = kwargs['billingType']
-        if billing_type is None:
-            raise TypeError("Missing 'billing_type' argument")
-        if charging_type is None and 'chargingType' in kwargs:
-            charging_type = kwargs['chargingType']
-        if charging_type is None:
-            raise TypeError("Missing 'charging_type' argument")
-        if meter_guid is None and 'meterGuid' in kwargs:
-            meter_guid = kwargs['meterGuid']
-        if meter_guid is None:
-            raise TypeError("Missing 'meter_guid' argument")
-        if multiplier is None:
-            raise TypeError("Missing 'multiplier' argument")
-
-        _setter("billing_type", 'Pav2')
-        _setter("charging_type", charging_type)
-        _setter("meter_guid", meter_guid)
-        _setter("multiplier", multiplier)
+        pulumi.set(__self__, "billing_type", 'Pav2')
+        pulumi.set(__self__, "charging_type", charging_type)
+        pulumi.set(__self__, "meter_guid", meter_guid)
+        pulumi.set(__self__, "multiplier", multiplier)
 
     @property
     @pulumi.getter(name="billingType")
@@ -1008,69 +677,14 @@ class ProductFamilyResponse(dict):
         :param Sequence['ImageInformationResponse'] image_information: Image information for the product system.
         :param Sequence['ProductLineResponse'] product_lines: List of product lines supported in the product family
         """
-        ProductFamilyResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            availability_information=availability_information,
-            cost_information=cost_information,
-            description=description,
-            display_name=display_name,
-            filterable_properties=filterable_properties,
-            hierarchy_information=hierarchy_information,
-            image_information=image_information,
-            product_lines=product_lines,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             availability_information: Optional['outputs.AvailabilityInformationResponse'] = None,
-             cost_information: Optional['outputs.CostInformationResponse'] = None,
-             description: Optional['outputs.DescriptionResponse'] = None,
-             display_name: Optional[str] = None,
-             filterable_properties: Optional[Sequence['outputs.FilterablePropertyResponse']] = None,
-             hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
-             image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
-             product_lines: Optional[Sequence['outputs.ProductLineResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if availability_information is None and 'availabilityInformation' in kwargs:
-            availability_information = kwargs['availabilityInformation']
-        if availability_information is None:
-            raise TypeError("Missing 'availability_information' argument")
-        if cost_information is None and 'costInformation' in kwargs:
-            cost_information = kwargs['costInformation']
-        if cost_information is None:
-            raise TypeError("Missing 'cost_information' argument")
-        if description is None:
-            raise TypeError("Missing 'description' argument")
-        if display_name is None and 'displayName' in kwargs:
-            display_name = kwargs['displayName']
-        if display_name is None:
-            raise TypeError("Missing 'display_name' argument")
-        if filterable_properties is None and 'filterableProperties' in kwargs:
-            filterable_properties = kwargs['filterableProperties']
-        if filterable_properties is None:
-            raise TypeError("Missing 'filterable_properties' argument")
-        if hierarchy_information is None and 'hierarchyInformation' in kwargs:
-            hierarchy_information = kwargs['hierarchyInformation']
-        if hierarchy_information is None:
-            raise TypeError("Missing 'hierarchy_information' argument")
-        if image_information is None and 'imageInformation' in kwargs:
-            image_information = kwargs['imageInformation']
-        if image_information is None:
-            raise TypeError("Missing 'image_information' argument")
-        if product_lines is None and 'productLines' in kwargs:
-            product_lines = kwargs['productLines']
-        if product_lines is None:
-            raise TypeError("Missing 'product_lines' argument")
-
-        _setter("availability_information", availability_information)
-        _setter("cost_information", cost_information)
-        _setter("description", description)
-        _setter("display_name", display_name)
-        _setter("filterable_properties", filterable_properties)
-        _setter("hierarchy_information", hierarchy_information)
-        _setter("image_information", image_information)
-        _setter("product_lines", product_lines)
+        pulumi.set(__self__, "availability_information", availability_information)
+        pulumi.set(__self__, "cost_information", cost_information)
+        pulumi.set(__self__, "description", description)
+        pulumi.set(__self__, "display_name", display_name)
+        pulumi.set(__self__, "filterable_properties", filterable_properties)
+        pulumi.set(__self__, "hierarchy_information", hierarchy_information)
+        pulumi.set(__self__, "image_information", image_information)
+        pulumi.set(__self__, "product_lines", product_lines)
 
     @property
     @pulumi.getter(name="availabilityInformation")
@@ -1162,67 +776,14 @@ class ProductLineResponse(dict):
         :param Sequence['ImageInformationResponse'] image_information: Image information for the product system.
         :param Sequence['ProductResponse'] products: List of products in the product line
         """
-        ProductLineResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            availability_information=availability_information,
-            cost_information=cost_information,
-            description=description,
-            display_name=display_name,
-            filterable_properties=filterable_properties,
-            hierarchy_information=hierarchy_information,
-            image_information=image_information,
-            products=products,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             availability_information: Optional['outputs.AvailabilityInformationResponse'] = None,
-             cost_information: Optional['outputs.CostInformationResponse'] = None,
-             description: Optional['outputs.DescriptionResponse'] = None,
-             display_name: Optional[str] = None,
-             filterable_properties: Optional[Sequence['outputs.FilterablePropertyResponse']] = None,
-             hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
-             image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
-             products: Optional[Sequence['outputs.ProductResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if availability_information is None and 'availabilityInformation' in kwargs:
-            availability_information = kwargs['availabilityInformation']
-        if availability_information is None:
-            raise TypeError("Missing 'availability_information' argument")
-        if cost_information is None and 'costInformation' in kwargs:
-            cost_information = kwargs['costInformation']
-        if cost_information is None:
-            raise TypeError("Missing 'cost_information' argument")
-        if description is None:
-            raise TypeError("Missing 'description' argument")
-        if display_name is None and 'displayName' in kwargs:
-            display_name = kwargs['displayName']
-        if display_name is None:
-            raise TypeError("Missing 'display_name' argument")
-        if filterable_properties is None and 'filterableProperties' in kwargs:
-            filterable_properties = kwargs['filterableProperties']
-        if filterable_properties is None:
-            raise TypeError("Missing 'filterable_properties' argument")
-        if hierarchy_information is None and 'hierarchyInformation' in kwargs:
-            hierarchy_information = kwargs['hierarchyInformation']
-        if hierarchy_information is None:
-            raise TypeError("Missing 'hierarchy_information' argument")
-        if image_information is None and 'imageInformation' in kwargs:
-            image_information = kwargs['imageInformation']
-        if image_information is None:
-            raise TypeError("Missing 'image_information' argument")
-        if products is None:
-            raise TypeError("Missing 'products' argument")
-
-        _setter("availability_information", availability_information)
-        _setter("cost_information", cost_information)
-        _setter("description", description)
-        _setter("display_name", display_name)
-        _setter("filterable_properties", filterable_properties)
-        _setter("hierarchy_information", hierarchy_information)
-        _setter("image_information", image_information)
-        _setter("products", products)
+        pulumi.set(__self__, "availability_information", availability_information)
+        pulumi.set(__self__, "cost_information", cost_information)
+        pulumi.set(__self__, "description", description)
+        pulumi.set(__self__, "display_name", display_name)
+        pulumi.set(__self__, "filterable_properties", filterable_properties)
+        pulumi.set(__self__, "hierarchy_information", hierarchy_information)
+        pulumi.set(__self__, "image_information", image_information)
+        pulumi.set(__self__, "products", products)
 
     @property
     @pulumi.getter(name="availabilityInformation")
@@ -1314,67 +875,14 @@ class ProductResponse(dict):
         :param 'HierarchyInformationResponse' hierarchy_information: Hierarchy information of a product.
         :param Sequence['ImageInformationResponse'] image_information: Image information for the product system.
         """
-        ProductResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            availability_information=availability_information,
-            configurations=configurations,
-            cost_information=cost_information,
-            description=description,
-            display_name=display_name,
-            filterable_properties=filterable_properties,
-            hierarchy_information=hierarchy_information,
-            image_information=image_information,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             availability_information: Optional['outputs.AvailabilityInformationResponse'] = None,
-             configurations: Optional[Sequence['outputs.ConfigurationResponse']] = None,
-             cost_information: Optional['outputs.CostInformationResponse'] = None,
-             description: Optional['outputs.DescriptionResponse'] = None,
-             display_name: Optional[str] = None,
-             filterable_properties: Optional[Sequence['outputs.FilterablePropertyResponse']] = None,
-             hierarchy_information: Optional['outputs.HierarchyInformationResponse'] = None,
-             image_information: Optional[Sequence['outputs.ImageInformationResponse']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if availability_information is None and 'availabilityInformation' in kwargs:
-            availability_information = kwargs['availabilityInformation']
-        if availability_information is None:
-            raise TypeError("Missing 'availability_information' argument")
-        if configurations is None:
-            raise TypeError("Missing 'configurations' argument")
-        if cost_information is None and 'costInformation' in kwargs:
-            cost_information = kwargs['costInformation']
-        if cost_information is None:
-            raise TypeError("Missing 'cost_information' argument")
-        if description is None:
-            raise TypeError("Missing 'description' argument")
-        if display_name is None and 'displayName' in kwargs:
-            display_name = kwargs['displayName']
-        if display_name is None:
-            raise TypeError("Missing 'display_name' argument")
-        if filterable_properties is None and 'filterableProperties' in kwargs:
-            filterable_properties = kwargs['filterableProperties']
-        if filterable_properties is None:
-            raise TypeError("Missing 'filterable_properties' argument")
-        if hierarchy_information is None and 'hierarchyInformation' in kwargs:
-            hierarchy_information = kwargs['hierarchyInformation']
-        if hierarchy_information is None:
-            raise TypeError("Missing 'hierarchy_information' argument")
-        if image_information is None and 'imageInformation' in kwargs:
-            image_information = kwargs['imageInformation']
-        if image_information is None:
-            raise TypeError("Missing 'image_information' argument")
-
-        _setter("availability_information", availability_information)
-        _setter("configurations", configurations)
-        _setter("cost_information", cost_information)
-        _setter("description", description)
-        _setter("display_name", display_name)
-        _setter("filterable_properties", filterable_properties)
-        _setter("hierarchy_information", hierarchy_information)
-        _setter("image_information", image_information)
+        pulumi.set(__self__, "availability_information", availability_information)
+        pulumi.set(__self__, "configurations", configurations)
+        pulumi.set(__self__, "cost_information", cost_information)
+        pulumi.set(__self__, "description", description)
+        pulumi.set(__self__, "display_name", display_name)
+        pulumi.set(__self__, "filterable_properties", filterable_properties)
+        pulumi.set(__self__, "hierarchy_information", hierarchy_information)
+        pulumi.set(__self__, "image_information", image_information)
 
     @property
     @pulumi.getter(name="availabilityInformation")
@@ -1463,55 +971,12 @@ class PurchaseMeterDetailsResponse(dict):
         :param str sku_id: Sku Id
         :param str term_id: Term Id
         """
-        PurchaseMeterDetailsResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            billing_type=billing_type,
-            charging_type=charging_type,
-            multiplier=multiplier,
-            product_id=product_id,
-            sku_id=sku_id,
-            term_id=term_id,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             billing_type: Optional[str] = None,
-             charging_type: Optional[str] = None,
-             multiplier: Optional[float] = None,
-             product_id: Optional[str] = None,
-             sku_id: Optional[str] = None,
-             term_id: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if billing_type is None and 'billingType' in kwargs:
-            billing_type = kwargs['billingType']
-        if billing_type is None:
-            raise TypeError("Missing 'billing_type' argument")
-        if charging_type is None and 'chargingType' in kwargs:
-            charging_type = kwargs['chargingType']
-        if charging_type is None:
-            raise TypeError("Missing 'charging_type' argument")
-        if multiplier is None:
-            raise TypeError("Missing 'multiplier' argument")
-        if product_id is None and 'productId' in kwargs:
-            product_id = kwargs['productId']
-        if product_id is None:
-            raise TypeError("Missing 'product_id' argument")
-        if sku_id is None and 'skuId' in kwargs:
-            sku_id = kwargs['skuId']
-        if sku_id is None:
-            raise TypeError("Missing 'sku_id' argument")
-        if term_id is None and 'termId' in kwargs:
-            term_id = kwargs['termId']
-        if term_id is None:
-            raise TypeError("Missing 'term_id' argument")
-
-        _setter("billing_type", 'Purchase')
-        _setter("charging_type", charging_type)
-        _setter("multiplier", multiplier)
-        _setter("product_id", product_id)
-        _setter("sku_id", sku_id)
-        _setter("term_id", term_id)
+        pulumi.set(__self__, "billing_type", 'Purchase')
+        pulumi.set(__self__, "charging_type", charging_type)
+        pulumi.set(__self__, "multiplier", multiplier)
+        pulumi.set(__self__, "product_id", product_id)
+        pulumi.set(__self__, "sku_id", sku_id)
+        pulumi.set(__self__, "term_id", term_id)
 
     @property
     @pulumi.getter(name="billingType")
@@ -1576,25 +1041,8 @@ class SpecificationResponse(dict):
         :param str name: Name of the specification
         :param str value: Value of the specification
         """
-        SpecificationResponse._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            name=name,
-            value=value,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             name: Optional[str] = None,
-             value: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if name is None:
-            raise TypeError("Missing 'name' argument")
-        if value is None:
-            raise TypeError("Missing 'value' argument")
-
-        _setter("name", name)
-        _setter("value", value)
+        pulumi.set(__self__, "name", name)
+        pulumi.set(__self__, "value", value)
 
     @property
     @pulumi.getter

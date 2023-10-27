@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from ... import _utilities
 import pulumi_google_native
 
@@ -38,21 +38,8 @@ class NodePoolAutoscaling(dict):
         """
         :param 'pulumi_google_native.container.v1.NodePoolAutoscalingLocationPolicy' location_policy: Location policy used when scaling up a nodepool.
         """
-        NodePoolAutoscaling._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            location_policy=location_policy,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             location_policy: Optional['pulumi_google_native.container.v1.NodePoolAutoscalingLocationPolicy'] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if location_policy is None and 'locationPolicy' in kwargs:
-            location_policy = kwargs['locationPolicy']
-
         if location_policy is not None:
-            _setter("location_policy", location_policy)
+            pulumi.set(__self__, "location_policy", location_policy)
 
     @property
     @pulumi.getter(name="locationPolicy")

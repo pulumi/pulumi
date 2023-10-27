@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
 __all__ = [
@@ -17,19 +17,8 @@ __all__ = [
 class GetPolicyDocumentStatementResult(dict):
     def __init__(__self__, *,
                  actions: Optional[Sequence[str]] = None):
-        GetPolicyDocumentStatementResult._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            actions=actions,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             actions: Optional[Sequence[str]] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if actions is not None:
-            _setter("actions", actions)
+            pulumi.set(__self__, "actions", actions)
 
     @property
     @pulumi.getter

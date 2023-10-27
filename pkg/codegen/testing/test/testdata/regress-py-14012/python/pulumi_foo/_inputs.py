@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -18,25 +18,8 @@ class ProviderCertmanagerArgs:
     def __init__(__self__, *,
                  mtls_cert_pem: pulumi.Input[str],
                  mtls_key_pem: pulumi.Input[str]):
-        ProviderCertmanagerArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            mtls_cert_pem=mtls_cert_pem,
-            mtls_key_pem=mtls_key_pem,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             mtls_cert_pem: Optional[pulumi.Input[str]] = None,
-             mtls_key_pem: Optional[pulumi.Input[str]] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if mtls_cert_pem is None:
-            raise TypeError("Missing 'mtls_cert_pem' argument")
-        if mtls_key_pem is None:
-            raise TypeError("Missing 'mtls_key_pem' argument")
-
-        _setter("mtls_cert_pem", mtls_cert_pem)
-        _setter("mtls_key_pem", mtls_key_pem)
+        pulumi.set(__self__, "mtls_cert_pem", mtls_cert_pem)
+        pulumi.set(__self__, "mtls_key_pem", mtls_key_pem)
 
     @property
     @pulumi.getter

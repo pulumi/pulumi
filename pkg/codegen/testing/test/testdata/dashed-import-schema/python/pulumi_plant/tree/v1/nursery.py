@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from ... import _utilities
 from ._enums import *
 
@@ -22,24 +22,9 @@ class NurseryArgs:
         :param pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]] varieties: The varieties available
         :param pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]] sizes: The sizes of trees available
         """
-        NurseryArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            varieties=varieties,
-            sizes=sizes,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             varieties: Optional[pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]]] = None,
-             sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if varieties is None:
-            raise TypeError("Missing 'varieties' argument")
-
-        _setter("varieties", varieties)
+        pulumi.set(__self__, "varieties", varieties)
         if sizes is not None:
-            _setter("sizes", sizes)
+            pulumi.set(__self__, "sizes", sizes)
 
     @property
     @pulumi.getter
@@ -99,10 +84,6 @@ class Nursery(pulumi.CustomResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
-            kwargs = kwargs or {}
-            def _setter(key, value):
-                kwargs[key] = value
-            NurseryArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,

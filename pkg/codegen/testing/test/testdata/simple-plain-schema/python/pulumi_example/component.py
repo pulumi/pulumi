@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -29,60 +29,23 @@ class ComponentArgs:
         """
         The set of arguments for constructing a Component resource.
         """
-        ComponentArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            a=a,
-            c=c,
-            e=e,
-            b=b,
-            bar=bar,
-            baz=baz,
-            baz_map=baz_map,
-            d=d,
-            f=f,
-            foo=foo,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             a: Optional[bool] = None,
-             c: Optional[int] = None,
-             e: Optional[str] = None,
-             b: Optional[bool] = None,
-             bar: Optional['FooArgs'] = None,
-             baz: Optional[Sequence[pulumi.Input['FooArgs']]] = None,
-             baz_map: Optional[Mapping[str, pulumi.Input['FooArgs']]] = None,
-             d: Optional[int] = None,
-             f: Optional[str] = None,
-             foo: Optional[pulumi.Input['FooArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if a is None:
-            raise TypeError("Missing 'a' argument")
-        if c is None:
-            raise TypeError("Missing 'c' argument")
-        if e is None:
-            raise TypeError("Missing 'e' argument")
-        if baz_map is None and 'bazMap' in kwargs:
-            baz_map = kwargs['bazMap']
-
-        _setter("a", a)
-        _setter("c", c)
-        _setter("e", e)
+        pulumi.set(__self__, "a", a)
+        pulumi.set(__self__, "c", c)
+        pulumi.set(__self__, "e", e)
         if b is not None:
-            _setter("b", b)
+            pulumi.set(__self__, "b", b)
         if bar is not None:
-            _setter("bar", bar)
+            pulumi.set(__self__, "bar", bar)
         if baz is not None:
-            _setter("baz", baz)
+            pulumi.set(__self__, "baz", baz)
         if baz_map is not None:
-            _setter("baz_map", baz_map)
+            pulumi.set(__self__, "baz_map", baz_map)
         if d is not None:
-            _setter("d", d)
+            pulumi.set(__self__, "d", d)
         if f is not None:
-            _setter("f", f)
+            pulumi.set(__self__, "f", f)
         if foo is not None:
-            _setter("foo", foo)
+            pulumi.set(__self__, "foo", foo)
 
     @property
     @pulumi.getter
@@ -214,10 +177,6 @@ class Component(pulumi.ComponentResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
-            kwargs = kwargs or {}
-            def _setter(key, value):
-                kwargs[key] = value
-            ComponentArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -248,7 +207,6 @@ class Component(pulumi.ComponentResource):
                 raise TypeError("Missing required property 'a'")
             __props__.__dict__["a"] = a
             __props__.__dict__["b"] = b
-            bar = _utilities.configure(bar, FooArgs, False)
             __props__.__dict__["bar"] = bar
             __props__.__dict__["baz"] = baz
             __props__.__dict__["baz_map"] = baz_map
@@ -260,7 +218,6 @@ class Component(pulumi.ComponentResource):
                 raise TypeError("Missing required property 'e'")
             __props__.__dict__["e"] = e
             __props__.__dict__["f"] = f
-            foo = _utilities.configure(foo, FooArgs, True)
             __props__.__dict__["foo"] = foo
         super(Component, __self__).__init__(
             'example::Component',

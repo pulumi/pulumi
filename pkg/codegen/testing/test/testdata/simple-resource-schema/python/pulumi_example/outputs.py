@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from .resource import Resource
@@ -22,19 +22,8 @@ __all__ = [
 class ConfigMap(dict):
     def __init__(__self__, *,
                  config: Optional[str] = None):
-        ConfigMap._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            config=config,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             config: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if config is not None:
-            _setter("config", config)
+            pulumi.set(__self__, "config", config)
 
     @property
     @pulumi.getter
@@ -71,37 +60,16 @@ class Object(dict):
         :param Sequence[Sequence['SomeOtherObject']] others: List of lists of other objects
         :param Mapping[str, Sequence['SomeOtherObject']] still_others: Mapping from string to list of some other object
         """
-        Object._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            bar=bar,
-            configs=configs,
-            foo=foo,
-            others=others,
-            still_others=still_others,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             bar: Optional[str] = None,
-             configs: Optional[Sequence['outputs.ConfigMap']] = None,
-             foo: Optional['Resource'] = None,
-             others: Optional[Sequence[Sequence['outputs.SomeOtherObject']]] = None,
-             still_others: Optional[Mapping[str, Sequence['outputs.SomeOtherObject']]] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if still_others is None and 'stillOthers' in kwargs:
-            still_others = kwargs['stillOthers']
-
         if bar is not None:
-            _setter("bar", bar)
+            pulumi.set(__self__, "bar", bar)
         if configs is not None:
-            _setter("configs", configs)
+            pulumi.set(__self__, "configs", configs)
         if foo is not None:
-            _setter("foo", foo)
+            pulumi.set(__self__, "foo", foo)
         if others is not None:
-            _setter("others", others)
+            pulumi.set(__self__, "others", others)
         if still_others is not None:
-            _setter("still_others", still_others)
+            pulumi.set(__self__, "still_others", still_others)
 
     @property
     @pulumi.getter
@@ -140,24 +108,9 @@ class ObjectWithNodeOptionalInputs(dict):
     def __init__(__self__, *,
                  foo: str,
                  bar: Optional[int] = None):
-        ObjectWithNodeOptionalInputs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            foo=foo,
-            bar=bar,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             foo: Optional[str] = None,
-             bar: Optional[int] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if foo is None:
-            raise TypeError("Missing 'foo' argument")
-
-        _setter("foo", foo)
+        pulumi.set(__self__, "foo", foo)
         if bar is not None:
-            _setter("bar", bar)
+            pulumi.set(__self__, "bar", bar)
 
     @property
     @pulumi.getter
@@ -174,19 +127,8 @@ class ObjectWithNodeOptionalInputs(dict):
 class SomeOtherObject(dict):
     def __init__(__self__, *,
                  baz: Optional[str] = None):
-        SomeOtherObject._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            baz=baz,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             baz: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if baz is not None:
-            _setter("baz", baz)
+            pulumi.set(__self__, "baz", baz)
 
     @property
     @pulumi.getter

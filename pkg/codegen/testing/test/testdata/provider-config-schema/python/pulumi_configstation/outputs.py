@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._enums import *
 
@@ -19,23 +19,10 @@ class Child(dict):
     def __init__(__self__, *,
                  age: Optional[int] = None,
                  name: Optional[str] = None):
-        Child._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            age=age,
-            name=name,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             age: Optional[int] = None,
-             name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if age is not None:
-            _setter("age", age)
+            pulumi.set(__self__, "age", age)
         if name is not None:
-            _setter("name", name)
+            pulumi.set(__self__, "name", name)
 
     @property
     @pulumi.getter

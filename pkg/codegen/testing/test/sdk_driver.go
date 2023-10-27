@@ -361,11 +361,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
 		Skip:        allLanguages.Except("python/any"),
 	},
-	{
-		Directory:   "configure-prop-names",
-		Description: "Checks that python _configure handles camelcased and snakecased prop names correctly",
-		Skip:        allLanguages.Except("python/any"),
-	},
 }
 
 var genSDKOnly bool

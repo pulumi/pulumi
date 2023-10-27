@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import crd_k8s_amazonaws_com as _crd_k8s_amazonaws_com
 import pulumi_kubernetes
@@ -21,25 +21,10 @@ class ComponentArgs:
         """
         The set of arguments for constructing a Component resource.
         """
-        ComponentArgs._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            eni_config=eni_config,
-            pod=pod,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]] = None,
-             pod: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if eni_config is None and 'eniConfig' in kwargs:
-            eni_config = kwargs['eniConfig']
-
         if eni_config is not None:
-            _setter("eni_config", eni_config)
+            pulumi.set(__self__, "eni_config", eni_config)
         if pod is not None:
-            _setter("pod", pod)
+            pulumi.set(__self__, "pod", pod)
 
     @property
     @pulumi.getter(name="eniConfig")
@@ -91,10 +76,6 @@ class Component(pulumi.ComponentResource):
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
-            kwargs = kwargs or {}
-            def _setter(key, value):
-                kwargs[key] = value
-            ComponentArgs._configure(_setter, **kwargs)
             __self__._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(__self__,
@@ -114,7 +95,6 @@ class Component(pulumi.ComponentResource):
             __props__ = ComponentArgs.__new__(ComponentArgs)
 
             __props__.__dict__["eni_config"] = eni_config
-            pod = _utilities.configure(pod, pulumi_kubernetes.core.v1.PodArgs, True)
             __props__.__dict__["pod"] = pod
         super(Component, __self__).__init__(
             'foo:index:Component',

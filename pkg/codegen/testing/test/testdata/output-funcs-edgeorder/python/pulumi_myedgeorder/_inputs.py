@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._enums import *
 
@@ -28,28 +28,9 @@ class ConfigurationFilters:
         :param 'HierarchyInformation' hierarchy_information: Product hierarchy information
         :param Sequence['FilterableProperty'] filterable_property: Filters specific to product
         """
-        ConfigurationFilters._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            hierarchy_information=hierarchy_information,
-            filterable_property=filterable_property,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             hierarchy_information: Optional['HierarchyInformation'] = None,
-             filterable_property: Optional[Sequence['FilterableProperty']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if hierarchy_information is None and 'hierarchyInformation' in kwargs:
-            hierarchy_information = kwargs['hierarchyInformation']
-        if hierarchy_information is None:
-            raise TypeError("Missing 'hierarchy_information' argument")
-        if filterable_property is None and 'filterableProperty' in kwargs:
-            filterable_property = kwargs['filterableProperty']
-
-        _setter("hierarchy_information", hierarchy_information)
+        pulumi.set(__self__, "hierarchy_information", hierarchy_information)
         if filterable_property is not None:
-            _setter("filterable_property", filterable_property)
+            pulumi.set(__self__, "filterable_property", filterable_property)
 
     @property
     @pulumi.getter(name="hierarchyInformation")
@@ -88,34 +69,11 @@ class CustomerSubscriptionDetails:
         :param str location_placement_id: Location placement Id of a subscription
         :param Sequence['CustomerSubscriptionRegisteredFeatures'] registered_features: List of registered feature flags for subscription
         """
-        CustomerSubscriptionDetails._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            quota_id=quota_id,
-            location_placement_id=location_placement_id,
-            registered_features=registered_features,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             quota_id: Optional[str] = None,
-             location_placement_id: Optional[str] = None,
-             registered_features: Optional[Sequence['CustomerSubscriptionRegisteredFeatures']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if quota_id is None and 'quotaId' in kwargs:
-            quota_id = kwargs['quotaId']
-        if quota_id is None:
-            raise TypeError("Missing 'quota_id' argument")
-        if location_placement_id is None and 'locationPlacementId' in kwargs:
-            location_placement_id = kwargs['locationPlacementId']
-        if registered_features is None and 'registeredFeatures' in kwargs:
-            registered_features = kwargs['registeredFeatures']
-
-        _setter("quota_id", quota_id)
+        pulumi.set(__self__, "quota_id", quota_id)
         if location_placement_id is not None:
-            _setter("location_placement_id", location_placement_id)
+            pulumi.set(__self__, "location_placement_id", location_placement_id)
         if registered_features is not None:
-            _setter("registered_features", registered_features)
+            pulumi.set(__self__, "registered_features", registered_features)
 
     @property
     @pulumi.getter(name="quotaId")
@@ -164,23 +122,10 @@ class CustomerSubscriptionRegisteredFeatures:
         :param str name: Name of subscription registered feature
         :param str state: State of subscription registered feature
         """
-        CustomerSubscriptionRegisteredFeatures._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            name=name,
-            state=state,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             name: Optional[str] = None,
-             state: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-
         if name is not None:
-            _setter("name", name)
+            pulumi.set(__self__, "name", name)
         if state is not None:
-            _setter("state", state)
+            pulumi.set(__self__, "state", state)
 
     @property
     @pulumi.getter
@@ -217,27 +162,8 @@ class FilterableProperty:
         :param Sequence[str] supported_values: Values to be filtered.
         :param Union[str, 'SupportedFilterTypes'] type: Type of product filter.
         """
-        FilterableProperty._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            supported_values=supported_values,
-            type=type,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             supported_values: Optional[Sequence[str]] = None,
-             type: Optional[Union[str, 'SupportedFilterTypes']] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if supported_values is None and 'supportedValues' in kwargs:
-            supported_values = kwargs['supportedValues']
-        if supported_values is None:
-            raise TypeError("Missing 'supported_values' argument")
-        if type is None:
-            raise TypeError("Missing 'type' argument")
-
-        _setter("supported_values", supported_values)
-        _setter("type", type)
+        pulumi.set(__self__, "supported_values", supported_values)
+        pulumi.set(__self__, "type", type)
 
     @property
     @pulumi.getter(name="supportedValues")
@@ -278,39 +204,14 @@ class HierarchyInformation:
         :param str product_line_name: Represents product line name that uniquely identifies product line
         :param str product_name: Represents product name that uniquely identifies product
         """
-        HierarchyInformation._configure(
-            lambda key, value: pulumi.set(__self__, key, value),
-            configuration_name=configuration_name,
-            product_family_name=product_family_name,
-            product_line_name=product_line_name,
-            product_name=product_name,
-        )
-    @staticmethod
-    def _configure(
-             _setter: Callable[[Any, Any], None],
-             configuration_name: Optional[str] = None,
-             product_family_name: Optional[str] = None,
-             product_line_name: Optional[str] = None,
-             product_name: Optional[str] = None,
-             opts: Optional[pulumi.ResourceOptions] = None,
-             **kwargs):
-        if configuration_name is None and 'configurationName' in kwargs:
-            configuration_name = kwargs['configurationName']
-        if product_family_name is None and 'productFamilyName' in kwargs:
-            product_family_name = kwargs['productFamilyName']
-        if product_line_name is None and 'productLineName' in kwargs:
-            product_line_name = kwargs['productLineName']
-        if product_name is None and 'productName' in kwargs:
-            product_name = kwargs['productName']
-
         if configuration_name is not None:
-            _setter("configuration_name", configuration_name)
+            pulumi.set(__self__, "configuration_name", configuration_name)
         if product_family_name is not None:
-            _setter("product_family_name", product_family_name)
+            pulumi.set(__self__, "product_family_name", product_family_name)
         if product_line_name is not None:
-            _setter("product_line_name", product_line_name)
+            pulumi.set(__self__, "product_line_name", product_line_name)
         if product_name is not None:
-            _setter("product_name", product_name)
+            pulumi.set(__self__, "product_name", product_name)
 
     @property
     @pulumi.getter(name="configurationName")
