@@ -163,6 +163,39 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				}
 			}
 
+			writeTempFile := func(content string) (string, error) {
+				filename, f, err := envcmd.esc.fs.CreateTemp("", "esc-*")
+				if err != nil {
+					return "", err
+				}
+				defer contract.IgnoreClose(f)
+
+				if _, err = f.Write([]byte(content)); err != nil {
+					contract.IgnoreClose(f)
+					rmErr := envcmd.esc.fs.Remove(filename)
+					contract.IgnoreError(rmErr)
+					return "", err
+				}
+
+				return filename, nil
+			}
+			if files, ok := env.Properties["files"].Value.(map[string]esc.Value); ok {
+				for k, v := range files {
+					if strValue, ok := v.Value.(string); ok {
+						file, err := writeTempFile(strValue)
+						if err != nil {
+							return err
+						}
+						defer func() {
+							rmErr := envcmd.esc.fs.Remove(file)
+							contract.IgnoreError(rmErr)
+						}()
+
+						environ = append(environ, fmt.Sprintf("%v=%v", k, file))
+					}
+				}
+			}
+
 			envV := esc.NewValue(env.Properties)
 			for i, v := range args {
 				interp, diags := ast.Interpolate(v)

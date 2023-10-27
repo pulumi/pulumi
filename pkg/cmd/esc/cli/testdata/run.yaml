@@ -3,12 +3,17 @@ run: |
   esc env run -i test dump-env
   esc env run test echo "secret: \${secret}, plain: \${plain}"
   esc env run -i test echo "secret: \${secret}, plain: \${plain}"
+  esc env run test source-file
+  esc env run -i test source-file
 process:
   commands:
     dump-env: |
       echo "secret: $SECRET, plain: $PLAIN"
     echo: |
       echo $*
+    source-file: |
+      source $FILE
+      echo "secret: $F_SECRET, plain: $F_PLAIN"
 environments:
   test-user/test:
     values:
@@ -17,6 +22,10 @@ environments:
       environmentVariables:
         SECRET: ${secret}
         PLAIN: ${plain}
+      files:
+        FILE: |
+          export F_SECRET=${secret}
+          export F_PLAIN=${plain}
 stdout: |
   > esc env run test dump-env
   secret: [secret], plain: plaintext
@@ -26,8 +35,14 @@ stdout: |
   secret: [secret], plain: plaintext
   > esc env run -i test echo secret: ${secret}, plain: ${plain}
   secret: hunter2, plain: plaintext
+  > esc env run test source-file
+  secret: [secret], plain: plaintext
+  > esc env run -i test source-file
+  secret: hunter2, plain: plaintext
 stderr: |
   > esc env run test dump-env
   > esc env run -i test dump-env
   > esc env run test echo secret: ${secret}, plain: ${plain}
   > esc env run -i test echo secret: ${secret}, plain: ${plain}
+  > esc env run test source-file
+  > esc env run -i test source-file
