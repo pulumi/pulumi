@@ -1,0 +1,234 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "missing closing bracket in property access",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 3,
+                    "Column": 7,
+                    "Byte": 36
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 20,
+                    "Byte": 49
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing quote in property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 4,
+                    "Column": 7,
+                    "Byte": 56
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 20,
+                    "Byte": 69
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "unterminated interpolation",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 5,
+                    "Column": 7,
+                    "Byte": 76
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 20,
+                    "Byte": 89
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing bracket in list index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 6,
+                    "Column": 7,
+                    "Byte": 96
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 17,
+                    "Byte": 106
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "invalid list index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 7,
+                    "Column": 7,
+                    "Byte": 113
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 27,
+                    "Byte": 133
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "Property access expressions cannot be empty",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 8,
+                    "Column": 7,
+                    "Byte": 140
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 10,
+                    "Byte": 143
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "the root property must be a string subscript or a name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 9,
+                    "Column": 7,
+                    "Byte": 150
+                },
+                "End": {
+                    "Line": 9,
+                    "Column": 13,
+                    "Byte": 156
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "the root property must be a string subscript or a name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 10,
+                    "Column": 7,
+                    "Byte": 163
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 19,
+                    "Byte": 175
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "the root property must be a string subscript or a name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 11,
+                    "Column": 7,
+                    "Byte": 182
+                },
+                "End": {
+                    "Line": 11,
+                    "Column": 16,
+                    "Byte": 191
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        },
+        {
+            "Severity": 1,
+            "Summary": "the root property must be a string subscript or a name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 12,
+                    "Column": 7,
+                    "Byte": 198
+                },
+                "End": {
+                    "Line": 12,
+                    "Column": 14,
+                    "Byte": 205
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Shown": false
+        }
+    ]
+}

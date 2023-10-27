@@ -16,7 +16,6 @@ package ast
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -72,9 +71,6 @@ type PropertySubscript struct {
 	Index interface{}
 }
 
-// RootTraversalValidation validates a root property access in global scope to avoid recompiling.
-var PropertyNameRegexp = regexp.MustCompile("^[a-zA-Z_$][a-zA-Z0-9_$]*$")
-
 func (p *PropertySubscript) isAccessor() {}
 
 func (p *PropertySubscript) rootName() string {
@@ -125,6 +121,9 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 			// interpolation terminator
 			return access[1:], &PropertyAccess{Accessors: accessors}, nil
 		case '.':
+			if len(accessors) == 0 {
+				return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name", "")}
+			}
 			access = access[1:]
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.
@@ -172,7 +171,14 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 		default:
 			for i := 0; ; i++ {
 				if i == len(access) || access[i] == '.' || access[i] == '[' || access[i] == '}' {
-					accessors, access = append(accessors, &PropertyName{Name: access[:i]}), access[i:]
+					propertyName := access[:i]
+					// Ensure the root property is not an integer
+					if len(accessors) == 0 {
+						if _, err := strconv.ParseInt(propertyName, 10, 0); err == nil {
+							return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name", "")}
+						}
+					}
+					accessors, access = append(accessors, &PropertyName{Name: propertyName}), access[i:]
 					break
 				}
 			}
