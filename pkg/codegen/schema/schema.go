@@ -438,7 +438,7 @@ func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
 		}
 	}
 	for i, e := range err {
-		err[i] = fmt.Errorf("Failed to genereate full `ReplaceOnChanges`: %w", e)
+		err[i] = fmt.Errorf("failed to genereate full `ReplaceOnChanges`: %w", e)
 	}
 	return changes, err
 }
@@ -465,7 +465,7 @@ func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []
 
 				delete(*stack, p.Type.String())
 			} else {
-				err = append(err, fmt.Errorf("Found recursive object %q", p.Name))
+				err = append(err, fmt.Errorf("found recursive object %q", p.Name))
 			}
 		}
 		// We don't want to emit errors where replaceOnChanges is not used.
@@ -1116,11 +1116,6 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		}
 	}
 
-	lang, err := marshalLanguage(r.Language)
-	if err != nil {
-		return ResourceSpec{}, err
-	}
-
 	return ResourceSpec{
 		ObjectTypeSpec:     object,
 		InputProperties:    inputs,
@@ -1130,7 +1125,6 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		DeprecationMessage: r.DeprecationMessage,
 		IsComponent:        r.IsComponent,
 		Methods:            methods,
-		Language:           lang,
 	}, nil
 }
 
@@ -1551,8 +1545,6 @@ type ResourceSpec struct {
 	IsComponent bool `json:"isComponent,omitempty" yaml:"isComponent,omitempty"`
 	// Methods maps method names to functions in this schema.
 	Methods map[string]string `json:"methods,omitempty" yaml:"methods,omitempty"`
-	// Language specifies additional language-specific data about the function.
-	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
 // ReturnTypeSpec is either ObjectTypeSpec or TypeSpec.
