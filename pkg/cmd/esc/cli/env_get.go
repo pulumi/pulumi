@@ -148,7 +148,7 @@ func (get *envGetCommand) showValue(
 	if err != nil {
 		return fmt.Errorf("getting environment: %w", err)
 	}
-	return renderValue(get.env.esc.stdout, env, path, format)
+	return get.env.renderValue(get.env.esc.stdout, env, path, format, true)
 }
 
 func (get *envGetCommand) getEntireEnvironment(

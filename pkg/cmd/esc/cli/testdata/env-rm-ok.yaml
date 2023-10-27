@@ -3,5 +3,6 @@ environments:
   test-user/dup: arbitrary
 stdout: |
   > esc env rm dup -y
+  Environment "test-user/dup" has been removed!
 stderr: |
   > esc env rm dup -y

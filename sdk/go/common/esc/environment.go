@@ -14,7 +14,11 @@
 
 package esc
 
-import "github.com/pulumi/esc/schema"
+import (
+	"encoding/json"
+
+	"github.com/pulumi/esc/schema"
+)
 
 // An Environment contains the result of evaluating an environment definition.
 type Environment struct {
@@ -26,4 +30,61 @@ type Environment struct {
 
 	// Schema contains the schema for Properties.
 	Schema *schema.Schema `json:"schema,omitempty"`
+}
+
+// GetEnvironmentVariables returns any environment variables defined by the environment.
+//
+// Environment variables are any scalar values in the top-level `environmentVariables` property. Boolean and
+// number values are converted to their string representation. The results remain Values in order to retain
+// secret- and unknown-ness.
+func (e *Environment) GetEnvironmentVariables() map[string]Value {
+	obj, ok := e.Properties["environmentVariables"].Value.(map[string]Value)
+	if !ok {
+		return nil
+	}
+
+	var vars map[string]Value
+	for k, v := range obj {
+		switch v.Value.(type) {
+		case nil, bool, json.Number, string:
+			if vars == nil {
+				vars = make(map[string]Value)
+			}
+			str := v.ToString(false)
+			if v.Secret {
+				vars[k] = NewSecret(str)
+			} else {
+				vars[k] = NewValue(str)
+			}
+		}
+	}
+	return vars
+}
+
+// GetTemporaryFiles returns any temporary files defined by the environment.
+//
+// Temporary files are any string values in the top-level `files` property. The key for each file is the name
+// of the environment variable that should hold the actual path to the temporary file once it is written.
+func (e *Environment) GetTemporaryFiles() map[string]Value {
+	obj, ok := e.Properties["files"].Value.(map[string]Value)
+	if !ok {
+		return nil
+	}
+
+	var files map[string]Value
+	for k, v := range obj {
+		switch v.Value.(type) {
+		case nil, bool, json.Number, string:
+			if files == nil {
+				files = make(map[string]Value)
+			}
+			str := v.ToString(false)
+			if v.Secret {
+				files[k] = NewSecret(str)
+			} else {
+				files[k] = NewValue(str)
+			}
+		}
+	}
+	return files
 }

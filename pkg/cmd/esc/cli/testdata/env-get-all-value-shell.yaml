@@ -17,11 +17,20 @@ environments:
       open:
         fn::open::test: echo
       environmentVariables:
+        NULLV: null
+        BOOLEAN: true
+        NUMBER: 3.14
         STRING: ${string}
         OBJECT: {'fn::toJSON': "${object}"}
+      files:
+        FILE: ${string}
 stdout: |
   > esc env get test --value=shell
+  export BOOLEAN="true"
+  export NULLV=""
+  export NUMBER="3.14"
   export OBJECT="{\"hello\":\"world\"}"
   export STRING="esc"
+  export FILE="[unknown]"
 stderr: |
   > esc env get test --value=shell

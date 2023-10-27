@@ -8,7 +8,7 @@ run: |
 process:
   commands:
     dump-env: |
-      echo "secret: $SECRET, plain: $PLAIN"
+      echo "secret: $SECRET, plain: $PLAIN, bool: $BOOL, num: $NUM, file: $FILE, boolFile: $BOOL_FILE, numFile: $NUM_FILE"
     echo: |
       echo $*
     source-file: |
@@ -19,18 +19,24 @@ environments:
     values:
       secret: {"fn::secret": "hunter2"}
       plain: plaintext
+      yup: true
+      pi: 3.14
       environmentVariables:
         SECRET: ${secret}
         PLAIN: ${plain}
+        BOOL: ${yup}
+        NUM: ${pi}
       files:
         FILE: |
           export F_SECRET=${secret}
           export F_PLAIN=${plain}
+        BOOL_FILE: ${yup}
+        NUM_FILE: ${pi}
 stdout: |
   > esc env run test dump-env
-  secret: [secret], plain: plaintext
+  secret: [secret], plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
   > esc env run -i test dump-env
-  secret: hunter2, plain: plaintext
+  secret: hunter2, plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
   > esc env run test echo secret: ${secret}, plain: ${plain}
   secret: [secret], plain: plaintext
   > esc env run -i test echo secret: ${secret}, plain: ${plain}

@@ -59,7 +59,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				}
 
 				msg := fmt.Sprintf("%sEnvironment %q has been removed!%s", colors.SpecAttention, envSlug, colors.Reset)
-				fmt.Println(env.esc.colors.Colorize(msg))
+				fmt.Fprintln(env.esc.stdout, env.esc.colors.Colorize(msg))
 				return nil
 			}
 

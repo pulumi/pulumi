@@ -111,19 +111,23 @@ func (tfs testFS) CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, e
 	if dir == "" {
 		dir = "temp"
 	}
-	name := path.Join(dir, strings.ReplaceAll(pattern, "*", "temp"))
 
-	f := &fstest.MapFile{Mode: 0o600}
-	tfs.MapFS[name] = f
-	return name, &testFile{f: f}, nil
+	for i := 0; ; i++ {
+		name := path.Join(dir, strings.ReplaceAll(pattern, "*", fmt.Sprintf("temp-%v", i)))
+		if _, ok := tfs.MapFS[name]; !ok {
+			f := &fstest.MapFile{Mode: 0o600}
+			tfs.MapFS[name] = f
+			return name, &testFile{f: f}, nil
+		}
+	}
 }
 
 func (tfs testFS) Remove(name string) error {
-	f, err := tfs.Stat(name)
+	_, err := tfs.Stat(name)
 	if err != nil {
 		return err
 	}
-	delete(tfs.MapFS, f.Name())
+	delete(tfs.MapFS, name)
 	return nil
 }
 
