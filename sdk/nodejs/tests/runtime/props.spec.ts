@@ -25,7 +25,7 @@ import {
     secret,
 } from "../../index";
 
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
 class TestComponentResource extends ComponentResource {
     constructor(name: string, opts?: ResourceOptions) {

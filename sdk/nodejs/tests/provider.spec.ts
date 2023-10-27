@@ -17,7 +17,7 @@ import * as assert from "assert";
 import * as pulumi from "..";
 import * as internals from "../provider/internals";
 
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
 class TestResource extends pulumi.CustomResource {
     constructor(name: string, opts?: pulumi.CustomResourceOptions) {

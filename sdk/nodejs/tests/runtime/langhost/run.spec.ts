@@ -20,10 +20,11 @@ import { platformIndependentEOL } from "../../constants";
 
 import * as grpc from "@grpc/grpc-js";
 
+import * as gempty from "google-protobuf/google/protobuf/empty_pb";
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
+
 const enginerpc = require("../../../proto/engine_grpc_pb.js");
 const engineproto = require("../../../proto/engine_pb.js");
-const gempty = require("google-protobuf/google/protobuf/empty_pb.js");
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const langrpc = require("../../../proto/language_grpc_pb.js");
 const langproto = require("../../../proto/language_pb.js");
 const resrpc = require("../../../proto/resource_grpc_pb.js");
@@ -294,7 +295,6 @@ describe("rpc", () => {
                     }
                     default:
                         assert.fail(`Unrecognized resource type ${t}`);
-                        throw new Error();
                 }
                 return {
                     urn: makeUrn(t, name),
@@ -560,7 +560,6 @@ describe("rpc", () => {
                         return;
                     default:
                         assert.fail("unexpected message: " + message);
-                        break;
                 }
             },
         },

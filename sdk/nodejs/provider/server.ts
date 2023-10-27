@@ -19,14 +19,15 @@ import { Provider } from "./provider";
 import * as log from "../log";
 import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
-import * as settings from "../runtime/settings";
-import * as rpc from "../runtime/rpc";
 import * as config from "../runtime/config";
+import * as rpc from "../runtime/rpc";
+import * as settings from "../runtime/settings";
 import { parseArgs } from "./internals";
 
-const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
-const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
+import * as anyproto from "google-protobuf/google/protobuf/any_pb";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
+import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+
 const provproto = require("../proto/provider_pb.js");
 const provrpc = require("../proto/provider_grpc_pb.js");
 const plugproto = require("../proto/plugin_pb.js");
