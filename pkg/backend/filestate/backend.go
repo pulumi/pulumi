@@ -613,6 +613,10 @@ func (b *localBackend) SupportsOrganizations() bool {
 	return false
 }
 
+func (b *localBackend) SupportsProgress() bool {
+	return false
+}
+
 func (b *localBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
 	return b.parseStackReference(stackRef)
 }

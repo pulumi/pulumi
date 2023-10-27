@@ -264,7 +264,7 @@ export interface StackSummary {
     name: string;
     current: boolean;
     lastUpdate?: string;
-    updateInProgress: boolean;
+    updateInProgress?: boolean;
     resourceCount?: number;
     url?: string;
 }

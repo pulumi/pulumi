@@ -617,6 +617,10 @@ func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
 
+func (b *cloudBackend) SupportsProgress() bool {
+	return true
+}
+
 // qualifiedStackReference describes a qualified stack on the Pulumi Service. The Owner or Project
 // may be "" if unspecified, e.g. "pulumi/production" specifies the Owner and Name, but not the
 // Project. We infer the missing data and try to make things work as best we can in ParseStackReference.

@@ -30,7 +30,7 @@ class StackSummary:
 
     name: str
     current: bool
-    update_in_progress: bool
+    update_in_progress: Optional[bool]
     last_update: Optional[datetime]
     resource_count: Optional[int]
     url: Optional[str]
@@ -39,7 +39,7 @@ class StackSummary:
         self,
         name: str,
         current: bool,
-        update_in_progress: bool = False,
+        update_in_progress: Optional[bool] = None,
         last_update: Optional[datetime] = None,
         resource_count: Optional[int] = None,
         url: Optional[str] = None,

@@ -365,7 +365,9 @@ class LocalWorkspace(Workspace):
             stack = StackSummary(
                 name=stack_json["name"],
                 current=stack_json["current"],
-                update_in_progress=stack_json["updateInProgress"],
+                update_in_progress=stack_json["updateInProgress"]
+                if "updateInProgress" in stack_json
+                else None,
                 last_update=datetime.strptime(
                     stack_json["lastUpdate"], _DATETIME_FORMAT
                 )
