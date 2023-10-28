@@ -15,7 +15,7 @@ require (
 	github.com/pulumi/pulumi/sdk/v3 v3.91.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/mod v0.13.0
-	google.golang.org/grpc v1.57.0
+	google.golang.org/grpc v1.57.1
 )
 
 require (
