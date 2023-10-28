@@ -503,7 +503,7 @@ func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
-		return DiffResult{}, nil
+		return DiffResult{}, err
 	}
 
 	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
