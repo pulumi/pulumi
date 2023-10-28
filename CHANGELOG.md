@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.91.1 (2023-10-27)
+
+
+### Bug Fixes
+
+- [cli/display] Fix misleading output in stack ls --json
+  [#14309](https://github.com/pulumi/pulumi/pull/14309)
+
+- [sdkgen/python] Fix regression where constructing ResourceArgs would fail if required arguments were missing.
+  [#14427](https://github.com/pulumi/pulumi/pull/14427)
+
 ## 3.91.0 (2023-10-25)
 
 
