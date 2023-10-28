@@ -438,7 +438,7 @@ func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
 		}
 	}
 	for i, e := range err {
-		err[i] = fmt.Errorf("failed to genereate full `ReplaceOnChanges`: %w", e)
+		err[i] = fmt.Errorf("Failed to genereate full `ReplaceOnChanges`: %w", e)
 	}
 	return changes, err
 }
@@ -465,7 +465,7 @@ func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []
 
 				delete(*stack, p.Type.String())
 			} else {
-				err = append(err, fmt.Errorf("found recursive object %q", p.Name))
+				err = append(err, fmt.Errorf("Found recursive object %q", p.Name))
 			}
 		}
 		// We don't want to emit errors where replaceOnChanges is not used.
