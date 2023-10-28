@@ -369,17 +369,18 @@ func TestPluginDownload(t *testing.T) {
 	t.Run("Custom https URL", func(t *testing.T) {
 		version := semver.MustParse("4.32.0")
 		spec := PluginSpec{
-			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name/v${VERSION}/${OS}/${ARCH}/",
-			Name:              "mockdl",
-			Version:           &version,
-			Kind:              PluginKind("resource"),
+			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/" +
+				"package-name/${NAME}/v${VERSION}/${OS}/${ARCH}/",
+			Name:    "mockdl",
+			Version: &version,
+			Kind:    PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
 				"https://customurl.jfrog.io/artifactory/pulumi-packages/"+
-					"package-name/v4.32.0/darwin/amd64/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
+					"package-name/mockdl/v4.32.0/darwin/amd64/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
