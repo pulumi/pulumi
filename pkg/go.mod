@@ -54,7 +54,7 @@ require (
 	golang.org/x/sync v0.2.0
 	google.golang.org/api v0.126.0
 	google.golang.org/genproto v0.0.0-20230726155614-23370e0ffb3e
-	google.golang.org/grpc v1.57.0
+	google.golang.org/grpc v1.57.1
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.6.1
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
@@ -82,7 +82,7 @@ require (
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/esc v0.5.6
+	github.com/pulumi/esc v0.5.7
 	github.com/pulumi/pulumi-java/pkg v0.9.8
 	github.com/pulumi/pulumi-yaml v1.2.2
 	github.com/segmentio/encoding v0.3.5
