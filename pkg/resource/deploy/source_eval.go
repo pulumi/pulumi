@@ -1207,8 +1207,26 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, rpcerror.New(codes.InvalidArgument, err.Error())
 		}
 	} else {
-		// Component resources may have any format type.
-		t = tokens.Type(req.GetType())
+		// Component resources may have any format type, but we need to disallow $ and :: because we use them
+		// for seperators in URNs.
+		typ := req.GetType()
+		if strings.Contains(typ, "$") {
+			return nil, rpcerror.New(
+				codes.InvalidArgument,
+				fmt.Sprintf("invalid type %q: '$' is not allowed in type names", typ))
+		}
+		if strings.Contains(typ, "::") {
+			return nil, rpcerror.New(
+				codes.InvalidArgument,
+				fmt.Sprintf("invalid type %q: '::' is not allowed in type names", typ))
+		}
+		// It would be good to restrict user defined type tokens to a reasonable identifier like format but
+		// currently we have users with type names using special characters, whitespace, etc. So doing so
+		// would be a breaking change.
+
+		// TODO: We should make the system stricter to make it clear that `tokens.Type` could be an sdk style
+		// `pkg:mod:typ` or a user given type of undetermined format.
+		t = tokens.Type(typ)
 	}
 
 	// We handle updating the providers map to include the providers field of the parent if

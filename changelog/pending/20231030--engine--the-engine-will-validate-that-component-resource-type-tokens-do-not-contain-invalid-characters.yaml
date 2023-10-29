@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: The engine will validate that component resource type tokens do not contain invalid characters.

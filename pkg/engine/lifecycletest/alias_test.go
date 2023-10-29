@@ -1351,7 +1351,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		"foo": "bar",
 	})
 	createA := func(monitor *deploytest.ResourceMonitor) {
-		_, _, _, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
+		_, _, _, err := monitor.RegisterResource("prog:index:myType", "resA", false, deploytest.ResourceOptions{
 			Inputs: insA,
 		})
 		assert.NoError(t, err)
@@ -1374,7 +1374,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
-	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
+	assert.Equal(t, tokens.Type("prog:index:myType"), snap.Resources[0].Type)
 	assert.False(t, snap.Resources[0].Custom)
 
 	// Now update A from a component to custom with an alias
@@ -1383,7 +1383,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 			Inputs: insA,
 			Aliases: []resource.Alias{
 				{
-					Type: "prog::myType",
+					Type: "prog:index:myType",
 				},
 			},
 		})
@@ -1400,7 +1400,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 
 	// Now update A back to a component (with an alias)
 	createA = func(monitor *deploytest.ResourceMonitor) {
-		_, _, _, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
+		_, _, _, err := monitor.RegisterResource("prog:index:myType", "resA", false, deploytest.ResourceOptions{
 			Inputs: insA,
 			Aliases: []resource.Alias{
 				{
@@ -1416,7 +1416,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	assert.NotNil(t, snap)
 	// Back to one because the provider should have been cleaned up as well
 	assert.Len(t, snap.Resources, 1)
-	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
+	assert.Equal(t, tokens.Type("prog:index:myType"), snap.Resources[0].Type)
 	assert.False(t, snap.Resources[0].Custom)
 }
 

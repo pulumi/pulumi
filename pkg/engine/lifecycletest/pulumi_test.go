@@ -477,51 +477,113 @@ func TestConfigPropertyMapMatches(t *testing.T) {
 	p.Run(t, nil)
 }
 
-func TestBadResourceType(t *testing.T) {
+// Requires `err` to be an rpc error with the given code, and returns the error message.
+func requireRPCError(t *testing.T, err error, code codes.Code) string {
+	rpcerr, ok := rpcerror.FromError(err)
+	require.True(t, ok)
+	require.Equal(t, code, rpcerr.Code())
+	return rpcerr.Message()
+}
+
+func TestResourceType(t *testing.T) {
+	// Check that if a user (or SDK) sends a malformed type token we return an error, but that we accept valid
+	// (if unusual) type tokens.
 	t.Parallel()
 
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
-		}),
+	cases := []struct {
+		desc     string
+		custom   bool
+		typ      string
+		assertFn func(err error)
+	}{
+		{
+			desc:   "no module",
+			custom: true,
+			typ:    "very:bad",
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				msg := requireRPCError(t, err, codes.InvalidArgument)
+				assert.Equal(t, "Type 'very:bad' is not a valid type token (must have format '*:*:*')", msg)
+			},
+		},
+		{
+			desc:   "dollar",
+			custom: false,
+			typ:    "my$type",
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				msg := requireRPCError(t, err, codes.InvalidArgument)
+				assert.Equal(t, "invalid type \"my$type\": '$' is not allowed in type names", msg)
+			},
+		},
+		{
+			desc:   "double colon",
+			custom: false,
+			typ:    "my::type",
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				msg := requireRPCError(t, err, codes.InvalidArgument)
+				assert.Equal(t, "invalid type \"my::type\": '::' is not allowed in type names", msg)
+			},
+		},
+		{
+			desc:   "simple",
+			custom: false,
+			typ:    "my:type",
+			assertFn: func(err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			desc:   "complex",
+			custom: false,
+			typ:    "tld.my:fun/type-123(a_b c\\d)",
+			assertFn: func(err error) {
+				assert.NoError(t, err)
+			},
+		},
 	}
 
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
-		_, _, _, err := mon.RegisterResource("very:bad", "resA", true)
-		assert.Error(t, err)
-		rpcerr, ok := rpcerror.FromError(err)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
-		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
+	for _, tt := range cases {
+		tt := tt
+		isCustom := "component"
+		if tt.custom {
+			isCustom = "custom"
+		}
 
-		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "", "", "")
-		assert.Error(t, err)
-		rpcerr, ok = rpcerror.FromError(err)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
-		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
+		t.Run(fmt.Sprintf("%s: %s", isCustom, tt.desc), func(t *testing.T) {
+			t.Parallel()
 
-		// Component resources may have any format type.
-		_, _, _, noErr := mon.RegisterResource("a:component", "resB", false)
-		assert.NoError(t, noErr)
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{}, nil
+				}),
+			}
 
-		_, _, _, noErr = mon.RegisterResource("singlename", "resC", false)
-		assert.NoError(t, noErr)
+			programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _, _, err := monitor.RegisterResource(tokens.Type(tt.typ), "res", tt.custom)
+				tt.assertFn(err)
 
-		return err
-	})
+				if tt.custom {
+					_, _, err = monitor.ReadResource(tokens.Type(tt.typ), "res", "someId", "", resource.PropertyMap{}, "", "", "")
+					tt.assertFn(err)
+				}
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
-		Steps: []TestStep{{
-			Op:            Update,
-			ExpectFailure: true,
-			SkipPreview:   true,
-		}},
+				return nil
+			})
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+			p := &TestPlan{
+				Options: TestUpdateOptions{HostF: hostF},
+			}
+
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+			assert.NoError(t, err)
+			assert.NotNil(t, snap)
+		})
 	}
-
-	p.Run(t, nil)
 }
 
 // Tests that provider cancellation occurs as expected.
