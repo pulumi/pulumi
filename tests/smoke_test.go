@@ -59,8 +59,11 @@ func TestLanguageNewSmoke(t *testing.T) {
 }
 
 // Quick sanity tests that YAML convert works.
+//
+//nolint:paralleltest // sets envvars
 func TestYamlConvertSmoke(t *testing.T) {
-	t.Parallel()
+	// make sure we can download the yaml converter plugin
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
