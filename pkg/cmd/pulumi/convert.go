@@ -100,7 +100,16 @@ func newConvertCmd() *cobra.Command {
 		Short: "Convert Pulumi programs from a supported source program into other supported languages",
 		Long: "Convert Pulumi programs from a supported source program into other supported languages.\n" +
 			"\n" +
-			"The source program to convert will default to the current working directory.\n",
+			"The source program to convert will default to the current working directory.\n" +
+			"\n" +
+			"Valid source languages: yaml, terraform\n" +
+			"\n" +
+			"Valid target languages: typescript, python, dotnet, go, java, yaml"
+			"\n" +
+			"Example command usage:"
+			"\n" +
+			"    pulumi convert --from yaml --language java --out .\n" +
+			"\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
