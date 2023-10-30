@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: ci
+  description: Bump homebrew using pulumi's fork instead of pulumi-bot's

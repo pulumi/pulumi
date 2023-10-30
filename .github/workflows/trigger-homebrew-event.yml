@@ -18,6 +18,7 @@ jobs:
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "${GITHUB_PATH}"
       - uses: dawidd6/action-homebrew-bump-formula@v3
         with:
+          org: pulumi
           token: ${{secrets.PULUMI_BOT_TOKEN}}
           formula: pulumi
           tag: v${{env.VERSION}}
