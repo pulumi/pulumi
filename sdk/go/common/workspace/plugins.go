@@ -538,9 +538,10 @@ func (source *httpSource) GetLatestVersion(
 	return nil, errors.New("GetLatestVersion is not supported for plugins from http sources")
 }
 
-func interpolateURL(serverURL string, version semver.Version, os, arch string) string {
-	// Expectation is the URL is already encoded, so we need to encode the {}'s in the replacement strings.
+func interpolateURL(serverURL string, name string, version semver.Version, os, arch string) string {
+	// Expectation is the URL is already escaped, so we need to escape the {}'s in the replacement strings.
 	replacer := strings.NewReplacer(
+		"$%7BNAME%7D", url.QueryEscape(name),
 		"$%7BVERSION%7D", url.QueryEscape(version.String()),
 		"$%7BOS%7D", url.QueryEscape(os),
 		"$%7BARCH%7D", url.QueryEscape(arch))
@@ -551,7 +552,7 @@ func (source *httpSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
-	serverURL := interpolateURL(source.url, version, opSy, arch)
+	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 
