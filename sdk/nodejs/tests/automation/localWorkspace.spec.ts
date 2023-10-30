@@ -1026,6 +1026,9 @@ describe("LocalWorkspace", () => {
                         runtime: "nodejs",
                         backend: { url: "file://~" },
                     },
+                    envVars: {
+                        PULUMI_CONFIG_PASSPHRASE: "test",
+                    },
                 },
             );
             await stack.up();
