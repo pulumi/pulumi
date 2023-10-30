@@ -106,10 +106,9 @@ func newConvertCmd() *cobra.Command {
 			"\n" +
 			"Valid target languages: typescript, python, dotnet, go, java, yaml"
 			"\n" +
-			"Example command usage:"
+			"Example command usage:" +
 			"\n" +
-			"    pulumi convert --from yaml --language java --out .\n" +
-			"\n",
+			"    pulumi convert --from yaml --language java --out .\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
