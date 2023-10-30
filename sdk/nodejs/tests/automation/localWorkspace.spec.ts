@@ -924,6 +924,27 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stackName);
         }
     });
+    it(`runs an inline program that exits gracefully`, async () => {
+        const program = async () => {
+            // The Promise.resolve() line causes this to not hang the NodeJS process.
+            // It's likely due to a bug in @grpc/grpc-js.
+            Promise.resolve();
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up
+        await assert.doesNotReject(stack.up());
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`runs an inline program that rejects a promise and exits gracefully`, async () => {
         const program = async () => {
             Promise.reject(new Error());
