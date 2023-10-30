@@ -108,7 +108,7 @@ func newConvertCmd() *cobra.Command {
 			"\n" +
 			"Example command usage:" +
 			"\n" +
-			"    pulumi convert --from yaml --language java --out .\n",
+			"    pulumi convert --from yaml --language java --out . \n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
