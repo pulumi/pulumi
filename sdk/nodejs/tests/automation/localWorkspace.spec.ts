@@ -26,6 +26,7 @@ import {
     Stack,
     parseAndValidatePulumiVersion,
 } from "../../automation";
+import { AssetArchive } from "../../asset";
 import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
@@ -1007,6 +1008,28 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(Object.keys(config).length, 20);
             await stack.workspace.removeStack(stacks[i]);
         }
+    });
+    it(`doesn't hang on AssetArchive`, async () => {
+        await (async () => {
+            const pulumiProgram = async () => {
+                new AssetArchive({});
+            };
+            const stack = await LocalWorkspace.createOrSelectStack(
+                {
+                    program: pulumiProgram,
+                    projectName: "auto-hang-test",
+                    stackName: "test",
+                },
+                {
+                    projectSettings: {
+                        name: "auto-hang-test",
+                        runtime: "nodejs",
+                        backend: { url: "file://~" },
+                    },
+                },
+            );
+            await stack.up();
+        })();
     });
 });
 
