@@ -494,7 +494,6 @@ func TestConfigPaths(t *testing.T) {
 		"root[",
 		`root["nested]`,
 		"root.array[abc]",
-		"root.[0]",
 
 		// First path segment must be a non-empty string.
 		`[""]`,

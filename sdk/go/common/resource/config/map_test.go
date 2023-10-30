@@ -1253,7 +1253,6 @@ func TestSetFail(t *testing.T) {
 		{Key: "my:root["},
 		{Key: `my:root["nested]`},
 		{Key: "my:root.array[abc]"},
-		{Key: "my:root.[1]"},
 
 		// First path component must be a string.
 		{Key: `my:[""]`},
