@@ -7,16 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
-	"strconv"
 	"time"
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 )
 
 func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
@@ -118,7 +114,7 @@ func (env *envCommand) renderValue(
 		enc.SetIndent("", "  ")
 		return enc.Encode(val)
 	case "dotenv":
-		_, environ, _, err := env.prepareEnvironment(e, prepareOptions{pretend: pretend, quote: true})
+		_, environ, _, err := env.prepareEnvironment(e, PrepareOptions{Pretend: pretend, Quote: true})
 		if err != nil {
 			return err
 		}
@@ -127,7 +123,7 @@ func (env *envCommand) renderValue(
 		}
 		return nil
 	case "shell":
-		_, environ, _, err := env.prepareEnvironment(e, prepareOptions{pretend: pretend, quote: true})
+		_, environ, _, err := env.prepareEnvironment(e, PrepareOptions{Pretend: pretend, Quote: true})
 		if err != nil {
 			return err
 		}
@@ -145,98 +141,15 @@ func (env *envCommand) renderValue(
 
 }
 
-func getEnvironmentVariables(env *esc.Environment, quote bool) (environ, secrets []string) {
-	vars := env.GetEnvironmentVariables()
-	keys := maps.Keys(vars)
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		v := vars[k]
-		s := v.Value.(string)
-
-		if v.Secret {
-			secrets = append(secrets, s)
-		}
-		if quote {
-			s = strconv.Quote(s)
-		}
-		environ = append(environ, fmt.Sprintf("%v=%v", k, s))
-	}
-	return environ, secrets
-}
-
-func (env *envCommand) createTemporaryFile(content []byte) (string, error) {
-	filename, f, err := env.esc.fs.CreateTemp("", "esc-*")
-	if err != nil {
-		return "", err
-	}
-	defer contract.IgnoreClose(f)
-
-	if _, err = f.Write(content); err != nil {
-		contract.IgnoreClose(f)
-		rmErr := env.esc.fs.Remove(filename)
-		contract.IgnoreError(rmErr)
-		return "", err
-	}
-	return filename, nil
-}
-
-func (env *envCommand) createTemporaryFiles(e *esc.Environment, opts prepareOptions) (paths, environ, secrets []string, err error) {
-	files := e.GetTemporaryFiles()
-	keys := maps.Keys(files)
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		v := files[k]
-		s := v.Value.(string)
-
-		if v.Secret {
-			secrets = append(secrets, s)
-		}
-
-		path := "[unknown]"
-		if !opts.pretend {
-			path, err = env.createTemporaryFile([]byte(s))
-			if err != nil {
-				env.removeTemporaryFiles(paths)
-				return nil, nil, nil, err
-			}
-			paths = append(paths, path)
-		}
-		if opts.quote {
-			path = strconv.Quote(path)
-		}
-		environ = append(environ, fmt.Sprintf("%v=%v", k, path))
-	}
-	return paths, environ, secrets, nil
+// prepareEnvironment prepares the envvar and temporary file projections for an environment. Returns the paths to
+// temporary files, environment variable pairs, and secret values.
+func (env *envCommand) prepareEnvironment(e *esc.Environment, opts PrepareOptions) (files, environ, secrets []string, err error) {
+	opts.fs = env.esc.fs
+	return PrepareEnvironment(e, &opts)
 }
 
 func (env *envCommand) removeTemporaryFiles(paths []string) {
-	for _, path := range paths {
-		err := env.esc.fs.Remove(path)
-		contract.IgnoreError(err)
-	}
-}
-
-// prepareOptions contains options for prepareEnvironment.
-type prepareOptions struct {
-	quote   bool // True to quote environment variable values
-	pretend bool // True to skip actually writing temporary files
-}
-
-// prepareEnvironment prepares the envvar and temporary file projections for an environment. Returns the paths to
-// temporary files, environment variable pairs, and secret values.
-func (env *envCommand) prepareEnvironment(e *esc.Environment, opts prepareOptions) (files, environ, secrets []string, err error) {
-	envVars, envSecrets := getEnvironmentVariables(e, opts.quote)
-
-	filePaths, fileVars, fileSecrets, err := env.createTemporaryFiles(e, opts)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating temporary files: %v", err)
-	}
-
-	environ = append(envVars, fileVars...)
-	secrets = append(envSecrets, fileSecrets...)
-	return filePaths, environ, secrets, nil
+	removeTemporaryFiles(env.esc.fs, paths)
 }
 
 func (env *envCommand) openEnvironment(
