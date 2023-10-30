@@ -31,6 +31,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/cmd/esc/cli"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -1074,33 +1075,23 @@ func openStackEnv(
 	ctx context.Context,
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
-) (esc.Value, map[string]esc.Value, []apitype.EnvironmentDiagnostic, error) {
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
 	yaml := workspaceStack.EnvironmentBytes()
 	if len(yaml) == 0 {
-		return esc.Value{}, nil, nil, nil
+		return nil, nil, nil
 	}
 
 	envs, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return esc.Value{}, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 	orgNamer, ok := stack.(interface{ OrgName() string })
 	if !ok {
-		return esc.Value{}, nil, nil, fmt.Errorf("cannot determine organzation for stack %v", stack.Ref())
+		return nil, nil, fmt.Errorf("cannot determine organzation for stack %v", stack.Ref())
 	}
 	orgName := orgNamer.OrgName()
 
-	env, diags, err := envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour)
-	if err != nil {
-		return esc.Value{}, nil, nil, err
-	}
-	if len(diags) != 0 {
-		return esc.Value{}, nil, diags, nil
-	}
-
-	pulumiEnv := env.Properties["pulumiConfig"]
-	envvars, _ := env.Properties["environmentVariables"].Value.(map[string]esc.Value)
-	return pulumiEnv, envvars, nil, nil
+	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour)
 }
 
 func getStackConfigurationWithFallback(
@@ -1135,7 +1126,7 @@ func getStackConfigurationWithFallback(
 		}
 	}
 
-	pulumiEnv, envVars, diags, err := openStackEnv(ctx, stack, workspaceStack)
+	env, diags, err := openStackEnv(ctx, stack, workspaceStack)
 	if err != nil {
 		return backend.StackConfiguration{}, nil, fmt.Errorf("opening environment: %w", err)
 	}
@@ -1153,19 +1144,25 @@ func getStackConfigurationWithFallback(
 		return backend.StackConfiguration{}, nil, errors.New("opening environment: too many errors")
 	}
 
-	var secrets []string
-	for name, value := range envVars {
-		if strValue, ok := value.Value.(string); ok {
-			if err := os.Setenv(name, strValue); err != nil {
-				return backend.StackConfiguration{}, nil, fmt.Errorf("setting environment variable %v: %w", name, err)
-			}
-			if value.Secret {
-				secrets = append(secrets, strValue)
+	var pulumiEnv esc.Value
+	if env != nil {
+		pulumiEnv = env.Properties["pulumiConfig"]
+
+		_, environ, secrets, err := cli.PrepareEnvironment(env, nil)
+		if err != nil {
+			return backend.StackConfiguration{}, nil, fmt.Errorf("preparing environment: %w", err)
+		}
+		if len(secrets) != 0 {
+			logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
+		}
+
+		for _, kvp := range environ {
+			if name, value, ok := strings.Cut(kvp, "="); ok {
+				if err := os.Setenv(name, value); err != nil {
+					return backend.StackConfiguration{}, nil, fmt.Errorf("setting environment variable %v: %w", name, err)
+				}
 			}
 		}
-	}
-	if len(secrets) != 0 {
-		logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return

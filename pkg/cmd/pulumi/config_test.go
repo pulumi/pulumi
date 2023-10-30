@@ -173,7 +173,7 @@ func TestOpenStackEnvNoEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte(""), &projectStack)
 	require.NoError(t, err)
 
-	_, _, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
 	assert.NoError(t, err)
 }
 
@@ -187,7 +187,7 @@ func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
 	assert.Error(t, err)
 }
 
@@ -200,6 +200,9 @@ func TestOpenStackEnv(t *testing.T) {
 		}),
 		"environmentVariables": esc.NewValue(map[string]esc.Value{
 			"TEST_VAR": esc.NewSecret("hunter2"),
+		}),
+		"files": esc.NewValue(map[string]esc.Value{
+			"TEST_FILE": esc.NewSecret("sensitive"),
 		}),
 	}
 
@@ -228,11 +231,10 @@ func TestOpenStackEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	pulumiEnv, envVars, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
 	assert.Len(t, diags, 0)
-	assert.Equal(t, env["pulumiConfig"], pulumiEnv)
-	assert.Equal(t, env["environmentVariables"].Value.(map[string]esc.Value), envVars)
+	assert.Equal(t, env, openEnv.Properties)
 }
 
 func TestOpenStackEnvDiags(t *testing.T) {
@@ -260,7 +262,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	_, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
 	assert.Len(t, diags, 1)
 }
@@ -290,6 +292,6 @@ func TestOpenStackEnvError(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
 	assert.Error(t, err)
 }
