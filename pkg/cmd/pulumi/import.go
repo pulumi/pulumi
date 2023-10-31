@@ -87,6 +87,7 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			ID:                resource.ID(res.ID),
 			Version:           res.Version,
 			PluginDownloadURL: res.PluginDownloadURL,
+			// TODO(https://github.com/pulumi/pulumi/issues/14532): Add Component and Remote to ResourceImport
 		}
 	}
 
@@ -151,6 +152,8 @@ type importSpec struct {
 	Version           string       `json:"version"`
 	PluginDownloadURL string       `json:"pluginDownloadUrl"`
 	Properties        []string     `json:"properties"`
+	Component         bool         `json:"component,omitempty"`
+	Remote            bool         `json:"remote,omitempty"`
 }
 
 type importFile struct {
@@ -278,8 +281,13 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		if spec.Name == "" {
 			pusherrf("%v has no name", describeResource(i, spec))
 		}
-		if spec.ID == "" {
+		if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
+		} else if spec.Component && spec.ID != "" {
+			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
+		}
+		if spec.Remote && !spec.Component {
+			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
 		}
 
 		imp := deploy.Import{
@@ -289,6 +297,8 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 			Protect:           protectResources,
 			Properties:        spec.Properties,
 			PluginDownloadURL: spec.PluginDownloadURL,
+			Component:         spec.Component,
+			Remote:            spec.Remote,
 		}
 
 		if spec.Parent != "" {

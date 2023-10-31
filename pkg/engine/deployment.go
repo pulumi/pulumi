@@ -220,13 +220,22 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 		}
 		for i := range opts.imports {
 			imp := &opts.imports[i]
-			_, err := tokens.ParseTypeToken(imp.Type.String())
-			if err != nil {
-				return nil, fmt.Errorf("import type %q is not a valid resource type token. "+
-					"Type tokens must be of the format <package>:<module>:<type> - "+
-					"refer to the import section of the provider resource documentation.", imp.Type.String())
+			if imp.Component {
+				if imp.ID != "" {
+					return nil, fmt.Errorf("import %s cannot specify an ID as it's a component", imp.Name)
+				}
 			}
-			if imp.Provider == "" {
+
+			if !imp.Component || imp.Remote {
+				_, err := tokens.ParseTypeToken(imp.Type.String())
+				if err != nil {
+					return nil, fmt.Errorf("import type %q is not a valid resource type token. "+
+						"Type tokens must be of the format <package>:<module>:<type> - "+
+						"refer to the import section of the provider resource documentation.", imp.Type.String())
+				}
+			}
+
+			if imp.Provider == "" && (!imp.Component || imp.Remote) {
 				if imp.Version == nil {
 					imp.Version = defaultProviderInfo[imp.Type.Package()].Version
 				}
