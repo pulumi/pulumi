@@ -926,7 +926,6 @@ describe("LocalWorkspace", () => {
     });
     it(`runs an inline program that exits gracefully`, async () => {
         const program = async () => {
-            Promise.resolve();
             return {};
         };
         const projectName = "inline_node";
