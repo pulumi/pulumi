@@ -104,7 +104,7 @@ func newConvertCmd() *cobra.Command {
 			"\n" +
 			"Valid source languages: yaml, terraform, bicep, arm\n" +
 			"\n" +
-			"Valid target languages: typescript, python, dotnet, go, java, yaml" +
+			"Valid target languages: typescript, python, csharp, go, java, yaml" +
 			"\n" +
 			"Example command usage:" +
 			"\n" +
