@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Adds support for remote zip archive templates to pulumi new

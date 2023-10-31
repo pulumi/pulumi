@@ -72,13 +72,6 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, er
 		return "", err
 	}
 	packageRequest.Header.Set("Accept", "application/zip")
-	requestQuery := packageRequest.URL.Query()
-	for key, values := range templateURL.Query() {
-		for _, value := range values {
-			requestQuery.Add(key, value)
-		}
-	}
-	packageRequest.URL.RawQuery = requestQuery.Encode()
 	packageResponse, err := http.DefaultClient.Do(packageRequest)
 	if err != nil {
 		return "", err

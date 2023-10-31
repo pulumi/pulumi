@@ -26,6 +26,7 @@ import (
 )
 
 func TestSanitizeArchivePath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		testName   string
 		dir        string
@@ -47,9 +48,9 @@ func TestSanitizeArchivePath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
-
 			_, err := sanitizeArchivePath(tt.dir, tt.fileName)
 			if tt.shouldFail {
 				assert.Error(t, err)
@@ -61,6 +62,7 @@ func TestSanitizeArchivePath(t *testing.T) {
 }
 
 func TestIsZipArchiveURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		testName    string
 		templateURL string
@@ -104,15 +106,16 @@ func TestIsZipArchiveURL(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
-
 			result := isZIPTemplateURL(tt.templateURL)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
+//nolint:paralleltest // uses shared server URL
 func TestRetrieveZIPTemplates(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		fileName := "foo"
@@ -120,11 +123,17 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 		writer := zip.NewWriter(buf)
 		data := []byte("foo")
 		fileHandle, _ := writer.Create(fileName)
-		fileHandle.Write(data)
+		_, err := fileHandle.Write(data)
+		if err != nil {
+			t.Errorf("Failed to write to zip file: %s", err)
+		}
 		writer.Close()
 		rw.Header().Set("Content-Type", "application/zip")
 		rw.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", fileName))
-		rw.Write(buf.Bytes())
+		_, err = rw.Write(buf.Bytes())
+		if err != nil {
+			t.Errorf("Failed to write to response: %s", err)
+		}
 	}))
 	defer server.Close()
 	tests := []struct {
