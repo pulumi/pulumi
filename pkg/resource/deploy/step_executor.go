@@ -36,10 +36,20 @@ const (
 	stepExecutorLogLevel = 4
 )
 
-// errStepApplyFailed is a sentinel error for errors that arise when step application fails.
+// StepApplyFailed is a sentinel error for errors that arise when step application fails.
 // We (the step executor) are not responsible for reporting those errors so this sentinel ensures
 // that we don't do so.
-var errStepApplyFailed = errors.New("step application failed")
+type StepApplyFailed struct {
+	Err error
+}
+
+func (saf StepApplyFailed) Error() string {
+	return fmt.Sprintf("step application failed: %s", saf.Err)
+}
+
+func (saf StepApplyFailed) Unwrap() error {
+	return saf.Err
+}
 
 // The step executor operates in terms of "chains" and "antichains". A chain is set of steps that are totally ordered
 // when ordered by dependency; each step in a chain depends directly on the step that comes before it. An antichain
@@ -278,11 +288,13 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 		if err != nil {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
 			se.cancelDueToError(err)
-			if err != errStepApplyFailed {
+
+			var saf StepApplyFailed
+			if !errors.As(err, &saf) {
 				// Step application errors are recorded by the OnResourceStepPost callback. This is confusing,
 				// but it means that at this level we shouldn't be logging any errors that came from there.
 				//
-				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
+				// The StepApplyFailed sentinel signals that the error that failed this chain was a step apply
 				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
 				diagMsg := diag.RawMessage(step.URN(), err.Error())
 				se.deployment.Diag().Errorf(diagMsg)
@@ -415,7 +427,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
-		return errStepApplyFailed
+		return StepApplyFailed{err}
 	}
 
 	return nil
