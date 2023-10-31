@@ -284,6 +284,9 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 func RetrieveTemplates(templateNamePathOrURL string, offline bool,
 	templateKind TemplateKind,
 ) (TemplateRepository, error) {
+	if isZIPTemplateURL(templateNamePathOrURL) {
+		return retrieveZIPTemplates(templateNamePathOrURL)
+	}
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
 	}
