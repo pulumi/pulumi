@@ -133,6 +133,19 @@ func TestPropertyPath(t *testing.T) {
 			PropertyPath{"root key with a .", 1},
 			`["root key with a ."][1]`,
 		},
+		// The following two cases are regressions for https://github.com/pulumi/pulumi/issues/14439. Ideally
+		// these would be a syntax error, but it seems providers have been emitting paths of this style and so
+		// we need to keep supporting them.
+		{
+			`root.array.[1]`,
+			PropertyPath{"root", "array", 1},
+			`root.array[1]`,
+		},
+		{
+			`root.["key with a ."]`,
+			PropertyPath{"root", "key with a ."},
+			`root["key with a ."]`,
+		},
 	}
 
 	for _, c := range cases {
@@ -214,7 +227,7 @@ func TestPropertyPath(t *testing.T) {
 		`root["nested]`,
 		`root."double".nest`,
 		"root.array[abc]",
-		"root.[1]",
+		"root.",
 
 		// Missing values
 		"root[1]",
