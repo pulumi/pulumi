@@ -219,7 +219,7 @@ func TestParseImportFile_errors(t *testing.T) {
 
 			require.NotEmpty(t, tt.wantErrs, "invalid test: wantErrs must not be empty")
 
-			_, _, err := parseImportFile(tt.give, false)
+			_, _, err := parseImportFile(tt.give, "stack", "proj", false)
 			require.Error(t, err)
 			for _, wantErr := range tt.wantErrs {
 				assert.ErrorContains(t, err, wantErr)
@@ -246,7 +246,7 @@ func TestParseImportFileSameName(t *testing.T) {
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, false)
+	imports, _, err := parseImportFile(f, "stack", "proj", false)
 	assert.NoError(t, err)
 	resourceNames := map[tokens.QName]struct{}{}
 	for _, imp := range imports {
@@ -286,7 +286,7 @@ func TestParseImportFileRenameNoClash(t *testing.T) {
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, false)
+	imports, _, err := parseImportFile(f, "stack", "proj", false)
 	assert.NoError(t, err)
 	resourceNames := map[tokens.QName]struct{}{}
 	// Check resource names are unique.
@@ -301,4 +301,43 @@ func TestParseImportFileRenameNoClash(t *testing.T) {
 		_, exists := resourceNames[name]
 		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
 	}
+}
+
+// Test that if we're using the name for another resource in the import file for a parent that we don't need
+// to add it to the nameTable and just auto fill in the URN.
+func TestParseImportFileAutoURN(t *testing.T) {
+	t.Parallel()
+	f := importFile{
+		Resources: []importSpec{
+			// Out of order to test that parseImportFile doesn't require the parent to be defined first.
+			{
+				Name:   "lastThing",
+				ID:     "lastThing",
+				Type:   "foo:bar:a",
+				Parent: "otherThing",
+			},
+			{
+				Name:      "thing",
+				Component: true,
+				Type:      "foo:bar:a",
+			},
+			{
+				Name:   "otherThing",
+				ID:     "otherThing",
+				Type:   "foo:bar:a",
+				Parent: "thing",
+			},
+		},
+	}
+	imports, nt, err := parseImportFile(f, "stack", "proj", false)
+	assert.NoError(t, err)
+
+	// Check the parent URN was auto filled in.
+	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::foo:bar:a$foo:bar:a::otherThing"), imports[0].Parent)
+	assert.Equal(t, resource.URN(""), imports[1].Parent)
+	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::foo:bar:a::thing"), imports[2].Parent)
+
+	// Check the nameTable was filled in.
+	assert.Equal(t, "otherThing", nt[imports[0].Parent])
+	assert.Equal(t, "thing", nt[imports[2].Parent])
 }
