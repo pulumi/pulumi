@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: {} }, global = proto;
+var proto = { pulumirpc: { codegen: { }, testing: { } }, google: { rpc: { } } }, global = proto;
 
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
