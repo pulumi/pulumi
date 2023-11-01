@@ -925,9 +925,7 @@ describe("LocalWorkspace", () => {
         }
     });
     it(`runs an inline program that exits gracefully`, async () => {
-        const program = async () => {
-            return {};
-        };
+        const program = () => Promise.resolve();
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
