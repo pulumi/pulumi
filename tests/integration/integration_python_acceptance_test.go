@@ -100,6 +100,14 @@ func TestDynamicPython(t *testing.T) {
 				dynRes := stack.Deployment.Resources[2]
 				assertIsSecret(dynRes.Inputs["__provider"])
 				assertIsSecret(dynRes.Outputs["__provider"])
+
+				// Ensure there are no diagnostic events other than debug.
+				for _, event := range stack.Events {
+					if event.DiagnosticEvent != nil {
+						assert.Equal(t, "debug", event.DiagnosticEvent.Severity,
+							"unexpected diagnostic event: %#v", event.DiagnosticEvent)
+					}
+				}
 			},
 		}},
 		UseSharedVirtualEnv: boolPointer(false),
