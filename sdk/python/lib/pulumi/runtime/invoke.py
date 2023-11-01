@@ -120,16 +120,14 @@ def invoke(
 
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, "return")
-        if ret_obj:
-            deserialized = rpc.deserialize_properties(ret_obj)
-            # If typ is not None, call translate_output_properties to instantiate any output types.
-            return (
-                rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
-                if typ
-                else deserialized,
-                None,
-            )
-        return None, None
+        deserialized = rpc.deserialize_properties(ret_obj)
+        # If typ is not None, call translate_output_properties to instantiate any output types.
+        return (
+            rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
+            if typ
+            else deserialized,
+            None,
+        )
 
     async def do_rpc():
         resp, exn = await _get_rpc_manager().do_rpc("invoke", do_invoke)()
