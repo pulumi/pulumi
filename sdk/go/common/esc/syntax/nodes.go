@@ -36,8 +36,8 @@ type node struct {
 }
 
 func (n *node) Syntax() Syntax {
-	if n == nil {
-		return nil
+	if n == nil || n.syntax == nil {
+		return NoSyntax
 	}
 	return n.syntax
 }
@@ -296,9 +296,6 @@ func ObjectProperty(key *StringNode, value Node) ObjectPropertyDef {
 
 // ObjectSyntax creates a new object node with the given properties and associated syntax.
 func ObjectSyntax(syntax Syntax, entries ...ObjectPropertyDef) *ObjectNode {
-	if syntax == nil {
-		panic("Syntax cannot be nil, use NoSyntax instead")
-	}
 	return &ObjectNode{node: node{syntax: syntax}, entries: entries}
 }
 
