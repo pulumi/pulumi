@@ -926,6 +926,8 @@ type GitRepo struct {
 	Setup SetupFn
 	// GitAuth is the different Authentication options for the Git repository
 	Auth *GitAuth
+	// Shallow disables fetching the repo's entire history.
+	Shallow bool
 }
 
 // GitAuth is the authentication details that can be specified for a private Git repo.

@@ -1,0 +1,4 @@
+changes:
+  - type: feat
+    scope: auto
+    description: Allow shallow repository clones in NewLocalWorkspace
