@@ -112,7 +112,7 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 			wantErrs: []string{
 				"1 error occurred",
-				"the parent 'unknown' for resource 'thing' of type 'foo:bar:baz' has no name",
+				"the parent 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable'",
 			},
 		},
 		{
@@ -129,7 +129,7 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 			wantErrs: []string{
 				"1 error occurred",
-				"the provider 'unknown' for resource 'thing' of type 'foo:bar:baz' has no name",
+				"the provider 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable'",
 			},
 		},
 		{

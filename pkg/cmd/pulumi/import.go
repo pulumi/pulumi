@@ -298,7 +298,7 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 			}
 			urn, ok := f.NameTable[spec.Parent]
 			if !ok {
-				pusherrf("the parent '%v' for %v has no name",
+				pusherrf("the parent '%v' for %v has no entry in 'nameTable'",
 					spec.Parent, describeResource(i, spec))
 			} else {
 				imp.Parent = urn
@@ -312,7 +312,7 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 			}
 			urn, ok := f.NameTable[spec.Provider]
 			if !ok {
-				pusherrf("the provider '%v' for %v has no name",
+				pusherrf("the provider '%v' for %v has no entry in 'nameTable'",
 					spec.Provider, describeResource(i, spec))
 			} else {
 				imp.Provider = urn
