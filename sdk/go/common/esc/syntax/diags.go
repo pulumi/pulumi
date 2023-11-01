@@ -24,31 +24,6 @@ import (
 // A Diagnostic represents a warning or an error to be presented to the user.
 type Diagnostic struct {
 	hcl.Diagnostic
-
-	// Whether the diagnostic has been shown to the user
-	Shown bool
-}
-
-// WithContext adds context without mutating the receiver.
-func (d Diagnostic) WithContext(rng *hcl.Range) *Diagnostic {
-	d.Context = rng
-	return &d
-}
-
-func (d Diagnostic) HCL() *hcl.Diagnostic {
-	return &d.Diagnostic
-}
-
-// Warning creates a new warning-level diagnostic from the given subject, summary, and detail.
-func Warning(rng *hcl.Range, summary, detail string) *Diagnostic {
-	return &Diagnostic{
-		Diagnostic: hcl.Diagnostic{
-			Severity: hcl.DiagWarning,
-			Subject:  rng,
-			Summary:  summary,
-			Detail:   detail,
-		},
-	}
 }
 
 // Error creates a new error-level diagnostic from the given subject, summary, and detail.
@@ -114,25 +89,4 @@ func (d *Diagnostics) Extend(diags ...*Diagnostic) {
 			}
 		}
 	}
-}
-
-func (d *Diagnostics) HCL() hcl.Diagnostics {
-	if d == nil {
-		return nil
-	}
-	a := make(hcl.Diagnostics, 0, len(*d))
-	for _, diag := range *d {
-		a = append(a, diag.HCL())
-	}
-	return a
-}
-
-func (d Diagnostics) Unshown() *Diagnostics {
-	diags := Diagnostics{}
-	for _, diag := range d {
-		if !diag.Shown {
-			diags = append(diags, diag)
-		}
-	}
-	return &diags
 }

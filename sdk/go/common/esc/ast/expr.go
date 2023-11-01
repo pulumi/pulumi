@@ -591,7 +591,7 @@ func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) 
 		}
 
 		if strings.HasPrefix(strings.ToLower(kvp.Key.Value()), "fn::") {
-			diags = append(diags, syntax.Warning(kvp.Key.Syntax().Range(),
+			diags = append(diags, syntax.Error(kvp.Key.Syntax().Range(),
 				"'fn::' is a reserved prefix",
 				fmt.Sprintf("If you need to use the raw key '%s',"+
 					" please open an issue at https://github.com/pulumi/pulumi-yaml/issues", kvp.Key.Value())))
