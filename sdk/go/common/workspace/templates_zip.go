@@ -89,19 +89,26 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, er
 		if err != nil {
 			return "", err
 		}
-		fileReader, err := file.Open()
-		if err != nil {
-			return "", err
-		}
-		defer fileReader.Close()
-		destinationFile, err := os.Create(filePath)
-		if err != nil {
-			return "", err
-		}
-		defer destinationFile.Close()
-		_, err = io.Copy(destinationFile, fileReader) // #nosec G110
-		if err != nil {
-			return "", err
+		if file.FileHeader.FileInfo().IsDir() {
+			err = os.MkdirAll(filePath, 0o777)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			fileReader, err := file.Open()
+			if err != nil {
+				return "", err
+			}
+			defer fileReader.Close()
+			destinationFile, err := os.Create(filePath)
+			if err != nil {
+				return "", err
+			}
+			defer destinationFile.Close()
+			_, err = io.Copy(destinationFile, fileReader) // #nosec G110
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 	return tempDir, nil

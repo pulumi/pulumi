@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -119,13 +120,30 @@ func TestIsZipArchiveURL(t *testing.T) {
 func TestRetrieveZIPTemplates(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		fileName := "foo"
+		fileDirName := "bar/baz"
 		buf := new(bytes.Buffer)
 		writer := zip.NewWriter(buf)
 		data := []byte("foo")
-		fileHandle, _ := writer.Create(fileName)
-		_, err := fileHandle.Write(data)
+		fileDirPathParts := strings.Split(fileDirName, "/")
+		_, err := writer.Create(fmt.Sprintf("%s/", strings.Join(fileDirPathParts[:len(fileDirPathParts)-1], "/")))
+		if err != nil {
+			t.Errorf("Failed to create directory in zip archive: %s", err)
+		}
+		fileHandle, err := writer.Create(fileName)
+		if err != nil {
+			t.Errorf("Failed to create file in zip archive: %s", err)
+		}
+		_, err = fileHandle.Write(data)
 		if err != nil {
 			t.Errorf("Failed to write to zip file: %s", err)
+		}
+		nestedFileHandle, err := writer.Create(fileDirName)
+		if err != nil {
+			t.Errorf("Failed to create nested file in zip archive: %s", err)
+		}
+		_, err = nestedFileHandle.Write(data)
+		if err != nil {
+			t.Errorf("Failed to write nested file to zip archive: %s", err)
 		}
 		writer.Close()
 		rw.Header().Set("Content-Type", "application/zip")
