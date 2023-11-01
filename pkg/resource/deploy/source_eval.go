@@ -957,6 +957,13 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, err.Error())
 	}
+	// Inside the engine we need module names filled in, the short hand "pkg::typ" can't be used because
+	// it "::" clashes with how we parse URNs. If the type token doesn't have a module name we fix it now
+	// so the rest of the engine which starts using URNs can work.
+	if t.Module().Name() == "" {
+		newModule := tokens.NewModuleToken(t.Package(), "index")
+		t = tokens.NewTypeToken(newModule, t.Name())
+	}
 
 	name := tokens.QName(req.GetName())
 	parent, err := resource.ParseOptionalURN(req.GetParent())
@@ -1205,6 +1212,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		t, err = tokens.ParseTypeToken(req.GetType())
 		if err != nil {
 			return nil, rpcerror.New(codes.InvalidArgument, err.Error())
+		}
+		// Inside the engine we need module names filled in, the short hand "pkg::typ" can't be used because
+		// it "::" clashes with how we parse URNs. If the type token doesn't have a module name we fix it now
+		// so the rest of the engine which starts using URNs can work.
+		if t.Module().Name() == "" {
+			newModule := tokens.NewModuleToken(t.Package(), "index")
+			t = tokens.NewTypeToken(newModule, t.Name())
 		}
 	} else {
 		// Component resources may have any format type.
