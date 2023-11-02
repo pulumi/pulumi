@@ -90,7 +90,7 @@ func (tok Token) delimiter(n int) int {
 
 // Name returns the Token as a Name (and assumes it is a legal one).
 func (tok Token) Name() Name {
-	contract.Requiref(tok.Simple(), "tok", "Simple")
+	contract.Requiref(tok.Simple(), "tok", "Simple(%v)", tok)
 	contract.Requiref(IsName(tok.String()), "tok", "IsName(%v)", tok)
 	return Name(tok.String())
 }
@@ -182,9 +182,20 @@ func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
 
 // ParseModuleMember attempts to turn the string s into a module member, returning an error if it isn't a valid one.
 func ParseModuleMember(s string) (ModuleMember, error) {
-	if !Token(s).HasModuleMember() {
+	tok := Token(s)
+	if !tok.HasModuleMember() {
 		return "", fmt.Errorf("String '%v' is not a valid module member", s)
 	}
+	if tok.ModuleMember().Name() == "" {
+		return "", fmt.Errorf("Type '%s' is not a valid module member token (must have a name)", tok)
+	}
+	if tok.Module().Name() == "" {
+		return "", fmt.Errorf("Type '%s' is not a valid module member token (must have a module name)", tok)
+	}
+	if tok.Package().Name() == "" {
+		return "", fmt.Errorf("Type '%s' is not a valid type token (must have a package name)", tok)
+	}
+
 	return ModuleMember(s), nil
 }
 
@@ -220,7 +231,16 @@ func NewTypeToken(mod Module, nm TypeName) Type {
 func ParseTypeToken(s string) (Type, error) {
 	tok := Token(s)
 	if !tok.HasModuleMember() {
-		return "", fmt.Errorf("Type '%s' is not a valid type token (must have format '*:*:*')", tok)
+		return "", fmt.Errorf("Type '%s' is not a valid type token (must have format '+:+:+')", tok)
+	}
+	if tok.ModuleMember().Name() == "" {
+		return "", fmt.Errorf("Type '%s' is not a valid type token (must have a name)", tok)
+	}
+	if tok.Module().Name() == "" {
+		return "", fmt.Errorf("Type '%s' is not a valid type token (must have a module name)", tok)
+	}
+	if tok.Package().Name() == "" {
+		return "", fmt.Errorf("Type '%s' is not a valid type token (must have a package name)", tok)
 	}
 
 	return Type(tok), nil

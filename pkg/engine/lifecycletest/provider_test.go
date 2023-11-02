@@ -1244,7 +1244,7 @@ func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 	url := "get.pulumi.com"
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA::Foo", "foo", true, deploytest.ResourceOptions{
+		_, _, _, err := monitor.RegisterResource("pkgA:index:Foo", "foo", true, deploytest.ResourceOptions{
 			PluginDownloadURL: url,
 		})
 		return err

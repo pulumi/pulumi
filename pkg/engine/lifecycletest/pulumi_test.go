@@ -503,7 +503,17 @@ func TestResourceType(t *testing.T) {
 			assertFn: func(err error) {
 				assert.Error(t, err)
 				msg := requireRPCError(t, err, codes.InvalidArgument)
-				assert.Equal(t, "Type 'very:bad' is not a valid type token (must have format '*:*:*')", msg)
+				assert.Equal(t, "Type 'very:bad' is not a valid type token (must have format '+:+:+')", msg)
+			},
+		},
+		{
+			desc:   "empty module",
+			custom: true,
+			typ:    "very::bad",
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				msg := requireRPCError(t, err, codes.InvalidArgument)
+				assert.Equal(t, "Type 'very::bad' is not a valid type token (must have a module name)", msg)
 			},
 		},
 		{
