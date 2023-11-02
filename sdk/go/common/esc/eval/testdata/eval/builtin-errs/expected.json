@@ -21,7 +21,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[0][\"fn::open::test\"]"
         },
         {
             "Severity": 1,
@@ -44,7 +44,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[1][\"fn::join\"][1]"
         },
         {
             "Severity": 1,
@@ -67,7 +67,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[2][\"fn::join\"][1][0]"
         },
         {
             "Severity": 1,
@@ -90,7 +90,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[3][\"fn::toBase64\"]"
         },
         {
             "Severity": 1,
@@ -113,7 +113,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[4][\"fn::toBase64\"]"
         },
         {
             "Severity": 1,
@@ -136,7 +136,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[5][\"fn::toJSON\"]"
         },
         {
             "Severity": 1,
@@ -159,7 +159,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[6][\"fn::toString\"]"
         }
     ],
     "evalDiags": [
@@ -184,7 +184,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[0][\"fn::open::test\"]"
         },
         {
             "Severity": 1,
@@ -207,7 +207,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[1][\"fn::join\"][1]"
         },
         {
             "Severity": 1,
@@ -230,7 +230,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[2][\"fn::join\"][1][0]"
         },
         {
             "Severity": 1,
@@ -253,7 +253,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[3][\"fn::toBase64\"]"
         },
         {
             "Severity": 1,
@@ -276,7 +276,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[4][\"fn::toBase64\"]"
         },
         {
             "Severity": 1,
@@ -299,7 +299,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[5][\"fn::toJSON\"]"
         },
         {
             "Severity": 1,
@@ -322,7 +322,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.builtins[6][\"fn::toString\"]"
         }
     ],
     "environment": {

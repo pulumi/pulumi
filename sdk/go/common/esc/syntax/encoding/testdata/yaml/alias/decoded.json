@@ -91,7 +91,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "bar"
         }
     ],
     "encodeDiags": [
@@ -104,7 +104,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": ""
         }
     ]
 }

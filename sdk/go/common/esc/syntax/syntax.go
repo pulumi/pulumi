@@ -20,6 +20,7 @@ import (
 
 type Syntax interface {
 	Range() *hcl.Range
+	Path() string
 }
 
 var NoSyntax = noSyntax(0)
@@ -28,6 +29,10 @@ type noSyntax int
 
 func (noSyntax) Range() *hcl.Range {
 	return nil
+}
+
+func (noSyntax) Path() string {
+	return ""
 }
 
 type Trivia interface {

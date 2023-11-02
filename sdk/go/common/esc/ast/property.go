@@ -122,7 +122,7 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 			return access[1:], &PropertyAccess{Accessors: accessors}, nil
 		case '.':
 			if len(accessors) == 0 {
-				return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name", "")}
+				return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name")}
 			}
 			access = access[1:]
 		case '[':
@@ -133,7 +133,7 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 				var i int
 				for i = 2; ; {
 					if i >= len(access) {
-						return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing quote in property name", "")}
+						return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing quote in property name")}
 					} else if access[i] == '"' {
 						i++
 						break
@@ -146,23 +146,23 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 					}
 				}
 				if i >= len(access) || access[i] != ']' {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing bracket in property access", "")}
+					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing bracket in property access")}
 				}
 				indexNode, access = string(propertyKey), access[i:]
 			} else {
 				// Look for a closing ']'
 				rbracket := strings.IndexRune(access, ']')
 				if rbracket == -1 {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing bracket in list index", "")}
+					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing bracket in list index")}
 				}
 
 				index, err := strconv.ParseInt(access[1:rbracket], 10, 0)
 				if err != nil {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "invalid list index", "")}
+					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "invalid list index")}
 				}
 
 				if len(accessors) == 0 {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name", "")}
+					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name")}
 				}
 
 				indexNode, access = int(index), access[rbracket:]
@@ -175,7 +175,7 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 					// Ensure the root property is not an integer
 					if len(accessors) == 0 {
 						if _, err := strconv.ParseInt(propertyName, 10, 0); err == nil {
-							return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name", "")}
+							return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name")}
 						}
 					}
 					accessors, access = append(accessors, &PropertyName{Name: propertyName}), access[i:]
@@ -184,5 +184,5 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 			}
 		}
 	}
-	return "", nil, syntax.Diagnostics{syntax.NodeError(node, "unterminated interpolation", "")}
+	return "", nil, syntax.Diagnostics{syntax.NodeError(node, "unterminated interpolation")}
 }

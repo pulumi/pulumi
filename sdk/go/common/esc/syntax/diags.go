@@ -24,23 +24,26 @@ import (
 // A Diagnostic represents a warning or an error to be presented to the user.
 type Diagnostic struct {
 	hcl.Diagnostic
+
+	Path string
 }
 
 // Error creates a new error-level diagnostic from the given subject, summary, and detail.
-func Error(rng *hcl.Range, summary, detail string) *Diagnostic {
+func Error(rng *hcl.Range, summary, path string) *Diagnostic {
 	return &Diagnostic{
-		Diagnostic: hcl.Diagnostic{Severity: hcl.DiagError, Subject: rng, Summary: summary, Detail: detail},
+		Diagnostic: hcl.Diagnostic{Severity: hcl.DiagError, Subject: rng, Summary: summary},
+		Path:       path,
 	}
 }
 
 // NodeError creates a new error-level diagnostic from the given node, summary, and detail. If the node is non-nil,
 // the diagnostic will be associated with the range of its associated syntax, if any.
-func NodeError(node Node, summary, detail string) *Diagnostic {
+func NodeError(node Node, summary string) *Diagnostic {
 	var rng *hcl.Range
 	if node != nil {
 		rng = node.Syntax().Range()
 	}
-	return Error(rng, summary, detail)
+	return Error(rng, summary, node.Syntax().Path())
 }
 
 // Diagnostics is a list of diagnostics.

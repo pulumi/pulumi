@@ -99,7 +99,7 @@ func (e *validator) errorf(loc validationLoc, format string, args ...any) bool {
 	if loc.prefix {
 		format = fmt.Sprintf("%s: %s", loc.path, format)
 	}
-	diag := ast.ExprError(loc.x.repr.syntax(), fmt.Sprintf(format, args...), "")
+	diag := ast.ExprError(loc.x.repr.syntax(), fmt.Sprintf(format, args...))
 	e.diags.Extend(diag)
 	return false
 }

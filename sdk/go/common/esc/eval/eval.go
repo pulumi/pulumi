@@ -168,11 +168,11 @@ func newEvalContext(
 
 // error records an evaluation error associated with an expression.
 func (e *evalContext) error(expr ast.Expr, summary string) {
-	diag := ast.ExprError(expr, summary, "")
+	diag := ast.ExprError(expr, summary)
 	e.diags.Extend(diag)
 }
 
-// errorf is like errror, but accepts a format string and arguments (ala fmt.Sprintf)
+// errorf is like error, but accepts a format string and arguments (ala fmt.Sprintf)
 func (e *evalContext) errorf(expr ast.Expr, format string, a ...any) {
 	e.error(expr, fmt.Sprintf(format, a...))
 }

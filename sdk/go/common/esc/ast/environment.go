@@ -72,7 +72,7 @@ func (d *ArrayDecl[T]) GetElements() []T {
 func (d *ArrayDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
 	list, ok := node.(*syntax.ArrayNode)
 	if !ok {
-		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be a list", name), "")}
+		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be a list", name))}
 	}
 
 	var diags syntax.Diagnostics
@@ -117,7 +117,7 @@ func (d *MapDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
 
 	obj, ok := node.(*syntax.ObjectNode)
 	if !ok {
-		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be an object", name), "")}
+		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be an object", name))}
 	}
 
 	var diags syntax.Diagnostics
@@ -169,7 +169,7 @@ func (d *ImportDecl) parse(name string, node syntax.Node) syntax.Diagnostics {
 	case *syntax.ObjectNode:
 		// single key
 		if node.Len() != 1 {
-			return syntax.Diagnostics{syntax.NodeError(node, "import must have a single key", "")}
+			return syntax.Diagnostics{syntax.NodeError(node, "import must have a single key")}
 		}
 		kvp := node.Index(0)
 		d.Environment = StringSyntax(kvp.Key)
@@ -177,7 +177,7 @@ func (d *ImportDecl) parse(name string, node syntax.Node) syntax.Diagnostics {
 		d.Meta = &ImportMetaDecl{}
 		return parseRecord("import", d.Meta, kvp.Value, false)
 	default:
-		return syntax.Diagnostics{syntax.NodeError(node, "import must be a string or an object", "")}
+		return syntax.Diagnostics{syntax.NodeError(node, "import must be a string or an object")}
 	}
 }
 
@@ -312,7 +312,7 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarning bool) syntax.Diagnostics {
 	obj, ok := node.(*syntax.ObjectNode)
 	if !ok {
-		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be an object", objName), "")}
+		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be an object", objName))}
 	}
 	*dest.recordSyntax() = obj
 	contract.Assertf(*dest.recordSyntax() == obj, "%s.recordSyntax took by value, so the assignment failed", objName)
@@ -346,8 +346,8 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 				ParentLabel: fmt.Sprintf("Object '%s'", objName),
 				Fields:      fieldNames,
 			}
-			msg, detail := formatter.MessageWithDetail(key, fmt.Sprintf("Field '%s'", key))
-			nodeError := syntax.NodeError(kvp.Key, msg, detail)
+			msg := formatter.Message(key, fmt.Sprintf("Field '%s'", key))
+			nodeError := syntax.NodeError(kvp.Key, msg)
 			nodeError.Severity = hcl.DiagWarning
 			diags = append(diags, nodeError)
 		}
@@ -381,7 +381,7 @@ func exprFieldTypeMismatchError(name string, expected interface{}, actual Expr) 
 	default:
 		typeName = fmt.Sprintf("a %T", expected)
 	}
-	return ExprError(actual, fmt.Sprintf("%v must be %v", name, typeName), "")
+	return ExprError(actual, fmt.Sprintf("%v must be %v", name, typeName))
 }
 
 func camel(s string) string {

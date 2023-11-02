@@ -143,6 +143,10 @@ func (comment) Range() *hcl.Range {
 	return nil
 }
 
+func (comment) Path() string {
+	return ""
+}
+
 func (c comment) HeadComment() string { return string(c) }
 func (c comment) LineComment() string { return "" }
 func (c comment) FootComment() string { return "" }

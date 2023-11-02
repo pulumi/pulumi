@@ -138,7 +138,6 @@ func (cmd *envCommand) writeYAMLEnvironmentDiagnostics(
 		err := writer.WriteDiagnostic(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  d.Summary,
-			Detail:   d.Detail,
 			Subject:  subject,
 		})
 		if err != nil {

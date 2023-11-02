@@ -429,8 +429,10 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 			}
 			return diags
 		default:
-			rng := n.Syntax().Range()
-			return syntax.Diagnostics{syntax.Error(rng, fmt.Sprintf("cannot encode object into location of type %v", v.Type()), "")}
+			syn := n.Syntax()
+			rng := syn.Range()
+			path := syn.Path()
+			return syntax.Diagnostics{syntax.Error(rng, fmt.Sprintf("cannot encode object into location of type %v", v.Type()), path)}
 		}
 	default:
 		panic("unreachable")

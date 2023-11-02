@@ -26,6 +26,8 @@ import (
 	"github.com/pulumi/esc/syntax"
 	"github.com/rivo/uniseg"
 	"gopkg.in/yaml.v3"
+
+	"github.com/pulumi/esc/internal/util"
 )
 
 // A TagDecoder decodes tagged YAML nodes. See the documentation on UnmarshalYAML for more details.
@@ -38,12 +40,18 @@ type TagDecoder interface {
 type YAMLSyntax struct {
 	*yaml.Node
 	rng   *hcl.Range
+	path  string
 	value interface{}
 }
 
 // Range returns the textual range of the YAML node, if any.
 func (s YAMLSyntax) Range() *hcl.Range {
 	return s.rng
+}
+
+// Path returns the path of the YAML node, if any.
+func (s YAMLSyntax) Path() string {
+	return s.path
 }
 
 type linePosition struct {
@@ -54,6 +62,20 @@ type linePosition struct {
 
 type positionIndex struct {
 	lines []linePosition
+	path  []any
+}
+
+func (p positionIndex) pathString() string {
+	var pathString string
+	for _, s := range p.path {
+		switch s := s.(type) {
+		case int:
+			pathString = fmt.Sprintf("%s[%d]", pathString, s)
+		case string:
+			pathString = util.JoinKey(pathString, s)
+		}
+	}
+	return pathString
 }
 
 // isASCII returns true if s only contains ASCII bytes. ASCII bytes are in the range [0x00,0x7f]. Any byte outside this
@@ -68,13 +90,13 @@ func isASCII(s []byte) bool {
 }
 
 func newPositionIndex(yaml []byte) positionIndex {
-	offset, lines := 0, []linePosition(nil)
+	offset, lines, path := 0, []linePosition(nil), []any(nil)
 	for {
 		line, rest, found := bytes.Cut(yaml, []byte{'\n'})
 
 		lines = append(lines, linePosition{offset: offset, ascii: isASCII(line), line: line})
 		if !found {
-			return positionIndex{lines}
+			return positionIndex{lines, path}
 		}
 		offset, yaml = offset+len(line)+1, rest
 	}
@@ -149,6 +171,7 @@ func UnmarshalYAMLNode(filename string, n *yaml.Node, tags TagDecoder) (syntax.N
 
 func unmarshalYAMLNode(filename string, positions positionIndex, n *yaml.Node, tags TagDecoder) (syntax.Node, syntax.Diagnostics) {
 	rng := positions.yamlNodeRange(filename, n)
+	path := positions.pathString()
 
 	var diags syntax.Diagnostics
 	switch n.Kind {
@@ -157,13 +180,15 @@ func unmarshalYAMLNode(filename string, positions positionIndex, n *yaml.Node, t
 		if len(n.Content) != 0 {
 			elements = make([]syntax.Node, len(n.Content))
 			for i, v := range n.Content {
-				e, ediags := unmarshalYAML(filename, positions, v, tags)
+				pos := positions
+				pos.path = append(pos.path, i)
+				e, ediags := unmarshalYAML(filename, pos, v, tags)
 				diags.Extend(ediags...)
 
 				elements[i] = e
 			}
 		}
-		return syntax.ArraySyntax(YAMLSyntax{n, rng, nil}, elements...), diags
+		return syntax.ArraySyntax(YAMLSyntax{n, rng, path, nil}, elements...), diags
 	case yaml.MappingNode:
 		var entries []syntax.ObjectPropertyDef
 		if len(n.Content) != 0 {
@@ -173,54 +198,58 @@ func unmarshalYAMLNode(filename string, positions positionIndex, n *yaml.Node, t
 			for i := range entries {
 				keyNode, valueNode := n.Content[2*i], n.Content[2*i+1]
 
-				keyn, kdiags := unmarshalYAML(filename, positions, keyNode, tags)
+				pos := positions
+				accessor := keyNode.Value
+				pos.path = append(pos.path, accessor)
+
+				keyn, kdiags := unmarshalYAML(filename, pos, keyNode, tags)
 				diags.Extend(kdiags...)
 
 				key, ok := keyn.(*syntax.StringNode)
 				if !ok {
 					keyRange := keyn.Syntax().Range()
-					diags.Extend(syntax.Error(keyRange, "mapping keys must be strings", ""))
+					diags.Extend(syntax.Error(keyRange, "mapping keys must be strings", keyn.Syntax().Path()))
 				}
 
-				value, vdiags := unmarshalYAML(filename, positions, valueNode, tags)
+				value, vdiags := unmarshalYAML(filename, pos, valueNode, tags)
 				diags.Extend(vdiags...)
 
-				entries[i] = syntax.ObjectPropertySyntax(YAMLSyntax{keyNode, rng, nil}, key, value)
+				entries[i] = syntax.ObjectPropertySyntax(YAMLSyntax{keyNode, rng, pos.pathString(), nil}, key, value)
 			}
 		}
-		return syntax.ObjectSyntax(YAMLSyntax{n, rng, nil}, entries...), diags
+		return syntax.ObjectSyntax(YAMLSyntax{n, rng, path, nil}, entries...), diags
 	case yaml.ScalarNode:
 		var v interface{}
 		if err := n.Decode(&v); err != nil {
-			diags.Extend(syntax.Error(rng, err.Error(), ""))
+			diags.Extend(syntax.Error(rng, err.Error(), path))
 			return nil, diags
 		}
 		if v == nil {
-			return syntax.NullSyntax(YAMLSyntax{n, rng, nil}), nil
+			return syntax.NullSyntax(YAMLSyntax{n, rng, path, nil}), nil
 		}
 
 		switch v := v.(type) {
 		case bool:
-			return syntax.BooleanSyntax(YAMLSyntax{n, rng, v}, v), nil
+			return syntax.BooleanSyntax(YAMLSyntax{n, rng, path, v}, v), nil
 		case float64:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
 		case int:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
 		case int64:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
 		case uint64:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
 		default:
-			return syntax.StringSyntax(YAMLSyntax{n, rng, v}, n.Value), nil
+			return syntax.StringSyntax(YAMLSyntax{n, rng, path, v}, n.Value), nil
 		}
 	case yaml.AliasNode:
-		return nil, syntax.Diagnostics{syntax.Error(rng, "alias nodes are not supported", "")}
+		return nil, syntax.Diagnostics{syntax.Error(rng, "alias nodes are not supported", path)}
 	default:
-		return nil, syntax.Diagnostics{syntax.Error(rng, fmt.Sprintf("unexpected node kind %v", n.Kind), "")}
+		return nil, syntax.Diagnostics{syntax.Error(rng, fmt.Sprintf("unexpected node kind %v", n.Kind), path)}
 	}
 }
 

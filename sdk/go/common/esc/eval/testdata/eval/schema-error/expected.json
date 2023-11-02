@@ -21,7 +21,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].boolean"
         },
         {
             "Severity": 1,
@@ -44,7 +44,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].string"
         },
         {
             "Severity": 1,
@@ -67,7 +67,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].number"
         },
         {
             "Severity": 1,
@@ -90,7 +90,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
         },
         {
             "Severity": 1,
@@ -113,7 +113,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
         },
         {
             "Severity": 1,
@@ -136,7 +136,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
         },
         {
             "Severity": 1,
@@ -159,7 +159,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].oneOf"
         },
         {
             "Severity": 1,
@@ -182,7 +182,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].oneOf"
         },
         {
             "Severity": 1,
@@ -205,7 +205,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].oneOf"
         },
         {
             "Severity": 1,
@@ -228,7 +228,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"][\"const-array\"]"
         },
         {
             "Severity": 1,
@@ -251,7 +251,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"][\"const-object\"]"
         },
         {
             "Severity": 1,
@@ -274,7 +274,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].dependentReq"
         }
     ],
     "evalDiags": [
@@ -299,7 +299,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].boolean"
         },
         {
             "Severity": 1,
@@ -322,7 +322,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].string"
         },
         {
             "Severity": 1,
@@ -345,7 +345,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].number"
         },
         {
             "Severity": 1,
@@ -368,7 +368,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].record"
         },
         {
             "Severity": 1,
@@ -391,7 +391,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
         },
         {
             "Severity": 1,
@@ -414,7 +414,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
         },
         {
             "Severity": 1,
@@ -437,7 +437,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
         },
         {
             "Severity": 1,
@@ -460,7 +460,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].oneOf"
         },
         {
             "Severity": 1,
@@ -483,7 +483,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].oneOf"
         },
         {
             "Severity": 1,
@@ -506,7 +506,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].oneOf"
         },
         {
             "Severity": 1,
@@ -529,7 +529,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"][\"const-array\"]"
         },
         {
             "Severity": 1,
@@ -552,7 +552,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"][\"const-array\"]"
         },
         {
             "Severity": 1,
@@ -575,7 +575,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"][\"const-object\"]"
         },
         {
             "Severity": 1,
@@ -598,7 +598,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"][\"const-object\"]"
         },
         {
             "Severity": 1,
@@ -621,7 +621,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].enum"
         },
         {
             "Severity": 1,
@@ -644,7 +644,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].dependentReq"
         },
         {
             "Severity": 1,
@@ -667,7 +667,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].multiple"
         },
         {
             "Severity": 1,
@@ -690,7 +690,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].minimum"
         },
         {
             "Severity": 1,
@@ -713,7 +713,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].exclusiveMinimum"
         },
         {
             "Severity": 1,
@@ -736,7 +736,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].maximum"
         },
         {
             "Severity": 1,
@@ -759,7 +759,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].exclusiveMaximum"
         },
         {
             "Severity": 1,
@@ -782,7 +782,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].minLength"
         },
         {
             "Severity": 1,
@@ -805,7 +805,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].maxLength"
         },
         {
             "Severity": 1,
@@ -828,7 +828,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].pattern"
         },
         {
             "Severity": 1,
@@ -851,7 +851,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].minItems"
         },
         {
             "Severity": 1,
@@ -874,7 +874,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].maxItems"
         },
         {
             "Severity": 1,
@@ -897,7 +897,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].minProperties"
         },
         {
             "Severity": 1,
@@ -920,7 +920,7 @@
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Shown": false
+            "Path": "values.sink[\"fn::open::schema\"].maxProperties"
         }
     ],
     "environment": {
