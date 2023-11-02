@@ -186,7 +186,23 @@ func TestGetEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, err := client.GetEnvironment(context.Background(), "test-org", "test-env")
+		actualYAML, actualTag, err := client.GetEnvironment(context.Background(), "test-org", "test-env", false)
+		require.NoError(t, err)
+		assert.Equal(t, string(expectedYAML), string(actualYAML))
+		assert.Equal(t, expectedTag, actualTag)
+	})
+
+	t.Run("Decrypt", func(t *testing.T) {
+		expectedYAML := []byte("arbitrary content")
+		expectedTag := "new-tag"
+
+		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/decrypt", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("ETag", expectedTag)
+			_, err := w.Write(expectedYAML)
+			require.NoError(t, err)
+		})
+
+		actualYAML, actualTag, err := client.GetEnvironment(context.Background(), "test-org", "test-env", true)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
@@ -203,7 +219,7 @@ func TestGetEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, _, err := client.GetEnvironment(context.Background(), "test-org", "test-env")
+		_, _, err := client.GetEnvironment(context.Background(), "test-org", "test-env", false)
 		assert.ErrorContains(t, err, "not found")
 	})
 }

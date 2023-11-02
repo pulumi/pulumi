@@ -154,11 +154,11 @@ func fromJSON(path string, v any) (Value, error) {
 // ToJSON converts a Value into a plain-old-JSON value (i.e. a value of type nil, bool, json.Number, string, []any, or
 // map[string]any). If redact is true, secrets are replaced with [secret].
 func (v Value) ToJSON(redact bool) any {
-	if v.Unknown {
-		return "[unknown]"
-	}
 	if v.Secret && redact {
 		return "[secret]"
+	}
+	if v.Unknown {
+		return "[unknown]"
 	}
 
 	switch pv := v.Value.(type) {
@@ -181,11 +181,11 @@ func (v Value) ToJSON(redact bool) any {
 
 // ToString returns the string representation of this value. If redact is true, secrets are replaced with [secret].
 func (v Value) ToString(redact bool) string {
-	if v.Unknown {
-		return "[unknown]"
-	}
 	if v.Secret && redact {
 		return "[secret]"
+	}
+	if v.Unknown {
+		return "[unknown]"
 	}
 
 	switch pv := v.Value.(type) {

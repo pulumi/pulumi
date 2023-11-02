@@ -211,10 +211,20 @@ func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provide
 	return nil, fmt.Errorf("unknown provider %q", name)
 }
 
-type nopDecrypter struct{}
+type rot128 struct{}
 
-func (nopDecrypter) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
-	return ciphertext, nil
+func (rot128) Encrypt(_ context.Context, plaintext []byte) ([]byte, error) {
+	for i, b := range plaintext {
+		plaintext[i] = b + 128
+	}
+	return plaintext, nil
+}
+
+func (rot128) Decrypt(_ context.Context, plaintext []byte) ([]byte, error) {
+	for i, b := range plaintext {
+		plaintext[i] = b + 128
+	}
+	return plaintext, nil
 }
 
 type testEnvironments struct {
@@ -228,7 +238,7 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, envName string) 
 	if !ok {
 		return nil, nil, errors.New("not found")
 	}
-	return env.yaml, nopDecrypter{}, nil
+	return env.yaml, rot128{}, nil
 }
 
 type testEnvironment struct {
@@ -351,7 +361,7 @@ func (c *testPulumiClient) openEnvironment(ctx context.Context, orgName, name st
 	providers := &testProviders{}
 	envLoader := &testEnvironments{orgName: orgName, environments: c.environments}
 
-	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, nopDecrypter{}, providers, envLoader)
+	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, rot128{}, providers, envLoader)
 	diags.Extend(evalDiags...)
 
 	if diags.HasErrors() {
@@ -421,13 +431,23 @@ func (c *testPulumiClient) CreateEnvironment(ctx context.Context, orgName, envNa
 	return nil
 }
 
-func (c *testPulumiClient) GetEnvironment(ctx context.Context, orgName, envName string) ([]byte, string, error) {
+func (c *testPulumiClient) GetEnvironment(ctx context.Context, orgName, envName string, showSecrets bool) ([]byte, string, error) {
 	name := path.Join(orgName, envName)
 	env, ok := c.environments[name]
 	if !ok {
 		return nil, "", errors.New("not found")
 	}
-	return env.yaml, env.tag, nil
+
+	yaml := env.yaml
+	if showSecrets {
+		plaintext, err := eval.DecryptSecrets(ctx, envName, yaml, rot128{})
+		if err != nil {
+			return nil, "", err
+		}
+		yaml = plaintext
+	}
+
+	return yaml, env.tag, nil
 }
 
 func (c *testPulumiClient) UpdateEnvironment(
@@ -450,6 +470,11 @@ func (c *testPulumiClient) UpdateEnvironment(
 	if err == nil && len(diags) == 0 {
 		h := fnv.New32()
 		h.Write(yaml)
+
+		yaml, err = eval.EncryptSecrets(ctx, envName, yaml, rot128{})
+		if err != nil {
+			return nil, err
+		}
 
 		env.yaml = yaml
 		env.tag = base64.StdEncoding.EncodeToString(h.Sum(nil))

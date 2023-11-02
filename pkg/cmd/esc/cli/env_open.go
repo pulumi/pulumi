@@ -69,7 +69,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
 			}
 
-			return envcmd.renderValue(envcmd.esc.stdout, env, path, format, false)
+			return envcmd.renderValue(envcmd.esc.stdout, env, path, format, false, true)
 		},
 	}
 
@@ -89,6 +89,7 @@ func (env *envCommand) renderValue(
 	path resource.PropertyPath,
 	format string,
 	pretend bool,
+	showSecrets bool,
 ) error {
 	if e == nil {
 		return nil
@@ -105,7 +106,7 @@ func (env *envCommand) renderValue(
 
 	switch format {
 	case "json":
-		body := val.ToJSON(false)
+		body := val.ToJSON(!showSecrets)
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(body)
@@ -132,7 +133,7 @@ func (env *envCommand) renderValue(
 		}
 		return nil
 	case "string":
-		fmt.Fprintf(out, "%v\n", val.ToString(false))
+		fmt.Fprintf(out, "%v\n", val.ToString(!showSecrets))
 		return nil
 	default:
 		// NOTE: we shouldn't get here. This was checked at the beginning of the function.

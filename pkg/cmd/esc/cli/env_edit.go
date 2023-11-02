@@ -28,6 +28,8 @@ type envEditCommand struct {
 }
 
 func newEnvEditCmd(env *envCommand) *cobra.Command {
+	var showSecrets bool
+
 	edit := &envEditCommand{env: env}
 
 	cmd := &cobra.Command{
@@ -61,7 +63,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 			}
 			_ = args
 
-			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, orgName, envName)
+			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, orgName, envName, showSecrets)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -111,6 +113,10 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&edit.editorFlag, "editor", "", "the command to use to edit the environment definition")
+
+	cmd.Flags().BoolVar(
+		&showSecrets, "show-secrets", false,
+		"Show static secrets in plaintext rather than ciphertext")
 
 	return cmd
 }

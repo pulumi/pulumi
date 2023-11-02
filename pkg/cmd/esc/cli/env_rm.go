@@ -69,7 +69,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("invalid path: %w", err)
 			}
 
-			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName)
+			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName, false)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}

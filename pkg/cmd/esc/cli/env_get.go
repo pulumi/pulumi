@@ -23,6 +23,7 @@ type envGetCommand struct {
 
 func newEnvGetCmd(env *envCommand) *cobra.Command {
 	var value string
+	var showSecrets bool
 
 	get := &envGetCommand{env: env}
 
@@ -60,31 +61,31 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 			case "":
 				// OK
 			case "detailed", "json", "string":
-				return get.showValue(ctx, orgName, envName, path, value)
+				return get.showValue(ctx, orgName, envName, path, value, showSecrets)
 			case "dotenv":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, orgName, envName, path, value)
+				return get.showValue(ctx, orgName, envName, path, value, showSecrets)
 			case "shell":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, orgName, envName, path, value)
+				return get.showValue(ctx, orgName, envName, path, value, showSecrets)
 			default:
 				return fmt.Errorf("unknown output format %q", value)
 			}
 
-			def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName)
+			def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, showSecrets)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
 
 			var data *envGetTemplateData
 			if len(args) == 0 {
-				data, err = get.getEntireEnvironment(ctx, orgName, def)
+				data, err = get.getEntireEnvironment(ctx, orgName, def, showSecrets)
 			} else {
-				data, err = get.getEnvironmentMember(ctx, orgName, envName, def, path)
+				data, err = get.getEnvironmentMember(ctx, orgName, envName, def, path, showSecrets)
 			}
 			if err != nil {
 				return err
@@ -119,6 +120,9 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(
 		&value, "value", "",
 		"set to print just the value in the given format. may be 'dotenv', 'json', 'detailed', or 'shell'")
+	cmd.Flags().BoolVar(
+		&showSecrets, "show-secrets", false,
+		"Show static secrets in plaintext rather than ciphertext")
 
 	return cmd
 }
@@ -139,8 +143,9 @@ func (get *envGetCommand) showValue(
 	envName string,
 	path resource.PropertyPath,
 	format string,
+	showSecrets bool,
 ) error {
-	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName)
+	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting environment definition: %w", err)
 	}
@@ -148,13 +153,14 @@ func (get *envGetCommand) showValue(
 	if err != nil {
 		return fmt.Errorf("getting environment: %w", err)
 	}
-	return get.env.renderValue(get.env.esc.stdout, env, path, format, true)
+	return get.env.renderValue(get.env.esc.stdout, env, path, format, true, showSecrets)
 }
 
 func (get *envGetCommand) getEntireEnvironment(
 	ctx context.Context,
 	orgName string,
 	def []byte,
+	showSecrets bool,
 ) (*envGetTemplateData, error) {
 	var docNode yaml.Node
 	if err := yaml.Unmarshal(def, &docNode); err != nil {
@@ -172,7 +178,7 @@ func (get *envGetCommand) getEntireEnvironment(
 		return nil, nil
 	}
 
-	envJSON, err := json.MarshalIndent(esc.NewValue(env.Properties).ToJSON(true), "", "  ")
+	envJSON, err := json.MarshalIndent(esc.NewValue(env.Properties).ToJSON(!showSecrets), "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("encoding value: %w", err)
 	}
@@ -194,6 +200,7 @@ func (get *envGetCommand) getEnvironmentMember(
 	envName string,
 	def []byte,
 	path resource.PropertyPath,
+	showSecrets bool,
 ) (*envGetTemplateData, error) {
 	var docNode yaml.Node
 	if err := yaml.Unmarshal(def, &docNode); err != nil {
@@ -228,7 +235,7 @@ func (get *envGetCommand) getEnvironmentMember(
 	if value != nil {
 		stacker = &stackableValue{v: value}
 
-		j, err := json.MarshalIndent(value.ToJSON(true), "", "  ")
+		j, err := json.MarshalIndent(value.ToJSON(!showSecrets), "", "  ")
 		if err != nil {
 			return nil, fmt.Errorf("encoding value: %w", err)
 		}

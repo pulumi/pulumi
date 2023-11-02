@@ -55,7 +55,7 @@ type Client interface {
 
 	CreateEnvironment(ctx context.Context, orgName, envName string) error
 
-	GetEnvironment(ctx context.Context, orgName, envName string) ([]byte, string, error)
+	GetEnvironment(ctx context.Context, orgName, envName string, decrypt bool) ([]byte, string, error)
 
 	UpdateEnvironment(
 		ctx context.Context,
@@ -227,8 +227,12 @@ func (pc *client) CreateEnvironment(ctx context.Context, orgName, envName string
 	return pc.restCall(ctx, http.MethodPost, path, nil, nil, nil)
 }
 
-func (pc *client) GetEnvironment(ctx context.Context, orgName, envName string) ([]byte, string, error) {
+func (pc *client) GetEnvironment(ctx context.Context, orgName, envName string, decrypt bool) ([]byte, string, error) {
 	path := fmt.Sprintf("/api/preview/environments/%v/%v", orgName, envName)
+	if decrypt {
+		path += "/decrypt"
+	}
+
 	var resp *http.Response
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
 		return nil, "", err
