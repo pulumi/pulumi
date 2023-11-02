@@ -926,9 +926,9 @@ describe("LocalWorkspace", () => {
     });
     it(`runs an inline program that exits gracefully`, async () => {
         const program = async () => {
-            // The Promise.resolve() line causes this to not hang the NodeJS process.
-            // It's likely due to a bug in @grpc/grpc-js.
-            Promise.resolve();
+            //// The Promise.resolve() line causes this to not hang the NodeJS process.
+            //// It's likely due to a bug in @grpc/grpc-js.
+            //Promise.resolve();
             return {};
         };
         const projectName = "inline_node";
