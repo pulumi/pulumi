@@ -1,0 +1,11 @@
+values:
+  aws:
+    creds:
+      fn::open::aws-login:
+        static:
+          accessKeyId: accessKeyId
+          secretAccessKey: {'fn::secret': secretAccessKey}
+  environmentVariables:
+    AWS_ACCESS_KEY_ID: ${aws.creds.accessKeyId}
+    AWS_SECRET_ACCESS_KEY: ${aws.creds.secretAccessKey}
+    AWS_SESSION_TOKEN: ${aws.creds.sessionToken}

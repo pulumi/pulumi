@@ -42,7 +42,7 @@ type ProviderLoader interface {
 // An EnvironmentLoader provides the environment evaluator the capability to load imported environment definitions.
 type EnvironmentLoader interface {
 	// LoadEnvironment loads the definition for the environment with the given name.
-	LoadEnvironment(ctx context.Context, name string) ([]byte, error)
+	LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error)
 }
 
 // LoadYAML decodes a YAML template from an io.Reader.
@@ -78,10 +78,11 @@ func EvalEnvironment(
 	ctx context.Context,
 	name string,
 	env *ast.EnvironmentDecl,
+	decrypter Decrypter,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, false, name, env, providers, environments)
+	return evalEnvironment(ctx, false, name, env, decrypter, providers, environments)
 }
 
 // CheckEnvironment symbolically evaluates the given environment. Calls to fn::open are not invoked, and instead
@@ -93,7 +94,7 @@ func CheckEnvironment(
 	providers ProviderLoader,
 	environments EnvironmentLoader,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, true, name, env, providers, environments)
+	return evalEnvironment(ctx, true, name, env, nil, providers, environments)
 }
 
 // evalEnvironment evaluates an environment and exports the result of evaluation.
@@ -102,6 +103,7 @@ func evalEnvironment(
 	validating bool,
 	name string,
 	env *ast.EnvironmentDecl,
+	decrypter Decrypter,
 	providers ProviderLoader,
 	envs EnvironmentLoader,
 ) (*esc.Environment, syntax.Diagnostics) {
@@ -109,7 +111,7 @@ func evalEnvironment(
 		return nil, nil
 	}
 
-	ec := newEvalContext(ctx, validating, name, env, providers, envs, map[string]*value{})
+	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*value{})
 	v, diags := ec.evaluate()
 
 	s := schema.Never().Schema()
@@ -135,6 +137,7 @@ type evalContext struct {
 	validating   bool                 // true if we are only checking the environment
 	name         string               // the name of the environment
 	env          *ast.EnvironmentDecl // the root of the environment AST
+	decrypter    Decrypter            // the decrypter to use for the environment
 	providers    ProviderLoader       // the provider loader to use
 	environments EnvironmentLoader    // the environment loader to use
 	imports      map[string]*value    // the shared set of imported environments
@@ -151,6 +154,7 @@ func newEvalContext(
 	validating bool,
 	name string,
 	env *ast.EnvironmentDecl,
+	decrypter Decrypter,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
 	imports map[string]*value,
@@ -160,6 +164,7 @@ func newEvalContext(
 		validating:   validating,
 		name:         name,
 		env:          env,
+		decrypter:    decrypter,
 		providers:    providers,
 		environments: environments,
 		imports:      imports,
@@ -248,9 +253,14 @@ func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 		}
 		return newExpr(path, repr, schema.Always().Schema(), base)
 	case *ast.SecretExpr:
-		repr := &secretExpr{node: x, value: e.declare("", x.Value, nil)}
-		repr.value.secret = true
-		return newExpr(path, repr, repr.value.schema, base)
+		if x.Plaintext != nil {
+			repr := &secretExpr{node: x, plaintext: e.declare("", x.Plaintext, nil)}
+			repr.plaintext.secret = true
+			return newExpr(path, repr, schema.String().Schema(), base)
+		}
+		repr := &secretExpr{node: x, ciphertext: e.declare("", x.Ciphertext, nil)}
+		repr.ciphertext.secret = true
+		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.ToBase64Expr:
 		repr := &toBase64Expr{node: x, value: e.declare("", x.Value, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
@@ -366,7 +376,7 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 
 	val, ok := e.imports[name]
 	if !ok {
-		bytes, err := e.environments.LoadEnvironment(e.ctx, name)
+		bytes, dec, err := e.environments.LoadEnvironment(e.ctx, name)
 		if err != nil {
 			e.errorf(decl.Environment, "%s", err.Error())
 			return
@@ -379,7 +389,7 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 			return
 		}
 
-		imp := newEvalContext(e.ctx, e.validating, name, env, e.providers, e.environments, e.imports)
+		imp := newEvalContext(e.ctx, e.validating, name, env, dec, e.providers, e.environments, e.imports)
 		v, diags := imp.evaluate()
 		e.diags.Extend(diags...)
 
@@ -442,7 +452,7 @@ func (e *evalContext) evaluateExpr(x *expr) *value {
 	case *openExpr:
 		val = e.evaluateBuiltinOpen(x, repr)
 	case *secretExpr:
-		val = e.evaluateExpr(repr.value)
+		val = e.evaluateBuiltinSecret(x, repr)
 	case *toBase64Expr:
 		val = e.evaluateBuiltinToBase64(x, repr)
 	case *toJSONExpr:
@@ -592,7 +602,7 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor)
 			receiver = prop
 		case *secretExpr:
 			// Secret expressions are transparent to accessors.
-			receiver = repr.value
+			receiver = repr.plaintext
 			continue
 		default:
 			return e.evaluateValueAccess(x.repr.syntax(), e.evaluateExpr(receiver), accessors)
@@ -757,6 +767,38 @@ func (e *evalContext) objectKey(expr ast.Expr, accessor ast.PropertyAccessor, mu
 	default:
 		panic(fmt.Errorf("unexpected accessor type %T", accessor))
 	}
+}
+
+// evaluateBuiltinSecret evaluates a call to the fn::secret builtin. Plaintext secrets evaluate to the
+// plaintext value. Ciphertext secrets evaluate to unknown during validation and to their plaintext
+// during evaluation.
+func (e *evalContext) evaluateBuiltinSecret(x *expr, repr *secretExpr) *value {
+	if repr.plaintext != nil {
+		return e.evaluateExpr(repr.plaintext)
+	}
+
+	v := &value{def: x, schema: x.schema, secret: true}
+
+	ciphertext, err := decodeCiphertext(repr.node.Ciphertext.Value)
+	if err != nil {
+		e.errorf(repr.syntax(), "invalid ciphertext: %v", err)
+		v.unknown = true
+		return v
+	}
+	if e.validating {
+		v.unknown = true
+		return v
+	}
+
+	plaintext, err := e.decrypter.Decrypt(e.ctx, ciphertext)
+	if err != nil {
+		e.errorf(repr.syntax(), "decrypting: %v", err)
+		v.unknown = true
+		return v
+	}
+
+	v.repr = string(plaintext)
+	return v
 }
 
 // evaluateBuiltinOpen evaluates a call to the fn::open builtin. This involves loading the provider, fetching its

@@ -198,11 +198,22 @@ func (x *expr) export(environment string) esc.Expr {
 			}
 		}
 	case *secretExpr:
+		var arg esc.Expr
+		if repr.plaintext != nil {
+			arg = repr.plaintext.export(environment)
+		} else {
+			arg = esc.Expr{
+				Range: convertRange(repr.node.Args().Syntax().Syntax().Range(), environment),
+				Object: map[string]esc.Expr{
+					"ciphertext": repr.ciphertext.export(environment),
+				},
+			}
+		}
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
 			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.Always().Schema(),
-			Arg:       repr.value.export(environment),
+			Arg:       arg,
 		}
 	case *toBase64Expr:
 		ex.Builtin = &esc.BuiltinExpr{
@@ -393,7 +404,8 @@ func (x *joinExpr) syntax() ast.Expr {
 type secretExpr struct {
 	node *ast.SecretExpr
 
-	value *expr
+	plaintext  *expr
+	ciphertext *expr
 }
 
 func (x *secretExpr) syntax() ast.Expr {

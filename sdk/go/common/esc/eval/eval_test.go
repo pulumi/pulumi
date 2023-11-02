@@ -138,8 +138,12 @@ type testEnvironments struct {
 	root string
 }
 
-func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, error) {
-	return os.ReadFile(filepath.Join(e.root, name+".yaml"))
+func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error) {
+	bytes, err := os.ReadFile(filepath.Join(e.root, name+".yaml"))
+	if err != nil {
+		return nil, nil, err
+	}
+	return bytes, rot128{}, nil
 }
 
 func sortEnvironmentDiagnostics(diags syntax.Diagnostics) {
@@ -235,7 +239,7 @@ func TestEval(t *testing.T) {
 				_, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
 				sortEnvironmentDiagnostics(checkDiags)
 
-				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{}, &testEnvironments{basePath})
 				sortEnvironmentDiagnostics(evalDiags)
 
 				bytes, err := json.MarshalIndent(expectedData{
@@ -269,7 +273,7 @@ func TestEval(t *testing.T) {
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
-			actual, diags := EvalEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+			actual, diags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{}, &testEnvironments{basePath})
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
 

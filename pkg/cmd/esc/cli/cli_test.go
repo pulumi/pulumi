@@ -211,18 +211,24 @@ func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provide
 	return nil, fmt.Errorf("unknown provider %q", name)
 }
 
+type nopDecrypter struct{}
+
+func (nopDecrypter) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
+	return ciphertext, nil
+}
+
 type testEnvironments struct {
 	orgName      string
 	environments map[string]*testEnvironment
 }
 
-func (e *testEnvironments) LoadEnvironment(ctx context.Context, envName string) ([]byte, error) {
+func (e *testEnvironments) LoadEnvironment(ctx context.Context, envName string) ([]byte, eval.Decrypter, error) {
 	name := path.Join(e.orgName, envName)
 	env, ok := e.environments[name]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, nil, errors.New("not found")
 	}
-	return env.yaml, nil
+	return env.yaml, nopDecrypter{}, nil
 }
 
 type testEnvironment struct {
@@ -345,7 +351,7 @@ func (c *testPulumiClient) openEnvironment(ctx context.Context, orgName, name st
 	providers := &testProviders{}
 	envLoader := &testEnvironments{orgName: orgName, environments: c.environments}
 
-	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, providers, envLoader)
+	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, nopDecrypter{}, providers, envLoader)
 	diags.Extend(evalDiags...)
 
 	if diags.HasErrors() {

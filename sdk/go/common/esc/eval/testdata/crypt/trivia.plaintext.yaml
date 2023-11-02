@@ -1,0 +1,4 @@
+values:
+  password:
+    # Here's a header comment
+    fn::secret: hunter2 # Here's a line comment, too

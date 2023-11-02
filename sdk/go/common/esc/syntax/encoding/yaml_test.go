@@ -161,8 +161,10 @@ baz: qux
 baz: qux
 `
 
-	root, diags := DecodeYAML("yaml", yaml.NewDecoder(strings.NewReader(doc)), nil)
+	rootNode, diags := DecodeYAML("yaml", yaml.NewDecoder(strings.NewReader(doc)), nil)
 	assert.Empty(t, diags)
+
+	root := rootNode.(*syntax.ObjectNode)
 
 	root.SetIndex(0, syntax.ObjectProperty(syntax.String("foo"), syntax.NumberSyntax(root.Index(0).Value.Syntax(), 42)))
 	root.SetIndex(1, syntax.ObjectProperty(syntax.StringSyntax(comment("head comment"), "baz"), syntax.String("qux")))

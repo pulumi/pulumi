@@ -507,22 +507,40 @@ func Join(delimiter Expr, values *ArrayExpr) *JoinExpr {
 type SecretExpr struct {
 	builtinNode
 
-	Value Expr
+	Plaintext  *StringExpr
+	Ciphertext *StringExpr
 }
 
-func SecretSyntax(node *syntax.ObjectNode, name *StringExpr, value Expr) *SecretExpr {
+func PlaintextSyntax(node *syntax.ObjectNode, name, value *StringExpr) *SecretExpr {
 	return &SecretExpr{
 		builtinNode: builtin(node, name, value),
-		Value:       value,
+		Plaintext:   value,
 	}
 }
 
-func Secret(value Expr) *SecretExpr {
+func Plaintext(value *StringExpr) *SecretExpr {
 	name := String("fn::secret")
 
 	return &SecretExpr{
 		builtinNode: builtin(nil, name, value),
-		Value:       value,
+		Plaintext:   value,
+	}
+}
+
+func CiphertextSyntax(node *syntax.ObjectNode, name *StringExpr, args *ObjectExpr, value *StringExpr) *SecretExpr {
+	return &SecretExpr{
+		builtinNode: builtin(node, name, args),
+		Ciphertext:  value,
+	}
+}
+
+func Ciphertext(value *StringExpr) *SecretExpr {
+	name := String("fn::secret")
+	arg := Object(ObjectProperty{Key: String("ciphertext"), Value: value})
+
+	return &SecretExpr{
+		builtinNode: builtin(nil, name, arg),
+		Ciphertext:  value,
 	}
 }
 
@@ -698,5 +716,18 @@ func parseFromBase64(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr
 }
 
 func parseSecret(node *syntax.ObjectNode, name *StringExpr, value Expr) (Expr, syntax.Diagnostics) {
-	return SecretSyntax(node, name, value), nil
+	if arg, ok := value.(*ObjectExpr); ok && len(arg.Entries) == 1 {
+		kvp := arg.Entries[0]
+		if kvp.Key.Value == "ciphertext" {
+			if str, ok := kvp.Value.(*StringExpr); ok {
+				return CiphertextSyntax(node, name, arg, str), nil
+			}
+		}
+	}
+
+	str, ok := value.(*StringExpr)
+	if !ok {
+		return nil, syntax.Diagnostics{ExprError(value, "secret values must be string literals")}
+	}
+	return PlaintextSyntax(node, name, str), nil
 }

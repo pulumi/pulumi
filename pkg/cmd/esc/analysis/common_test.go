@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/esc/schema"
 	"golang.org/x/exp/maps"
 )
@@ -72,11 +73,11 @@ func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provide
 
 type testEnvironments struct{}
 
-func (testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, error) {
+func (testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, eval.Decrypter, error) {
 	if name != "a" {
-		return nil, errors.New("not found")
+		return nil, nil, errors.New("not found")
 	}
-	return []byte(`{"values": {}}`), nil
+	return []byte(`{"values": {}}`), nil, nil
 }
 
 const def = `imports:

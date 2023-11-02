@@ -54,6 +54,18 @@ func (s YAMLSyntax) Path() string {
 	return s.path
 }
 
+func (s YAMLSyntax) HeadComment() string {
+	return s.Node.HeadComment
+}
+
+func (s YAMLSyntax) LineComment() string {
+	return s.Node.LineComment
+}
+
+func (s YAMLSyntax) FootComment() string {
+	return s.Node.FootComment
+}
+
 type linePosition struct {
 	offset int
 	ascii  bool
@@ -290,9 +302,9 @@ func MarshalYAML(n syntax.Node) (*yaml.Node, syntax.Diagnostics) {
 		yamlNode.Tag = s.Tag
 		yamlNode.Value = s.Value
 		yamlNode.Style = s.Style
-		yamlNode.HeadComment = s.HeadComment
-		yamlNode.LineComment = s.LineComment
-		yamlNode.FootComment = s.FootComment
+		yamlNode.HeadComment = s.Node.HeadComment
+		yamlNode.LineComment = s.Node.LineComment
+		yamlNode.FootComment = s.Node.FootComment
 
 		originalValue = s.value
 	case syntax.Trivia:
@@ -402,7 +414,7 @@ func (v *yamlValue) UnmarshalYAML(n *yaml.Node) error {
 
 // DecodeYAMLBytes decodes a YAML value from the given decoder into a syntax node. See UnmarshalYAML for mode details on the
 // decoding process.
-func DecodeYAMLBytes(filename string, bytes []byte, tags TagDecoder) (*syntax.ObjectNode, syntax.Diagnostics) {
+func DecodeYAMLBytes(filename string, bytes []byte, tags TagDecoder) (syntax.Node, syntax.Diagnostics) {
 	// If this is an empty file, return an empty object node.
 	if len(bytes) == 0 {
 		return &syntax.ObjectNode{}, nil
@@ -411,17 +423,12 @@ func DecodeYAMLBytes(filename string, bytes []byte, tags TagDecoder) (*syntax.Ob
 	if err := yaml.Unmarshal(bytes, &v); err != nil {
 		return nil, syntax.Diagnostics{syntax.Error(nil, err.Error(), "")}
 	}
-	obj, ok := v.node.(*syntax.ObjectNode)
-	if !ok {
-		return nil, syntax.Diagnostics{syntax.Error(nil,
-			fmt.Sprintf("Top level of '%s' must be an object", filename), "")}
-	}
-	return obj, v.diags
+	return v.node, v.diags
 }
 
 // DecodeYAML decodes a YAML value from the given decoder into a syntax node. See UnmarshalYAML for mode details on the
 // decoding process.
-func DecodeYAML(filename string, d *yaml.Decoder, tags TagDecoder) (*syntax.ObjectNode, syntax.Diagnostics) {
+func DecodeYAML(filename string, d *yaml.Decoder, tags TagDecoder) (syntax.Node, syntax.Diagnostics) {
 	v := yamlValue{filename: filename, tags: tags}
 	if err := d.Decode(&v); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -429,12 +436,7 @@ func DecodeYAML(filename string, d *yaml.Decoder, tags TagDecoder) (*syntax.Obje
 		}
 		return nil, syntax.Diagnostics{syntax.Error(nil, err.Error(), "")}
 	}
-	obj, ok := v.node.(*syntax.ObjectNode)
-	if !ok {
-		return nil, syntax.Diagnostics{syntax.Error(nil,
-			fmt.Sprintf("Top level of '%s' must be an object", filename), "")}
-	}
-	return obj, v.diags
+	return v.node, v.diags
 }
 
 // EncodeYAML encodes a syntax node into YAML text using the given encoder. See MarshalYAML for mode details on the
