@@ -901,12 +901,24 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
@@ -914,12 +926,24 @@ func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
@@ -947,14 +971,6 @@ func (b *localBackend) apply(
 
 	if currentProjectContradictsWorkspace(localStackRef) {
 		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
-	}
-
-	if kind != apitype.PreviewUpdate {
-		err := b.Lock(ctx, stackRef)
-		if err != nil {
-			return nil, nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stackRef)
 	}
 
 	stackName := stackRef.FullyQualifiedName()
