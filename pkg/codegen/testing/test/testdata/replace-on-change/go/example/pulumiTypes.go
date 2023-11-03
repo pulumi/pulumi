@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"replace-on-change/example/internal"
 )
 
@@ -45,12 +44,6 @@ func (i ChewArgs) ToChewOutput() ChewOutput {
 
 func (i ChewArgs) ToChewOutputWithContext(ctx context.Context) ChewOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ChewOutput)
-}
-
-func (i ChewArgs) ToOutput(ctx context.Context) pulumix.Output[Chew] {
-	return pulumix.Output[Chew]{
-		OutputState: i.ToChewOutputWithContext(ctx).OutputState,
-	}
 }
 
 func (i ChewArgs) ToChewPtrOutput() ChewPtrOutput {
@@ -94,12 +87,6 @@ func (i *chewPtrType) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOut
 	return pulumi.ToOutputWithContext(ctx, i).(ChewPtrOutput)
 }
 
-func (i *chewPtrType) ToOutput(ctx context.Context) pulumix.Output[*Chew] {
-	return pulumix.Output[*Chew]{
-		OutputState: i.ToChewPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 // A toy for a dog
 type ChewOutput struct{ *pulumi.OutputState }
 
@@ -125,12 +112,6 @@ func (o ChewOutput) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutpu
 	}).(ChewPtrOutput)
 }
 
-func (o ChewOutput) ToOutput(ctx context.Context) pulumix.Output[Chew] {
-	return pulumix.Output[Chew]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ChewOutput) Owner() DogOutput {
 	return o.ApplyT(func(v Chew) *Dog { return v.Owner }).(DogOutput)
 }
@@ -147,12 +128,6 @@ func (o ChewPtrOutput) ToChewPtrOutput() ChewPtrOutput {
 
 func (o ChewPtrOutput) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutput {
 	return o
-}
-
-func (o ChewPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Chew] {
-	return pulumix.Output[*Chew]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ChewPtrOutput) Elem() ChewOutput {
@@ -211,12 +186,6 @@ func (i LaserArgs) ToLaserOutputWithContext(ctx context.Context) LaserOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(LaserOutput)
 }
 
-func (i LaserArgs) ToOutput(ctx context.Context) pulumix.Output[Laser] {
-	return pulumix.Output[Laser]{
-		OutputState: i.ToLaserOutputWithContext(ctx).OutputState,
-	}
-}
-
 func (i LaserArgs) ToLaserPtrOutput() LaserPtrOutput {
 	return i.ToLaserPtrOutputWithContext(context.Background())
 }
@@ -258,12 +227,6 @@ func (i *laserPtrType) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtr
 	return pulumi.ToOutputWithContext(ctx, i).(LaserPtrOutput)
 }
 
-func (i *laserPtrType) ToOutput(ctx context.Context) pulumix.Output[*Laser] {
-	return pulumix.Output[*Laser]{
-		OutputState: i.ToLaserPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 // A Toy for a cat
 type LaserOutput struct{ *pulumi.OutputState }
 
@@ -287,12 +250,6 @@ func (o LaserOutput) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOu
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Laser) *Laser {
 		return &v
 	}).(LaserPtrOutput)
-}
-
-func (o LaserOutput) ToOutput(ctx context.Context) pulumix.Output[Laser] {
-	return pulumix.Output[Laser]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o LaserOutput) Animal() CatOutput {
@@ -319,12 +276,6 @@ func (o LaserPtrOutput) ToLaserPtrOutput() LaserPtrOutput {
 
 func (o LaserPtrOutput) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOutput {
 	return o
-}
-
-func (o LaserPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Laser] {
-	return pulumix.Output[*Laser]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o LaserPtrOutput) Elem() LaserOutput {
@@ -395,12 +346,6 @@ func (i RecArgs) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RecOutput)
 }
 
-func (i RecArgs) ToOutput(ctx context.Context) pulumix.Output[Rec] {
-	return pulumix.Output[Rec]{
-		OutputState: i.ToRecOutputWithContext(ctx).OutputState,
-	}
-}
-
 func (i RecArgs) ToRecPtrOutput() RecPtrOutput {
 	return i.ToRecPtrOutputWithContext(context.Background())
 }
@@ -442,12 +387,6 @@ func (i *recPtrType) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(RecPtrOutput)
 }
 
-func (i *recPtrType) ToOutput(ctx context.Context) pulumix.Output[*Rec] {
-	return pulumix.Output[*Rec]{
-		OutputState: i.ToRecPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type RecOutput struct{ *pulumi.OutputState }
 
 func (RecOutput) ElementType() reflect.Type {
@@ -472,12 +411,6 @@ func (o RecOutput) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
 	}).(RecPtrOutput)
 }
 
-func (o RecOutput) ToOutput(ctx context.Context) pulumix.Output[Rec] {
-	return pulumix.Output[Rec]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o RecOutput) Rec1() RecPtrOutput {
 	return o.ApplyT(func(v Rec) *Rec { return v.Rec1 }).(RecPtrOutput)
 }
@@ -494,12 +427,6 @@ func (o RecPtrOutput) ToRecPtrOutput() RecPtrOutput {
 
 func (o RecPtrOutput) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
 	return o
-}
-
-func (o RecPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Rec] {
-	return pulumix.Output[*Rec]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o RecPtrOutput) Elem() RecOutput {
@@ -558,12 +485,6 @@ func (i ToyArgs) ToToyOutputWithContext(ctx context.Context) ToyOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ToyOutput)
 }
 
-func (i ToyArgs) ToOutput(ctx context.Context) pulumix.Output[Toy] {
-	return pulumix.Output[Toy]{
-		OutputState: i.ToToyOutputWithContext(ctx).OutputState,
-	}
-}
-
 func (i ToyArgs) ToToyPtrOutput() ToyPtrOutput {
 	return i.ToToyPtrOutputWithContext(context.Background())
 }
@@ -605,12 +526,6 @@ func (i *toyPtrType) ToToyPtrOutputWithContext(ctx context.Context) ToyPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(ToyPtrOutput)
 }
 
-func (i *toyPtrType) ToOutput(ctx context.Context) pulumix.Output[*Toy] {
-	return pulumix.Output[*Toy]{
-		OutputState: i.ToToyPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 // ToyArrayInput is an input type that accepts ToyArray and ToyArrayOutput values.
 // You can construct a concrete instance of `ToyArrayInput` via:
 //
@@ -634,12 +549,6 @@ func (i ToyArray) ToToyArrayOutput() ToyArrayOutput {
 
 func (i ToyArray) ToToyArrayOutputWithContext(ctx context.Context) ToyArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ToyArrayOutput)
-}
-
-func (i ToyArray) ToOutput(ctx context.Context) pulumix.Output[[]Toy] {
-	return pulumix.Output[[]Toy]{
-		OutputState: i.ToToyArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // ToyMapInput is an input type that accepts ToyMap and ToyMapOutput values.
@@ -667,12 +576,6 @@ func (i ToyMap) ToToyMapOutputWithContext(ctx context.Context) ToyMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ToyMapOutput)
 }
 
-func (i ToyMap) ToOutput(ctx context.Context) pulumix.Output[map[string]Toy] {
-	return pulumix.Output[map[string]Toy]{
-		OutputState: i.ToToyMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 // This is a toy
 type ToyOutput struct{ *pulumi.OutputState }
 
@@ -696,12 +599,6 @@ func (o ToyOutput) ToToyPtrOutputWithContext(ctx context.Context) ToyPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Toy) *Toy {
 		return &v
 	}).(ToyPtrOutput)
-}
-
-func (o ToyOutput) ToOutput(ctx context.Context) pulumix.Output[Toy] {
-	return pulumix.Output[Toy]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ToyOutput) Associated() ToyPtrOutput {
@@ -728,12 +625,6 @@ func (o ToyPtrOutput) ToToyPtrOutput() ToyPtrOutput {
 
 func (o ToyPtrOutput) ToToyPtrOutputWithContext(ctx context.Context) ToyPtrOutput {
 	return o
-}
-
-func (o ToyPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Toy] {
-	return pulumix.Output[*Toy]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ToyPtrOutput) Elem() ToyOutput {
@@ -787,12 +678,6 @@ func (o ToyArrayOutput) ToToyArrayOutputWithContext(ctx context.Context) ToyArra
 	return o
 }
 
-func (o ToyArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Toy] {
-	return pulumix.Output[[]Toy]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ToyArrayOutput) Index(i pulumi.IntInput) ToyOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Toy {
 		return vs[0].([]Toy)[vs[1].(int)]
@@ -811,12 +696,6 @@ func (o ToyMapOutput) ToToyMapOutput() ToyMapOutput {
 
 func (o ToyMapOutput) ToToyMapOutputWithContext(ctx context.Context) ToyMapOutput {
 	return o
-}
-
-func (o ToyMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]Toy] {
-	return pulumix.Output[map[string]Toy]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ToyMapOutput) MapIndex(k pulumi.StringInput) ToyOutput {

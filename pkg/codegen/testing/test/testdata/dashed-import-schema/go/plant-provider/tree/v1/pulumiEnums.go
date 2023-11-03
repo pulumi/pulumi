@@ -78,12 +78,6 @@ func (o DiameterOutput) ToDiameterPtrOutputWithContext(ctx context.Context) Diam
 	}).(DiameterPtrOutput)
 }
 
-func (o DiameterOutput) ToOutput(ctx context.Context) pulumix.Output[Diameter] {
-	return pulumix.Output[Diameter]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o DiameterOutput) ToFloat64Output() pulumi.Float64Output {
 	return o.ToFloat64OutputWithContext(context.Background())
 }
@@ -117,12 +111,6 @@ func (o DiameterPtrOutput) ToDiameterPtrOutput() DiameterPtrOutput {
 
 func (o DiameterPtrOutput) ToDiameterPtrOutputWithContext(ctx context.Context) DiameterPtrOutput {
 	return o
-}
-
-func (o DiameterPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Diameter] {
-	return pulumix.Output[*Diameter]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o DiameterPtrOutput) Elem() DiameterOutput {
@@ -260,12 +248,6 @@ func (o FarmOutput) ToFarmPtrOutputWithContext(ctx context.Context) FarmPtrOutpu
 	}).(FarmPtrOutput)
 }
 
-func (o FarmOutput) ToOutput(ctx context.Context) pulumix.Output[Farm] {
-	return pulumix.Output[Farm]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o FarmOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -299,12 +281,6 @@ func (o FarmPtrOutput) ToFarmPtrOutput() FarmPtrOutput {
 
 func (o FarmPtrOutput) ToFarmPtrOutputWithContext(ctx context.Context) FarmPtrOutput {
 	return o
-}
-
-func (o FarmPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Farm] {
-	return pulumix.Output[*Farm]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o FarmPtrOutput) Elem() FarmOutput {
@@ -447,12 +423,6 @@ func (o RubberTreeVarietyOutput) ToRubberTreeVarietyPtrOutputWithContext(ctx con
 	}).(RubberTreeVarietyPtrOutput)
 }
 
-func (o RubberTreeVarietyOutput) ToOutput(ctx context.Context) pulumix.Output[RubberTreeVariety] {
-	return pulumix.Output[RubberTreeVariety]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o RubberTreeVarietyOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -486,12 +456,6 @@ func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutput() RubberTreeVar
 
 func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutputWithContext(ctx context.Context) RubberTreeVarietyPtrOutput {
 	return o
-}
-
-func (o RubberTreeVarietyPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*RubberTreeVariety] {
-	return pulumix.Output[*RubberTreeVariety]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o RubberTreeVarietyPtrOutput) Elem() RubberTreeVarietyOutput {
@@ -587,12 +551,6 @@ func (i RubberTreeVarietyArray) ToRubberTreeVarietyArrayOutputWithContext(ctx co
 	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeVarietyArrayOutput)
 }
 
-func (i RubberTreeVarietyArray) ToOutput(ctx context.Context) pulumix.Output[[]RubberTreeVariety] {
-	return pulumix.Output[[]RubberTreeVariety]{
-		OutputState: i.ToRubberTreeVarietyArrayOutputWithContext(ctx).OutputState,
-	}
-}
-
 type RubberTreeVarietyArrayOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeVarietyArrayOutput) ElementType() reflect.Type {
@@ -605,12 +563,6 @@ func (o RubberTreeVarietyArrayOutput) ToRubberTreeVarietyArrayOutput() RubberTre
 
 func (o RubberTreeVarietyArrayOutput) ToRubberTreeVarietyArrayOutputWithContext(ctx context.Context) RubberTreeVarietyArrayOutput {
 	return o
-}
-
-func (o RubberTreeVarietyArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]RubberTreeVariety] {
-	return pulumix.Output[[]RubberTreeVariety]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o RubberTreeVarietyArrayOutput) Index(i pulumi.IntInput) RubberTreeVarietyOutput {
@@ -687,12 +639,6 @@ func (o TreeSizeOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) Tree
 	}).(TreeSizePtrOutput)
 }
 
-func (o TreeSizeOutput) ToOutput(ctx context.Context) pulumix.Output[TreeSize] {
-	return pulumix.Output[TreeSize]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o TreeSizeOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -726,12 +672,6 @@ func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
 
 func (o TreeSizePtrOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
 	return o
-}
-
-func (o TreeSizePtrOutput) ToOutput(ctx context.Context) pulumix.Output[*TreeSize] {
-	return pulumix.Output[*TreeSize]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o TreeSizePtrOutput) Elem() TreeSizeOutput {
@@ -827,12 +767,6 @@ func (i TreeSizeMap) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSiz
 	return pulumi.ToOutputWithContext(ctx, i).(TreeSizeMapOutput)
 }
 
-func (i TreeSizeMap) ToOutput(ctx context.Context) pulumix.Output[map[string]TreeSize] {
-	return pulumix.Output[map[string]TreeSize]{
-		OutputState: i.ToTreeSizeMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type TreeSizeMapOutput struct{ *pulumi.OutputState }
 
 func (TreeSizeMapOutput) ElementType() reflect.Type {
@@ -845,12 +779,6 @@ func (o TreeSizeMapOutput) ToTreeSizeMapOutput() TreeSizeMapOutput {
 
 func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
 	return o
-}
-
-func (o TreeSizeMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]TreeSize] {
-	return pulumix.Output[map[string]TreeSize]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o TreeSizeMapOutput) MapIndex(k pulumi.StringInput) TreeSizeOutput {

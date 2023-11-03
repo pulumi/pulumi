@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"regress-go-8664/example/internal"
 )
 
@@ -43,12 +42,6 @@ func (i ConditionalAccessPolicyConditionsArgs) ToConditionalAccessPolicyConditio
 
 func (i ConditionalAccessPolicyConditionsArgs) ToConditionalAccessPolicyConditionsOutputWithContext(ctx context.Context) ConditionalAccessPolicyConditionsOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ConditionalAccessPolicyConditionsOutput)
-}
-
-func (i ConditionalAccessPolicyConditionsArgs) ToOutput(ctx context.Context) pulumix.Output[ConditionalAccessPolicyConditions] {
-	return pulumix.Output[ConditionalAccessPolicyConditions]{
-		OutputState: i.ToConditionalAccessPolicyConditionsOutputWithContext(ctx).OutputState,
-	}
 }
 
 func (i ConditionalAccessPolicyConditionsArgs) ToConditionalAccessPolicyConditionsPtrOutput() ConditionalAccessPolicyConditionsPtrOutput {
@@ -92,12 +85,6 @@ func (i *conditionalAccessPolicyConditionsPtrType) ToConditionalAccessPolicyCond
 	return pulumi.ToOutputWithContext(ctx, i).(ConditionalAccessPolicyConditionsPtrOutput)
 }
 
-func (i *conditionalAccessPolicyConditionsPtrType) ToOutput(ctx context.Context) pulumix.Output[*ConditionalAccessPolicyConditions] {
-	return pulumix.Output[*ConditionalAccessPolicyConditions]{
-		OutputState: i.ToConditionalAccessPolicyConditionsPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type ConditionalAccessPolicyConditionsOutput struct{ *pulumi.OutputState }
 
 func (ConditionalAccessPolicyConditionsOutput) ElementType() reflect.Type {
@@ -122,12 +109,6 @@ func (o ConditionalAccessPolicyConditionsOutput) ToConditionalAccessPolicyCondit
 	}).(ConditionalAccessPolicyConditionsPtrOutput)
 }
 
-func (o ConditionalAccessPolicyConditionsOutput) ToOutput(ctx context.Context) pulumix.Output[ConditionalAccessPolicyConditions] {
-	return pulumix.Output[ConditionalAccessPolicyConditions]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ConditionalAccessPolicyConditionsOutput) ClientAppTypes() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v ConditionalAccessPolicyConditions) []string { return v.ClientAppTypes }).(pulumi.StringArrayOutput)
 }
@@ -144,12 +125,6 @@ func (o ConditionalAccessPolicyConditionsPtrOutput) ToConditionalAccessPolicyCon
 
 func (o ConditionalAccessPolicyConditionsPtrOutput) ToConditionalAccessPolicyConditionsPtrOutputWithContext(ctx context.Context) ConditionalAccessPolicyConditionsPtrOutput {
 	return o
-}
-
-func (o ConditionalAccessPolicyConditionsPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ConditionalAccessPolicyConditions] {
-	return pulumix.Output[*ConditionalAccessPolicyConditions]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ConditionalAccessPolicyConditionsPtrOutput) Elem() ConditionalAccessPolicyConditionsOutput {

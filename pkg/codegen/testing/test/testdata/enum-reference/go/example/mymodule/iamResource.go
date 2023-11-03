@@ -10,7 +10,6 @@ import (
 	"enum-reference/example/internal"
 	iam "github.com/pulumi/pulumi-google-native/sdk/go/google/iam/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type IamResource struct {
@@ -65,12 +64,6 @@ func (i *IamResource) ToIamResourceOutputWithContext(ctx context.Context) IamRes
 	return pulumi.ToOutputWithContext(ctx, i).(IamResourceOutput)
 }
 
-func (i *IamResource) ToOutput(ctx context.Context) pulumix.Output[*IamResource] {
-	return pulumix.Output[*IamResource]{
-		OutputState: i.ToIamResourceOutputWithContext(ctx).OutputState,
-	}
-}
-
 type IamResourceOutput struct{ *pulumi.OutputState }
 
 func (IamResourceOutput) ElementType() reflect.Type {
@@ -83,12 +76,6 @@ func (o IamResourceOutput) ToIamResourceOutput() IamResourceOutput {
 
 func (o IamResourceOutput) ToIamResourceOutputWithContext(ctx context.Context) IamResourceOutput {
 	return o
-}
-
-func (o IamResourceOutput) ToOutput(ctx context.Context) pulumix.Output[*IamResource] {
-	return pulumix.Output[*IamResource]{
-		OutputState: o.OutputState,
-	}
 }
 
 func init() {

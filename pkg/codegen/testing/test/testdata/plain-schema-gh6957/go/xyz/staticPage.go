@@ -10,7 +10,6 @@ import (
 	"errors"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"plain-schema-gh6957/xyz/internal"
 )
 
@@ -78,12 +77,6 @@ func (i *StaticPage) ToStaticPageOutputWithContext(ctx context.Context) StaticPa
 	return pulumi.ToOutputWithContext(ctx, i).(StaticPageOutput)
 }
 
-func (i *StaticPage) ToOutput(ctx context.Context) pulumix.Output[*StaticPage] {
-	return pulumix.Output[*StaticPage]{
-		OutputState: i.ToStaticPageOutputWithContext(ctx).OutputState,
-	}
-}
-
 // StaticPageArrayInput is an input type that accepts StaticPageArray and StaticPageArrayOutput values.
 // You can construct a concrete instance of `StaticPageArrayInput` via:
 //
@@ -107,12 +100,6 @@ func (i StaticPageArray) ToStaticPageArrayOutput() StaticPageArrayOutput {
 
 func (i StaticPageArray) ToStaticPageArrayOutputWithContext(ctx context.Context) StaticPageArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(StaticPageArrayOutput)
-}
-
-func (i StaticPageArray) ToOutput(ctx context.Context) pulumix.Output[[]*StaticPage] {
-	return pulumix.Output[[]*StaticPage]{
-		OutputState: i.ToStaticPageArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // StaticPageMapInput is an input type that accepts StaticPageMap and StaticPageMapOutput values.
@@ -140,12 +127,6 @@ func (i StaticPageMap) ToStaticPageMapOutputWithContext(ctx context.Context) Sta
 	return pulumi.ToOutputWithContext(ctx, i).(StaticPageMapOutput)
 }
 
-func (i StaticPageMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*StaticPage] {
-	return pulumix.Output[map[string]*StaticPage]{
-		OutputState: i.ToStaticPageMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type StaticPageOutput struct{ *pulumi.OutputState }
 
 func (StaticPageOutput) ElementType() reflect.Type {
@@ -158,12 +139,6 @@ func (o StaticPageOutput) ToStaticPageOutput() StaticPageOutput {
 
 func (o StaticPageOutput) ToStaticPageOutputWithContext(ctx context.Context) StaticPageOutput {
 	return o
-}
-
-func (o StaticPageOutput) ToOutput(ctx context.Context) pulumix.Output[*StaticPage] {
-	return pulumix.Output[*StaticPage]{
-		OutputState: o.OutputState,
-	}
 }
 
 // The bucket resource.
@@ -190,12 +165,6 @@ func (o StaticPageArrayOutput) ToStaticPageArrayOutputWithContext(ctx context.Co
 	return o
 }
 
-func (o StaticPageArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*StaticPage] {
-	return pulumix.Output[[]*StaticPage]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o StaticPageArrayOutput) Index(i pulumi.IntInput) StaticPageOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *StaticPage {
 		return vs[0].([]*StaticPage)[vs[1].(int)]
@@ -214,12 +183,6 @@ func (o StaticPageMapOutput) ToStaticPageMapOutput() StaticPageMapOutput {
 
 func (o StaticPageMapOutput) ToStaticPageMapOutputWithContext(ctx context.Context) StaticPageMapOutput {
 	return o
-}
-
-func (o StaticPageMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*StaticPage] {
-	return pulumix.Output[map[string]*StaticPage]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o StaticPageMapOutput) MapIndex(k pulumi.StringInput) StaticPageOutput {

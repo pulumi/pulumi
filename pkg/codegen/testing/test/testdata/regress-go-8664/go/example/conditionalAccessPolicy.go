@@ -9,7 +9,6 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"regress-go-8664/example/internal"
 )
 
@@ -95,12 +94,6 @@ func (i *ConditionalAccessPolicy) ToConditionalAccessPolicyOutputWithContext(ctx
 	return pulumi.ToOutputWithContext(ctx, i).(ConditionalAccessPolicyOutput)
 }
 
-func (i *ConditionalAccessPolicy) ToOutput(ctx context.Context) pulumix.Output[*ConditionalAccessPolicy] {
-	return pulumix.Output[*ConditionalAccessPolicy]{
-		OutputState: i.ToConditionalAccessPolicyOutputWithContext(ctx).OutputState,
-	}
-}
-
 type ConditionalAccessPolicyOutput struct{ *pulumi.OutputState }
 
 func (ConditionalAccessPolicyOutput) ElementType() reflect.Type {
@@ -113,12 +106,6 @@ func (o ConditionalAccessPolicyOutput) ToConditionalAccessPolicyOutput() Conditi
 
 func (o ConditionalAccessPolicyOutput) ToConditionalAccessPolicyOutputWithContext(ctx context.Context) ConditionalAccessPolicyOutput {
 	return o
-}
-
-func (o ConditionalAccessPolicyOutput) ToOutput(ctx context.Context) pulumix.Output[*ConditionalAccessPolicy] {
-	return pulumix.Output[*ConditionalAccessPolicy]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ConditionalAccessPolicyOutput) Conditions() ConditionalAccessPolicyConditionsOutput {

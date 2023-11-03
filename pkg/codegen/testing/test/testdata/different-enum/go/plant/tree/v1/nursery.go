@@ -10,7 +10,6 @@ import (
 	"different-enum/plant/internal"
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type Nursery struct {
@@ -97,12 +96,6 @@ func (i *Nursery) ToNurseryOutputWithContext(ctx context.Context) NurseryOutput 
 	return pulumi.ToOutputWithContext(ctx, i).(NurseryOutput)
 }
 
-func (i *Nursery) ToOutput(ctx context.Context) pulumix.Output[*Nursery] {
-	return pulumix.Output[*Nursery]{
-		OutputState: i.ToNurseryOutputWithContext(ctx).OutputState,
-	}
-}
-
 type NurseryOutput struct{ *pulumi.OutputState }
 
 func (NurseryOutput) ElementType() reflect.Type {
@@ -115,12 +108,6 @@ func (o NurseryOutput) ToNurseryOutput() NurseryOutput {
 
 func (o NurseryOutput) ToNurseryOutputWithContext(ctx context.Context) NurseryOutput {
 	return o
-}
-
-func (o NurseryOutput) ToOutput(ctx context.Context) pulumix.Output[*Nursery] {
-	return pulumix.Output[*Nursery]{
-		OutputState: o.OutputState,
-	}
 }
 
 func init() {

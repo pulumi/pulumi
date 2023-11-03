@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"replace-on-change/example/internal"
 )
 
@@ -91,12 +90,6 @@ func (i *Dog) ToDogOutputWithContext(ctx context.Context) DogOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DogOutput)
 }
 
-func (i *Dog) ToOutput(ctx context.Context) pulumix.Output[*Dog] {
-	return pulumix.Output[*Dog]{
-		OutputState: i.ToDogOutputWithContext(ctx).OutputState,
-	}
-}
-
 // DogArrayInput is an input type that accepts DogArray and DogArrayOutput values.
 // You can construct a concrete instance of `DogArrayInput` via:
 //
@@ -120,12 +113,6 @@ func (i DogArray) ToDogArrayOutput() DogArrayOutput {
 
 func (i DogArray) ToDogArrayOutputWithContext(ctx context.Context) DogArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DogArrayOutput)
-}
-
-func (i DogArray) ToOutput(ctx context.Context) pulumix.Output[[]*Dog] {
-	return pulumix.Output[[]*Dog]{
-		OutputState: i.ToDogArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // DogMapInput is an input type that accepts DogMap and DogMapOutput values.
@@ -153,12 +140,6 @@ func (i DogMap) ToDogMapOutputWithContext(ctx context.Context) DogMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DogMapOutput)
 }
 
-func (i DogMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*Dog] {
-	return pulumix.Output[map[string]*Dog]{
-		OutputState: i.ToDogMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type DogOutput struct{ *pulumi.OutputState }
 
 func (DogOutput) ElementType() reflect.Type {
@@ -171,12 +152,6 @@ func (o DogOutput) ToDogOutput() DogOutput {
 
 func (o DogOutput) ToDogOutputWithContext(ctx context.Context) DogOutput {
 	return o
-}
-
-func (o DogOutput) ToOutput(ctx context.Context) pulumix.Output[*Dog] {
-	return pulumix.Output[*Dog]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o DogOutput) Bone() pulumi.StringPtrOutput {
@@ -197,12 +172,6 @@ func (o DogArrayOutput) ToDogArrayOutputWithContext(ctx context.Context) DogArra
 	return o
 }
 
-func (o DogArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*Dog] {
-	return pulumix.Output[[]*Dog]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o DogArrayOutput) Index(i pulumi.IntInput) DogOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Dog {
 		return vs[0].([]*Dog)[vs[1].(int)]
@@ -221,12 +190,6 @@ func (o DogMapOutput) ToDogMapOutput() DogMapOutput {
 
 func (o DogMapOutput) ToDogMapOutputWithContext(ctx context.Context) DogMapOutput {
 	return o
-}
-
-func (o DogMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*Dog] {
-	return pulumix.Output[map[string]*Dog]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o DogMapOutput) MapIndex(k pulumi.StringInput) DogOutput {

@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"replace-on-change/example/internal"
 )
 
@@ -87,12 +86,6 @@ func (i *God) ToGodOutputWithContext(ctx context.Context) GodOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(GodOutput)
 }
 
-func (i *God) ToOutput(ctx context.Context) pulumix.Output[*God] {
-	return pulumix.Output[*God]{
-		OutputState: i.ToGodOutputWithContext(ctx).OutputState,
-	}
-}
-
 // GodArrayInput is an input type that accepts GodArray and GodArrayOutput values.
 // You can construct a concrete instance of `GodArrayInput` via:
 //
@@ -116,12 +109,6 @@ func (i GodArray) ToGodArrayOutput() GodArrayOutput {
 
 func (i GodArray) ToGodArrayOutputWithContext(ctx context.Context) GodArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(GodArrayOutput)
-}
-
-func (i GodArray) ToOutput(ctx context.Context) pulumix.Output[[]*God] {
-	return pulumix.Output[[]*God]{
-		OutputState: i.ToGodArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // GodMapInput is an input type that accepts GodMap and GodMapOutput values.
@@ -149,12 +136,6 @@ func (i GodMap) ToGodMapOutputWithContext(ctx context.Context) GodMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(GodMapOutput)
 }
 
-func (i GodMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*God] {
-	return pulumix.Output[map[string]*God]{
-		OutputState: i.ToGodMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type GodOutput struct{ *pulumi.OutputState }
 
 func (GodOutput) ElementType() reflect.Type {
@@ -167,12 +148,6 @@ func (o GodOutput) ToGodOutput() GodOutput {
 
 func (o GodOutput) ToGodOutputWithContext(ctx context.Context) GodOutput {
 	return o
-}
-
-func (o GodOutput) ToOutput(ctx context.Context) pulumix.Output[*God] {
-	return pulumix.Output[*God]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o GodOutput) Backwards() DogOutput {
@@ -193,12 +168,6 @@ func (o GodArrayOutput) ToGodArrayOutputWithContext(ctx context.Context) GodArra
 	return o
 }
 
-func (o GodArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*God] {
-	return pulumix.Output[[]*God]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o GodArrayOutput) Index(i pulumi.IntInput) GodOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *God {
 		return vs[0].([]*God)[vs[1].(int)]
@@ -217,12 +186,6 @@ func (o GodMapOutput) ToGodMapOutput() GodMapOutput {
 
 func (o GodMapOutput) ToGodMapOutputWithContext(ctx context.Context) GodMapOutput {
 	return o
-}
-
-func (o GodMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*God] {
-	return pulumix.Output[map[string]*God]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o GodMapOutput) MapIndex(k pulumi.StringInput) GodOutput {

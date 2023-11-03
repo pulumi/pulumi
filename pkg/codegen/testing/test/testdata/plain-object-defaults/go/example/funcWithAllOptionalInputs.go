@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"plain-object-defaults/example/internal"
 )
 
@@ -85,12 +84,6 @@ func (o FuncWithAllOptionalInputsResultOutput) ToFuncWithAllOptionalInputsResult
 
 func (o FuncWithAllOptionalInputsResultOutput) ToFuncWithAllOptionalInputsResultOutputWithContext(ctx context.Context) FuncWithAllOptionalInputsResultOutput {
 	return o
-}
-
-func (o FuncWithAllOptionalInputsResultOutput) ToOutput(ctx context.Context) pulumix.Output[FuncWithAllOptionalInputsResult] {
-	return pulumix.Output[FuncWithAllOptionalInputsResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o FuncWithAllOptionalInputsResultOutput) R() pulumi.StringOutput {

@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"resource-args-python-case-insensitive/example/internal"
 )
 
@@ -45,12 +44,6 @@ func (i PetTypeArgs) ToPetTypeOutputWithContext(ctx context.Context) PetTypeOutp
 	return pulumi.ToOutputWithContext(ctx, i).(PetTypeOutput)
 }
 
-func (i PetTypeArgs) ToOutput(ctx context.Context) pulumix.Output[PetType] {
-	return pulumix.Output[PetType]{
-		OutputState: i.ToPetTypeOutputWithContext(ctx).OutputState,
-	}
-}
-
 // PetTypeArrayInput is an input type that accepts PetTypeArray and PetTypeArrayOutput values.
 // You can construct a concrete instance of `PetTypeArrayInput` via:
 //
@@ -76,12 +69,6 @@ func (i PetTypeArray) ToPetTypeArrayOutputWithContext(ctx context.Context) PetTy
 	return pulumi.ToOutputWithContext(ctx, i).(PetTypeArrayOutput)
 }
 
-func (i PetTypeArray) ToOutput(ctx context.Context) pulumix.Output[[]PetType] {
-	return pulumix.Output[[]PetType]{
-		OutputState: i.ToPetTypeArrayOutputWithContext(ctx).OutputState,
-	}
-}
-
 type PetTypeOutput struct{ *pulumi.OutputState }
 
 func (PetTypeOutput) ElementType() reflect.Type {
@@ -94,12 +81,6 @@ func (o PetTypeOutput) ToPetTypeOutput() PetTypeOutput {
 
 func (o PetTypeOutput) ToPetTypeOutputWithContext(ctx context.Context) PetTypeOutput {
 	return o
-}
-
-func (o PetTypeOutput) ToOutput(ctx context.Context) pulumix.Output[PetType] {
-	return pulumix.Output[PetType]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o PetTypeOutput) Name() pulumi.StringPtrOutput {
@@ -118,12 +99,6 @@ func (o PetTypeArrayOutput) ToPetTypeArrayOutput() PetTypeArrayOutput {
 
 func (o PetTypeArrayOutput) ToPetTypeArrayOutputWithContext(ctx context.Context) PetTypeArrayOutput {
 	return o
-}
-
-func (o PetTypeArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]PetType] {
-	return pulumix.Output[[]PetType]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o PetTypeArrayOutput) Index(i pulumi.IntInput) PetTypeOutput {

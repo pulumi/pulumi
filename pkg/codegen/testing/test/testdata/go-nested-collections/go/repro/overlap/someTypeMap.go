@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"go-nested-collections/repro/internal"
 )
 
@@ -85,12 +84,6 @@ func (i *SomeTypeMapResource) ToSomeTypeMapResourceOutputWithContext(ctx context
 	return pulumi.ToOutputWithContext(ctx, i).(SomeTypeMapResourceOutput)
 }
 
-func (i *SomeTypeMapResource) ToOutput(ctx context.Context) pulumix.Output[*SomeTypeMapResource] {
-	return pulumix.Output[*SomeTypeMapResource]{
-		OutputState: i.ToSomeTypeMapResourceOutputWithContext(ctx).OutputState,
-	}
-}
-
 // SomeTypeMapResourceArrayInput is an input type that accepts SomeTypeMapResourceArray and SomeTypeMapResourceArrayOutput values.
 // You can construct a concrete instance of `SomeTypeMapResourceArrayInput` via:
 //
@@ -114,12 +107,6 @@ func (i SomeTypeMapResourceArray) ToSomeTypeMapResourceArrayOutput() SomeTypeMap
 
 func (i SomeTypeMapResourceArray) ToSomeTypeMapResourceArrayOutputWithContext(ctx context.Context) SomeTypeMapResourceArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SomeTypeMapResourceArrayOutput)
-}
-
-func (i SomeTypeMapResourceArray) ToOutput(ctx context.Context) pulumix.Output[[]*SomeTypeMapResource] {
-	return pulumix.Output[[]*SomeTypeMapResource]{
-		OutputState: i.ToSomeTypeMapResourceArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // SomeTypeMapResourceMapInput is an input type that accepts SomeTypeMapResourceMap and SomeTypeMapResourceMapOutput values.
@@ -147,12 +134,6 @@ func (i SomeTypeMapResourceMap) ToSomeTypeMapResourceMapOutputWithContext(ctx co
 	return pulumi.ToOutputWithContext(ctx, i).(SomeTypeMapResourceMapOutput)
 }
 
-func (i SomeTypeMapResourceMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*SomeTypeMapResource] {
-	return pulumix.Output[map[string]*SomeTypeMapResource]{
-		OutputState: i.ToSomeTypeMapResourceMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type SomeTypeMapResourceOutput struct{ *pulumi.OutputState }
 
 func (SomeTypeMapResourceOutput) ElementType() reflect.Type {
@@ -167,12 +148,6 @@ func (o SomeTypeMapResourceOutput) ToSomeTypeMapResourceOutputWithContext(ctx co
 	return o
 }
 
-func (o SomeTypeMapResourceOutput) ToOutput(ctx context.Context) pulumix.Output[*SomeTypeMapResource] {
-	return pulumix.Output[*SomeTypeMapResource]{
-		OutputState: o.OutputState,
-	}
-}
-
 type SomeTypeMapResourceArrayOutput struct{ *pulumi.OutputState }
 
 func (SomeTypeMapResourceArrayOutput) ElementType() reflect.Type {
@@ -185,12 +160,6 @@ func (o SomeTypeMapResourceArrayOutput) ToSomeTypeMapResourceArrayOutput() SomeT
 
 func (o SomeTypeMapResourceArrayOutput) ToSomeTypeMapResourceArrayOutputWithContext(ctx context.Context) SomeTypeMapResourceArrayOutput {
 	return o
-}
-
-func (o SomeTypeMapResourceArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*SomeTypeMapResource] {
-	return pulumix.Output[[]*SomeTypeMapResource]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o SomeTypeMapResourceArrayOutput) Index(i pulumi.IntInput) SomeTypeMapResourceOutput {
@@ -211,12 +180,6 @@ func (o SomeTypeMapResourceMapOutput) ToSomeTypeMapResourceMapOutput() SomeTypeM
 
 func (o SomeTypeMapResourceMapOutput) ToSomeTypeMapResourceMapOutputWithContext(ctx context.Context) SomeTypeMapResourceMapOutput {
 	return o
-}
-
-func (o SomeTypeMapResourceMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*SomeTypeMapResource] {
-	return pulumix.Output[map[string]*SomeTypeMapResource]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o SomeTypeMapResourceMapOutput) MapIndex(k pulumi.StringInput) SomeTypeMapResourceOutput {

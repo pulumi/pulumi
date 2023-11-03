@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"hyphenated-symbols/repro/internal"
 )
 
@@ -32,12 +31,6 @@ func (o BarOutput) ToBarOutputWithContext(ctx context.Context) BarOutput {
 	return o
 }
 
-func (o BarOutput) ToOutput(ctx context.Context) pulumix.Output[Bar] {
-	return pulumix.Output[Bar]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o BarOutput) HasAHyphen() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Bar) *string { return v.HasAHyphen }).(pulumi.StringPtrOutput)
 }
@@ -54,12 +47,6 @@ func (o BarArrayOutput) ToBarArrayOutput() BarArrayOutput {
 
 func (o BarArrayOutput) ToBarArrayOutputWithContext(ctx context.Context) BarArrayOutput {
 	return o
-}
-
-func (o BarArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Bar] {
-	return pulumix.Output[[]Bar]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o BarArrayOutput) Index(i pulumi.IntInput) BarOutput {
@@ -82,12 +69,6 @@ func (o BarArrayArrayOutput) ToBarArrayArrayOutputWithContext(ctx context.Contex
 	return o
 }
 
-func (o BarArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]Bar] {
-	return pulumix.Output[[][]Bar]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o BarArrayArrayOutput) Index(i pulumi.IntInput) BarArrayOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) []Bar {
 		return vs[0].([][]Bar)[vs[1].(int)]
@@ -106,12 +87,6 @@ func (o BarArrayArrayArrayOutput) ToBarArrayArrayArrayOutput() BarArrayArrayArra
 
 func (o BarArrayArrayArrayOutput) ToBarArrayArrayArrayOutputWithContext(ctx context.Context) BarArrayArrayArrayOutput {
 	return o
-}
-
-func (o BarArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]Bar] {
-	return pulumix.Output[[][][]Bar]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o BarArrayArrayArrayOutput) Index(i pulumi.IntInput) BarArrayArrayOutput {

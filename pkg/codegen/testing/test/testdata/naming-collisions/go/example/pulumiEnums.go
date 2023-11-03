@@ -78,12 +78,6 @@ func (o ExampleEnumOutput) ToExampleEnumPtrOutputWithContext(ctx context.Context
 	}).(ExampleEnumPtrOutput)
 }
 
-func (o ExampleEnumOutput) ToOutput(ctx context.Context) pulumix.Output[ExampleEnum] {
-	return pulumix.Output[ExampleEnum]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ExampleEnumOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -117,12 +111,6 @@ func (o ExampleEnumPtrOutput) ToExampleEnumPtrOutput() ExampleEnumPtrOutput {
 
 func (o ExampleEnumPtrOutput) ToExampleEnumPtrOutputWithContext(ctx context.Context) ExampleEnumPtrOutput {
 	return o
-}
-
-func (o ExampleEnumPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ExampleEnum] {
-	return pulumix.Output[*ExampleEnum]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ExampleEnumPtrOutput) Elem() ExampleEnumOutput {
@@ -260,12 +248,6 @@ func (o ExampleEnumInputEnumOutput) ToExampleEnumInputEnumPtrOutputWithContext(c
 	}).(ExampleEnumInputEnumPtrOutput)
 }
 
-func (o ExampleEnumInputEnumOutput) ToOutput(ctx context.Context) pulumix.Output[ExampleEnumInputEnum] {
-	return pulumix.Output[ExampleEnumInputEnum]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ExampleEnumInputEnumOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -299,12 +281,6 @@ func (o ExampleEnumInputEnumPtrOutput) ToExampleEnumInputEnumPtrOutput() Example
 
 func (o ExampleEnumInputEnumPtrOutput) ToExampleEnumInputEnumPtrOutputWithContext(ctx context.Context) ExampleEnumInputEnumPtrOutput {
 	return o
-}
-
-func (o ExampleEnumInputEnumPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ExampleEnumInputEnum] {
-	return pulumix.Output[*ExampleEnumInputEnum]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ExampleEnumInputEnumPtrOutput) Elem() ExampleEnumInputEnumOutput {
@@ -442,12 +418,6 @@ func (o ResourceTypeEnumOutput) ToResourceTypeEnumPtrOutputWithContext(ctx conte
 	}).(ResourceTypeEnumPtrOutput)
 }
 
-func (o ResourceTypeEnumOutput) ToOutput(ctx context.Context) pulumix.Output[ResourceTypeEnum] {
-	return pulumix.Output[ResourceTypeEnum]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ResourceTypeEnumOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -481,12 +451,6 @@ func (o ResourceTypeEnumPtrOutput) ToResourceTypeEnumPtrOutput() ResourceTypeEnu
 
 func (o ResourceTypeEnumPtrOutput) ToResourceTypeEnumPtrOutputWithContext(ctx context.Context) ResourceTypeEnumPtrOutput {
 	return o
-}
-
-func (o ResourceTypeEnumPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ResourceTypeEnum] {
-	return pulumix.Output[*ResourceTypeEnum]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ResourceTypeEnumPtrOutput) Elem() ResourceTypeEnumOutput {
