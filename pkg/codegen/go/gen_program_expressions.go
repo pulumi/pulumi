@@ -527,7 +527,11 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		temps = append(temps, kTemps...)
 		item.Key = k
 		x, xTemps := g.lowerExpression(item.Value, item.Value.Type())
+		x, invokeTemps := g.rewriteInlineInvokes(x)
 		temps = append(temps, xTemps...)
+		for _, t := range invokeTemps {
+			temps = append(temps, t)
+		}
 		item.Value = x
 		expr.Items[i] = item
 	}
@@ -748,7 +752,11 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	var temps []interface{}
 	for i, item := range expr.Expressions {
 		item, itemTemps := g.lowerExpression(item, item.Type())
+		item, invokeTemps := g.rewriteInlineInvokes(item)
 		temps = append(temps, itemTemps...)
+		for _, t := range invokeTemps {
+			temps = append(temps, t)
+		}
 		expr.Expressions[i] = item
 	}
 	g.genTemps(w, temps)
@@ -999,6 +1007,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
+
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)
