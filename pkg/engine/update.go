@@ -289,92 +289,124 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 		}
 	}
 
+	var wg sync.WaitGroup
+	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
-		policyPath, err := policy.Install(ctx)
-		if err != nil {
-			return err
-		}
-
-		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
-		if err != nil {
-			return err
-		}
-
-		analyzerInfo, err := analyzer.GetAnalyzerInfo()
-		if err != nil {
-			return err
-		}
-
-		// Parse the config, reconcile & validate it, and pass it to the policy pack.
-		if !analyzerInfo.SupportsConfig {
-			if len(policy.Config()) > 0 {
-				logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
+		wg.Add(1)
+		go func(policy RequiredPolicy) {
+			defer wg.Done()
+			policyPath, err := policy.Install(ctx)
+			if err != nil {
+				errs <- err
+				return
 			}
-			continue
-		}
-		configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
-		if err != nil {
-			return err
-		}
-		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
-		if err != nil {
-			return fmt.Errorf("reconciling config for %q: %w", analyzerInfo.Name, err)
-		}
-		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-		if err = analyzer.Configure(config); err != nil {
-			return fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
-		}
+
+			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			// Parse the config, reconcile & validate it, and pass it to the policy pack.
+			if !analyzerInfo.SupportsConfig {
+				if len(policy.Config()) > 0 {
+					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
+				}
+				return
+			}
+			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
+			if err != nil {
+				errs <- err
+				return
+			}
+			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
+			if err != nil {
+				errs <- fmt.Errorf("reconciling config for %q: %w", analyzerInfo.Name, err)
+				return
+			}
+			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+			if err = analyzer.Configure(config); err != nil {
+				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
+				return
+			}
+		}(policy)
 	}
 
 	// Load local policy packs.
 	for i, pack := range deployOpts.LocalPolicyPacks {
-		abs, err := filepath.Abs(pack.Path)
-		if err != nil {
-			return err
-		}
-
-		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, analyzerOpts)
-		if err != nil {
-			return err
-		} else if analyzer == nil {
-			return fmt.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
-		}
-
-		// Update the Policy Pack names now that we have loaded the plugins and can access the name.
-		analyzerInfo, err := analyzer.GetAnalyzerInfo()
-		if err != nil {
-			return err
-		}
-
-		// Read and store the name and version since it won't have been supplied by anyone else yet.
-		deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
-		deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
-
-		// Load config, reconcile & validate it, and pass it to the policy pack.
-		if !analyzerInfo.SupportsConfig {
-			if pack.Config != "" {
-				return fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
-			}
-			continue
-		}
-		var configFromFile map[string]plugin.AnalyzerPolicyConfig
-		if pack.Config != "" {
-			configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
+		wg.Add(1)
+		go func(i int, pack LocalPolicyPack) {
+			defer wg.Done()
+			abs, err := filepath.Abs(pack.Path)
 			if err != nil {
-				return err
+				errs <- err
+				return
 			}
-		}
-		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
-		if err != nil {
-			return fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
-		}
-		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-		if err = analyzer.Configure(config); err != nil {
-			return fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
-		}
+
+			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, analyzerOpts)
+			if err != nil {
+				errs <- err
+				return
+			} else if analyzer == nil {
+				errs <- fmt.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
+				return
+			}
+
+			// Update the Policy Pack names now that we have loaded the plugins and can access the name.
+			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			// Read and store the name and version since it won't have been supplied by anyone else yet.
+			deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
+			deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
+
+			// Load config, reconcile & validate it, and pass it to the policy pack.
+			if !analyzerInfo.SupportsConfig {
+				if pack.Config != "" {
+					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
+					return
+				}
+				return
+			}
+			var configFromFile map[string]plugin.AnalyzerPolicyConfig
+			if pack.Config != "" {
+				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
+				if err != nil {
+					errs <- err
+					return
+				}
+			}
+			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
+			if err != nil {
+				errs <- fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				return
+			}
+			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+			if err = analyzer.Configure(config); err != nil {
+				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				return
+			}
+		}(i, pack)
+	}
+
+	wg.Wait()
+	if len(errs) > 0 {
+		// If we have any errors return the first one.  Even
+		// if we have more than one error, we only return the
+		// first to not overwhelm the user.
+		return <-errs
 	}
 
 	// Report any policy config validation errors and return an error.
