@@ -113,10 +113,6 @@ type bagtag struct {
 	MapOpt        map[string]interface{} `pulumi:"mo,optional"`
 }
 
-type AnInterface interface {
-	isAnInterface()
-}
-
 func TestMapperEncode(t *testing.T) {
 	t.Parallel()
 	bag := bagtag{
@@ -131,6 +127,11 @@ func TestMapperEncode(t *testing.T) {
 	md := &mapper{}
 	var err error
 	var m map[string]interface{}
+
+	// Nils
+	m, err = md.Encode(nil)
+	require.NoError(t, err)
+	assert.Len(t, m, 0)
 
 	// Structs
 	m, err = md.encode(reflect.ValueOf(bag))
@@ -148,11 +149,6 @@ func TestMapperEncode(t *testing.T) {
 	assert.Equal(t, "something", m["s"])
 	assert.Equal(t, "ohmv", m["so"])
 	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, m["mo"])
-
-	// Nil
-	m, err = md.Encode((AnInterface)(nil))
-	require.NoError(t, err)
-	assert.Len(t, m, 0)
 }
 
 func TestMapperEncodeValue(t *testing.T) {
@@ -174,7 +170,7 @@ func TestMapperEncodeValue(t *testing.T) {
 	var err error
 	var v any
 
-	// Nil
+	// Nils
 	v, err = md.EncodeValue(nil)
 	require.NoError(t, err)
 	assert.Nil(t, v)
@@ -223,7 +219,7 @@ func TestMapperEncodeValue(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, v)
 
-	// Struct
+	// Structs
 	v, err = md.encodeValue(reflect.ValueOf(bag))
 	require.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{"s": "something", "so": "ohmv"}, v)
