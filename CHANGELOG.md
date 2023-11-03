@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.92.0 (2023-11-03)
+
+
+### Features
+
+- [auto] Allow shallow repository clones in NewLocalWorkspace
+  [#14312](https://github.com/pulumi/pulumi/pull/14312)
+
+- [cli] Add support for ESC file projection
+  [#14447](https://github.com/pulumi/pulumi/pull/14447)
+
+- [cli/new] Adds support for remote zip archive templates to pulumi new
+  [#14443](https://github.com/pulumi/pulumi/pull/14443)
+
+- [engine] Support {NAME} in http plugin download URLs.
+  [#14435](https://github.com/pulumi/pulumi/pull/14435)
+
+- [yaml] Update pulumi-yaml to 1.4.0
+  [#14425](https://github.com/pulumi/pulumi/pull/14425)
+
+- [auto/nodejs] Add `refresh` option for `up`
+  [#14306](https://github.com/pulumi/pulumi/pull/14306)
+
+
+### Bug Fixes
+
+- [cli/new] Adds nested directory support to pulumi new .zip
+  [#14473](https://github.com/pulumi/pulumi/pull/14473)
+
+- [auto/nodejs] Pin @grpc/grpc-js to v1.9.6 to resolve automation-api hang in NodeJS.
+  [#14445](https://github.com/pulumi/pulumi/pull/14445)
+
+- [engine] Correctly propogate provider errors from DiffConfig.
+  [#14436](https://github.com/pulumi/pulumi/pull/14436)
+
+- [engine] Fix parsing of property paths such as "root.[1]" being returned from providers.
+  [#14451](https://github.com/pulumi/pulumi/pull/14451)
+
+- [programgen/go] Fix using inline invoke expressions inside resources, objects and arrays
+  [#14484](https://github.com/pulumi/pulumi/pull/14484)
+
+- [sdk/python] Fix error on empty invoke returns
+  [#14470](https://github.com/pulumi/pulumi/pull/14470)
+
+- [sdk/python] Fix traceback diagnostic from being printed when using Python dynamic providers
+  [#14474](https://github.com/pulumi/pulumi/pull/14474)
+
+
+### Miscellaneous
+
+- [ci] Bump homebrew using pulumi's fork instead of pulumi-bot's
+  [#14449](https://github.com/pulumi/pulumi/pull/14449)
+
+- [ci] Additional fixes for the homebrew release job
+  [#14482](https://github.com/pulumi/pulumi/pull/14482)
+
+- [cli] Pull in fixes from esc v0.5.7
+  [#14430](https://github.com/pulumi/pulumi/pull/14430)
+
 ## 3.91.1 (2023-10-27)
 
 
