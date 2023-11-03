@@ -1174,6 +1174,7 @@ const (
 	OpImport               display.StepOp = "import"                 // import an existing resource.
 	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
 	// with an imported resource.
+	OpRun display.StepOp = "run" // running a policy pack.
 )
 
 // StepOps contains the full set of step operation types.
@@ -1193,6 +1194,7 @@ var StepOps = []display.StepOp{
 	OpRemovePendingReplace,
 	OpImport,
 	OpImportReplacement,
+	OpRun,
 }
 
 // Color returns a suggested color for lines of this op type.
@@ -1220,6 +1222,8 @@ func Color(op display.StepOp) string {
 		return colors.SpecUpdate
 	case OpReadDiscard, OpDiscardReplaced:
 		return colors.SpecDelete
+	case OpRun:
+		return colors.SpecUnimportant
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -1274,6 +1278,8 @@ func RawPrefix(op display.StepOp) string {
 		return "= "
 	case OpImportReplacement:
 		return "=>"
+	case OpRun:
+		return "  "
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -1294,6 +1300,8 @@ func PastTense(op display.StepOp) string {
 		return "deleted"
 	case OpImport, OpImportReplacement:
 		return "imported"
+	case OpRun:
+		return "ran"
 	default:
 		contract.Failf("Unexpected resource step op: %v", op)
 		return ""

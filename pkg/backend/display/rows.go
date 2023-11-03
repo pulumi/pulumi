@@ -62,6 +62,8 @@ type ResourceRow interface {
 	PolicyPayloads() []engine.PolicyViolationEventPayload
 	PolicyRemediationPayloads() []engine.PolicyRemediationEventPayload
 
+	RecordPolicyRunEvent(engine.PolicyRunEventPayload)
+
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
 	RecordPolicyRemediationEvent(diagEvent engine.Event)
@@ -128,6 +130,9 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
+	// The policy that's currently running
+	policyRun engine.PolicyRunEventPayload
+
 	diagInfo                  *DiagInfo
 	policyPayloads            []engine.PolicyViolationEventPayload
 	policyRemediationPayloads []engine.PolicyRemediationEventPayload
@@ -183,6 +188,10 @@ func (data *resourceRowData) SetFailed() {
 
 func (data *resourceRowData) DiagInfo() *DiagInfo {
 	return data.diagInfo
+}
+
+func (data *resourceRowData) RecordPolicyRunEvent(payload engine.PolicyRunEventPayload) {
+	data.policyRun = payload
 }
 
 func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
