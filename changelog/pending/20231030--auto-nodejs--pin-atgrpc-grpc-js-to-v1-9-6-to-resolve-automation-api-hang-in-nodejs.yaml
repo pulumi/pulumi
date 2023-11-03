@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/nodejs
-  description: Pin @grpc/grpc-js to v1.9.6 to resolve automation-api hang in NodeJS.
