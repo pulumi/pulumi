@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"internal"
 )
 
@@ -47,12 +46,6 @@ func (i SandwichArgs) ToSandwichOutputWithContext(ctx context.Context) SandwichO
 	return pulumi.ToOutputWithContext(ctx, i).(SandwichOutput)
 }
 
-func (i SandwichArgs) ToOutput(ctx context.Context) pulumix.Output[Sandwich] {
-	return pulumix.Output[Sandwich]{
-		OutputState: i.ToSandwichOutputWithContext(ctx).OutputState,
-	}
-}
-
 // SandwichArrayInput is an input type that accepts SandwichArray and SandwichArrayOutput values.
 // You can construct a concrete instance of `SandwichArrayInput` via:
 //
@@ -78,12 +71,6 @@ func (i SandwichArray) ToSandwichArrayOutputWithContext(ctx context.Context) San
 	return pulumi.ToOutputWithContext(ctx, i).(SandwichArrayOutput)
 }
 
-func (i SandwichArray) ToOutput(ctx context.Context) pulumix.Output[[]Sandwich] {
-	return pulumix.Output[[]Sandwich]{
-		OutputState: i.ToSandwichArrayOutputWithContext(ctx).OutputState,
-	}
-}
-
 type SandwichOutput struct{ *pulumi.OutputState }
 
 func (SandwichOutput) ElementType() reflect.Type {
@@ -96,12 +83,6 @@ func (o SandwichOutput) ToSandwichOutput() SandwichOutput {
 
 func (o SandwichOutput) ToSandwichOutputWithContext(ctx context.Context) SandwichOutput {
 	return o
-}
-
-func (o SandwichOutput) ToOutput(ctx context.Context) pulumix.Output[Sandwich] {
-	return pulumix.Output[Sandwich]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o SandwichOutput) Bread() pulumi.StringPtrOutput {
@@ -124,12 +105,6 @@ func (o SandwichArrayOutput) ToSandwichArrayOutput() SandwichArrayOutput {
 
 func (o SandwichArrayOutput) ToSandwichArrayOutputWithContext(ctx context.Context) SandwichArrayOutput {
 	return o
-}
-
-func (o SandwichArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Sandwich] {
-	return pulumix.Output[[]Sandwich]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o SandwichArrayOutput) Index(i pulumi.IntInput) SandwichOutput {

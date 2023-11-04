@@ -11,7 +11,6 @@ import (
 	"dashed-import-schema/plant-provider/internal"
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type RubberTree struct {
@@ -120,12 +119,6 @@ func (i *RubberTree) ToRubberTreeOutputWithContext(ctx context.Context) RubberTr
 	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeOutput)
 }
 
-func (i *RubberTree) ToOutput(ctx context.Context) pulumix.Output[*RubberTree] {
-	return pulumix.Output[*RubberTree]{
-		OutputState: i.ToRubberTreeOutputWithContext(ctx).OutputState,
-	}
-}
-
 type RubberTreeOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeOutput) ElementType() reflect.Type {
@@ -138,12 +131,6 @@ func (o RubberTreeOutput) ToRubberTreeOutput() RubberTreeOutput {
 
 func (o RubberTreeOutput) ToRubberTreeOutputWithContext(ctx context.Context) RubberTreeOutput {
 	return o
-}
-
-func (o RubberTreeOutput) ToOutput(ctx context.Context) pulumix.Output[*RubberTree] {
-	return pulumix.Output[*RubberTree]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o RubberTreeOutput) Container() plantprovider.ContainerPtrOutput {

@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"regress-8403/mongodbatlas/internal"
 )
 
@@ -41,12 +40,6 @@ func (i GetCustomDbRolesResultArgs) ToGetCustomDbRolesResultOutput() GetCustomDb
 
 func (i GetCustomDbRolesResultArgs) ToGetCustomDbRolesResultOutputWithContext(ctx context.Context) GetCustomDbRolesResultOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(GetCustomDbRolesResultOutput)
-}
-
-func (i GetCustomDbRolesResultArgs) ToOutput(ctx context.Context) pulumix.Output[GetCustomDbRolesResult] {
-	return pulumix.Output[GetCustomDbRolesResult]{
-		OutputState: i.ToGetCustomDbRolesResultOutputWithContext(ctx).OutputState,
-	}
 }
 
 func (i GetCustomDbRolesResultArgs) ToGetCustomDbRolesResultPtrOutput() GetCustomDbRolesResultPtrOutput {
@@ -90,12 +83,6 @@ func (i *getCustomDbRolesResultPtrType) ToGetCustomDbRolesResultPtrOutputWithCon
 	return pulumi.ToOutputWithContext(ctx, i).(GetCustomDbRolesResultPtrOutput)
 }
 
-func (i *getCustomDbRolesResultPtrType) ToOutput(ctx context.Context) pulumix.Output[*GetCustomDbRolesResult] {
-	return pulumix.Output[*GetCustomDbRolesResult]{
-		OutputState: i.ToGetCustomDbRolesResultPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type GetCustomDbRolesResultOutput struct{ *pulumi.OutputState }
 
 func (GetCustomDbRolesResultOutput) ElementType() reflect.Type {
@@ -120,12 +107,6 @@ func (o GetCustomDbRolesResultOutput) ToGetCustomDbRolesResultPtrOutputWithConte
 	}).(GetCustomDbRolesResultPtrOutput)
 }
 
-func (o GetCustomDbRolesResultOutput) ToOutput(ctx context.Context) pulumix.Output[GetCustomDbRolesResult] {
-	return pulumix.Output[GetCustomDbRolesResult]{
-		OutputState: o.OutputState,
-	}
-}
-
 type GetCustomDbRolesResultPtrOutput struct{ *pulumi.OutputState }
 
 func (GetCustomDbRolesResultPtrOutput) ElementType() reflect.Type {
@@ -138,12 +119,6 @@ func (o GetCustomDbRolesResultPtrOutput) ToGetCustomDbRolesResultPtrOutput() Get
 
 func (o GetCustomDbRolesResultPtrOutput) ToGetCustomDbRolesResultPtrOutputWithContext(ctx context.Context) GetCustomDbRolesResultPtrOutput {
 	return o
-}
-
-func (o GetCustomDbRolesResultPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*GetCustomDbRolesResult] {
-	return pulumix.Output[*GetCustomDbRolesResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o GetCustomDbRolesResultPtrOutput) Elem() GetCustomDbRolesResultOutput {

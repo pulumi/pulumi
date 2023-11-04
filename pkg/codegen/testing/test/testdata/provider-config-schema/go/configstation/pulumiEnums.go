@@ -78,12 +78,6 @@ func (o ColorOutput) ToColorPtrOutputWithContext(ctx context.Context) ColorPtrOu
 	}).(ColorPtrOutput)
 }
 
-func (o ColorOutput) ToOutput(ctx context.Context) pulumix.Output[Color] {
-	return pulumix.Output[Color]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ColorOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -117,12 +111,6 @@ func (o ColorPtrOutput) ToColorPtrOutput() ColorPtrOutput {
 
 func (o ColorPtrOutput) ToColorPtrOutputWithContext(ctx context.Context) ColorPtrOutput {
 	return o
-}
-
-func (o ColorPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Color] {
-	return pulumix.Output[*Color]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ColorPtrOutput) Elem() ColorOutput {

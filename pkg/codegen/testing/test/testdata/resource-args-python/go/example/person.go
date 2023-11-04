@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"resource-args-python/example/internal"
 )
 
@@ -92,12 +91,6 @@ func (i *Person) ToPersonOutputWithContext(ctx context.Context) PersonOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PersonOutput)
 }
 
-func (i *Person) ToOutput(ctx context.Context) pulumix.Output[*Person] {
-	return pulumix.Output[*Person]{
-		OutputState: i.ToPersonOutputWithContext(ctx).OutputState,
-	}
-}
-
 // PersonArrayInput is an input type that accepts PersonArray and PersonArrayOutput values.
 // You can construct a concrete instance of `PersonArrayInput` via:
 //
@@ -121,12 +114,6 @@ func (i PersonArray) ToPersonArrayOutput() PersonArrayOutput {
 
 func (i PersonArray) ToPersonArrayOutputWithContext(ctx context.Context) PersonArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PersonArrayOutput)
-}
-
-func (i PersonArray) ToOutput(ctx context.Context) pulumix.Output[[]*Person] {
-	return pulumix.Output[[]*Person]{
-		OutputState: i.ToPersonArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // PersonMapInput is an input type that accepts PersonMap and PersonMapOutput values.
@@ -154,12 +141,6 @@ func (i PersonMap) ToPersonMapOutputWithContext(ctx context.Context) PersonMapOu
 	return pulumi.ToOutputWithContext(ctx, i).(PersonMapOutput)
 }
 
-func (i PersonMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*Person] {
-	return pulumix.Output[map[string]*Person]{
-		OutputState: i.ToPersonMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type PersonOutput struct{ *pulumi.OutputState }
 
 func (PersonOutput) ElementType() reflect.Type {
@@ -172,12 +153,6 @@ func (o PersonOutput) ToPersonOutput() PersonOutput {
 
 func (o PersonOutput) ToPersonOutputWithContext(ctx context.Context) PersonOutput {
 	return o
-}
-
-func (o PersonOutput) ToOutput(ctx context.Context) pulumix.Output[*Person] {
-	return pulumix.Output[*Person]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o PersonOutput) Name() pulumi.StringPtrOutput {
@@ -202,12 +177,6 @@ func (o PersonArrayOutput) ToPersonArrayOutputWithContext(ctx context.Context) P
 	return o
 }
 
-func (o PersonArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*Person] {
-	return pulumix.Output[[]*Person]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o PersonArrayOutput) Index(i pulumi.IntInput) PersonOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Person {
 		return vs[0].([]*Person)[vs[1].(int)]
@@ -226,12 +195,6 @@ func (o PersonMapOutput) ToPersonMapOutput() PersonMapOutput {
 
 func (o PersonMapOutput) ToPersonMapOutputWithContext(ctx context.Context) PersonMapOutput {
 	return o
-}
-
-func (o PersonMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*Person] {
-	return pulumix.Output[map[string]*Person]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o PersonMapOutput) MapIndex(k pulumi.StringInput) PersonOutput {

@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"regress-go-10527/world/internal"
 )
 
@@ -87,12 +86,6 @@ func (i *Universe) ToUniverseOutputWithContext(ctx context.Context) UniverseOutp
 	return pulumi.ToOutputWithContext(ctx, i).(UniverseOutput)
 }
 
-func (i *Universe) ToOutput(ctx context.Context) pulumix.Output[*Universe] {
-	return pulumix.Output[*Universe]{
-		OutputState: i.ToUniverseOutputWithContext(ctx).OutputState,
-	}
-}
-
 type UniverseOutput struct{ *pulumi.OutputState }
 
 func (UniverseOutput) ElementType() reflect.Type {
@@ -105,12 +98,6 @@ func (o UniverseOutput) ToUniverseOutput() UniverseOutput {
 
 func (o UniverseOutput) ToUniverseOutputWithContext(ctx context.Context) UniverseOutput {
 	return o
-}
-
-func (o UniverseOutput) ToOutput(ctx context.Context) pulumix.Output[*Universe] {
-	return pulumix.Output[*Universe]{
-		OutputState: o.OutputState,
-	}
 }
 
 func init() {

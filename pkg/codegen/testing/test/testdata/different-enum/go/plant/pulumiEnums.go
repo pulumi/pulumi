@@ -92,12 +92,6 @@ func (o ContainerBrightnessOutput) ToContainerBrightnessPtrOutputWithContext(ctx
 	}).(ContainerBrightnessPtrOutput)
 }
 
-func (o ContainerBrightnessOutput) ToOutput(ctx context.Context) pulumix.Output[ContainerBrightness] {
-	return pulumix.Output[ContainerBrightness]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ContainerBrightnessOutput) ToFloat64Output() pulumi.Float64Output {
 	return o.ToFloat64OutputWithContext(context.Background())
 }
@@ -131,12 +125,6 @@ func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutput() Container
 
 func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
 	return o
-}
-
-func (o ContainerBrightnessPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ContainerBrightness] {
-	return pulumix.Output[*ContainerBrightness]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ContainerBrightnessPtrOutput) Elem() ContainerBrightnessOutput {
@@ -286,12 +274,6 @@ func (o ContainerSizeOutput) ToContainerSizePtrOutputWithContext(ctx context.Con
 	}).(ContainerSizePtrOutput)
 }
 
-func (o ContainerSizeOutput) ToOutput(ctx context.Context) pulumix.Output[ContainerSize] {
-	return pulumix.Output[ContainerSize]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ContainerSizeOutput) ToIntOutput() pulumi.IntOutput {
 	return o.ToIntOutputWithContext(context.Background())
 }
@@ -325,12 +307,6 @@ func (o ContainerSizePtrOutput) ToContainerSizePtrOutput() ContainerSizePtrOutpu
 
 func (o ContainerSizePtrOutput) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
 	return o
-}
-
-func (o ContainerSizePtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ContainerSize] {
-	return pulumix.Output[*ContainerSize]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ContainerSizePtrOutput) Elem() ContainerSizeOutput {

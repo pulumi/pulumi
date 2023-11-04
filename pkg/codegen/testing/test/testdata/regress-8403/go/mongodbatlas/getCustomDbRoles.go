@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"regress-8403/mongodbatlas/internal"
 )
 
@@ -61,12 +60,6 @@ func (o LookupCustomDbRolesResultOutput) ToLookupCustomDbRolesResultOutput() Loo
 
 func (o LookupCustomDbRolesResultOutput) ToLookupCustomDbRolesResultOutputWithContext(ctx context.Context) LookupCustomDbRolesResultOutput {
 	return o
-}
-
-func (o LookupCustomDbRolesResultOutput) ToOutput(ctx context.Context) pulumix.Output[LookupCustomDbRolesResult] {
-	return pulumix.Output[LookupCustomDbRolesResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o LookupCustomDbRolesResultOutput) Result() GetCustomDbRolesResultPtrOutput {

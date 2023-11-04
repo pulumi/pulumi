@@ -9,7 +9,6 @@ import (
 
 	"functions-secrets/mypkg/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 func FuncWithSecrets(ctx *pulumi.Context, args *FuncWithSecretsArgs, opts ...pulumi.InvokeOption) (*FuncWithSecretsResult, error) {
@@ -68,12 +67,6 @@ func (o FuncWithSecretsResultOutput) ToFuncWithSecretsResultOutput() FuncWithSec
 
 func (o FuncWithSecretsResultOutput) ToFuncWithSecretsResultOutputWithContext(ctx context.Context) FuncWithSecretsResultOutput {
 	return o
-}
-
-func (o FuncWithSecretsResultOutput) ToOutput(ctx context.Context) pulumix.Output[FuncWithSecretsResult] {
-	return pulumix.Output[FuncWithSecretsResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o FuncWithSecretsResultOutput) Ciphertext() pulumi.StringOutput {

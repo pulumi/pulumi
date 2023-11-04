@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Remove generic ToOutput methods from legacy non-generic go SDKs

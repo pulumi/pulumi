@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"go-nested-collections/repro/internal"
 )
 
@@ -32,12 +31,6 @@ func (o ElementTypeTypeOutput) ToElementTypeTypeOutputWithContext(ctx context.Co
 	return o
 }
 
-func (o ElementTypeTypeOutput) ToOutput(ctx context.Context) pulumix.Output[ElementTypeType] {
-	return pulumix.Output[ElementTypeType]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o ElementTypeTypeOutput) GetElementType_() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ElementTypeType) *string { return v.ElementType_ }).(pulumi.StringPtrOutput)
 }
@@ -54,12 +47,6 @@ func (o ElementTypeTypePtrOutput) ToElementTypeTypePtrOutput() ElementTypeTypePt
 
 func (o ElementTypeTypePtrOutput) ToElementTypeTypePtrOutputWithContext(ctx context.Context) ElementTypeTypePtrOutput {
 	return o
-}
-
-func (o ElementTypeTypePtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ElementTypeType] {
-	return pulumix.Output[*ElementTypeType]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ElementTypeTypePtrOutput) Elem() ElementTypeTypeOutput {
