@@ -113,6 +113,10 @@ type bagtag struct {
 	MapOpt        map[string]interface{} `pulumi:"mo,optional"`
 }
 
+type AnInterface interface {
+	isAnInterface()
+}
+
 func TestMapperEncode(t *testing.T) {
 	t.Parallel()
 	bag := bagtag{
@@ -130,6 +134,11 @@ func TestMapperEncode(t *testing.T) {
 
 	// Nils
 	m, err = md.Encode(nil)
+	require.NoError(t, err)
+	assert.Len(t, m, 0)
+
+	// Nil (interface)
+	m, err = md.Encode((AnInterface)(nil))
 	require.NoError(t, err)
 	assert.Len(t, m, 0)
 
