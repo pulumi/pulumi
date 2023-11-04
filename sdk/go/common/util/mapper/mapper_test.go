@@ -106,10 +106,11 @@ func TestFieldMapper(t *testing.T) {
 }
 
 type bagtag struct {
-	String        string `pulumi:"s"`
-	StringSkip    string `pulumi:"sc,skip"`
-	StringOpt     string `pulumi:"so,optional"`
-	StringSkipOpt string `pulumi:"sco,skip,optional"`
+	String        string                 `pulumi:"s"`
+	StringSkip    string                 `pulumi:"sc,skip"`
+	StringOpt     string                 `pulumi:"so,optional"`
+	StringSkipOpt string                 `pulumi:"sco,skip,optional"`
+	MapOpt        map[string]interface{} `pulumi:"mo,optional"`
 }
 
 type AnInterface interface {
@@ -121,19 +122,124 @@ func TestMapperEncode(t *testing.T) {
 	bag := bagtag{
 		String:    "something",
 		StringOpt: "ohmv",
+		MapOpt: map[string]interface{}{
+			"a": "something",
+			"b": nil,
+		},
 	}
 
-	md := New(nil)
-	m, err := md.Encode(bag)
+	md := &mapper{}
+	var err error
+	var m map[string]interface{}
+
+	// Nils
+	m, err = md.Encode(nil)
 	require.NoError(t, err)
-	assert.Equal(t, "something", m["s"])
-	assert.Equal(t, "ohmv", m["so"])
+	assert.Len(t, m, 0)
 
-	// Encode a nil interface
-
+	// Nil (interface)
 	m, err = md.Encode((AnInterface)(nil))
 	require.NoError(t, err)
 	assert.Len(t, m, 0)
+
+	// Structs
+	m, err = md.encode(reflect.ValueOf(bag))
+	require.NoError(t, err)
+	assert.Equal(t, "something", m["s"])
+	assert.Equal(t, "ohmv", m["so"])
+	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, m["mo"])
+
+	// Pointers
+	m, err = md.encode(reflect.Zero(reflect.TypeOf(&bag)))
+	require.NoError(t, err)
+	assert.Nil(t, m)
+	m, err = md.encode(reflect.ValueOf(&bag))
+	require.NoError(t, err)
+	assert.Equal(t, "something", m["s"])
+	assert.Equal(t, "ohmv", m["so"])
+	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, m["mo"])
+}
+
+func TestMapperEncodeValue(t *testing.T) {
+	t.Parallel()
+	strdata := "something"
+	bag := bagtag{
+		String:    "something",
+		StringOpt: "ohmv",
+	}
+	slice := []string{"something"}
+	mapdata := map[string]interface{}{
+		"a": "something",
+		"b": nil,
+	}
+	anyType := reflect.TypeOf((*any)(nil)).Elem()
+	assert.Equal(t, reflect.Interface, anyType.Kind())
+
+	md := &mapper{}
+	var err error
+	var v any
+
+	// Nils
+	v, err = md.EncodeValue(nil)
+	require.NoError(t, err)
+	assert.Nil(t, v)
+
+	// Bools
+	v, err = md.encodeValue(reflect.ValueOf(true))
+	require.NoError(t, err)
+	assert.Equal(t, true, v)
+
+	// Ints
+	v, err = md.encodeValue(reflect.ValueOf(int(1)))
+	require.NoError(t, err)
+	assert.Equal(t, float64(1), v)
+
+	// Uints
+	v, err = md.encodeValue(reflect.ValueOf(uint(1)))
+	require.NoError(t, err)
+	assert.Equal(t, float64(1), v)
+
+	// Floats
+	v, err = md.encodeValue(reflect.ValueOf(float32(1.0)))
+	require.NoError(t, err)
+	assert.Equal(t, float64(1.0), v)
+
+	// Pointers
+	v, err = md.encodeValue(reflect.Zero(reflect.TypeOf(&strdata)))
+	require.NoError(t, err)
+	assert.Nil(t, v)
+	v, err = md.encodeValue(reflect.ValueOf(&strdata))
+	require.NoError(t, err)
+	assert.Equal(t, "something", v)
+
+	// Slices
+	v, err = md.encodeValue(reflect.Zero(reflect.TypeOf(slice)))
+	require.NoError(t, err)
+	assert.Nil(t, v)
+	v, err = md.encodeValue(reflect.ValueOf(slice))
+	require.NoError(t, err)
+	assert.Equal(t, []interface{}{"something"}, v)
+
+	// Maps
+	v, err = md.encodeValue(reflect.Zero(reflect.TypeOf(mapdata)))
+	require.NoError(t, err)
+	assert.Nil(t, v)
+	v, err = md.encodeValue(reflect.ValueOf(mapdata))
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, v)
+
+	// Structs
+	v, err = md.encodeValue(reflect.ValueOf(bag))
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"s": "something", "so": "ohmv"}, v)
+
+	// Interfaces
+	v, err = md.encodeValue(reflect.Zero(anyType))
+	require.NoError(t, err)
+	assert.Nil(t, v)
+	v, err = md.encodeValue(reflect.ValueOf("something").Convert(anyType))
+	require.NoError(t, err)
+	assert.Equal(t, "something", v)
 }
 
 func TestMapperDecode(t *testing.T) {
@@ -149,12 +255,17 @@ func TestMapperDecode(t *testing.T) {
 		"sc":  "nothing",
 		"so":  "ohmy",
 		"sco": "ohmynada",
+		"mo": map[string]interface{}{
+			"a": "something",
+			"b": nil,
+		},
 	}, &b1)
 	assert.NoError(t, err)
 	assert.Equal(t, "something", b1.String)
 	assert.Equal(t, "", b1.StringSkip)
 	assert.Equal(t, "ohmy", b1.StringOpt)
 	assert.Equal(t, "", b1.StringSkipOpt)
+	assert.Equal(t, map[string]interface{}{"a": "something", "b": nil}, b1.MapOpt)
 
 	// Now let optional fields go missing.
 	var b2 bagtag
