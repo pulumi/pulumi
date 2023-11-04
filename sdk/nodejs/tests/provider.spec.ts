@@ -18,6 +18,8 @@ import * as pulumi from "..";
 import * as internals from "../provider/internals";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
+import * as decoders from '../provider/decoders';
+import { PropertyValue } from '../provider/propertyValue';
 
 class TestResource extends pulumi.CustomResource {
     constructor(name: string, opts?: pulumi.CustomResourceOptions) {
@@ -561,4 +563,188 @@ describe("provider", () => {
             });
         }
     });
+});
+
+
+describe("decoders", () => {
+    it("decodeString", () => {
+        const property: PropertyValue = { "kind": "string", "value": "foo" };
+        const { result, errors } = decoders.decodeString.decode(property);
+        assert.deepStrictEqual(result, "foo");
+        assert.deepStrictEqual(errors, []);
+    });
+
+    it("decodeStringOrDefault", () => {
+        const property: PropertyValue = { "kind": "string", "value": "foo" };
+        const { result, errors } = decoders.decodeStringOrDefault("bar").decode(property);
+        assert.deepStrictEqual(result, "foo");
+        assert.deepStrictEqual(errors, []);
+
+        const emptyNull: PropertyValue = { "kind": "null" };
+        const response = decoders.decodeStringOrDefault("bar").decode(emptyNull);
+        assert.deepStrictEqual(response.result, "bar");
+        assert.deepStrictEqual(errors, []);
+    });
+
+    it("decodeNumber", () => {
+        const property: PropertyValue = { "kind": "number", "value": 42 };
+        const { result, errors } = decoders.decodeNumber.decode(property);
+        assert.deepStrictEqual(result, 42);
+        assert.deepStrictEqual(errors, []);
+    });
+
+    it("decodeNumberOrDefault", () => {
+        const property: PropertyValue = { "kind": "number", "value": 42 };
+        const { result, errors } = decoders.decodeNumberOrDefault(0).decode(property);
+        assert.deepStrictEqual(result, 42);
+        assert.deepStrictEqual(errors, []);
+
+        const emptyNull: PropertyValue = { "kind": "null" };
+        const response = decoders.decodeNumberOrDefault(0).decode(emptyNull);
+        assert.deepStrictEqual(response.result, 0);
+        assert.deepStrictEqual(errors, []);
+    });
+
+    it("decodeBool", () => {
+        const property: PropertyValue = { "kind": "boolean", "value": true };
+        const { result, errors } = decoders.decodeBool.decode(property);
+        assert.deepStrictEqual(result, true);
+        assert.deepStrictEqual(errors, []);
+    });
+
+    it("decodeBoolOrDefault", () => {
+        const property: PropertyValue = { "kind": "boolean", "value": true };
+        const { result, errors } = decoders.decodeBoolOrDefault(false).decode(property);
+        assert.deepStrictEqual(result, true);
+        assert.deepStrictEqual(errors, []);
+
+        const emptyNull: PropertyValue = { "kind": "null" };
+        const response = decoders.decodeBoolOrDefault(false).decode(emptyNull);
+        assert.deepStrictEqual(response.result, false);
+        assert.deepStrictEqual(errors, []);
+    });
+
+    it("decodeArray", () => {
+        const property : PropertyValue = {
+            kind: "array",
+            values: [
+                { kind: "string", value: "foo" },
+                { kind: "string", value: "bar" },
+            ],
+        }
+
+        var decoder = decoders.decodeArray(decoders.decodeString);
+
+        const { result, errors } = decoder.decode(property);
+        assert.deepStrictEqual(errors, []);
+        assert.deepStrictEqual(result, ["foo", "bar"]);
+    });
+
+    it("decodeArrayOrDefault", () => {
+        const property : PropertyValue = {
+            kind: "array",
+            values: [
+                { kind: "string", value: "foo" },
+                { kind: "string", value: "bar" },
+            ],
+        }
+
+        var decoder = decoders.decodeArrayOrDefault(decoders.decodeString, ["baz"]);
+
+        const { result, errors } = decoder.decode(property);
+        assert.deepStrictEqual(errors, []);
+        assert.deepStrictEqual(result, ["foo", "bar"]);
+        
+        const emptyNull: PropertyValue = { "kind": "null" };
+        const response = decoder.decode(emptyNull);
+        assert.deepStrictEqual(errors, []);
+        assert.deepStrictEqual(response.result, ["baz"]);
+        
+    });
+
+    it("decodeObject basic example", () => {
+        type User = {
+            username: string
+            userId: number
+        }
+
+        const userDecoder = decoders.decodeObject<User>(decode => {
+            return {
+                username: decode.field("username", decoders.decodeString),
+                userId: decode.field("userId", decoders.decodeNumber)
+            }
+        });
+
+        const property : PropertyValue = {
+            kind: "object",
+            values: {
+                username: { kind: "string", value: "foo" },
+                userId: { kind: "number", value: 42 }
+            }
+        }
+
+        const { result, errors } = userDecoder.decode(property);
+        assert.deepStrictEqual(errors, []);
+        assert.deepStrictEqual(result, {
+            username: "foo",
+            userId: 42
+        });
+    })
+
+    it("decodeObject complex example", () => {
+        type Nested = {
+            foo: string
+        }
+
+        type User = {
+            username: string
+            userId: number
+            tags: Record<string, string>
+            aliases: string[]
+            nested?: Nested
+        }
+
+        const decoder = decoders.decodeObject<User>(decode => {
+            const nestedDecoder = decoders.decodeObject<Nested>(decode => {
+                return {
+                    foo: decode.field("foo", decoders.decodeString)
+                }
+            })
+
+            return {
+                username: decode.field("username", decoders.decodeString),
+                userId: decode.field("userId", decoders.decodeNumber),
+                nested: decode.optionalField("nested", nestedDecoder),
+                tags: decode.optionalField("tags", decoders.decodeMap(decoders.decodeString)) ?? {},
+                aliases: decode.optionalField("aliases", decoders.decodeArray(decoders.decodeString)) ?? [],
+            }
+        });
+
+        const property : PropertyValue = {
+            kind: "object",
+            values: {
+                username: { kind: "string", value: "foo" },
+                userId: { kind: "number", value: 42 },
+                tags: { kind: "object", values: {
+                    tagName: { kind: "string", value: "tagValue" }
+                }},
+                nested: { kind: "object", values: {
+                    foo: { kind: "string", value: "bar" }
+                }}
+            }
+        }
+
+        const { result, errors } = decoder.decode(property);
+        assert.deepStrictEqual(errors, []);
+        assert.deepStrictEqual(result, {
+            username: "foo",
+            userId: 42,
+            tags: {
+                tagName: "tagValue"
+            },
+            nested: {
+                foo: "bar"
+            }
+        });
+    })
 });
