@@ -27,6 +27,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pgavlin/fx"
+	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -584,6 +587,164 @@ func NewEnvironment(envs []string) *Environment {
 	return &Environment{envs: envs}
 }
 
+func (e *Environment) Definition() []byte {
+	switch {
+	case e == nil:
+		// If there's no environment, return nil.
+		return nil
+	case len(e.envs) != 0:
+		// If the environment was a list of environments, create an anonymous environment and return it.
+		bytes, err := json.Marshal(map[string]any{"imports": e.envs})
+		if err != nil {
+			return nil
+		}
+		return bytes
+	case e.message != nil:
+		// If the environment was encoded as JSON, return the raw JSON.
+		return e.message
+	case e.node != nil:
+		// Re-encode the YAML and return it.
+		bytes, err := yaml.Marshal(e.node)
+		if err != nil {
+			return nil
+		}
+		return bytes
+	default:
+		return nil
+	}
+}
+
+func (e *Environment) Imports() []string {
+	yaml := e.Definition()
+	if len(yaml) == 0 {
+		return nil
+	}
+
+	def, diags, err := eval.LoadYAMLBytes("yaml", yaml)
+	if err != nil || len(diags) != 0 {
+		return nil
+	}
+	names := fx.ToSet(fx.Map(fx.IterSlice(def.Imports.Elements), func(imp *ast.ImportDecl) string {
+		return imp.Environment.GetValue()
+	}))
+	if len(def.Values.Entries) != 0 {
+		names.Add("yaml")
+	}
+	return fx.ToSlice(fx.IterSet(names))
+}
+
+func (e *Environment) Append(envs ...string) *Environment {
+	switch {
+	case e == nil:
+		return NewEnvironment(envs)
+	case e.message != nil:
+		var m map[string]any
+		if err := json.Unmarshal([]byte(e.message), &m); err == nil {
+			if imports, ok := m["imports"].([]any); ok {
+				anys := fx.ToSlice(fx.Map(fx.IterSlice(envs), func(e string) any { return e }))
+				m["imports"] = append(imports, anys...)
+			}
+		}
+		return e
+	case e.node != nil:
+		root := e.node
+		if root.Kind == yaml.MappingNode {
+			var imports *yaml.Node
+			for i := 0; i < len(root.Content); i += 2 {
+				key := root.Content[i]
+				if key.Kind == yaml.ScalarNode && key.Value == "imports" {
+					imports = root.Content[i+1]
+					break
+				}
+			}
+			if imports == nil {
+				root.Content = append([]*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Style: root.Style,
+						Tag:   "!!str",
+						Value: "imports",
+					},
+					{
+						Kind:  yaml.SequenceNode,
+						Style: root.Style,
+					},
+				}, root.Content...)
+				imports = root.Content[1]
+			}
+			if imports.Kind == yaml.SequenceNode {
+				nodes := fx.ToSlice(fx.Map(fx.IterSlice(envs), func(env string) *yaml.Node {
+					return &yaml.Node{
+						Kind:  yaml.ScalarNode,
+						Style: imports.Style,
+						Tag:   "!!str",
+						Value: env,
+					}
+				}))
+				imports.Content = append(imports.Content, nodes...)
+				return e
+			}
+		}
+		return e
+	default:
+		e.envs = append(e.envs, envs...)
+		return e
+	}
+}
+
+func (e *Environment) Remove(env string) *Environment {
+	switch {
+	case e == nil:
+		return nil
+	case e.message != nil:
+		var m map[string]any
+		if err := json.Unmarshal([]byte(e.message), &m); err == nil {
+			if imports, ok := m["imports"].([]any); ok {
+				for i, e := range imports {
+					if e == env {
+						m["imports"] = append(imports[:i], imports[i+1:]...)
+						break
+					}
+				}
+			}
+		}
+		return e
+	case e.node != nil:
+		root := e.node
+		if root.Kind == yaml.MappingNode {
+			for i := 0; i < len(root.Content); i += 2 {
+				key := root.Content[i]
+				if key.Kind == yaml.ScalarNode && key.Value == "imports" {
+					value := root.Content[i+1]
+					if value.Kind == yaml.SequenceNode {
+						for j, n := range value.Content {
+							if n.Kind == yaml.ScalarNode && n.Value == env {
+								value.Content = append(value.Content[:j], value.Content[j+1:]...)
+								if len(value.Content) == 0 {
+									root.Content = append(root.Content[:i], root.Content[i+2:]...)
+								}
+								return e
+							}
+						}
+					}
+				}
+			}
+		}
+		return e
+	default:
+		for i, n := range e.envs {
+			if n == env {
+				e.envs = append(e.envs[:i], e.envs[i+1:]...)
+				if len(e.envs) == 0 {
+					return nil
+				}
+				return e
+			}
+		}
+		return e
+	}
+}
+
 func (e Environment) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.message)
 }
@@ -604,7 +765,6 @@ func (e Environment) MarshalYAML() (any, error) {
 
 func (e *Environment) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Decode(&e.envs); err == nil {
-		e.node = n
 		return nil
 	}
 	e.node = n
@@ -631,30 +791,7 @@ type ProjectStack struct {
 }
 
 func (ps ProjectStack) EnvironmentBytes() []byte {
-	switch {
-	case ps.Environment == nil:
-		// If there's no environment, return nil.
-		return nil
-	case len(ps.Environment.envs) != 0:
-		// If the environment was a list of environments, create an anonymous environment and return it.
-		bytes, err := json.Marshal(map[string]any{"imports": ps.Environment.envs})
-		if err != nil {
-			return nil
-		}
-		return bytes
-	case ps.Environment.message != nil:
-		// If the environment was encoded as JSON, return the raw JSON.
-		return ps.Environment.message
-	case ps.Environment.node != nil:
-		// Re-encode the YAML and return it.
-		bytes, err := yaml.Marshal(ps.Environment.node)
-		if err != nil {
-			return nil
-		}
-		return bytes
-	default:
-		return nil
-	}
+	return ps.Environment.Definition()
 }
 
 func (ps ProjectStack) RawValue() []byte {

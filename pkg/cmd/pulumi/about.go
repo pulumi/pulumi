@@ -271,7 +271,7 @@ func formatPlugins(p []pluginAbout) string {
 		Headers: []string{"NAME", "VERSION"},
 		Rows:    rows,
 	}
-	return "Plugins\n" + table.String()
+	return "Plugins\n" + renderTable(table, nil)
 }
 
 type hostAbout struct {
@@ -293,14 +293,14 @@ func getHostAbout() (hostAbout, error) {
 }
 
 func (host hostAbout) String() string {
-	return cmdutil.Table{
+	return renderTable(cmdutil.Table{
 		Headers: []string{"Host", ""},
 		Rows: simpleTableRows([][]string{
 			{"OS", host.Os},
 			{"Version", host.Version},
 			{"Arch", host.Arch},
 		}),
-	}.String()
+	}, nil)
 }
 
 type backendAbout struct {
@@ -347,10 +347,10 @@ func (b backendAbout) String() string {
 		rows = append(rows, []string{"Token type", "personal"})
 	}
 
-	return cmdutil.Table{
+	return renderTable(cmdutil.Table{
 		Headers: []string{"Backend", ""},
 		Rows:    simpleTableRows(rows),
-	}.String()
+	}, nil)
 }
 
 type currentStackAbout struct {
@@ -429,10 +429,10 @@ func (current currentStackAbout) String() string {
 				Columns: []string{r.Type, r.URN},
 			}
 		}
-		resources = cmdutil.Table{
+		resources = renderTable(cmdutil.Table{
 			Headers: []string{"TYPE", "URN"},
 			Rows:    rows,
-		}.String() + "\n"
+		}, nil) + "\n"
 	}
 	var pending string
 	if len(current.PendingOps) == 0 {
@@ -444,10 +444,10 @@ func (current currentStackAbout) String() string {
 				Columns: []string{r.Type, r.URN},
 			}
 		}
-		pending = cmdutil.Table{
+		pending = renderTable(cmdutil.Table{
 			Headers: []string{"OPP TYPE", "URN"},
 			Rows:    rows,
-		}.String() + "\n"
+		}, nil) + "\n"
 	}
 	stackName := current.Name
 	if current.FullyQualifiedName != "" {
@@ -481,10 +481,10 @@ func formatProgramDependenciesAbout(deps []programDependencyAbout) string {
 			Columns: []string{v.Name, v.Version},
 		}
 	}
-	return "Dependencies:\n" + cmdutil.Table{
+	return "Dependencies:\n" + renderTable(cmdutil.Table{
 		Headers: []string{"NAME", "VERSION"},
 		Rows:    rows,
-	}.String()
+	}, nil)
 }
 
 type cliAbout struct {
@@ -513,14 +513,14 @@ func getCLIAbout() cliAbout {
 }
 
 func (cli cliAbout) String() string {
-	return cmdutil.Table{
+	return renderTable(cmdutil.Table{
 		Headers: []string{"CLI", ""},
 		Rows: simpleTableRows([][]string{
 			{"Version", cli.Version},
 			{"Go Version", cli.GoVersion},
 			{"Go Compiler", cli.GoCompiler},
 		}),
-	}.String()
+	}, nil)
 }
 
 func formatLogAbout() string {

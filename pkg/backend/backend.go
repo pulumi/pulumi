@@ -220,13 +220,26 @@ type Backend interface {
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
 type EnvironmentsBackend interface {
+	CreateEnvironment(
+		ctx context.Context,
+		org string,
+		name string,
+		yaml []byte,
+	) (apitype.EnvironmentDiagnostics, error)
+
+	CheckYAMLEnvironment(
+		ctx context.Context,
+		org string,
+		yaml []byte,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
 	// OpenYAMLEnvironment opens a literal environment.
 	OpenYAMLEnvironment(
 		ctx context.Context,
 		org string,
 		yaml []byte,
 		duration time.Duration,
-	) (*esc.Environment, []apitype.EnvironmentDiagnostic, error)
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

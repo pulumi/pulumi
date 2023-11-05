@@ -105,6 +105,41 @@ func (c Plaintext) GoValue() any {
 	}
 }
 
+func (c Plaintext) PropertyValue() resource.PropertyValue {
+	var prop resource.PropertyValue
+	switch v := c.Value().(type) {
+	case bool:
+		prop = resource.NewBoolProperty(v)
+	case int64:
+		prop = resource.NewNumberProperty(float64(v))
+	case float64:
+		prop = resource.NewNumberProperty(v)
+	case string:
+		prop = resource.NewStringProperty(v)
+	case []Plaintext:
+		vs := make([]resource.PropertyValue, len(v))
+		for i, v := range v {
+			vs[i] = v.PropertyValue()
+		}
+		prop = resource.NewArrayProperty(vs)
+	case map[string]Plaintext:
+		vs := make(map[resource.PropertyKey]resource.PropertyValue, len(v))
+		for k, v := range v {
+			vs[resource.PropertyKey(k)] = v.PropertyValue()
+		}
+		prop = resource.NewObjectProperty(vs)
+	case nil:
+		prop = resource.NewNullProperty()
+	default:
+		contract.Failf("unexpected value of type %T", v)
+		return resource.PropertyValue{}
+	}
+	if c.secure {
+		prop = resource.MakeSecret(prop)
+	}
+	return prop
+}
+
 // Encrypt converts the receiver as a Value. All secure strings in the result are encrypted using encrypter.
 func (c Plaintext) Encrypt(ctx context.Context, encrypter Encrypter) (Value, error) {
 	obj, err := c.encrypt(ctx, nil, encrypter)
@@ -117,6 +152,8 @@ func (c Plaintext) Encrypt(ctx context.Context, encrypter Encrypter) (Value, err
 // encrypt converts the receiver to an object. All secure strings in the result are encrypted using encrypter.
 func (c Plaintext) encrypt(ctx context.Context, path resource.PropertyPath, encrypter Encrypter) (object, error) {
 	switch v := c.Value().(type) {
+	case nil:
+		return object{}, nil
 	case bool:
 		return newObject(v), nil
 	case int64:

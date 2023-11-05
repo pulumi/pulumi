@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Add config subcommands for managing a stack's environment

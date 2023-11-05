@@ -101,7 +101,12 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
+		ps, err := loadProjectStack(proj, s)
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", ps.Environment, cmd.Flags())
 		if err != nil {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
@@ -335,7 +340,12 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
+		ps, err := loadProjectStack(proj, s)
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", ps.Environment, cmd.Flags())
 		if err != nil {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}

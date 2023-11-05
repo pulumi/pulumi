@@ -31,7 +31,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1136,51 +1135,6 @@ func (pc *Client) GetDeploymentUpdates(ctx context.Context, stack StackIdentifie
 		return nil, fmt.Errorf("getting deployment %s updates failed: %w", id, err)
 	}
 	return resp, nil
-}
-
-func (pc *Client) OpenYAMLEnvironment(
-	ctx context.Context,
-	orgName string,
-	yaml []byte,
-	duration time.Duration,
-) (string, []apitype.EnvironmentDiagnostic, error) {
-	queryObj := struct {
-		Duration string `url:"duration"`
-	}{
-		Duration: duration.String(),
-	}
-
-	var resp struct {
-		ID string `json:"id"`
-	}
-	var errResp apitype.EnvironmentDiagnosticsResponse
-	path := fmt.Sprintf("/api/preview/environments/%v/yaml/open", orgName)
-	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, json.RawMessage(yaml), &resp, httpCallOptions{
-		ErrorResponse: &errResp,
-	})
-	if err != nil {
-		var diags *apitype.EnvironmentDiagnosticsResponse
-		if errors.As(err, &diags) {
-			return "", diags.Diagnostics, nil
-		}
-		return "", nil, err
-	}
-	return resp.ID, nil, nil
-}
-
-func (pc *Client) GetOpenEnvironment(
-	ctx context.Context,
-	orgName string,
-	envName string,
-	openEnvID string,
-) (*esc.Environment, error) {
-	var resp esc.Environment
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/open/%v", orgName, envName, openEnvID)
-	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return &resp, nil
 }
 
 func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesResponse, error) {

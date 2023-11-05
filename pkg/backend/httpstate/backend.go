@@ -36,6 +36,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 
+	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
@@ -127,6 +128,7 @@ type cloudBackend struct {
 	d            diag.Sink
 	url          string
 	client       *client.Client
+	escClient    esc_client.Client
 	capabilities func(context.Context) capabilities
 
 	// The current project, if any.
@@ -145,13 +147,15 @@ func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool
 	}
 	apiToken := account.AccessToken
 
-	client := client.NewClient(cloudURL, apiToken, insecure, d)
-	capabilities := detectCapabilities(d, client)
+	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
+	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
+	capabilities := detectCapabilities(d, apiClient)
 
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
-		client:         client,
+		client:         apiClient,
+		escClient:      escClient,
 		capabilities:   capabilities,
 		currentProject: project,
 	}, nil

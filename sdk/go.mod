@@ -43,6 +43,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/go-git/go-git/v5 v5.9.0
 	github.com/hashicorp/hcl/v2 v2.17.0
+	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/esc v0.5.6
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0

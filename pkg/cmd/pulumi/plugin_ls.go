@@ -159,10 +159,10 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 		totalSize += uint64(plugin.Size)
 	}
 
-	cmdutil.PrintTable(cmdutil.Table{
+	printTable(cmdutil.Table{
 		Headers: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
 		Rows:    rows,
-	})
+	}, nil)
 
 	fmt.Printf("\n")
 	fmt.Printf("TOTAL plugin cache size: %s\n", humanize.Bytes(totalSize))

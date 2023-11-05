@@ -56,7 +56,7 @@ func newConfigCmd() *cobra.Command {
 		Use:   "config",
 		Short: "Manage configuration",
 		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
-			"`pulumi config set`. To remove and existing value run `pulumi config rm`. To get the value of\n" +
+			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value of\n" +
 			"for a specific configuration key, use `pulumi config get <key-name>`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -75,7 +75,12 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			return listConfig(ctx, project, stack, showSecrets, jsonOut)
+			ps, err := loadProjectStack(project, stack)
+			if err != nil {
+				return err
+			}
+
+			return listConfig(ctx, project, stack, ps, showSecrets, jsonOut)
 		}),
 	}
 
@@ -99,6 +104,7 @@ func newConfigCmd() *cobra.Command {
 	cmd.AddCommand(newConfigSetAllCmd(&stack))
 	cmd.AddCommand(newConfigRefreshCmd(&stack))
 	cmd.AddCommand(newConfigCopyCmd(&stack))
+	cmd.AddCommand(newConfigEnvCmd(&stack))
 
 	return cmd
 }
@@ -822,26 +828,50 @@ type configValueJSON struct {
 	Secret      bool        `json:"secret"`
 }
 
-func listConfig(ctx context.Context,
+func listConfig(
+	ctx context.Context,
 	project *workspace.Project,
 	stack backend.Stack,
+	ps *workspace.ProjectStack,
 	showSecrets bool,
 	jsonOut bool,
 ) error {
-	ps, err := loadProjectStack(project, stack)
+	env, diags, err := checkStackEnv(ctx, stack, ps)
 	if err != nil {
 		return err
+	}
+
+	var pulumiEnv esc.Value
+	var envCrypter config.Encrypter
+	if env != nil {
+		pulumiEnv = env.Properties["pulumiConfig"]
+
+		stackEncrypter, needsSave, err := getStackEncrypter(stack, ps)
+		if err != nil {
+			return err
+		}
+		// This may have setup the stack's secrets provider, so save the stack if needed.
+		if needsSave {
+			if err = saveProjectStack(stack, ps); err != nil {
+				return fmt.Errorf("save stack config: %w", err)
+			}
+		}
+		envCrypter = stackEncrypter
 	}
 
 	stackName := stack.Ref().Name().String()
+
+	cfg, err := ps.Config.Copy(config.NopDecrypter, config.NopEncrypter)
+	if err != nil {
+		return fmt.Errorf("copying config: %w", err)
+	}
+
 	// when listing configuration values
-	// also show values coming from the project
-	err = workspace.ApplyProjectConfig(stackName, project, esc.Value{}, ps.Config, nil)
+	// also show values coming from the project and environment
+	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
 	if err != nil {
 		return err
 	}
-
-	cfg := ps.Config
 
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
@@ -913,10 +943,42 @@ func listConfig(ctx context.Context,
 			rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
 		}
 
-		cmdutil.PrintTable(cmdutil.Table{
+		printTable(cmdutil.Table{
 			Headers: []string{"KEY", "VALUE"},
 			Rows:    rows,
-		})
+		}, nil)
+
+		if env != nil {
+			_, environ, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
+				Pretend: true,
+				Redact:  true,
+			})
+			if err != nil {
+				return err
+			}
+
+			if len(environ) != 0 {
+				environRows := make([]cmdutil.TableRow, len(environ))
+				for i, kvp := range environ {
+					key, value, _ := strings.Cut(kvp, "=")
+					environRows[i] = cmdutil.TableRow{Columns: []string{key, value}}
+				}
+
+				fmt.Println()
+				printTable(cmdutil.Table{
+					Headers: []string{"ENVIRONMENT VARIABLE", "VALUE"},
+					Rows:    environRows,
+				}, nil)
+			}
+
+			if len(diags) != 0 {
+				fmt.Println()
+				fmt.Println("Environment diagnostics:")
+				printESCDiagnostics(os.Stdout, diags)
+			}
+
+			warnOnNoEnvironmentEffects(env)
+		}
 	}
 
 	if showSecrets {
@@ -936,13 +998,41 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 		return err
 	}
 
-	stackName := stack.Ref().Name().String()
-	// when asking for a configuration value, include values from the project config
-	err = workspace.ApplyProjectConfig(stackName, project, esc.Value{}, ps.Config, nil)
+	env, diags, err := checkStackEnv(ctx, stack, ps)
 	if err != nil {
 		return err
 	}
-	cfg := ps.Config
+
+	var pulumiEnv esc.Value
+	var envCrypter config.Encrypter
+	if env != nil {
+		pulumiEnv = env.Properties["pulumiConfig"]
+
+		stackEncrypter, needsSave, err := getStackEncrypter(stack, ps)
+		if err != nil {
+			return err
+		}
+		// This may have setup the stack's secrets provider, so save the stack if needed.
+		if needsSave {
+			if err = saveProjectStack(stack, ps); err != nil {
+				return fmt.Errorf("save stack config: %w", err)
+			}
+		}
+		envCrypter = stackEncrypter
+	}
+
+	stackName := stack.Ref().Name().String()
+
+	cfg, err := ps.Config.Copy(config.NopDecrypter, config.NopEncrypter)
+	if err != nil {
+		return fmt.Errorf("copying config: %w", err)
+	}
+
+	// when asking for a configuration value, include values from the project and environment
+	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
+	if err != nil {
+		return err
+	}
 
 	v, ok, err := cfg.Get(key, path)
 	if err != nil {
@@ -991,6 +1081,12 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 			fmt.Println(string(out))
 		} else {
 			fmt.Printf("%v\n", raw)
+		}
+
+		if len(diags) != 0 {
+			fmt.Println()
+			fmt.Println("Environment diagnostics:")
+			printESCDiagnostics(os.Stdout, diags)
 		}
 
 		log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")
@@ -1103,6 +1199,29 @@ func needsCrypter(cfg config.Map, env esc.Value) bool {
 	return cfg.HasSecureValue() || hasSecrets(env)
 }
 
+func checkStackEnv(
+	ctx context.Context,
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	yaml := workspaceStack.EnvironmentBytes()
+	if len(yaml) == 0 {
+		return nil, nil, nil
+	}
+
+	envs, ok := stack.Backend().(backend.EnvironmentsBackend)
+	if !ok {
+		return nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+	}
+	orgNamer, ok := stack.(interface{ OrgName() string })
+	if !ok {
+		return nil, nil, fmt.Errorf("cannot determine organzation for stack %v", stack.Ref())
+	}
+	orgName := orgNamer.OrgName()
+
+	return envs.CheckYAMLEnvironment(ctx, orgName, yaml)
+}
+
 func openStackEnv(
 	ctx context.Context,
 	stack backend.Stack,
@@ -1163,21 +1282,14 @@ func getStackConfigurationWithFallback(
 		return backend.StackConfiguration{}, nil, fmt.Errorf("opening environment: %w", err)
 	}
 	if len(diags) != 0 {
-		for _, d := range diags {
-			if d.Range != nil {
-				fmt.Fprintf(os.Stderr, "%v:", d.Range.Environment)
-				if d.Range.Begin.Line != 0 {
-					fmt.Fprintf(os.Stderr, "%v:%v:", d.Range.Begin.Line, d.Range.Begin.Column)
-				}
-				fmt.Fprintf(os.Stderr, " ")
-			}
-			fmt.Fprintf(os.Stderr, "%v\n", d.Summary)
-		}
+		printESCDiagnostics(os.Stderr, diags)
 		return backend.StackConfiguration{}, nil, errors.New("opening environment: too many errors")
 	}
 
 	var pulumiEnv esc.Value
 	if env != nil {
+		warnOnNoEnvironmentEffects(env)
+
 		pulumiEnv = env.Properties["pulumiConfig"]
 
 		_, environ, secrets, err := cli.PrepareEnvironment(env, nil)

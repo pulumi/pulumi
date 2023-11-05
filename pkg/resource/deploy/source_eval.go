@@ -120,7 +120,7 @@ func (src *evalSource) Iterate(
 	// Keep track of any config keys that have secure values.
 	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
 
-	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(src.runinfo.Target.Decrypter)
+	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert config to map: %w", err)
 	}

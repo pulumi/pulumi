@@ -618,7 +618,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
 func getUpdateMetadata(
-	msg, root, execKind, execAgent string, updatePlan bool, flags *pflag.FlagSet,
+	msg, root, execKind, execAgent string, updatePlan bool, env *workspace.Environment, flags *pflag.FlagSet,
 ) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
@@ -636,6 +636,8 @@ func getUpdateMetadata(
 	addExecutionMetadataToEnvironment(m.Environment, execKind, execAgent)
 
 	addUpdatePlanMetadataToEnvironment(m.Environment, updatePlan)
+
+	addESCMetadataToEnvironment(m.Environment, env)
 
 	return m, nil
 }
@@ -889,6 +891,15 @@ func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) 
 	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
 }
 
+// addESCMetadataToEnvironment populates the environment metadata bag with ESC-related metadata.
+func addESCMetadataToEnvironment(env map[string]string, stackEnv *workspace.Environment) {
+	if imports := stackEnv.Imports(); len(imports) != 0 {
+		if bytes, err := json.Marshal(imports); err == nil {
+			env[backend.StackEnvironments] = string(bytes)
+		}
+	}
+}
+
 // makeJSONString turns the given value into a JSON string.
 // If multiline is true, the JSON will be formatted with indentation and a trailing newline.
 func makeJSONString(v interface{}, multiline bool) (string, error) {
@@ -1133,4 +1144,25 @@ func promptUser(msg string, options []string, defaultOption string, colorization
 		return ""
 	}
 	return response
+}
+
+func printTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
+	fmt.Print(renderTable(table, opts))
+}
+
+func renderTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) string {
+	if opts == nil {
+		opts = &cmdutil.TableRenderOptions{}
+	}
+	if len(opts.HeaderStyle) == 0 {
+		style := make([]colors.Color, len(table.Headers))
+		for i := range style {
+			style[i] = colors.SpecHeadline
+		}
+		opts.HeaderStyle = style
+	}
+	if opts.Color == "" {
+		opts.Color = cmdutil.GetGlobalColorization()
+	}
+	return table.Render(opts)
 }
