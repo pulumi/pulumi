@@ -27,17 +27,24 @@ type EnvironmentDiagnostic struct {
 	Detail  string     `json:"detail,omitempty"`
 }
 
+type EnvironmentDiagnostics []EnvironmentDiagnostic
+
+// Error implements the Error interface.
+func (err EnvironmentDiagnostics) Error() string {
+	var diags strings.Builder
+	for _, d := range err {
+		fmt.Fprintf(&diags, "%v\n", d.Summary)
+	}
+	return diags.String()
+}
+
 type EnvironmentDiagnosticsResponse struct {
-	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
+	Diagnostics EnvironmentDiagnostics `json:"diagnostics,omitempty"`
 }
 
 // Error implements the Error interface.
 func (err EnvironmentDiagnosticsResponse) Error() string {
-	var diags strings.Builder
-	for _, d := range err.Diagnostics {
-		fmt.Fprintf(&diags, "%v\n", d.Summary)
-	}
-	return diags.String()
+	return err.Diagnostics.Error()
 }
 
 type OpenEnvironmentResponse struct {

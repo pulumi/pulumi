@@ -19,19 +19,60 @@ import (
 	"time"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
+
+var _ = backend.EnvironmentsBackend((*cloudBackend)(nil))
+
+func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDiagnostics {
+	if len(diags) == 0 {
+		return nil
+	}
+	apiDiags := make(apitype.EnvironmentDiagnostics, len(diags))
+	for i, d := range diags {
+		apiDiags[i] = apitype.EnvironmentDiagnostic{
+			Range:   d.Range,
+			Summary: d.Summary,
+			Detail:  d.Detail,
+		}
+	}
+	return apiDiags
+}
+
+func (b *cloudBackend) CreateEnvironment(
+	ctx context.Context,
+	org string,
+	name string,
+	yaml []byte,
+) (apitype.EnvironmentDiagnostics, error) {
+	if err := b.escClient.CreateEnvironment(ctx, org, name); err != nil {
+		return nil, err
+	}
+	diags, err := b.escClient.UpdateEnvironment(ctx, org, name, yaml, "")
+	return convertESCDiags(diags), err
+}
+
+func (b *cloudBackend) CheckYAMLEnvironment(
+	ctx context.Context,
+	org string,
+	yaml []byte,
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	env, diags, err := b.escClient.CheckYAMLEnvironment(ctx, org, yaml)
+	return env, convertESCDiags(diags), err
+}
 
 func (b *cloudBackend) OpenYAMLEnvironment(
 	ctx context.Context,
 	org string,
 	yaml []byte,
 	duration time.Duration,
-) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
-	id, diags, err := b.client.OpenYAMLEnvironment(ctx, org, yaml, duration)
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	id, diags, err := b.escClient.OpenYAMLEnvironment(ctx, org, yaml, duration)
 	if err != nil || len(diags) != 0 {
-		return nil, diags, err
+		return nil, convertESCDiags(diags), err
 	}
-	env, err := b.client.GetOpenEnvironment(ctx, org, "yaml", id)
+	env, err := b.escClient.GetOpenEnvironment(ctx, org, "yaml", id)
 	return env, nil, err
 }

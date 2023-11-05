@@ -129,7 +129,16 @@ func createConfigValue(rawValue interface{}) (config.Value, error) {
 }
 
 func envConfigValue(v esc.Value) config.Plaintext {
+	if v.Unknown {
+		if v.Secret {
+			return config.NewSecurePlaintext("[unknown]")
+		}
+		return config.NewPlaintext("[unknown]")
+	}
+
 	switch repr := v.Value.(type) {
+	case nil:
+		return config.Plaintext{}
 	case bool:
 		return config.NewPlaintext(repr)
 	case json.Number:

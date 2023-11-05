@@ -372,15 +372,34 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 	panic("not implemented")
 }
 
+var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
+
 type MockEnvironmentsBackend struct {
 	MockBackend
+
+	CheckYAMLEnvironmentF func(
+		ctx context.Context,
+		org string,
+		yaml []byte,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 
 	OpenYAMLEnvironmentF func(
 		ctx context.Context,
 		org string,
 		yaml []byte,
 		duration time.Duration,
-	) (*esc.Environment, []apitype.EnvironmentDiagnostic, error)
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+}
+
+func (be *MockEnvironmentsBackend) CheckYAMLEnvironment(
+	ctx context.Context,
+	org string,
+	yaml []byte,
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	if be.CheckYAMLEnvironmentF != nil {
+		return be.CheckYAMLEnvironmentF(ctx, org, yaml)
+	}
+	panic("not implemented")
 }
 
 func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
@@ -388,7 +407,7 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 	org string,
 	yaml []byte,
 	duration time.Duration,
-) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	if be.OpenYAMLEnvironmentF != nil {
 		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration)
 	}
