@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -196,19 +197,112 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		monitorConn = conn
 		monitor = pulumirpc.NewResourceMonitorClient(monitorConn)
 
-		monitor.RegisterResource(p.context, &pulumirpc.RegisterResourceRequest{
+		registerSubStackResourceResponse, err := monitor.RegisterResource(p.context, &pulumirpc.RegisterResourceRequest{
 			Type:   string(typ),
 			Name:   string(name),
 			Parent: string(parent),
 		})
+		if err != nil {
+			return plugin.ConstructResult{}, fmt.Errorf("registering substack resource: %w", err)
+		}
+
+		urn := registerSubStackResourceResponse.GetUrn()
+
+		// TODO: Do we need an interrupt handler?
+		cancelChannel := make(chan bool)
+		go func() {
+			<-p.context.Done()
+			close(cancelChannel)
+		}()
+
+		// Create new monitor server (with facade)
+		// Fire up a gRPC server and start listening for incomings.
+		_, err = rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+			Cancel: cancelChannel,
+			Init: func(srv *grpc.Server) error {
+				monitor := subStackMonitorProxy{
+					monitor:     monitor,
+					subStackUrn: resource.URN(urn),
+				}
+				pulumirpc.RegisterResourceMonitorServer(srv, &monitor)
+				return nil
+			},
+			// Options: sourceEvalServeOptions(src.plugctx, tracingSpan),
+		})
+		if err != nil {
+			return plugin.ConstructResult{}, err
+		}
+
+		// Execute the program pointing to the new monitor server
+
+		_, err = monitor.RegisterResourceOutputs(p.context, &pulumirpc.RegisterResourceOutputsRequest{
+			Urn: urn,
+			// TODO: Outputs
+		})
+		if err != nil {
+			return plugin.ConstructResult{}, fmt.Errorf("registering substack resource outputs: %w", err)
+		}
+
 		return plugin.ConstructResult{
-			URN: resource.NewURN(tokens.IntoQName(info.Stack), tokens.PackageName(info.Project), parent.QualifiedType(), typ, name),
+			URN: resource.URN(urn),
 			Outputs: resource.PropertyMap{
 				"resourceA": resource.NewStringProperty("a"),
 			},
 		}, nil
 	}
 	return plugin.ConstructResult{}, errors.New("builtin resources may not be constructed")
+}
+
+var _ pulumirpc.ResourceMonitorServer = (*subStackMonitorProxy)(nil)
+
+type subStackMonitorProxy struct {
+	pulumirpc.UnimplementedResourceMonitorServer
+	monitor     pulumirpc.ResourceMonitorClient
+	subStackUrn resource.URN
+}
+
+func (p *subStackMonitorProxy) Invoke(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
+	return p.monitor.Invoke(ctx, req)
+}
+
+func (p *subStackMonitorProxy) StreamInvoke(
+	req *pulumirpc.ResourceInvokeRequest, server pulumirpc.ResourceMonitor_StreamInvokeServer,
+) error {
+	return fmt.Errorf("not supported")
+}
+
+func (p *subStackMonitorProxy) Call(
+	ctx context.Context, in *pulumirpc.CallRequest,
+) (*pulumirpc.CallResponse, error) {
+	return p.monitor.Call(ctx, in)
+}
+
+func (p *subStackMonitorProxy) ReadResource(
+	ctx context.Context, req *pulumirpc.ReadResourceRequest,
+) (*pulumirpc.ReadResourceResponse, error) {
+	// TODO: Adjust URN
+	return p.monitor.ReadResource(ctx, req)
+}
+
+func (p *subStackMonitorProxy) RegisterResource(
+	ctx context.Context, req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	// TODO: Adjust URN
+	return p.monitor.RegisterResource(ctx, req)
+}
+
+func (p *subStackMonitorProxy) RegisterResourceOutputs(
+	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest,
+) (*pbempty.Empty, error) {
+	return p.monitor.RegisterResourceOutputs(ctx, req)
+}
+
+func (p *subStackMonitorProxy) SupportsFeature(
+	ctx context.Context, req *pulumirpc.SupportsFeatureRequest,
+) (*pulumirpc.SupportsFeatureResponse, error) {
+	return p.monitor.SupportsFeature(ctx, req)
 }
 
 const (
