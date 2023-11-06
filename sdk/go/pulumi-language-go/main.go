@@ -964,9 +964,10 @@ func (host *goLanguageHost) GetProgramDependencies(
 func (host *goLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
+	path := filepath.Join(req.Pwd, req.Program)
+	logging.V(5).Infof("Attempting to run go plugin in %s", path)
 
-	program, err := compileProgram(req.Program, "")
+	program, err := compileProgram(path, "")
 	if err != nil {
 		return fmt.Errorf("error in compiling Go: %w", err)
 	}

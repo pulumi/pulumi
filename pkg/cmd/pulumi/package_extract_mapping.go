@@ -25,10 +25,11 @@ import (
 
 func newExtractMappingCommand() *cobra.Command {
 	var out string
+	var provider string
 
 	cmd := &cobra.Command{
-		Use:   "get-mapping <key> <schema_source> [<provider key>]",
-		Args:  cobra.RangeArgs(2, 3),
+		Use:   "get-mapping <key> <schema_source>",
+		Args:  cobra.MinimumNArgs(2),
 		Short: "Get the mapping information for a given key from a package",
 		Long: `Get the mapping information for a given key from a package.
 
@@ -36,12 +37,8 @@ func newExtractMappingCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]
-			var provider string
-			if len(args) > 2 {
-				provider = args[2]
-			}
 
-			p, err := providerFromSource(source)
+			p, err := providerFromSource(source, args[2:])
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
@@ -69,6 +66,8 @@ func newExtractMappingCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
 	contract.AssertNoErrorf(cmd.MarkFlagRequired("out"), `Could not mark "out" as required`)
+
+	cmd.Flags().StringVarP(&provider, "key", "", "", "The provider key to request for mapping")
 
 	return cmd
 }

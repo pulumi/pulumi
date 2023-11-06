@@ -560,6 +560,13 @@ func (fun *Function) NeedsOutputVersion() bool {
 	return fun.ReturnType != nil
 }
 
+type PackageExtension struct {
+	// Name is the name of package this package is extending.
+	Name string
+	// Version is the version of the package this package is extending.
+	Version *semver.Version
+}
+
 // Package describes a Pulumi package.
 type Package struct {
 	moduleFormat *regexp.Regexp
@@ -596,6 +603,11 @@ type Package struct {
 	Publisher string
 	// A list of allowed package name in addition to the Name property.
 	AllowedPackageNames []string
+
+	// If this package is an extension of another package.
+	Extension *PackageExtension
+	// If this package is generated for a parameterized provider.
+	Parameter interface{}
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -1814,6 +1826,12 @@ type PackageInfoSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
+// PackageExtensionSpec is the serializable description of a Pulumi package's extension metadata.
+type PackageExtensionSpec struct {
+	Name    string `json:"name" yaml:"name"`
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+}
+
 // PackageSpec is the serializable description of a Pulumi package.
 type PackageSpec struct {
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
@@ -1855,6 +1873,9 @@ type PackageSpec struct {
 
 	// Language specifies additional language-specific data about the package.
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
+
+	// If this package is an extension of another package.
+	Extension PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config,omitempty" yaml:"config"`

@@ -23,6 +23,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
 )
 
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
@@ -110,6 +112,10 @@ type Provider interface {
 	// error) if it doesn't have any mappings for the given key.
 	// If a provider implements this method GetMapping will be called using the results from this method.
 	GetMappings(key string) ([]string, error)
+
+	// Parameterize can be used to parameterize a provider, it takes either a list of strings from a CLI like interface, or
+	// a JSON value from a resource request.
+	Parameterize(args []string, value *pbstruct.Value) error
 }
 
 type GrpcProvider interface {

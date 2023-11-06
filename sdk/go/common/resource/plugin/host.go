@@ -398,6 +398,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			if info.Version != nil {
 				key += info.Version.String()
 			}
+
 			_, alreadyReported := host.reportedResourcePlugins[key]
 			if !alreadyReported {
 				host.reportedResourcePlugins[key] = struct{}{}

@@ -167,7 +167,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, tokens.QName(name))
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "", false, "", nil, nil, "")
+		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
@@ -203,7 +203,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if imp.Type.Package() == "" {
 			return nil, false, fmt.Errorf("incorrect package type specified")
 		}
-		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
+		// TODO: Support parametrized providers in imports.
+		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, nil)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -258,7 +259,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
-			nil, nil, nil, "", false, "", nil, nil, "")
+			nil, nil, nil, "", false, "", nil, nil, "", nil)
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, failures) {
 			return nil, false, nil
@@ -334,7 +335,8 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" {
-			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
+			// TODO: Support parametrized providers in imports.
+			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, nil)
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
@@ -358,7 +360,7 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		// Create the new desired state. Note that the resource is protected.
 		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
-			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "")
+			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
 		steps = append(steps, newImportDeploymentStep(i.deployment, new, randomSeed))
 	}
 

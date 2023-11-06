@@ -23,6 +23,8 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
+
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -38,6 +40,7 @@ const (
 	versionKey         resource.PropertyKey = "version"
 	pluginDownloadKey  resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey resource.PropertyKey = "pluginChecksums"
+	pluginParameterKey resource.PropertyKey = "parameter"
 )
 
 // SetProviderChecksums sets the provider plugin checksums in the given property map.
@@ -96,6 +99,21 @@ func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
 	return url.StringValue(), nil
 }
 
+// SetProviderParameter sets the provider plugin parameter in the given property map.
+func SetProviderParameter(inputs resource.PropertyMap, value interface{}) {
+	inputs[pluginParameterKey] = resource.NewPropertyValue(value)
+}
+
+// GetProviderParameter fetches a provider plugin parameter from the given property map.
+// If the parameter is not set, this function returns nil.
+func GetProviderParameter(inputs resource.PropertyMap) (interface{}, error) {
+	p, ok := inputs[pluginParameterKey]
+	if !ok {
+		return nil, nil
+	}
+	return p, nil
+}
+
 // Sets the provider version in the given property map.
 func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
 	inputs[versionKey] = resource.NewStringProperty(value.String())
@@ -143,52 +161,68 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
-	host plugin.Host, builtins plugin.Provider,
+	parameter interface{}, host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
 	}
 
 	provider, err := host.Provider(pkg, version)
-	if err == nil {
-		return provider, nil
-	}
-
-	// host.Provider _might_ return MissingError,  this could be due to the fact that a transitive
-	// version of a plugin is required which are not picked up by initial pass of required plugin
-	// installations or because of bugs in GetRequiredPlugins. Instead of reporting an error, we first try to
-	// install the plugin now, and only error if we can't do that.
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
-		// Not a MissingError, return the original error.
-		return nil, err
-	}
-
-	// Try to install the plugin, unless auto plugin installs are turned off, we have all the specific information we
-	// need to do so here while once we call into `host.Provider` we no longer have the download URL or checksums.
-	if env.DisableAutomaticPluginAcquisition.Value() {
-		return nil, err
-	}
-
-	pluginSpec := workspace.PluginSpec{
-		Kind:              workspace.ResourcePlugin,
-		Name:              string(pkg),
-		Version:           version,
-		PluginDownloadURL: downloadURL,
-		Checksums:         checksums,
-	}
-
-	log := func(sev diag.Severity, msg string) {
-		host.Log(sev, "", msg, 0)
-	}
-
-	_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
 	if err != nil {
-		return nil, err
+		// host.Provider _might_ return MissingError,  this could be due to the fact that a transitive
+		// version of a plugin is required which are not picked up by initial pass of required plugin
+		// installations or because of bugs in GetRequiredPlugins. Instead of reporting an error, we first try to
+		// install the plugin now, and only error if we can't do that.
+		var me *workspace.MissingError
+		if !errors.As(err, &me) {
+			// Not a MissingError, return the original error.
+			return nil, err
+		}
+
+		// Try to install the plugin, unless auto plugin installs are turned off, we have all the specific information we
+		// need to do so here while once we call into `host.Provider` we no longer have the download URL or checksums.
+		if env.DisableAutomaticPluginAcquisition.Value() {
+			return nil, err
+		}
+
+		pluginSpec := workspace.PluginSpec{
+			Kind:              workspace.ResourcePlugin,
+			Name:              string(pkg),
+			Version:           version,
+			PluginDownloadURL: downloadURL,
+			Checksums:         checksums,
+		}
+
+		log := func(sev diag.Severity, msg string) {
+			host.Log(sev, "", msg, 0)
+		}
+
+		_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+		if err != nil {
+			return nil, err
+		}
+
+		// Try to load the provider again, this time it should succeed.
+		provider, err = host.Provider(pkg, version)
+		if err != nil {
+			return nil, err
+		}
+	}
+	contract.Assertf(provider != nil, "provider must not be nil")
+
+	// If we have a parameter apply it
+	if parameter != nil {
+		pbParameter, err := pbstruct.NewValue(parameter)
+		if err != nil {
+			return nil, errors.Join(err, host.CloseProvider(provider))
+		}
+
+		if err := provider.Parameterize(nil, pbParameter); err != nil {
+			return nil, errors.Join(err, host.CloseProvider(provider))
+		}
 	}
 
-	// Try to load the provider again, this time it should succeed.
-	return host.Provider(pkg, version)
+	return provider, nil
 }
 
 // NewRegistry creates a new provider registry using the given host.
@@ -317,8 +351,12 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	if err != nil {
 		return nil, []plugin.CheckFailure{{Property: "pluginDownloadURL", Reason: err.Error()}}, nil
 	}
+	parameter, err := GetProviderParameter(news)
+	if err != nil {
+		return nil, []plugin.CheckFailure{{Property: "parameter", Reason: err.Error()}}, nil
+	}
 	// TODO: We should thread checksums through here.
-	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, downloadURL, nil, r.host, r.builtins)
+	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, downloadURL, nil, parameter, r.host, r.builtins)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -436,8 +474,12 @@ func (r *Registry) Same(res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %v", providerPkg, urn, err)
 		}
+		parameter, err := GetProviderParameter(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("parse parameter for %v provider '%v': %v", providerPkg, urn, err)
+		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadProvider(providerPkg, version, downloadURL, nil, r.host, r.builtins)
+		provider, err = loadProvider(providerPkg, version, downloadURL, nil, parameter, r.host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %v", providerPkg, urn, err)
 		}
@@ -490,8 +532,13 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 			return "", nil, resource.StatusUnknown,
 				fmt.Errorf("parse download URL for %v provider '%v': %v", providerPkg, urn, err)
 		}
+		parameter, err := GetProviderParameter(news)
+		if err != nil {
+			return "", nil, resource.StatusUnknown,
+				fmt.Errorf("parse parameter for %v provider '%v': %v", providerPkg, urn, err)
+		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadProvider(providerPkg, version, downloadURL, nil, r.host, r.builtins)
+		provider, err = loadProvider(providerPkg, version, downloadURL, nil, parameter, r.host, r.builtins)
 		if err != nil {
 			return "", nil, resource.StatusUnknown,
 				fmt.Errorf("load plugin for %v provider '%v': %v", providerPkg, urn, err)
@@ -611,4 +658,8 @@ func (r *Registry) SignalCancellation() error {
 	// At the moment there isn't anything reasonable we can do here. In the future, it might be nice to plumb
 	// cancellation through the plugin loader and cancel any outstanding load requests here.
 	return nil
+}
+
+func (r *Registry) Parameterize(args []string, value *pbstruct.Value) error {
+	return errors.New("the provider registry does not support parameterization")
 }

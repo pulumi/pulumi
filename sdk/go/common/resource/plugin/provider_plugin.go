@@ -26,7 +26,6 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
@@ -34,6 +33,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -1007,7 +1007,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	}
 
 	var id resource.ID
-	var liveObject *_struct.Struct
+	var liveObject *pbstruct.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
@@ -1086,7 +1086,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	}
 
 	// Marshal the resource inputs and state so we can perform the RPC.
-	var minputs *_struct.Struct
+	var minputs *pbstruct.Struct
 	if inputs != nil {
 		m, err := MarshalProperties(inputs, MarshalOptions{
 			Label:              label,
@@ -1111,8 +1111,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 	// Now issue the read request over RPC, blocking until it finished.
 	var readID resource.ID
-	var liveObject *_struct.Struct
-	var liveInputs *_struct.Struct
+	var liveObject *pbstruct.Struct
+	var liveInputs *pbstruct.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
@@ -1260,7 +1260,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 
-	var liveObject *_struct.Struct
+	var liveObject *pbstruct.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
@@ -1882,7 +1882,7 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 // object was created, but app code is continually crashing and the resource never achieves
 // liveness).
 func parseError(err error) (
-	resourceStatus resource.Status, id resource.ID, liveInputs, liveObject *_struct.Struct, resourceErr error,
+	resourceStatus resource.Status, id resource.ID, liveInputs, liveObject *pbstruct.Struct, resourceErr error,
 ) {
 	var responseErr *rpcerror.Error
 	resourceStatus, responseErr = resourceStateAndError(err)
@@ -1999,4 +1999,35 @@ func (p *provider) GetMappings(key string) ([]string, error) {
 		resp.Providers = []string{}
 	}
 	return resp.Providers, nil
+}
+
+func (p *provider) Parameterize(args []string, value *pbstruct.Value) error {
+	label := fmt.Sprintf("%s.Parameterize", p.label())
+	logging.V(7).Infof("%s executing: args=%v; value=%v", label, args, value)
+
+	contract.Requiref(args != nil || value != nil, "args, value", "one of args or value must be set")
+	contract.Requiref(args == nil || value == nil, "args, value", "one of args or value must be set")
+
+	req := &pulumirpc.ParameterizeRequest{}
+	if args != nil {
+		req.Parameters = &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: args,
+			},
+		}
+	} else {
+		req.Parameters = &pulumirpc.ParameterizeRequest_Value{
+			Value: value,
+		}
+	}
+
+	_, err := p.clientRaw.Parameterize(p.requestContext(), req)
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		return err
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return nil
 }

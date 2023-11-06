@@ -31,6 +31,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
 )
 
 type ResourceMonitor struct {
@@ -143,6 +145,8 @@ type ResourceOptions struct {
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
 	AliasSpecs              bool
+	Parameter               *pbstruct.Value
+	Extension               bool
 
 	SourcePosition            string
 	DisableSecrets            bool
@@ -277,6 +281,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeletedWith:                string(opts.DeletedWith),
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
+		Parameter:                  opts.Parameter,
+		Extension:                  opts.Extension,
 	}
 
 	ctx := context.Background()

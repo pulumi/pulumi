@@ -26,7 +26,7 @@ import (
 func newExtractSchemaCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-schema <schema_source>",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		Short: "Get the schema.json from a package",
 		Long: `Get the schema.json from a package.
 
@@ -34,7 +34,7 @@ func newExtractSchemaCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			pkg, err := schemaFromSchemaSource(source)
+			pkg, err := schemaFromSchemaSource(source, args[1:])
 			if err != nil {
 				return err
 			}

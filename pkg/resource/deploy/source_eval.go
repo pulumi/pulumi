@@ -361,13 +361,21 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		}
 	}
 
+	if req.Parameter() != nil {
+		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using parameter %v from request",
+			req, req.Parameter())
+		providers.SetProviderParameter(inputs, req.Parameter())
+	} else {
+		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): no parameter specified", req)
+	}
+
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false, "", ""),
+			nil, nil, nil, "", nil, nil, false, "", "", nil),
 		done: done,
 	}
 	return event, done, nil
@@ -442,6 +450,11 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 	if req.Package().Name().String() == "pulumi" {
 		logging.V(9).Infof("we always allow %#v through", req)
 		return false, nil
+	}
+
+	if req.Parameter() != nil {
+		logging.V(9).Infof("parameterized providers are always denied: %#v", req)
+		return true, nil
 	}
 
 	pConfig, err := d.config.GetPackageConfig("pulumi")
@@ -680,10 +693,13 @@ func getProviderFromSource(
 func parseProviderRequest(
 	pkg tokens.Package, version,
 	pluginDownloadURL string, pluginChecksums map[string][]byte,
+	parameter interface{},
 ) (providers.ProviderRequest, error) {
+	url := strings.TrimSuffix(pluginDownloadURL, "/")
+
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL, pluginChecksums), nil
+		return providers.NewProviderRequest(nil, pkg, url, pluginChecksums, parameter), nil
 	}
 
 	parsedVersion, err := semver.Parse(version)
@@ -692,9 +708,7 @@ func parseProviderRequest(
 		return providers.ProviderRequest{}, err
 	}
 
-	url := strings.TrimSuffix(pluginDownloadURL, "/")
-
-	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums), nil
+	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums, parameter), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -737,9 +751,10 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
+	// TODO: Support parametrized invokes.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums())
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -799,9 +814,10 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
+	// TODO: Support parametrized providers in call.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums())
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -893,9 +909,10 @@ func (rm *resmon) StreamInvoke(
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
+	// TODO: Support parametrized providers in stream invoke.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums())
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
 	if err != nil {
 		return err
 	}
@@ -966,9 +983,10 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
+		// TODO: Support parametrized providers in reads.
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums())
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1235,10 +1253,25 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRef providers.Reference
 	var providerRefs map[string]string
 
+	var parameter interface{}
+	if req.GetParameter() != nil {
+		parameter = req.GetParameter().AsInterface()
+	}
+
+	var provParameter, resParameter interface{}
+	if req.GetExtension() {
+		// If this is an extension resource the parameter is for the resource
+		resParameter = parameter
+	} else {
+		provParameter = parameter
+	}
+
 	if custom && !providers.IsProviderType(t) || remote {
+
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums())
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(),
+			provParameter)
 		if err != nil {
 			return nil, err
 		}
@@ -1337,16 +1370,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if req.GetPluginDownloadURL() != "" {
 			providers.SetProviderURL(props, req.GetPluginDownloadURL())
 		}
+		if req.GetParameter() != nil {
+			providers.SetProviderParameter(props, req.GetParameter())
+		}
 
-		// Make sure that an explicit provider which doesn't specify its plugin gets the
-		// same plugin as the default provider for the package.
-		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
-		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
-			if defaultProvider.Version != nil {
-				providers.SetProviderVersion(props, defaultProvider.Version)
-			}
-			if defaultProvider.PluginDownloadURL != "" {
-				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
+		// Make sure that an explicit provider which doesn't specify its plugin gets the same plugin as the default
+		// provider for the package. It's probably not safe to do this for paramaterized providers so skip for now.
+		if req.GetParameter() == nil || req.GetExtension() {
+			defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+			if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+				if defaultProvider.Version != nil {
+					providers.SetProviderVersion(props, defaultProvider.Version)
+				}
+				if defaultProvider.PluginDownloadURL != "" {
+					providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
+				}
 			}
 		}
 	}
@@ -1477,7 +1515,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 			providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition,
+			sourcePosition, resParameter,
 		)
 
 		if goal.Parent != "" {

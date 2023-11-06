@@ -8,6 +8,8 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -52,6 +54,10 @@ func (p *builtinProvider) GetMapping(key, provider string) ([]byte, string, erro
 
 func (p *builtinProvider) GetMappings(key string) ([]string, error) {
 	return []string{}, nil
+}
+
+func (p *builtinProvider) Parameterize(args []string, value *pbstruct.Value) error {
+	return errors.New("the builtin provider does not support parameterization")
 }
 
 // CheckConfig validates the configuration for this resource provider.

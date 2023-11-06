@@ -90,3 +90,7 @@ func GetDuplicateResourceAliasedError(urn resource.URN) *Diag {
 		"Duplicate resource URN '%v' conflicting with alias on resource with URN '%v'",
 	)
 }
+
+func GetParameterizeProviderError(urn resource.URN) *Diag {
+	return newError(urn, 2017, "Failed to parameterize provider '%v' for resource '%v': %v")
+}

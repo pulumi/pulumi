@@ -26,6 +26,10 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
+
+    // Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+    rpc Parameterize(ParameterizeRequest) returns (ParameterizeResponse) {}
+
     // GetSchema fetches the schema for this resource provider.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
 
@@ -88,6 +92,21 @@ service ResourceProvider {
     // implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
     // If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
     rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
+}
+
+message ParameterizeRequest {
+    message ParametersArgs {
+        repeated string args = 1;
+    }
+
+    oneof parameters {
+        ParametersArgs args = 1; // arguments from the command line.
+        google.protobuf.Value value = 2; // embedded value from a resource request.
+    }
+}
+
+message ParameterizeResponse {
+
 }
 
 message GetSchemaRequest {

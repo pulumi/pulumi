@@ -1387,7 +1387,9 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     pulumi_alias_pb.Alias.toObject, includeInstance),
     deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
     aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+    parameter: (f = msg.getParameter()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f),
+    extension: jspb.Message.getBooleanFieldWithDefault(msg, 32, false)
   };
 
   if (includeInstance) {
@@ -1553,6 +1555,15 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 31:
+      var value = new google_protobuf_struct_pb.Value;
+      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      msg.setParameter(value);
+      break;
+    case 32:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setExtension$(value);
       break;
     default:
       reader.skipField();
@@ -1786,6 +1797,21 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       29,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getParameter();
+  if (f != null) {
+    writer.writeMessage(
+      31,
+      f,
+      google_protobuf_struct_pb.Value.serializeBinaryToWriter
+    );
+  }
+  f = message.getExtension$();
+  if (f) {
+    writer.writeBool(
+      32,
+      f
     );
   }
 };
@@ -2858,6 +2884,61 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearSourceposition = function
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.hasSourceposition = function() {
   return jspb.Message.getField(this, 29) != null;
+};
+
+
+/**
+ * optional google.protobuf.Value parameter = 31;
+ * @return {?proto.google.protobuf.Value}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getParameter = function() {
+  return /** @type{?proto.google.protobuf.Value} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 31));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Value|undefined} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+*/
+proto.pulumirpc.RegisterResourceRequest.prototype.setParameter = function(value) {
+  return jspb.Message.setWrapperField(this, 31, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearParameter = function() {
+  return this.setParameter(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.hasParameter = function() {
+  return jspb.Message.getField(this, 31) != null;
+};
+
+
+/**
+ * optional bool extension = 32;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getExtension$ = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 32, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setExtension$ = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 32, value);
 };
 
 

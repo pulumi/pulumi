@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -41,6 +42,7 @@ type ProviderRequest struct {
 	pkg               tokens.Package
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
+	parameter         interface{}
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -48,13 +50,16 @@ type ProviderRequest struct {
 func NewProviderRequest(
 	version *semver.Version, pkg tokens.Package,
 	pluginDownloadURL string, checksums map[string][]byte,
+	parameter interface{},
 ) ProviderRequest {
-	return ProviderRequest{
+	req := ProviderRequest{
 		version:           version,
 		pkg:               pkg,
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
+		parameter:         parameter,
 	}
+	return req
 }
 
 // Version returns this provider request's version. May be nil if no version was provided.
@@ -76,6 +81,11 @@ func (p ProviderRequest) PluginDownloadURL() string {
 // PluginChecksums returns this providers checksums. May be nil if no checksums were provided.
 func (p ProviderRequest) PluginChecksums() map[string][]byte {
 	return p.pluginChecksums
+}
+
+// Parameter returns this provider parameter. May be nil if no parameter was provided.
+func (p ProviderRequest) Parameter() interface{} {
+	return p.parameter
 }
 
 // Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
@@ -101,6 +111,12 @@ func (p ProviderRequest) Name() tokens.QName {
 		base += "_" + tokens.IntoQName(url).String()
 	}
 
+	if p.parameter != nil {
+		p, err := json.Marshal(p.parameter)
+		contract.AssertNoErrorf(err, "failed to marshal provider parameter")
+		base += "_" + tokens.IntoQName(string(p)).String()
+	}
+
 	// This thing that we generated must be a QName.
 	contract.Assertf(tokens.IsQName(base), "generated provider name %q is not a QName", base)
 	return tokens.QName(base)
@@ -116,5 +132,11 @@ func (p ProviderRequest) String() string {
 	if p.pluginDownloadURL != "" {
 		url = "-" + p.pluginDownloadURL
 	}
-	return p.pkg.String() + version + url
+	var parameter string
+	if p.parameter != nil {
+		p, err := json.Marshal(p.parameter)
+		contract.AssertNoErrorf(err, "failed to marshal provider parameter")
+		parameter = "-" + string(p)
+	}
+	return p.pkg.String() + version + url + parameter
 }

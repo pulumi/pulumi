@@ -322,9 +322,13 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 	})
 
 	// Check to see if we have a binary we can invoke directly
-	if _, err := os.Stat(bin); os.IsNotExist(err) {
+	stat, err := os.Stat(bin)
+	if os.IsNotExist(err) || (err == nil && stat.IsDir()) {
 		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
-		pluginDir := filepath.Dir(bin)
+		pluginDir := bin
+		if os.IsNotExist(err) {
+			pluginDir = filepath.Dir(bin)
+		}
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		if kind == workspace.ResourcePlugin || kind == workspace.ConverterPlugin {
@@ -376,9 +380,9 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 	if len(env) > 0 {
 		cmd.Env = env
 	}
-	in, _ := cmd.StdinPipe()
-	out, _ := cmd.StdoutPipe()
-	err, _ := cmd.StderrPipe()
+	stdin, _ := cmd.StdinPipe()
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
@@ -420,9 +424,9 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 		Args:   args,
 		Env:    env,
 		Kill:   kill,
-		Stdin:  in,
-		Stdout: out,
-		Stderr: err,
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
 	}, nil
 }
 

@@ -265,6 +265,28 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ParameterizeRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ParameterizeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ParameterizeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ParameterizeRequest(buffer_arg) {
+  return pulumi_provider_pb.ParameterizeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ParameterizeResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ParameterizeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ParameterizeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ParameterizeResponse(buffer_arg) {
+  return pulumi_provider_pb.ParameterizeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginAttach(arg) {
   if (!(arg instanceof pulumi_plugin_pb.PluginAttach)) {
     throw new Error('Expected argument of type pulumirpc.PluginAttach');
@@ -335,6 +357,18 @@ function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 var ResourceProviderService = exports.ResourceProviderService = {
+  // Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+parameterize: {
+    path: '/pulumirpc.ResourceProvider/Parameterize',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.ParameterizeRequest,
+    responseType: pulumi_provider_pb.ParameterizeResponse,
+    requestSerialize: serialize_pulumirpc_ParameterizeRequest,
+    requestDeserialize: deserialize_pulumirpc_ParameterizeRequest,
+    responseSerialize: serialize_pulumirpc_ParameterizeResponse,
+    responseDeserialize: deserialize_pulumirpc_ParameterizeResponse,
+  },
   // GetSchema fetches the schema for this resource provider.
 getSchema: {
     path: '/pulumirpc.ResourceProvider/GetSchema',

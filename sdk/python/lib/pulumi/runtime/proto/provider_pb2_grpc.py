@@ -18,6 +18,11 @@ class ResourceProviderStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Parameterize = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Parameterize',
+                request_serializer=pulumi_dot_provider__pb2.ParameterizeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ParameterizeResponse.FromString,
+                )
         self.GetSchema = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/GetSchema',
                 request_serializer=pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
@@ -119,6 +124,13 @@ class ResourceProviderServicer(object):
     """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
     within a single package.  It is driven by the overall planning engine in response to resource diffs.
     """
+
+    def Parameterize(self, request, context):
+        """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetSchema(self, request, context):
         """GetSchema fetches the schema for this resource provider.
@@ -270,6 +282,11 @@ class ResourceProviderServicer(object):
 
 def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Parameterize': grpc.unary_unary_rpc_method_handler(
+                    servicer.Parameterize,
+                    request_deserializer=pulumi_dot_provider__pb2.ParameterizeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ParameterizeResponse.SerializeToString,
+            ),
             'GetSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.GetSchema,
                     request_deserializer=pulumi_dot_provider__pb2.GetSchemaRequest.FromString,
@@ -376,6 +393,23 @@ class ResourceProvider(object):
     """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
     within a single package.  It is driven by the overall planning engine in response to resource diffs.
     """
+
+    @staticmethod
+    def Parameterize(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Parameterize',
+            pulumi_dot_provider__pb2.ParameterizeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ParameterizeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetSchema(request,

@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
 )
 
 // UnimplementedProvider can be embedded to have forward compatible implementations.
@@ -104,4 +105,8 @@ func (p *UnimplementedProvider) GetMapping(key, provider string) ([]byte, string
 
 func (p *UnimplementedProvider) GetMappings(key string) ([]string, error) {
 	return nil, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
+}
+
+func (p *UnimplementedProvider) Parameterize(args []string, value *pbstruct.Value) error {
+	return status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
 }

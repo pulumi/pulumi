@@ -62,7 +62,7 @@ Subcommands of this command are useful to package authors during development.`,
 // optional version:
 //
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
-func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
+func schemaFromSchemaSource(packageSource string, args []string) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
 		pkg, diags, err := schema.BindSpec(spec, nil)
@@ -75,6 +75,9 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return pkg, nil
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
+		if len(args) > 0 {
+			return nil, errors.New("cannot specify parameters for a YAML schema")
+		}
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
 			return nil, err
@@ -85,6 +88,9 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		}
 		return bind(spec)
 	} else if ext == ".json" {
+		if len(args) > 0 {
+			return nil, errors.New("cannot specify parameters for a JSON schema")
+		}
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
 			return nil, err
@@ -96,11 +102,12 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return bind(spec)
 	}
 
-	p, err := providerFromSource(packageSource)
+	p, err := providerFromSource(packageSource, args)
 	if err != nil {
 		return nil, err
 	}
 	defer p.Close()
+
 	bytes, err := p.GetSchema(0)
 	if err != nil {
 		return nil, err
@@ -115,7 +122,7 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 // providerFromSource takes a plugin name or path.
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
-func providerFromSource(packageSource string) (plugin.Provider, error) {
+func providerFromSource(packageSource string, args []string) (plugin.Provider, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -147,13 +154,14 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
+	var provider plugin.Provider
 	if !strings.ContainsRune(pkg, filepath.Separator) && !strings.ContainsRune(pkg, '/') {
 		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil)
 		if err != nil {
 			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(tokens.Package(pkg), version)
+		provider, err = host.Provider(tokens.Package(pkg), version)
 		if err != nil {
 			// There is an executable with the same name, so suggest that
 			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
@@ -191,30 +199,38 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			}
 			return nil, err
 		}
-		return provider, nil
-	}
+	} else {
 
-	// We were given a path to a binary, so invoke that.
-	info, err := os.Stat(pkg)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("could not find file %s", pkg)
-	} else if err != nil {
-		return nil, err
-	} else if !isExecutable(info) {
-		if p, err := filepath.Abs(pkg); err == nil {
-			pkg = p
+		// We were given a path to a binary, so invoke that.
+		info, err := os.Stat(pkg)
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("could not find file %s", pkg)
+		} else if err != nil {
+			return nil, err
+		} else if !info.IsDir() && !isExecutable(info) {
+			if p, err := filepath.Abs(pkg); err == nil {
+				pkg = p
+			}
+			return nil, fmt.Errorf("plugin at path %q not executable", pkg)
 		}
-		return nil, fmt.Errorf("plugin at path %q not executable", pkg)
+
+		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		provider, err = plugin.NewProviderFromPath(host, pCtx, pkg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil)
-	if err != nil {
-		return nil, err
+	// If we have args call parameterize
+	if len(args) > 0 {
+		err := provider.Parameterize(args, nil)
+		if err != nil {
+			return nil, fmt.Errorf("parameterize provider: %w", err)
+		}
 	}
-
-	p, err := plugin.NewProviderFromPath(host, pCtx, pkg)
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
+	return provider, nil
 }

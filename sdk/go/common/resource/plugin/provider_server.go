@@ -126,6 +126,12 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 	}, nil
 }
 
+func (p *providerServer) Parameterize(ctx context.Context, req *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	// TODO: Support parameterization on Provider
+	return nil, status.Error(codes.Unimplemented, "Parameterization is not yet implemented")
+}
+
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {

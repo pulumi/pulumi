@@ -30,6 +30,11 @@ class ResourceProviderStub:
     """
 
     def __init__(self, channel: grpc.Channel) -> None: ...
+    Parameterize: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ParameterizeRequest,
+        pulumi.provider_pb2.ParameterizeResponse,
+    ]
+    """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation."""
     GetSchema: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.GetSchemaRequest,
         pulumi.provider_pb2.GetSchemaResponse,
@@ -152,6 +157,13 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     within a single package.  It is driven by the overall planning engine in response to resource diffs.
     """
 
+    
+    def Parameterize(
+        self,
+        request: pulumi.provider_pb2.ParameterizeRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.provider_pb2.ParameterizeResponse:
+        """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation."""
     
     def GetSchema(
         self,

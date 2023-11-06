@@ -31,6 +31,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
 )
 
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
@@ -72,6 +74,10 @@ type stepGenerator struct {
 	// targetsActual is the set of targets explicitly targeted by the engine, this can be different from opts.targets if
 	// --target-dependents is true. This does _not_ include resources that have been implicitly targeted, like providers.
 	targetsActual UrnTargets
+
+	// parameterizations is a set of parameterizations that have been applied for each provider. It's keyed by provider
+	// reference (URN+ID) then the string encoding of the parameter.
+	parameterizations map[string]map[string]struct{}
 }
 
 // isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
@@ -220,6 +226,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		nil,   /* created */
 		nil,   /* modified */
 		event.SourcePosition(),
+		nil, /* parameter */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -557,7 +564,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition)
+		createdAt, modifiedAt, goal.SourcePosition, goal.Parameter)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -567,7 +574,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	}
 
 	// Fetch the provider for this resource.
-	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
+	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type, goal.Parameter)
 	if err != nil {
 		return nil, err
 	}
@@ -1684,7 +1691,7 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 }
 
 func (sg *stepGenerator) loadResourceProvider(
-	urn resource.URN, custom bool, provider string, typ tokens.Type,
+	urn resource.URN, custom bool, provider string, typ tokens.Type, parameter interface{},
 ) (plugin.Provider, error) {
 	// If this is not a custom resource, then it has no provider by definition.
 	if !custom {
@@ -1710,6 +1717,31 @@ func (sg *stepGenerator) loadResourceProvider(
 	if !ok {
 		return nil, sg.bailDaig(diag.GetUnknownProviderError(urn), provider, urn)
 	}
+	contract.Assertf(p != nil, "GetProvider returned nil")
+
+	// If we haven't given this provider the parametrization yet do that now before we call Check or anything else.
+	if parameter != nil {
+		applied := sg.parameterizations[ref.String()]
+
+		parameterValue, err := pbstruct.NewValue(parameter)
+		if err != nil {
+			return nil, sg.bailDaig(diag.GetParameterizeProviderError(urn), provider, urn, err)
+		}
+
+		key := parameterValue.String()
+		if _, has := applied[key]; !has {
+			if err := p.Parameterize(nil, parameterValue); err != nil {
+				return nil, sg.bailDaig(diag.GetParameterizeProviderError(urn), provider, urn, err)
+			}
+
+			if applied == nil {
+				applied = make(map[string]struct{})
+			}
+			applied[key] = struct{}{}
+			sg.parameterizations[ref.String()] = applied
+		}
+	}
+
 	return p, nil
 }
 
@@ -1917,7 +1949,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 		// Otherwise, fetch the resource's provider. Since we have filtered out component resources, this resource must
 		// have a provider.
-		prov, err := sg.loadResourceProvider(r.URN, r.Custom, r.Provider, r.Type)
+		prov, err := sg.loadResourceProvider(r.URN, r.Custom, r.Provider, r.Type, r.Parameter)
 		if err != nil {
 			return false, nil, err
 		}
@@ -2043,5 +2075,6 @@ func newStepGenerator(
 		aliased:              make(map[resource.URN]resource.URN),
 		aliases:              make(map[resource.URN]resource.URN),
 		targetsActual:        opts.Targets.Clone(),
+		parameterizations:    make(map[string]map[string]struct{}),
 	}
 }

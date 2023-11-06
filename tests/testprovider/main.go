@@ -72,6 +72,8 @@ type testproviderProvider struct {
 	host    *provider.HostClient
 	name    string
 	version string
+
+	parameter *string
 }
 
 func makeProvider(host *provider.HostClient, name, version string) (rpc.ResourceProviderServer, error) {
@@ -81,6 +83,31 @@ func makeProvider(host *provider.HostClient, name, version string) (rpc.Resource
 		name:    name,
 		version: version,
 	}, nil
+}
+
+// Parameterize turns on parameterization
+func (k *testproviderProvider) Parameterize(ctx context.Context, req *rpc.ParameterizeRequest,
+) (*rpc.ParameterizeResponse, error) {
+	switch p := req.Parameters.(type) {
+	case *rpc.ParameterizeRequest_Args:
+		args := p.Args.Args
+		if len(args) == 1 {
+			k.parameter = &args[0]
+			return &rpc.ParameterizeResponse{}, nil
+		}
+		return nil, fmt.Errorf("unexpected args count, got %d, expected 1", len(args))
+
+	case *rpc.ParameterizeRequest_Value:
+		switch v := p.Value.AsInterface().(type) {
+		case string:
+			k.parameter = &v
+			return &rpc.ParameterizeResponse{}, nil
+		default:
+			return nil, fmt.Errorf("unexpected value type: %v", v)
+		}
+	}
+
+	return nil, fmt.Errorf("unexpected parameters message: %v", req.Parameters)
 }
 
 // CheckConfig validates the configuration for this provider.
@@ -192,7 +219,17 @@ func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach
 func (k *testproviderProvider) GetSchema(ctx context.Context,
 	req *rpc.GetSchemaRequest,
 ) (*rpc.GetSchemaResponse, error) {
-	return &rpc.GetSchemaResponse{}, nil
+	// Really mini inaccurate schema just to get "gensdk" works for parameters.
+
+	name := "testprovider"
+	if k.parameter != nil {
+		name = *k.parameter
+	}
+	schema := fmt.Sprintf("{\"name\": \"%s\"}", name)
+
+	return &rpc.GetSchemaResponse{
+		Schema: schema,
+	}, nil
 }
 
 // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.

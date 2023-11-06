@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -70,6 +71,8 @@ type Provider struct {
 
 	GetMappingF  func(key, provider string) ([]byte, string, error)
 	GetMappingsF func(key string) ([]string, error)
+
+	ParameterizeF func(args []string, value *pbstruct.Value) error
 }
 
 func (prov *Provider) SignalCancellation() error {
@@ -249,4 +252,11 @@ func (prov *Provider) GetMappings(key string) ([]string, error) {
 		return []string{}, nil
 	}
 	return prov.GetMappingsF(key)
+}
+
+func (prov *Provider) Parameterize(args []string, value *pbstruct.Value) error {
+	if prov.ParameterizeF == nil {
+		return fmt.Errorf("parameterize not implemented")
+	}
+	return prov.ParameterizeF(args, value)
 }

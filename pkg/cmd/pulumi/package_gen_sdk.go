@@ -37,7 +37,7 @@ func newGenSdkCommand() *cobra.Command {
 	var out string
 	cmd := &cobra.Command{
 		Use:   "gen-sdk <schema_source>",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		Short: "Generate SDK(s) from a package or schema",
 		Long: `Generate SDK(s) from a package or schema.
 
@@ -45,7 +45,7 @@ func newGenSdkCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			pkg, err := schemaFromSchemaSource(source)
+			pkg, err := schemaFromSchemaSource(source, args[1:])
 			if err != nil {
 				return err
 			}

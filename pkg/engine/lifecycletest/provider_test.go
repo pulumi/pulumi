@@ -20,6 +20,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	"google.golang.org/protobuf/types/known/structpb"
+	pbstruct "google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
@@ -1607,4 +1610,156 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
 	assert.NoError(t, err)
+}
+
+// TestParameterizeNoDefault tests that a resource with a parameter property can't start a default provider. We might
+// find a sensible way to support default config for parameterized providers in the future, but for now it's more
+// sensible to just disallow it.
+func TestParameterizeNoDefault(t *testing.T) {
+	t.Parallel()
+
+	param, err := pbstruct.NewValue(map[string]interface{}{
+		"hello": "world",
+	})
+	require.NoError(t, err)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Parameter: param,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "Default provider for 'pkgA' disabled.")
+}
+
+// TestParameterize tests that a resource with a parameter property uses a parameterized provider.
+func TestParameterize(t *testing.T) {
+	t.Parallel()
+
+	param, err := pbstruct.NewValue(map[string]interface{}{
+		"hello": "world",
+	})
+	require.NoError(t, err)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		providerURN, providerID, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
+			Parameter: param,
+		})
+		assert.NoError(t, err)
+
+		if providerID == "" {
+			providerID = providers.UnknownID
+		}
+		providerRef, err := providers.NewReference(providerURN, providerID)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider:  providerRef.String(),
+			Parameter: param,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	parametrized := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ParameterizeF: func(args []string, value *structpb.Value) error {
+					parametrized = true
+					assert.Nil(t, args)
+					assert.Equal(t, param.String(), value.String())
+					return nil
+				},
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.True(t, parametrized, "ParameterizeF was not called")
+
+	// Do a refresh and ensure we can still start the parameterized provider.
+	parametrized = false
+	_, err = TestOp(Refresh).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.True(t, parametrized, "ParameterizeF was not called")
+}
+
+// TestParameterizeExtension tests that a resource with an extension parameter property re-uses the base default
+// provider but adds the extension.
+func TestParameterizeExtension(t *testing.T) {
+	t.Parallel()
+
+	param, err := pbstruct.NewValue(map[string]interface{}{
+		"hello": "world",
+	})
+	require.NoError(t, err)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Parameter: param,
+			Extension: true,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parameter: param,
+			Extension: true,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	parametrized := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ParameterizeF: func(args []string, value *structpb.Value) error {
+					parametrized++
+					assert.Nil(t, args)
+					assert.Equal(t, param.String(), value.String())
+					return nil
+				},
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, parametrized, "ParameterizeF should be called once")
+
+	// Do a refresh and ensure we can still start the parameterized provider.
+	parametrized = 0
+	_, err = TestOp(Refresh).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, parametrized, "ParameterizeF should be called once")
 }
