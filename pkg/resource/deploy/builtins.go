@@ -8,6 +8,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -223,14 +224,14 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 
 		// Create new monitor server (with facade)
 		// Fire up a gRPC server and start listening for incomings.
+		monitorProxy := subStackMonitorProxy{
+			monitor:     monitor,
+			subStackUrn: resource.URN(urn),
+		}
 		monitorServer, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Cancel: cancelChannel,
 			Init: func(srv *grpc.Server) error {
-				monitor := subStackMonitorProxy{
-					monitor:     monitor,
-					subStackUrn: resource.URN(urn),
-				}
-				pulumirpc.RegisterResourceMonitorServer(srv, &monitor)
+				pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy)
 				return nil
 			},
 			// Options: sourceEvalServeOptions(src.plugctx, tracingSpan),
@@ -278,11 +279,15 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			return plugin.ConstructResult{}, err
 		}
 
+		outPropMap, err := plugin.UnmarshalProperties(monitorProxy.outputs,
+			plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		if err != nil {
+			return plugin.ConstructResult{}, err
+		}
+
 		return plugin.ConstructResult{
-			URN: resource.URN(urn),
-			Outputs: resource.PropertyMap{
-				"resourceA": resource.NewStringProperty("a"),
-			},
+			URN:     resource.URN(urn),
+			Outputs: outPropMap,
 		}, nil
 	}
 	return plugin.ConstructResult{}, errors.New("builtin resources may not be constructed")
@@ -294,6 +299,7 @@ type subStackMonitorProxy struct {
 	pulumirpc.UnimplementedResourceMonitorServer
 	monitor     pulumirpc.ResourceMonitorClient
 	subStackUrn resource.URN
+	outputs     *structpb.Struct
 }
 
 func (p *subStackMonitorProxy) Invoke(
@@ -339,6 +345,9 @@ func (p *subStackMonitorProxy) RegisterResource(
 func (p *subStackMonitorProxy) RegisterResourceOutputs(
 	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest,
 ) (*pbempty.Empty, error) {
+	if req.Urn == string(p.subStackUrn) {
+		p.outputs = req.Outputs
+	}
 	return p.monitor.RegisterResourceOutputs(ctx, req)
 }
 
