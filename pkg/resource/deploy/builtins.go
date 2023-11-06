@@ -7,12 +7,16 @@ import (
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type builtinProvider struct {
@@ -176,6 +180,34 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions,
 ) (plugin.ConstructResult, error) {
+	if typ == "pulumi:pulumi:SubStack" {
+
+		// grpc channel -> client for resource monitor
+		var monitorConn *grpc.ClientConn
+		var monitor pulumirpc.ResourceMonitorClient
+		conn, err := grpc.Dial(
+			info.MonitorAddress,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			rpcutil.GrpcChannelOptions(),
+		)
+		if err != nil {
+			return plugin.ConstructResult{}, fmt.Errorf("connecting to resource monitor over RPC: %w", err)
+		}
+		monitorConn = conn
+		monitor = pulumirpc.NewResourceMonitorClient(monitorConn)
+
+		monitor.RegisterResource(p.context, &pulumirpc.RegisterResourceRequest{
+			Type:   string(typ),
+			Name:   string(name),
+			Parent: string(parent),
+		})
+		return plugin.ConstructResult{
+			URN: resource.NewURN(tokens.IntoQName(info.Stack), tokens.PackageName(info.Project), parent.QualifiedType(), typ, name),
+			Outputs: resource.PropertyMap{
+				"resourceA": resource.NewStringProperty("a"),
+			},
+		}, nil
+	}
 	return plugin.ConstructResult{}, errors.New("builtin resources may not be constructed")
 }
 
