@@ -1,0 +1,14 @@
+{
+    "some_bool": true,
+    "some_list": [
+        "hello",
+        "world"
+    ],
+    "some_null": null,
+    "some_number": 42,
+    "some_object": {
+        "goodbye": "for now",
+        "hello": "world"
+    },
+    "some_string": "hello"
+}

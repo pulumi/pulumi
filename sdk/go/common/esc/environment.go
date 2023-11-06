@@ -88,3 +88,15 @@ func (e *Environment) GetTemporaryFiles() map[string]Value {
 	}
 	return files
 }
+
+func (e *Environment) ToJSON() map[string]any {
+	props := e.Properties
+	json := make(map[string]any, len(props))
+	if props == nil {
+		return nil
+	}
+	for k, v := range props {
+		json[k] = v.ToJSON(true)
+	}
+	return json
+}

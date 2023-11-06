@@ -1,0 +1,55 @@
+{
+    "array": [
+        1,
+        2,
+        3
+    ],
+    "errors": "[unknown]",
+    "myObject": {
+        "foo": "bar"
+    },
+    "object": {
+        "baz": "qux",
+        "hello": "world"
+    },
+    "open": {
+        "anyOf": "hello",
+        "array": [
+            2,
+            "items",
+            {
+                "some": "object"
+            },
+            [
+                "array"
+            ]
+        ],
+        "boolean": true,
+        "false": false,
+        "hello": "hello",
+        "map": {
+            "blue": 42,
+            "hello": "world"
+        },
+        "null": null,
+        "number": 42,
+        "oneOf": 42,
+        "pi": 3.14,
+        "record": {
+            "foo": "bar"
+        },
+        "ref": {
+            "baz": "qux"
+        },
+        "string": "esc",
+        "true": true,
+        "tuple": [
+            "hello",
+            "world"
+        ]
+    },
+    "otherObject": {
+        "foo": "bar"
+    },
+    "string": "esc"
+}

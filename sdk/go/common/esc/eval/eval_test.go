@@ -227,6 +227,7 @@ func TestEval(t *testing.T) {
 		t.Run(e.Name(), func(t *testing.T) {
 			basePath := filepath.Join(path, e.Name())
 			envPath, expectedPath := filepath.Join(basePath, "env.yaml"), filepath.Join(basePath, "expected.json")
+			expectedPreviewPath := filepath.Join(basePath, "expected-preview.json")
 
 			envBytes, err := os.ReadFile(envPath)
 			require.NoError(t, err)
@@ -248,10 +249,20 @@ func TestEval(t *testing.T) {
 					EvalDiags:   evalDiags,
 					Environment: actual,
 				}, "", "    ")
+				bytes = append(bytes, '\n')
 				require.NoError(t, err)
 
 				err = os.WriteFile(expectedPath, bytes, 0600)
 				require.NoError(t, err)
+
+				if actual != nil {
+					bytes, err := json.MarshalIndent(actual.ToJSON(), "", "    ")
+					bytes = append(bytes, '\n')
+					require.NoError(t, err)
+
+					err = os.WriteFile(expectedPreviewPath, bytes, 0600)
+					require.NoError(t, err)
+				}
 
 				return
 			}
@@ -290,6 +301,9 @@ func TestEval(t *testing.T) {
 				actual.Exprs = normalizeMap(actual.Exprs, nil)
 				actual.Properties = normalizeMap(actual.Properties, nil)
 				normalizeSchema(actual.Schema)
+
+				preview := actual.ToJSON()
+				assert.Equal(t, expected.Environment.ToJSON(), preview)
 			}
 
 			assert.Equal(t, expected.Environment, actual)
