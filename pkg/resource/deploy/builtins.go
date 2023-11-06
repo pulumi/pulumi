@@ -330,6 +330,9 @@ func (p *subStackMonitorProxy) RegisterResource(
 			Urn: string(p.subStackUrn),
 		}, nil
 	}
+	if req.Parent == "" {
+		req.Parent = string(p.subStackUrn)
+	}
 	return p.monitor.RegisterResource(ctx, req)
 }
 
