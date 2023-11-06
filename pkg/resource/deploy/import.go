@@ -80,7 +80,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	// Create a goal map for the deployment.
 	newGoals := &goalMap{}
 
-	builtins := newBuiltinProvider(nil, nil)
+	builtins := newBuiltinProvider(nil, nil, ctx)
 
 	// Create a new provider registry.
 	reg := providers.NewRegistry(ctx.Host, preview, builtins)

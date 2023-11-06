@@ -12,9 +12,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -26,15 +28,17 @@ type builtinProvider struct {
 
 	backendClient BackendClient
 	resources     *resourceMap
+	plugctx       *plugin.Context
 }
 
-func newBuiltinProvider(backendClient BackendClient, resources *resourceMap) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, plugctx *plugin.Context) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
 		cancel:        cancel,
 		backendClient: backendClient,
 		resources:     resources,
+		plugctx:       plugctx,
 	}
 }
 
@@ -182,6 +186,8 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 	inputs resource.PropertyMap, options plugin.ConstructOptions,
 ) (plugin.ConstructResult, error) {
 	if typ == "pulumi:pulumi:SubStack" {
+		source := inputs["source"].StringValue()
+		// inputs := inputs["inputs"].ObjectValue()
 
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
@@ -217,7 +223,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 
 		// Create new monitor server (with facade)
 		// Fire up a gRPC server and start listening for incomings.
-		_, err = rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		monitorServer, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Cancel: cancelChannel,
 			Init: func(srv *grpc.Server) error {
 				monitor := subStackMonitorProxy{
@@ -234,13 +240,42 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		}
 
 		// Execute the program pointing to the new monitor server
-
-		_, err = monitor.RegisterResourceOutputs(p.context, &pulumirpc.RegisterResourceOutputsRequest{
-			Urn: urn,
-			// TODO: Outputs
-		})
+		rt := "yaml"                       // iter.src.runinfo.Proj.Runtime.Name()
+		rtopts := map[string]interface{}{} // iter.src.runinfo.Proj.Runtime.Options()
+		langhost, err := p.plugctx.Host.LanguageRuntime(source, source, rt, rtopts)
 		if err != nil {
-			return plugin.ConstructResult{}, fmt.Errorf("registering substack resource outputs: %w", err)
+			return plugin.ConstructResult{}, fmt.Errorf("failed to launch language host %s: %w", rt, err)
+		}
+		contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
+
+		// Now run the actual program.
+		progerr, bail, err := langhost.Run(plugin.RunInfo{
+			MonitorAddress:    fmt.Sprintf("127.0.0.1:%d", monitorServer.Port),
+			Stack:             info.Stack,
+			Project:           info.Project,
+			Pwd:               source,
+			Program:           source,
+			Args:              []string{}, // TODO: make this an arg
+			Config:            map[config.Key]string{},
+			ConfigSecretKeys:  []config.Key{},
+			ConfigPropertyMap: resource.PropertyMap{},
+			DryRun:            info.DryRun,
+			Parallel:          info.Parallel,
+			Organization:      "",
+		})
+
+		// Check if we were asked to Bail.  This a special random constant used for that
+		// purpose.
+		if err == nil && bail {
+			return plugin.ConstructResult{}, result.BailErrorf("run bailed")
+		}
+
+		if err == nil && progerr != "" {
+			// If the program had an unhandled error; propagate it to the caller.
+			err = fmt.Errorf("an unhandled error occurred: %v", progerr)
+		}
+		if err != nil {
+			return plugin.ConstructResult{}, err
 		}
 
 		return plugin.ConstructResult{
@@ -290,6 +325,11 @@ func (p *subStackMonitorProxy) RegisterResource(
 	ctx context.Context, req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
 	// TODO: Adjust URN
+	if req.Type == "pulumi:pulumi:Stack" {
+		return &pulumirpc.RegisterResourceResponse{
+			Urn: string(p.subStackUrn),
+		}, nil
+	}
 	return p.monitor.RegisterResource(ctx, req)
 }
 
