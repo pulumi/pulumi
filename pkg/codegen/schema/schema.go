@@ -941,6 +941,18 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
 	}
 
+	var extension *PackageExtensionSpec
+	if pkg.Extension != nil {
+		var version string
+		if pkg.Extension.Version != nil {
+			version = pkg.Extension.Version.String()
+		}
+		extension = &PackageExtensionSpec{
+			Name:    pkg.Extension.Name,
+			Version: version,
+		}
+	}
+
 	spec = &PackageSpec{
 		Name:                pkg.Name,
 		Version:             version,
@@ -959,6 +971,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		Resources:           map[string]ResourceSpec{},
 		Functions:           map[string]FunctionSpec{},
 		AllowedPackageNames: pkg.AllowedPackageNames,
+		Extension:           extension,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -1826,7 +1839,7 @@ type PackageInfoSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 
 	// If this package is an extension of another package.
-	Extension PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
+	Extension *PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
 }
 
 // PackageExtensionSpec is the serializable description of a Pulumi package's extension metadata.
@@ -1878,7 +1891,7 @@ type PackageSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 
 	// If this package is an extension of another package.
-	Extension PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
+	Extension *PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config,omitempty" yaml:"config"`
@@ -1910,6 +1923,7 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		Meta:                p.Meta,
 		AllowedPackageNames: p.AllowedPackageNames,
 		Language:            p.Language,
+		Extension:           p.Extension,
 	}
 }
 
