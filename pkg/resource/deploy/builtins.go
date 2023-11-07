@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
@@ -246,10 +247,27 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			return plugin.ConstructResult{}, err
 		}
 
+		resolvedSource, err := filepath.Abs(source)
+		if err != nil {
+			return plugin.ConstructResult{}, fmt.Errorf("resolving source: %w", err)
+		}
+		projectPath, err := workspace.DetectProjectPathFrom(resolvedSource)
+		if err != nil {
+			return plugin.ConstructResult{}, fmt.Errorf("detecting project path: %w", err)
+		}
+		// For sub-programs, we require that the project file must be directly in the source path and not in a parent directory.
+		if filepath.Dir(projectPath) != resolvedSource {
+			return plugin.ConstructResult{}, fmt.Errorf("project path %s is not a parent of %s", projectPath, resolvedSource)
+		}
+		project, err := workspace.LoadProject(projectPath)
+		if err != nil {
+			return plugin.ConstructResult{}, fmt.Errorf("loading project: %w", err)
+		}
+
 		// Execute the program pointing to the new monitor server
-		rt := "yaml"                       // iter.src.runinfo.Proj.Runtime.Name()
-		rtopts := map[string]interface{}{} // iter.src.runinfo.Proj.Runtime.Options()
-		langhost, err := p.plugctx.Host.LanguageRuntime(source, source, rt, rtopts)
+		rt := project.Runtime.Name()
+		rtopts := project.Runtime.Options()
+		langhost, err := p.plugctx.Host.LanguageRuntime(resolvedSource, resolvedSource, rt, rtopts)
 		if err != nil {
 			return plugin.ConstructResult{}, fmt.Errorf("failed to launch language host %s: %w", rt, err)
 		}
@@ -260,8 +278,8 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			MonitorAddress:    fmt.Sprintf("127.0.0.1:%d", monitorServer.Port),
 			Stack:             info.Stack,
 			Project:           info.Project,
-			Pwd:               source,
-			Program:           source,
+			Pwd:               resolvedSource,
+			Program:           resolvedSource,
 			Args:              []string{}, // TODO: make this an arg
 			Config:            map[config.Key]string{},
 			ConfigSecretKeys:  []config.Key{},
