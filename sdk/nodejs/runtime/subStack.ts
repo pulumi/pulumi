@@ -20,7 +20,7 @@ import { ComponentResource, ComponentResourceOptions } from "../resource";
  * resources allocated by a deployment.  This must be kept up to date with
  * `github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType`.
  */
-export const rootPulumiSubStackTypeName = "pulumi:pulumi:SubStack";
+export const rootPulumiSubStackTypeName = "pulumi:pulumi:Stack";
 
 /**
  * Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it registers itself as the root
@@ -38,11 +38,11 @@ export class SubStack extends ComponentResource {
         if (!opts.id) {
             resourceInputs["source"] = args ? args.source : undefined;
             resourceInputs["inputs"] = args ? args.inputs : undefined;
-	    resourceInputs["prefixResourceNames"] = args ? args.prefixResourceNames : false;
+            resourceInputs["prefixResourceNames"] = args ? args.prefixResourceNames : false;
         } else {
             resourceInputs["source"] = undefined;
             resourceInputs["inputs"] = undefined;
-	    resourceInputs["prefixResourceNames"] = false;
+            resourceInputs["prefixResourceNames"] = false;
         }
         resourceInputs["outputs"] = undefined;
         super(rootPulumiSubStackTypeName, name, resourceInputs, opts, true);
