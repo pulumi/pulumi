@@ -195,7 +195,11 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		if err != nil {
 			return plugin.ConstructResult{}, fmt.Errorf("error reading source: %w", err)
 		}
-		// inputs := inputs["inputs"].ObjectValue()
+		input_source := inputs["inputs"]
+		if input_source.IsNull() {
+			input_source = resource.NewObjectProperty(resource.PropertyMap{})
+		}
+		inputs := input_source.ObjectValue()
 
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
@@ -273,6 +277,10 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		}
 		contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
+		configMap := map[config.Key]string{}
+		for key, val := range inputs {
+			configMap[config.MustMakeKey(info.Project, string(key))] = val.StringValue()
+		}
 		// Now run the actual program.
 		progerr, bail, err := langhost.Run(plugin.RunInfo{
 			MonitorAddress:    fmt.Sprintf("127.0.0.1:%d", monitorServer.Port),
@@ -281,9 +289,9 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			Pwd:               resolvedSource,
 			Program:           resolvedSource,
 			Args:              []string{}, // TODO: make this an arg
-			Config:            map[config.Key]string{},
+			Config:            configMap,
 			ConfigSecretKeys:  []config.Key{},
-			ConfigPropertyMap: resource.PropertyMap{},
+			ConfigPropertyMap: inputs,
 			DryRun:            info.DryRun,
 			Parallel:          info.Parallel,
 			Organization:      "",
