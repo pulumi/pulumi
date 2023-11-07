@@ -1,0 +1,2786 @@
+{
+    "check": {
+        "exprs": {
+            "cloudflare": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 73
+                    },
+                    "end": {
+                        "line": 14,
+                        "column": 36,
+                        "byte": 295
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "account": {
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        },
+                        "apiKey": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "apiToken": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "username": {
+                            "type": "string",
+                            "const": "bot@pulumi.com"
+                        },
+                        "zoneId": {
+                            "type": "string",
+                            "const": "zone-id-123"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "account",
+                        "apiKey",
+                        "apiToken",
+                        "username",
+                        "zoneId"
+                    ]
+                },
+                "keyRanges": {
+                    "account": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 216
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 12,
+                            "byte": 223
+                        }
+                    },
+                    "apiKey": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 102
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 11,
+                            "byte": 108
+                        }
+                    },
+                    "apiToken": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 169
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 13,
+                            "byte": 177
+                        }
+                    },
+                    "username": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 73
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 81
+                        }
+                    },
+                    "zoneId": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 145
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 11,
+                            "byte": 151
+                        }
+                    }
+                },
+                "object": {
+                    "account": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 12,
+                                "column": 7,
+                                "byte": 231
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 36,
+                                "byte": 295
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        },
+                        "keyRanges": {
+                            "id": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 7,
+                                    "byte": 256
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 9,
+                                    "byte": 258
+                                }
+                            },
+                            "name": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 231
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 11,
+                                    "byte": 235
+                                }
+                            }
+                        },
+                        "object": {
+                            "id": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 9,
+                                        "byte": 268
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "builtin": {
+                                    "name": "fn::secret",
+                                    "nameRange": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 14,
+                                            "column": 9,
+                                            "byte": 268
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 19,
+                                            "byte": 278
+                                        }
+                                    },
+                                    "argSchema": true,
+                                    "arg": {
+                                        "range": {
+                                            "environment": "nested-unknowns-secrets",
+                                            "begin": {
+                                                "line": 14,
+                                                "column": 21,
+                                                "byte": 280
+                                            },
+                                            "end": {
+                                                "line": 14,
+                                                "column": 36,
+                                                "byte": 295
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "accountIdSecret"
+                                        },
+                                        "literal": "accountIdSecret"
+                                    }
+                                }
+                            },
+                            "name": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 13,
+                                        "byte": 237
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 25,
+                                        "byte": 249
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                },
+                                "literal": "account-name"
+                            }
+                        }
+                    },
+                    "apiKey": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 116
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 31,
+                                "byte": 140
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "builtin": {
+                            "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 116
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 17,
+                                    "byte": 126
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 19,
+                                        "byte": 128
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 31,
+                                        "byte": 140
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "literal": "apiKeySecret"
+                            }
+                        }
+                    },
+                    "apiToken": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 185
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 33,
+                                "byte": 211
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "builtin": {
+                            "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 185
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 17,
+                                    "byte": 195
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 197
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 33,
+                                        "byte": 211
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apiTokenSecret"
+                                },
+                                "literal": "apiTokenSecret"
+                            }
+                        }
+                    },
+                    "username": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 5,
+                                "column": 15,
+                                "byte": 83
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 29,
+                                "byte": 97
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bot@pulumi.com"
+                        },
+                        "literal": "bot@pulumi.com"
+                    },
+                    "zoneId": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 8,
+                                "column": 13,
+                                "byte": 153
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 24,
+                                "byte": 164
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "zone-id-123"
+                        },
+                        "literal": "zone-id-123"
+                    }
+                }
+            },
+            "environmentVariables": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 20,
+                        "column": 5,
+                        "byte": 416
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 49,
+                        "byte": 460
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "CLOUDFLARE_API_TOKEN": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "CLOUDFLARE_API_TOKEN"
+                    ]
+                },
+                "keyRanges": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 20,
+                            "column": 5,
+                            "byte": 416
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 25,
+                            "byte": 436
+                        }
+                    }
+                },
+                "object": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 20,
+                                "column": 27,
+                                "byte": 438
+                            },
+                            "end": {
+                                "line": 20,
+                                "column": 49,
+                                "byte": 460
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "apiToken",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 185
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 33,
+                                        "byte": 211
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "jsonOutput": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 16,
+                        "column": 5,
+                        "byte": 314
+                    },
+                    "end": {
+                        "line": 16,
+                        "column": 30,
+                        "byte": 339
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toJSON",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 314
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 15,
+                            "byte": 324
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 16,
+                                "column": 17,
+                                "byte": 326
+                            },
+                            "end": {
+                                "line": 16,
+                                "column": 30,
+                                "byte": 339
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "account": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "const": "accountIdSecret"
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "const": "account-name"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "name"
+                                    ]
+                                },
+                                "apiKey": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "apiToken": {
+                                    "type": "string",
+                                    "const": "apiTokenSecret"
+                                },
+                                "username": {
+                                    "type": "string",
+                                    "const": "bot@pulumi.com"
+                                },
+                                "zoneId": {
+                                    "type": "string",
+                                    "const": "zone-id-123"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "account",
+                                "apiKey",
+                                "apiToken",
+                                "username",
+                                "zoneId"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 22,
+                        "column": 5,
+                        "byte": 481
+                    },
+                    "end": {
+                        "line": 23,
+                        "column": 43,
+                        "byte": 559
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "accountId": {
+                            "type": "string",
+                            "const": "accountIdSecret"
+                        },
+                        "refTopLevelSecret": {
+                            "type": "string",
+                            "const": "top-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accountId",
+                        "refTopLevelSecret"
+                    ]
+                },
+                "keyRanges": {
+                    "accountId": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 481
+                        },
+                        "end": {
+                            "line": 22,
+                            "column": 14,
+                            "byte": 490
+                        }
+                    },
+                    "refTopLevelSecret": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 521
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 22,
+                            "byte": 538
+                        }
+                    }
+                },
+                "object": {
+                    "accountId": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 22,
+                                "column": 16,
+                                "byte": 492
+                            },
+                            "end": {
+                                "line": 22,
+                                "column": 40,
+                                "byte": 516
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "accountIdSecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "account",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 7,
+                                        "byte": 231
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "id",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 9,
+                                        "byte": 268
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "refTopLevelSecret": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 23,
+                                "column": 24,
+                                "byte": 540
+                            },
+                            "end": {
+                                "line": 23,
+                                "column": 43,
+                                "byte": 559
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "top-secret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "top-level-secret",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 32
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 27,
+                                        "byte": 54
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "stringOutput": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 18,
+                        "column": 5,
+                        "byte": 360
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 32,
+                        "byte": 387
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toString",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 18,
+                            "column": 5,
+                            "byte": 360
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 17,
+                            "byte": 372
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 18,
+                                "column": 19,
+                                "byte": 374
+                            },
+                            "end": {
+                                "line": 18,
+                                "column": 32,
+                                "byte": 387
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "account": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "const": "accountIdSecret"
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "const": "account-name"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "name"
+                                    ]
+                                },
+                                "apiKey": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "apiToken": {
+                                    "type": "string",
+                                    "const": "apiTokenSecret"
+                                },
+                                "username": {
+                                    "type": "string",
+                                    "const": "bot@pulumi.com"
+                                },
+                                "zoneId": {
+                                    "type": "string",
+                                    "const": "zone-id-123"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "account",
+                                "apiKey",
+                                "apiToken",
+                                "username",
+                                "zoneId"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "top-level-secret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 32
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 27,
+                        "byte": 54
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "top-secret"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 32
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 42
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 3,
+                                "column": 17,
+                                "byte": 44
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 27,
+                                "byte": 54
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "top-secret"
+                        },
+                        "literal": "top-secret"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "cloudflare": {
+                "value": {
+                    "account": {
+                        "value": {
+                            "id": {
+                                "value": "accountIdSecret",
+                                "secret": true,
+                                "trace": {
+                                    "def": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 14,
+                                            "column": 21,
+                                            "byte": 280
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 36,
+                                            "byte": 295
+                                        }
+                                    }
+                                }
+                            },
+                            "name": {
+                                "value": "account-name",
+                                "trace": {
+                                    "def": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 13,
+                                            "byte": 237
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 25,
+                                            "byte": 249
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 231
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 36,
+                                    "byte": 295
+                                }
+                            }
+                        }
+                    },
+                    "apiKey": {
+                        "value": "apiKeySecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 19,
+                                    "byte": 128
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 31,
+                                    "byte": 140
+                                }
+                            }
+                        }
+                    },
+                    "apiToken": {
+                        "value": "apiTokenSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 19,
+                                    "byte": 197
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 33,
+                                    "byte": 211
+                                }
+                            }
+                        }
+                    },
+                    "username": {
+                        "value": "bot@pulumi.com",
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 15,
+                                    "byte": 83
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 29,
+                                    "byte": 97
+                                }
+                            }
+                        }
+                    },
+                    "zoneId": {
+                        "value": "zone-id-123",
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 13,
+                                    "byte": 153
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 24,
+                                    "byte": 164
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 73
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 36,
+                            "byte": 295
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "value": "apiTokenSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 27,
+                                    "byte": 438
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 49,
+                                    "byte": 460
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 20,
+                            "column": 5,
+                            "byte": 416
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 49,
+                            "byte": 460
+                        }
+                    }
+                }
+            },
+            "jsonOutput": {
+                "value": "{\"account\":{\"id\":\"accountIdSecret\",\"name\":\"account-name\"},\"apiKey\":\"apiKeySecret\",\"apiToken\":\"apiTokenSecret\",\"username\":\"bot@pulumi.com\",\"zoneId\":\"zone-id-123\"}",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 314
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 30,
+                            "byte": 339
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "accountId": {
+                        "value": "accountIdSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 22,
+                                    "column": 16,
+                                    "byte": 492
+                                },
+                                "end": {
+                                    "line": 22,
+                                    "column": 40,
+                                    "byte": 516
+                                }
+                            }
+                        }
+                    },
+                    "refTopLevelSecret": {
+                        "value": "top-secret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 23,
+                                    "column": 24,
+                                    "byte": 540
+                                },
+                                "end": {
+                                    "line": 23,
+                                    "column": 43,
+                                    "byte": 559
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 481
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 43,
+                            "byte": 559
+                        }
+                    }
+                }
+            },
+            "stringOutput": {
+                "value": "\"account\"=\"\\\"id\\\"=\\\"accountIdSecret\\\",\\\"name\\\"=\\\"account-name\\\"\",\"apiKey\"=\"apiKeySecret\",\"apiToken\"=\"apiTokenSecret\",\"username\"=\"bot@pulumi.com\",\"zoneId\"=\"zone-id-123\"",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 18,
+                            "column": 5,
+                            "byte": 360
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 32,
+                            "byte": 387
+                        }
+                    }
+                }
+            },
+            "top-level-secret": {
+                "value": "top-secret",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 44
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 27,
+                            "byte": 54
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "cloudflare": {
+                    "properties": {
+                        "account": {
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        },
+                        "apiKey": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "apiToken": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "username": {
+                            "type": "string",
+                            "const": "bot@pulumi.com"
+                        },
+                        "zoneId": {
+                            "type": "string",
+                            "const": "zone-id-123"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "account",
+                        "apiKey",
+                        "apiToken",
+                        "username",
+                        "zoneId"
+                    ]
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "CLOUDFLARE_API_TOKEN": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "CLOUDFLARE_API_TOKEN"
+                    ]
+                },
+                "jsonOutput": {
+                    "type": "string"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "accountId": {
+                            "type": "string",
+                            "const": "accountIdSecret"
+                        },
+                        "refTopLevelSecret": {
+                            "type": "string",
+                            "const": "top-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accountId",
+                        "refTopLevelSecret"
+                    ]
+                },
+                "stringOutput": {
+                    "type": "string"
+                },
+                "top-level-secret": {
+                    "type": "string",
+                    "const": "top-secret"
+                }
+            },
+            "type": "object",
+            "required": [
+                "cloudflare",
+                "environmentVariables",
+                "jsonOutput",
+                "pulumiConfig",
+                "stringOutput",
+                "top-level-secret"
+            ]
+        }
+    },
+    "checkJson": {
+        "cloudflare": {
+            "account": {
+                "id": "[secret]",
+                "name": "account-name"
+            },
+            "apiKey": "[secret]",
+            "apiToken": "[secret]",
+            "username": "bot@pulumi.com",
+            "zoneId": "zone-id-123"
+        },
+        "environmentVariables": {
+            "CLOUDFLARE_API_TOKEN": "[secret]"
+        },
+        "jsonOutput": "[secret]",
+        "pulumiConfig": {
+            "accountId": "[secret]",
+            "refTopLevelSecret": "[secret]"
+        },
+        "stringOutput": "[secret]",
+        "top-level-secret": "[secret]"
+    },
+    "eval": {
+        "exprs": {
+            "cloudflare": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 73
+                    },
+                    "end": {
+                        "line": 14,
+                        "column": 36,
+                        "byte": 295
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "account": {
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        },
+                        "apiKey": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "apiToken": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "username": {
+                            "type": "string",
+                            "const": "bot@pulumi.com"
+                        },
+                        "zoneId": {
+                            "type": "string",
+                            "const": "zone-id-123"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "account",
+                        "apiKey",
+                        "apiToken",
+                        "username",
+                        "zoneId"
+                    ]
+                },
+                "keyRanges": {
+                    "account": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 216
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 12,
+                            "byte": 223
+                        }
+                    },
+                    "apiKey": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 102
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 11,
+                            "byte": 108
+                        }
+                    },
+                    "apiToken": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 169
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 13,
+                            "byte": 177
+                        }
+                    },
+                    "username": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 73
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 81
+                        }
+                    },
+                    "zoneId": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 145
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 11,
+                            "byte": 151
+                        }
+                    }
+                },
+                "object": {
+                    "account": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 12,
+                                "column": 7,
+                                "byte": 231
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 36,
+                                "byte": 295
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        },
+                        "keyRanges": {
+                            "id": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 7,
+                                    "byte": 256
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 9,
+                                    "byte": 258
+                                }
+                            },
+                            "name": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 231
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 11,
+                                    "byte": 235
+                                }
+                            }
+                        },
+                        "object": {
+                            "id": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 9,
+                                        "byte": 268
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "builtin": {
+                                    "name": "fn::secret",
+                                    "nameRange": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 14,
+                                            "column": 9,
+                                            "byte": 268
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 19,
+                                            "byte": 278
+                                        }
+                                    },
+                                    "argSchema": true,
+                                    "arg": {
+                                        "range": {
+                                            "environment": "nested-unknowns-secrets",
+                                            "begin": {
+                                                "line": 14,
+                                                "column": 21,
+                                                "byte": 280
+                                            },
+                                            "end": {
+                                                "line": 14,
+                                                "column": 36,
+                                                "byte": 295
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "accountIdSecret"
+                                        },
+                                        "literal": "accountIdSecret"
+                                    }
+                                }
+                            },
+                            "name": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 13,
+                                        "byte": 237
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 25,
+                                        "byte": 249
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                },
+                                "literal": "account-name"
+                            }
+                        }
+                    },
+                    "apiKey": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 116
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 31,
+                                "byte": 140
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "builtin": {
+                            "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 116
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 17,
+                                    "byte": 126
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 19,
+                                        "byte": 128
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 31,
+                                        "byte": 140
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "literal": "apiKeySecret"
+                            }
+                        }
+                    },
+                    "apiToken": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 185
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 33,
+                                "byte": 211
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "builtin": {
+                            "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 185
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 17,
+                                    "byte": 195
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 197
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 33,
+                                        "byte": 211
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apiTokenSecret"
+                                },
+                                "literal": "apiTokenSecret"
+                            }
+                        }
+                    },
+                    "username": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 5,
+                                "column": 15,
+                                "byte": 83
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 29,
+                                "byte": 97
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bot@pulumi.com"
+                        },
+                        "literal": "bot@pulumi.com"
+                    },
+                    "zoneId": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 8,
+                                "column": 13,
+                                "byte": 153
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 24,
+                                "byte": 164
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "zone-id-123"
+                        },
+                        "literal": "zone-id-123"
+                    }
+                }
+            },
+            "environmentVariables": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 20,
+                        "column": 5,
+                        "byte": 416
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 49,
+                        "byte": 460
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "CLOUDFLARE_API_TOKEN": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "CLOUDFLARE_API_TOKEN"
+                    ]
+                },
+                "keyRanges": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 20,
+                            "column": 5,
+                            "byte": 416
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 25,
+                            "byte": 436
+                        }
+                    }
+                },
+                "object": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 20,
+                                "column": 27,
+                                "byte": 438
+                            },
+                            "end": {
+                                "line": 20,
+                                "column": 49,
+                                "byte": 460
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "apiToken",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 185
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 33,
+                                        "byte": 211
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "jsonOutput": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 16,
+                        "column": 5,
+                        "byte": 314
+                    },
+                    "end": {
+                        "line": 16,
+                        "column": 30,
+                        "byte": 339
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toJSON",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 314
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 15,
+                            "byte": 324
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 16,
+                                "column": 17,
+                                "byte": 326
+                            },
+                            "end": {
+                                "line": 16,
+                                "column": 30,
+                                "byte": 339
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "account": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "const": "accountIdSecret"
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "const": "account-name"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "name"
+                                    ]
+                                },
+                                "apiKey": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "apiToken": {
+                                    "type": "string",
+                                    "const": "apiTokenSecret"
+                                },
+                                "username": {
+                                    "type": "string",
+                                    "const": "bot@pulumi.com"
+                                },
+                                "zoneId": {
+                                    "type": "string",
+                                    "const": "zone-id-123"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "account",
+                                "apiKey",
+                                "apiToken",
+                                "username",
+                                "zoneId"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 22,
+                        "column": 5,
+                        "byte": 481
+                    },
+                    "end": {
+                        "line": 23,
+                        "column": 43,
+                        "byte": 559
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "accountId": {
+                            "type": "string",
+                            "const": "accountIdSecret"
+                        },
+                        "refTopLevelSecret": {
+                            "type": "string",
+                            "const": "top-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accountId",
+                        "refTopLevelSecret"
+                    ]
+                },
+                "keyRanges": {
+                    "accountId": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 481
+                        },
+                        "end": {
+                            "line": 22,
+                            "column": 14,
+                            "byte": 490
+                        }
+                    },
+                    "refTopLevelSecret": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 521
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 22,
+                            "byte": 538
+                        }
+                    }
+                },
+                "object": {
+                    "accountId": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 22,
+                                "column": 16,
+                                "byte": 492
+                            },
+                            "end": {
+                                "line": 22,
+                                "column": 40,
+                                "byte": 516
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "accountIdSecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "account",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 7,
+                                        "byte": 231
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "id",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 9,
+                                        "byte": 268
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "refTopLevelSecret": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 23,
+                                "column": 24,
+                                "byte": 540
+                            },
+                            "end": {
+                                "line": 23,
+                                "column": 43,
+                                "byte": 559
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "top-secret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "top-level-secret",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 32
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 27,
+                                        "byte": 54
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "stringOutput": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 18,
+                        "column": 5,
+                        "byte": 360
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 32,
+                        "byte": 387
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toString",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 18,
+                            "column": 5,
+                            "byte": 360
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 17,
+                            "byte": 372
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 18,
+                                "column": 19,
+                                "byte": 374
+                            },
+                            "end": {
+                                "line": 18,
+                                "column": 32,
+                                "byte": 387
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "account": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "const": "accountIdSecret"
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "const": "account-name"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "name"
+                                    ]
+                                },
+                                "apiKey": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "apiToken": {
+                                    "type": "string",
+                                    "const": "apiTokenSecret"
+                                },
+                                "username": {
+                                    "type": "string",
+                                    "const": "bot@pulumi.com"
+                                },
+                                "zoneId": {
+                                    "type": "string",
+                                    "const": "zone-id-123"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "account",
+                                "apiKey",
+                                "apiToken",
+                                "username",
+                                "zoneId"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "top-level-secret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 32
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 27,
+                        "byte": 54
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "top-secret"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 32
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 42
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 3,
+                                "column": 17,
+                                "byte": 44
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 27,
+                                "byte": 54
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "top-secret"
+                        },
+                        "literal": "top-secret"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "cloudflare": {
+                "value": {
+                    "account": {
+                        "value": {
+                            "id": {
+                                "value": "accountIdSecret",
+                                "secret": true,
+                                "trace": {
+                                    "def": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 14,
+                                            "column": 21,
+                                            "byte": 280
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 36,
+                                            "byte": 295
+                                        }
+                                    }
+                                }
+                            },
+                            "name": {
+                                "value": "account-name",
+                                "trace": {
+                                    "def": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 12,
+                                            "column": 13,
+                                            "byte": 237
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 25,
+                                            "byte": 249
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 231
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 36,
+                                    "byte": 295
+                                }
+                            }
+                        }
+                    },
+                    "apiKey": {
+                        "value": "apiKeySecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 19,
+                                    "byte": 128
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 31,
+                                    "byte": 140
+                                }
+                            }
+                        }
+                    },
+                    "apiToken": {
+                        "value": "apiTokenSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 19,
+                                    "byte": 197
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 33,
+                                    "byte": 211
+                                }
+                            }
+                        }
+                    },
+                    "username": {
+                        "value": "bot@pulumi.com",
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 15,
+                                    "byte": 83
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 29,
+                                    "byte": 97
+                                }
+                            }
+                        }
+                    },
+                    "zoneId": {
+                        "value": "zone-id-123",
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 13,
+                                    "byte": 153
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 24,
+                                    "byte": 164
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 73
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 36,
+                            "byte": 295
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "value": "apiTokenSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 27,
+                                    "byte": 438
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 49,
+                                    "byte": 460
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 20,
+                            "column": 5,
+                            "byte": 416
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 49,
+                            "byte": 460
+                        }
+                    }
+                }
+            },
+            "jsonOutput": {
+                "value": "{\"account\":{\"id\":\"accountIdSecret\",\"name\":\"account-name\"},\"apiKey\":\"apiKeySecret\",\"apiToken\":\"apiTokenSecret\",\"username\":\"bot@pulumi.com\",\"zoneId\":\"zone-id-123\"}",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 314
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 30,
+                            "byte": 339
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "accountId": {
+                        "value": "accountIdSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 22,
+                                    "column": 16,
+                                    "byte": 492
+                                },
+                                "end": {
+                                    "line": 22,
+                                    "column": 40,
+                                    "byte": 516
+                                }
+                            }
+                        }
+                    },
+                    "refTopLevelSecret": {
+                        "value": "top-secret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 23,
+                                    "column": 24,
+                                    "byte": 540
+                                },
+                                "end": {
+                                    "line": 23,
+                                    "column": 43,
+                                    "byte": 559
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 481
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 43,
+                            "byte": 559
+                        }
+                    }
+                }
+            },
+            "stringOutput": {
+                "value": "\"account\"=\"\\\"id\\\"=\\\"accountIdSecret\\\",\\\"name\\\"=\\\"account-name\\\"\",\"apiKey\"=\"apiKeySecret\",\"apiToken\"=\"apiTokenSecret\",\"username\"=\"bot@pulumi.com\",\"zoneId\"=\"zone-id-123\"",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 18,
+                            "column": 5,
+                            "byte": 360
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 32,
+                            "byte": 387
+                        }
+                    }
+                }
+            },
+            "top-level-secret": {
+                "value": "top-secret",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 44
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 27,
+                            "byte": 54
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "cloudflare": {
+                    "properties": {
+                        "account": {
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "const": "accountIdSecret"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "const": "account-name"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        },
+                        "apiKey": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "apiToken": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        },
+                        "username": {
+                            "type": "string",
+                            "const": "bot@pulumi.com"
+                        },
+                        "zoneId": {
+                            "type": "string",
+                            "const": "zone-id-123"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "account",
+                        "apiKey",
+                        "apiToken",
+                        "username",
+                        "zoneId"
+                    ]
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "CLOUDFLARE_API_TOKEN": {
+                            "type": "string",
+                            "const": "apiTokenSecret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "CLOUDFLARE_API_TOKEN"
+                    ]
+                },
+                "jsonOutput": {
+                    "type": "string"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "accountId": {
+                            "type": "string",
+                            "const": "accountIdSecret"
+                        },
+                        "refTopLevelSecret": {
+                            "type": "string",
+                            "const": "top-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accountId",
+                        "refTopLevelSecret"
+                    ]
+                },
+                "stringOutput": {
+                    "type": "string"
+                },
+                "top-level-secret": {
+                    "type": "string",
+                    "const": "top-secret"
+                }
+            },
+            "type": "object",
+            "required": [
+                "cloudflare",
+                "environmentVariables",
+                "jsonOutput",
+                "pulumiConfig",
+                "stringOutput",
+                "top-level-secret"
+            ]
+        }
+    },
+    "evalJson": {
+        "cloudflare": {
+            "account": {
+                "id": "[secret]",
+                "name": "account-name"
+            },
+            "apiKey": "[secret]",
+            "apiToken": "[secret]",
+            "username": "bot@pulumi.com",
+            "zoneId": "zone-id-123"
+        },
+        "environmentVariables": {
+            "CLOUDFLARE_API_TOKEN": "[secret]"
+        },
+        "jsonOutput": "[secret]",
+        "pulumiConfig": {
+            "accountId": "[secret]",
+            "refTopLevelSecret": "[secret]"
+        },
+        "stringOutput": "[secret]",
+        "top-level-secret": "[secret]"
+    }
+}

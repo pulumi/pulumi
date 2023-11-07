@@ -47,6 +47,56 @@ type value struct {
 	repr any // nil | bool | json.Number | string | []*value | map[string]*value
 }
 
+// containsUnknowns returns true if the value contains any unknown values.
+func (v *value) containsUnknowns() bool {
+	if v == nil {
+		return false
+	}
+	if v.unknown {
+		return true
+	}
+	switch repr := v.repr.(type) {
+	case []*value:
+		for _, v := range repr {
+			if v.containsUnknowns() {
+				return true
+			}
+		}
+	case map[string]*value:
+		for _, v := range repr {
+			if v.containsUnknowns() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// containsSecrets returns true if the value contains any secret values.
+func (v *value) containsSecrets() bool {
+	if v == nil {
+		return false
+	}
+	if v.secret {
+		return true
+	}
+	switch repr := v.repr.(type) {
+	case []*value:
+		for _, v := range repr {
+			if v.containsSecrets() {
+				return true
+			}
+		}
+	case map[string]*value:
+		for _, v := range repr {
+			if v.containsSecrets() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // isObject returns true if this value is or may be an object.
 func (v *value) isObject() bool {
 	if v == nil {
@@ -60,18 +110,18 @@ func (v *value) isObject() bool {
 }
 
 // combine combines the unknown-ness and secret-ness of the given values and applies the result to the receiver.
-// If any of the inputs are unknown or secret, the receiver is unknown or secret. This should only be used when
+// If any of the inputs contains unknowns or secrets, the receiver is unknown or secret. This should only be used when
 // computing an aggregate value from other values (e.g. the output of fn::join is unknown if any of its inputs
 // are unknown).
 func (v *value) combine(others ...*value) {
 	for _, o := range others {
-		v.unknown = v.unknown || o.unknown
-		v.secret = v.secret || o.secret
+		v.unknown = v.containsUnknowns() || o.containsUnknowns()
+		v.secret = v.containsSecrets() || o.containsSecrets()
 	}
 }
 
 // keys returns the value's keys if the value is an object. This method should be used instead of accessing the
-// underlying map[string]*value directly, as it takes JSON merge patch semantis into account.
+// underlying map[string]*value directly, as it takes JSON merge patch semantics into account.
 func (v *value) keys() []string {
 	keySet := make(map[string]struct{})
 	for v != nil {

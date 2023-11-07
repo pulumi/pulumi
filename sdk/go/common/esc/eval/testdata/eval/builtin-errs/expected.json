@@ -977,7 +977,6 @@
                         }
                     }
                 ],
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "builtin-errs",
@@ -1053,7 +1052,15 @@
         }
     },
     "checkJson": {
-        "builtins": "[unknown]",
+        "builtins": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
         "number": 42
     },
     "evalDiags": [
@@ -2034,7 +2041,6 @@
                         }
                     }
                 ],
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "builtin-errs",
@@ -2110,7 +2116,15 @@
         }
     },
     "evalJson": {
-        "builtins": "[unknown]",
+        "builtins": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
         "number": 42
     }
 }

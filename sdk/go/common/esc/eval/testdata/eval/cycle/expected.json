@@ -345,7 +345,6 @@
                         }
                     }
                 },
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "cycle",
@@ -383,7 +382,6 @@
                         }
                     }
                 },
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "cycle",
@@ -421,7 +419,6 @@
                         }
                     }
                 },
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "cycle",
@@ -478,9 +475,15 @@
         }
     },
     "checkJson": {
-        "a": "[unknown]",
-        "b": "[unknown]",
-        "c": "[unknown]"
+        "a": {
+            "p": "[unknown]"
+        },
+        "b": {
+            "p": "[unknown]"
+        },
+        "c": {
+            "p": "[unknown]"
+        }
     },
     "evalDiags": [
         {
@@ -828,7 +831,6 @@
                         }
                     }
                 },
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "cycle",
@@ -866,7 +868,6 @@
                         }
                     }
                 },
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "cycle",
@@ -904,7 +905,6 @@
                         }
                     }
                 },
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "cycle",
@@ -961,8 +961,14 @@
         }
     },
     "evalJson": {
-        "a": "[unknown]",
-        "b": "[unknown]",
-        "c": "[unknown]"
+        "a": {
+            "p": "[unknown]"
+        },
+        "b": {
+            "p": "[unknown]"
+        },
+        "c": {
+            "p": "[unknown]"
+        }
     }
 }

@@ -494,8 +494,6 @@ func (e *evalContext) evaluateArray(x *expr, repr *arrayExpr) *value {
 	array, items := make([]*value, len(repr.elements)), make([]schema.Builder, len(repr.elements))
 	for i, elem := range repr.elements {
 		ev := e.evaluateExpr(elem)
-		v.combine(ev)
-
 		array[i], items[i] = ev, ev.schema
 	}
 
@@ -516,8 +514,6 @@ func (e *evalContext) evaluateObject(x *expr, repr *objectExpr) *value {
 	object, properties := make(map[string]*value, len(keys)), make(map[string]schema.Builder, len(keys))
 	for _, k := range keys {
 		pv := e.evaluateExpr(repr.properties[k])
-		v.combine(pv)
-
 		object[k], properties[k] = pv, pv.schema
 	}
 
@@ -536,7 +532,7 @@ func (e *evalContext) evaluateInterpolate(x *expr, repr *interpolateExpr) *value
 		if i.value != nil {
 			pv := e.evaluatePropertyAccess(x, i.value.accessors)
 			s, unknown, secret := pv.toString()
-			v.unknown, v.secret = v.unknown || unknown, v.secret || secret
+			v.unknown, v.secret = v.containsUnknowns() || unknown, v.containsSecrets() || secret
 			if !unknown {
 				b.WriteString(s)
 			}
@@ -551,7 +547,7 @@ func (e *evalContext) evaluateInterpolate(x *expr, repr *interpolateExpr) *value
 	return v
 }
 
-// evalutePropertyAccess evaluates a property access.
+// evaluatePropertyAccess evaluates a property access.
 func (e *evalContext) evaluatePropertyAccess(x *expr, accessors []*propertyAccessor) *value {
 	// We make a copy of the resolved value here because evaluateExpr will merge it with its base, which mutates the
 	// value. We also stamp over the def with the provided expression in order to maintain proper error reporting.
@@ -560,7 +556,7 @@ func (e *evalContext) evaluatePropertyAccess(x *expr, accessors []*propertyAcces
 	return v
 }
 
-// evaluteExprAccess is the primary entrypoint for access evaluation, and begins with the assumption that the receiver
+// evaluateExprAccess is the primary entrypoint for access evaluation, and begins with the assumption that the receiver
 // is an expression. If the receiver is a list, object, or secret  expression, it is _not evaluated_. If the receiver
 // is any other type of expression, it is evaluated and the result is passed to evaluateValueAccess. Once all accessors
 // have been processed, the resolved expression is evaluated.
@@ -620,7 +616,7 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor)
 	return e.evaluateExpr(receiver)
 }
 
-// evaluateValueAccess evalutes a list of accessors relative to a value receiver.
+// evaluateValueAccess evaluates a list of accessors relative to a value receiver.
 func (e *evalContext) evaluateValueAccess(syntax ast.Expr, receiver *value, accessors []*propertyAccessor) *value {
 	for len(accessors) > 0 {
 		accessor := accessors[0]
@@ -665,7 +661,7 @@ func (e *evalContext) evaluateValueAccess(syntax ast.Expr, receiver *value, acce
 	return receiver
 }
 
-// evaluateValueAccess evalutes a list of accessors relative to an unknown value receiver. Unknown values are
+// evaluateValueAccess evaluates a list of accessors relative to an unknown value receiver. Unknown values are
 // synthesized for each receiver.
 func (e *evalContext) evaluateUnknownAccess(syntax ast.Expr, receiver *schema.Schema, accessors []*propertyAccessor) *value {
 	var val *value
@@ -827,7 +823,7 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 	v.schema = x.schema
 
 	inputs, ok := e.evaluateTypedExpr(repr.inputs, repr.inputSchema)
-	if !ok || inputs.unknown || e.validating || err != nil {
+	if !ok || inputs.containsUnknowns() || e.validating || err != nil {
 		v.unknown = true
 		return v
 	}

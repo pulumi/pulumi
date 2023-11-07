@@ -3945,7 +3945,6 @@
                         }
                     }
                 ],
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "schema",
@@ -4466,7 +4465,14 @@
         }
     },
     "checkJson": {
-        "accesses": "[unknown]",
+        "accesses": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
         "sink": "[unknown]",
         "source": "[unknown]"
     },

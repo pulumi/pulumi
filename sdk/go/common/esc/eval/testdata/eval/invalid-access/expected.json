@@ -3214,7 +3214,6 @@
                         }
                     }
                 ],
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "invalid-access",
@@ -3871,7 +3870,21 @@
             2,
             3
         ],
-        "errors": "[unknown]",
+        "errors": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
         "myObject": {
             "foo": "bar"
         },
@@ -7033,7 +7046,6 @@
                         }
                     }
                 ],
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "invalid-access",
@@ -8116,7 +8128,21 @@
             2,
             3
         ],
-        "errors": "[unknown]",
+        "errors": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
         "myObject": {
             "foo": "bar"
         },

@@ -71,29 +71,6 @@
         },
         {
             "Severity": 1,
-            "Summary": "expected string, got boolean",
-            "Detail": "",
-            "Subject": {
-                "Filename": "schema-error",
-                "Start": {
-                    "Line": 42,
-                    "Column": 14,
-                    "Byte": 1000
-                },
-                "End": {
-                    "Line": 42,
-                    "Column": 29,
-                    "Byte": 1015
-                }
-            },
-            "Context": null,
-            "Expression": null,
-            "EvalContext": null,
-            "Extra": null,
-            "Path": "values.sink[\"fn::open::schema\"].anyOf"
-        },
-        {
-            "Severity": 1,
             "Summary": "expected number, got boolean",
             "Detail": "",
             "Subject": {
@@ -118,6 +95,29 @@
         {
             "Severity": 1,
             "Summary": "at least one subschema must match",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-error",
+                "Start": {
+                    "Line": 42,
+                    "Column": 14,
+                    "Byte": 1000
+                },
+                "End": {
+                    "Line": 42,
+                    "Column": 29,
+                    "Byte": 1015
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected string, got boolean",
             "Detail": "",
             "Subject": {
                 "Filename": "schema-error",
@@ -255,7 +255,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "dependentReq.bar: missing required property",
+            "Summary": "bar: missing required property",
             "Detail": "",
             "Subject": {
                 "Filename": "schema-error",
@@ -275,6 +275,29 @@
             "EvalContext": null,
             "Extra": null,
             "Path": "values.sink[\"fn::open::schema\"].dependentReq"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected a string of at least length 1",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-error",
+                "Start": {
+                    "Line": 55,
+                    "Column": 18,
+                    "Byte": 1460
+                },
+                "End": {
+                    "Line": 55,
+                    "Column": 18,
+                    "Byte": 1460
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.sink[\"fn::open::schema\"].minLength"
         }
     ],
     "check": {

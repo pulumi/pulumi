@@ -752,7 +752,6 @@
                         }
                     }
                 },
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "open",
@@ -815,7 +814,12 @@
         }
     },
     "checkJson": {
-        "referent": "[unknown]",
+        "referent": {
+            "foo": "[unknown]",
+            "list": "[unknown]",
+            "object": "[unknown]",
+            "test": "[unknown]"
+        },
         "test": "[unknown]"
     },
     "eval": {

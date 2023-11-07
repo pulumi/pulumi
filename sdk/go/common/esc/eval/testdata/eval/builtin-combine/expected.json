@@ -809,8 +809,6 @@
                         }
                     }
                 ],
-                "secret": true,
-                "unknown": true,
                 "trace": {
                     "def": {
                         "environment": "builtin-combine",
@@ -900,7 +898,12 @@
         }
     },
     "checkJson": {
-        "builtins": "[secret]",
+        "builtins": [
+            "[secret]",
+            "[secret]",
+            "[secret]",
+            "[secret]"
+        ],
         "open": "[unknown]",
         "password": "[secret]"
     },
@@ -1731,7 +1734,6 @@
                         }
                     }
                 ],
-                "secret": true,
                 "trace": {
                     "def": {
                         "environment": "builtin-combine",
@@ -1851,7 +1853,12 @@
         }
     },
     "evalJson": {
-        "builtins": "[secret]",
+        "builtins": [
+            "[secret]",
+            "[secret]",
+            "[secret]",
+            "[secret]"
+        ],
         "open": {
             "foo": "bar"
         },
