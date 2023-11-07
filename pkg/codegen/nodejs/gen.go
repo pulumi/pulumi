@@ -2372,6 +2372,18 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		pluginVersion = version
 	}
 
+	// If this is an extension library than it is _not_ a plugin library itself, it will depend on the library that
+	// documents the plugin version.
+	var pulumiJSON plugin.PulumiPluginJSON
+	if pkg.Extension == nil {
+		pulumiJSON = plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     pkg.Name,
+			Version:  pluginVersion,
+		}
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
@@ -2385,12 +2397,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
-		Pulumi: plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Name,
-			Version:  pluginVersion,
-		},
+		Pulumi:          pulumiJSON,
 	}
 
 	// Copy the overlay dependencies, if any.
