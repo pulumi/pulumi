@@ -38,9 +38,11 @@ export class SubStack extends ComponentResource {
         if (!opts.id) {
             resourceInputs["source"] = args ? args.source : undefined;
             resourceInputs["inputs"] = args ? args.inputs : undefined;
+	    resourceInputs["prefixResourceNames"] = args ? args.prefixResourceNames : false;
         } else {
             resourceInputs["source"] = undefined;
             resourceInputs["inputs"] = undefined;
+	    resourceInputs["prefixResourceNames"] = false;
         }
         resourceInputs["outputs"] = undefined;
         super(rootPulumiSubStackTypeName, name, resourceInputs, opts, true);
@@ -57,4 +59,9 @@ export interface SubStackArgs {
      * The input configure the stack.
      */
     inputs?: Inputs;
+
+    /**
+     * Whether the resource name of the substack should be prefixed by the substack name.
+     */
+    prefixResourceNames?: boolean;
 }

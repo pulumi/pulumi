@@ -201,6 +201,11 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		}
 		inputs := input_source.ObjectValue()
 
+		prefixResourceNames := false
+		if inputs["prefixResourceNames"].HasValue() {
+			prefixResourceNames = inputs["prefixResourceNames"].BoolValue()
+		}
+
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
 		var monitor pulumirpc.ResourceMonitorClient
@@ -236,8 +241,9 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		// Create new monitor server (with facade)
 		// Fire up a gRPC server and start listening for incomings.
 		monitorProxy := subStackMonitorProxy{
-			monitor:     monitor,
-			subStackUrn: resource.URN(urn),
+			monitor:             monitor,
+			subStackUrn:         resource.URN(urn),
+			prefixResourceNames: prefixResourceNames,
 		}
 		monitorServer, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Cancel: cancelChannel,
@@ -329,9 +335,10 @@ var _ pulumirpc.ResourceMonitorServer = (*subStackMonitorProxy)(nil)
 
 type subStackMonitorProxy struct {
 	pulumirpc.UnimplementedResourceMonitorServer
-	monitor     pulumirpc.ResourceMonitorClient
-	subStackUrn resource.URN
-	outputs     *structpb.Struct
+	monitor             pulumirpc.ResourceMonitorClient
+	subStackUrn         resource.URN
+	prefixResourceNames bool
+	outputs             *structpb.Struct
 }
 
 func (p *subStackMonitorProxy) Invoke(
@@ -367,6 +374,9 @@ func (p *subStackMonitorProxy) RegisterResource(
 		return &pulumirpc.RegisterResourceResponse{
 			Urn: string(p.subStackUrn),
 		}, nil
+	}
+	if p.prefixResourceNames {
+		req.Name = fmt.Sprintf("%s-%s", p.subStackUrn.Name(), req.Name)
 	}
 	if req.Parent == "" {
 		req.Parent = string(p.subStackUrn)
