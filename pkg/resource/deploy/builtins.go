@@ -32,9 +32,10 @@ type builtinProvider struct {
 	backendClient BackendClient
 	resources     *resourceMap
 	plugctx       *plugin.Context
+	organization  tokens.Name
 }
 
-func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, plugctx *plugin.Context) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, plugctx *plugin.Context, organization tokens.Name) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
@@ -42,6 +43,7 @@ func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, plu
 		backendClient: backendClient,
 		resources:     resources,
 		plugctx:       plugctx,
+		organization:  organization,
 	}
 }
 
@@ -300,7 +302,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			ConfigPropertyMap: inputs,
 			DryRun:            info.DryRun,
 			Parallel:          info.Parallel,
-			Organization:      "",
+			Organization:      string(p.organization),
 		})
 
 		// Check if we were asked to Bail.  This a special random constant used for that
