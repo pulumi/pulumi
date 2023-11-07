@@ -1824,6 +1824,9 @@ type PackageInfoSpec struct {
 
 	// Language specifies additional language-specific data about the package.
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
+
+	// If this package is an extension of another package.
+	Extension PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
 }
 
 // PackageExtensionSpec is the serializable description of a Pulumi package's extension metadata.
