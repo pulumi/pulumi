@@ -209,10 +209,6 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		}
 		inputs := input_source.ObjectValue()
 
-		if inputs.ContainsUnknowns() {
-			return plugin.ConstructResult{}, fmt.Errorf("unknown inputs")
-		}
-
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
 		var monitor pulumirpc.ResourceMonitorClient
@@ -279,6 +275,13 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		project, err := workspace.LoadProject(projectPath)
 		if err != nil {
 			return plugin.ConstructResult{}, fmt.Errorf("loading project: %w", err)
+		}
+
+		if inputs.ContainsUnknowns() && info.DryRun {
+			return plugin.ConstructResult{
+				URN:     resource.URN(urn),
+				Outputs: resource.PropertyMap{"outputs": resource.MakeComputed(resource.NewStringProperty(""))},
+			}, nil
 		}
 
 		// Execute the program pointing to the new monitor server
