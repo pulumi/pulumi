@@ -387,7 +387,10 @@ func (s packageSpecSource) GetFunctionSpec(token string) (FunctionSpec, bool, er
 
 func (s packageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
 	if token == "pulumi:providers:"+s.spec.Name {
-		return s.spec.Provider, true, nil
+		if s.spec.Provider == nil {
+			return ResourceSpec{}, true, nil
+		}
+		return *s.spec.Provider, true, nil
 	}
 	spec, ok := s.spec.Resources[token]
 	return spec, ok, nil
@@ -426,7 +429,9 @@ func (s partialPackageSpecSource) GetFunctionSpec(token string) (FunctionSpec, b
 func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
 	var rawSpec json.RawMessage
 	if token == "pulumi:providers:"+s.spec.Name {
-		rawSpec = s.spec.Provider
+		if s.spec.Provider != nil {
+			rawSpec = *s.spec.Provider
+		}
 	} else {
 		raw, ok := s.spec.Resources[token]
 		if !ok {
@@ -1489,11 +1494,16 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:" + t.pkg.Name)
-	if err != nil {
-		return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
+	var provider *ResourceType
+	if t.pkg.Extension == nil {
+		var provDiags hcl.Diagnostics
+		var err error
+		provider, provDiags, err = t.bindResourceTypeDef("pulumi:providers:" + t.pkg.Name)
+		if err != nil {
+			return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
+		}
+		diags = diags.Extend(provDiags)
 	}
-	diags = diags.Extend(provDiags)
 
 	resources := slice.Prealloc[*Resource](len(tokens))
 	for _, token := range tokens {
@@ -1509,7 +1519,10 @@ func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Di
 		return resources[i].Token < resources[j].Token
 	})
 
-	return provider.Resource, resources, diags, nil
+	if provider != nil {
+		return provider.Resource, resources, diags, nil
+	}
+	return nil, resources, diags, nil
 }
 
 func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error) {

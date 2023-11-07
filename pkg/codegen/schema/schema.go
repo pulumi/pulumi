@@ -985,9 +985,12 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		return nil, fmt.Errorf("marshaling package config: %w", err)
 	}
 
-	spec.Provider, err = pkg.marshalResource(pkg.Provider)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling provider: %w", err)
+	if pkg.Provider != nil {
+		p, err := pkg.marshalResource(pkg.Provider)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling provider: %w", err)
+		}
+		spec.Provider = &p
 	}
 
 	for _, t := range pkg.Types {
@@ -1899,7 +1902,7 @@ type PackageSpec struct {
 	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`
 	// Provider describes the provider type for this package.
-	Provider ResourceSpec `json:"provider,omitempty" yaml:"provider"`
+	Provider *ResourceSpec `json:"provider,omitempty" yaml:"provider,omitempty"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
@@ -1938,7 +1941,7 @@ type PartialPackageSpec struct {
 	// defined by this package.
 	Types map[string]json.RawMessage `json:"types,omitempty" yaml:"types,omitempty"`
 	// Provider describes the provider type for this package.
-	Provider json.RawMessage `json:"provider" yaml:"provider"`
+	Provider *json.RawMessage `json:"provider,omitempty" yaml:"provider,omitempty"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
 	Resources map[string]json.RawMessage `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.

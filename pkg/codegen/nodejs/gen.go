@@ -2558,7 +2558,9 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		}
 	}
 
-	scanResource(pkg.Provider)
+	if pkg.Provider != nil {
+		scanResource(pkg.Provider)
+	}
 	for _, r := range pkg.Resources {
 		scanResource(r)
 	}
@@ -2776,7 +2778,7 @@ export function getVersion(): string {
 
 /** @internal */
 export function resourceOptsDefaults(): any {
-    return { version: getVersion()%s };
+    return { version: getVersion()%s%s };
 }
 
 /** @internal */
@@ -2799,7 +2801,16 @@ export function lazyLoad(exports: any, props: string[], loadModule: any) {
 	if url := def.PluginDownloadURL; url != "" {
 		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
 	}
-	_, err = fmt.Fprintf(w, body, pluginDownloadURL)
+	var parameter string
+	if def.Parameter != nil {
+		json, err := json.Marshal(def.Parameter)
+		if err != nil {
+			return fmt.Errorf("marshal parameter: %w", err)
+		}
+		parameter = fmt.Sprintf(", parameter: %q", json)
+	}
+
+	_, err = fmt.Fprintf(w, body, pluginDownloadURL, parameter)
 	return err
 }
 
