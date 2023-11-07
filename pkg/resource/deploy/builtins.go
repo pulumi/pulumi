@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -296,19 +297,23 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		configs := map[config.Key]string{}
 		secretKeys := make([]config.Key, 0)
 		for key, val := range inputs {
+			unwrappedVal := val
+			if val.IsOutput() {
+				unwrappedVal = val.OutputValue().Element
+			}
+			marshalled, err := plugin.MarshalPropertyValue(key, unwrappedVal, plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true})
+			if err != nil {
+				return plugin.ConstructResult{}, err
+			}
+			jsonValue, err := json.Marshal(marshalled)
+			if err != nil {
+				return plugin.ConstructResult{}, err
+			}
 			configKey := config.MustMakeKey(info.Project, string(key))
 			if val.ContainsSecrets() {
 				secretKeys = append(secretKeys, configKey)
 			}
-			if val.IsOutput() {
-				configs[configKey] = val.OutputValue().Element.StringValue()
-			} else if val.IsBool() {
-				configs[configKey] = fmt.Sprintf("%v", val.BoolValue())
-			} else if val.IsNumber() {
-				configs[configKey] = fmt.Sprintf("%v", val.NumberValue())
-			} else {
-				configs[configKey] = val.StringValue()
-			}
+			configs[configKey] = string(jsonValue)
 		}
 		// Now run the actual program.
 		progerr, bail, err := langhost.Run(plugin.RunInfo{
