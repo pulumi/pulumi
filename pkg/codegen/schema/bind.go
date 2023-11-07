@@ -232,6 +232,23 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		language[name] = json.RawMessage(v)
 	}
 
+	var extension *PackageExtension
+	if info.Extension != nil {
+		var version *semver.Version
+		if info.Extension.Version != "" {
+			v, err := semver.ParseTolerant(info.Extension.Version)
+			if err != nil {
+				diags = diags.Append(errorf("#/extension/version", "failed to parse semver: %v", err))
+			} else {
+				version = &v
+			}
+		}
+		extension = &PackageExtension{
+			Name:    info.Extension.Name,
+			Version: version,
+		}
+	}
+
 	pkg := &Package{
 		moduleFormat:        moduleFormatRegexp,
 		Name:                info.Name,
@@ -248,6 +265,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		AllowedPackageNames: info.AllowedPackageNames,
 		LogoURL:             info.LogoURL,
 		Language:            language,
+		Extension:           extension,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
