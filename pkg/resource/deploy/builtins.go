@@ -248,6 +248,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			monitor:             monitor,
 			subStackUrn:         resource.URN(urn),
 			prefixResourceNames: prefixResourceNames,
+			dependencies:        options.Dependencies,
 		}
 		monitorServer, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Cancel: cancelChannel,
@@ -367,6 +368,7 @@ type subStackMonitorProxy struct {
 	subStackUrn         resource.URN
 	prefixResourceNames bool
 	outputs             *structpb.Struct
+	dependencies        []resource.URN
 }
 
 func (p *subStackMonitorProxy) Invoke(
@@ -402,6 +404,9 @@ func (p *subStackMonitorProxy) RegisterResource(
 		return &pulumirpc.RegisterResourceResponse{
 			Urn: string(p.subStackUrn),
 		}, nil
+	}
+	for _, dep := range p.dependencies {
+		req.Dependencies = append(req.Dependencies, string(dep))
 	}
 	if p.prefixResourceNames {
 		req.Name = fmt.Sprintf("%s-%s", p.subStackUrn.Name(), req.Name)
