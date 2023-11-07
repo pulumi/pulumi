@@ -18,7 +18,7 @@ export class Resource extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'paramExample:index:Resource';
+    public static readonly __pulumiType = 'example:index:Resource';
 
     /**
      * Returns true if the given object is an instance of Resource.  This is designed to work even

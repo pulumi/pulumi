@@ -15,11 +15,11 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "paramExample:index:Resource":
+            case "example:index:Resource":
                 return new Resource(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
     },
 };
-pulumi.runtime.registerResourceModule("paramExample", "index", _module)
+pulumi.runtime.registerResourceModule("example", "index", _module)

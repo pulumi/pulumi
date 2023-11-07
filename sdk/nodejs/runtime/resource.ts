@@ -115,6 +115,10 @@ interface ResourceResolverOperation {
     // If set, the providers Delete method will not be called for this resource
     // if specified is being deleted as well.
     deletedWithURN: URN | undefined;
+
+    // The parameter and extension values for this resource.
+    parameter: any;
+    extension: boolean;
 }
 
 /**
@@ -457,6 +461,8 @@ export function registerResource(
             req.setDeletedwith(resop.deletedWithURN || "");
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
+            req.setParameter(resop.parameter);
+            req.setExtension(resop.extension);
 
             if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
                 throw new Error(
@@ -819,6 +825,8 @@ export async function prepareResource(
             import: importID,
             monitorSupportsStructuredAliases,
             deletedWithURN,
+            parameter: opts?.parameter,
+            extension: opts?.extension ?? false,
         };
     } finally {
         // free the RPC queue

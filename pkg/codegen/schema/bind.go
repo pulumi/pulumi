@@ -546,7 +546,15 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	allowedPackageNames := map[string]bool{spec.Name: true}
+	allowedPackageNames := map[string]bool{}
+	// If an extension package then the package name in tokens should be the name of the package we're extending, our
+	// schema name is just to name this library.
+	if spec.Extension != nil {
+		allowedPackageNames[spec.Extension.Name] = true
+	} else {
+		allowedPackageNames[spec.Name] = true
+	}
+
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedPackageNames[prefix] = true
 	}

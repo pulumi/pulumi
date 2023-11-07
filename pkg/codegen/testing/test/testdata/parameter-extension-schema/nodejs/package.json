@@ -5,6 +5,7 @@
         "build": "tsc"
     },
     "dependencies": {
+        "@pulumi/example": "1.2.3",
         "@pulumi/pulumi": "^3.42.0"
     },
     "devDependencies": {

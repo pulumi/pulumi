@@ -2242,7 +2242,8 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "    },\n")
 		fmt.Fprintf(w, "};\n")
 		for _, name := range registrations.SortedValues() {
-			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", mod.pkg.Name(), name)
+			pkgName := mod.pkg.PackageName()
+			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", pkgName, name)
 		}
 	}
 
@@ -2399,6 +2400,19 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		}
 		npminfo.Dependencies[depk] = depv
 	}
+	// Add the extension dependency, if any.
+	if pkg.Extension != nil {
+		var version string
+		if pkg.Extension.Version != nil {
+			version = pkg.Extension.Version.String()
+		}
+		if npminfo.Dependencies == nil {
+			npminfo.Dependencies = make(map[string]string)
+		}
+		// TODO: Hardcoded assumption that extensions are pulumi packages.
+		npminfo.Dependencies["@pulumi/"+pkg.Extension.Name] = version
+	}
+
 	for depk, depv := range info.DevDependencies {
 		if npminfo.DevDependencies == nil {
 			npminfo.DevDependencies = make(map[string]string)
@@ -2778,7 +2792,7 @@ export function getVersion(): string {
 
 /** @internal */
 export function resourceOptsDefaults(): any {
-    return { version: getVersion()%s%s };
+    return { version: getVersion()%s%s%s };
 }
 
 /** @internal */
@@ -2807,10 +2821,14 @@ export function lazyLoad(exports: any, props: string[], loadModule: any) {
 		if err != nil {
 			return fmt.Errorf("marshal parameter: %w", err)
 		}
-		parameter = fmt.Sprintf(", parameter: %q", json)
+		parameter = fmt.Sprintf(", parameter: %s", json)
+	}
+	var extension string
+	if def.Extension != nil {
+		extension = ", extension: true"
 	}
 
-	_, err = fmt.Fprintf(w, body, pluginDownloadURL, parameter)
+	_, err = fmt.Fprintf(w, body, pluginDownloadURL, parameter, extension)
 	return err
 }
 

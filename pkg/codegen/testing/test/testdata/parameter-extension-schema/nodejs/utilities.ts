@@ -50,7 +50,7 @@ export function getVersion(): string {
 
 /** @internal */
 export function resourceOptsDefaults(): any {
-    return { version: getVersion(), pluginDownloadURL: "example.com/download", parameter: "{\"data\":[1,2,3],\"hello\":\"world\"}" };
+    return { version: getVersion(), pluginDownloadURL: "example.com/download", parameter: {"data":[1,2,3],"hello":"world"}, extension: true };
 }
 
 /** @internal */

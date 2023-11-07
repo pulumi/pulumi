@@ -22,6 +22,9 @@ type PackageReference interface {
 	// Version returns the package version.
 	Version() *semver.Version
 
+	// PackageName returns the name of the package that this reference refers to. This is the same as Name, except for extension schemas.
+	PackageName() string
+
 	// Description returns the packages description.
 	Description() string
 
@@ -141,6 +144,13 @@ func (p packageDefRef) Name() string {
 
 func (p packageDefRef) Version() *semver.Version {
 	return p.pkg.Version
+}
+
+func (p packageDefRef) PackageName() string {
+	if p.pkg.Extension != nil {
+		return p.pkg.Extension.Name
+	}
+	return p.pkg.Name
 }
 
 func (p packageDefRef) Description() string {
@@ -325,6 +335,22 @@ func (p *PartialPackage) Version() *semver.Version {
 		return p.def.Version
 	}
 	return p.types.pkg.Version
+}
+
+func (p *PartialPackage) PackageName() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		if p.def.Extension != nil {
+			return p.def.Extension.Name
+		}
+		return p.def.Name
+	}
+	if p.types.pkg.Extension != nil {
+		return p.types.pkg.Extension.Name
+	}
+	return p.types.pkg.Name
 }
 
 func (p *PartialPackage) Description() string {
