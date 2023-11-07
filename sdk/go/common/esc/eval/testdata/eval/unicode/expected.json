@@ -1,5 +1,5 @@
 {
-    "environment": {
+    "check": {
         "exprs": {
             "danmark": {
                 "range": {
@@ -352,5 +352,381 @@
                 "世界"
             ]
         }
+    },
+    "checkJson": {
+        "danmark": {
+            "hovedstad": "københavn"
+        },
+        "hello": "世界",
+        "linear-b": [
+            "𐀀",
+            "𐀁"
+        ],
+        "世界": "hello"
+    },
+    "eval": {
+        "exprs": {
+            "danmark": {
+                "range": {
+                    "environment": "unicode",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 89
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 26,
+                        "byte": 110
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "hovedstad": {
+                            "type": "string",
+                            "const": "københavn"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "hovedstad"
+                    ]
+                },
+                "keyRanges": {
+                    "hovedstad": {
+                        "environment": "unicode",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 89
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 14,
+                            "byte": 98
+                        }
+                    }
+                },
+                "object": {
+                    "hovedstad": {
+                        "range": {
+                            "environment": "unicode",
+                            "begin": {
+                                "line": 8,
+                                "column": 16,
+                                "byte": 100
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 26,
+                                "byte": 110
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "københavn"
+                        },
+                        "literal": "københavn"
+                    }
+                }
+            },
+            "hello": {
+                "range": {
+                    "environment": "unicode",
+                    "begin": {
+                        "line": 2,
+                        "column": 10,
+                        "byte": 17
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 16,
+                        "byte": 23
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "世界"
+                },
+                "literal": "世界"
+            },
+            "linear-b": {
+                "range": {
+                    "environment": "unicode",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 56
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 11,
+                        "byte": 73
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "𐀀"
+                        },
+                        {
+                            "type": "string",
+                            "const": "𐀁"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "unicode",
+                            "begin": {
+                                "line": 5,
+                                "column": 7,
+                                "byte": 58
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 11,
+                                "byte": 62
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "𐀀"
+                        },
+                        "literal": "𐀀"
+                    },
+                    {
+                        "range": {
+                            "environment": "unicode",
+                            "begin": {
+                                "line": 6,
+                                "column": 7,
+                                "byte": 69
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 11,
+                                "byte": 73
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "𐀁"
+                        },
+                        "literal": "𐀁"
+                    }
+                ]
+            },
+            "世界": {
+                "range": {
+                    "environment": "unicode",
+                    "begin": {
+                        "line": 3,
+                        "column": 7,
+                        "byte": 32
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 12,
+                        "byte": 37
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hello"
+                },
+                "literal": "hello"
+            }
+        },
+        "properties": {
+            "danmark": {
+                "value": {
+                    "hovedstad": {
+                        "value": "københavn",
+                        "trace": {
+                            "def": {
+                                "environment": "unicode",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 16,
+                                    "byte": 100
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 26,
+                                    "byte": 110
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "unicode",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 89
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 26,
+                            "byte": 110
+                        }
+                    }
+                }
+            },
+            "hello": {
+                "value": "世界",
+                "trace": {
+                    "def": {
+                        "environment": "unicode",
+                        "begin": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 16,
+                            "byte": 23
+                        }
+                    }
+                }
+            },
+            "linear-b": {
+                "value": [
+                    {
+                        "value": "𐀀",
+                        "trace": {
+                            "def": {
+                                "environment": "unicode",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 58
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 11,
+                                    "byte": 62
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "𐀁",
+                        "trace": {
+                            "def": {
+                                "environment": "unicode",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 69
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 11,
+                                    "byte": 73
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "unicode",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 56
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 11,
+                            "byte": 73
+                        }
+                    }
+                }
+            },
+            "世界": {
+                "value": "hello",
+                "trace": {
+                    "def": {
+                        "environment": "unicode",
+                        "begin": {
+                            "line": 3,
+                            "column": 7,
+                            "byte": 32
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 12,
+                            "byte": 37
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "danmark": {
+                    "properties": {
+                        "hovedstad": {
+                            "type": "string",
+                            "const": "københavn"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "hovedstad"
+                    ]
+                },
+                "hello": {
+                    "type": "string",
+                    "const": "世界"
+                },
+                "linear-b": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "𐀀"
+                        },
+                        {
+                            "type": "string",
+                            "const": "𐀁"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "世界": {
+                    "type": "string",
+                    "const": "hello"
+                }
+            },
+            "type": "object",
+            "required": [
+                "danmark",
+                "hello",
+                "linear-b",
+                "世界"
+            ]
+        }
+    },
+    "evalJson": {
+        "danmark": {
+            "hovedstad": "københavn"
+        },
+        "hello": "世界",
+        "linear-b": [
+            "𐀀",
+            "𐀁"
+        ],
+        "世界": "hello"
     }
 }

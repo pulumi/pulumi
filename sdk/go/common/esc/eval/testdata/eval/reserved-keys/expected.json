@@ -47,6 +47,12 @@
             "Path": "values.context"
         }
     ],
+    "check": {
+        "schema": {
+            "type": "object"
+        }
+    },
+    "checkJson": {},
     "evalDiags": [
         {
             "Severity": 1,
@@ -95,9 +101,10 @@
             "Path": "values.context"
         }
     ],
-    "environment": {
+    "eval": {
         "schema": {
             "type": "object"
         }
-    }
+    },
+    "evalJson": {}
 }

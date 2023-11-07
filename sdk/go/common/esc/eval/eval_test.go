@@ -168,56 +168,26 @@ func sortEnvironmentDiagnostics(diags syntax.Diagnostics) {
 	})
 }
 
-func normalizeSlice[T any](ts []T, each func(t T) T) []T {
-	if len(ts) == 0 {
-		return nil
-	}
-	if each != nil {
-		for i, t := range ts {
-			ts[i] = each(t)
-		}
-	}
-	return ts
-}
-
-func normalizeMap[T any](ts map[string]T, each func(t T) T) map[string]T {
-	if len(ts) == 0 {
-		return nil
-	}
-	if each != nil {
-		for k, t := range ts {
-			ts[k] = each(t)
-		}
-	}
-	return ts
-}
-
-func normalizeSchema(s *schema.Schema) *schema.Schema {
-	if s == nil {
-		return s
-	}
-
-	s.Defs = normalizeMap(s.Defs, normalizeSchema)
-	s.AnyOf = normalizeSlice(s.AnyOf, normalizeSchema)
-	s.OneOf = normalizeSlice(s.OneOf, normalizeSchema)
-	s.PrefixItems = normalizeSlice(s.PrefixItems, normalizeSchema)
-	normalizeSchema(s.Items)
-	normalizeSchema(s.AdditionalProperties)
-	s.Properties = normalizeMap(s.Properties, normalizeSchema)
-
-	s.Enum = normalizeSlice(s.Enum, nil)
-	s.Required = normalizeSlice(s.Required, nil)
-	s.DependentRequired = normalizeMap(s.DependentRequired, func(s []string) []string { return normalizeSlice(s, nil) })
-
-	return s
+func normalize[T any](t *testing.T, v T) T {
+	var decoded T
+	marshaled, err := json.Marshal(v)
+	require.NoError(t, err)
+	dec := json.NewDecoder(bytes.NewReader(marshaled))
+	dec.UseNumber()
+	err = dec.Decode(&decoded)
+	require.NoError(t, err)
+	return decoded
 }
 
 func TestEval(t *testing.T) {
 	type expectedData struct {
-		LoadDiags   syntax.Diagnostics `json:"loadDiags,omitempty"`
-		CheckDiags  syntax.Diagnostics `json:"checkDiags,omitempty"`
-		EvalDiags   syntax.Diagnostics `json:"evalDiags,omitempty"`
-		Environment *esc.Environment   `json:"environment,omitempty"`
+		LoadDiags  syntax.Diagnostics `json:"loadDiags,omitempty"`
+		CheckDiags syntax.Diagnostics `json:"checkDiags,omitempty"`
+		Check      *esc.Environment   `json:"check,omitempty"`
+		CheckJSON  any                `json:"checkJson,omitempty"`
+		EvalDiags  syntax.Diagnostics `json:"evalDiags,omitempty"`
+		Eval       *esc.Environment   `json:"eval,omitempty"`
+		EvalJSON   any                `json:"evalJson,omitempty"`
 	}
 
 	path := filepath.Join("testdata", "eval")
@@ -236,18 +206,33 @@ func TestEval(t *testing.T) {
 				require.NoError(t, err)
 				sortEnvironmentDiagnostics(loadDiags)
 
-				_, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+				check, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
 				sortEnvironmentDiagnostics(checkDiags)
 
 				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{}, &testEnvironments{basePath})
 				sortEnvironmentDiagnostics(evalDiags)
 
+				var checkJSON any
+				var evalJSON any
+				if check != nil {
+					check = normalize(t, check)
+					checkJSON = esc.NewValue(check.Properties).ToJSON(true)
+				}
+				if actual != nil {
+					actual = normalize(t, actual)
+					evalJSON = esc.NewValue(actual.Properties).ToJSON(true)
+				}
+
 				bytes, err := json.MarshalIndent(expectedData{
-					LoadDiags:   loadDiags,
-					CheckDiags:  checkDiags,
-					EvalDiags:   evalDiags,
-					Environment: actual,
+					LoadDiags:  loadDiags,
+					CheckDiags: checkDiags,
+					EvalDiags:  evalDiags,
+					Check:      check,
+					Eval:       actual,
+					EvalJSON:   evalJSON,
+					CheckJSON:  checkJSON,
 				}, "", "    ")
+				bytes = append(bytes, '\n')
 				require.NoError(t, err)
 
 				err = os.WriteFile(expectedPath, bytes, 0600)
@@ -269,7 +254,7 @@ func TestEval(t *testing.T) {
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.LoadDiags, diags)
 
-			_, diags = CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+			check, diags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
@@ -278,21 +263,22 @@ func TestEval(t *testing.T) {
 			require.Equal(t, expected.EvalDiags, diags)
 
 			// work around a schema comparison issue due to the 'compiled' field by roundtripping through JSON
-			actualBytes, err := json.Marshal(actual)
-			require.NoError(t, err)
-			dec = json.NewDecoder(bytes.NewReader(actualBytes))
-			dec.UseNumber()
-			err = dec.Decode(&actual)
-			require.NoError(t, err)
+			check = normalize(t, check)
+			actual = normalize(t, actual)
 
 			// work around a comparison issue when comparing nil slices/maps against zero-length slices/maps
 			if actual != nil {
-				actual.Exprs = normalizeMap(actual.Exprs, nil)
-				actual.Properties = normalizeMap(actual.Properties, nil)
-				normalizeSchema(actual.Schema)
+				evalJSON := esc.NewValue(actual.Properties).ToJSON(true)
+				assert.Equal(t, expected.EvalJSON, evalJSON)
 			}
 
-			assert.Equal(t, expected.Environment, actual)
+			if check != nil {
+				checkJSON := esc.NewValue(check.Properties).ToJSON(true)
+				assert.Equal(t, expected.CheckJSON, checkJSON)
+			}
+
+			assert.Equal(t, expected.Check, check)
+			assert.Equal(t, expected.Eval, actual)
 		})
 	}
 }

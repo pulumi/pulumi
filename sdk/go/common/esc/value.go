@@ -69,15 +69,17 @@ type Trace struct {
 
 func (v *Value) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Value  json.RawMessage `json:"value,omitempty"`
-		Secret bool            `json:"secret,omitempty"`
-		Trace  Trace           `json:"trace"`
+		Value   json.RawMessage `json:"value,omitempty"`
+		Secret  bool            `json:"secret,omitempty"`
+		Unknown bool            `json:"unknown,omitempty"`
+		Trace   Trace           `json:"trace"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 
 	v.Secret = raw.Secret
+	v.Unknown = raw.Unknown
 	v.Trace = raw.Trace
 
 	if len(raw.Value) != 0 {
