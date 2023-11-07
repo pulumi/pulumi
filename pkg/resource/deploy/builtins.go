@@ -197,16 +197,17 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		if err != nil {
 			return plugin.ConstructResult{}, fmt.Errorf("error reading source: %w", err)
 		}
-		input_source := inputs["inputs"]
-		if input_source.IsNull() {
-			input_source = resource.NewObjectProperty(resource.PropertyMap{})
-		}
-		inputs := input_source.ObjectValue()
 
 		prefixResourceNames := false
 		if inputs["prefixResourceNames"].HasValue() {
 			prefixResourceNames = inputs["prefixResourceNames"].BoolValue()
 		}
+
+		input_source := inputs["inputs"]
+		if input_source.IsNull() {
+			input_source = resource.NewObjectProperty(resource.PropertyMap{})
+		}
+		inputs := input_source.ObjectValue()
 
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
