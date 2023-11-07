@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
@@ -188,6 +189,11 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 ) (plugin.ConstructResult, error) {
 	if typ == "pulumi:pulumi:SubStack" {
 		source := inputs["source"].StringValue()
+
+		_, err := os.Stat(source)
+		if err != nil {
+			return plugin.ConstructResult{}, fmt.Errorf("error reading source: %w", err)
+		}
 		// inputs := inputs["inputs"].ObjectValue()
 
 		// grpc channel -> client for resource monitor
