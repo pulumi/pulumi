@@ -1,7 +1,0 @@
-{
-    "builtins": "[secret]",
-    "open": {
-        "foo": "bar"
-    },
-    "password": "[secret]"
-}

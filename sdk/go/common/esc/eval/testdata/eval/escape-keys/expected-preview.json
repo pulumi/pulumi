@@ -1,7 +1,0 @@
-{
-    "object": {
-        "\"quoted\"": "baz",
-        "0leadingDigit": "bar",
-        "with-hyphen": "foo"
-    }
-}
