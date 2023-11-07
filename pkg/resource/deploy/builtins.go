@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"q"
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
@@ -292,12 +291,8 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
 		configs := map[config.Key]string{}
-		q.Q(inputs)
 		secretKeys := make([]config.Key, 0)
 		for key, val := range inputs {
-			q.Q(key)
-			q.Q(val)
-			q.Q(val.IsSecret())
 			configKey := config.MustMakeKey(info.Project, string(key))
 			if val.ContainsSecrets() {
 				secretKeys = append(secretKeys, configKey)
@@ -312,7 +307,6 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 				configs[configKey] = val.StringValue()
 			}
 		}
-		q.Q(configs)
 		// Now run the actual program.
 		progerr, bail, err := langhost.Run(plugin.RunInfo{
 			MonitorAddress:    fmt.Sprintf("127.0.0.1:%d", monitorServer.Port),
