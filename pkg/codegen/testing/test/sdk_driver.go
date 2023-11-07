@@ -361,6 +361,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
 		Skip:        allLanguages.Except("python/any"),
 	},
+	{
+		Directory:   "parameter-extension-schema",
+		Description: "Test that parameterized extensions work.",
+	},
 }
 
 var genSDKOnly bool

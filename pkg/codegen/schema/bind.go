@@ -177,12 +177,29 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(typeDiags)
 
+	var extension *PackageExtension
+	if spec.Extension != nil {
+		var version *semver.Version
+		if spec.Extension.Version != "" {
+			v, err := semver.ParseTolerant(spec.Extension.Version)
+			if err != nil {
+				diags.Append(errorf("#/extension/version", "failed to parse semver: %v", err))
+			}
+			version = &v
+		}
+		extension = &PackageExtension{
+			Name:    spec.Extension.Name,
+			Version: version,
+		}
+	}
+
 	pkg := types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
+	pkg.Extension = extension
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
