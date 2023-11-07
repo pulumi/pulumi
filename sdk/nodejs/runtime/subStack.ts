@@ -42,7 +42,8 @@ export class SubStack extends ComponentResource {
             resourceInputs["source"] = undefined;
             resourceInputs["inputs"] = undefined;
         }
-        super(rootPulumiSubStackTypeName, name, args, opts, true);
+        resourceInputs["outputs"] = undefined;
+        super(rootPulumiSubStackTypeName, name, resourceInputs, opts, true);
     }
 }
 

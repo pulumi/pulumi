@@ -9,9 +9,9 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -352,7 +352,13 @@ func (p *subStackMonitorProxy) RegisterResourceOutputs(
 	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest,
 ) (*pbempty.Empty, error) {
 	if req.Urn == string(p.subStackUrn) {
-		p.outputs = req.Outputs
+		outputs := structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"outputs": structpb.NewStructValue(req.Outputs),
+			},
+		}
+		p.outputs = &outputs
+		req.Outputs = &outputs
 	}
 	return p.monitor.RegisterResourceOutputs(ctx, req)
 }
