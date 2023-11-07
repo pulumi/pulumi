@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"q"
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
@@ -209,6 +210,10 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		}
 		inputs := input_source.ObjectValue()
 
+		if inputs.ContainsUnknowns() {
+			return plugin.ConstructResult{}, fmt.Errorf("unknown inputs")
+		}
+
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
 		var monitor pulumirpc.ResourceMonitorClient
@@ -286,10 +291,28 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		}
 		contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
-		configMap := map[config.Key]string{}
+		configs := map[config.Key]string{}
+		q.Q(inputs)
+		secretKeys := make([]config.Key, 0)
 		for key, val := range inputs {
-			configMap[config.MustMakeKey(info.Project, string(key))] = val.StringValue()
+			q.Q(key)
+			q.Q(val)
+			q.Q(val.IsSecret())
+			configKey := config.MustMakeKey(info.Project, string(key))
+			if val.ContainsSecrets() {
+				secretKeys = append(secretKeys, configKey)
+			}
+			if val.IsOutput() {
+				configs[configKey] = val.OutputValue().Element.StringValue()
+			} else if val.IsBool() {
+				configs[configKey] = fmt.Sprintf("%v", val.BoolValue())
+			} else if val.IsNumber() {
+				configs[configKey] = fmt.Sprintf("%v", val.NumberValue())
+			} else {
+				configs[configKey] = val.StringValue()
+			}
 		}
+		q.Q(configs)
 		// Now run the actual program.
 		progerr, bail, err := langhost.Run(plugin.RunInfo{
 			MonitorAddress:    fmt.Sprintf("127.0.0.1:%d", monitorServer.Port),
@@ -298,8 +321,8 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			Pwd:               resolvedSource,
 			Program:           resolvedSource,
 			Args:              []string{}, // TODO: make this an arg
-			Config:            configMap,
-			ConfigSecretKeys:  []config.Key{},
+			Config:            configs,
+			ConfigSecretKeys:  secretKeys,
 			ConfigPropertyMap: inputs,
 			DryRun:            info.DryRun,
 			Parallel:          info.Parallel,
