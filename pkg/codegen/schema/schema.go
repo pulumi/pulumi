@@ -972,6 +972,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		Functions:           map[string]FunctionSpec{},
 		AllowedPackageNames: pkg.AllowedPackageNames,
 		Extension:           extension,
+		Parameter:           pkg.Parameter,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -1843,6 +1844,8 @@ type PackageInfoSpec struct {
 
 	// If this package is an extension of another package.
 	Extension *PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
+	// If this package is generated for a parameterized provider.
+	Parameter interface{} `json:"parameter,omitempty" yaml:"parameter,omitempty"`
 }
 
 // PackageExtensionSpec is the serializable description of a Pulumi package's extension metadata.
@@ -1895,6 +1898,8 @@ type PackageSpec struct {
 
 	// If this package is an extension of another package.
 	Extension *PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
+	// If this package is generated for a parameterized provider.
+	Parameter interface{} `json:"parameter,omitempty" yaml:"parameter,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config,omitempty" yaml:"config"`
@@ -1927,6 +1932,7 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		AllowedPackageNames: p.AllowedPackageNames,
 		Language:            p.Language,
 		Extension:           p.Extension,
+		Parameter:           p.Parameter,
 	}
 }
 

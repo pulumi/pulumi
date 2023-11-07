@@ -200,6 +200,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.Resources = resources
 	pkg.Functions = functions
 	pkg.Extension = extension
+	pkg.Parameter = spec.Parameter
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
@@ -283,6 +284,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		LogoURL:             info.LogoURL,
 		Language:            language,
 		Extension:           extension,
+		Parameter:           info.Parameter,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
