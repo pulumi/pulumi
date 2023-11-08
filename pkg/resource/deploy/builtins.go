@@ -195,11 +195,20 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		source := inputs["source"].StringValue()
 
 		_, err := os.Stat(source)
-		if err != nil {
-			return plugin.ConstructResult{}, fmt.Errorf("error reading source: %w", err)
+		if os.IsNotExist(err) {
+			template, err := workspace.RetrieveTemplates(source, false, workspace.TemplateKindPulumiProject)
+			if err != nil {
+				return plugin.ConstructResult{}, err
+			}
+			defer func() {
+				contract.IgnoreError(template.Delete())
+			}()
+			source = template.SubDirectory
+		} else if err != nil {
+			return plugin.ConstructResult{}, err
 		}
 
-		prefixResourceNames := false
+		prefixResourceNames := true
 		if inputs["prefixResourceNames"].HasValue() {
 			prefixResourceNames = inputs["prefixResourceNames"].BoolValue()
 		}
