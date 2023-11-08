@@ -3481,11 +3481,38 @@ def go_deps():
         sum = "h1:4WV3X7OEVcChIwbSG+JxhZDdmq/q7lFPaSjHRYlPwmI=",
         version = "v0.5.6",
     )
+
+    go_repository(
+        name = "com_github_pulumi_pulumi_aws_sdk_v5",
+        importpath = "github.com/pulumi/pulumi-aws/sdk/v5",
+        version = "5.42.0",
+    )
+
+    go_repository(
+        name = "com_github_pulumi_pulumi_azure_native_sdk",
+        importpath = "github.com/pulumi/pulumi-azure-native/sdk",
+    )
+    go_repository(
+        name = "com_github_pulumi_pulumi_azure_sdk_v4",
+        importpath = "github.com/pulumi/pulumi-azure/sdk/v4",
+    )
     go_repository(
         name = "com_github_pulumi_pulumi_java_pkg",
         importpath = "github.com/pulumi/pulumi-java/pkg",
         sum = "h1:c8mYsalnRXA2Ibgvv6scefOn6mW1Vb0UT0mcDqjsivQ=",
         version = "v0.9.8",
+    )
+
+    go_repository(
+        name = "com_github_pulumi_pulumi_kubernetes_sdk_v3",
+        importpath = "github.com/pulumi/pulumi-kubernetes/sdk/v3",
+    )
+
+    go_repository(
+        name = "com_github_pulumi_pulumi_pkg_v3",
+        importpath = "github.com/pulumi/pulumi/pkg/v3",
+        sum = "h1:+P8fE0Ja8Q93G5uKBAtxGlc9xt+z+E7+7Ggx366Bb38=",
+        version = "v3.90.0",
     )
     go_repository(
         name = "com_github_pulumi_pulumi_random_sdk_v4",
@@ -3493,41 +3520,20 @@ def go_deps():
         sum = "h1:ZlXB3mx1YvAjs+jm59rcpvfl1J7dpLOBOxUb5vEPkZk=",
         version = "v4.8.2",
     )
+
+    go_repository(
+        name = "com_github_pulumi_pulumi_sdk_v3",
+        importpath = "github.com/pulumi/pulumi/sdk/v3",
+        sum = "h1:+P8fE0Ja8Q93G5uKBAtxGlc9xt+z+E7+7Ggx366Bb38=",
+        version = "v3.90.0",
+    )
     go_repository(
         name = "com_github_pulumi_pulumi_yaml",
         importpath = "github.com/pulumi/pulumi-yaml",
         sum = "h1:W6BeUBLhDrJ2GSU0em1AUVelG9PBI4ABY61DdhJOO3E=",
         version = "v1.2.2",
     )
-    go_repository(
-        name = "com_github_pulumi_pulumi_aws_sdk_v5",
-	importpath = "github.com/pulumi/pulumi-aws/sdk/v5",
-	version = "5.42.0",
-    )
-    go_repository(
-        name = "com_github_pulumi_pulumi_azure_sdk_v4",
-	importpath = "github.com/pulumi/pulumi-azure/sdk/v4",
-    )
-    go_repository(
-        name = "com_github_pulumi_pulumi_azure_native_sdk",
-	importpath = "github.com/pulumi/pulumi-azure-native/sdk",
-	)
-    go_repository(
-        name = "com_github_pulumi_pulumi_kubernetes_sdk_v3",
-	importpath = "github.com/pulumi/pulumi-kubernetes/sdk/v3",
-    )
-    go_repository(
-        name = "com_github_pulumi_pulumi_sdk_v3",
-	importpath = "github.com/pulumi/pulumi/sdk/v3",
-	sum = "h1:+P8fE0Ja8Q93G5uKBAtxGlc9xt+z+E7+7Ggx366Bb38=",
-	version = "v3.90.0",
-    )
-    go_repository(
-        name = "com_github_pulumi_pulumi_pkg_v3",
-	importpath = "github.com/pulumi/pulumi/pkg/v3",
-	sum = "h1:+P8fE0Ja8Q93G5uKBAtxGlc9xt+z+E7+7Ggx366Bb38=",
-	version = "v3.90.0",
-    )
+
     go_repository(
         name = "com_github_rakyll_embedmd",
         importpath = "github.com/rakyll/embedmd",
