@@ -108,7 +108,12 @@ func schemaFromSchemaSource(packageSource string, args []string) (*schema.Packag
 	}
 	defer p.Close()
 
-	bytes, err := p.GetSchema(0)
+	var bytes []byte
+	if len(args) > 0 {
+		bytes, err = p.GetSchema(1, args[0])
+	} else {
+		bytes, err = p.GetSchema(0, "")
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -45,7 +45,7 @@ func (p *builtinProvider) Pkg() tokens.Package {
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.
-func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
+func (p *builtinProvider) GetSchema(version int, key string) ([]byte, error) {
 	return []byte("{}"), nil
 }
 

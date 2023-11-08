@@ -547,10 +547,15 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	allowedPackageNames := map[string]bool{}
-	// If an extension package then the package name in tokens should be the name of the package we're extending, our
-	// schema name is just to name this library.
 	if spec.Extension != nil {
-		allowedPackageNames[spec.Extension.Name] = true
+		// If an extension package then the package name in tokens should be the name of the package we're extending,
+		// our schema name is just to name this library. Unless this is a parameterization, in which case the allowed
+		// name is the package name because these are new types.
+		if spec.Parameter != nil {
+			allowedPackageNames[spec.Name] = true
+		} else {
+			allowedPackageNames[spec.Extension.Name] = true
+		}
 	} else {
 		allowedPackageNames[spec.Name] = true
 	}

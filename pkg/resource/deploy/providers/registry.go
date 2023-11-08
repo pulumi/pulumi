@@ -317,7 +317,7 @@ func (r *Registry) label() string {
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.
-func (r *Registry) GetSchema(version int) ([]byte, error) {
+func (r *Registry) GetSchema(version int, key string) ([]byte, error) {
 	contract.Failf("GetSchema must not be called on the provider registry")
 
 	return nil, errors.New("the provider registry has no schema")
