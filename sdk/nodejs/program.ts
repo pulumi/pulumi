@@ -15,13 +15,7 @@
 import { Inputs, Output } from "./output";
 import { ComponentResource, ComponentResourceOptions } from "./resource";
 
-/**
- * subStackTypeName is the type name that should be used to construct the substack
- * resources allocated by a deployment.
- */
-export const subStackTypeName = "pulumi:index:Stack";
-
-export class Stack extends ComponentResource {
+export class Program extends ComponentResource {
     /**
      * The outputs of this stack, if the `init` callback exited normally.
      */
@@ -40,7 +34,7 @@ export class Stack extends ComponentResource {
             resourceInputs["prefixResourceNames"] = true;
         }
         resourceInputs["outputs"] = undefined;
-        super(subStackTypeName, name, resourceInputs, opts, true);
+        super("pulumi:pulumi:Program", name, resourceInputs, opts, true);
     }
 }
 

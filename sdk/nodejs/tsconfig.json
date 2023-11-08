@@ -27,7 +27,7 @@
         "stackReference.ts",
         "utils.ts",
         "version.ts",
-        "stack.ts",
+        "program.ts",
 
         "asset/index.ts",
         "asset/asset.ts",
