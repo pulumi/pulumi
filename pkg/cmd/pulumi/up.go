@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/ryboe/q"
 	"math"
 	"os"
 
@@ -86,10 +88,15 @@ func newUpCmd() *cobra.Command {
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions, cmd *cobra.Command) result.Result {
+		q.Q(stackName)
 		s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
 		if err != nil {
 			return result.FromError(err)
 		}
+		q.Q("*****************")
+		q.Q("setting stack name to", s.Ref().Name().String())
+		state.SetCurrentStack(s.Ref().String())
+		q.Q("*****************")
 
 		// Save any config values passed via flags.
 		if err := parseAndSaveConfigArray(s, configArray, path); err != nil {

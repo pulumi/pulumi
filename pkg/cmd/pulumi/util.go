@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"os"
 	"os/exec"
@@ -310,6 +311,8 @@ func (o stackLoadOption) SetCurrent() bool {
 func requireStack(ctx context.Context,
 	stackName string, lopt stackLoadOption, opts display.Options,
 ) (backend.Stack, error) {
+	q.Q("DO I HAVE A STACK NAME")
+	q.Q(stackName)
 	if stackName == "" {
 		return requireCurrentStack(ctx, lopt, opts)
 	}
