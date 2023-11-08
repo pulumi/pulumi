@@ -8,7 +8,7 @@ go_library(
         "require.go",
         "try.go",
     ],
-    importpath = "github.com/example/project/sdk/go/pulumi/config",
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi/config",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/pulumi:go_default_library",
@@ -24,4 +24,10 @@ go_test(
         "//sdk/go/pulumi:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":config",
+    visibility = ["//visibility:public"],
 )

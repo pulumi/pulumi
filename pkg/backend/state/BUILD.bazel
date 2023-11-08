@@ -3,10 +3,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "state",
     srcs = ["stacks.go"],
-    importpath = "github.com/example/project/pkg/backend/state",
+    importpath = "github.com/pulumi/pulumi/pkg/backend/state",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/backend:go_default_library",
         "//sdk/go/common/workspace:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":state",
+    visibility = ["//visibility:public"],
 )

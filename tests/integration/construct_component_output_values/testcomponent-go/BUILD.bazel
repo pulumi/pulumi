@@ -6,7 +6,7 @@ go_library(
         "main.go",
         "pulumiTypes.go",
     ],
-    importpath = "github.com/example/project/tests/integration/construct_component_output_values/testcomponent-go",
+    importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_output_values/testcomponent-go",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_blang_semver//:semver",

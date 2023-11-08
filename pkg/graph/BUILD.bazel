@@ -6,6 +6,12 @@ go_library(
         "graph.go",
         "topsort.go",
     ],
-    importpath = "github.com/example/project/pkg/graph",
+    importpath = "github.com/pulumi/pulumi/pkg/graph",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":graph",
     visibility = ["//visibility:public"],
 )

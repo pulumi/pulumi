@@ -7,7 +7,7 @@ go_library(
         "mock.go",
         "term.go",
     ],
-    importpath = "github.com/example/project/pkg/backend/display/internal/terminal",
+    importpath = "github.com/pulumi/pulumi/pkg/backend/display/internal/terminal",
     visibility = ["//pkg/backend/display:__subpackages__"],
     deps = [
         "@com_github_ijc_gotty//:Gotty",
@@ -24,4 +24,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":terminal",
+    visibility = ["//pkg/backend/display:__subpackages__"],
 )

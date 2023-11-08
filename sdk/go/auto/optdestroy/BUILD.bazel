@@ -3,10 +3,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "optdestroy",
     srcs = ["optdestroy.go"],
-    importpath = "github.com/example/project/sdk/go/auto/optdestroy",
+    importpath = "github.com/pulumi/pulumi/sdk/go/auto/optdestroy",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/auto/debug:go_default_library",
         "//sdk/go/auto/events:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":optdestroy",
+    visibility = ["//visibility:public"],
 )

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "httputil",
     srcs = ["http.go"],
-    importpath = "github.com/example/project/sdk/go/common/util/httputil",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/httputil",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/contract:go_default_library",
@@ -19,4 +19,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@org_golang_x_net//http2",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":httputil",
+    visibility = ["//visibility:public"],
 )

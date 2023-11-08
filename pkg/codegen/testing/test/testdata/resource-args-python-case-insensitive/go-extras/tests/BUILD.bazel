@@ -1,7 +1,0 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
-
-go_test(
-    name = "tests_test",
-    srcs = ["go_test.go"],
-    deps = ["@com_github_stretchr_testify//assert"],
-)

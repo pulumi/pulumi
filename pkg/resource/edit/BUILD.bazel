@@ -7,7 +7,7 @@ go_library(
         "errors.go",
         "operations.go",
     ],
-    importpath = "github.com/example/project/pkg/resource/edit",
+    importpath = "github.com/pulumi/pulumi/pkg/resource/edit",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/resource/deploy:go_default_library",
@@ -34,4 +34,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":edit",
+    visibility = ["//visibility:public"],
 )

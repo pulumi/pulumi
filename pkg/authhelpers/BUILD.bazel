@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "authhelpers",
     srcs = ["gcpauth.go"],
-    importpath = "github.com/example/project/pkg/authhelpers",
+    importpath = "github.com/pulumi/pulumi/pkg/authhelpers",
     visibility = ["//visibility:public"],
     deps = [
         "@com_google_cloud_go_storage//:storage",
@@ -20,4 +20,10 @@ go_test(
     srcs = ["gcpauth_test.go"],
     embed = [":authhelpers"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":authhelpers",
+    visibility = ["//visibility:public"],
 )

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "iotest",
     srcs = ["log_writer.go"],
-    importpath = "github.com/example/project/sdk/go/common/testing/iotest",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/testing/iotest",
     visibility = ["//visibility:public"],
 )
 
@@ -15,4 +15,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":iotest",
+    visibility = ["//visibility:public"],
 )

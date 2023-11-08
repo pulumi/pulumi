@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "validation",
     srcs = ["stack.go"],
-    importpath = "github.com/example/project/pkg/util/validation",
+    importpath = "github.com/pulumi/pulumi/pkg/util/validation",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/apitype:go_default_library",
@@ -19,4 +19,10 @@ go_test(
         "//sdk/go/common/apitype:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":validation",
+    visibility = ["//visibility:public"],
 )

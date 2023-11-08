@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "report",
     srcs = ["report.go"],
-    importpath = "github.com/example/project/pkg/codegen/report",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/report",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hashicorp_hcl_v2//:hcl",
@@ -28,4 +28,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":report",
+    visibility = ["//visibility:public"],
 )

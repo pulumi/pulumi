@@ -23,3 +23,9 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go/testing",
     visibility = ["//visibility:public"],
 )
+
+alias(
+    name = "go_default_library",
+    actual = ":testing",
+    visibility = ["//visibility:public"],
+)

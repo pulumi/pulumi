@@ -22,3 +22,9 @@ go_library(
     importpath = "google.golang.org/genproto/googleapis/rpc/status",
     visibility = ["//visibility:public"],
 )
+
+alias(
+    name = "go_default_library",
+    actual = ":status",
+    visibility = ["//visibility:public"],
+)

@@ -23,7 +23,7 @@ go_library(
         "types_builtins.go",
         "urnset.go",
     ],
-    importpath = "github.com/example/project/sdk/go/pulumi",
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",
@@ -77,4 +77,10 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":pulumi",
+    visibility = ["//visibility:public"],
 )

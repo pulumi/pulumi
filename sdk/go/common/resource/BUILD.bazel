@@ -18,7 +18,7 @@ go_library(
         "status.go",
         "urn.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/resource",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/resource",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/slice:go_default_library",
@@ -52,4 +52,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":resource",
+    visibility = ["//visibility:public"],
 )

@@ -6,10 +6,16 @@ go_library(
         "func.go",
         "gen.go",
     ],
-    importpath = "github.com/example/project/pkg/codegen/hcl2/model/format",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/hcl2/model/format",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/codegen/hcl2/model:go_default_library",
         "//sdk/go/common/util/contract:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":format",
+    visibility = ["//visibility:public"],
 )

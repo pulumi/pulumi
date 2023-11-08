@@ -20,7 +20,7 @@ go_library(
         "testdata/snapshots_bad/projects/l1-empty/Pulumi.yaml",
         "testdata/snapshots_bad/sdks/simple-1.0.0/test.txt",
     ],
-    importpath = "github.com/example/project/cmd/pulumi-test-language",
+    importpath = "github.com/pulumi/pulumi/cmd/pulumi-test-language",
     visibility = ["//visibility:private"],
     deps = [
         "//proto/pulumi:go",

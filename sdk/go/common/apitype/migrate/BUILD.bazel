@@ -9,7 +9,7 @@ go_library(
         "operation.go",
         "resource.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/apitype/migrate",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/apitype/migrate",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/apitype:go_default_library",
@@ -33,4 +33,10 @@ go_test(
         "//sdk/go/common/tokens:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":migrate",
+    visibility = ["//visibility:public"],
 )

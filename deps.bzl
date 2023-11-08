@@ -3500,6 +3500,23 @@ def go_deps():
         version = "v1.2.2",
     )
     go_repository(
+        name = "com_github_pulumi_pulumi_aws_sdk_v5",
+	importpath = "github.com/pulumi/pulumi-aws/sdk/v5",
+	version = "5.42.0",
+    )
+    go_repository(
+        name = "com_github_pulumi_pulumi_azure_sdk_v4",
+	importpath = "github.com/pulumi/pulumi-azure/sdk/v4",
+    )
+    go_repository(
+        name = "com_github_pulumi_pulumi_azure_native_sdk",
+	importpath = "github.com/pulumi/pulumi-azure-native/sdk",
+	)
+    go_repository(
+        name = "com_github_pulumi_pulumi_kubernetes_sdk_v3",
+	importpath = "github.com/pulumi/pulumi-kubernetes/sdk/v3",
+    )
+    go_repository(
         name = "com_github_rakyll_embedmd",
         importpath = "github.com/rakyll/embedmd",
         sum = "h1:1jfy6i1g66ijpffgfaF/7pIFYZnSZzvo9P9DFkFmRIM=",

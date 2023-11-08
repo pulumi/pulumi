@@ -14,7 +14,7 @@ go_library(
         "state.go",
         "store.go",
     ],
-    importpath = "github.com/example/project/pkg/backend/filestate",
+    importpath = "github.com/pulumi/pulumi/pkg/backend/filestate",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_gofrs_uuid//:uuid",
@@ -94,4 +94,10 @@ go_test(
         "@dev_gocloud//blob/memblob",
         "@net_pgregory_rapid//:rapid",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":filestate",
+    visibility = ["//visibility:public"],
 )

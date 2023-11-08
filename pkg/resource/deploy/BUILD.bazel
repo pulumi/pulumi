@@ -22,7 +22,7 @@ go_library(
         "step_generator.go",
         "target.go",
     ],
-    importpath = "github.com/example/project/pkg/resource/deploy",
+    importpath = "github.com/pulumi/pulumi/pkg/resource/deploy",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",
@@ -93,4 +93,10 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//metadata",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":deploy",
+    visibility = ["//visibility:public"],
 )

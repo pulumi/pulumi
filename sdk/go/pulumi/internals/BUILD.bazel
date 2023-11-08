@@ -6,7 +6,7 @@ go_library(
         "empty.s",
         "outputs.go",
     ],
-    importpath = "github.com/example/project/sdk/go/pulumi/internals",
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi/internals",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/pulumi:go_default_library"],
 )
@@ -20,4 +20,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":internals",
+    visibility = ["//visibility:public"],
 )

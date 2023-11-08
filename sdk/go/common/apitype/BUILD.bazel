@@ -23,7 +23,7 @@ go_library(
         "property-values.json",
         "resources.json",
     ],
-    importpath = "github.com/example/project/sdk/go/common/apitype",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/apitype",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_pulumi_esc//:esc",
@@ -34,4 +34,10 @@ go_library(
         "//sdk/go/common/workspace:go_default_library",
         "@in_gopkg_yaml_v3//:yaml_v3",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":apitype",
+    visibility = ["//visibility:public"],
 )

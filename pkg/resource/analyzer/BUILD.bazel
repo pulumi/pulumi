@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "analyzer",
     srcs = ["config.go"],
-    importpath = "github.com/example/project/pkg/resource/analyzer",
+    importpath = "github.com/pulumi/pulumi/pkg/resource/analyzer",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/apitype:go_default_library",
@@ -22,4 +22,10 @@ go_test(
         "//sdk/go/common/resource/plugin:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":analyzer",
+    visibility = ["//visibility:public"],
 )

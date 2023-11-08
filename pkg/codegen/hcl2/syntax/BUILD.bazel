@@ -8,7 +8,7 @@ go_library(
         "tokens.go",
         "utilities.go",
     ],
-    importpath = "github.com/example/project/pkg/codegen/hcl2/syntax",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hashicorp_hcl_v2//:hcl",
@@ -32,4 +32,10 @@ go_test(
         "@com_github_zclconf_go_cty//cty",
         "@com_github_zclconf_go_cty//cty/convert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":syntax",
+    visibility = ["//visibility:public"],
 )

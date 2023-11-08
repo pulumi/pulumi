@@ -16,7 +16,7 @@ go_library(
         "updates.go",
         "watch.go",
     ],
-    importpath = "github.com/example/project/pkg/backend",
+    importpath = "github.com/pulumi/pulumi/pkg/backend",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_alecaivazis_survey_v2//:survey",
@@ -73,4 +73,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":backend",
+    visibility = ["//visibility:public"],
 )

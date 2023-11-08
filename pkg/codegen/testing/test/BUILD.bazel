@@ -8,7 +8,7 @@ go_library(
         "sdk_driver.go",
         "type_driver.go",
     ],
-    importpath = "github.com/example/project/pkg/codegen/testing/test",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/testing/test",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",
@@ -33,4 +33,10 @@ go_test(
     srcs = ["program_driver_test.go"],
     embed = [":test"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":test",
+    visibility = ["//visibility:public"],
 )

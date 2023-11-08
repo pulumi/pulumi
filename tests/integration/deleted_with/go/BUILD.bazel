@@ -7,7 +7,7 @@ go_library(
         "main.go",
         "random.go",
     ],
-    importpath = "github.com/example/project/tests/integration/deleted_with/go",
+    importpath = "github.com/pulumi/pulumi/tests/integration/deleted_with/go",
     visibility = ["//visibility:private"],
     deps = ["//sdk/go/pulumi:go_default_library"],
 )

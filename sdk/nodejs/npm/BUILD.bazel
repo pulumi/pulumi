@@ -7,7 +7,7 @@ go_library(
         "npm.go",
         "yarn.go",
     ],
-    importpath = "github.com/example/project/sdk/nodejs/npm",
+    importpath = "github.com/pulumi/pulumi/sdk/nodejs/npm",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/cmdutil:go_default_library",
@@ -29,4 +29,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":npm",
+    visibility = ["//visibility:public"],
 )

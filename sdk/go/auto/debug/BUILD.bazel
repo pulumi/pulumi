@@ -3,6 +3,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "debug",
     srcs = ["debuglogging.go"],
-    importpath = "github.com/example/project/sdk/go/auto/debug",
+    importpath = "github.com/pulumi/pulumi/sdk/go/auto/debug",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":debug",
     visibility = ["//visibility:public"],
 )

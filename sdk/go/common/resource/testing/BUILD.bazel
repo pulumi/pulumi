@@ -6,7 +6,7 @@ go_library(
         "assert.go",
         "rapid.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/resource/testing",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/resource/testing",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/resource:go_default_library",
@@ -14,4 +14,10 @@ go_library(
         "@com_github_stretchr_testify//assert",
         "@net_pgregory_rapid//:rapid",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":testing",
+    visibility = ["//visibility:public"],
 )

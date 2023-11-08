@@ -10,7 +10,7 @@ go_library(
         "provider.go",
         "resourcemonitor.go",
     ],
-    importpath = "github.com/example/project/pkg/resource/deploy/deploytest",
+    importpath = "github.com/pulumi/pulumi/pkg/resource/deploy/deploytest",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",
@@ -44,4 +44,10 @@ go_test(
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_protobuf//types/known/structpb",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":deploytest",
+    visibility = ["//visibility:public"],
 )

@@ -3,6 +3,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "slice",
     srcs = ["slice.go"],
-    importpath = "github.com/example/project/sdk/go/common/slice",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/slice",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":slice",
     visibility = ["//visibility:public"],
 )

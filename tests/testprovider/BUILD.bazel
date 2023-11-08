@@ -9,7 +9,7 @@ go_library(
         "main.go",
         "random.go",
     ],
-    importpath = "github.com/example/project/tests/testprovider",
+    importpath = "github.com/pulumi/pulumi/tests/testprovider",
     visibility = ["//visibility:private"],
     deps = [
         "//proto/pulumi:go",

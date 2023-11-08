@@ -8,7 +8,7 @@ go_library(
         "mapper_server.go",
         "plugin_mapper.go",
     ],
-    importpath = "github.com/example/project/pkg/codegen/convert",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/convert",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",
@@ -36,4 +36,10 @@ go_test(
         "//sdk/go/common/workspace:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":convert",
+    visibility = ["//visibility:public"],
 )

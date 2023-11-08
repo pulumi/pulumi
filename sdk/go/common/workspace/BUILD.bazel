@@ -14,7 +14,7 @@ go_library(
         "workspace.go",
     ],
     embedsrcs = ["project.json"],
-    importpath = "github.com/example/project/sdk/go/common/workspace",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/workspace",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",
@@ -73,4 +73,10 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@in_gopkg_yaml_v2//:yaml_v2",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":workspace",
+    visibility = ["//visibility:public"],
 )

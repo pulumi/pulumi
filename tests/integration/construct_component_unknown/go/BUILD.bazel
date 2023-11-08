@@ -7,7 +7,7 @@ go_library(
         "main.go",
         "random.go",
     ],
-    importpath = "github.com/example/project/tests/integration/construct_component_unknown/go",
+    importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_unknown/go",
     visibility = ["//visibility:private"],
     deps = ["//sdk/go/pulumi:go_default_library"],
 )

@@ -19,7 +19,7 @@ go_library(
         "test.go",
         "utilities.go",
     ],
-    importpath = "github.com/example/project/pkg/codegen/go",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/go",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_golang_glog//:glog",
@@ -75,4 +75,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":go",
+    visibility = ["//visibility:public"],
 )

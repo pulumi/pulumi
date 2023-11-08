@@ -3,10 +3,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "optpreview",
     srcs = ["optpreview.go"],
-    importpath = "github.com/example/project/sdk/go/auto/optpreview",
+    importpath = "github.com/pulumi/pulumi/sdk/go/auto/optpreview",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/auto/debug:go_default_library",
         "//sdk/go/auto/events:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":optpreview",
+    visibility = ["//visibility:public"],
 )

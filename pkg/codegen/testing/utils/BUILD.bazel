@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "utils",
     srcs = ["host.go"],
-    importpath = "github.com/example/project/pkg/codegen/testing/utils",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/testing/utils",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",
@@ -12,4 +12,10 @@ go_library(
         "//sdk/go/common/slice:go_default_library",
         "//sdk/go/common/tokens:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":utils",
+    visibility = ["//visibility:public"],
 )

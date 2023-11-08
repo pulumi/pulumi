@@ -12,7 +12,7 @@ go_library(
         "ptr.go",
         "types.go",
     ],
-    importpath = "github.com/example/project/sdk/go/pulumix",
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumix",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/contract:go_default_library",
@@ -41,4 +41,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":pulumix",
+    visibility = ["//visibility:public"],
 )

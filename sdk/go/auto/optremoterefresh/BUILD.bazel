@@ -3,7 +3,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "optremoterefresh",
     srcs = ["optremoterefresh.go"],
-    importpath = "github.com/example/project/sdk/go/auto/optremoterefresh",
+    importpath = "github.com/pulumi/pulumi/sdk/go/auto/optremoterefresh",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/auto/events:go_default_library"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":optremoterefresh",
+    visibility = ["//visibility:public"],
 )

@@ -7,7 +7,7 @@ go_library(
         "utilities.go",
         "utilities_types.go",
     ],
-    importpath = "github.com/example/project/pkg/codegen",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_pgavlin_goldmark//ast",
@@ -28,4 +28,10 @@ go_test(
         "//pkg/codegen/schema:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":codegen",
+    visibility = ["//visibility:public"],
 )

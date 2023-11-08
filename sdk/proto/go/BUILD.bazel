@@ -20,7 +20,7 @@ go_library(
         "resource_grpc.pb.go",
         "source.pb.go",
     ],
-    importpath = "github.com/example/project/sdk/proto/go",
+    importpath = "github.com/pulumi/pulumi/sdk/proto/go",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/proto/go/codegen:go_default_library",
@@ -32,4 +32,10 @@ go_library(
         "@org_golang_google_protobuf//types/known/emptypb",
         "@org_golang_google_protobuf//types/known/structpb",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":go",
+    visibility = ["//visibility:public"],
 )

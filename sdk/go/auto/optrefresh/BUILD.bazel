@@ -3,10 +3,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "optrefresh",
     srcs = ["optrefresh.go"],
-    importpath = "github.com/example/project/sdk/go/auto/optrefresh",
+    importpath = "github.com/pulumi/pulumi/sdk/go/auto/optrefresh",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/auto/debug:go_default_library",
         "//sdk/go/auto/events:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":optrefresh",
+    visibility = ["//visibility:public"],
 )

@@ -7,7 +7,7 @@ go_library(
         "tmpl/applyn.go.tmpl",
         "tmpl/applyn_test.go.tmpl",
     ],
-    importpath = "github.com/example/project/sdk/go/internal/gen-pux-applyn",
+    importpath = "github.com/pulumi/pulumi/sdk/go/internal/gen-pux-applyn",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_hashicorp_go_multierror//:go-multierror",

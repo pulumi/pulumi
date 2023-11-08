@@ -17,7 +17,7 @@ go_library(
         "travis.go",
         "vars.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/util/ciutil",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/ciutil",
     visibility = ["//visibility:public"],
 )
 
@@ -26,4 +26,10 @@ go_test(
     srcs = ["vars_test.go"],
     embed = [":ciutil"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":ciutil",
+    visibility = ["//visibility:public"],
 )

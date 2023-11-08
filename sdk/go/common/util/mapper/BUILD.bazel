@@ -9,7 +9,7 @@ go_library(
         "mapper_encode.go",
         "object.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/util/mapper",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/mapper",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/util/contract:go_default_library"],
 )
@@ -22,4 +22,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":mapper",
+    visibility = ["//visibility:public"],
 )

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "rpcerror",
     srcs = ["rpcerror.go"],
-    importpath = "github.com/example/project/sdk/go/common/util/rpcutil/rpcerror",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/rpcutil/rpcerror",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",
@@ -25,4 +25,10 @@ go_test(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":rpcerror",
+    visibility = ["//visibility:public"],
 )

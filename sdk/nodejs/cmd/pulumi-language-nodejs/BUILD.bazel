@@ -8,7 +8,7 @@ go_library(
         "proxy_unix.go",
         "proxy_windows.go",
     ],
-    importpath = "github.com/example/project/sdk/nodejs/cmd/pulumi-language-nodejs",
+    importpath = "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs",
     visibility = ["//visibility:private"],
     deps = [
         "//proto/pulumi:go",

@@ -6,7 +6,7 @@ go_library(
         "edit.go",
         "encode.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/util/yamlutil",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/yamlutil",
     visibility = ["//visibility:public"],
     deps = ["@in_gopkg_yaml_v3//:yaml_v3"],
 )
@@ -16,4 +16,10 @@ go_test(
     srcs = ["edit_test.go"],
     embed = [":yamlutil"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":yamlutil",
+    visibility = ["//visibility:public"],
 )

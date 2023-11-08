@@ -6,11 +6,17 @@ go_library(
         "empty.s",
         "provider.go",
     ],
-    importpath = "github.com/example/project/sdk/go/pulumi/provider",
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi/provider",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",
         "//sdk/go/pulumi:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":provider",
+    visibility = ["//visibility:public"],
 )

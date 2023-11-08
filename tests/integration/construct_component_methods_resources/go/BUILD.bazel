@@ -6,7 +6,7 @@ go_library(
         "component.go",
         "main.go",
     ],
-    importpath = "github.com/example/project/tests/integration/construct_component_methods_resources/go",
+    importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_methods_resources/go",
     visibility = ["//visibility:private"],
     deps = ["//sdk/go/pulumi:go_default_library"],
 )

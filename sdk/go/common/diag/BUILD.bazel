@@ -7,7 +7,7 @@ go_library(
         "errors.go",
         "sink.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/diag",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/diag",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/diag/colors:go_default_library",
@@ -26,4 +26,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":diag",
+    visibility = ["//visibility:public"],
 )

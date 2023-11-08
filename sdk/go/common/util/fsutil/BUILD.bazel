@@ -10,11 +10,17 @@ go_library(
         "qname.go",
         "walkup.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/util/fsutil",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/fsutil",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/tokens:go_default_library",
         "//sdk/go/common/util/contract:go_default_library",
         "@com_github_rogpeppe_go_internal//lockedfile",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":fsutil",
+    visibility = ["//visibility:public"],
 )

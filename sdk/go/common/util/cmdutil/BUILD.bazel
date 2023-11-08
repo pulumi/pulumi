@@ -17,7 +17,7 @@ go_library(
         "term_windows.go",
         "trace.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/util/cmdutil",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/cmdutil",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_charmbracelet_bubbles//textinput",
@@ -108,4 +108,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":cmdutil",
+    visibility = ["//visibility:public"],
 )

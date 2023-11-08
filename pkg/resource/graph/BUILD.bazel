@@ -7,7 +7,7 @@ go_library(
         "doc.go",
         "resource_set.go",
     ],
-    importpath = "github.com/example/project/pkg/resource/graph",
+    importpath = "github.com/pulumi/pulumi/pkg/resource/graph",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/resource/deploy/providers:go_default_library",
@@ -32,4 +32,10 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@net_pgregory_rapid//:rapid",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":graph",
+    visibility = ["//visibility:public"],
 )

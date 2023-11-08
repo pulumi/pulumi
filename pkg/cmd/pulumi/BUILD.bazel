@@ -84,7 +84,7 @@ go_library(
         "watch.go",
         "whoami.go",
     ],
-    importpath = "github.com/example/project/pkg/cmd/pulumi",
+    importpath = "github.com/pulumi/pulumi/pkg/cmd/pulumi",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_alecaivazis_survey_v2//:survey",

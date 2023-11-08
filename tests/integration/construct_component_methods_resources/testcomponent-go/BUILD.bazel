@@ -6,7 +6,7 @@ go_library(
         "main.go",
         "random.go",
     ],
-    importpath = "github.com/example/project/tests/integration/construct_component_methods_resources/testcomponent-go",
+    importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_methods_resources/testcomponent-go",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_blang_semver//:semver",

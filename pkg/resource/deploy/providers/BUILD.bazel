@@ -8,7 +8,7 @@ go_library(
         "reference.go",
         "registry.go",
     ],
-    importpath = "github.com/example/project/pkg/resource/deploy/providers",
+    importpath = "github.com/pulumi/pulumi/pkg/resource/deploy/providers",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",
@@ -42,4 +42,10 @@ go_test(
         "//sdk/go/common/workspace:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":providers",
+    visibility = ["//visibility:public"],
 )

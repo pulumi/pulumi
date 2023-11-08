@@ -24,7 +24,7 @@ go_library(
         "type.go",
         "utilities.go",
     ],
-    importpath = "github.com/example/project/pkg/codegen/pcl",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/pcl",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",
@@ -72,4 +72,10 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@com_github_zclconf_go_cty//cty",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":pcl",
+    visibility = ["//visibility:public"],
 )

@@ -10,7 +10,7 @@ go_library(
         "operations_gcp.go",
         "resources.go",
     ],
-    importpath = "github.com/example/project/pkg/operations",
+    importpath = "github.com/pulumi/pulumi/pkg/operations",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_aws_aws_sdk_go//aws",
@@ -47,4 +47,10 @@ go_test(
         "//sdk/go/common/apitype:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":operations",
+    visibility = ["//visibility:public"],
 )

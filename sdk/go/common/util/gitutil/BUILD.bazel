@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "gitutil",
     srcs = ["git.go"],
-    importpath = "github.com/example/project/sdk/go/common/util/gitutil",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/gitutil",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_go_git_go_git_v5//:go-git",
@@ -36,4 +36,10 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@org_golang_x_net//nettest",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":gitutil",
+    visibility = ["//visibility:public"],
 )

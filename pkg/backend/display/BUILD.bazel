@@ -20,7 +20,7 @@ go_library(
         "tree.go",
         "watch.go",
     ],
-    importpath = "github.com/example/project/pkg/backend/display",
+    importpath = "github.com/pulumi/pulumi/pkg/backend/display",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_dustin_go_humanize//english",
@@ -72,4 +72,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":display",
+    visibility = ["//visibility:public"],
 )

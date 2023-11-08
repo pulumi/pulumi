@@ -8,7 +8,7 @@ go_library(
         "host.go",
         "main.go",
     ],
-    importpath = "github.com/example/project/pkg/resource/provider",
+    importpath = "github.com/pulumi/pulumi/pkg/resource/provider",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",
@@ -27,4 +27,10 @@ go_library(
         "@org_golang_google_grpc//status",
         "@org_golang_x_net//context",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":provider",
+    visibility = ["//visibility:public"],
 )

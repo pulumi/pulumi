@@ -8,7 +8,7 @@ go_library(
         "ignorer_gitignore.go",
         "ignorer_path.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/util/archive",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/archive",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/contract:go_default_library",
@@ -22,4 +22,10 @@ go_test(
     srcs = ["archive_test.go"],
     embed = [":archive"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":archive",
+    visibility = ["//visibility:public"],
 )

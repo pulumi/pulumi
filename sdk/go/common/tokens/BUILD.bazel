@@ -7,7 +7,7 @@ go_library(
         "project.go",
         "tokens.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/tokens",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/tokens",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/util/contract:go_default_library"],
 )
@@ -21,4 +21,10 @@ go_test(
     ],
     embed = [":tokens"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":tokens",
+    visibility = ["//visibility:public"],
 )

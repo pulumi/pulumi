@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "testcomponent-go_lib",
     srcs = ["main.go"],
-    importpath = "github.com/example/project/tests/integration/construct_component_unknown/testcomponent-go",
+    importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_unknown/testcomponent-go",
     visibility = ["//visibility:private"],
     deps = [
         "//proto/pulumi:go",

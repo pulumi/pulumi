@@ -6,7 +6,7 @@ go_library(
         "main.go",
         "random.go",
     ],
-    importpath = "github.com/example/project/tests/integration/state_rename_parent",
+    importpath = "github.com/pulumi/pulumi/tests/integration/state_rename_parent",
     visibility = ["//visibility:private"],
     deps = ["//sdk/go/pulumi:go_default_library"],
 )

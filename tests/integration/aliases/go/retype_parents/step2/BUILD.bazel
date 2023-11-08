@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "step2_lib",
     srcs = ["main.go"],
-    importpath = "github.com/example/project/tests/integration/aliases/go/retype_parents/step2",
+    importpath = "github.com/pulumi/pulumi/tests/integration/aliases/go/retype_parents/step2",
     visibility = ["//visibility:private"],
     deps = ["//sdk/go/pulumi:go_default_library"],
 )

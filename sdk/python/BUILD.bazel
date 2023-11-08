@@ -7,7 +7,7 @@ go_library(
         "shim_unix.go",
         "shim_windows.go",
     ],
-    importpath = "github.com/example/project/sdk/python",
+    importpath = "github.com/pulumi/pulumi/sdk/python",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/util/contract:go_default_library"],
 )
@@ -17,4 +17,10 @@ go_test(
     srcs = ["python_test.go"],
     embed = [":python"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":python",
+    visibility = ["//visibility:public"],
 )

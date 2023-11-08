@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "go-alias-norm_lib",
     srcs = ["main.go"],
-    importpath = "github.com/example/project/tests/benchmarks/go-alias-norm",
+    importpath = "github.com/pulumi/pulumi/tests/benchmarks/go-alias-norm",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_pulumi_pulumi_random_sdk_v4//go/random",

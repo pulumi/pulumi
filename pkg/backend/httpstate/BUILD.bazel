@@ -16,7 +16,7 @@ go_library(
         "state.go",
         "token_source.go",
     ],
-    importpath = "github.com/example/project/pkg/backend/httpstate",
+    importpath = "github.com/pulumi/pulumi/pkg/backend/httpstate",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hexops_gotextdiff//:gotextdiff",
@@ -88,4 +88,10 @@ go_test(
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":httpstate",
+    visibility = ["//visibility:public"],
 )

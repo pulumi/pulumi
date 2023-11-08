@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "result",
     srcs = ["result.go"],
-    importpath = "github.com/example/project/sdk/go/common/util/result",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/result",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hashicorp_go_multierror//:go-multierror",
@@ -16,4 +16,10 @@ go_test(
     srcs = ["result_test.go"],
     embed = [":result"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":result",
+    visibility = ["//visibility:public"],
 )

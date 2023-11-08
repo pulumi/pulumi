@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "deepcopy",
     srcs = ["copy.go"],
-    importpath = "github.com/example/project/sdk/go/common/util/deepcopy",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/deepcopy",
     visibility = ["//visibility:public"],
 )
 
@@ -12,4 +12,10 @@ go_test(
     srcs = ["copy_test.go"],
     embed = [":deepcopy"],
     deps = ["@com_github_stretchr_testify//assert"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":deepcopy",
+    visibility = ["//visibility:public"],
 )

@@ -27,7 +27,7 @@ go_library(
         "templates/utils.tmpl",
         "templates/yaml_constructor.tmpl",
     ],
-    importpath = "github.com/example/project/pkg/codegen/docs",
+    importpath = "github.com/pulumi/pulumi/pkg/codegen/docs",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_golang_glog//:glog",
@@ -59,4 +59,10 @@ go_test(
         "//pkg/codegen/testing/test:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":docs",
+    visibility = ["//visibility:public"],
 )

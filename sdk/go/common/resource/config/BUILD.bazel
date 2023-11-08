@@ -10,7 +10,7 @@ go_library(
         "plaintext.go",
         "value.go",
     ],
-    importpath = "github.com/example/project/sdk/go/common/resource/config",
+    importpath = "github.com/pulumi/pulumi/sdk/go/common/resource/config",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/resource:go_default_library",
@@ -39,4 +39,10 @@ go_test(
         "@com_github_stretchr_testify//require",
         "@in_gopkg_yaml_v2//:yaml_v2",
     ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":config",
+    visibility = ["//visibility:public"],
 )
