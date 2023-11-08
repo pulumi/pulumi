@@ -1,6 +1,247 @@
 {
     "check": {
         "exprs": {
+            "base64OutputSecret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 40,
+                        "column": 5,
+                        "byte": 1064
+                    },
+                    "end": {
+                        "line": 40,
+                        "column": 39,
+                        "byte": 1098
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toBase64",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 1064
+                        },
+                        "end": {
+                            "line": 40,
+                            "column": 17,
+                            "byte": 1076
+                        }
+                    },
+                    "argSchema": {
+                        "type": "string"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 40,
+                                "column": 19,
+                                "byte": 1078
+                            },
+                            "end": {
+                                "line": 40,
+                                "column": 39,
+                                "byte": 1098
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "apiKey",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 116
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 31,
+                                        "byte": 140
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "base64OutputUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 34,
+                        "column": 5,
+                        "byte": 857
+                    },
+                    "end": {
+                        "line": 34,
+                        "column": 81,
+                        "byte": 933
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toBase64",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 857
+                        },
+                        "end": {
+                            "line": 34,
+                            "column": 17,
+                            "byte": 869
+                        }
+                    },
+                    "argSchema": {
+                        "type": "string"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 34,
+                                "column": 19,
+                                "byte": 871
+                            },
+                            "end": {
+                                "line": 34,
+                                "column": 81,
+                                "byte": 933
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "oneStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 7,
+                                        "byte": 339
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "twoStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 356
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "threeStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 11,
+                                        "byte": 377
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "fourStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 13,
+                                        "byte": 399
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 34,
+                                        "column": 19,
+                                        "byte": 871
+                                    },
+                                    "end": {
+                                        "line": 34,
+                                        "column": 81,
+                                        "byte": 933
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
             "cloudflare": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
@@ -420,18 +661,553 @@
                     }
                 }
             },
+            "comboSecretAndUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 23,
+                        "column": 5,
+                        "byte": 467
+                    },
+                    "end": {
+                        "line": 24,
+                        "column": 77,
+                        "byte": 579
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "cloudflareApi": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "provider": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "cloudflareApi",
+                        "provider"
+                    ]
+                },
+                "keyRanges": {
+                    "cloudflareApi": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 467
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 18,
+                            "byte": 480
+                        }
+                    },
+                    "provider": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 24,
+                            "column": 5,
+                            "byte": 507
+                        },
+                        "end": {
+                            "line": 24,
+                            "column": 13,
+                            "byte": 515
+                        }
+                    }
+                },
+                "object": {
+                    "cloudflareApi": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 23,
+                                "column": 20,
+                                "byte": 482
+                            },
+                            "end": {
+                                "line": 23,
+                                "column": 40,
+                                "byte": 502
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "apiKey",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 116
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 31,
+                                        "byte": 140
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "provider": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 24,
+                                "column": 15,
+                                "byte": 517
+                            },
+                            "end": {
+                                "line": 24,
+                                "column": 77,
+                                "byte": 579
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "oneStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 7,
+                                        "byte": 339
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "twoStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 356
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "threeStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 11,
+                                        "byte": 377
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "fourStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 13,
+                                        "byte": 399
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 24,
+                                        "column": 15,
+                                        "byte": 517
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 77,
+                                        "byte": 579
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "deeplyNestedProvider": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 16,
+                        "column": 5,
+                        "byte": 324
+                    },
+                    "end": {
+                        "line": 21,
+                        "column": 23,
+                        "byte": 437
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "oneStep": {
+                            "properties": {
+                                "twoStep": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": true
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "twoStep"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "oneStep"
+                    ]
+                },
+                "keyRanges": {
+                    "oneStep": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 324
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 12,
+                            "byte": 331
+                        }
+                    }
+                },
+                "object": {
+                    "oneStep": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 17,
+                                "column": 7,
+                                "byte": 339
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 23,
+                                "byte": 437
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "twoStep": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": true
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "twoStep"
+                            ]
+                        },
+                        "keyRanges": {
+                            "twoStep": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 7,
+                                    "byte": 339
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 14,
+                                    "byte": 346
+                                }
+                            }
+                        },
+                        "object": {
+                            "twoStep": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 356
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": true
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "threeStep": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 18,
+                                            "column": 9,
+                                            "byte": 356
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 18,
+                                            "byte": 365
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "threeStep": {
+                                        "range": {
+                                            "environment": "nested-unknowns-secrets",
+                                            "begin": {
+                                                "line": 19,
+                                                "column": 11,
+                                                "byte": 377
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 23,
+                                                "byte": 437
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "fourStep": true
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "fourStep": {
+                                                "environment": "nested-unknowns-secrets",
+                                                "begin": {
+                                                    "line": 19,
+                                                    "column": 11,
+                                                    "byte": 377
+                                                },
+                                                "end": {
+                                                    "line": 19,
+                                                    "column": 19,
+                                                    "byte": 385
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "fourStep": {
+                                                "range": {
+                                                    "environment": "nested-unknowns-secrets",
+                                                    "begin": {
+                                                        "line": 20,
+                                                        "column": 13,
+                                                        "byte": 399
+                                                    },
+                                                    "end": {
+                                                        "line": 21,
+                                                        "column": 23,
+                                                        "byte": 437
+                                                    }
+                                                },
+                                                "schema": true,
+                                                "builtin": {
+                                                    "name": "fn::open::test",
+                                                    "nameRange": {
+                                                        "environment": "nested-unknowns-secrets",
+                                                        "begin": {
+                                                            "line": 20,
+                                                            "column": 13,
+                                                            "byte": 399
+                                                        },
+                                                        "end": {
+                                                            "line": 20,
+                                                            "column": 27,
+                                                            "byte": 413
+                                                        }
+                                                    },
+                                                    "argSchema": true,
+                                                    "arg": {
+                                                        "range": {
+                                                            "environment": "nested-unknowns-secrets",
+                                                            "begin": {
+                                                                "line": 21,
+                                                                "column": 15,
+                                                                "byte": 429
+                                                            },
+                                                            "end": {
+                                                                "line": 21,
+                                                                "column": 23,
+                                                                "byte": 437
+                                                            }
+                                                        },
+                                                        "schema": {
+                                                            "properties": {
+                                                                "foo": {
+                                                                    "type": "string",
+                                                                    "const": "bar"
+                                                                }
+                                                            },
+                                                            "type": "object",
+                                                            "required": [
+                                                                "foo"
+                                                            ]
+                                                        },
+                                                        "keyRanges": {
+                                                            "foo": {
+                                                                "environment": "nested-unknowns-secrets",
+                                                                "begin": {
+                                                                    "line": 21,
+                                                                    "column": 15,
+                                                                    "byte": 429
+                                                                },
+                                                                "end": {
+                                                                    "line": 21,
+                                                                    "column": 18,
+                                                                    "byte": 432
+                                                                }
+                                                            }
+                                                        },
+                                                        "object": {
+                                                            "foo": {
+                                                                "range": {
+                                                                    "environment": "nested-unknowns-secrets",
+                                                                    "begin": {
+                                                                        "line": 21,
+                                                                        "column": 20,
+                                                                        "byte": 434
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 21,
+                                                                        "column": 23,
+                                                                        "byte": 437
+                                                                    }
+                                                                },
+                                                                "schema": {
+                                                                    "type": "string",
+                                                                    "const": "bar"
+                                                                },
+                                                                "literal": "bar"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "environmentVariables": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 20,
+                        "line": 42,
                         "column": 5,
-                        "byte": 416
+                        "byte": 1127
                     },
                     "end": {
-                        "line": 20,
+                        "line": 42,
                         "column": 49,
-                        "byte": 460
+                        "byte": 1171
                     }
                 },
                 "schema": {
@@ -450,14 +1226,14 @@
                     "CLOUDFLARE_API_TOKEN": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 20,
+                            "line": 42,
                             "column": 5,
-                            "byte": 416
+                            "byte": 1127
                         },
                         "end": {
-                            "line": 20,
+                            "line": 42,
                             "column": 25,
-                            "byte": 436
+                            "byte": 1147
                         }
                     }
                 },
@@ -466,14 +1242,14 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 20,
+                                "line": 42,
                                 "column": 27,
-                                "byte": 438
+                                "byte": 1149
                             },
                             "end": {
-                                "line": 20,
+                                "line": 42,
                                 "column": 49,
-                                "byte": 460
+                                "byte": 1171
                             }
                         },
                         "schema": {
@@ -517,18 +1293,18 @@
                     }
                 }
             },
-            "jsonOutput": {
+            "jsonOutputCombo": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 16,
+                        "line": 26,
                         "column": 5,
-                        "byte": 314
+                        "byte": 603
                     },
                     "end": {
-                        "line": 16,
-                        "column": 30,
-                        "byte": 339
+                        "line": 26,
+                        "column": 41,
+                        "byte": 639
                     }
                 },
                 "schema": {
@@ -539,14 +1315,14 @@
                     "nameRange": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 16,
+                            "line": 26,
                             "column": 5,
-                            "byte": 314
+                            "byte": 603
                         },
                         "end": {
-                            "line": 16,
+                            "line": 26,
                             "column": 15,
-                            "byte": 324
+                            "byte": 613
                         }
                     },
                     "argSchema": true,
@@ -554,14 +1330,96 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 16,
+                                "line": 26,
                                 "column": 17,
-                                "byte": 326
+                                "byte": 615
                             },
                             "end": {
-                                "line": 16,
+                                "line": 26,
+                                "column": 41,
+                                "byte": 639
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "cloudflareApi": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "provider": true
+                            },
+                            "type": "object",
+                            "required": [
+                                "cloudflareApi",
+                                "provider"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "comboSecretAndUnknown",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 5,
+                                        "byte": 467
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 77,
+                                        "byte": 579
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "jsonOutputSecret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 36,
+                        "column": 5,
+                        "byte": 958
+                    },
+                    "end": {
+                        "line": 36,
+                        "column": 30,
+                        "byte": 983
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toJSON",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 36,
+                            "column": 5,
+                            "byte": 958
+                        },
+                        "end": {
+                            "line": 36,
+                            "column": 15,
+                            "byte": 968
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 36,
+                                "column": 17,
+                                "byte": 970
+                            },
+                            "end": {
+                                "line": 36,
                                 "column": 30,
-                                "byte": 339
+                                "byte": 983
                             }
                         },
                         "schema": {
@@ -630,18 +1488,119 @@
                     }
                 }
             },
+            "jsonOutputUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 30,
+                        "column": 5,
+                        "byte": 729
+                    },
+                    "end": {
+                        "line": 30,
+                        "column": 40,
+                        "byte": 764
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toJSON",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 30,
+                            "column": 5,
+                            "byte": 729
+                        },
+                        "end": {
+                            "line": 30,
+                            "column": 15,
+                            "byte": 739
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 30,
+                                "column": 17,
+                                "byte": 741
+                            },
+                            "end": {
+                                "line": 30,
+                                "column": 40,
+                                "byte": 764
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "oneStep": {
+                                    "properties": {
+                                        "twoStep": {
+                                            "properties": {
+                                                "threeStep": {
+                                                    "properties": {
+                                                        "fourStep": true
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "fourStep"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "threeStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "twoStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "oneStep"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
             "pulumiConfig": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 22,
+                        "line": 44,
                         "column": 5,
-                        "byte": 481
+                        "byte": 1192
                     },
                     "end": {
-                        "line": 23,
+                        "line": 45,
                         "column": 43,
-                        "byte": 559
+                        "byte": 1270
                     }
                 },
                 "schema": {
@@ -665,27 +1624,27 @@
                     "accountId": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 22,
+                            "line": 44,
                             "column": 5,
-                            "byte": 481
+                            "byte": 1192
                         },
                         "end": {
-                            "line": 22,
+                            "line": 44,
                             "column": 14,
-                            "byte": 490
+                            "byte": 1201
                         }
                     },
                     "refTopLevelSecret": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 23,
+                            "line": 45,
                             "column": 5,
-                            "byte": 521
+                            "byte": 1232
                         },
                         "end": {
-                            "line": 23,
+                            "line": 45,
                             "column": 22,
-                            "byte": 538
+                            "byte": 1249
                         }
                     }
                 },
@@ -694,14 +1653,14 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 22,
+                                "line": 44,
                                 "column": 16,
-                                "byte": 492
+                                "byte": 1203
                             },
                             "end": {
-                                "line": 22,
+                                "line": 44,
                                 "column": 40,
-                                "byte": 516
+                                "byte": 1227
                             }
                         },
                         "schema": {
@@ -763,14 +1722,14 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 23,
+                                "line": 45,
                                 "column": 24,
-                                "byte": 540
+                                "byte": 1251
                             },
                             "end": {
-                                "line": 23,
+                                "line": 45,
                                 "column": 43,
-                                "byte": 559
+                                "byte": 1270
                             }
                         },
                         "schema": {
@@ -798,18 +1757,18 @@
                     }
                 }
             },
-            "stringOutput": {
+            "stringOutputCombo": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 18,
+                        "line": 28,
                         "column": 5,
-                        "byte": 360
+                        "byte": 665
                     },
                     "end": {
-                        "line": 18,
-                        "column": 32,
-                        "byte": 387
+                        "line": 28,
+                        "column": 43,
+                        "byte": 703
                     }
                 },
                 "schema": {
@@ -820,14 +1779,14 @@
                     "nameRange": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 18,
+                            "line": 28,
                             "column": 5,
-                            "byte": 360
+                            "byte": 665
                         },
                         "end": {
-                            "line": 18,
+                            "line": 28,
                             "column": 17,
-                            "byte": 372
+                            "byte": 677
                         }
                     },
                     "argSchema": true,
@@ -835,14 +1794,96 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 18,
+                                "line": 28,
                                 "column": 19,
-                                "byte": 374
+                                "byte": 679
                             },
                             "end": {
-                                "line": 18,
+                                "line": 28,
+                                "column": 43,
+                                "byte": 703
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "cloudflareApi": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "provider": true
+                            },
+                            "type": "object",
+                            "required": [
+                                "cloudflareApi",
+                                "provider"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "comboSecretAndUnknown",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 5,
+                                        "byte": 467
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 77,
+                                        "byte": 579
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "stringOutputSecret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 38,
+                        "column": 5,
+                        "byte": 1010
+                    },
+                    "end": {
+                        "line": 38,
+                        "column": 32,
+                        "byte": 1037
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toString",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 38,
+                            "column": 5,
+                            "byte": 1010
+                        },
+                        "end": {
+                            "line": 38,
+                            "column": 17,
+                            "byte": 1022
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 38,
+                                "column": 19,
+                                "byte": 1024
+                            },
+                            "end": {
+                                "line": 38,
                                 "column": 32,
-                                "byte": 387
+                                "byte": 1037
                             }
                         },
                         "schema": {
@@ -904,6 +1945,107 @@
                                         "line": 14,
                                         "column": 36,
                                         "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "stringOutputUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 32,
+                        "column": 5,
+                        "byte": 792
+                    },
+                    "end": {
+                        "line": 32,
+                        "column": 42,
+                        "byte": 829
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toString",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 32,
+                            "column": 5,
+                            "byte": 792
+                        },
+                        "end": {
+                            "line": 32,
+                            "column": 17,
+                            "byte": 804
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 32,
+                                "column": 19,
+                                "byte": 806
+                            },
+                            "end": {
+                                "line": 32,
+                                "column": 42,
+                                "byte": 829
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "oneStep": {
+                                    "properties": {
+                                        "twoStep": {
+                                            "properties": {
+                                                "threeStep": {
+                                                    "properties": {
+                                                        "fourStep": true
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "fourStep"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "threeStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "twoStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "oneStep"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
                                     }
                                 }
                             }
@@ -969,6 +2111,43 @@
             }
         },
         "properties": {
+            "base64OutputSecret": {
+                "value": "YXBpS2V5U2VjcmV0",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 1064
+                        },
+                        "end": {
+                            "line": 40,
+                            "column": 39,
+                            "byte": 1098
+                        }
+                    }
+                }
+            },
+            "base64OutputUnknown": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 857
+                        },
+                        "end": {
+                            "line": 34,
+                            "column": 81,
+                            "byte": 933
+                        }
+                    }
+                }
+            },
             "cloudflare": {
                 "value": {
                     "account": {
@@ -1118,23 +2297,41 @@
                     }
                 }
             },
-            "environmentVariables": {
+            "comboSecretAndUnknown": {
                 "value": {
-                    "CLOUDFLARE_API_TOKEN": {
-                        "value": "apiTokenSecret",
+                    "cloudflareApi": {
+                        "value": "apiKeySecret",
                         "secret": true,
                         "trace": {
                             "def": {
                                 "environment": "nested-unknowns-secrets",
                                 "begin": {
-                                    "line": 20,
-                                    "column": 27,
-                                    "byte": 438
+                                    "line": 23,
+                                    "column": 20,
+                                    "byte": 482
                                 },
                                 "end": {
-                                    "line": 20,
-                                    "column": 49,
-                                    "byte": 460
+                                    "line": 23,
+                                    "column": 40,
+                                    "byte": 502
+                                }
+                            }
+                        }
+                    },
+                    "provider": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 24,
+                                    "column": 15,
+                                    "byte": 517
+                                },
+                                "end": {
+                                    "line": 24,
+                                    "column": 77,
+                                    "byte": 579
                                 }
                             }
                         }
@@ -1144,33 +2341,202 @@
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 20,
+                            "line": 23,
                             "column": 5,
-                            "byte": 416
+                            "byte": 467
                         },
                         "end": {
-                            "line": 20,
-                            "column": 49,
-                            "byte": 460
+                            "line": 24,
+                            "column": 77,
+                            "byte": 579
                         }
                     }
                 }
             },
-            "jsonOutput": {
-                "value": "{\"account\":{\"id\":\"accountIdSecret\",\"name\":\"account-name\"},\"apiKey\":\"apiKeySecret\",\"apiToken\":\"apiTokenSecret\",\"username\":\"bot@pulumi.com\",\"zoneId\":\"zone-id-123\"}",
-                "secret": true,
+            "deeplyNestedProvider": {
+                "value": {
+                    "oneStep": {
+                        "value": {
+                            "twoStep": {
+                                "value": {
+                                    "threeStep": {
+                                        "value": {
+                                            "fourStep": {
+                                                "unknown": true,
+                                                "trace": {
+                                                    "def": {
+                                                        "environment": "nested-unknowns-secrets",
+                                                        "begin": {
+                                                            "line": 20,
+                                                            "column": 13,
+                                                            "byte": 399
+                                                        },
+                                                        "end": {
+                                                            "line": 21,
+                                                            "column": 23,
+                                                            "byte": 437
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "trace": {
+                                            "def": {
+                                                "environment": "nested-unknowns-secrets",
+                                                "begin": {
+                                                    "line": 19,
+                                                    "column": 11,
+                                                    "byte": 377
+                                                },
+                                                "end": {
+                                                    "line": 21,
+                                                    "column": 23,
+                                                    "byte": 437
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 18,
+                                            "column": 9,
+                                            "byte": 356
+                                        },
+                                        "end": {
+                                            "line": 21,
+                                            "column": 23,
+                                            "byte": 437
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 7,
+                                    "byte": 339
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 23,
+                                    "byte": 437
+                                }
+                            }
+                        }
+                    }
+                },
                 "trace": {
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
                             "line": 16,
                             "column": 5,
-                            "byte": 314
+                            "byte": 324
                         },
                         "end": {
-                            "line": 16,
+                            "line": 21,
+                            "column": 23,
+                            "byte": 437
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "value": "apiTokenSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 42,
+                                    "column": 27,
+                                    "byte": 1149
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 49,
+                                    "byte": 1171
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 42,
+                            "column": 5,
+                            "byte": 1127
+                        },
+                        "end": {
+                            "line": 42,
+                            "column": 49,
+                            "byte": 1171
+                        }
+                    }
+                }
+            },
+            "jsonOutputCombo": {
+                "secret": true,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 26,
+                            "column": 5,
+                            "byte": 603
+                        },
+                        "end": {
+                            "line": 26,
+                            "column": 41,
+                            "byte": 639
+                        }
+                    }
+                }
+            },
+            "jsonOutputSecret": {
+                "value": "{\"account\":{\"id\":\"accountIdSecret\",\"name\":\"account-name\"},\"apiKey\":\"apiKeySecret\",\"apiToken\":\"apiTokenSecret\",\"username\":\"bot@pulumi.com\",\"zoneId\":\"zone-id-123\"}",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 36,
+                            "column": 5,
+                            "byte": 958
+                        },
+                        "end": {
+                            "line": 36,
                             "column": 30,
-                            "byte": 339
+                            "byte": 983
+                        }
+                    }
+                }
+            },
+            "jsonOutputUnknown": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 30,
+                            "column": 5,
+                            "byte": 729
+                        },
+                        "end": {
+                            "line": 30,
+                            "column": 40,
+                            "byte": 764
                         }
                     }
                 }
@@ -1184,14 +2550,14 @@
                             "def": {
                                 "environment": "nested-unknowns-secrets",
                                 "begin": {
-                                    "line": 22,
+                                    "line": 44,
                                     "column": 16,
-                                    "byte": 492
+                                    "byte": 1203
                                 },
                                 "end": {
-                                    "line": 22,
+                                    "line": 44,
                                     "column": 40,
-                                    "byte": 516
+                                    "byte": 1227
                                 }
                             }
                         }
@@ -1203,14 +2569,14 @@
                             "def": {
                                 "environment": "nested-unknowns-secrets",
                                 "begin": {
-                                    "line": 23,
+                                    "line": 45,
                                     "column": 24,
-                                    "byte": 540
+                                    "byte": 1251
                                 },
                                 "end": {
-                                    "line": 23,
+                                    "line": 45,
                                     "column": 43,
-                                    "byte": 559
+                                    "byte": 1270
                                 }
                             }
                         }
@@ -1220,33 +2586,70 @@
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 22,
+                            "line": 44,
                             "column": 5,
-                            "byte": 481
+                            "byte": 1192
                         },
                         "end": {
-                            "line": 23,
+                            "line": 45,
                             "column": 43,
-                            "byte": 559
+                            "byte": 1270
                         }
                     }
                 }
             },
-            "stringOutput": {
+            "stringOutputCombo": {
+                "secret": true,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 28,
+                            "column": 5,
+                            "byte": 665
+                        },
+                        "end": {
+                            "line": 28,
+                            "column": 43,
+                            "byte": 703
+                        }
+                    }
+                }
+            },
+            "stringOutputSecret": {
                 "value": "\"account\"=\"\\\"id\\\"=\\\"accountIdSecret\\\",\\\"name\\\"=\\\"account-name\\\"\",\"apiKey\"=\"apiKeySecret\",\"apiToken\"=\"apiTokenSecret\",\"username\"=\"bot@pulumi.com\",\"zoneId\"=\"zone-id-123\"",
                 "secret": true,
                 "trace": {
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 18,
+                            "line": 38,
                             "column": 5,
-                            "byte": 360
+                            "byte": 1010
                         },
                         "end": {
-                            "line": 18,
+                            "line": 38,
                             "column": 32,
-                            "byte": 387
+                            "byte": 1037
+                        }
+                    }
+                }
+            },
+            "stringOutputUnknown": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 32,
+                            "column": 5,
+                            "byte": 792
+                        },
+                        "end": {
+                            "line": 32,
+                            "column": 42,
+                            "byte": 829
                         }
                     }
                 }
@@ -1273,6 +2676,12 @@
         },
         "schema": {
             "properties": {
+                "base64OutputSecret": {
+                    "type": "string"
+                },
+                "base64OutputUnknown": {
+                    "type": "string"
+                },
                 "cloudflare": {
                     "properties": {
                         "account": {
@@ -1318,6 +2727,53 @@
                         "zoneId"
                     ]
                 },
+                "comboSecretAndUnknown": {
+                    "properties": {
+                        "cloudflareApi": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "provider": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "cloudflareApi",
+                        "provider"
+                    ]
+                },
+                "deeplyNestedProvider": {
+                    "properties": {
+                        "oneStep": {
+                            "properties": {
+                                "twoStep": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": true
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "twoStep"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "oneStep"
+                    ]
+                },
                 "environmentVariables": {
                     "properties": {
                         "CLOUDFLARE_API_TOKEN": {
@@ -1330,7 +2786,13 @@
                         "CLOUDFLARE_API_TOKEN"
                     ]
                 },
-                "jsonOutput": {
+                "jsonOutputCombo": {
+                    "type": "string"
+                },
+                "jsonOutputSecret": {
+                    "type": "string"
+                },
+                "jsonOutputUnknown": {
                     "type": "string"
                 },
                 "pulumiConfig": {
@@ -1350,7 +2812,13 @@
                         "refTopLevelSecret"
                     ]
                 },
-                "stringOutput": {
+                "stringOutputCombo": {
+                    "type": "string"
+                },
+                "stringOutputSecret": {
+                    "type": "string"
+                },
+                "stringOutputUnknown": {
                     "type": "string"
                 },
                 "top-level-secret": {
@@ -1360,16 +2828,26 @@
             },
             "type": "object",
             "required": [
+                "base64OutputSecret",
+                "base64OutputUnknown",
                 "cloudflare",
+                "comboSecretAndUnknown",
+                "deeplyNestedProvider",
                 "environmentVariables",
-                "jsonOutput",
+                "jsonOutputCombo",
+                "jsonOutputSecret",
+                "jsonOutputUnknown",
                 "pulumiConfig",
-                "stringOutput",
+                "stringOutputCombo",
+                "stringOutputSecret",
+                "stringOutputUnknown",
                 "top-level-secret"
             ]
         }
     },
     "checkJson": {
+        "base64OutputSecret": "[secret]",
+        "base64OutputUnknown": "[unknown]",
         "cloudflare": {
             "account": {
                 "id": "[secret]",
@@ -1380,19 +2858,280 @@
             "username": "bot@pulumi.com",
             "zoneId": "zone-id-123"
         },
+        "comboSecretAndUnknown": {
+            "cloudflareApi": "[secret]",
+            "provider": "[unknown]"
+        },
+        "deeplyNestedProvider": {
+            "oneStep": {
+                "twoStep": {
+                    "threeStep": {
+                        "fourStep": "[unknown]"
+                    }
+                }
+            }
+        },
         "environmentVariables": {
             "CLOUDFLARE_API_TOKEN": "[secret]"
         },
-        "jsonOutput": "[secret]",
+        "jsonOutputCombo": "[secret]",
+        "jsonOutputSecret": "[secret]",
+        "jsonOutputUnknown": "[unknown]",
         "pulumiConfig": {
             "accountId": "[secret]",
             "refTopLevelSecret": "[secret]"
         },
-        "stringOutput": "[secret]",
+        "stringOutputCombo": "[secret]",
+        "stringOutputSecret": "[secret]",
+        "stringOutputUnknown": "[unknown]",
         "top-level-secret": "[secret]"
     },
     "eval": {
         "exprs": {
+            "base64OutputSecret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 40,
+                        "column": 5,
+                        "byte": 1064
+                    },
+                    "end": {
+                        "line": 40,
+                        "column": 39,
+                        "byte": 1098
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toBase64",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 1064
+                        },
+                        "end": {
+                            "line": 40,
+                            "column": 17,
+                            "byte": 1076
+                        }
+                    },
+                    "argSchema": {
+                        "type": "string"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 40,
+                                "column": 19,
+                                "byte": 1078
+                            },
+                            "end": {
+                                "line": 40,
+                                "column": 39,
+                                "byte": 1098
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "apiKey",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 116
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 31,
+                                        "byte": 140
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "base64OutputUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 34,
+                        "column": 5,
+                        "byte": 857
+                    },
+                    "end": {
+                        "line": 34,
+                        "column": 81,
+                        "byte": 933
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toBase64",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 857
+                        },
+                        "end": {
+                            "line": 34,
+                            "column": 17,
+                            "byte": 869
+                        }
+                    },
+                    "argSchema": {
+                        "type": "string"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 34,
+                                "column": 19,
+                                "byte": 871
+                            },
+                            "end": {
+                                "line": 34,
+                                "column": 81,
+                                "byte": 933
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "oneStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 7,
+                                        "byte": 339
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "twoStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 356
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "threeStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 11,
+                                        "byte": 377
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "fourStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 13,
+                                        "byte": 399
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 13,
+                                        "byte": 399
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
             "cloudflare": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
@@ -1812,18 +3551,614 @@
                     }
                 }
             },
+            "comboSecretAndUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 23,
+                        "column": 5,
+                        "byte": 467
+                    },
+                    "end": {
+                        "line": 24,
+                        "column": 77,
+                        "byte": 579
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "cloudflareApi": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "provider": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "cloudflareApi",
+                        "provider"
+                    ]
+                },
+                "keyRanges": {
+                    "cloudflareApi": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 23,
+                            "column": 5,
+                            "byte": 467
+                        },
+                        "end": {
+                            "line": 23,
+                            "column": 18,
+                            "byte": 480
+                        }
+                    },
+                    "provider": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 24,
+                            "column": 5,
+                            "byte": 507
+                        },
+                        "end": {
+                            "line": 24,
+                            "column": 13,
+                            "byte": 515
+                        }
+                    }
+                },
+                "object": {
+                    "cloudflareApi": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 23,
+                                "column": 20,
+                                "byte": 482
+                            },
+                            "end": {
+                                "line": 23,
+                                "column": 40,
+                                "byte": 502
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "symbol": [
+                            {
+                                "key": "cloudflare",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 36,
+                                        "byte": 295
+                                    }
+                                }
+                            },
+                            {
+                                "key": "apiKey",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 116
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 31,
+                                        "byte": 140
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "provider": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 24,
+                                "column": 15,
+                                "byte": 517
+                            },
+                            "end": {
+                                "line": 24,
+                                "column": 77,
+                                "byte": 579
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "oneStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 7,
+                                        "byte": 339
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "twoStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 356
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "threeStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 19,
+                                        "column": 11,
+                                        "byte": 377
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "fourStep",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 13,
+                                        "byte": 399
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 13,
+                                        "byte": 399
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "deeplyNestedProvider": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 16,
+                        "column": 5,
+                        "byte": 324
+                    },
+                    "end": {
+                        "line": 21,
+                        "column": 23,
+                        "byte": 437
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "oneStep": {
+                            "properties": {
+                                "twoStep": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": {
+                                                    "properties": {
+                                                        "foo": {
+                                                            "type": "string",
+                                                            "const": "bar"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "foo"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "twoStep"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "oneStep"
+                    ]
+                },
+                "keyRanges": {
+                    "oneStep": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 324
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 12,
+                            "byte": 331
+                        }
+                    }
+                },
+                "object": {
+                    "oneStep": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 17,
+                                "column": 7,
+                                "byte": 339
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 23,
+                                "byte": 437
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "twoStep": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": {
+                                                    "properties": {
+                                                        "foo": {
+                                                            "type": "string",
+                                                            "const": "bar"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "foo"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "twoStep"
+                            ]
+                        },
+                        "keyRanges": {
+                            "twoStep": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 7,
+                                    "byte": 339
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 14,
+                                    "byte": 346
+                                }
+                            }
+                        },
+                        "object": {
+                            "twoStep": {
+                                "range": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 356
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": {
+                                                    "properties": {
+                                                        "foo": {
+                                                            "type": "string",
+                                                            "const": "bar"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "foo"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                },
+                                "keyRanges": {
+                                    "threeStep": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 18,
+                                            "column": 9,
+                                            "byte": 356
+                                        },
+                                        "end": {
+                                            "line": 18,
+                                            "column": 18,
+                                            "byte": 365
+                                        }
+                                    }
+                                },
+                                "object": {
+                                    "threeStep": {
+                                        "range": {
+                                            "environment": "nested-unknowns-secrets",
+                                            "begin": {
+                                                "line": 19,
+                                                "column": 11,
+                                                "byte": 377
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 23,
+                                                "byte": 437
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "fourStep": {
+                                                    "properties": {
+                                                        "foo": {
+                                                            "type": "string",
+                                                            "const": "bar"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "foo"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "fourStep": {
+                                                "environment": "nested-unknowns-secrets",
+                                                "begin": {
+                                                    "line": 19,
+                                                    "column": 11,
+                                                    "byte": 377
+                                                },
+                                                "end": {
+                                                    "line": 19,
+                                                    "column": 19,
+                                                    "byte": 385
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "fourStep": {
+                                                "range": {
+                                                    "environment": "nested-unknowns-secrets",
+                                                    "begin": {
+                                                        "line": 20,
+                                                        "column": 13,
+                                                        "byte": 399
+                                                    },
+                                                    "end": {
+                                                        "line": 21,
+                                                        "column": 23,
+                                                        "byte": 437
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "properties": {
+                                                        "foo": {
+                                                            "type": "string",
+                                                            "const": "bar"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "foo"
+                                                    ]
+                                                },
+                                                "builtin": {
+                                                    "name": "fn::open::test",
+                                                    "nameRange": {
+                                                        "environment": "nested-unknowns-secrets",
+                                                        "begin": {
+                                                            "line": 20,
+                                                            "column": 13,
+                                                            "byte": 399
+                                                        },
+                                                        "end": {
+                                                            "line": 20,
+                                                            "column": 27,
+                                                            "byte": 413
+                                                        }
+                                                    },
+                                                    "argSchema": true,
+                                                    "arg": {
+                                                        "range": {
+                                                            "environment": "nested-unknowns-secrets",
+                                                            "begin": {
+                                                                "line": 21,
+                                                                "column": 15,
+                                                                "byte": 429
+                                                            },
+                                                            "end": {
+                                                                "line": 21,
+                                                                "column": 23,
+                                                                "byte": 437
+                                                            }
+                                                        },
+                                                        "schema": {
+                                                            "properties": {
+                                                                "foo": {
+                                                                    "type": "string",
+                                                                    "const": "bar"
+                                                                }
+                                                            },
+                                                            "type": "object",
+                                                            "required": [
+                                                                "foo"
+                                                            ]
+                                                        },
+                                                        "keyRanges": {
+                                                            "foo": {
+                                                                "environment": "nested-unknowns-secrets",
+                                                                "begin": {
+                                                                    "line": 21,
+                                                                    "column": 15,
+                                                                    "byte": 429
+                                                                },
+                                                                "end": {
+                                                                    "line": 21,
+                                                                    "column": 18,
+                                                                    "byte": 432
+                                                                }
+                                                            }
+                                                        },
+                                                        "object": {
+                                                            "foo": {
+                                                                "range": {
+                                                                    "environment": "nested-unknowns-secrets",
+                                                                    "begin": {
+                                                                        "line": 21,
+                                                                        "column": 20,
+                                                                        "byte": 434
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 21,
+                                                                        "column": 23,
+                                                                        "byte": 437
+                                                                    }
+                                                                },
+                                                                "schema": {
+                                                                    "type": "string",
+                                                                    "const": "bar"
+                                                                },
+                                                                "literal": "bar"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "environmentVariables": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 20,
+                        "line": 42,
                         "column": 5,
-                        "byte": 416
+                        "byte": 1127
                     },
                     "end": {
-                        "line": 20,
+                        "line": 42,
                         "column": 49,
-                        "byte": 460
+                        "byte": 1171
                     }
                 },
                 "schema": {
@@ -1842,14 +4177,14 @@
                     "CLOUDFLARE_API_TOKEN": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 20,
+                            "line": 42,
                             "column": 5,
-                            "byte": 416
+                            "byte": 1127
                         },
                         "end": {
-                            "line": 20,
+                            "line": 42,
                             "column": 25,
-                            "byte": 436
+                            "byte": 1147
                         }
                     }
                 },
@@ -1858,14 +4193,14 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 20,
+                                "line": 42,
                                 "column": 27,
-                                "byte": 438
+                                "byte": 1149
                             },
                             "end": {
-                                "line": 20,
+                                "line": 42,
                                 "column": 49,
-                                "byte": 460
+                                "byte": 1171
                             }
                         },
                         "schema": {
@@ -1909,18 +4244,18 @@
                     }
                 }
             },
-            "jsonOutput": {
+            "jsonOutputCombo": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 16,
+                        "line": 26,
                         "column": 5,
-                        "byte": 314
+                        "byte": 603
                     },
                     "end": {
-                        "line": 16,
-                        "column": 30,
-                        "byte": 339
+                        "line": 26,
+                        "column": 41,
+                        "byte": 639
                     }
                 },
                 "schema": {
@@ -1931,14 +4266,14 @@
                     "nameRange": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 16,
+                            "line": 26,
                             "column": 5,
-                            "byte": 314
+                            "byte": 603
                         },
                         "end": {
-                            "line": 16,
+                            "line": 26,
                             "column": 15,
-                            "byte": 324
+                            "byte": 613
                         }
                     },
                     "argSchema": true,
@@ -1946,14 +4281,99 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 16,
+                                "line": 26,
                                 "column": 17,
-                                "byte": 326
+                                "byte": 615
                             },
                             "end": {
-                                "line": 16,
+                                "line": 26,
+                                "column": 41,
+                                "byte": 639
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "cloudflareApi": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "provider": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "cloudflareApi",
+                                "provider"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "comboSecretAndUnknown",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 5,
+                                        "byte": 467
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 77,
+                                        "byte": 579
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "jsonOutputSecret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 36,
+                        "column": 5,
+                        "byte": 958
+                    },
+                    "end": {
+                        "line": 36,
+                        "column": 30,
+                        "byte": 983
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toJSON",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 36,
+                            "column": 5,
+                            "byte": 958
+                        },
+                        "end": {
+                            "line": 36,
+                            "column": 15,
+                            "byte": 968
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 36,
+                                "column": 17,
+                                "byte": 970
+                            },
+                            "end": {
+                                "line": 36,
                                 "column": 30,
-                                "byte": 339
+                                "byte": 983
                             }
                         },
                         "schema": {
@@ -2022,18 +4442,130 @@
                     }
                 }
             },
+            "jsonOutputUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 30,
+                        "column": 5,
+                        "byte": 729
+                    },
+                    "end": {
+                        "line": 30,
+                        "column": 40,
+                        "byte": 764
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toJSON",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 30,
+                            "column": 5,
+                            "byte": 729
+                        },
+                        "end": {
+                            "line": 30,
+                            "column": 15,
+                            "byte": 739
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 30,
+                                "column": 17,
+                                "byte": 741
+                            },
+                            "end": {
+                                "line": 30,
+                                "column": 40,
+                                "byte": 764
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "oneStep": {
+                                    "properties": {
+                                        "twoStep": {
+                                            "properties": {
+                                                "threeStep": {
+                                                    "properties": {
+                                                        "fourStep": {
+                                                            "properties": {
+                                                                "foo": {
+                                                                    "type": "string",
+                                                                    "const": "bar"
+                                                                }
+                                                            },
+                                                            "type": "object",
+                                                            "required": [
+                                                                "foo"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "fourStep"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "threeStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "twoStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "oneStep"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
             "pulumiConfig": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 22,
+                        "line": 44,
                         "column": 5,
-                        "byte": 481
+                        "byte": 1192
                     },
                     "end": {
-                        "line": 23,
+                        "line": 45,
                         "column": 43,
-                        "byte": 559
+                        "byte": 1270
                     }
                 },
                 "schema": {
@@ -2057,27 +4589,27 @@
                     "accountId": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 22,
+                            "line": 44,
                             "column": 5,
-                            "byte": 481
+                            "byte": 1192
                         },
                         "end": {
-                            "line": 22,
+                            "line": 44,
                             "column": 14,
-                            "byte": 490
+                            "byte": 1201
                         }
                     },
                     "refTopLevelSecret": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 23,
+                            "line": 45,
                             "column": 5,
-                            "byte": 521
+                            "byte": 1232
                         },
                         "end": {
-                            "line": 23,
+                            "line": 45,
                             "column": 22,
-                            "byte": 538
+                            "byte": 1249
                         }
                     }
                 },
@@ -2086,14 +4618,14 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 22,
+                                "line": 44,
                                 "column": 16,
-                                "byte": 492
+                                "byte": 1203
                             },
                             "end": {
-                                "line": 22,
+                                "line": 44,
                                 "column": 40,
-                                "byte": 516
+                                "byte": 1227
                             }
                         },
                         "schema": {
@@ -2155,14 +4687,14 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 23,
+                                "line": 45,
                                 "column": 24,
-                                "byte": 540
+                                "byte": 1251
                             },
                             "end": {
-                                "line": 23,
+                                "line": 45,
                                 "column": 43,
-                                "byte": 559
+                                "byte": 1270
                             }
                         },
                         "schema": {
@@ -2190,18 +4722,18 @@
                     }
                 }
             },
-            "stringOutput": {
+            "stringOutputCombo": {
                 "range": {
                     "environment": "nested-unknowns-secrets",
                     "begin": {
-                        "line": 18,
+                        "line": 28,
                         "column": 5,
-                        "byte": 360
+                        "byte": 665
                     },
                     "end": {
-                        "line": 18,
-                        "column": 32,
-                        "byte": 387
+                        "line": 28,
+                        "column": 43,
+                        "byte": 703
                     }
                 },
                 "schema": {
@@ -2212,14 +4744,14 @@
                     "nameRange": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 18,
+                            "line": 28,
                             "column": 5,
-                            "byte": 360
+                            "byte": 665
                         },
                         "end": {
-                            "line": 18,
+                            "line": 28,
                             "column": 17,
-                            "byte": 372
+                            "byte": 677
                         }
                     },
                     "argSchema": true,
@@ -2227,14 +4759,99 @@
                         "range": {
                             "environment": "nested-unknowns-secrets",
                             "begin": {
-                                "line": 18,
+                                "line": 28,
                                 "column": 19,
-                                "byte": 374
+                                "byte": 679
                             },
                             "end": {
-                                "line": 18,
+                                "line": 28,
+                                "column": 43,
+                                "byte": 703
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "cloudflareApi": {
+                                    "type": "string",
+                                    "const": "apiKeySecret"
+                                },
+                                "provider": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "cloudflareApi",
+                                "provider"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "comboSecretAndUnknown",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 5,
+                                        "byte": 467
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 77,
+                                        "byte": 579
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "stringOutputSecret": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 38,
+                        "column": 5,
+                        "byte": 1010
+                    },
+                    "end": {
+                        "line": 38,
+                        "column": 32,
+                        "byte": 1037
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toString",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 38,
+                            "column": 5,
+                            "byte": 1010
+                        },
+                        "end": {
+                            "line": 38,
+                            "column": 17,
+                            "byte": 1022
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 38,
+                                "column": 19,
+                                "byte": 1024
+                            },
+                            "end": {
+                                "line": 38,
                                 "column": 32,
-                                "byte": 387
+                                "byte": 1037
                             }
                         },
                         "schema": {
@@ -2296,6 +4913,118 @@
                                         "line": 14,
                                         "column": 36,
                                         "byte": 295
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "stringOutputUnknown": {
+                "range": {
+                    "environment": "nested-unknowns-secrets",
+                    "begin": {
+                        "line": 32,
+                        "column": 5,
+                        "byte": 792
+                    },
+                    "end": {
+                        "line": 32,
+                        "column": 42,
+                        "byte": 829
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toString",
+                    "nameRange": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 32,
+                            "column": 5,
+                            "byte": 792
+                        },
+                        "end": {
+                            "line": 32,
+                            "column": 17,
+                            "byte": 804
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "nested-unknowns-secrets",
+                            "begin": {
+                                "line": 32,
+                                "column": 19,
+                                "byte": 806
+                            },
+                            "end": {
+                                "line": 32,
+                                "column": 42,
+                                "byte": 829
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "oneStep": {
+                                    "properties": {
+                                        "twoStep": {
+                                            "properties": {
+                                                "threeStep": {
+                                                    "properties": {
+                                                        "fourStep": {
+                                                            "properties": {
+                                                                "foo": {
+                                                                    "type": "string",
+                                                                    "const": "bar"
+                                                                }
+                                                            },
+                                                            "type": "object",
+                                                            "required": [
+                                                                "foo"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "fourStep"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "threeStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "twoStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "oneStep"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "deeplyNestedProvider",
+                                "value": {
+                                    "environment": "nested-unknowns-secrets",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 5,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 23,
+                                        "byte": 437
                                     }
                                 }
                             }
@@ -2361,6 +5090,43 @@
             }
         },
         "properties": {
+            "base64OutputSecret": {
+                "value": "YXBpS2V5U2VjcmV0",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 1064
+                        },
+                        "end": {
+                            "line": 40,
+                            "column": 39,
+                            "byte": 1098
+                        }
+                    }
+                }
+            },
+            "base64OutputUnknown": {
+                "value": "YmFy",
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 857
+                        },
+                        "end": {
+                            "line": 34,
+                            "column": 81,
+                            "byte": 933
+                        }
+                    }
+                }
+            },
             "cloudflare": {
                 "value": {
                     "account": {
@@ -2510,23 +5276,41 @@
                     }
                 }
             },
-            "environmentVariables": {
+            "comboSecretAndUnknown": {
                 "value": {
-                    "CLOUDFLARE_API_TOKEN": {
-                        "value": "apiTokenSecret",
+                    "cloudflareApi": {
+                        "value": "apiKeySecret",
                         "secret": true,
                         "trace": {
                             "def": {
                                 "environment": "nested-unknowns-secrets",
                                 "begin": {
-                                    "line": 20,
-                                    "column": 27,
-                                    "byte": 438
+                                    "line": 23,
+                                    "column": 20,
+                                    "byte": 482
                                 },
                                 "end": {
-                                    "line": 20,
-                                    "column": 49,
-                                    "byte": 460
+                                    "line": 23,
+                                    "column": 40,
+                                    "byte": 502
+                                }
+                            }
+                        }
+                    },
+                    "provider": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 24,
+                                    "column": 15,
+                                    "byte": 517
+                                },
+                                "end": {
+                                    "line": 24,
+                                    "column": 77,
+                                    "byte": 579
                                 }
                             }
                         }
@@ -2536,33 +5320,221 @@
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 20,
+                            "line": 23,
                             "column": 5,
-                            "byte": 416
+                            "byte": 467
                         },
                         "end": {
-                            "line": 20,
-                            "column": 49,
-                            "byte": 460
+                            "line": 24,
+                            "column": 77,
+                            "byte": 579
                         }
                     }
                 }
             },
-            "jsonOutput": {
-                "value": "{\"account\":{\"id\":\"accountIdSecret\",\"name\":\"account-name\"},\"apiKey\":\"apiKeySecret\",\"apiToken\":\"apiTokenSecret\",\"username\":\"bot@pulumi.com\",\"zoneId\":\"zone-id-123\"}",
-                "secret": true,
+            "deeplyNestedProvider": {
+                "value": {
+                    "oneStep": {
+                        "value": {
+                            "twoStep": {
+                                "value": {
+                                    "threeStep": {
+                                        "value": {
+                                            "fourStep": {
+                                                "value": {
+                                                    "foo": {
+                                                        "value": "bar",
+                                                        "trace": {
+                                                            "def": {
+                                                                "environment": "nested-unknowns-secrets",
+                                                                "begin": {
+                                                                    "line": 20,
+                                                                    "column": 13,
+                                                                    "byte": 399
+                                                                },
+                                                                "end": {
+                                                                    "line": 21,
+                                                                    "column": 23,
+                                                                    "byte": 437
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "trace": {
+                                                    "def": {
+                                                        "environment": "nested-unknowns-secrets",
+                                                        "begin": {
+                                                            "line": 20,
+                                                            "column": 13,
+                                                            "byte": 399
+                                                        },
+                                                        "end": {
+                                                            "line": 21,
+                                                            "column": 23,
+                                                            "byte": 437
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "trace": {
+                                            "def": {
+                                                "environment": "nested-unknowns-secrets",
+                                                "begin": {
+                                                    "line": 19,
+                                                    "column": 11,
+                                                    "byte": 377
+                                                },
+                                                "end": {
+                                                    "line": 21,
+                                                    "column": 23,
+                                                    "byte": 437
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "nested-unknowns-secrets",
+                                        "begin": {
+                                            "line": 18,
+                                            "column": 9,
+                                            "byte": 356
+                                        },
+                                        "end": {
+                                            "line": 21,
+                                            "column": 23,
+                                            "byte": 437
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 7,
+                                    "byte": 339
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 23,
+                                    "byte": 437
+                                }
+                            }
+                        }
+                    }
+                },
                 "trace": {
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
                             "line": 16,
                             "column": 5,
-                            "byte": 314
+                            "byte": 324
                         },
                         "end": {
-                            "line": 16,
+                            "line": 21,
+                            "column": 23,
+                            "byte": 437
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "CLOUDFLARE_API_TOKEN": {
+                        "value": "apiTokenSecret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "nested-unknowns-secrets",
+                                "begin": {
+                                    "line": 42,
+                                    "column": 27,
+                                    "byte": 1149
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 49,
+                                    "byte": 1171
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 42,
+                            "column": 5,
+                            "byte": 1127
+                        },
+                        "end": {
+                            "line": 42,
+                            "column": 49,
+                            "byte": 1171
+                        }
+                    }
+                }
+            },
+            "jsonOutputCombo": {
+                "value": "{\"cloudflareApi\":\"apiKeySecret\",\"provider\":\"bar\"}",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 26,
+                            "column": 5,
+                            "byte": 603
+                        },
+                        "end": {
+                            "line": 26,
+                            "column": 41,
+                            "byte": 639
+                        }
+                    }
+                }
+            },
+            "jsonOutputSecret": {
+                "value": "{\"account\":{\"id\":\"accountIdSecret\",\"name\":\"account-name\"},\"apiKey\":\"apiKeySecret\",\"apiToken\":\"apiTokenSecret\",\"username\":\"bot@pulumi.com\",\"zoneId\":\"zone-id-123\"}",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 36,
+                            "column": 5,
+                            "byte": 958
+                        },
+                        "end": {
+                            "line": 36,
                             "column": 30,
-                            "byte": 339
+                            "byte": 983
+                        }
+                    }
+                }
+            },
+            "jsonOutputUnknown": {
+                "value": "{\"oneStep\":{\"twoStep\":{\"threeStep\":{\"fourStep\":{\"foo\":\"bar\"}}}}}",
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 30,
+                            "column": 5,
+                            "byte": 729
+                        },
+                        "end": {
+                            "line": 30,
+                            "column": 40,
+                            "byte": 764
                         }
                     }
                 }
@@ -2576,14 +5548,14 @@
                             "def": {
                                 "environment": "nested-unknowns-secrets",
                                 "begin": {
-                                    "line": 22,
+                                    "line": 44,
                                     "column": 16,
-                                    "byte": 492
+                                    "byte": 1203
                                 },
                                 "end": {
-                                    "line": 22,
+                                    "line": 44,
                                     "column": 40,
-                                    "byte": 516
+                                    "byte": 1227
                                 }
                             }
                         }
@@ -2595,14 +5567,14 @@
                             "def": {
                                 "environment": "nested-unknowns-secrets",
                                 "begin": {
-                                    "line": 23,
+                                    "line": 45,
                                     "column": 24,
-                                    "byte": 540
+                                    "byte": 1251
                                 },
                                 "end": {
-                                    "line": 23,
+                                    "line": 45,
                                     "column": 43,
-                                    "byte": 559
+                                    "byte": 1270
                                 }
                             }
                         }
@@ -2612,33 +5584,70 @@
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 22,
+                            "line": 44,
                             "column": 5,
-                            "byte": 481
+                            "byte": 1192
                         },
                         "end": {
-                            "line": 23,
+                            "line": 45,
                             "column": 43,
-                            "byte": 559
+                            "byte": 1270
                         }
                     }
                 }
             },
-            "stringOutput": {
+            "stringOutputCombo": {
+                "value": "\"cloudflareApi\"=\"apiKeySecret\",\"provider\"=\"bar\"",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 28,
+                            "column": 5,
+                            "byte": 665
+                        },
+                        "end": {
+                            "line": 28,
+                            "column": 43,
+                            "byte": 703
+                        }
+                    }
+                }
+            },
+            "stringOutputSecret": {
                 "value": "\"account\"=\"\\\"id\\\"=\\\"accountIdSecret\\\",\\\"name\\\"=\\\"account-name\\\"\",\"apiKey\"=\"apiKeySecret\",\"apiToken\"=\"apiTokenSecret\",\"username\"=\"bot@pulumi.com\",\"zoneId\"=\"zone-id-123\"",
                 "secret": true,
                 "trace": {
                     "def": {
                         "environment": "nested-unknowns-secrets",
                         "begin": {
-                            "line": 18,
+                            "line": 38,
                             "column": 5,
-                            "byte": 360
+                            "byte": 1010
                         },
                         "end": {
-                            "line": 18,
+                            "line": 38,
                             "column": 32,
-                            "byte": 387
+                            "byte": 1037
+                        }
+                    }
+                }
+            },
+            "stringOutputUnknown": {
+                "value": "\"oneStep\"=\"\\\"twoStep\\\"=\\\"\\\\\\\"threeStep\\\\\\\"=\\\\\\\"\\\\\\\\\\\\\\\"fourStep\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"foo\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"bar\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\"\\\\\\\"\\\"\"",
+                "trace": {
+                    "def": {
+                        "environment": "nested-unknowns-secrets",
+                        "begin": {
+                            "line": 32,
+                            "column": 5,
+                            "byte": 792
+                        },
+                        "end": {
+                            "line": 32,
+                            "column": 42,
+                            "byte": 829
                         }
                     }
                 }
@@ -2665,6 +5674,12 @@
         },
         "schema": {
             "properties": {
+                "base64OutputSecret": {
+                    "type": "string"
+                },
+                "base64OutputUnknown": {
+                    "type": "string"
+                },
                 "cloudflare": {
                     "properties": {
                         "account": {
@@ -2710,6 +5725,67 @@
                         "zoneId"
                     ]
                 },
+                "comboSecretAndUnknown": {
+                    "properties": {
+                        "cloudflareApi": {
+                            "type": "string",
+                            "const": "apiKeySecret"
+                        },
+                        "provider": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "cloudflareApi",
+                        "provider"
+                    ]
+                },
+                "deeplyNestedProvider": {
+                    "properties": {
+                        "oneStep": {
+                            "properties": {
+                                "twoStep": {
+                                    "properties": {
+                                        "threeStep": {
+                                            "properties": {
+                                                "fourStep": {
+                                                    "properties": {
+                                                        "foo": {
+                                                            "type": "string",
+                                                            "const": "bar"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "required": [
+                                                        "foo"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "fourStep"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "threeStep"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "twoStep"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "oneStep"
+                    ]
+                },
                 "environmentVariables": {
                     "properties": {
                         "CLOUDFLARE_API_TOKEN": {
@@ -2722,7 +5798,13 @@
                         "CLOUDFLARE_API_TOKEN"
                     ]
                 },
-                "jsonOutput": {
+                "jsonOutputCombo": {
+                    "type": "string"
+                },
+                "jsonOutputSecret": {
+                    "type": "string"
+                },
+                "jsonOutputUnknown": {
                     "type": "string"
                 },
                 "pulumiConfig": {
@@ -2742,7 +5824,13 @@
                         "refTopLevelSecret"
                     ]
                 },
-                "stringOutput": {
+                "stringOutputCombo": {
+                    "type": "string"
+                },
+                "stringOutputSecret": {
+                    "type": "string"
+                },
+                "stringOutputUnknown": {
                     "type": "string"
                 },
                 "top-level-secret": {
@@ -2752,16 +5840,26 @@
             },
             "type": "object",
             "required": [
+                "base64OutputSecret",
+                "base64OutputUnknown",
                 "cloudflare",
+                "comboSecretAndUnknown",
+                "deeplyNestedProvider",
                 "environmentVariables",
-                "jsonOutput",
+                "jsonOutputCombo",
+                "jsonOutputSecret",
+                "jsonOutputUnknown",
                 "pulumiConfig",
-                "stringOutput",
+                "stringOutputCombo",
+                "stringOutputSecret",
+                "stringOutputUnknown",
                 "top-level-secret"
             ]
         }
     },
     "evalJson": {
+        "base64OutputSecret": "[secret]",
+        "base64OutputUnknown": "YmFy",
         "cloudflare": {
             "account": {
                 "id": "[secret]",
@@ -2772,15 +5870,34 @@
             "username": "bot@pulumi.com",
             "zoneId": "zone-id-123"
         },
+        "comboSecretAndUnknown": {
+            "cloudflareApi": "[secret]",
+            "provider": "bar"
+        },
+        "deeplyNestedProvider": {
+            "oneStep": {
+                "twoStep": {
+                    "threeStep": {
+                        "fourStep": {
+                            "foo": "bar"
+                        }
+                    }
+                }
+            }
+        },
         "environmentVariables": {
             "CLOUDFLARE_API_TOKEN": "[secret]"
         },
-        "jsonOutput": "[secret]",
+        "jsonOutputCombo": "[secret]",
+        "jsonOutputSecret": "[secret]",
+        "jsonOutputUnknown": "{\"oneStep\":{\"twoStep\":{\"threeStep\":{\"fourStep\":{\"foo\":\"bar\"}}}}}",
         "pulumiConfig": {
             "accountId": "[secret]",
             "refTopLevelSecret": "[secret]"
         },
-        "stringOutput": "[secret]",
+        "stringOutputCombo": "[secret]",
+        "stringOutputSecret": "[secret]",
+        "stringOutputUnknown": "\"oneStep\"=\"\\\"twoStep\\\"=\\\"\\\\\\\"threeStep\\\\\\\"=\\\\\\\"\\\\\\\\\\\\\\\"fourStep\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"foo\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"bar\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\"\\\\\\\"\\\"\"",
         "top-level-secret": "[secret]"
     }
 }
