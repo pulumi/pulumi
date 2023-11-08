@@ -82,6 +82,16 @@ message ReadResourceResponse {
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
 }
 
+// A parameterization for a resource.
+message Parameter {
+    // the key (a valid package name) for this parameterization.
+    string key = 1;
+    // the parameter value.
+    google.protobuf.Value value = 2;
+    // true if this is an extension (rather than replacement) parameterization.
+    bool extension = 3;
+}
+
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
 message RegisterResourceRequest {
     // PropertyDependencies describes the resources that a particular property depends on.
@@ -135,8 +145,7 @@ message RegisterResourceRequest {
 
     SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
 
-    google.protobuf.Value parameter = 31; // optional parameter for the provider.
-    bool extension = 32; // if true this is a parametrized extension resource. 
+    Parameter parameter = 31; // optional parameter for the provider.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

@@ -99,9 +99,12 @@ message ParameterizeRequest {
         repeated string args = 1;
     }
 
+    // the key (a valid package name) for this sub-schema parameterization.
+    string key = 1;
+
     oneof parameters {
-        ParametersArgs args = 1; // arguments from the command line.
-        google.protobuf.Value value = 2; // embedded value from a resource request.
+        ParametersArgs args = 2; // arguments from the command line.
+        google.protobuf.Value value = 3; // embedded value from a resource request.
     }
 }
 
@@ -111,6 +114,7 @@ message ParameterizeResponse {
 
 message GetSchemaRequest {
     int32 version = 1; // the schema version.
+    string key = 2; // an optional key for a parameterized sub-schema.
 }
 
 message GetSchemaResponse {

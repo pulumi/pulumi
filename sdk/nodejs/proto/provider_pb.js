@@ -871,15 +871,15 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<!Array<number>>}
  * @const
  */
-proto.pulumirpc.ParameterizeRequest.oneofGroups_ = [[1,2]];
+proto.pulumirpc.ParameterizeRequest.oneofGroups_ = [[2,3]];
 
 /**
  * @enum {number}
  */
 proto.pulumirpc.ParameterizeRequest.ParametersCase = {
   PARAMETERS_NOT_SET: 0,
-  ARGS: 1,
-  VALUE: 2
+  ARGS: 2,
+  VALUE: 3
 };
 
 /**
@@ -920,6 +920,7 @@ proto.pulumirpc.ParameterizeRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ParameterizeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
+    key: jspb.Message.getFieldWithDefault(msg, 1, ""),
     args: (f = msg.getArgs()) && proto.pulumirpc.ParameterizeRequest.ParametersArgs.toObject(includeInstance, f),
     value: (f = msg.getValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
   };
@@ -959,11 +960,15 @@ proto.pulumirpc.ParameterizeRequest.deserializeBinaryFromReader = function(msg, 
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setKey(value);
+      break;
+    case 2:
       var value = new proto.pulumirpc.ParameterizeRequest.ParametersArgs;
       reader.readMessage(value,proto.pulumirpc.ParameterizeRequest.ParametersArgs.deserializeBinaryFromReader);
       msg.setArgs(value);
       break;
-    case 2:
+    case 3:
       var value = new google_protobuf_struct_pb.Value;
       reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
       msg.setValue(value);
@@ -997,10 +1002,17 @@ proto.pulumirpc.ParameterizeRequest.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.ParameterizeRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getKey();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
   f = message.getArgs();
   if (f != null) {
     writer.writeMessage(
-      1,
+      2,
       f,
       proto.pulumirpc.ParameterizeRequest.ParametersArgs.serializeBinaryToWriter
     );
@@ -1008,7 +1020,7 @@ proto.pulumirpc.ParameterizeRequest.serializeBinaryToWriter = function(message, 
   f = message.getValue();
   if (f != null) {
     writer.writeMessage(
-      2,
+      3,
       f,
       google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
@@ -1173,12 +1185,30 @@ proto.pulumirpc.ParameterizeRequest.ParametersArgs.prototype.clearArgsList = fun
 
 
 /**
- * optional ParametersArgs args = 1;
+ * optional string key = 1;
+ * @return {string}
+ */
+proto.pulumirpc.ParameterizeRequest.prototype.getKey = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ParameterizeRequest} returns this
+ */
+proto.pulumirpc.ParameterizeRequest.prototype.setKey = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional ParametersArgs args = 2;
  * @return {?proto.pulumirpc.ParameterizeRequest.ParametersArgs}
  */
 proto.pulumirpc.ParameterizeRequest.prototype.getArgs = function() {
   return /** @type{?proto.pulumirpc.ParameterizeRequest.ParametersArgs} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.ParameterizeRequest.ParametersArgs, 1));
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ParameterizeRequest.ParametersArgs, 2));
 };
 
 
@@ -1187,7 +1217,7 @@ proto.pulumirpc.ParameterizeRequest.prototype.getArgs = function() {
  * @return {!proto.pulumirpc.ParameterizeRequest} returns this
 */
 proto.pulumirpc.ParameterizeRequest.prototype.setArgs = function(value) {
-  return jspb.Message.setOneofWrapperField(this, 1, proto.pulumirpc.ParameterizeRequest.oneofGroups_[0], value);
+  return jspb.Message.setOneofWrapperField(this, 2, proto.pulumirpc.ParameterizeRequest.oneofGroups_[0], value);
 };
 
 
@@ -1205,17 +1235,17 @@ proto.pulumirpc.ParameterizeRequest.prototype.clearArgs = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ParameterizeRequest.prototype.hasArgs = function() {
-  return jspb.Message.getField(this, 1) != null;
+  return jspb.Message.getField(this, 2) != null;
 };
 
 
 /**
- * optional google.protobuf.Value value = 2;
+ * optional google.protobuf.Value value = 3;
  * @return {?proto.google.protobuf.Value}
  */
 proto.pulumirpc.ParameterizeRequest.prototype.getValue = function() {
   return /** @type{?proto.google.protobuf.Value} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 2));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 3));
 };
 
 
@@ -1224,7 +1254,7 @@ proto.pulumirpc.ParameterizeRequest.prototype.getValue = function() {
  * @return {!proto.pulumirpc.ParameterizeRequest} returns this
 */
 proto.pulumirpc.ParameterizeRequest.prototype.setValue = function(value) {
-  return jspb.Message.setOneofWrapperField(this, 2, proto.pulumirpc.ParameterizeRequest.oneofGroups_[0], value);
+  return jspb.Message.setOneofWrapperField(this, 3, proto.pulumirpc.ParameterizeRequest.oneofGroups_[0], value);
 };
 
 
@@ -1242,7 +1272,7 @@ proto.pulumirpc.ParameterizeRequest.prototype.clearValue = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ParameterizeRequest.prototype.hasValue = function() {
-  return jspb.Message.getField(this, 2) != null;
+  return jspb.Message.getField(this, 3) != null;
 };
 
 
@@ -1379,7 +1409,8 @@ proto.pulumirpc.GetSchemaRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.GetSchemaRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    version: jspb.Message.getFieldWithDefault(msg, 1, 0)
+    version: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    key: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -1420,6 +1451,10 @@ proto.pulumirpc.GetSchemaRequest.deserializeBinaryFromReader = function(msg, rea
       var value = /** @type {number} */ (reader.readInt32());
       msg.setVersion(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setKey(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1456,6 +1491,13 @@ proto.pulumirpc.GetSchemaRequest.serializeBinaryToWriter = function(message, wri
       f
     );
   }
+  f = message.getKey();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -1474,6 +1516,24 @@ proto.pulumirpc.GetSchemaRequest.prototype.getVersion = function() {
  */
 proto.pulumirpc.GetSchemaRequest.prototype.setVersion = function(value) {
   return jspb.Message.setProto3IntField(this, 1, value);
+};
+
+
+/**
+ * optional string key = 2;
+ * @return {string}
+ */
+proto.pulumirpc.GetSchemaRequest.prototype.getKey = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GetSchemaRequest} returns this
+ */
+proto.pulumirpc.GetSchemaRequest.prototype.setKey = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

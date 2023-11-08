@@ -1253,17 +1253,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRef providers.Reference
 	var providerRefs map[string]string
 
-	var parameter interface{}
-	if req.GetParameter() != nil {
-		parameter = req.GetParameter().AsInterface()
-	}
-
 	var provParameter, resParameter interface{}
-	if req.GetExtension() {
-		// If this is an extension resource the parameter is for the resource
-		resParameter = parameter
-	} else {
-		provParameter = parameter
+	if req.GetParameter() != nil {
+		param := req.GetParameter()
+		value := param.GetValue().AsInterface()
+		if param.GetExtension() {
+			// If this is an extension resource the parameter is for the resource
+			resParameter = value
+		} else {
+			provParameter = value
+		}
 	}
 
 	if custom && !providers.IsProviderType(t) || remote {
@@ -1376,7 +1375,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the same plugin as the default
 		// provider for the package. It's probably not safe to do this for paramaterized providers so skip for now.
-		if req.GetParameter() == nil || req.GetExtension() {
+		if req.GetParameter() == nil || req.GetParameter().GetExtension() {
 			defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
 			if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
 				if defaultProvider.Version != nil {

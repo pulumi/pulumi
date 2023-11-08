@@ -51,8 +51,11 @@ class ParameterizeRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["args", b"args"]) -> None: ...
 
+    KEY_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
     VALUE_FIELD_NUMBER: builtins.int
+    key: builtins.str
+    """the key (a valid package name) for this sub-schema parameterization."""
     @property
     def args(self) -> global___ParameterizeRequest.ParametersArgs:
         """arguments from the command line."""
@@ -62,11 +65,12 @@ class ParameterizeRequest(google.protobuf.message.Message):
     def __init__(
         self,
         *,
+        key: builtins.str = ...,
         args: global___ParameterizeRequest.ParametersArgs | None = ...,
         value: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "parameters", b"parameters", "value", b"value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "parameters", b"parameters", "value", b"value"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "key", b"key", "parameters", b"parameters", "value", b"value"]) -> None: ...
     def WhichOneof(self, oneof_group: typing_extensions.Literal["parameters", b"parameters"]) -> typing_extensions.Literal["args", "value"] | None: ...
 
 global___ParameterizeRequest = ParameterizeRequest
@@ -86,14 +90,18 @@ class GetSchemaRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     VERSION_FIELD_NUMBER: builtins.int
+    KEY_FIELD_NUMBER: builtins.int
     version: builtins.int
     """the schema version."""
+    key: builtins.str
+    """an optional key for a parameterized sub-schema."""
     def __init__(
         self,
         *,
         version: builtins.int = ...,
+        key: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "version", b"version"]) -> None: ...
 
 global___GetSchemaRequest = GetSchemaRequest
 
