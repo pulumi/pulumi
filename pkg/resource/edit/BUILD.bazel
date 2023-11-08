@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "edit",
+    srcs = [
+        "doc.go",
+        "errors.go",
+        "operations.go",
+    ],
+    importpath = "github.com/example/project/pkg/resource/edit",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy/providers:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//resource/graph:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+    ],
+)
+
+go_test(
+    name = "edit_test",
+    srcs = ["operations_test.go"],
+    embed = [":edit"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy/providers:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//secrets/b64:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//version:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

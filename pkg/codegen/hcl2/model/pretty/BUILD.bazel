@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pretty",
+    srcs = ["display.go"],
+    importpath = "github.com/example/project/pkg/codegen/hcl2/model/pretty",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library"],
+)
+
+go_test(
+    name = "pretty_test",
+    srcs = ["display_test.go"],
+    embed = [":pretty"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

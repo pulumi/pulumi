@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "util",
+    srcs = ["plugin.go"],
+    importpath = "github.com/example/project/pkg/util",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library"],
+)
+
+go_test(
+    name = "util_test",
+    srcs = ["plugin_test.go"],
+    embed = [":util"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

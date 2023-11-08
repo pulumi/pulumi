@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "internals",
+    srcs = [
+        "empty.s",
+        "outputs.go",
+    ],
+    importpath = "github.com/example/project/sdk/go/pulumi/internals",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library"],
+)
+
+go_test(
+    name = "internals_test",
+    srcs = ["outputs_test.go"],
+    embed = [":internals"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

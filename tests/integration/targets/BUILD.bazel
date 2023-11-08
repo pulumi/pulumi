@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "targets_test",
+    srcs = ["targets_test.go"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/testing:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/fsutil:go_default_library",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

@@ -1,0 +1,61 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "dotnet",
+    srcs = [
+        "doc.go",
+        "gen.go",
+        "gen_intrinsics.go",
+        "gen_program.go",
+        "gen_program_expressions.go",
+        "git_ignore.go",
+        "importer.go",
+        "templates.go",
+        "test.go",
+        "utilities.go",
+    ],
+    importpath = "github.com/example/project/pkg/codegen/dotnet",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/hcl2/model:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/hcl2/model/format:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/hcl2/syntax:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/pcl:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/schema:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/testing/test:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//testing/integration:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/encoding:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/plugin:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/cmdutil:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/executable:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)
+
+go_test(
+    name = "dotnet_test",
+    srcs = [
+        "doc_test.go",
+        "gen_program_test.go",
+        "gen_test.go",
+        "utilities_test.go",
+    ],
+    embed = [":dotnet"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//codegen:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/schema:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/testing/test:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

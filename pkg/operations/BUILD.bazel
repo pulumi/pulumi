@@ -1,0 +1,50 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "operations",
+    srcs = [
+        "doc.go",
+        "operations.go",
+        "operations_aws.go",
+        "operations_cloud_aws.go",
+        "operations_gcp.go",
+        "resources.go",
+    ],
+    importpath = "github.com/example/project/pkg/operations",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_aws_aws_sdk_go//aws",
+        "@com_github_aws_aws_sdk_go//aws/credentials",
+        "@com_github_aws_aws_sdk_go//aws/session",
+        "@com_github_aws_aws_sdk_go//service/cloudwatchlogs",
+        "@com_github_aws_aws_sdk_go//service/sts",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy/providers:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/config:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/logging:go_default_library",
+        "@com_google_cloud_go_logging//apiv2",
+        "@org_golang_google_api//iterator",
+        "@org_golang_google_api//option",
+        "@org_golang_google_genproto//googleapis/logging/v2:logging",
+    ],
+)
+
+go_test(
+    name = "operations_test",
+    srcs = [
+        "operations_aws_test.go",
+        "operations_cloud_aws_test.go",
+        "resources_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":operations"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//resource/stack:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

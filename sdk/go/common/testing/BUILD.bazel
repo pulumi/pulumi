@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "testing",
+    srcs = ["environment.go"],
+    importpath = "github.com/example/project/sdk/go/common/testing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tools:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/fsutil:go_default_library",
+        "@com_github_stretchr_testify//assert",
+    ],
+)
+
+go_test(
+    name = "testing_test",
+    srcs = ["environment_test.go"],
+    embed = [":testing"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

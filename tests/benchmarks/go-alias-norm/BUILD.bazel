@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go-alias-norm_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/example/project/tests/benchmarks/go-alias-norm",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_pulumi_pulumi_random_sdk_v4//go/random",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi/config:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "go-alias-norm",
+    embed = [":go-alias-norm_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "mypkg",
+    srcs = [
+        "doc.go",
+        "getAmiIds.go",
+        "init.go",
+        "listStorageAccountKeys.go",
+        "provider.go",
+        "pulumiTypes.go",
+    ],
+    importpath = "github.com/example/project/pkg/codegen/testing/test/testdata/output-funcs-tfbridge20/go/mypkg",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumix:go_default_library",
+    ],
+)

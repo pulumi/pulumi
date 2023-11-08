@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "convert",
+    srcs = [
+        "mapper.go",
+        "mapper_client.go",
+        "mapper_server.go",
+        "plugin_mapper.go",
+    ],
+    importpath = "github.com/example/project/pkg/codegen/convert",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/plugin:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/logging:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/rpcutil:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/rpcutil/rpcerror:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//proto/go/codegen:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure",
+    ],
+)
+
+go_test(
+    name = "convert_test",
+    srcs = ["plugin_mapper_test.go"],
+    embed = [":convert"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/plugin:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

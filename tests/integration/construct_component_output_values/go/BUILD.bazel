@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_lib",
+    srcs = [
+        "component.go",
+        "main.go",
+        "pulumiTypes.go",
+    ],
+    importpath = "github.com/example/project/tests/integration/construct_component_output_values/go",
+    visibility = ["//visibility:private"],
+    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library"],
+)
+
+go_binary(
+    name = "go",
+    embed = [":go_lib"],
+    visibility = ["//visibility:public"],
+)

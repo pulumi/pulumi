@@ -1,0 +1,55 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "resource",
+    srcs = [
+        "alias.go",
+        "asset.go",
+        "custom_timeouts.go",
+        "errors.go",
+        "properties.go",
+        "properties_diff.go",
+        "properties_path.go",
+        "resource_goal.go",
+        "resource_id.go",
+        "resource_operation.go",
+        "resource_state.go",
+        "stack.go",
+        "status.go",
+        "urn.go",
+    ],
+    importpath = "github.com/example/project/sdk/go/common/resource",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/httputil:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/mapper:go_default_library",
+        "@com_lukechampine_frand//:frand",
+    ],
+)
+
+go_test(
+    name = "resource_test",
+    srcs = [
+        "alias_test.go",
+        "asset_test.go",
+        "mapper_test.go",
+        "properties_diff_test.go",
+        "properties_path_test.go",
+        "properties_test.go",
+        "resource_id_test.go",
+        "urn_test.go",
+    ],
+    embed = [":resource"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/deepcopy:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/mapper:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

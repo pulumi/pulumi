@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "integration_test",
+    srcs = [
+        "appdash_test.go",
+        "integration_util_test.go",
+    ],
+    deps = [
+        "//proto/pulumi:go",
+        "@com_github_pulumi_pulumi_pkg_v3//testing/integration:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/testing:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/testing/iotest:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/fsutil:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/rpcutil:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@com_sourcegraph_sourcegraph_appdash//:appdash",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure",
+    ],
+)

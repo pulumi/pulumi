@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "example",
+    srcs = [
+        "argFunction.go",
+        "barResource.go",
+        "doc.go",
+        "fooResource.go",
+        "init.go",
+        "otherResource.go",
+        "provider.go",
+        "pulumiTypes.go",
+        "resource.go",
+        "typeUses.go",
+    ],
+    importpath = "github.com/example/project/pkg/codegen/testing/test/testdata/go-overridden-internal-module-name/go/example",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumix:go_default_library",
+    ],
+)

@@ -1,0 +1,44 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pulumix",
+    srcs = [
+        "apply_state.go",
+        "applyn.go",
+        "array.go",
+        "combinators.go",
+        "gen.go",
+        "map.go",
+        "ptr.go",
+        "types.go",
+    ],
+    importpath = "github.com/example/project/sdk/go/pulumix",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/internal:go_default_library",
+    ],
+)
+
+go_test(
+    name = "pulumix_test",
+    srcs = [
+        "applyn_test.go",
+        "array_test.go",
+        "combinators_test.go",
+        "context_test.go",
+        "map_test.go",
+        "ptr_test.go",
+        "types_ext_test.go",
+        "types_test.go",
+    ],
+    embed = [":pulumix"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/internal:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumix:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

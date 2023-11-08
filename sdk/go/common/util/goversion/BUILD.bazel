@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "goversion",
+    srcs = ["version.go"],
+    importpath = "github.com/example/project/sdk/go/common/util/goversion",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_hashicorp_go_version//:go-version"],
+)
+
+go_test(
+    name = "goversion_test",
+    srcs = ["version_test.go"],
+    embed = [":goversion"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

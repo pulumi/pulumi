@@ -1,0 +1,47 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "deploytest",
+    srcs = [
+        "analyzer.go",
+        "backendclient.go",
+        "languageruntime.go",
+        "pluginhost.go",
+        "provider.go",
+        "resourcemonitor.go",
+    ],
+    importpath = "github.com/example/project/pkg/resource/deploy/deploytest",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/pulumi:go",
+        "@com_github_blang_semver//:semver",
+        "@com_github_gofrs_uuid//:uuid",
+        "@com_github_golang_protobuf//ptypes/empty",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/plugin:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/rpcutil:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//metadata",
+    ],
+)
+
+go_test(
+    name = "deploytest_test",
+    srcs = ["resourcemonitor_test.go"],
+    embed = [":deploytest"],
+    deps = [
+        "//proto/pulumi:go",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)

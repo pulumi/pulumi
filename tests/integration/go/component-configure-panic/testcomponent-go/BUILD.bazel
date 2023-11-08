@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "testcomponent-go_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/example/project/tests/integration/go/component-configure-panic/testcomponent-go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//proto/pulumi:go",
+        "@com_github_golang_protobuf//ptypes/empty",
+        "@com_github_pulumi_pulumi_pkg_v3//resource/provider:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/cmdutil:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi/provider:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "testcomponent-go",
+    embed = [":testcomponent-go_lib"],
+    visibility = ["//visibility:public"],
+)

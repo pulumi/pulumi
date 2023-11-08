@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "v1alpha1",
+    srcs = ["pulumiTypes.go"],
+    importpath = "github.com/example/project/pkg/codegen/testing/test/testdata/embedded-crd-types/go/foo/crd.k8s.amazonaws.com/v1alpha1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumix:go_default_library",
+    ],
+)

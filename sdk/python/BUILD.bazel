@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "python",
+    srcs = [
+        "python.go",
+        "shim_unix.go",
+        "shim_windows.go",
+    ],
+    importpath = "github.com/example/project/sdk/python",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library"],
+)
+
+go_test(
+    name = "python_test",
+    srcs = ["python_test.go"],
+    embed = [":python"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

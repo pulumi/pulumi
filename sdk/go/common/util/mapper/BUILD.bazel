@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "mapper",
+    srcs = [
+        "errors.go",
+        "mapper.go",
+        "mapper_decode.go",
+        "mapper_encode.go",
+        "object.go",
+    ],
+    importpath = "github.com/example/project/sdk/go/common/util/mapper",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library"],
+)
+
+go_test(
+    name = "mapper_test",
+    srcs = ["mapper_test.go"],
+    embed = [":mapper"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

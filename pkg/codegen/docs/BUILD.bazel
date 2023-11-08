@@ -1,0 +1,62 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "docs",
+    srcs = [
+        "examples.go",
+        "gen.go",
+        "gen_function.go",
+        "gen_kubernetes.go",
+        "gen_method.go",
+        "package_tree.go",
+        "utils.go",
+    ],
+    embedsrcs = [
+        "templates/constructor_args.tmpl",
+        "templates/constructor_params.tmpl",
+        "templates/enums.tmpl",
+        "templates/examples.tmpl",
+        "templates/function.tmpl",
+        "templates/header.tmpl",
+        "templates/index.tmpl",
+        "templates/index_categories.tmpl",
+        "templates/package_details.tmpl",
+        "templates/properties.tmpl",
+        "templates/read_inputs.tmpl",
+        "templates/resource.tmpl",
+        "templates/utils.tmpl",
+        "templates/yaml_constructor.tmpl",
+    ],
+    importpath = "github.com/example/project/pkg/codegen/docs",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_golang_glog//:glog",
+        "@com_github_pgavlin_goldmark//:goldmark",
+        "@com_github_pgavlin_goldmark//ast",
+        "@com_github_pulumi_pulumi_java_pkg//codegen/java",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/dotnet:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/go:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/nodejs:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/python:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/schema:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_yaml//pkg/pulumiyaml/codegen",
+    ],
+)
+
+go_test(
+    name = "docs_test",
+    srcs = [
+        "gen_test.go",
+        "package_tree_test.go",
+        "utils_test.go",
+    ],
+    embed = [":docs"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/schema:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/testing/test:go_default_library",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

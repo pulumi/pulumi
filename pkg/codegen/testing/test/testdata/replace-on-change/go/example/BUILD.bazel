@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "example",
+    srcs = [
+        "cat.go",
+        "doc.go",
+        "dog.go",
+        "god.go",
+        "init.go",
+        "noRecursive.go",
+        "provider.go",
+        "pulumiTypes.go",
+        "toyStore.go",
+    ],
+    importpath = "github.com/example/project/pkg/codegen/testing/test/testdata/replace-on-change/go/example",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumix:go_default_library",
+    ],
+)

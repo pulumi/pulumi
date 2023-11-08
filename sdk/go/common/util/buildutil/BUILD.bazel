@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "buildutil",
+    srcs = ["semver.go"],
+    importpath = "github.com/example/project/sdk/go/common/util/buildutil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@org_golang_x_mod//semver",
+    ],
+)
+
+go_test(
+    name = "buildutil_test",
+    srcs = ["semver_test.go"],
+    embed = [":buildutil"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

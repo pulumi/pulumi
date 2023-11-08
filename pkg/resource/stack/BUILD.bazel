@@ -1,0 +1,57 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "stack",
+    srcs = [
+        "checkpoint.go",
+        "deployment.go",
+        "doc.go",
+        "plan.go",
+        "secrets.go",
+    ],
+    importpath = "github.com/example/project/pkg/resource/stack",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//display:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//secrets:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//secrets/b64:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//secrets/cloud:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//secrets/passphrase:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//secrets/service:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype/migrate:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/encoding:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/config:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_santhosh_tekuri_jsonschema_v5//:jsonschema",
+    ],
+)
+
+go_test(
+    name = "stack_test",
+    srcs = [
+        "checkpoint_test.go",
+        "deployment_test.go",
+        "secrets_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":stack"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//secrets:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//secrets/b64:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/encoding:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/config:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/testing:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_pgregory_rapid//:rapid",
+    ],
+)

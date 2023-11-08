@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "graph",
+    srcs = [
+        "dependency_graph.go",
+        "doc.go",
+        "resource_set.go",
+    ],
+    importpath = "github.com/example/project/pkg/resource/graph",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy/providers:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+    ],
+)
+
+go_test(
+    name = "graph_test",
+    srcs = [
+        "dependency_graph_rapid_test.go",
+        "dependency_graph_test.go",
+        "resource_set_test.go",
+    ],
+    embed = [":graph"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy/providers:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_pgregory_rapid//:rapid",
+    ],
+)

@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go",
+    srcs = [
+        "alias.pb.go",
+        "analyzer.pb.go",
+        "analyzer_grpc.pb.go",
+        "converter.pb.go",
+        "converter_grpc.pb.go",
+        "engine.pb.go",
+        "engine_grpc.pb.go",
+        "errors.pb.go",
+        "language.pb.go",
+        "language_grpc.pb.go",
+        "plugin.pb.go",
+        "provider.pb.go",
+        "provider_grpc.pb.go",
+        "resource.pb.go",
+        "resource_grpc.pb.go",
+        "source.pb.go",
+    ],
+    importpath = "github.com/example/project/sdk/proto/go",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_sdk_v3//proto/go/codegen:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)

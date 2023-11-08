@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "tests_test",
+    srcs = [
+        "about_test.go",
+        "config_test.go",
+        "history_test.go",
+        "login_test.go",
+        "main_test.go",
+        "policy_new_test.go",
+        "remote_test.go",
+        "roundtrip_test.go",
+        "smoke_test.go",
+        "stack_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    deps = [
+        "@com_github_hexops_autogold//:autogold",
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/schema:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//resource/stack:go_default_library",
+        "@com_github_pulumi_pulumi_pkg_v3//testing/integration:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/env:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/testing:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

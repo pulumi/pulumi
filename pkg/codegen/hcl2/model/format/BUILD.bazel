@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "format",
+    srcs = [
+        "func.go",
+        "gen.go",
+    ],
+    importpath = "github.com/example/project/pkg/codegen/hcl2/model/format",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pulumi_pulumi_pkg_v3//codegen/hcl2/model:go_default_library",
+        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+    ],
+)
