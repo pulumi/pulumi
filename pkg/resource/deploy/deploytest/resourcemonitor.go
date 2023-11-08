@@ -146,6 +146,7 @@ type ResourceOptions struct {
 	AdditionalSecretOutputs []resource.PropertyKey
 	AliasSpecs              bool
 	ParameterPackage        string
+	ParameterVersion        string
 	Parameter               *pbstruct.Value
 	Extension               bool
 
@@ -255,6 +256,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.Parameter != nil {
 		parameter = &pulumirpc.ResourceParameter{
 			Package:   opts.ParameterPackage,
+			Version:   opts.ParameterVersion,
 			Value:     opts.Parameter,
 			Extension: opts.Extension,
 		}

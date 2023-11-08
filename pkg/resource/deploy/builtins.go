@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	pbstruct "google.golang.org/protobuf/types/known/structpb"
@@ -56,7 +57,7 @@ func (p *builtinProvider) GetMappings(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (p *builtinProvider) Parameterize(key string, args []string, value *pbstruct.Value) error {
+func (p *builtinProvider) Parameterize(key string, args []string, version *semver.Version, value *pbstruct.Value) error {
 	return errors.New("the builtin provider does not support parameterization")
 }
 

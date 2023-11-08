@@ -86,10 +86,12 @@ message ReadResourceResponse {
 message ResourceParameter {
     // The base provider package this resource is a parameterization of.
     string package = 1;
+    // The version of the base provider package this resource is a parameterization of.
+    string version = 2;
     // the parameter value.
-    google.protobuf.Value value = 2;
+    google.protobuf.Value value = 3;
     // true if this is an extension (rather than replacement) parameterization.
-    bool extension = 3;
+    bool extension = 4;
 }
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.

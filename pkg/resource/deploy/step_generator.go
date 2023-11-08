@@ -1691,7 +1691,7 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 }
 
 func (sg *stepGenerator) loadResourceProvider(
-	urn resource.URN, custom bool, provider string, typ tokens.Type, parameter interface{},
+	urn resource.URN, custom bool, provider string, typ tokens.Type, parameter *resource.ResourceParameter,
 ) (plugin.Provider, error) {
 	// If this is not a custom resource, then it has no provider by definition.
 	if !custom {
@@ -1723,14 +1723,14 @@ func (sg *stepGenerator) loadResourceProvider(
 	if parameter != nil {
 		applied := sg.parameterizations[ref.String()]
 
-		parameterValue, err := pbstruct.NewValue(parameter)
+		parameterValue, err := pbstruct.NewValue(parameter.Value)
 		if err != nil {
 			return nil, sg.bailDaig(diag.GetParameterizeProviderError(urn), provider, urn, err)
 		}
 
 		key := parameterValue.String()
 		if _, has := applied[key]; !has {
-			if err := p.Parameterize(key, nil, parameterValue); err != nil {
+			if err := p.Parameterize("key", nil, &parameter.Version, parameterValue); err != nil {
 				return nil, sg.bailDaig(diag.GetParameterizeProviderError(urn), provider, urn, err)
 			}
 

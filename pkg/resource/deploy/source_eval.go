@@ -1255,7 +1255,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRefs map[string]string
 
 	var provPackage string
-	var provParameter, resParameter interface{}
+	var provParameter interface{}
+	var resParameter *resource.ResourceParameter
 	if req.GetParameter() != nil {
 		param := req.GetParameter()
 
@@ -1265,10 +1266,19 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter package: %q", provPackage))
 		}
 
+		provVersion, err := semver.Parse(param.GetVersion())
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter version: %q", param.GetVersion()))
+		}
+
 		value := param.GetValue().AsInterface()
 		if param.GetExtension() {
 			// If this is an extension resource the parameter is for the resource
-			resParameter = value
+			resParameter = &resource.ResourceParameter{
+				Version: provVersion,
+				Package: provPackage,
+				Value:   value,
+			}
 		} else {
 			provParameter = value
 		}
@@ -1379,7 +1389,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		if req.GetParameter() != nil {
 			param := req.GetParameter()
-			providers.SetProviderParameter(props, param.GetPackage(), param.GetValue().AsInterface())
+			version, err := semver.Parse(param.GetVersion())
+			if err != nil {
+				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
+			}
+
+			providers.SetProviderParameter(props, param.GetPackage(), version, param.GetValue().AsInterface())
 		}
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the same plugin as the default

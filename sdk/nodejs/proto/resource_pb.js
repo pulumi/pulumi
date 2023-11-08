@@ -1373,8 +1373,9 @@ proto.pulumirpc.ResourceParameter.prototype.toObject = function(opt_includeInsta
 proto.pulumirpc.ResourceParameter.toObject = function(includeInstance, msg) {
   var f, obj = {
     pb_package: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
     value: (f = msg.getValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f),
-    extension: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+    extension: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -1416,11 +1417,15 @@ proto.pulumirpc.ResourceParameter.deserializeBinaryFromReader = function(msg, re
       msg.setPackage(value);
       break;
     case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVersion(value);
+      break;
+    case 3:
       var value = new google_protobuf_struct_pb.Value;
       reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
       msg.setValue(value);
       break;
-    case 3:
+    case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setExtension$(value);
       break;
@@ -1460,10 +1465,17 @@ proto.pulumirpc.ResourceParameter.serializeBinaryToWriter = function(message, wr
       f
     );
   }
+  f = message.getVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
   f = message.getValue();
   if (f != null) {
     writer.writeMessage(
-      2,
+      3,
       f,
       google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
@@ -1471,7 +1483,7 @@ proto.pulumirpc.ResourceParameter.serializeBinaryToWriter = function(message, wr
   f = message.getExtension$();
   if (f) {
     writer.writeBool(
-      3,
+      4,
       f
     );
   }
@@ -1497,12 +1509,30 @@ proto.pulumirpc.ResourceParameter.prototype.setPackage = function(value) {
 
 
 /**
- * optional google.protobuf.Value value = 2;
+ * optional string version = 2;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceParameter.prototype.getVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceParameter} returns this
+ */
+proto.pulumirpc.ResourceParameter.prototype.setVersion = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional google.protobuf.Value value = 3;
  * @return {?proto.google.protobuf.Value}
  */
 proto.pulumirpc.ResourceParameter.prototype.getValue = function() {
   return /** @type{?proto.google.protobuf.Value} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 2));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 3));
 };
 
 
@@ -1511,7 +1541,7 @@ proto.pulumirpc.ResourceParameter.prototype.getValue = function() {
  * @return {!proto.pulumirpc.ResourceParameter} returns this
 */
 proto.pulumirpc.ResourceParameter.prototype.setValue = function(value) {
-  return jspb.Message.setWrapperField(this, 2, value);
+  return jspb.Message.setWrapperField(this, 3, value);
 };
 
 
@@ -1529,16 +1559,16 @@ proto.pulumirpc.ResourceParameter.prototype.clearValue = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ResourceParameter.prototype.hasValue = function() {
-  return jspb.Message.getField(this, 2) != null;
+  return jspb.Message.getField(this, 3) != null;
 };
 
 
 /**
- * optional bool extension = 3;
+ * optional bool extension = 4;
  * @return {boolean}
  */
 proto.pulumirpc.ResourceParameter.prototype.getExtension$ = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
 };
 
 
@@ -1547,7 +1577,7 @@ proto.pulumirpc.ResourceParameter.prototype.getExtension$ = function() {
  * @return {!proto.pulumirpc.ResourceParameter} returns this
  */
 proto.pulumirpc.ResourceParameter.prototype.setExtension$ = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 3, value);
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 

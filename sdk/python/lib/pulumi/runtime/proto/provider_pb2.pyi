@@ -51,6 +51,26 @@ class ParameterizeRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["args", b"args"]) -> None: ...
 
+    @typing_extensions.final
+    class ParametersValue(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        VERSION_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        version: builtins.str
+        """The package version this was sent from."""
+        @property
+        def value(self) -> google.protobuf.struct_pb2.Value:
+            """The embedded value from the package."""
+        def __init__(
+            self,
+            *,
+            version: builtins.str = ...,
+            value: google.protobuf.struct_pb2.Value | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing_extensions.Literal["value", b"value", "version", b"version"]) -> None: ...
+
     KEY_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
     VALUE_FIELD_NUMBER: builtins.int
@@ -60,14 +80,14 @@ class ParameterizeRequest(google.protobuf.message.Message):
     def args(self) -> global___ParameterizeRequest.ParametersArgs:
         """arguments from the command line."""
     @property
-    def value(self) -> google.protobuf.struct_pb2.Value:
-        """embedded value from a resource request."""
+    def value(self) -> global___ParameterizeRequest.ParametersValue:
+        """values from a generated package."""
     def __init__(
         self,
         *,
         key: builtins.str = ...,
         args: global___ParameterizeRequest.ParametersArgs | None = ...,
-        value: google.protobuf.struct_pb2.Value | None = ...,
+        value: global___ParameterizeRequest.ParametersValue | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "parameters", b"parameters", "value", b"value"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "key", b"key", "parameters", b"parameters", "value", b"value"]) -> None: ...

@@ -17,9 +17,20 @@ package resource
 import (
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+// ResourceParameter is a parameter to a resource.
+type ResourceParameter struct {
+	// The base package.
+	Package string
+	// The version of the base package.
+	Version semver.Version
+	// The value of the parameter.
+	Value interface{}
+}
 
 // State is a structure containing state associated with a resource.  This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects.  The value's state is not, however, associated
@@ -54,7 +65,7 @@ type State struct {
 
 	// If set, the extension parameter passed to the provider. This is not set on non-extension parameterized resources
 	// because then it's saved on the provider resource itself in the Inputs.
-	Parameter interface{}
+	Parameter *ResourceParameter
 }
 
 func (s *State) GetAliasURNs() []URN {
@@ -76,7 +87,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
 	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
-	sourcePosition string, parameter interface{},
+	sourcePosition string, parameter *ResourceParameter,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")

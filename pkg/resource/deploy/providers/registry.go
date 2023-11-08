@@ -100,36 +100,48 @@ func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
 }
 
 // SetProviderParameter sets the provider plugin parameter in the given property map.
-func SetProviderParameter(inputs resource.PropertyMap, key string, value interface{}) {
+func SetProviderParameter(inputs resource.PropertyMap, key string, version semver.Version, value interface{}) {
 	obj := resource.PropertyMap{
-		"key":   resource.NewStringProperty(key),
-		"value": resource.NewPropertyValue(value),
+		"key":     resource.NewStringProperty(key),
+		"version": resource.NewStringProperty(version.String()),
+		"value":   resource.NewPropertyValue(value),
 	}
 	inputs[pluginParameterKey] = resource.NewObjectProperty(obj)
 }
 
 // GetProviderParameter fetches a provider plugin parameter from the given property map.
 // If the parameter is not set, this function returns nil.
-func GetProviderParameter(inputs resource.PropertyMap) (string, interface{}, error) {
+func GetProviderParameter(inputs resource.PropertyMap) (string, *semver.Version, interface{}, error) {
 	obj, ok := inputs[pluginParameterKey]
 	if !ok {
-		return "", nil, nil
+		return "", nil, nil, nil
 	}
 
 	if !obj.IsObject() {
-		return "", nil, fmt.Errorf("'%s' must be an object", pluginParameterKey)
+		return "", nil, nil, fmt.Errorf("'%s' must be an object", pluginParameterKey)
 	}
 
 	value := obj.ObjectValue()["value"]
 	key, has := obj.ObjectValue()["key"]
 	if !has {
-		return "", nil, fmt.Errorf("'%s' must have a 'key' property", pluginParameterKey)
+		return "", nil, nil, fmt.Errorf("'%s' must have a 'key' property", pluginParameterKey)
 	}
 	if !key.IsString() {
-		return "", nil, fmt.Errorf("'%s' must have a 'key' property of type string", pluginParameterKey)
+		return "", nil, nil, fmt.Errorf("'%s' must have a 'key' property of type string", pluginParameterKey)
+	}
+	version, has := obj.ObjectValue()["version"]
+	if !has {
+		return "", nil, nil, fmt.Errorf("'%s' must have a 'version' property", pluginParameterKey)
+	}
+	if !version.IsString() {
+		return "", nil, nil, fmt.Errorf("'%s' must have a 'version' property of type string", pluginParameterKey)
+	}
+	v, err := semver.ParseTolerant(version.StringValue())
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("could not parse parameter version: %v", err)
 	}
 
-	return key.StringValue(), value.Mappable(), nil
+	return key.StringValue(), &v, value.Mappable(), nil
 }
 
 // Sets the provider version in the given property map.
@@ -179,7 +191,7 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
-	parameterKey string, parameter interface{}, host plugin.Host, builtins plugin.Provider,
+	parameterKey string, parameterVersion *semver.Version, parameter interface{}, host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
@@ -235,7 +247,7 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 			return nil, errors.Join(err, host.CloseProvider(provider))
 		}
 
-		if err := provider.Parameterize(parameterKey, nil, pbParameter); err != nil {
+		if err := provider.Parameterize(parameterKey, nil, parameterVersion, pbParameter); err != nil {
 			return nil, errors.Join(err, host.CloseProvider(provider))
 		}
 	}
@@ -371,7 +383,7 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	if err != nil {
 		return nil, []plugin.CheckFailure{{Property: "pluginDownloadURL", Reason: err.Error()}}, nil
 	}
-	parameterPackage, parameter, err := GetProviderParameter(news)
+	parameterPackage, parameterVersion, parameter, err := GetProviderParameter(news)
 	if err != nil {
 		return nil, []plugin.CheckFailure{{Property: "parameter", Reason: err.Error()}}, nil
 	}
@@ -381,10 +393,12 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	if parameter != nil {
 		parameterKey = string(providerPkg)
 		providerPkg = tokens.Package(parameterPackage)
+		parameterVersion = version
+		version = parameterVersion
 	}
 
 	// TODO: We should thread checksums through here.
-	provider, err := loadProvider(providerPkg, version, downloadURL, nil, parameterKey, parameter, r.host, r.builtins)
+	provider, err := loadProvider(providerPkg, version, downloadURL, nil, parameterKey, parameterVersion, parameter, r.host, r.builtins)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -502,19 +516,22 @@ func (r *Registry) Same(res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %v", providerPkg, urn, err)
 		}
-		parameterPackage, parameter, err := GetProviderParameter(res.Inputs)
+		parameterPackage, parameterVersion, parameter, err := GetProviderParameter(res.Inputs)
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %v", providerPkg, urn, err)
 		}
+
 		// If we have a parameter then the type token is the parameter key, and the parameter package is the provider to actually load.
 		var parameterKey string
 		if parameter != nil {
 			parameterKey = string(providerPkg)
 			providerPkg = tokens.Package(parameterPackage)
+			parameterVersion = version
+			version = parameterVersion
 		}
 
 		// TODO: We should thread checksums through here.
-		provider, err = loadProvider(providerPkg, version, downloadURL, nil, parameterKey, parameter, r.host, r.builtins)
+		provider, err = loadProvider(providerPkg, version, downloadURL, nil, parameterKey, parameterVersion, parameter, r.host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %v", providerPkg, urn, err)
 		}
@@ -567,20 +584,23 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 			return "", nil, resource.StatusUnknown,
 				fmt.Errorf("parse download URL for %v provider '%v': %v", providerPkg, urn, err)
 		}
-		parameterPackage, parameter, err := GetProviderParameter(news)
+		parameterPackage, parameterVersion, parameter, err := GetProviderParameter(news)
 		if err != nil {
 			return "", nil, resource.StatusUnknown,
 				fmt.Errorf("parse parameter for %v provider '%v': %v", providerPkg, urn, err)
 		}
+
 		// If we have a parameter then the type token is the parameter key, and the parameter package is the provider to actually load.
 		var parameterKey string
 		if parameter != nil {
 			parameterKey = string(providerPkg)
 			providerPkg = tokens.Package(parameterPackage)
+			parameterVersion = version
+			version = parameterVersion
 		}
 
 		// TODO: We should thread checksums through here.
-		provider, err = loadProvider(providerPkg, version, downloadURL, nil, parameterKey, parameter, r.host, r.builtins)
+		provider, err = loadProvider(providerPkg, version, downloadURL, nil, parameterKey, parameterVersion, parameter, r.host, r.builtins)
 		if err != nil {
 			return "", nil, resource.StatusUnknown,
 				fmt.Errorf("load plugin for %v provider '%v': %v", providerPkg, urn, err)
@@ -702,6 +722,6 @@ func (r *Registry) SignalCancellation() error {
 	return nil
 }
 
-func (r *Registry) Parameterize(key string, args []string, value *pbstruct.Value) error {
+func (r *Registry) Parameterize(key string, args []string, version *semver.Version, value *pbstruct.Value) error {
 	return errors.New("the provider registry does not support parameterization")
 }

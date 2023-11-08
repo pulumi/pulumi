@@ -2001,7 +2001,7 @@ func (p *provider) GetMappings(key string) ([]string, error) {
 	return resp.Providers, nil
 }
 
-func (p *provider) Parameterize(key string, args []string, value *pbstruct.Value) error {
+func (p *provider) Parameterize(key string, args []string, version *semver.Version, value *pbstruct.Value) error {
 	label := fmt.Sprintf("%s.Parameterize", p.label())
 	logging.V(7).Infof("%s executing: key=%s, args=%v; value=%v", label, key, args, value)
 
@@ -2020,7 +2020,10 @@ func (p *provider) Parameterize(key string, args []string, value *pbstruct.Value
 		}
 	} else {
 		req.Parameters = &pulumirpc.ParameterizeRequest_Value{
-			Value: value,
+			Value: &pulumirpc.ParameterizeRequest_ParametersValue{
+				Version: version.String(),
+				Value:   value,
+			},
 		}
 	}
 

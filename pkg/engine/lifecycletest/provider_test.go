@@ -1713,6 +1713,7 @@ func TestParameterize(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		providerURN, providerID, _, err := monitor.RegisterResource("pulumi:providers:ext", "provA", true, deploytest.ResourceOptions{
 			ParameterPackage: "pkgA",
+			ParameterVersion: "1.0.0",
 			Parameter:        param,
 		})
 		assert.NoError(t, err)
@@ -1737,7 +1738,7 @@ func TestParameterize(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ParameterizeF: func(key string, args []string, value *structpb.Value) error {
+				ParameterizeF: func(key string, args []string, version *semver.Version, value *structpb.Value) error {
 					parametrized = true
 					assert.Nil(t, args)
 					assert.Equal(t, param.String(), value.String())
@@ -1784,6 +1785,7 @@ func TestParameterizeExtension(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
 			ParameterPackage: "pkgA",
+			ParameterVersion: "1.0.0",
 			Parameter:        param,
 			Extension:        true,
 		})
@@ -1791,6 +1793,7 @@ func TestParameterizeExtension(t *testing.T) {
 
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resB", true, deploytest.ResourceOptions{
 			ParameterPackage: "pkgA",
+			ParameterVersion: "1.0.0",
 			Parameter:        param,
 			Extension:        true,
 		})
@@ -1803,7 +1806,7 @@ func TestParameterizeExtension(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ParameterizeF: func(key string, args []string, value *structpb.Value) error {
+				ParameterizeF: func(key string, args []string, version *semver.Version, value *structpb.Value) error {
 					parametrized++
 					assert.Nil(t, args)
 					assert.Equal(t, param.String(), value.String())

@@ -99,12 +99,17 @@ message ParameterizeRequest {
         repeated string args = 1;
     }
 
+    message ParametersValue {
+        string version = 1; // The package version this was sent from.
+        google.protobuf.Value value = 2; // The embedded value from the package.
+    }
+
     // the key (a valid package name) for this sub-schema parameterization.
     string key = 1;
 
     oneof parameters {
         ParametersArgs args = 2; // arguments from the command line.
-        google.protobuf.Value value = 3; // embedded value from a resource request.
+        ParametersValue value = 3; // values from a generated package.
     }
 }
 

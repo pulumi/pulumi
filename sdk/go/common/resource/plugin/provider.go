@@ -18,6 +18,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -115,7 +116,7 @@ type Provider interface {
 
 	// Parameterize can be used to parameterize a provider, it takes either a list of strings from a CLI like interface, or
 	// a JSON value from a resource request.
-	Parameterize(key string, args []string, value *pbstruct.Value) error
+	Parameterize(key string, args []string, version *semver.Version, value *pbstruct.Value) error
 }
 
 type GrpcProvider interface {

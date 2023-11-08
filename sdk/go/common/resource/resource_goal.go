@@ -46,7 +46,7 @@ type Goal struct {
 	SourcePosition string // If set, the source location of the resource registration
 
 	// If set, the extension parameter passed to the provider. This is not set on non-extension parameterized resources.
-	Parameter interface{}
+	Parameter *ResourceParameter
 }
 
 // NewGoal allocates a new resource goal state.
@@ -55,7 +55,7 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
 	replaceOnChanges []string, retainOnDelete bool, deletedWith URN, sourcePosition string,
-	parameter interface{},
+	parameter *ResourceParameter,
 ) *Goal {
 	g := &Goal{
 		Type:                    t,

@@ -198,10 +198,13 @@ class ResourceParameter(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PACKAGE_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
     VALUE_FIELD_NUMBER: builtins.int
     EXTENSION_FIELD_NUMBER: builtins.int
     package: builtins.str
     """The base provider package this resource is a parameterization of."""
+    version: builtins.str
+    """The version of the base provider package this resource is a parameterization of."""
     @property
     def value(self) -> google.protobuf.struct_pb2.Value:
         """the parameter value."""
@@ -211,11 +214,12 @@ class ResourceParameter(google.protobuf.message.Message):
         self,
         *,
         package: builtins.str = ...,
+        version: builtins.str = ...,
         value: google.protobuf.struct_pb2.Value | None = ...,
         extension: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["extension", b"extension", "package", b"package", "value", b"value"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["extension", b"extension", "package", b"package", "value", b"value", "version", b"version"]) -> None: ...
 
 global___ResourceParameter = ResourceParameter
 

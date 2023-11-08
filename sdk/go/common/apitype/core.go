@@ -336,7 +336,7 @@ type ResourceV3 struct {
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 	// Parameter tracks the extension parameter passed to the provider. This is not set on non-extension parameterized resources.
-	Parameter interface{} `json:"parameter,omitempty" yaml:"parameter,omitempty"`
+	Parameter *resource.ResourceParameter `json:"parameter,omitempty" yaml:"parameter,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
