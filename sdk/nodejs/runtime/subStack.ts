@@ -38,11 +38,11 @@ export class SubStack extends ComponentResource {
         if (!opts.id) {
             resourceInputs["source"] = args ? args.source : undefined;
             resourceInputs["inputs"] = args ? args.inputs : undefined;
-            resourceInputs["prefixResourceNames"] = args ? args.prefixResourceNames : false;
+            resourceInputs["prefixResourceNames"] = args ? args.prefixResourceNames : true;
         } else {
             resourceInputs["source"] = undefined;
             resourceInputs["inputs"] = undefined;
-            resourceInputs["prefixResourceNames"] = false;
+            resourceInputs["prefixResourceNames"] = true;
         }
         resourceInputs["outputs"] = undefined;
         super(rootPulumiSubStackTypeName, name, resourceInputs, opts, true);

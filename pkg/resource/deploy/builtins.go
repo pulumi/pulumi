@@ -208,7 +208,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			return plugin.ConstructResult{}, err
 		}
 
-		prefixResourceNames := false
+		prefixResourceNames := true
 		if inputs["prefixResourceNames"].HasValue() {
 			prefixResourceNames = inputs["prefixResourceNames"].BoolValue()
 		}
