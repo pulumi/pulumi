@@ -1384,8 +1384,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 	if providers.IsProviderType(t) {
-		if req.GetVersion() != "" {
-			version, err := semver.Parse(req.GetVersion())
+		if providerVersion != "" {
+			version, err := semver.Parse(providerVersion)
 			if err != nil {
 				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
 			}

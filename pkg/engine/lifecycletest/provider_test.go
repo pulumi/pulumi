@@ -1838,7 +1838,7 @@ func TestParameterizeExtension(t *testing.T) {
 	// Check that the provider is correctly typed and we didn't mangle it to say it's a "ext" provider.
 	res := snap.Resources[0]
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), res.Type)
-	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), res.URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0"), res.URN)
 
 	// Do a refresh and ensure we can still start the parameterized provider.
 	parametrized = 0
