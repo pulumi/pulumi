@@ -63,3 +63,10 @@ func TestSnapshotWithUpdatedResources(t *testing.T) {
 	assert.NotSame(t, s, s1)
 	assert.Equal(t, s1.Resources[0].URN+"!", s.Resources[0].URN)
 }
+
+func TestValidateSnapshot(t *testing.T) {
+	t.Parallel()
+	snap := createSnapshot()
+	err := snap.VerifyIntegrity()
+	assert.NoError(t, err)
+}

@@ -73,7 +73,7 @@ build_debug::
 
 build_cover::
 	cd pkg && go build -cover -o ../bin/pulumi \
-		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
+		-coverpkg github.com/pulumi/pulumi/pkg/v3/resource/deploy \
 		-ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install_cover:: build_cover
@@ -204,3 +204,12 @@ get_schemas: \
 .PHONY: changelog
 changelog:
 	go run github.com/aaronfriel/go-change@v0.1.2 create
+
+test_cover::
+	#cd pkg && go test -cover -c -o ../bin/deploy.test \
+	#-coverpkg github.com/pulumi/pulumi/pkg/v3/resource/deploy \
+	#-ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+	#cd pkg && GOCOVERDIR=../coverage ../bin/deploy.test -test.gocoverdir=../coverage
+	cd pkg && GOCOVERDIR=coverage/ go test -coverprofile=foo.out \
+		-coverpkg github.com/pulumi/pulumi/pkg/v3/resource/deploy \
+		./...

@@ -215,3 +215,18 @@ func (rm *mockQueryResmon) RegisterResourceOutputs(ctx context.Context,
 ) (*pbempty.Empty, error) {
 	panic("not implemented")
 }
+
+func TestQueryResmonCall(t *testing.T) {
+	t.Skip()
+	t.Parallel()
+	rm := &queryResmon{
+		defaultProviders: &defaultProviders{},
+	}
+	_, err := rm.Call(context.Background(), &pulumirpc.CallRequest{
+		Tok:               "foo:bar:Baz",
+		Version:           "1.1.1",
+		PluginDownloadURL: "",
+		PluginChecksums:   map[string][]byte{},
+	})
+	assert.NoError(t, err)
+}
