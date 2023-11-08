@@ -192,34 +192,48 @@ class ReadResourceResponse(google.protobuf.message.Message):
 global___ReadResourceResponse = ReadResourceResponse
 
 @typing_extensions.final
-class ResourceParameter(google.protobuf.message.Message):
-    """A parameterization for a resource."""
+class ResourceExtension(google.protobuf.message.Message):
+    """This resource was codegen'd for an extension package"""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PACKAGE_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
-    VALUE_FIELD_NUMBER: builtins.int
-    EXTENSION_FIELD_NUMBER: builtins.int
     package: builtins.str
     """The base provider package this resource is a parameterization of."""
     version: builtins.str
     """The version of the base provider package this resource is a parameterization of."""
-    @property
-    def value(self) -> google.protobuf.struct_pb2.Value:
-        """the parameter value."""
-    extension: builtins.bool
-    """true if this is an extension (rather than replacement) parameterization."""
     def __init__(
         self,
         *,
         package: builtins.str = ...,
         version: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["package", b"package", "version", b"version"]) -> None: ...
+
+global___ResourceExtension = ResourceExtension
+
+@typing_extensions.final
+class ResourceParameter(google.protobuf.message.Message):
+    """This resource has a parameterization"""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    VALUE_FIELD_NUMBER: builtins.int
+    EXTENSION_FIELD_NUMBER: builtins.int
+    @property
+    def value(self) -> google.protobuf.struct_pb2.Value:
+        """the value for this parameterization"""
+    extension: builtins.bool
+    """true if this is an extension (rather than replacement) parameterization."""
+    def __init__(
+        self,
+        *,
         value: google.protobuf.struct_pb2.Value | None = ...,
         extension: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["extension", b"extension", "package", b"package", "value", b"value", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["extension", b"extension", "value", b"value"]) -> None: ...
 
 global___ResourceParameter = ResourceParameter
 
@@ -351,6 +365,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     ALIASSPECS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
     PARAMETER_FIELD_NUMBER: builtins.int
+    EXTENSION_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -433,6 +448,9 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     @property
     def parameter(self) -> global___ResourceParameter:
         """optional parameter for the provider."""
+    @property
+    def extension(self) -> global___ResourceExtension:
+        """optional extension for this resource, changes the base package."""
     def __init__(
         self,
         *,
@@ -467,9 +485,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         aliasSpecs: builtins.bool = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
         parameter: global___ResourceParameter | None = ...,
+        extension: global___ResourceExtension | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "parameter", b"parameter", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parameter", b"parameter", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "extension", b"extension", "object", b"object", "parameter", b"parameter", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "extension", b"extension", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parameter", b"parameter", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "type", b"type", "version", b"version"]) -> None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 

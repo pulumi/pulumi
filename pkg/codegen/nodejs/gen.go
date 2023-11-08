@@ -2833,6 +2833,9 @@ export function lazyLoad(exports: any, props: string[], loadModule: any) {
 	var extension string
 	if def.Extension != nil {
 		extension = ", extension: true"
+		if def.Extension.Version != nil {
+			extension = fmt.Sprintf("%s , extensionVersion: %q", extension, def.Extension.Version.String())
+		}
 	}
 
 	_, err = fmt.Fprintf(w, body, pluginDownloadURL, parameter, extension)

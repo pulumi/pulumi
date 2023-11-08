@@ -330,9 +330,10 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 }
 
 // GetSchema fetches the schema for this resource provider, if any.
-func (p *provider) GetSchema(version int) ([]byte, error) {
+func (p *provider) GetSchema(version int, key string) ([]byte, error) {
 	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
 		Version: int32(version),
+		Key:     key,
 	})
 	if err != nil {
 		return nil, err

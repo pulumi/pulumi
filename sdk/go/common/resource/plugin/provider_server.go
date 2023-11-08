@@ -135,7 +135,7 @@ func (p *providerServer) Parameterize(ctx context.Context, req *pulumirpc.Parame
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	schema, err := p.provider.GetSchema(int(req.GetVersion()))
+	schema, err := p.provider.GetSchema(int(req.GetVersion()), req.GetKey())
 	if err != nil {
 		return nil, err
 	}
