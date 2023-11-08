@@ -3517,6 +3517,18 @@ def go_deps():
 	importpath = "github.com/pulumi/pulumi-kubernetes/sdk/v3",
     )
     go_repository(
+        name = "com_github_pulumi_pulumi_sdk_v3",
+	importpath = "github.com/pulumi/pulumi/sdk/v3",
+	sum = "h1:+P8fE0Ja8Q93G5uKBAtxGlc9xt+z+E7+7Ggx366Bb38=",
+	version = "v3.90.0",
+    )
+    go_repository(
+        name = "com_github_pulumi_pulumi_pkg_v3",
+	importpath = "github.com/pulumi/pulumi/pkg/v3",
+	sum = "h1:+P8fE0Ja8Q93G5uKBAtxGlc9xt+z+E7+7Ggx366Bb38=",
+	version = "v3.90.0",
+    )
+    go_repository(
         name = "com_github_rakyll_embedmd",
         importpath = "github.com/rakyll/embedmd",
         sum = "h1:1jfy6i1g66ijpffgfaF/7pIFYZnSZzvo9P9DFkFmRIM=",
