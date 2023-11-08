@@ -12,27 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Inputs, Output } from "../output";
-import { ComponentResource, ComponentResourceOptions } from "../resource";
+import { Inputs, Output } from "./output";
+import { ComponentResource, ComponentResourceOptions } from "./resource";
 
 /**
- * rootPulumiSubStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
- * resources allocated by a deployment.  This must be kept up to date with
- * `github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType`.
+ * subStackTypeName is the type name that should be used to construct the substack
+ * resources allocated by a deployment.
  */
-export const rootPulumiSubStackTypeName = "pulumi:pulumi:Stack";
+export const subStackTypeName = "pulumi:index:Stack";
 
-/**
- * Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it registers itself as the root
- * resource with the Pulumi engine.
- */
-export class SubStack extends ComponentResource {
+export class Stack extends ComponentResource {
     /**
      * The outputs of this stack, if the `init` callback exited normally.
      */
     public readonly outputs!: Output<Inputs>;
 
-    constructor(name: string, args: SubStackArgs, opts?: ComponentResourceOptions) {
+    constructor(name: string, args: StackArgs, opts?: ComponentResourceOptions) {
         let resourceInputs: Inputs = {};
         opts = opts || {};
         if (!opts.id) {
@@ -45,11 +40,11 @@ export class SubStack extends ComponentResource {
             resourceInputs["prefixResourceNames"] = false;
         }
         resourceInputs["outputs"] = undefined;
-        super(rootPulumiSubStackTypeName, name, resourceInputs, opts, true);
+        super(subStackTypeName, name, resourceInputs, opts, true);
     }
 }
 
-export interface SubStackArgs {
+export interface StackArgs {
     /**
      * The source of the stack. This can be a local filepath or a remote URI (e.g. GitHub URL).
      */

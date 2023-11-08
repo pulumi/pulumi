@@ -27,6 +27,7 @@
         "stackReference.ts",
         "utils.ts",
         "version.ts",
+        "stack.ts",
 
         "asset/index.ts",
         "asset/asset.ts",
@@ -62,7 +63,6 @@
         "runtime/rpc.ts",
         "runtime/settings.ts",
         "runtime/stack.ts",
-        "runtime/subStack.ts",
 
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
