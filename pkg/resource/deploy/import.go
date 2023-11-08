@@ -204,7 +204,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, fmt.Errorf("incorrect package type specified")
 		}
 		// TODO: Support parametrized providers in imports.
-		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, "", nil, nil)
+		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, false)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -336,7 +336,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		providerURN := imp.Provider
 		if providerURN == "" {
 			// TODO: Support parametrized providers in imports.
-			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, "", nil, nil)
+			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, false)
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}

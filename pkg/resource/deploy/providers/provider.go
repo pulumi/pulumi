@@ -15,7 +15,6 @@
 package providers
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -42,9 +41,7 @@ type ProviderRequest struct {
 	pkg               tokens.Package
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
-	parameter         interface{}
-	basePackage       string
-	baseVersion       *semver.Version
+	parameterized     bool
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -52,16 +49,14 @@ type ProviderRequest struct {
 func NewProviderRequest(
 	version *semver.Version, pkg tokens.Package,
 	pluginDownloadURL string, checksums map[string][]byte,
-	basePackage string, baseVersion *semver.Version, parameter interface{},
+	parameterized bool,
 ) ProviderRequest {
 	req := ProviderRequest{
 		version:           version,
 		pkg:               pkg,
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
-		parameter:         parameter,
-		basePackage:       basePackage,
-		baseVersion:       baseVersion,
+		parameterized:     parameterized,
 	}
 	return req
 }
@@ -88,8 +83,8 @@ func (p ProviderRequest) PluginChecksums() map[string][]byte {
 }
 
 // Parameter returns this provider parameter. May be nil if no parameter was provided.
-func (p ProviderRequest) Parameter() (string, interface{}) {
-	return p.basePackage, p.parameter
+func (p ProviderRequest) Parameterized() bool {
+	return p.parameterized
 }
 
 // Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
@@ -98,6 +93,8 @@ func (p ProviderRequest) Parameter() (string, interface{}) {
 // If a version is not provided, "default" is returned. Otherwise, Name returns a name starting with "default" and
 // followed by a QName-legal representation of the semantic version of the requested provider.
 func (p ProviderRequest) Name() tokens.QName {
+	contract.Assertf(!p.parameterized, "cannot get name for parameterized provider request")
+
 	base := "default"
 	if v := p.version; v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
@@ -113,12 +110,6 @@ func (p ProviderRequest) Name() tokens.QName {
 
 	if url := p.pluginDownloadURL; url != "" {
 		base += "_" + tokens.IntoQName(url).String()
-	}
-
-	if p.parameter != nil {
-		p, err := json.Marshal(p.parameter)
-		contract.AssertNoErrorf(err, "failed to marshal provider parameter")
-		base += "_" + tokens.IntoQName(string(p)).String()
 	}
 
 	// This thing that we generated must be a QName.
@@ -137,10 +128,8 @@ func (p ProviderRequest) String() string {
 		url = "-" + p.pluginDownloadURL
 	}
 	var parameter string
-	if p.parameter != nil {
-		p, err := json.Marshal(p.parameter)
-		contract.AssertNoErrorf(err, "failed to marshal provider parameter")
-		parameter = "-" + string(p)
+	if p.parameterized {
+		parameter = "-parameterized"
 	}
 	return p.pkg.String() + version + url + parameter
 }
