@@ -565,6 +565,8 @@ type PackageExtension struct {
 	Name string
 	// Version is the version of the package this package is extending.
 	Version *semver.Version
+	// If this package is generated for a parameterized provider.
+	Parameter interface{}
 }
 
 // Package describes a Pulumi package.
@@ -606,8 +608,6 @@ type Package struct {
 
 	// If this package is an extension of another package.
 	Extension *PackageExtension
-	// If this package is generated for a parameterized provider.
-	Parameter interface{}
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -948,8 +948,9 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 			version = pkg.Extension.Version.String()
 		}
 		extension = &PackageExtensionSpec{
-			Name:    pkg.Extension.Name,
-			Version: version,
+			Name:      pkg.Extension.Name,
+			Version:   version,
+			Parameter: pkg.Extension.Parameter,
 		}
 	}
 
@@ -972,7 +973,6 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		Functions:           map[string]FunctionSpec{},
 		AllowedPackageNames: pkg.AllowedPackageNames,
 		Extension:           extension,
-		Parameter:           pkg.Parameter,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -1844,14 +1844,14 @@ type PackageInfoSpec struct {
 
 	// If this package is an extension of another package.
 	Extension *PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
-	// If this package is generated for a parameterized provider.
-	Parameter interface{} `json:"parameter,omitempty" yaml:"parameter,omitempty"`
 }
 
 // PackageExtensionSpec is the serializable description of a Pulumi package's extension metadata.
 type PackageExtensionSpec struct {
 	Name    string `json:"name" yaml:"name"`
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	// If this package is generated for a parameterized provider.
+	Parameter interface{} `json:"parameter,omitempty" yaml:"parameter,omitempty"`
 }
 
 // PackageSpec is the serializable description of a Pulumi package.
@@ -1898,8 +1898,6 @@ type PackageSpec struct {
 
 	// If this package is an extension of another package.
 	Extension *PackageExtensionSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
-	// If this package is generated for a parameterized provider.
-	Parameter interface{} `json:"parameter,omitempty" yaml:"parameter,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config,omitempty" yaml:"config"`
@@ -1932,7 +1930,6 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		AllowedPackageNames: p.AllowedPackageNames,
 		Language:            p.Language,
 		Extension:           p.Extension,
-		Parameter:           p.Parameter,
 	}
 }
 

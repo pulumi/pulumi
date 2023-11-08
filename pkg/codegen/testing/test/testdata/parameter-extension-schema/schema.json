@@ -3,11 +3,11 @@
   "name": "paramExample",
   "extension": {
     "name": "example",
-    "version": "1.2.3"
-  },
-  "parameter": {
-    "hello": "world",
-    "data": [1, 2, 3]
+    "version": "1.2.3",
+    "parameter": {
+      "hello": "world",
+      "data": [1, 2, 3]
+    }
   },
   "allowedPackageNames": ["foo", "bar"],
   "pluginDownloadURL": "example.com/download",

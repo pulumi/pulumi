@@ -188,8 +188,9 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 			version = &v
 		}
 		extension = &PackageExtension{
-			Name:    spec.Extension.Name,
-			Version: version,
+			Name:      spec.Extension.Name,
+			Version:   version,
+			Parameter: spec.Extension.Parameter,
 		}
 	}
 
@@ -200,7 +201,6 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.Resources = resources
 	pkg.Functions = functions
 	pkg.Extension = extension
-	pkg.Parameter = spec.Parameter
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
@@ -262,8 +262,9 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			}
 		}
 		extension = &PackageExtension{
-			Name:    info.Extension.Name,
-			Version: version,
+			Name:      info.Extension.Name,
+			Version:   version,
+			Parameter: info.Extension.Parameter,
 		}
 	}
 
@@ -284,7 +285,6 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		LogoURL:             info.LogoURL,
 		Language:            language,
 		Extension:           extension,
-		Parameter:           info.Parameter,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
@@ -551,7 +551,7 @@ func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 		// If an extension package then the package name in tokens should be the name of the package we're extending,
 		// our schema name is just to name this library. Unless this is a parameterization, in which case the allowed
 		// name is the package name because these are new types.
-		if spec.Parameter != nil {
+		if spec.Extension.Parameter != nil {
 			allowedPackageNames[spec.Name] = true
 		} else {
 			allowedPackageNames[spec.Extension.Name] = true
