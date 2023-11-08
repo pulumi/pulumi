@@ -13,8 +13,6 @@
         "typescript": "^4.3.5"
     },
     "pulumi": {
-        "resource": true,
-        "name": "paramExample",
-        "server": "example.com/download"
+        "resource": false
     }
 }
