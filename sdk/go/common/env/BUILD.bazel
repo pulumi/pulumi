@@ -5,5 +5,5 @@ go_library(
     srcs = ["env.go"],
     importpath = "github.com/example/project/sdk/go/common/env",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/util/env:go_default_library"],
+    deps = ["//sdk/go/common/util/env:go_default_library"],
 )

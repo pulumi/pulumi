@@ -11,7 +11,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_hashicorp_go_multierror//:go-multierror",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "//sdk/go/common/util/contract:go_default_library",
     ],
 )
 

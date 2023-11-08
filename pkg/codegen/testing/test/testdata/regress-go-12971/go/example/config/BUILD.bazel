@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/example/project/pkg/codegen/testing/test/testdata/regress-go-12971/go/example/config",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi/config:go_default_library",
+        "//sdk/go/pulumi:go_default_library",
+        "//sdk/go/pulumi/config:go_default_library",
     ],
 )

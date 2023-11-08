@@ -9,7 +9,7 @@ go_library(
     importpath = "github.com/example/project/pkg/codegen/hcl2/model/format",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_pkg_v3//codegen/hcl2/model:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "//pkg/codegen/hcl2/model:go_default_library",
+        "//sdk/go/common/util/contract:go_default_library",
     ],
 )

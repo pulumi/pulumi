@@ -17,7 +17,7 @@ go_library(
         "@com_github_pulumi_pulumi_google_native_sdk//go/google/accesscontextmanager/v1:go_default_library",
         "@com_github_pulumi_pulumi_google_native_sdk//go/google/dns/v1:go_default_library",
         "@com_github_pulumi_pulumi_google_native_sdk//go/google/iam/v1:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumix:go_default_library",
+        "//sdk/go/pulumi:go_default_library",
+        "//sdk/go/pulumix:go_default_library",
     ],
 )

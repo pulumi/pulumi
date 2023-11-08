@@ -8,7 +8,7 @@ go_library(
     deps = [
         "@com_github_pulumi_pulumi_aws_sdk_v5//go/aws/iam:go_default_library",
         "@com_github_pulumi_pulumi_aws_sdk_v5//go/aws/s3:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "//sdk/go/pulumi:go_default_library",
     ],
 )
 

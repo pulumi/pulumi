@@ -4,7 +4,7 @@ go_test(
     name = "batch3_test",
     srcs = ["gen_program_test.go"],
     deps = [
-        "@com_github_pulumi_pulumi_pkg_v3//codegen/dotnet:go_default_library",
-        "@com_github_pulumi_pulumi_pkg_v3//codegen/testing/test:go_default_library",
+        "//pkg/codegen/dotnet:go_default_library",
+        "//pkg/codegen/testing/test:go_default_library",
     ],
 )

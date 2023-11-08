@@ -5,5 +5,5 @@ go_library(
     srcs = ["optremotepreview.go"],
     importpath = "github.com/example/project/sdk/go/auto/optremotepreview",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/auto/events:go_default_library"],
+    deps = ["//sdk/go/auto/events:go_default_library"],
 )

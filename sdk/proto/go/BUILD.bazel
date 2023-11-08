@@ -23,7 +23,7 @@ go_library(
     importpath = "github.com/example/project/sdk/proto/go",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//proto/go/codegen:go_default_library",
+        "//sdk/proto/go/codegen:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

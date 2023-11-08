@@ -7,7 +7,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_pulumi_pulumi_aws_sdk_v5//go/aws/fsx:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "//sdk/go/pulumi:go_default_library",
     ],
 )
 

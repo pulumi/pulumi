@@ -27,11 +27,11 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_pulumi_esc//:esc",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag/colors:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/config:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "//sdk/go/common/diag/colors:go_default_library",
+        "//sdk/go/common/resource:go_default_library",
+        "//sdk/go/common/resource/config:go_default_library",
+        "//sdk/go/common/tokens:go_default_library",
+        "//sdk/go/common/workspace:go_default_library",
         "@in_gopkg_yaml_v3//:yaml_v3",
     ],
 )

@@ -5,7 +5,7 @@ go_library(
     srcs = ["synthetic-resource-properties.go"],
     importpath = "github.com/example/project/pkg/codegen/testing/test/testdata/synthetic-resource-properties-pp/go",
     visibility = ["//visibility:private"],
-    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library"],
+    deps = ["//sdk/go/pulumi:go_default_library"],
 )
 
 go_binary(

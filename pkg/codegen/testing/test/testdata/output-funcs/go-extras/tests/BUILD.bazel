@@ -4,8 +4,8 @@ go_test(
     name = "tests_test",
     srcs = ["codegen_test.go"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "//sdk/go/common/resource:go_default_library",
+        "//sdk/go/pulumi:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

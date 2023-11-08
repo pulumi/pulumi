@@ -12,9 +12,9 @@ go_library(
     importpath = "github.com/example/project/sdk/go/common/apitype/migrate",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/config:go_default_library",
+        "//sdk/go/common/apitype:go_default_library",
+        "//sdk/go/common/resource:go_default_library",
+        "//sdk/go/common/resource/config:go_default_library",
     ],
 )
 
@@ -27,10 +27,10 @@ go_test(
     ],
     embed = [":migrate"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/config:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
+        "//sdk/go/common/apitype:go_default_library",
+        "//sdk/go/common/resource:go_default_library",
+        "//sdk/go/common/resource/config:go_default_library",
+        "//sdk/go/common/tokens:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

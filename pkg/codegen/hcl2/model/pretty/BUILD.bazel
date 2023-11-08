@@ -5,7 +5,7 @@ go_library(
     srcs = ["display.go"],
     importpath = "github.com/example/project/pkg/codegen/hcl2/model/pretty",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library"],
+    deps = ["//sdk/go/common/slice:go_default_library"],
 )
 
 go_test(

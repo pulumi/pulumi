@@ -11,9 +11,9 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_pgavlin_goldmark//ast",
-        "@com_github_pulumi_pulumi_pkg_v3//codegen/schema:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "//pkg/codegen/schema:go_default_library",
+        "//sdk/go/common/slice:go_default_library",
+        "//sdk/go/common/util/contract:go_default_library",
     ],
 )
 
@@ -25,7 +25,7 @@ go_test(
     ],
     embed = [":codegen"],
     deps = [
-        "@com_github_pulumi_pulumi_pkg_v3//codegen/schema:go_default_library",
+        "//pkg/codegen/schema:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

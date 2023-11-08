@@ -6,9 +6,9 @@ go_library(
     importpath = "github.com/example/project/sdk/go/common/testing/diagtest",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag/colors:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/testing/iotest:go_default_library",
+        "//sdk/go/common/diag:go_default_library",
+        "//sdk/go/common/diag/colors:go_default_library",
+        "//sdk/go/common/testing/iotest:go_default_library",
     ],
 )
 
@@ -17,7 +17,7 @@ go_test(
     srcs = ["sink_test.go"],
     embed = [":diagtest"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag:go_default_library",
+        "//sdk/go/common/diag:go_default_library",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],

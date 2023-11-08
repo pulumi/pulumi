@@ -14,10 +14,10 @@ go_library(
     deps = [
         "//proto/pulumi:go",
         "@com_github_golang_protobuf//ptypes/empty",
-        "@com_github_pulumi_pulumi_pkg_v3//resource/provider:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource/plugin:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/cmdutil:go_default_library",
+        "//pkg/resource/provider:go_default_library",
+        "//sdk/go/common/resource:go_default_library",
+        "//sdk/go/common/resource/plugin:go_default_library",
+        "//sdk/go/common/util/cmdutil:go_default_library",
     ],
 )
 

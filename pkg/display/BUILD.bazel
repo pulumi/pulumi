@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/example/project/pkg/display",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
+        "//sdk/go/common/apitype:go_default_library",
+        "//sdk/go/common/diag:go_default_library",
+        "//sdk/go/common/resource:go_default_library",
     ],
 )

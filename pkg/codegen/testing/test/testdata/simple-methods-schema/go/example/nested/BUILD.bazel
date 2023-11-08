@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/example/project/pkg/codegen/testing/test/testdata/simple-methods-schema/go/example/nested",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_pkg_v3//codegen/testing/test/testdata/simple-methods-schema/go/example/internal:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumix:go_default_library",
+        "//pkg/codegen/testing/test/testdata/simple-methods-schema/go/example/internal:go_default_library",
+        "//sdk/go/pulumi:go_default_library",
+        "//sdk/go/pulumix:go_default_library",
     ],
 )

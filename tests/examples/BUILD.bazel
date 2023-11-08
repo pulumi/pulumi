@@ -7,10 +7,10 @@ go_test(
         "examples_test.go",
     ],
     deps = [
-        "@com_github_pulumi_pulumi_pkg_v3//resource/deploy/providers:go_default_library",
-        "@com_github_pulumi_pulumi_pkg_v3//testing/integration:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/resource:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "//pkg/resource/deploy/providers:go_default_library",
+        "//pkg/testing/integration:go_default_library",
+        "//sdk/go/common/resource:go_default_library",
+        "//sdk/go/common/util/contract:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

@@ -5,5 +5,5 @@ go_library(
     srcs = ["context.go"],
     importpath = "github.com/example/project/pkg/util/cancel",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library"],
+    deps = ["//sdk/go/common/util/contract:go_default_library"],
 )

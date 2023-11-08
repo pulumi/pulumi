@@ -10,11 +10,11 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",
-        "@com_github_pulumi_pulumi_pkg_v3//util:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/diag:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/tokens:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/logging:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "//pkg/util:go_default_library",
+        "//sdk/go/common/diag:go_default_library",
+        "//sdk/go/common/tokens:go_default_library",
+        "//sdk/go/common/util/logging:go_default_library",
+        "//sdk/go/common/workspace:go_default_library",
     ],
 )
 
@@ -27,7 +27,7 @@ go_test(
     embed = [":workspace"],
     deps = [
         "@com_github_blang_semver//:semver",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "//sdk/go/common/workspace:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

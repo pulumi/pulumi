@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/example/project/sdk/go/common/util/buildutil",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/util/contract:go_default_library",
+        "//sdk/go/common/util/contract:go_default_library",
         "@org_golang_x_mod//semver",
     ],
 )

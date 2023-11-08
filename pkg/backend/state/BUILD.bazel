@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/example/project/pkg/backend/state",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_pulumi_pulumi_pkg_v3//backend:go_default_library",
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/workspace:go_default_library",
+        "//pkg/backend:go_default_library",
+        "//sdk/go/common/workspace:go_default_library",
     ],
 )

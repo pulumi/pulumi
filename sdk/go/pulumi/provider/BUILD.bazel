@@ -10,7 +10,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",
-        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi:go_default_library",
+        "//sdk/go/pulumi:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
     ],
 )

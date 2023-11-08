@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/example/project/developer-docs/utils",
     visibility = ["//visibility:private"],
     deps = [
-        "@com_github_pulumi_pulumi_sdk_v3//go/common/slice:go_default_library",
+        "//sdk/go/common/slice:go_default_library",
         "@com_github_santhosh_tekuri_jsonschema_v5//:jsonschema",
     ],
 )

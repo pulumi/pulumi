@@ -5,5 +5,5 @@ go_library(
     srcs = ["events.go"],
     importpath = "github.com/example/project/sdk/go/auto/events",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_pulumi_pulumi_sdk_v3//go/common/apitype:go_default_library"],
+    deps = ["//sdk/go/common/apitype:go_default_library"],
 )
