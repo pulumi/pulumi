@@ -192,16 +192,16 @@ class ReadResourceResponse(google.protobuf.message.Message):
 global___ReadResourceResponse = ReadResourceResponse
 
 @typing_extensions.final
-class Parameter(google.protobuf.message.Message):
+class ResourceParameter(google.protobuf.message.Message):
     """A parameterization for a resource."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    KEY_FIELD_NUMBER: builtins.int
+    PACKAGE_FIELD_NUMBER: builtins.int
     VALUE_FIELD_NUMBER: builtins.int
     EXTENSION_FIELD_NUMBER: builtins.int
-    key: builtins.str
-    """the key (a valid package name) for this parameterization."""
+    package: builtins.str
+    """The base provider package this resource is a parameterization of."""
     @property
     def value(self) -> google.protobuf.struct_pb2.Value:
         """the parameter value."""
@@ -210,14 +210,14 @@ class Parameter(google.protobuf.message.Message):
     def __init__(
         self,
         *,
-        key: builtins.str = ...,
+        package: builtins.str = ...,
         value: google.protobuf.struct_pb2.Value | None = ...,
         extension: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["extension", b"extension", "key", b"key", "value", b"value"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["extension", b"extension", "package", b"package", "value", b"value"]) -> None: ...
 
-global___Parameter = Parameter
+global___ResourceParameter = ResourceParameter
 
 @typing_extensions.final
 class RegisterResourceRequest(google.protobuf.message.Message):
@@ -427,7 +427,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the register."""
     @property
-    def parameter(self) -> global___Parameter:
+    def parameter(self) -> global___ResourceParameter:
         """optional parameter for the provider."""
     def __init__(
         self,
@@ -462,7 +462,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         deletedWith: builtins.str = ...,
         aliasSpecs: builtins.bool = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
-        parameter: global___Parameter | None = ...,
+        parameter: global___ResourceParameter | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "parameter", b"parameter", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parameter", b"parameter", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "type", b"type", "version", b"version"]) -> None: ...

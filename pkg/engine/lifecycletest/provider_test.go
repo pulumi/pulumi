@@ -1710,8 +1710,9 @@ func TestParameterize(t *testing.T) {
 	require.NoError(t, err)
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		providerURN, providerID, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
-			Parameter: param,
+		providerURN, providerID, _, err := monitor.RegisterResource("pulumi:providers:ext", "provA", true, deploytest.ResourceOptions{
+			ParameterKey: "pkgA",
+			Parameter:    param,
 		})
 		assert.NoError(t, err)
 
@@ -1721,9 +1722,10 @@ func TestParameterize(t *testing.T) {
 		providerRef, err := providers.NewReference(providerURN, providerID)
 		assert.NoError(t, err)
 
-		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Provider:  providerRef.String(),
-			Parameter: param,
+		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider:     providerRef.String(),
+			ParameterKey: "pkgA",
+			Parameter:    param,
 		})
 		assert.NoError(t, err)
 

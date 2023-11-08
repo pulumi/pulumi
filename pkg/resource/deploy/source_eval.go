@@ -1253,15 +1253,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRef providers.Reference
 	var providerRefs map[string]string
 
-	var parameterKey string
+	var parameterPackage string
 	var provParameter, resParameter interface{}
 	if req.GetParameter() != nil {
 		param := req.GetParameter()
 
-		parameterKey = param.GetKey()
+		parameterPackage = param.GetPackage()
 		// Ensure key is a valid PackageName
-		if !tokens.IsName(parameterKey) {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter key: %q", parameterKey))
+		if !tokens.IsName(parameterPackage) {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter package: %q", parameterPackage))
 		}
 
 		value := param.GetValue().AsInterface()
@@ -1274,7 +1274,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if custom && !providers.IsProviderType(t) || remote {
-
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
 			req.GetPluginDownloadURL(), req.GetPluginChecksums(),
