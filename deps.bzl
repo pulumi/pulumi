@@ -1908,6 +1908,8 @@ def go_deps():
         importpath = "github.com/googleapis/gax-go/v2",
         sum = "h1:9V9PWXEsWnPpQhu/PeQIkS4eGzMlTLGgt80cUUI8Ki4=",
         version = "v2.11.0",
+        build_file_proto_mode = "disable_global",
+
     )
     go_repository(
         name = "com_github_googleapis_gnostic",
@@ -3511,7 +3513,7 @@ def go_deps():
     go_repository(
         name = "com_github_pulumi_pulumi_pkg_v3",
         importpath = "github.com/pulumi/pulumi/pkg/v3",
-        sum = "h1:+P8fE0Ja8Q93G5uKBAtxGlc9xt+z+E7+7Ggx366Bb38=",
+        sum = "h1:Yp+AKcc3eTdrM/miH4OUX4JGc3JIyM9fVlcuuob1htk=",
         version = "v3.90.0",
     )
     go_repository(
