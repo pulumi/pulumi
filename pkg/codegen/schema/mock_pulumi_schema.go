@@ -25,6 +25,27 @@ func newPulumiPackage() *Package {
 					"name": {TypeSpec: TypeSpec{Type: "string"}},
 				},
 			},
+			"pulumi:pulumi:Program": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"outputs":             {TypeSpec: TypeSpec{Type: "object"}},
+						"source":              {TypeSpec: TypeSpec{Type: "string"}},
+						"inputs":              {TypeSpec: TypeSpec{Type: "object"}},
+						"prefixResourceNames": {TypeSpec: TypeSpec{Type: "boolean"}},
+					},
+					Required: []string{
+						"source",
+					},
+				},
+				InputProperties: map[string]PropertySpec{
+					"source":              {TypeSpec: TypeSpec{Type: "string"}},
+					"inputs":              {TypeSpec: TypeSpec{Type: "object"}},
+					"prefixResourceNames": {TypeSpec: TypeSpec{Type: "boolean"}},
+				},
+				RequiredInputs: []string{
+					"source",
+				},
+			},
 		},
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
