@@ -1730,7 +1730,7 @@ func (sg *stepGenerator) loadResourceProvider(
 
 		key := parameterValue.String()
 		if _, has := applied[key]; !has {
-			if err := p.Parameterize(nil, parameterValue); err != nil {
+			if err := p.Parameterize(key, nil, parameterValue); err != nil {
 				return nil, sg.bailDaig(diag.GetParameterizeProviderError(urn), provider, urn, err)
 			}
 

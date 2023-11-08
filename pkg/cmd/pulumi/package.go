@@ -227,7 +227,7 @@ func providerFromSource(packageSource string, args []string) (plugin.Provider, e
 
 	// If we have args call parameterize
 	if len(args) > 0 {
-		err := provider.Parameterize(args, nil)
+		err := provider.Parameterize(args[0], args[1:], nil)
 		if err != nil {
 			return nil, fmt.Errorf("parameterize provider: %w", err)
 		}

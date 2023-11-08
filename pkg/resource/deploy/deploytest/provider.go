@@ -72,7 +72,7 @@ type Provider struct {
 	GetMappingF  func(key, provider string) ([]byte, string, error)
 	GetMappingsF func(key string) ([]string, error)
 
-	ParameterizeF func(args []string, value *pbstruct.Value) error
+	ParameterizeF func(key string, args []string, value *pbstruct.Value) error
 }
 
 func (prov *Provider) SignalCancellation() error {
@@ -204,6 +204,7 @@ func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name
 	if prov.ConstructF == nil {
 		return plugin.ConstructResult{}, nil
 	}
+
 	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
 	if err != nil {
 		return plugin.ConstructResult{}, err
@@ -254,9 +255,9 @@ func (prov *Provider) GetMappings(key string) ([]string, error) {
 	return prov.GetMappingsF(key)
 }
 
-func (prov *Provider) Parameterize(args []string, value *pbstruct.Value) error {
+func (prov *Provider) Parameterize(key string, args []string, value *pbstruct.Value) error {
 	if prov.ParameterizeF == nil {
 		return fmt.Errorf("parameterize not implemented")
 	}
-	return prov.ParameterizeF(args, value)
+	return prov.ParameterizeF(key, args, value)
 }

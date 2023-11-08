@@ -107,6 +107,6 @@ func (p *UnimplementedProvider) GetMappings(key string) ([]string, error) {
 	return nil, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Parameterize(args []string, value *pbstruct.Value) error {
+func (p *UnimplementedProvider) Parameterize(key string, args []string, value *pbstruct.Value) error {
 	return status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
 }

@@ -43,6 +43,7 @@ type ProviderRequest struct {
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
 	parameter         interface{}
+	basePackage       string
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -50,7 +51,7 @@ type ProviderRequest struct {
 func NewProviderRequest(
 	version *semver.Version, pkg tokens.Package,
 	pluginDownloadURL string, checksums map[string][]byte,
-	parameter interface{},
+	basePackage string, parameter interface{},
 ) ProviderRequest {
 	req := ProviderRequest{
 		version:           version,
@@ -58,6 +59,7 @@ func NewProviderRequest(
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
 		parameter:         parameter,
+		basePackage:       basePackage,
 	}
 	return req
 }
@@ -84,8 +86,8 @@ func (p ProviderRequest) PluginChecksums() map[string][]byte {
 }
 
 // Parameter returns this provider parameter. May be nil if no parameter was provided.
-func (p ProviderRequest) Parameter() interface{} {
-	return p.parameter
+func (p ProviderRequest) Parameter() (string, interface{}) {
+	return p.basePackage, p.parameter
 }
 
 // Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
