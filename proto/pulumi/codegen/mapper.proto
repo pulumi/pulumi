@@ -19,7 +19,7 @@ import "google/protobuf/struct.proto";
 
 package codegen;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
+option go_package = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen";
 
 // Mapper is a service for getting mappings from other ecosystems to Pulumi.
 // This is currently unstable and experimental.

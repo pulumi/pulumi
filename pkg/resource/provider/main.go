@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 )
 
 // Tracing is the optional command line flag passed to this provider for configuring a  Zipkin-compatible tracing

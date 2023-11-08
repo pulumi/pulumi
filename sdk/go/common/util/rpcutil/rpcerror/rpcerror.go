@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 )
 
 // Error represents an error response from an RPC server endpoint.

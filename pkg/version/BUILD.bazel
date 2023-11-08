@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "version",
     srcs = ["version.go"],
-    importpath = "github.com/pulumi/pulumi/pkg/version",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/version",
     visibility = ["//visibility:public"],
 )
 

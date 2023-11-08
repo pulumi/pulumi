@@ -32,7 +32,7 @@ go_library(
         "utilities.go",
         "visitor.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/hcl2/model",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hashicorp_hcl_v2//:hcl",

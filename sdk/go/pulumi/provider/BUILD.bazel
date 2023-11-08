@@ -6,7 +6,7 @@ go_library(
         "empty.s",
         "provider.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi/provider",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

@@ -38,7 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"

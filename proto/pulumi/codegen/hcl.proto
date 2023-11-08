@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package pulumirpc.codegen;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
+option go_package = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen";
 
 // Pos represents a single position in a source file, by addressing the start byte of a unicode character
 // encoded in UTF-8.

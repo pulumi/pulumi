@@ -9,7 +9,7 @@ go_library(
         "plan.go",
         "secrets.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/resource/stack",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/stack",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/display:go_default_library",

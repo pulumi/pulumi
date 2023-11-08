@@ -20,7 +20,7 @@ go_library(
         "tree.go",
         "watch.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/backend/display",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/display",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_dustin_go_humanize//english",

@@ -24,7 +24,7 @@ go_library(
         "type.go",
         "utilities.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/pcl",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/pcl",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

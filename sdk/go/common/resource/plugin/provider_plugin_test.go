@@ -16,7 +16,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 )
 
 func TestAnnotateSecrets(t *testing.T) {

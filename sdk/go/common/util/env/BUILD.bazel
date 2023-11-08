@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "env",
     srcs = ["env.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/env",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/env",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/util/cmdutil:go_default_library"],
 )

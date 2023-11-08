@@ -16,7 +16,7 @@ go_library(
         "updates.go",
         "watch.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/backend",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_alecaivazis_survey_v2//:survey",

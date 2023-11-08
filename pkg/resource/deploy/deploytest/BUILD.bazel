@@ -10,7 +10,7 @@ go_library(
         "provider.go",
         "resourcemonitor.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/resource/deploy/deploytest",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

@@ -22,7 +22,7 @@ import "pulumi/source.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+option go_package = "github.com/pulumi/pulumi/sdk/v3/go/proto/go;pulumirpc";
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {

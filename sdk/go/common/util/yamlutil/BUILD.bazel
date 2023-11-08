@@ -6,7 +6,7 @@ go_library(
         "edit.go",
         "encode.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/yamlutil",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil",
     visibility = ["//visibility:public"],
     deps = ["@in_gopkg_yaml_v3//:yaml_v3"],
 )

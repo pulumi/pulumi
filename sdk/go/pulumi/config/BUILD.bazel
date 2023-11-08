@@ -8,7 +8,7 @@ go_library(
         "require.go",
         "try.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi/config",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/pulumi:go_default_library",

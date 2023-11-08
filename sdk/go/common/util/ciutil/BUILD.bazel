@@ -17,7 +17,7 @@ go_library(
         "travis.go",
         "vars.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/ciutil",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil",
     visibility = ["//visibility:public"],
 )
 

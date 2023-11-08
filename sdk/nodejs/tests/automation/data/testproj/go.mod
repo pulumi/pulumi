@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/sdk/v3/nodejs/tests/automation/data/testproj
+module github.com/pulumi/pulumi/sdk/v3/go/nodejs/tests/automation/data/testproj
 
 go 1.18
 

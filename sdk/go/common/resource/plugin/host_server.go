@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	lumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 )
 
 // hostServer is the server side of the host RPC machinery.

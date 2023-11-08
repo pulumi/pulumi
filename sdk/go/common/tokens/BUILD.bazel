@@ -7,7 +7,7 @@ go_library(
         "project.go",
         "tokens.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/tokens",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/tokens",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/util/contract:go_default_library"],
 )

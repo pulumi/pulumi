@@ -30,7 +30,7 @@ proto_library(
 go_proto_library(
     name = "pulumirpc_go_proto",
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go",
     proto = ":pulumirpc_proto",
     visibility = ["//visibility:public"],
     deps = [
@@ -45,7 +45,7 @@ go_proto_library(
 go_library(
     name = "go",
     embed = [":pulumirpc_go_proto"],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go",
     visibility = ["//visibility:public"],
 )
 

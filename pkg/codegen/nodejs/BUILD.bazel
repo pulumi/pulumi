@@ -16,7 +16,7 @@ go_library(
         "test.go",
         "utilities.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/nodejs",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hashicorp_hcl_v2//:hcl",

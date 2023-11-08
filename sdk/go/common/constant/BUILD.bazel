@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "constant",
     srcs = ["exec_kind.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/constant",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/constant",
     visibility = ["//visibility:public"],
 )
 

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "executable",
     srcs = ["executable.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/executable",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/executable",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/util/logging:go_default_library"],
 )

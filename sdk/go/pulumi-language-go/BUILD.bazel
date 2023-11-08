@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "pulumi-language-go_lib",
     srcs = ["main.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi-language-go",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go",
     visibility = ["//visibility:private"],
     deps = [
         "//proto/pulumi:go",

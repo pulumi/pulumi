@@ -18,7 +18,7 @@ go_library(
         "test.go",
         "utilities.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/python",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/python",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

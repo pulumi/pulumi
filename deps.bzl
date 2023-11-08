@@ -768,6 +768,8 @@ def go_deps():
         importpath = "github.com/cloudflare/circl",
         sum = "h1:fE/Qz0QdIGqeWfnwq0RE0R7MI51s0M2E4Ga9kq5AEMs=",
         version = "v1.3.3",
+        patch_args = ["-p1"],
+        patches = ["//:bazel-patches/0001-cloudflare.patch"],
     )
     go_repository(
         name = "com_github_cncf_udpa_go",

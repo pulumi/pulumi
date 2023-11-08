@@ -10,7 +10,7 @@ go_library(
         "operations_gcp.go",
         "resources.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/operations",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/operations",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_aws_aws_sdk_go//aws",

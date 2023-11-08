@@ -9,7 +9,7 @@ go_library(
         "types.go",
         "workgroup.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/internal",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/internal",
     visibility = ["//sdk/go:__subpackages__"],
     deps = [
         "//sdk/go/common/slice:go_default_library",

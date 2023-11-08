@@ -10,7 +10,7 @@ go_library(
         "s3reporter.go",
         "util.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/testing/integration",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/testing/integration",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_aws_aws_sdk_go//aws",

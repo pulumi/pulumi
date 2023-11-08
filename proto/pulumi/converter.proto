@@ -21,7 +21,7 @@ import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+option go_package = "github.com/pulumi/pulumi/sdk/v3/go/proto/go;pulumirpc";
 
 // Converter is a service for converting between other ecosystems and Pulumi.
 // This is currently unstable and experimental.

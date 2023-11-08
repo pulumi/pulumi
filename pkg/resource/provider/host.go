@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	lumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

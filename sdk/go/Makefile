@@ -1,5 +1,5 @@
 PROJECT_NAME     := Pulumi Go SDK
-LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3
+LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go/v3
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh go))
 TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./common/... | grep -v /vendor/ | grep -v templates)
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)

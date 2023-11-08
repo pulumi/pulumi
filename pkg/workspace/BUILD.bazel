@@ -6,7 +6,7 @@ go_library(
         "plugin.go",
         "templates.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/workspace",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/workspace",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

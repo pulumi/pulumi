@@ -21,7 +21,7 @@ go_library(
         "snapshot.go",
         "update.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/engine",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/engine",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

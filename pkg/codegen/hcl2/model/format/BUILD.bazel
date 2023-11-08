@@ -6,7 +6,7 @@ go_library(
         "func.go",
         "gen.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/hcl2/model/format",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/codegen/hcl2/model:go_default_library",

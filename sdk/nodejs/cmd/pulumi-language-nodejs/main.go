@@ -60,8 +60,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/nodejs/npm"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"

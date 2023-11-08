@@ -6,7 +6,7 @@ go_library(
         "empty.s",
         "outputs.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi/internals",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/pulumi:go_default_library"],
 )

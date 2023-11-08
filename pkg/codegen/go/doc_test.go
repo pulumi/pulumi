@@ -79,7 +79,7 @@ func TestGetDocLinkForPulumiType(t *testing.T) {
 		t.Parallel()
 
 		pkg.Language["go"] = GoPackageInfo{PulumiSDKVersion: 1}
-		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption"
+		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption"
 		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
 		assert.Equal(t, expected, link)
 		pkg.Language["go"] = nil

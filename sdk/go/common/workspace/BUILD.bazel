@@ -14,7 +14,7 @@ go_library(
         "workspace.go",
     ],
     embedsrcs = ["project.json"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/workspace",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/workspace",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

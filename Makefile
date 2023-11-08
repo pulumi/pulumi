@@ -73,7 +73,7 @@ build_debug::
 
 build_cover::
 	cd pkg && go build -cover -o ../bin/pulumi \
-		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
+		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/go/... \
 		-ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install_cover:: build_cover

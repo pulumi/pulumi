@@ -166,8 +166,8 @@ func TestGoModEdits(t *testing.T) {
 		},
 		{
 			name:          "invalid-rel-path",
-			dep:           "github.com/pulumi/pulumi/pkg=../../../sdk",
-			expectedError: "found module path with prefix github.com/pulumi/pulumi/sdk, expected github.com/pulumi/pulumi/pkg",
+			dep:           "github.com/pulumi/pulumi/pkg/v3=../../../sdk",
+			expectedError: "found module path with prefix github.com/pulumi/pulumi/sdk, expected github.com/pulumi/pulumi/pkg/v3",
 		},
 	}
 

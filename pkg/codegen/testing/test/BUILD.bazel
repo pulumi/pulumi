@@ -8,7 +8,7 @@ go_library(
         "sdk_driver.go",
         "type_driver.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/testing/test",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

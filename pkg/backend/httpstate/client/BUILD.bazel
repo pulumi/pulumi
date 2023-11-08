@@ -10,7 +10,7 @@ go_library(
         "marshal_post_1.20.go",
         "marshal_pre_1.20.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/backend/httpstate/client",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

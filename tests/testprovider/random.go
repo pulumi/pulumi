@@ -24,7 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	rpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 )

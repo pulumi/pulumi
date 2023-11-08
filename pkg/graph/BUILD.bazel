@@ -6,7 +6,7 @@ go_library(
         "graph.go",
         "topsort.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/graph",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/graph",
     visibility = ["//visibility:public"],
 )
 

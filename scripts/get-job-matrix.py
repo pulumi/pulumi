@@ -60,7 +60,7 @@ INTEGRATION_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/sdk/v3/go/auto/optremove",
     "github.com/pulumi/pulumi/sdk/v3/go/common/constant",
     "github.com/pulumi/pulumi/sdk/v3/go/common/util/retry",
-    "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
+    "github.com/pulumi/pulumi/sdk/v3/go/nodejs/npm",
     # And the entirety of the 'tests' module
 }
 

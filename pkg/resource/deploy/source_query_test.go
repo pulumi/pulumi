@@ -21,7 +21,7 @@ import (
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,7 +7,7 @@ go_library(
         "errors.go",
         "operations.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/resource/edit",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/edit",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/resource/deploy:go_default_library",

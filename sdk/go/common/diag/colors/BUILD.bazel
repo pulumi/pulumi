@@ -7,7 +7,7 @@ go_library(
         "diag.go",
         "windows.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/diag/colors",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/contract:go_default_library",

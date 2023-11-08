@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 

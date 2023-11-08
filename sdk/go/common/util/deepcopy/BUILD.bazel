@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "deepcopy",
     srcs = ["copy.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/deepcopy",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy",
     visibility = ["//visibility:public"],
 )
 

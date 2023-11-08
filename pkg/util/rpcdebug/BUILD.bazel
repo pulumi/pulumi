@@ -6,7 +6,7 @@ go_library(
         "interceptors.go",
         "logformat.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/util/rpcdebug",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_golang_protobuf//jsonpb:go_default_library_gen",

@@ -9,7 +9,7 @@ go_library(
         "operation.go",
         "resource.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/apitype/migrate",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/apitype:go_default_library",

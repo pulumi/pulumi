@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
 )
 

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "retry",
     srcs = ["until.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/retry",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/retry",
     visibility = ["//visibility:public"],
 )
 

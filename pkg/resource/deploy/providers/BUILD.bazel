@@ -8,7 +8,7 @@ go_library(
         "reference.go",
         "registry.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/resource/deploy/providers",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

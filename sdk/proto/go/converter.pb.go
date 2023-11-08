@@ -21,7 +21,7 @@
 package pulumirpc
 
 import (
-	codegen "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	codegen "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	_ "google.golang.org/protobuf/types/known/emptypb"

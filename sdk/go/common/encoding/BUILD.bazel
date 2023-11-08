@@ -6,7 +6,7 @@ go_library(
         "init.go",
         "marshal.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/encoding",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/encoding",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/contract:go_default_library",

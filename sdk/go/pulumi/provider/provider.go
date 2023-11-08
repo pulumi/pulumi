@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 
 	"google.golang.org/grpc"
 )

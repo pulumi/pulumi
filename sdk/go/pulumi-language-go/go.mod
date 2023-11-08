@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3
+module github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go/v3
 
 go 1.20
 

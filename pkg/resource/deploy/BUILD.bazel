@@ -22,7 +22,7 @@ go_library(
         "step_generator.go",
         "target.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/resource/deploy",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/deploy",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

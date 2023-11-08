@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "testutil",
     srcs = ["testdiagsink.go"],
-    importpath = "github.com/pulumi/pulumi/pkg/util/testutil",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/testutil",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/diag:go_default_library",

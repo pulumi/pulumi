@@ -19,7 +19,7 @@ go_library(
         "test.go",
         "utilities.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/go",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/go",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_golang_glog//:glog",

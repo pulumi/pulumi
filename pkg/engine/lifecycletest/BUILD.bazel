@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "lifecycletest",
     srcs = ["test_plan.go"],
-    importpath = "github.com/pulumi/pulumi/pkg/engine/lifecycletest",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_mitchellh_copystructure//:copystructure",

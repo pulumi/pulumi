@@ -23,7 +23,7 @@ go_library(
         "property-values.json",
         "resources.json",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/apitype",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/apitype",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_pulumi_esc//:esc",

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "pretty",
     srcs = ["display.go"],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/hcl2/model/pretty",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/slice:go_default_library"],
 )

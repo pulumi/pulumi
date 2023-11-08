@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "validation",
     srcs = ["stack.go"],
-    importpath = "github.com/pulumi/pulumi/pkg/util/validation",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/validation",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/apitype:go_default_library",

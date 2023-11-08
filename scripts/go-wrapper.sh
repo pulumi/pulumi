@@ -15,8 +15,8 @@ PULUMI_BUILD_MODE=${PULUMI_BUILD_MODE:-}
 
 COVER_PACKAGES=( \
     "github.com/pulumi/pulumi/pkg/v3/..." \
-    "github.com/pulumi/pulumi/sdk/v3/..." \
-    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/..." \
+    "github.com/pulumi/pulumi/sdk/v3/go/..." \
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go/v3/..." \
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/..." \
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3/..." \
 )

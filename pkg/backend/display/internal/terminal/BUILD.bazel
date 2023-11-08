@@ -7,7 +7,7 @@ go_library(
         "mock.go",
         "term.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/backend/display/internal/terminal",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal",
     visibility = ["//pkg/backend/display:__subpackages__"],
     deps = [
         "@com_github_ijc_gotty//:Gotty",

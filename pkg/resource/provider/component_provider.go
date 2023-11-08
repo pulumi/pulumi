@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"

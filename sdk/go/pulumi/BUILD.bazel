@@ -23,7 +23,7 @@ go_library(
         "types_builtins.go",
         "urnset.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

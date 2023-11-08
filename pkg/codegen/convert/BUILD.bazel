@@ -8,7 +8,7 @@ go_library(
         "mapper_server.go",
         "plugin_mapper.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/convert",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/convert",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen"
 )
 
 func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "display",
     srcs = ["json.go"],
-    importpath = "github.com/pulumi/pulumi/pkg/display",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/display",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/apitype:go_default_library",

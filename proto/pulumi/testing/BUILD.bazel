@@ -12,7 +12,7 @@ proto_library(
 go_proto_library(
     name = "testing_go_proto",
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go/testing",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing",
     proto = ":testing_proto",
     visibility = ["//visibility:public"],
 )
@@ -20,7 +20,7 @@ go_proto_library(
 go_library(
     name = "testing",
     embed = [":testing_go_proto"],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go/testing",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing",
     visibility = ["//visibility:public"],
 )
 

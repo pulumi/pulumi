@@ -7,7 +7,7 @@ go_library(
         "doc.go",
         "resource_set.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/resource/graph",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/graph",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/resource/deploy/providers:go_default_library",

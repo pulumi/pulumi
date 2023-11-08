@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"

@@ -15,14 +15,14 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"4\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\x32N\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"4\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\x32N\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegenb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.loader_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  DESCRIPTOR._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegen'
+  DESCRIPTOR._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen'
   _globals['_GETSCHEMAREQUEST']._serialized_start=99
   _globals['_GETSCHEMAREQUEST']._serialized_end=151
   _globals['_GETSCHEMARESPONSE']._serialized_start=153

@@ -10,7 +10,7 @@ go_library(
         "serve.go",
         "writer.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/rpcutil",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

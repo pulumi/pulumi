@@ -10,7 +10,7 @@ go_library(
         "qname.go",
         "walkup.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/fsutil",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/tokens:go_default_library",

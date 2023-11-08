@@ -17,7 +17,7 @@ go_library(
         "term_windows.go",
         "trace.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/cmdutil",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_charmbracelet_bubbles//textinput",

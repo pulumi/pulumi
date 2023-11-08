@@ -10,7 +10,7 @@ go_library(
         "plaintext.go",
         "value.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/resource/config",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/resource:go_default_library",

@@ -8,7 +8,7 @@ go_library(
         "host.go",
         "main.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/resource/provider",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/provider",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

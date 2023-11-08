@@ -22,8 +22,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"

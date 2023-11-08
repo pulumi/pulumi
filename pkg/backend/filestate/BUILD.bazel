@@ -14,7 +14,7 @@ go_library(
         "state.go",
         "store.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/backend/filestate",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/filestate",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_gofrs_uuid//:uuid",

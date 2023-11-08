@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,7 @@ go_library(
         "errors.go",
         "sink.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/diag",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/diag",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/diag/colors:go_default_library",

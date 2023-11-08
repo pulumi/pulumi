@@ -16,7 +16,7 @@ go_library(
         "state.go",
         "token_source.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/backend/httpstate",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/httpstate",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hexops_gotextdiff//:gotextdiff",

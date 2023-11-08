@@ -51,8 +51,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/go/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/python"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 

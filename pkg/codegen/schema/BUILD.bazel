@@ -14,7 +14,7 @@ go_library(
         "schema.go",
     ],
     embedsrcs = ["pulumi.json"],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/schema",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/schema",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_blang_semver//:semver",

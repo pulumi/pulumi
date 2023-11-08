@@ -8,7 +8,7 @@ go_library(
         "tokens.go",
         "utilities.go",
     ],
-    importpath = "github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax",
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_hashicorp_hcl_v2//:hcl",

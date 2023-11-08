@@ -9,7 +9,7 @@ go_library(
         "ignore.go",
         "require.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/common/util/contract",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract",
     visibility = ["//visibility:public"],
     deps = ["//sdk/go/common/util/logging:go_default_library"],
 )

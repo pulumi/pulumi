@@ -1,0 +1,58 @@
+diff --git a/dh/x25519/BUILD.bazel b/dh/x25519/BUILD.bazel
+index d569bc1..13a942d 100644
+--- a/dh/x25519/BUILD.bazel
++++ b/dh/x25519/BUILD.bazel
+@@ -12,7 +12,9 @@ go_library(
+         "doc.go",
+         "key.go",
+         "table.go",
++        "//math/fp25519:fp_amd64.h",
+     ],
++    cgo = True,
+     importpath = "github.com/cloudflare/circl/dh/x25519",
+     visibility = ["//visibility:public"],
+     deps = [
+diff --git a/dh/x448/BUILD.bazel b/dh/x448/BUILD.bazel
+index ed287c6..cdbd4f1 100644
+--- a/dh/x448/BUILD.bazel
++++ b/dh/x448/BUILD.bazel
+@@ -12,7 +12,9 @@ go_library(
+         "doc.go",
+         "key.go",
+         "table.go",
++        "//math/fp448:fp_amd64.h",
+     ],
++    cgo = True,
+     importpath = "github.com/cloudflare/circl/dh/x448",
+     visibility = ["//visibility:public"],
+     deps = [
+diff --git a/math/fp25519/BUILD.bazel b/math/fp25519/BUILD.bazel
+index c9973ac..e98be64 100644
+--- a/math/fp25519/BUILD.bazel
++++ b/math/fp25519/BUILD.bazel
+@@ -1,5 +1,10 @@
+ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+ 
++exports_files(
++    ["fp_amd64.h"],
++    visibility = ["//dh/x25519:__pkg__"],
++)
++
+ go_library(
+     name = "fp25519",
+     srcs = [
+diff --git a/math/fp448/BUILD.bazel b/math/fp448/BUILD.bazel
+index c371ca5..ebc055d 100644
+--- a/math/fp448/BUILD.bazel
++++ b/math/fp448/BUILD.bazel
+@@ -1,5 +1,10 @@
+ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+ 
++exports_files(
++    ["fp_amd64.h"],
++    visibility = ["//dh/x448:__pkg__"],
++)
++
+ go_library(
+     name = "fp448",
+     srcs = [

@@ -12,7 +12,7 @@ go_library(
         "ptr.go",
         "types.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/pulumix",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumix",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/contract:go_default_library",

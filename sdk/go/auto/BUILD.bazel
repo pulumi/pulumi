@@ -13,7 +13,7 @@ go_library(
         "stack.go",
         "workspace.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/go/auto",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:go",

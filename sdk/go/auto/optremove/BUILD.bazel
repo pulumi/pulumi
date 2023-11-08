@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "optremove",
     srcs = ["optremove.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/go/auto/optremove",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/optremove",
     visibility = ["//visibility:public"],
 )
 
