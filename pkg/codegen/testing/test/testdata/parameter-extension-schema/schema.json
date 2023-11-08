@@ -12,7 +12,7 @@
   "allowedPackageNames": ["foo", "bar"],
   "pluginDownloadURL": "example.com/download",
   "resources": {
-    "example:index:Resource": {
+    "paramExample:index:Resource": {
       "properties": {
         "bar": {
           "type": "string",

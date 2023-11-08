@@ -2828,11 +2828,16 @@ export function lazyLoad(exports: any, props: string[], loadModule: any) {
 		if err != nil {
 			return fmt.Errorf("marshal parameter: %w", err)
 		}
-		parameter = fmt.Sprintf(", parameter: %s", json)
+		// It's an extension if it doesn't have it's own provider
+		isExtension := "false"
+		if def.Provider == nil {
+			isExtension = "true"
+		}
+		parameter = fmt.Sprintf(",\n        parameterValue: %s,\n        parameterExtension: %s", json, isExtension)
 	}
 	var extension string
 	if def.Extension != nil {
-		extension = ", extension: true"
+		extension = fmt.Sprintf(", extensionPackage: %q", def.Extension.Name)
 		if def.Extension.Version != nil {
 			extension = fmt.Sprintf("%s , extensionVersion: %q", extension, def.Extension.Version.String())
 		}
