@@ -374,8 +374,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			pkg,
-			// TODO fix me
-			req.Name(), nil, true, inputs, "", false, nil, "", nil, nil, nil,
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
 			nil, nil, nil, "", nil, nil, false, "", "", nil),
 		done: done,
 	}
@@ -1292,15 +1291,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	var version *semver.Version
-	if req.GetVersion() != "" {
-		v, err := semver.Parse(req.GetVersion())
-		if err != nil {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid version: %q", req.GetVersion()))
-		}
-		version = &v
-	}
-
 	if custom && !providers.IsProviderType(t) || remote {
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
@@ -1560,7 +1550,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		}
 
-		goal := resource.NewGoal(t, name, version, custom, props, parent, protect, dependencies,
+		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 			providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
 			sourcePosition, resParameter,
