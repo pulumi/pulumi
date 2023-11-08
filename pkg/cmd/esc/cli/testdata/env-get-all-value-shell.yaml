@@ -1,4 +1,6 @@
-run: esc env get test --value=shell
+run: |
+  esc env get test --value=shell
+  esc env get test --value=shell --show-secrets
 environments:
   test-user/a: {}
   test-user/b: {}
@@ -16,12 +18,16 @@ environments:
       object: {hello: world}
       open:
         fn::open::test: echo
+      secret:
+        fn::secret:
+          ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
       environmentVariables:
         NULLV: null
         BOOLEAN: true
         NUMBER: 3.14
         STRING: ${string}
         OBJECT: {'fn::toJSON': "${object}"}
+        SECRET: ${secret}
       files:
         FILE: ${string}
 stdout: |
@@ -30,7 +36,17 @@ stdout: |
   export NULLV=""
   export NUMBER="3.14"
   export OBJECT="{\"hello\":\"world\"}"
+  export SECRET="[secret]"
+  export STRING="esc"
+  export FILE="[unknown]"
+  > esc env get test --value=shell --show-secrets
+  export BOOLEAN="true"
+  export NULLV=""
+  export NUMBER="3.14"
+  export OBJECT="{\"hello\":\"world\"}"
+  export SECRET="secretAccessKey"
   export STRING="esc"
   export FILE="[unknown]"
 stderr: |
   > esc env get test --value=shell
+  > esc env get test --value=shell --show-secrets

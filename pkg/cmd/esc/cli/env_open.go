@@ -115,7 +115,7 @@ func (env *envCommand) renderValue(
 		enc.SetIndent("", "  ")
 		return enc.Encode(val)
 	case "dotenv":
-		_, environ, _, err := env.prepareEnvironment(e, PrepareOptions{Pretend: pretend, Quote: true})
+		_, environ, _, err := env.prepareEnvironment(e, PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets})
 		if err != nil {
 			return err
 		}
@@ -124,7 +124,7 @@ func (env *envCommand) renderValue(
 		}
 		return nil
 	case "shell":
-		_, environ, _, err := env.prepareEnvironment(e, PrepareOptions{Pretend: pretend, Quote: true})
+		_, environ, _, err := env.prepareEnvironment(e, PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets})
 		if err != nil {
 			return err
 		}

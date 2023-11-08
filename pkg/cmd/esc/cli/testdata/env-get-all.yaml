@@ -16,6 +16,9 @@ environments:
       object: {hello: world}
       open:
         fn::open::test: echo
+      secret:
+        fn::secret:
+          ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 stdout: |+
   > esc env get test
   # Value
@@ -32,6 +35,7 @@ stdout: |+
       "hello": "world"
     },
     "open": "[unknown]",
+    "secret": "[secret]",
     "string": "esc"
   }
   ```
@@ -50,6 +54,9 @@ stdout: |+
     object: {hello: world}
     open:
       fn::open::test: echo
+    secret:
+      fn::secret:
+        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 
   ```
 

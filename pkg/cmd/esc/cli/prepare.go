@@ -24,7 +24,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-func getEnvironmentVariables(env *esc.Environment, quote bool) (environ, secrets []string) {
+func getEnvironmentVariables(env *esc.Environment, quote, redact bool) (environ, secrets []string) {
 	vars := env.GetEnvironmentVariables()
 	keys := maps.Keys(vars)
 	sort.Strings(keys)
@@ -35,6 +35,9 @@ func getEnvironmentVariables(env *esc.Environment, quote bool) (environ, secrets
 
 		if v.Secret {
 			secrets = append(secrets, s)
+			if redact {
+				s = "[secret]"
+			}
 		}
 		if quote {
 			s = strconv.Quote(s)
@@ -101,6 +104,7 @@ func createTemporaryFiles(e *esc.Environment, opts PrepareOptions) (paths, envir
 type PrepareOptions struct {
 	Quote   bool // True to quote environment variable values
 	Pretend bool // True to skip actually writing temporary files
+	Redact  bool // True to redact secrets. Ignored unless Pretend is set.
 
 	fs escFS // The filesystem for temporary files
 }
@@ -115,7 +119,7 @@ func PrepareEnvironment(e *esc.Environment, opts *PrepareOptions) (files, enviro
 		opts.fs = newFS()
 	}
 
-	envVars, envSecrets := getEnvironmentVariables(e, opts.Quote)
+	envVars, envSecrets := getEnvironmentVariables(e, opts.Quote, opts.Redact)
 
 	filePaths, fileVars, fileSecrets, err := createTemporaryFiles(e, *opts)
 	if err != nil {
