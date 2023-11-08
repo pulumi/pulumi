@@ -2336,19 +2336,19 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 }
 
 type npmPackage struct {
-	Name             string                  `json:"name"`
-	Version          string                  `json:"version"`
-	Description      string                  `json:"description,omitempty"`
-	Keywords         []string                `json:"keywords,omitempty"`
-	Homepage         string                  `json:"homepage,omitempty"`
-	Repository       string                  `json:"repository,omitempty"`
-	License          string                  `json:"license,omitempty"`
-	Scripts          map[string]string       `json:"scripts,omitempty"`
-	Dependencies     map[string]string       `json:"dependencies,omitempty"`
-	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
-	PeerDependencies map[string]string       `json:"peerDependencies,omitempty"`
-	Resolutions      map[string]string       `json:"resolutions,omitempty"`
-	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
+	Name             string                   `json:"name"`
+	Version          string                   `json:"version"`
+	Description      string                   `json:"description,omitempty"`
+	Keywords         []string                 `json:"keywords,omitempty"`
+	Homepage         string                   `json:"homepage,omitempty"`
+	Repository       string                   `json:"repository,omitempty"`
+	License          string                   `json:"license,omitempty"`
+	Scripts          map[string]string        `json:"scripts,omitempty"`
+	Dependencies     map[string]string        `json:"dependencies,omitempty"`
+	DevDependencies  map[string]string        `json:"devDependencies,omitempty"`
+	PeerDependencies map[string]string        `json:"peerDependencies,omitempty"`
+	Resolutions      map[string]string        `json:"resolutions,omitempty"`
+	Pulumi           *plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
@@ -2374,9 +2374,9 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 
 	// If this is an extension library than it is _not_ a plugin library itself, it will depend on the library that
 	// documents the plugin version.
-	var pulumiJSON plugin.PulumiPluginJSON
+	var pulumiJSON *plugin.PulumiPluginJSON
 	if pkg.Extension == nil {
-		pulumiJSON = plugin.PulumiPluginJSON{
+		pulumiJSON = &plugin.PulumiPluginJSON{
 			Resource: true,
 			Server:   pkg.PluginDownloadURL,
 			Name:     pkg.Name,
