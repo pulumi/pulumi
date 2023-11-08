@@ -1644,9 +1644,9 @@ func TestParameterizeBadKey(t *testing.T) {
 			t.Parallel()
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-					Parameter:        param,
-					ParameterPackage: tt.key,
-					Extension:        true, // Set true to ensure we don't hit the no default provider case.
+					ExtensionPackage:   tt.key,
+					Parameter:          param,
+					ParameterExtension: true, // Set true to ensure we don't hit the no default provider case.
 				})
 				require.Error(t, err)
 				assert.ErrorContains(t, err, tt.expected)
@@ -1681,7 +1681,7 @@ func TestParameterizeNoDefault(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
-			ParameterPackage: "pkgA",
+			ExtensionPackage: "pkgA",
 			Parameter:        param,
 		})
 		assert.NoError(t, err)
@@ -1712,8 +1712,8 @@ func TestParameterize(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		providerURN, providerID, _, err := monitor.RegisterResource("pulumi:providers:ext", "provA", true, deploytest.ResourceOptions{
-			ParameterPackage: "pkgA",
-			ParameterVersion: "1.0.0",
+			ExtensionPackage: "pkgA",
+			ExtensionVersion: "1.0.0",
 			Parameter:        param,
 			Version:          "2.0.0",
 		})
@@ -1727,8 +1727,8 @@ func TestParameterize(t *testing.T) {
 
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider:         providerRef.String(),
-			ParameterPackage: "pkgA",
-			ParameterVersion: "1.0.0",
+			ExtensionPackage: "pkgA",
+			ExtensionVersion: "1.0.0",
 			Parameter:        param,
 			Version:          "2.0.0",
 		})
@@ -1788,20 +1788,20 @@ func TestParameterizeExtension(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
-			ParameterPackage: "pkgA",
-			ParameterVersion: "1.0.0",
-			Parameter:        param,
-			Extension:        true,
-			Version:          "2.0.0",
+			ExtensionPackage:   "pkgA",
+			ExtensionVersion:   "1.0.0",
+			Parameter:          param,
+			ParameterExtension: true,
+			Version:            "2.0.0",
 		})
 		assert.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resB", true, deploytest.ResourceOptions{
-			ParameterPackage: "pkgA",
-			ParameterVersion: "1.0.0",
-			Parameter:        param,
-			Extension:        true,
-			Version:          "2.0.0",
+			ExtensionPackage:   "pkgA",
+			ExtensionVersion:   "1.0.0",
+			Parameter:          param,
+			ParameterExtension: true,
+			Version:            "2.0.0",
 		})
 		assert.NoError(t, err)
 

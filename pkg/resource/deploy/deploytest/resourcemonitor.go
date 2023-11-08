@@ -145,10 +145,10 @@ type ResourceOptions struct {
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
 	AliasSpecs              bool
-	ParameterPackage        string
-	ParameterVersion        string
+	ExtensionPackage        string
+	ExtensionVersion        string
 	Parameter               *pbstruct.Value
-	Extension               bool
+	ParameterExtension      bool
 
 	SourcePosition            string
 	DisableSecrets            bool
@@ -255,10 +255,15 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	var parameter *pulumirpc.ResourceParameter
 	if opts.Parameter != nil {
 		parameter = &pulumirpc.ResourceParameter{
-			Package:   opts.ParameterPackage,
-			Version:   opts.ParameterVersion,
 			Value:     opts.Parameter,
-			Extension: opts.Extension,
+			Extension: opts.ParameterExtension,
+		}
+	}
+	var extension *pulumirpc.ResourceExtension
+	if opts.ExtensionPackage != "" {
+		extension = &pulumirpc.ResourceExtension{
+			Package: opts.ExtensionPackage,
+			Version: opts.ExtensionVersion,
 		}
 	}
 
@@ -294,6 +299,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
 		Parameter:                  parameter,
+		Extension:                  extension,
 	}
 
 	ctx := context.Background()

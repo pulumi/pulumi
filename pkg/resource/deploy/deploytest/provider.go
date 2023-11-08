@@ -37,7 +37,7 @@ type Provider struct {
 	Config     resource.PropertyMap
 	configured bool
 
-	GetSchemaF func(version int) ([]byte, error)
+	GetSchemaF func(version int, key string) ([]byte, error)
 
 	CheckConfigF func(urn resource.URN, olds,
 		news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error)
@@ -97,11 +97,11 @@ func (prov *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
-func (prov *Provider) GetSchema(version int) ([]byte, error) {
+func (prov *Provider) GetSchema(version int, key string) ([]byte, error) {
 	if prov.GetSchemaF == nil {
 		return []byte("{}"), nil
 	}
-	return prov.GetSchemaF(version)
+	return prov.GetSchemaF(version, key)
 }
 
 func (prov *Provider) CheckConfig(urn resource.URN, olds,

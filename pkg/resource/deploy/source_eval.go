@@ -1263,15 +1263,19 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if req.GetParameter() != nil {
 		param := req.GetParameter()
 
+		// If we're paramaterized we _must_ be extensioned.
+		ext := req.GetExtension()
+		contract.Assertf(ext != nil, "TODO: extension must be set if parameter is set")
+
 		// Ensure key is a valid PackageName
-		provPackage = param.GetPackage()
-		if !tokens.IsName(param.GetPackage()) {
+		provPackage = ext.GetPackage()
+		if !tokens.IsName(ext.GetPackage()) {
 			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter package: %q", provPackage))
 		}
 
-		version, err := semver.Parse(param.GetVersion())
+		version, err := semver.Parse(ext.GetVersion())
 		if err != nil {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter version: %q", param.GetVersion()))
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter version: %q", ext.GetVersion()))
 		}
 
 		value := param.GetValue().AsInterface()
@@ -1401,13 +1405,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			providers.SetProviderURL(props, req.GetPluginDownloadURL())
 		}
 		if req.GetParameter() != nil {
+			ext := req.GetExtension()
 			param := req.GetParameter()
-			version, err := semver.Parse(param.GetVersion())
+			version, err := semver.Parse(ext.GetVersion())
 			if err != nil {
 				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
 			}
 
-			providers.SetProviderParameter(props, param.GetPackage(), version, param.GetValue().AsInterface())
+			providers.SetProviderParameter(props, ext.GetPackage(), version, param.GetValue().AsInterface())
 		}
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the same plugin as the default
@@ -1417,7 +1422,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			// one in the type token.
 			pkg := providers.GetProviderPackage(t)
 			if req.GetParameter() != nil {
-				pkg = tokens.Package(req.GetParameter().GetPackage())
+				pkg = tokens.Package(req.GetExtension().GetPackage())
 			}
 
 			defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[pkg]
