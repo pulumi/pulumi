@@ -374,7 +374,8 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			pkg,
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
+			// TODO fix me
+			req.Name(), nil, true, inputs, "", false, nil, "", nil, nil, nil,
 			nil, nil, nil, "", nil, nil, false, "", "", nil),
 		done: done,
 	}
@@ -694,22 +695,23 @@ func getProviderFromSource(
 func parseProviderRequest(
 	pkg tokens.Package, version,
 	pluginDownloadURL string, pluginChecksums map[string][]byte,
-	basePackage string, parameter interface{},
+	basePackage string, baseVersion *semver.Version, parameter interface{},
 ) (providers.ProviderRequest, error) {
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
+	var parsedVersion *semver.Version
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg, url, pluginChecksums, basePackage, parameter), nil
+	} else {
+		version, err := semver.Parse(version)
+		if err != nil {
+			logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
+			return providers.ProviderRequest{}, err
+		}
+		parsedVersion = &version
 	}
 
-	parsedVersion, err := semver.Parse(version)
-	if err != nil {
-		logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
-		return providers.ProviderRequest{}, err
-	}
-
-	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums, basePackage, parameter), nil
+	return providers.NewProviderRequest(parsedVersion, pkg, url, pluginChecksums, basePackage, baseVersion, parameter), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -755,7 +757,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	// TODO: Support parametrized invokes.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil)
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -818,7 +820,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 	// TODO: Support parametrized providers in call.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil)
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -913,7 +915,7 @@ func (rm *resmon) StreamInvoke(
 	// TODO: Support parametrized providers in stream invoke.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil)
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil, nil)
 	if err != nil {
 		return err
 	}
@@ -987,7 +989,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		// TODO: Support parametrized providers in reads.
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil)
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1255,6 +1257,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRefs map[string]string
 
 	var provPackage string
+	var provVersion *semver.Version
 	var provParameter interface{}
 	var resParameter *resource.ResourceParameter
 	if req.GetParameter() != nil {
@@ -1266,7 +1269,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter package: %q", provPackage))
 		}
 
-		provVersion, err := semver.Parse(param.GetVersion())
+		version, err := semver.Parse(param.GetVersion())
 		if err != nil {
 			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter version: %q", param.GetVersion()))
 		}
@@ -1275,20 +1278,30 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if param.GetExtension() {
 			// If this is an extension resource the parameter is for the resource
 			resParameter = &resource.ResourceParameter{
-				Version: provVersion,
+				Version: version,
 				Package: provPackage,
 				Value:   value,
 			}
 		} else {
+			provVersion = &version
 			provParameter = value
 		}
+	}
+
+	var version *semver.Version
+	if req.GetVersion() != "" {
+		v, err := semver.Parse(req.GetVersion())
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid version: %q", req.GetVersion()))
+		}
+		version = &v
 	}
 
 	if custom && !providers.IsProviderType(t) || remote {
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
 			req.GetPluginDownloadURL(), req.GetPluginChecksums(),
-			provPackage, provParameter)
+			provPackage, provVersion, provParameter)
 		if err != nil {
 			return nil, err
 		}
@@ -1542,7 +1555,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		}
 
-		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
+		goal := resource.NewGoal(t, name, version, custom, props, parent, protect, dependencies,
 			providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
 			sourcePosition, resParameter,

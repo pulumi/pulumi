@@ -38,7 +38,8 @@ type ResourceParameter struct {
 //
 //nolint:lll
 type State struct {
-	Type                    tokens.Type           // the resource's type.
+	Type                    tokens.Type // the resource's type.
+	Version                 *semver.Version
 	URN                     URN                   // the resource's object urn, a human-friendly, unique name for the resource.
 	Custom                  bool                  // true if the resource is custom, managed by a plugin.
 	Delete                  bool                  // true if this resource is pending deletion due to a replacement.

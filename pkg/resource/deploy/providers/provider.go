@@ -44,6 +44,7 @@ type ProviderRequest struct {
 	pluginChecksums   map[string][]byte
 	parameter         interface{}
 	basePackage       string
+	baseVersion       *semver.Version
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -51,7 +52,7 @@ type ProviderRequest struct {
 func NewProviderRequest(
 	version *semver.Version, pkg tokens.Package,
 	pluginDownloadURL string, checksums map[string][]byte,
-	basePackage string, parameter interface{},
+	basePackage string, baseVersion *semver.Version, parameter interface{},
 ) ProviderRequest {
 	req := ProviderRequest{
 		version:           version,
@@ -60,6 +61,7 @@ func NewProviderRequest(
 		pluginChecksums:   checksums,
 		parameter:         parameter,
 		basePackage:       basePackage,
+		baseVersion:       baseVersion,
 	}
 	return req
 }

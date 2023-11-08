@@ -1715,6 +1715,7 @@ func TestParameterize(t *testing.T) {
 			ParameterPackage: "pkgA",
 			ParameterVersion: "1.0.0",
 			Parameter:        param,
+			Version:          "2.0.0",
 		})
 		assert.NoError(t, err)
 
@@ -1727,7 +1728,9 @@ func TestParameterize(t *testing.T) {
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider:         providerRef.String(),
 			ParameterPackage: "pkgA",
+			ParameterVersion: "1.0.0",
 			Parameter:        param,
+			Version:          "2.0.0",
 		})
 		assert.NoError(t, err)
 
@@ -1743,6 +1746,7 @@ func TestParameterize(t *testing.T) {
 					assert.Nil(t, args)
 					assert.Equal(t, param.String(), value.String())
 					assert.Equal(t, "ext", key)
+					assert.Equal(t, "2.0.0", version.String())
 					return nil
 				},
 			}, nil
@@ -1788,6 +1792,7 @@ func TestParameterizeExtension(t *testing.T) {
 			ParameterVersion: "1.0.0",
 			Parameter:        param,
 			Extension:        true,
+			Version:          "2.0.0",
 		})
 		assert.NoError(t, err)
 
@@ -1796,6 +1801,7 @@ func TestParameterizeExtension(t *testing.T) {
 			ParameterVersion: "1.0.0",
 			Parameter:        param,
 			Extension:        true,
+			Version:          "2.0.0",
 		})
 		assert.NoError(t, err)
 
@@ -1811,6 +1817,7 @@ func TestParameterizeExtension(t *testing.T) {
 					assert.Nil(t, args)
 					assert.Equal(t, param.String(), value.String())
 					assert.Equal(t, "ext", key)
+					assert.Equal(t, "2.0.0", version.String())
 					return nil
 				},
 			}, nil

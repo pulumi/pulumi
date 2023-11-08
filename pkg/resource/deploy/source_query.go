@@ -336,7 +336,7 @@ func (rm *queryResmon) Invoke(
 	// TODO: Support parameterized providers in query mode.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil)
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (rm *queryResmon) StreamInvoke(
 	// TODO: Support parameterized providers in query mode.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil)
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil, nil)
 	if err != nil {
 		return err
 	}
@@ -447,7 +447,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 	// TODO: Support parameterized providers in query mode.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil)
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), "", nil, nil)
 	if err != nil {
 		return nil, err
 	}

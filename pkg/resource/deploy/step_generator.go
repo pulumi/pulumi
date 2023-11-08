@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -574,7 +575,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	}
 
 	// Fetch the provider for this resource.
-	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type, goal.Parameter)
+	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type, goal.Version, goal.Parameter)
 	if err != nil {
 		return nil, err
 	}
@@ -1691,7 +1692,7 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 }
 
 func (sg *stepGenerator) loadResourceProvider(
-	urn resource.URN, custom bool, provider string, typ tokens.Type, parameter *resource.ResourceParameter,
+	urn resource.URN, custom bool, provider string, typ tokens.Type, version *semver.Version, parameter interface{},
 ) (plugin.Provider, error) {
 	// If this is not a custom resource, then it has no provider by definition.
 	if !custom {
@@ -1723,14 +1724,15 @@ func (sg *stepGenerator) loadResourceProvider(
 	if parameter != nil {
 		applied := sg.parameterizations[ref.String()]
 
-		parameterValue, err := pbstruct.NewValue(parameter.Value)
+		parameterValue, err := pbstruct.NewValue(parameter)
 		if err != nil {
 			return nil, sg.bailDaig(diag.GetParameterizeProviderError(urn), provider, urn, err)
 		}
 
 		key := parameterValue.String()
 		if _, has := applied[key]; !has {
-			if err := p.Parameterize("key", nil, &parameter.Version, parameterValue); err != nil {
+			parameterKey := typ.Package().String()
+			if err := p.Parameterize(parameterKey, nil, version, parameterValue); err != nil {
 				return nil, sg.bailDaig(diag.GetParameterizeProviderError(urn), provider, urn, err)
 			}
 
@@ -1949,7 +1951,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 		// Otherwise, fetch the resource's provider. Since we have filtered out component resources, this resource must
 		// have a provider.
-		prov, err := sg.loadResourceProvider(r.URN, r.Custom, r.Provider, r.Type, r.Parameter)
+		prov, err := sg.loadResourceProvider(r.URN, r.Custom, r.Provider, r.Type, r.Version, r.Parameter)
 		if err != nil {
 			return false, nil, err
 		}
