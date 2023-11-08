@@ -1612,6 +1612,62 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestParameterizeBadKey tests that a resource with a parameter property but a missing or invalid key returns an error.
+func TestParameterizeBadKey(t *testing.T) {
+	t.Parallel()
+
+	param, err := pbstruct.NewValue(map[string]interface{}{
+		"hello": "world",
+	})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name     string
+		key      string
+		expected string
+	}{
+		{
+			name:     "missing",
+			key:      "",
+			expected: "invalid parameter key: \"\"",
+		},
+		{
+			name:     "invalid",
+			key:      "what a b@d key",
+			expected: "invalid parameter key: \"what a b@d key\"",
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+					Parameter:    param,
+					ParameterKey: tt.key,
+					Extension:    true, // Set true to ensure we don't hit the no default provider case.
+				})
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.expected)
+
+				return err
+			})
+
+			hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+			p := &TestPlan{
+				Options: TestUpdateOptions{HostF: hostF},
+			}
+
+			project := p.GetProject()
+			_, err = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+			require.Error(t, err)
+			assert.ErrorContains(t, err, tt.expected)
+		})
+	}
+}
+
 // TestParameterizeNoDefault tests that a resource with a parameter property can't start a default provider. We might
 // find a sensible way to support default config for parameterized providers in the future, but for now it's more
 // sensible to just disallow it.

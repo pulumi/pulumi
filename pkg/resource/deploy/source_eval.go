@@ -1253,9 +1253,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRef providers.Reference
 	var providerRefs map[string]string
 
+	var parameterKey string
 	var provParameter, resParameter interface{}
 	if req.GetParameter() != nil {
 		param := req.GetParameter()
+
+		parameterKey = param.GetKey()
+		// Ensure key is a valid PackageName
+		if !tokens.IsName(parameterKey) {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter key: %q", parameterKey))
+		}
+
 		value := param.GetValue().AsInterface()
 		if param.GetExtension() {
 			// If this is an extension resource the parameter is for the resource
