@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 
 	uuid "github.com/gofrs/uuid"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -311,19 +312,30 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			if val.IsOutput() {
 				unwrappedVal = val.OutputValue().Element
 			}
-			marshalled, err := plugin.MarshalPropertyValue(key, unwrappedVal, plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true})
-			if err != nil {
-				return plugin.ConstructResult{}, err
-			}
-			jsonValue, err := json.Marshal(marshalled)
-			if err != nil {
-				return plugin.ConstructResult{}, err
+
+			var encodedValue string
+			if unwrappedVal.IsString() {
+				encodedValue = unwrappedVal.StringValue()
+			} else if unwrappedVal.IsBool() {
+				encodedValue = strconv.FormatBool(unwrappedVal.BoolValue())
+			} else if unwrappedVal.IsNumber() {
+				encodedValue = strconv.FormatFloat(unwrappedVal.NumberValue(), 'f', -1, 64)
+			} else {
+				marshalled, err := plugin.MarshalPropertyValue(key, unwrappedVal, plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true})
+				if err != nil {
+					return plugin.ConstructResult{}, err
+				}
+				jsonValue, err := json.Marshal(marshalled)
+				if err != nil {
+					return plugin.ConstructResult{}, err
+				}
+				encodedValue = string(jsonValue)
 			}
 			configKey := config.MustMakeKey(info.Project, string(key))
 			if val.ContainsSecrets() {
 				secretKeys = append(secretKeys, configKey)
 			}
-			configs[configKey] = string(jsonValue)
+			configs[configKey] = encodedValue
 		}
 		// Now run the actual program.
 		progerr, bail, err := langhost.Run(plugin.RunInfo{
