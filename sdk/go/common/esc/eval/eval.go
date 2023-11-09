@@ -111,7 +111,7 @@ func evalEnvironment(
 		return nil, nil
 	}
 
-	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*value{})
+	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*imported{})
 	v, diags := ec.evaluate()
 
 	s := schema.Never().Schema()
@@ -131,6 +131,11 @@ func evalEnvironment(
 	}, diags
 }
 
+type imported struct {
+	evaluating bool
+	value      *value
+}
+
 // An evalContext carries the state necessary to evaluate an environment.
 type evalContext struct {
 	ctx          context.Context      // the cancellation context for evaluation
@@ -140,7 +145,7 @@ type evalContext struct {
 	decrypter    Decrypter            // the decrypter to use for the environment
 	providers    ProviderLoader       // the provider loader to use
 	environments EnvironmentLoader    // the environment loader to use
-	imports      map[string]*value    // the shared set of imported environments
+	imports      map[string]*imported // the shared set of imported environments
 
 	myImports *value // directly-imported environments
 	root      *expr  // the root expression
@@ -157,7 +162,7 @@ func newEvalContext(
 	decrypter Decrypter,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
-	imports map[string]*value,
+	imports map[string]*imported,
 ) *evalContext {
 	return &evalContext{
 		ctx:          ctx,
@@ -339,6 +344,10 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 
 // evaluateImports evalutes an environment's imports.
 func (e *evalContext) evaluateImports() {
+	mine := &imported{evaluating: true}
+	defer func() { mine.evaluating = false }()
+	e.imports[e.name] = mine
+
 	myImports := map[string]*value{}
 	for _, entry := range e.env.Imports.GetElements() {
 		e.evaluateImport(myImports, entry)
@@ -374,8 +383,14 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 		merge = decl.Meta.Merge.Value
 	}
 
-	val, ok := e.imports[name]
-	if !ok {
+	var val *value
+	if imported, ok := e.imports[name]; ok {
+		if imported.evaluating {
+			e.diags.Extend(syntax.Error(decl.Syntax().Syntax().Range(), fmt.Sprintf("cyclic import of %v", name), decl.Syntax().Syntax().Path()))
+			return
+		}
+		val = imported.value
+	} else {
 		bytes, dec, err := e.environments.LoadEnvironment(e.ctx, name)
 		if err != nil {
 			e.errorf(decl.Environment, "%s", err.Error())
@@ -394,7 +409,7 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 		e.diags.Extend(diags...)
 
 		val = v
-		e.imports[name] = val
+		e.imports[name].value = val
 	}
 
 	myImports[name] = val

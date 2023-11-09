@@ -1,0 +1,64 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "cyclic import of env",
+            "Detail": "",
+            "Subject": {
+                "Filename": "env",
+                "Start": {
+                    "Line": 2,
+                    "Column": 5,
+                    "Byte": 13
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 8,
+                    "Byte": 16
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0]"
+        }
+    ],
+    "check": {
+        "schema": {
+            "type": "object"
+        }
+    },
+    "checkJson": {},
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "cyclic import of env",
+            "Detail": "",
+            "Subject": {
+                "Filename": "env",
+                "Start": {
+                    "Line": 2,
+                    "Column": 5,
+                    "Byte": 13
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 8,
+                    "Byte": 16
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0]"
+        }
+    ],
+    "eval": {
+        "schema": {
+            "type": "object"
+        }
+    },
+    "evalJson": {}
+}
