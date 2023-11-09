@@ -807,10 +807,12 @@ func newImportCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:      parallel,
-				Debug:         debug,
-				UseLegacyDiff: useLegacyDiff(),
-				Experimental:  hasExperimentalCommands(),
+				Parallel:        parallel,
+				Debug:           debug,
+				UseLegacyDiff:   useLegacyDiff(),
+				Experimental:    hasExperimentalCommands(),
+				EnableDebugging: enableDebugging(),
+				WaitForAttach:   waitForAttach(),
 			}
 
 			_, res := s.Import(ctx, backend.UpdateOperation{

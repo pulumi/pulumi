@@ -216,6 +216,8 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		QueryMode:         info.QueryMode,
 		Parallel:          int32(info.Parallel),
 		Organization:      info.Organization,
+		Debug:             info.Debug,
+		WaitForAttach:     info.WaitForAttach,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -313,6 +313,8 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 			DisableResourceReferences: deployment.Options.DisableResourceReferences,
 			DisableOutputValues:       deployment.Options.DisableOutputValues,
 			GeneratePlan:              deployment.Options.UpdateOptions.GeneratePlan,
+			EnableDebugging:           deployment.Options.EnableDebugging,
+			WaitForAttach:             deployment.Options.WaitForAttach,
 		}
 		newPlan, walkError = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)

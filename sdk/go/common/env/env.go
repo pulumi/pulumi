@@ -75,6 +75,8 @@ The variable should be set to the log file to which gRPC debug traces will be se
 var GitSSHPassphrase = env.String("GITSSH_PASSPHRASE",
 	"The passphrase to use with Git operations that use SSH.", env.Secret)
 
+var EnableDebugging = env.Bool("ENABLE_DEBUGGING", `Enables debugging of the Pulumi program.`)
+
 // Environment variables that affect the self-managed backend.
 var (
 	SelfManagedStateNoLegacyWarning = env.Bool("SELF_MANAGED_STATE_NO_LEGACY_WARNING",

@@ -111,4 +111,6 @@ type RunInfo struct {
 	QueryMode         bool                  // true if we're only doing a query.
 	Parallel          int                   // the degree of parallelism for resource operations (<=1 for serial).
 	Organization      string                // the organization name housing the program being run (might be empty).
+	Debug             bool                  // true if we are debugging the program.
+	WaitForAttach     bool                  // true if we are debugging and should wait for the client to attach.
 }

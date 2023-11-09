@@ -167,6 +167,12 @@ type UpdateOptions struct {
 
 	// Experimental is true if the engine is in experimental mode (i.e. PULUMI_EXPERIMENTAL was set)
 	Experimental bool
+
+	// EnableDebugging to launch the language host in debug mode.
+	EnableDebugging bool
+
+	// WaitForAttach
+	WaitForAttach bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
