@@ -44,7 +44,7 @@ require (
 	github.com/go-git/go-git/v5 v5.9.0
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/pkg/term v1.1.0
-	github.com/pulumi/esc v0.5.6
+	github.com/pulumi/esc v0.6.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/term v0.13.0
 	lukechampine.com/frand v1.4.2

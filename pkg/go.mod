@@ -82,7 +82,7 @@ require (
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/esc v0.5.7-0.20231030195049-f71961c0d5fa
+	github.com/pulumi/esc v0.6.0
 	github.com/pulumi/pulumi-java/pkg v0.9.8
 	github.com/pulumi/pulumi-yaml v1.4.0
 	github.com/segmentio/encoding v0.3.5
