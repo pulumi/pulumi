@@ -36,7 +36,7 @@ func newPulumiPackage() *Package {
 							},
 						}},
 						"source": {TypeSpec: TypeSpec{Type: "string"}},
-						"inputs": {TypeSpec: TypeSpec{
+						"config": {TypeSpec: TypeSpec{
 							Type: "object",
 							AdditionalProperties: &TypeSpec{
 								Ref: "pulumi.json#/Any",
@@ -50,7 +50,7 @@ func newPulumiPackage() *Package {
 				},
 				InputProperties: map[string]PropertySpec{
 					"source": {TypeSpec: TypeSpec{Type: "string"}},
-					"inputs": {TypeSpec: TypeSpec{
+					"config": {TypeSpec: TypeSpec{
 						Type: "object",
 						AdditionalProperties: &TypeSpec{
 							Ref: "pulumi.json#/Any",
