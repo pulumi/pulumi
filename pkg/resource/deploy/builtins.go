@@ -505,8 +505,8 @@ func (p *builtinProvider) SignalCancellation() error {
 
 func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	name, ok := inputs["name"]
-	contract.Assertf(ok, "missing required property 'name'")
-	contract.Assertf(name.IsString(), "expected 'name' to be a string")
+	contract.Assertf(ok, "missing required property 'name', inputs: %v", inputs)
+	contract.Assertf(name.IsString(), "expected 'name' to be a string, inputs: %v", inputs)
 
 	if p.backendClient == nil {
 		return nil, errors.New("no backend client is available")
