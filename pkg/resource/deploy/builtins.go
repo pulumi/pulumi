@@ -239,7 +239,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			prefixResourceNames = inputs["prefixResourceNames"].BoolValue()
 		}
 
-		input_source := inputs["inputs"]
+		input_source := inputs["config"]
 		if input_source.IsNull() {
 			input_source = resource.NewObjectProperty(resource.PropertyMap{})
 		}

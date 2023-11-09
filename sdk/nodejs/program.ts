@@ -26,11 +26,11 @@ export class Program extends ComponentResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["source"] = args ? args.source : undefined;
-            resourceInputs["inputs"] = args ? args.inputs : undefined;
+            resourceInputs["config"] = args ? args.config : undefined;
             resourceInputs["prefixResourceNames"] = args ? args.prefixResourceNames : true;
         } else {
             resourceInputs["source"] = undefined;
-            resourceInputs["inputs"] = undefined;
+            resourceInputs["config"] = undefined;
             resourceInputs["prefixResourceNames"] = true;
         }
         resourceInputs["outputs"] = undefined;
@@ -47,7 +47,7 @@ export interface StackArgs {
     /**
      * The input configure the stack.
      */
-    inputs?: Inputs;
+    config?: Inputs;
 
     /**
      * Whether the resource name of the substack should be prefixed by the substack name.
