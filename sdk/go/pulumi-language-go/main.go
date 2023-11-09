@@ -36,7 +36,9 @@ import (
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -47,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/netutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -62,7 +65,7 @@ import (
 // This function takes a file target to specify where to compile to.
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
-func compileProgram(programDirectory string, outfile string) (string, error) {
+func compileProgram(programDirectory string, outfile string, withDebugFlags bool) (string, error) {
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 		return "", fmt.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
@@ -86,7 +89,11 @@ func compileProgram(programDirectory string, outfile string) (string, error) {
 		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
-	buildCmd := exec.Command(gobin, "build", "-o", outfile)
+	args := []string{"build", "-o", outfile}
+	if withDebugFlags {
+		args = append(args, "-gcflags", "all=-N -l")
+	}
+	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
 	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
 
@@ -228,6 +235,22 @@ func newLanguageHost(engineAddress, cwd, tracing, binary, buildTarget string) pu
 		binary:        binary,
 		buildTarget:   buildTarget,
 	}
+}
+
+func (host *goLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+	// Make a connection to the real engine that we will log messages to.
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
+	}
+
+	// Make a client around that connection.
+	engineClient := pulumirpc.NewEngineClient(conn)
+	return engineClient, conn, nil
 }
 
 // modInfo is the useful portion of the output from
@@ -681,11 +704,8 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}, nil
 }
 
-func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
-	cmd.Env = env
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-
-	err := cmd.Run()
+func runCmdStatus(runF func() error) (int, error) {
+	err := runF()
 	// The returned error is nil if the command runs, has no problems copying stdin, stdout, and stderr, and
 	// exits with a zero exit status.
 	if err == nil {
@@ -707,10 +727,84 @@ func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
 	return status.ExitStatus(), nil
 }
 
-func runProgram(pwd, bin string, env []string) *pulumirpc.RunResponse {
-	cmd := exec.Command(bin)
+type delveContext struct {
+	Port    int
+	LogDest string
+}
+
+func (c *delveContext) Cleanup() {
+	contract.IgnoreError(os.Remove(c.LogDest))
+}
+
+func delveCommand(bin string, waitForAttach bool) (*exec.Cmd, *delveContext, error) {
+	godlv, err := executable.FindExecutable("dlv")
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to find 'dlv' executable: %w", err)
+	}
+	logFile, err := os.CreateTemp("", "pulumi-go-dlv-")
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to allocate tmp file: %w", err)
+	}
+	contract.IgnoreClose(logFile)
+	port, err := netutil.SelectPort()
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
+	}
+	args := []string{fmt.Sprintf("--listen=localhost:%d", port), "--headless=true", "--api-version=2"}
+	if !waitForAttach {
+		args = append(args, "--continue")
+	}
+	args = append(args, "--log", "--log-dest", logFile.Name())
+	args = append(args, "exec", bin)
+	dlvCmd := exec.Command(godlv, args...)
+	return dlvCmd, &delveContext{Port: port, LogDest: logFile.Name()}, nil
+}
+
+func runProgram(ctx context.Context, engineClient pulumirpc.EngineClient, req *pulumirpc.RunRequest, pwd, bin string, env []string) *pulumirpc.RunResponse {
+	var err error
+	var delveCtx *delveContext
+	var cmd *exec.Cmd
+	if req.GetDebug() {
+		cmd, delveCtx, err = delveCommand(bin, req.GetWaitForAttach())
+		if err != nil {
+			return &pulumirpc.RunResponse{
+				Error: err.Error(),
+			}
+		}
+		defer delveCtx.Cleanup()
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Dir = pwd
-	status, err := runCmdStatus(cmd, env)
+	cmd.Env = env
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetDebug() {
+			debugConfig, err := structpb.NewStruct(map[string]interface{}{
+				"name":    "Pulumi: Program (Go)",
+				"type":    "go",
+				"request": "attach",
+				"mode":    "remote",
+				"host":    "localhost",
+				"port":    delveCtx.Port,
+			})
+			if err != nil {
+				return err
+			}
+			_, err = engineClient.StartDebugger(ctx, &pulumirpc.StartDebuggerRequest{
+				Config: debugConfig,
+			})
+			if err != nil {
+				return fmt.Errorf("unable to start debugging: %w", err)
+			}
+		}
+		return cmd.Wait()
+	}
+	status, err := runCmdStatus(run)
 	if err != nil {
 		return &pulumirpc.RunResponse{
 			Error: err.Error(),
@@ -739,6 +833,14 @@ func runProgram(pwd, bin string, env []string) *pulumirpc.RunResponse {
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		contract.IgnoreClose(closer)
+	}()
+
 	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
 	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
 	env, err := host.constructEnv(req)
@@ -753,7 +855,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		if err != nil {
 			return nil, fmt.Errorf("unable to find '%s' executable: %w", host.binary, err)
 		}
-		return runProgram(req.Pwd, bin, env), nil
+		return runProgram(ctx, engineClient, req, req.Pwd, bin, env), nil
 	}
 
 	// feature flag to enable deprecated old behavior and use `go run`
@@ -765,7 +867,9 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 		cmd := exec.Command(gobin, "run", req.Program)
 		cmd.Dir = host.cwd
-		status, err := runCmdStatus(cmd, env)
+		cmd.Env = env
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		status, err := runCmdStatus(cmd.Run)
 		if err != nil {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
@@ -787,7 +891,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(req.Program, host.buildTarget)
+	program, err := compileProgram(req.Program, host.buildTarget, req.GetDebug())
 	if err != nil {
 		return nil, fmt.Errorf("error in compiling Go: %w", err)
 	}
@@ -796,7 +900,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		defer os.Remove(program)
 	}
 
-	return runProgram(req.Pwd, program, env), nil
+	return runProgram(ctx, engineClient, req, req.Pwd, program, env), nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional
@@ -966,7 +1070,7 @@ func (host *goLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
 
-	program, err := compileProgram(req.Program, "")
+	program, err := compileProgram(req.Program, "", false)
 	if err != nil {
 		return fmt.Errorf("error in compiling Go: %w", err)
 	}
