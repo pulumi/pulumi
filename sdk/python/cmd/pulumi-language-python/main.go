@@ -30,6 +30,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -48,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/netutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -55,6 +57,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -213,12 +216,36 @@ func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
 	}
 }
 
+func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+	// Make a connection to the real engine that we will log messages to.
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
+	}
+
+	// Make a client around that connection.
+	engineClient := pulumirpc.NewEngineClient(conn)
+	return engineClient, conn, nil
+}
+
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		contract.IgnoreClose(closer)
+	}()
+
 	// Prepare the virtual environment (if needed).
-	err := host.prepareVirtualEnvironment(ctx, host.cwd)
+	err = host.prepareVirtualEnvironment(ctx, host.cwd, engineClient)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +284,7 @@ func resolveVirtualEnvironmentPath(root, virtualenv string) string {
 }
 
 // prepareVirtualEnvironment will create and install dependencies in the virtual environment if host.virtualenv is set.
-func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, cwd string) error {
+func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, cwd string, engineClient pulumirpc.EngineClient) error {
 	if host.virtualenv == "" {
 		return nil
 	}
@@ -288,19 +315,6 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 
 	// Create the virtual environment and install dependencies into it, if needed.
 	if createVirtualEnv {
-		// Make a connection to the real engine that we will log messages to.
-		conn, err := grpc.Dial(
-			host.engineAddress,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			rpcutil.GrpcChannelOptions(),
-		)
-		if err != nil {
-			return fmt.Errorf("language host could not make connection to engine: %w", err)
-		}
-
-		// Make a client around that connection.
-		engineClient := pulumirpc.NewEngineClient(conn)
-
 		// Create writers that log the output of the install operation as ephemeral messages.
 		streamID := rand.Int31() //nolint:gosec
 
@@ -659,7 +673,32 @@ func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	args := []string{host.exec}
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		contract.IgnoreClose(closer)
+	}()
+
+	args := []string{}
+
+	// Python options (https://docs.python.org/3/using/cmdline.html)
+	var port int
+	if req.GetDebug() {
+		port, err = netutil.SelectPort()
+		if err != nil {
+			return nil, fmt.Errorf("unable to select a debug port: %w", err)
+		}
+		args = append(args, "-Xfrozen_modules=off")
+		args = append(args, "-m", "debugpy", "--listen", fmt.Sprintf("%d", port))
+		if req.GetWaitForAttach() {
+			args = append(args, "--wait-for-client")
+		}
+	}
+
+	// Entrypoint script and arguments
+	args = append(args, host.exec)
 	args = append(args, host.constructArguments(req)...)
 
 	config, err := host.constructConfig(req)
@@ -710,7 +749,34 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		cmd.Env = env
 	}
-	if err := cmd.Run(); err != nil {
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetDebug() {
+			debugConfig, err := structpb.NewStruct(map[string]interface{}{
+				"name":    "Pulumi: Program (Python)",
+				"type":    "python",
+				"request": "attach",
+				"connect": map[string]interface{}{
+					"host": "127.0.0.1",
+					"port": port,
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("failed serialize debug configuration: %w", err)
+			}
+			_, err = engineClient.StartDebugger(ctx, &pulumirpc.StartDebuggerRequest{
+				Config: debugConfig,
+			})
+			if err != nil {
+				return fmt.Errorf("unable to start debugging: %w", err)
+			}
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we
 		// need to explicitly flush our output streams so that, when we exit, the engine picks up the child Python
 		// process's stdout and stderr writes.
