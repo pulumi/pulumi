@@ -106,6 +106,8 @@ message RunRequest {
     repeated string configSecretKeys = 11; // the configuration keys that have secret values.
     string organization = 12;       // the organization of the stack being deployed into.
     google.protobuf.Struct configPropertyMap = 13; // the configuration variables to apply before running.
+    bool debug = 14;                // true if we're running in debug mode.
+    bool waitForAttach = 15;        // true if we're waiting for a debugger to attach.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.

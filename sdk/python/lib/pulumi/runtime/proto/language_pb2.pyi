@@ -216,6 +216,8 @@ class RunRequest(google.protobuf.message.Message):
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
     CONFIGPROPERTYMAP_FIELD_NUMBER: builtins.int
+    DEBUG_FIELD_NUMBER: builtins.int
+    WAITFORATTACH_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -246,6 +248,10 @@ class RunRequest(google.protobuf.message.Message):
     @property
     def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
         """the configuration variables to apply before running."""
+    debug: builtins.bool
+    """true if we're running in debug mode."""
+    waitForAttach: builtins.bool
+    """true if we're waiting for a debugger to attach."""
     def __init__(
         self,
         *,
@@ -262,9 +268,11 @@ class RunRequest(google.protobuf.message.Message):
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
         configPropertyMap: google.protobuf.struct_pb2.Struct | None = ...,
+        debug: builtins.bool = ...,
+        waitForAttach: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["configPropertyMap", b"configPropertyMap"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "debug", b"debug", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack", "waitForAttach", b"waitForAttach"]) -> None: ...
 
 global___RunRequest = RunRequest
 
