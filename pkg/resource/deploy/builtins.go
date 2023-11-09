@@ -175,7 +175,7 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 ) (plugin.ReadResult, resource.Status, error) {
 	contract.Requiref(urn != "", "urn", "must not be empty")
 	contract.Requiref(id != "", "id", "must not be empty")
-	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
+	contract.Assertf(urn.Type() == stackReferenceType || urn.Type() == "pulumi:pulumi:Program", "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
 	outputs, err := p.readStackReference(state)
 	if err != nil {
