@@ -43,7 +43,7 @@ const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
-	diag, statusDiag diag.Sink, disableProviderPreview bool,
+	diag, statusDiag diag.Sink, debugging plugin.DebuggingSink, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
@@ -60,6 +60,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	if err != nil {
 		return "", "", nil, err
 	}
+	ctx.Debugging = debugging
 
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
@@ -177,8 +178,10 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
 
+	// Create a context for plugins.
+	debuggingSink := newDebuggingSink(opts.Events)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
-		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, debuggingSink, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}

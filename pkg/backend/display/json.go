@@ -143,6 +143,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 					Severity: p.Severity,
 				})
 			}
+		case engine.StartDebuggingEvent:
+			continue
+
 		case engine.StdoutColorEvent:
 			// Append stdout events as informational messages, and elide all colorization.
 			p := e.Payload().(engine.StdoutEventPayload)

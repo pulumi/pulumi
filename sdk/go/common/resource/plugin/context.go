@@ -36,6 +36,7 @@ import (
 type Context struct {
 	Diag       diag.Sink // the diagnostics sink to use for messages.
 	StatusDiag diag.Sink // the diagnostics sink to use for status messages.
+	Debugging  DebuggingSink // the debugging sink to use to launch a debugger.
 	Host       Host      // the host that can be used to fetch providers.
 	Pwd        string    // the working directory to spawn all plugins in.
 	Root       string    // the root directory of the context.

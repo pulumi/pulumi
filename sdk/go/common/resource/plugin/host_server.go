@@ -129,3 +129,23 @@ func (eng *hostServer) SetRootResource(ctx context.Context,
 	eng.rootUrn.Store(req.GetUrn())
 	return &response, nil
 }
+
+func (eng *hostServer) StartDebugger(ctx context.Context,
+	req *lumirpc.StartDebuggerRequest,
+) (*lumirpc.StartDebuggerResponse, error) {
+	var response lumirpc.StartDebuggerResponse
+
+	// log a status message
+	eng.host.LogStatus(diag.Info, resource.URN(""), "Waiting for debugger to attach...", 0)
+
+	// fire an engine event to start the debugger
+	info := DebuggingInfo{
+		Config: req.Config.AsMap(),
+	}
+	err := eng.host.StartDebugging(info)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
