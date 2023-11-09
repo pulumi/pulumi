@@ -26,11 +26,22 @@ func newPulumiPackage() *Package {
 				},
 			},
 			"pulumi:pulumi:Program": {
+				IsComponent: true,
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
-						"outputs":             {TypeSpec: TypeSpec{Type: "object"}},
-						"source":              {TypeSpec: TypeSpec{Type: "string"}},
-						"inputs":              {TypeSpec: TypeSpec{Type: "object"}},
+						"outputs": {TypeSpec: TypeSpec{
+							Type: "object",
+							AdditionalProperties: &TypeSpec{
+								Ref: "pulumi.json#/Any",
+							},
+						}},
+						"source": {TypeSpec: TypeSpec{Type: "string"}},
+						"inputs": {TypeSpec: TypeSpec{
+							Type: "object",
+							AdditionalProperties: &TypeSpec{
+								Ref: "pulumi.json#/Any",
+							},
+						}},
 						"prefixResourceNames": {TypeSpec: TypeSpec{Type: "boolean"}},
 					},
 					Required: []string{
@@ -38,8 +49,13 @@ func newPulumiPackage() *Package {
 					},
 				},
 				InputProperties: map[string]PropertySpec{
-					"source":              {TypeSpec: TypeSpec{Type: "string"}},
-					"inputs":              {TypeSpec: TypeSpec{Type: "object"}},
+					"source": {TypeSpec: TypeSpec{Type: "string"}},
+					"inputs": {TypeSpec: TypeSpec{
+						Type: "object",
+						AdditionalProperties: &TypeSpec{
+							Ref: "pulumi.json#/Any",
+						},
+					}},
 					"prefixResourceNames": {TypeSpec: TypeSpec{Type: "boolean"}},
 				},
 				RequiredInputs: []string{
