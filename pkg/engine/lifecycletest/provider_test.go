@@ -1644,9 +1644,9 @@ func TestParameterizeBadKey(t *testing.T) {
 			t.Parallel()
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-					ExtensionPackage:   tt.key,
-					Parameter:          param,
-					ParameterExtension: true, // Set true to ensure we don't hit the no default provider case.
+					ExtensionPackage:  tt.key,
+					Parameter:         param,
+					ParameterAdditive: true, // Set true to ensure we don't hit the no default provider case.
 				})
 				require.Error(t, err)
 				assert.ErrorContains(t, err, tt.expected)
@@ -1666,39 +1666,6 @@ func TestParameterizeBadKey(t *testing.T) {
 			assert.ErrorContains(t, err, tt.expected)
 		})
 	}
-}
-
-// TestParameterizeNoDefault tests that a resource with a parameter property can't start a default provider. We might
-// find a sensible way to support default config for parameterized providers in the future, but for now it's more
-// sensible to just disallow it.
-func TestParameterizeNoDefault(t *testing.T) {
-	t.Parallel()
-
-	param, err := pbstruct.NewValue(map[string]interface{}{
-		"hello": "world",
-	})
-	require.NoError(t, err)
-
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
-			ExtensionPackage: "pkgA",
-			Parameter:        param,
-		})
-		assert.NoError(t, err)
-
-		return nil
-	})
-
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
-
-	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
-	}
-
-	project := p.GetProject()
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "Default provider for 'ext' disabled.")
 }
 
 // TestParameterize tests that a resource with a parameter property uses a parameterized provider.
@@ -1776,6 +1743,74 @@ func TestParameterize(t *testing.T) {
 	assert.True(t, parametrized, "ParameterizeF was not called")
 }
 
+// TestParameterize tests that a resource with a parameter property uses a default parameterized provider.
+func TestParameterizeDefault(t *testing.T) {
+	t.Parallel()
+
+	param, err := pbstruct.NewValue(map[string]interface{}{
+		"hello": "world",
+	})
+	require.NoError(t, err)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
+			ExtensionPackage: "pkgA",
+			ExtensionVersion: "1.0.0",
+			Parameter:        param,
+			Version:          "2.0.0",
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resB", true, deploytest.ResourceOptions{
+			ExtensionPackage: "pkgA",
+			ExtensionVersion: "1.0.0",
+			Parameter:        param,
+			Version:          "2.0.0",
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	parametrized := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ParameterizeF: func(key string, args []string, version *semver.Version, value *structpb.Value) error {
+					parametrized = true
+					assert.Nil(t, args)
+					assert.Equal(t, param.String(), value.String())
+					assert.Equal(t, "ext", key)
+					assert.Equal(t, "2.0.0", version.String())
+					return nil
+				},
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.True(t, parametrized, "ParameterizeF was not called")
+
+	// Check that the provider is correctly typed and we didn't mangle it to say it's a "pkgA" provider (even though it kind of is).
+	res := snap.Resources[0]
+	assert.Equal(t, tokens.Type("pulumi:providers:ext"), res.Type)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:ext::default_2_0_0"), res.URN)
+
+	// Do a refresh and ensure we can still start the parameterized provider.
+	parametrized = false
+	_, err = TestOp(Refresh).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.True(t, parametrized, "ParameterizeF was not called")
+}
+
 // TestParameterizeExtension tests that a resource with an extension parameter property re-uses the base default
 // provider but adds the extension.
 func TestParameterizeExtension(t *testing.T) {
@@ -1788,20 +1823,20 @@ func TestParameterizeExtension(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resA", true, deploytest.ResourceOptions{
-			ExtensionPackage:   "pkgA",
-			ExtensionVersion:   "1.0.0",
-			Parameter:          param,
-			ParameterExtension: true,
-			Version:            "2.0.0",
+			ExtensionPackage:  "pkgA",
+			ExtensionVersion:  "1.0.0",
+			Parameter:         param,
+			ParameterAdditive: true,
+			Version:           "2.0.0",
 		})
 		assert.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("ext:m:typA", "resB", true, deploytest.ResourceOptions{
-			ExtensionPackage:   "pkgA",
-			ExtensionVersion:   "1.0.0",
-			Parameter:          param,
-			ParameterExtension: true,
-			Version:            "2.0.0",
+			ExtensionPackage:  "pkgA",
+			ExtensionVersion:  "1.0.0",
+			Parameter:         param,
+			ParameterAdditive: true,
+			Version:           "2.0.0",
 		})
 		assert.NoError(t, err)
 

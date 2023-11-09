@@ -1395,7 +1395,8 @@ proto.pulumirpc.ResourceExtension.prototype.toObject = function(opt_includeInsta
 proto.pulumirpc.ResourceExtension.toObject = function(includeInstance, msg) {
   var f, obj = {
     pb_package: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, "")
+    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    parameter: (f = msg.getParameter()) && proto.pulumirpc.ResourceParameter.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1440,6 +1441,11 @@ proto.pulumirpc.ResourceExtension.deserializeBinaryFromReader = function(msg, re
       var value = /** @type {string} */ (reader.readString());
       msg.setVersion(value);
       break;
+    case 3:
+      var value = new proto.pulumirpc.ResourceParameter;
+      reader.readMessage(value,proto.pulumirpc.ResourceParameter.deserializeBinaryFromReader);
+      msg.setParameter(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1483,6 +1489,14 @@ proto.pulumirpc.ResourceExtension.serializeBinaryToWriter = function(message, wr
       f
     );
   }
+  f = message.getParameter();
+  if (f != null) {
+    writer.writeMessage(
+      3,
+      f,
+      proto.pulumirpc.ResourceParameter.serializeBinaryToWriter
+    );
+  }
 };
 
 
@@ -1522,6 +1536,43 @@ proto.pulumirpc.ResourceExtension.prototype.setVersion = function(value) {
 };
 
 
+/**
+ * optional ResourceParameter parameter = 3;
+ * @return {?proto.pulumirpc.ResourceParameter}
+ */
+proto.pulumirpc.ResourceExtension.prototype.getParameter = function() {
+  return /** @type{?proto.pulumirpc.ResourceParameter} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceParameter, 3));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.ResourceParameter|undefined} value
+ * @return {!proto.pulumirpc.ResourceExtension} returns this
+*/
+proto.pulumirpc.ResourceExtension.prototype.setParameter = function(value) {
+  return jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceExtension} returns this
+ */
+proto.pulumirpc.ResourceExtension.prototype.clearParameter = function() {
+  return this.setParameter(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceExtension.prototype.hasParameter = function() {
+  return jspb.Message.getField(this, 3) != null;
+};
+
+
 
 
 
@@ -1555,7 +1606,7 @@ proto.pulumirpc.ResourceParameter.prototype.toObject = function(opt_includeInsta
 proto.pulumirpc.ResourceParameter.toObject = function(includeInstance, msg) {
   var f, obj = {
     value: (f = msg.getValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f),
-    extension: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+    additive: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -1599,7 +1650,7 @@ proto.pulumirpc.ResourceParameter.deserializeBinaryFromReader = function(msg, re
       break;
     case 2:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setExtension$(value);
+      msg.setAdditive(value);
       break;
     default:
       reader.skipField();
@@ -1638,7 +1689,7 @@ proto.pulumirpc.ResourceParameter.serializeBinaryToWriter = function(message, wr
       google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
   }
-  f = message.getExtension$();
+  f = message.getAdditive();
   if (f) {
     writer.writeBool(
       2,
@@ -1686,10 +1737,10 @@ proto.pulumirpc.ResourceParameter.prototype.hasValue = function() {
 
 
 /**
- * optional bool extension = 2;
+ * optional bool additive = 2;
  * @return {boolean}
  */
-proto.pulumirpc.ResourceParameter.prototype.getExtension$ = function() {
+proto.pulumirpc.ResourceParameter.prototype.getAdditive = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
 };
 
@@ -1698,7 +1749,7 @@ proto.pulumirpc.ResourceParameter.prototype.getExtension$ = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.ResourceParameter} returns this
  */
-proto.pulumirpc.ResourceParameter.prototype.setExtension$ = function(value) {
+proto.pulumirpc.ResourceParameter.prototype.setAdditive = function(value) {
   return jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
@@ -1773,7 +1824,6 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
     aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
     sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
-    parameter: (f = msg.getParameter()) && proto.pulumirpc.ResourceParameter.toObject(includeInstance, f),
     extension: (f = msg.getExtension$()) && proto.pulumirpc.ResourceExtension.toObject(includeInstance, f)
   };
 
@@ -1942,11 +1992,6 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       msg.setSourceposition(value);
       break;
     case 31:
-      var value = new proto.pulumirpc.ResourceParameter;
-      reader.readMessage(value,proto.pulumirpc.ResourceParameter.deserializeBinaryFromReader);
-      msg.setParameter(value);
-      break;
-    case 32:
       var value = new proto.pulumirpc.ResourceExtension;
       reader.readMessage(value,proto.pulumirpc.ResourceExtension.deserializeBinaryFromReader);
       msg.setExtension$(value);
@@ -2185,18 +2230,10 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
     );
   }
-  f = message.getParameter();
-  if (f != null) {
-    writer.writeMessage(
-      31,
-      f,
-      proto.pulumirpc.ResourceParameter.serializeBinaryToWriter
-    );
-  }
   f = message.getExtension$();
   if (f != null) {
     writer.writeMessage(
-      32,
+      31,
       f,
       proto.pulumirpc.ResourceExtension.serializeBinaryToWriter
     );
@@ -3275,49 +3312,12 @@ proto.pulumirpc.RegisterResourceRequest.prototype.hasSourceposition = function()
 
 
 /**
- * optional ResourceParameter parameter = 31;
- * @return {?proto.pulumirpc.ResourceParameter}
- */
-proto.pulumirpc.RegisterResourceRequest.prototype.getParameter = function() {
-  return /** @type{?proto.pulumirpc.ResourceParameter} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceParameter, 31));
-};
-
-
-/**
- * @param {?proto.pulumirpc.ResourceParameter|undefined} value
- * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
-*/
-proto.pulumirpc.RegisterResourceRequest.prototype.setParameter = function(value) {
-  return jspb.Message.setWrapperField(this, 31, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
- */
-proto.pulumirpc.RegisterResourceRequest.prototype.clearParameter = function() {
-  return this.setParameter(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.RegisterResourceRequest.prototype.hasParameter = function() {
-  return jspb.Message.getField(this, 31) != null;
-};
-
-
-/**
- * optional ResourceExtension extension = 32;
+ * optional ResourceExtension extension = 31;
  * @return {?proto.pulumirpc.ResourceExtension}
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.getExtension$ = function() {
   return /** @type{?proto.pulumirpc.ResourceExtension} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceExtension, 32));
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceExtension, 31));
 };
 
 
@@ -3326,7 +3326,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getExtension$ = function() {
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
 */
 proto.pulumirpc.RegisterResourceRequest.prototype.setExtension$ = function(value) {
-  return jspb.Message.setWrapperField(this, 32, value);
+  return jspb.Message.setWrapperField(this, 31, value);
 };
 
 
@@ -3344,7 +3344,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearExtension$ = function() {
  * @return {boolean}
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.hasExtension$ = function() {
-  return jspb.Message.getField(this, 32) != null;
+  return jspb.Message.getField(this, 31) != null;
 };
 
 

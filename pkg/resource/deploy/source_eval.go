@@ -1250,52 +1250,48 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	providerPackage := t.Package()
 	providerVersion := req.GetVersion()
-	if req.GetExtension() != nil {
+	var resParameter *resource.ResourceParameter
+
+	reqExtension := req.GetExtension()
+	if reqExtension != nil {
 		// This is an extension resource, so "req.Version" is going to be the version from the extension library, not
 		// the provider plugin version it wants.
-		providerVersion = req.GetExtension().GetVersion()
-	}
+		providerVersion = reqExtension.GetVersion()
+		providerPackage = tokens.Package(reqExtension.Package)
 
-	var resParameter *resource.ResourceParameter
-	if req.GetParameter() != nil {
-		param := req.GetParameter()
+		parameter := reqExtension.GetParameter()
+		if parameter != nil {
+			// If we're paramaterized we _must_ be extensioned.
+			ext := req.GetExtension()
+			contract.Assertf(ext != nil, "TODO: extension must be set if parameter is set")
 
-		// If we're paramaterized we _must_ be extensioned.
-		ext := req.GetExtension()
-		contract.Assertf(ext != nil, "TODO: extension must be set if parameter is set")
+			// Ensure key is a valid PackageName
+			providerPackage = tokens.Package(ext.GetPackage())
+			if !tokens.IsName(ext.GetPackage()) {
+				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter package: %q", providerPackage))
+			}
 
-		// Ensure key is a valid PackageName
-		providerPackage = tokens.Package(ext.GetPackage())
-		if !tokens.IsName(ext.GetPackage()) {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter package: %q", providerPackage))
-		}
+			version, err := semver.Parse(req.GetVersion())
+			if err != nil {
+				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter version: %q", ext.GetVersion()))
+			}
 
-		version, err := semver.Parse(req.GetVersion())
-		if err != nil {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parameter version: %q", ext.GetVersion()))
-		}
-
-		value := param.GetValue().AsInterface()
-		if param.GetExtension() {
-			// If this is an extension resource the parameter is for the resource
+			value := parameter.GetValue().AsInterface()
 			resParameter = &resource.ResourceParameter{
 				Version: version,
 				Value:   value,
+			}
+			if parameter.GetAdditive() {
+				// If this is an additive resource the parameter is for the resource
 			}
 		}
 	}
 
 	if custom && !providers.IsProviderType(t) || remote {
-		isParamaterized := false
-		// This is a parameterized provider if it has a parameter and is not an extension.
-		if req.GetParameter() != nil {
-			isParamaterized = !req.GetParameter().GetExtension()
-		}
-
 		providerReq, err := parseProviderRequest(
 			providerPackage, providerVersion,
 			req.GetPluginDownloadURL(), req.GetPluginChecksums(),
-			isParamaterized)
+			resParameter)
 		if err != nil {
 			return nil, err
 		}

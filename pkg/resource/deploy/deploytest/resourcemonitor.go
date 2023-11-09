@@ -148,7 +148,7 @@ type ResourceOptions struct {
 	ExtensionPackage        string
 	ExtensionVersion        string
 	Parameter               *pbstruct.Value
-	ParameterExtension      bool
+	ParameterAdditive       bool
 
 	SourcePosition            string
 	DisableSecrets            bool
@@ -252,19 +252,20 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		}
 	}
 
-	var parameter *pulumirpc.ResourceParameter
-	if opts.Parameter != nil {
-		parameter = &pulumirpc.ResourceParameter{
-			Value:     opts.Parameter,
-			Extension: opts.ParameterExtension,
-		}
-	}
 	var extension *pulumirpc.ResourceExtension
 	if opts.ExtensionPackage != "" {
 		extension = &pulumirpc.ResourceExtension{
 			Package: opts.ExtensionPackage,
 			Version: opts.ExtensionVersion,
 		}
+		var parameter *pulumirpc.ResourceParameter
+		if opts.Parameter != nil {
+			parameter = &pulumirpc.ResourceParameter{
+				Value:    opts.Parameter,
+				Additive: opts.ParameterAdditive,
+			}
+		}
+		extension.Parameter = parameter
 	}
 
 	requestInput := &pulumirpc.RegisterResourceRequest{
@@ -298,7 +299,6 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeletedWith:                string(opts.DeletedWith),
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
-		Parameter:                  parameter,
 		Extension:                  extension,
 	}
 

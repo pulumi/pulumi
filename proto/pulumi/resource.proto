@@ -82,20 +82,30 @@ message ReadResourceResponse {
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
 }
 
-// This resource was codegen'd for an extension package
+// This resource was codegen'd for an extension package.
 message ResourceExtension {
-    // The base provider package this resource is a parameterization of.
+    // The base provider package this resource is an extension of. For parameterized resources this is used to
+    // lookup the provider plugin instead of the package part of RegisterResourceRequest.Type as for a
+    // parameterized package the type tokens will not use the base schemas package.
     string package = 1;
-    // The version of the base provider package this resource is a parameterization of.
+    // The version of the base provider package this extension is for. This is used to lookup the provider
+    // plugin instead of RegisterResourceRequest.Version as for an extension package the version field will be
+    // the extension packages version.
     string version = 2;
+    // An optional setting to parameterize this resource.
+    ResourceParameter parameter = 3;
 }
 
 // This resource has a parameterization
 message ResourceParameter {
-    // the value for this parameterization
+    // The value for this parameterization
     google.protobuf.Value value = 1;
-    // true if this is an extension (rather than replacement) parameterization.
-    bool extension = 2;
+    // True if this is an additive (rather than replacement) parameterization. An additive parameterization
+    // will use the base packages provider instance and repeatedly call Parameterize on it. A non-additive
+    // (replacement) parameterization will instantiate a new provider instance for itself (and call
+    // Parameterize on it once). A replacement parameterization can not have further additive
+    // parameterizations.
+    bool additive = 2;
 }
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
@@ -151,8 +161,7 @@ message RegisterResourceRequest {
 
     SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
 
-    ResourceParameter parameter = 31; // optional parameter for the provider.
-    ResourceExtension extension = 32; // optional extension for this resource, changes the base package.
+    ResourceExtension extension = 31; // optional extension for this resource, changes the base package.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
