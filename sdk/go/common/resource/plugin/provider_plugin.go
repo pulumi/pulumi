@@ -2002,7 +2002,7 @@ func (p *provider) GetMappings(key string) ([]string, error) {
 	return resp.Providers, nil
 }
 
-func (p *provider) Parameterize(key string, args []string, version *semver.Version, value *pbstruct.Value) error {
+func (p *provider) Parameterize(key tokens.Package, args []string, version *semver.Version, value *pbstruct.Value) error {
 	label := fmt.Sprintf("%s.Parameterize", p.label())
 	logging.V(7).Infof("%s executing: key=%s, args=%v; value=%v", label, key, args, value)
 
@@ -2011,7 +2011,7 @@ func (p *provider) Parameterize(key string, args []string, version *semver.Versi
 	contract.Requiref(args == nil || value == nil, "args, value", "one of args or value must be set")
 
 	req := &pulumirpc.ParameterizeRequest{
-		Key: key,
+		Key: key.String(),
 	}
 	if args != nil {
 		req.Parameters = &pulumirpc.ParameterizeRequest_Args{

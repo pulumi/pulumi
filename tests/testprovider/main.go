@@ -98,7 +98,7 @@ func (k *testproviderProvider) Parameterize(ctx context.Context, req *rpc.Parame
 		return nil, fmt.Errorf("unexpected args count, got %d, expected 1", len(args))
 
 	case *rpc.ParameterizeRequest_Value:
-		switch v := p.Value.AsInterface().(type) {
+		switch v := p.Value.Value.AsInterface().(type) {
 		case string:
 			k.parameter = &v
 			return &rpc.ParameterizeResponse{}, nil

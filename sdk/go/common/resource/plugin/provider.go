@@ -116,7 +116,7 @@ type Provider interface {
 
 	// Parameterize can be used to parameterize a provider, it takes either a list of strings from a CLI like interface, or
 	// a JSON value from a resource request.
-	Parameterize(key string, args []string, version *semver.Version, value *pbstruct.Value) error
+	Parameterize(key tokens.Package, args []string, version *semver.Version, value *pbstruct.Value) error
 }
 
 type GrpcProvider interface {

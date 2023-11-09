@@ -41,7 +41,12 @@ type ProviderRequest struct {
 	pkg               tokens.Package
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
-	parameterized     bool
+
+	// These are only set for parameterized providers, in which case their pkg and version correspond to the
+	// extension schema, but we need the name and version for the plugin to start up as well.
+	pluginName    tokens.Package
+	pluginVersion *semver.Version
+	parameter     interface{}
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -49,14 +54,17 @@ type ProviderRequest struct {
 func NewProviderRequest(
 	version *semver.Version, pkg tokens.Package,
 	pluginDownloadURL string, checksums map[string][]byte,
-	parameterized bool,
+	pluginName tokens.Package, pluginVersion *semver.Version, parameter interface{},
 ) ProviderRequest {
 	req := ProviderRequest{
 		version:           version,
 		pkg:               pkg,
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
-		parameterized:     parameterized,
+
+		pluginName:    pluginName,
+		pluginVersion: pluginVersion,
+		parameter:     parameter,
 	}
 	return req
 }
@@ -83,8 +91,8 @@ func (p ProviderRequest) PluginChecksums() map[string][]byte {
 }
 
 // Parameter returns this provider parameter. May be nil if no parameter was provided.
-func (p ProviderRequest) Parameterized() bool {
-	return p.parameterized
+func (p ProviderRequest) Parameter() (tokens.Package, *semver.Version, interface{}) {
+	return p.pluginName, p.pluginVersion, p.parameter
 }
 
 // Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
@@ -93,8 +101,6 @@ func (p ProviderRequest) Parameterized() bool {
 // If a version is not provided, "default" is returned. Otherwise, Name returns a name starting with "default" and
 // followed by a QName-legal representation of the semantic version of the requested provider.
 func (p ProviderRequest) Name() tokens.QName {
-	contract.Assertf(!p.parameterized, "cannot get name for parameterized provider request")
-
 	base := "default"
 	if v := p.version; v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
@@ -127,9 +133,5 @@ func (p ProviderRequest) String() string {
 	if p.pluginDownloadURL != "" {
 		url = "-" + p.pluginDownloadURL
 	}
-	var parameter string
-	if p.parameterized {
-		parameter = "-parameterized"
-	}
-	return p.pkg.String() + version + url + parameter
+	return p.pkg.String() + version + url
 }

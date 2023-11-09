@@ -57,7 +57,7 @@ func (p *builtinProvider) GetMappings(key string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (p *builtinProvider) Parameterize(key string, args []string, version *semver.Version, value *pbstruct.Value) error {
+func (p *builtinProvider) Parameterize(key tokens.Package, args []string, version *semver.Version, value *pbstruct.Value) error {
 	return errors.New("the builtin provider does not support parameterization")
 }
 

@@ -25,7 +25,7 @@ import (
 // ResourceParameter is a parameter to a resource.
 type ResourceParameter struct {
 	// The version of the parameter package.
-	Version semver.Version
+	Version *semver.Version
 	// The value of the parameter.
 	Value interface{}
 }
