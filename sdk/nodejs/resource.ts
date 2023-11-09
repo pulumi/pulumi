@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as url from "url";
 import { ResourceError } from "./errors";
 import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
@@ -27,7 +28,6 @@ import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
 import * as utils from "./utils";
-import * as url from "url";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -724,8 +724,10 @@ export interface ResourceOptions {
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 
-    parameter?: any;
-    extension?: boolean;
+    parameterValue?: any;
+    parameterExtension?: boolean;
+    extensionPackage?: string;
+    extensionVersion?: string;
 }
 
 export interface CustomTimeouts {

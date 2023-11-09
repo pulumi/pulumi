@@ -35,9 +35,10 @@ import {
     URN,
 } from "../resource";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
-import { monitorSupportsDeletedWith } from "./settings";
 import { invoke } from "./invoke";
+import { monitorSupportsDeletedWith } from "./settings";
 
+import { isGrpcError } from "../errors";
 import {
     deserializeProperties,
     deserializeProperty,
@@ -60,7 +61,6 @@ import {
     serialize,
     terminateRpcs,
 } from "./settings";
-import { isGrpcError } from "../errors";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -117,8 +117,7 @@ interface ResourceResolverOperation {
     deletedWithURN: URN | undefined;
 
     // The parameter and extension values for this resource.
-    parameter: any;
-    extension: boolean;
+    extension: any;
 }
 
 /**
@@ -461,7 +460,6 @@ export function registerResource(
             req.setDeletedwith(resop.deletedWithURN || "");
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
-            req.setParameter(resop.parameter);
             req.setExtension(resop.extension);
 
             if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
@@ -811,6 +809,21 @@ export async function prepareResource(
 
         const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
 
+        var extension : any;
+        if (opts?.extensionPackage != undefined) {
+            extension = new resproto.ResourceExtension();
+
+            extension.setPackage(opts.extensionPackage);
+            extension.setVersion(opts.extensionVersion ?? "");
+            if (opts!.parameterValue != undefined) {
+                const parameter = new resproto.ResourceParameter();
+                parameter.setValue(opts.parameterValue);
+                parameter.setAdditive(opts.parameterExtension);
+                extension.setParameter(parameter);
+            }
+        }
+
+
         return {
             resolveURN: resolveURN,
             resolveID: resolveID,
@@ -825,8 +838,7 @@ export async function prepareResource(
             import: importID,
             monitorSupportsStructuredAliases,
             deletedWithURN,
-            parameter: opts?.parameter,
-            extension: opts?.extension ?? false,
+            extension: extension,
         };
     } finally {
         // free the RPC queue
