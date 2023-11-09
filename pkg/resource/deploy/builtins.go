@@ -188,6 +188,31 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
+func isPrimitiveValue(value interface{}) bool {
+	switch value.(type) {
+	case string, int, bool:
+		return true
+	default:
+		return false
+	}
+}
+
+func createConfigValue(rawValue interface{}) (string, error) {
+	if isPrimitiveValue(rawValue) {
+		configValueContent := fmt.Sprintf("%v", rawValue)
+		return configValueContent, nil
+	}
+	value, err := workspace.SimplifyMarshalledValue(rawValue)
+	if err != nil {
+		return "", err
+	}
+	configValueJSON, jsonError := json.Marshal(value)
+	if jsonError != nil {
+		return "", jsonError
+	}
+	return string(configValueJSON), nil
+}
+
 func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions,
 ) (plugin.ConstructResult, error) {
@@ -305,6 +330,22 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
 		configs := map[config.Key]string{}
+
+		for key, val := range project.Config {
+			config_val := val.Value
+			if config_val == nil {
+				config_val = val.Default
+			}
+
+			if config_val != nil {
+				configValue, err := createConfigValue(config_val)
+				if err != nil {
+					return plugin.ConstructResult{}, err
+				}
+				configKey := config.MustMakeKey(info.Project, string(key))
+				configs[configKey] = configValue
+			}
+		}
 		secretKeys := make([]config.Key, 0)
 		for key, val := range inputs {
 			unwrappedVal := val
