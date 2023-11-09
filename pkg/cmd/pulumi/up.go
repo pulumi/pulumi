@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/ryboe/q"
 	"math"
 	"os"
@@ -94,8 +93,8 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 		q.Q("*****************")
-		q.Q("setting stack name to", s.Ref().Name().String())
-		state.SetCurrentStack(s.Ref().String())
+		//q.Q("setting stack name to", s.Ref().Name().String())
+		//state.SetCurrentStack(s.Ref().String())
 		q.Q("*****************")
 
 		// Save any config values passed via flags.

@@ -370,6 +370,7 @@ func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display
 		return nil, err
 	}
 	stack, err := state.CurrentStack(ctx, b)
+	q.Q("did we find a current stack yet?", stack)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -489,9 +490,11 @@ func chooseStack(ctx context.Context,
 		if parseErr != nil {
 			return nil, parseErr
 		}
-
+		q.Q("we are creating a new stack")
 		return createStack(ctx, b, stackRef, root, nil, lopt.SetCurrent(), "")
 	}
+	q.Q("we are choosing an existing stack")
+	q.Q(option)
 
 	// With the stack name selected, look it up from the backend.
 	stackRef, err := b.ParseStackReference(option)
@@ -506,6 +509,8 @@ func chooseStack(ctx context.Context,
 	if stack == nil {
 		return nil, fmt.Errorf("no stack named '%s' found", stackRef)
 	}
+	q.Q(lopt.SetCurrent())
+	q.Q(stack)
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
 	if lopt.SetCurrent() {
@@ -513,6 +518,7 @@ func chooseStack(ctx context.Context,
 			return nil, err
 		}
 	}
+	q.Q("we made it to the end of chooseStack")
 
 	return stack, nil
 }

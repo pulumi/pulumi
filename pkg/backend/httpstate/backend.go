@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"net"
 	"net/http"
@@ -825,6 +826,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 }
 
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
+	q.Q("are we calling this GetStack?")
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
