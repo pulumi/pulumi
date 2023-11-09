@@ -16,15 +16,12 @@ package netutil
 
 import "net"
 
-// SelectPort selects a free port on localhost.
-func SelectPort() (port int, err error) {
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			return l.Addr().(*net.TCPAddr).Port, nil
-		}
+// SelectPort selects a free port on the loopback interface.
+func SelectPort() (int, error) {
+	l, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
+	if err != nil {
+		return 0, err
 	}
-	return
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
