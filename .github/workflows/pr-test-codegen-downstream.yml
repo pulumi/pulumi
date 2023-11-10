@@ -22,33 +22,30 @@ permissions:
   contents: read
 
 jobs:
-  comment-notification:
+    build:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'repository_dispatch' }}
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Update with Result
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
-          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
-          body: |
-            Please view the results of the downstream codegen tests [Here](https://app.slack.com/client/T4PBPMA8J/C052BQ410UA)
-  downstream-test:
-    name: Run terraform bridge upgrade test
-    runs-on: ubuntu-latest
+    name: Test upgrading ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.sha }}
     steps:
       - name: Trigger upgrade
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: pulumi/pulumi-terraform-bridge
-          event-type: upgrade-providers-test
+          repository: pulumi/pulumi-${{ matrix.provider }}
+          event-type: upgrade-bridge
           client-payload: |-
             {
-               "pulumiVersion": ${{ toJSON(inputs.ref) }}
+               "target-pulumi-version": ${{ inputs.ref }},
+               "target-bridge-version": "",
+               "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
+               "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature.\n\n- pulumi/pulumi-terraform-bridge#${{ github.event.number }}\n\n- https://github.com/pulumi/pulumi-terraform-bridge/commit/${{github.sha}}\n\nDO NOT MERGE.",
+               "automerge": false
             }
+    needs: generate-providers-list
+    strategy:
+      # GitHub recommends only issuing 1 API request per second, and never
+      # concurrently.  For more information, see:
+      # https://docs.github.com/en/rest/guides/best-practices-for-integrators#dealing-with-secondary-rate-limits
+      max-parallel: 1
+      matrix:
+        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes"]
+      fail-fast: false
