@@ -40,10 +40,12 @@ func Error(rng *hcl.Range, summary, path string) *Diagnostic {
 // the diagnostic will be associated with the range of its associated syntax, if any.
 func NodeError(node Node, summary string) *Diagnostic {
 	var rng *hcl.Range
+	var path string
 	if node != nil {
 		rng = node.Syntax().Range()
+		path = node.Syntax().Path()
 	}
-	return Error(rng, summary, node.Syntax().Path())
+	return Error(rng, summary, path)
 }
 
 // Diagnostics is a list of diagnostics.
