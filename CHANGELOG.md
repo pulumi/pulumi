@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.93.0 (2023-11-09)
+
+
+### Features
+
+- [sdk/python] Add provider side caching for dynamic provider deserialization.
+  [#14491](https://github.com/pulumi/pulumi/pull/14491)
+
+
+### Bug Fixes
+
+- [cli/new] Fix panic parsing template URL.
+  [#14504](https://github.com/pulumi/pulumi/pull/14504)
+
+- [pkg] Fixes a panic in property mapping logic
+  [#14498](https://github.com/pulumi/pulumi/pull/14498)
+
+- [sdkgen/go] Remove generic ToOutput methods from legacy non-generic go SDKs
+  [#14492](https://github.com/pulumi/pulumi/pull/14492)
+
 ## 3.92.0 (2023-11-03)
 
 
