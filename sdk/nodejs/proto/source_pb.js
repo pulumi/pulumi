@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: {} }, global = proto;
+var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 goog.exportSymbol('proto.pulumirpc.SourcePosition', null, global);
 /**
