@@ -13,8 +13,11 @@
 // limitations under the License.
 
 import { AsyncLocalStorage } from "async_hooks";
-import { Stack } from "./stack";
 import * as config from "./config";
+import { Stack } from "./stack";
+
+import * as engrpc from "../proto/engine_grpc_pb";
+import * as resrpc from "../proto/resource_grpc_pb";
 
 const nodeEnvKeys = {
     project: "PULUMI_NODEJS_PROJECT",
@@ -61,8 +64,8 @@ export interface WriteableOptions {
 export interface Store {
     settings: {
         options: WriteableOptions;
-        monitor?: any;
-        engine?: any;
+        monitor?: resrpc.ResourceMonitorClient;
+        engine?: engrpc.EngineClient;
         rpcDone: Promise<any>;
         featureSupport: Record<string, boolean>;
     };
