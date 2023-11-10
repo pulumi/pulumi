@@ -40,7 +40,6 @@ jobs:
                "pr-description": "This is a downstream codegen test for ${{ github.run_id }}.",
                "automerge": false
             }
-    needs: generate-providers-list
     strategy:
       # GitHub recommends only issuing 1 API request per second, and never
       # concurrently.  For more information, see:
