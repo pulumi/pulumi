@@ -2,6 +2,7 @@ package lifecycletest
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -882,4 +883,64 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	// We should still have the baz output but will be missing its input
 	assert.Equal(t, resource.NewNumberProperty(2), snap.Resources[2].Outputs["baz"])
 	assert.NotContains(t, snap.Resources[2].Inputs, "baz")
+}
+
+// Test that we can import one resource, then import another resource with the first one as a parent.
+func TestImportIntoParent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", news, resource.StatusUnknown, fmt.Errorf("not implemented")
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run the initial import.
+	project := p.GetProject()
+	snap, err := ImportOp([]deploy.Import{
+		{
+			Type:   "pkgA:m:typA",
+			Name:   "resB",
+			ID:     "imported-idB",
+			Parent: p.NewURN("pkgA:m:typA", "resA", ""),
+		},
+		{
+			Type: "pkgA:m:typA",
+			Name: "resA",
+			ID:   "imported-idA",
+		},
+	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 4)
 }

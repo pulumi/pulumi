@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: `import` can now import a parent resource in the same deployment as a child resource.
