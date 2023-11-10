@@ -10,41 +10,104 @@ on:
         required: true
         description: "Pull request number"
         type: string
-  repository_dispatch:
-    types: [ run-codegen-command ]
-  pull_request:
-    paths:
-    - 'pkg/codegen/**'
-    - '!pkg/codegen/docs/**'
-    - '.github/workflows/pr-test-codegen-downstream.yml'
+
+env:
+  DOTNET_ROLL_FORWARD: "Major"
 
 permissions:
   contents: read
 
 jobs:
-    build:
+  downstream-test:
+    name: Test ${{ matrix.provider }} Downstream
     runs-on: ubuntu-latest
-    name: Test Downstream ${{ matrix.provider }} Codegen Tests
-    steps:
-      - name: Trigger upgrade
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: pulumi/pulumi-${{ matrix.provider }}
-          event-type: upgrade-bridge
-          client-payload: |-
-            {
-               "target-pulumi-version": ${{ inputs.ref }},
-               "target-bridge-version": "",
-               "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
-               "pr-description": "This is a downstream codegen test for ${{ github.run_id }}.",
-               "automerge": false
-            }
     strategy:
-      # GitHub recommends only issuing 1 API request per second, and never
-      # concurrently.  For more information, see:
-      # https://docs.github.com/en/rest/guides/best-practices-for-integrators#dealing-with-secondary-rate-limits
-      max-parallel: 1
       matrix:
         provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes"]
       fail-fast: false
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '>=1.19.0' # decoupled from version sets, track latest for codegen
+          check-latest: true
+      - name: Install Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+      - name: Install Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.9.x
+      - name: Install Pulumi CLI
+        uses: pulumi/action-install-pulumi-cli@v1.0.1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.32
+          cache: enable
+      - name: Check out source code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+      - uses: actions/checkout@v3
+        with:
+          repository: pulumi/pulumi-terraform-bridge
+          ref: master
+          path: ./pulumi-terraform-bridge
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+      - name: Test Downstream
+        uses: pulumi/action-test-provider-downstream@v1.0.0
+        env:
+          GOPROXY: "https://proxy.golang.org"
+        with:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk,github.com/pulumi/pulumi-terraform-bridge/v3=pulumi/pulumi-terraform-bridge
+          downstream-name: pulumi-${{ matrix.provider }}
+          downstream-url: https://github.com/pulumi/pulumi-${{ matrix.provider }}
+          use-provider-dir: true
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+#name: Downstream Codegen Tests
+#on:
+#  repository_dispatch:
+#    types: [ run-codegen-command ]
+#  pull_request:
+#    paths:
+#    - 'pkg/codegen/**'
+#    - '!pkg/codegen/docs/**'
+#    - '.github/workflows/pr-test-codegen-downstream.yml'
+#
+#permissions:
+#  contents: read
+#
+#jobs:
+#    build:
+#    runs-on: ubuntu-latest
+#    name: Test Downstream ${{ matrix.provider }} Codegen Tests
+#    steps:
+#      - name: Trigger upgrade
+#        uses: peter-evans/repository-dispatch@v2
+#        with:
+#          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+#          repository: pulumi/pulumi-${{ matrix.provider }}
+#          event-type: upgrade-bridge
+#          client-payload: |-
+#            {
+#               "target-pulumi-version": ${{ inputs.ref }},
+#               "target-bridge-version": "",
+#               "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
+#               "pr-description": "This is a downstream codegen test for ${{ github.run_id }}.",
+#               "automerge": false
+#            }
+#    strategy:
+#      # GitHub recommends only issuing 1 API request per second, and never
+#      # concurrently.  For more information, see:
+#      # https://docs.github.com/en/rest/guides/best-practices-for-integrators#dealing-with-secondary-rate-limits
+#      max-parallel: 1
+#      matrix:
+#        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes"]
+#      fail-fast: false
