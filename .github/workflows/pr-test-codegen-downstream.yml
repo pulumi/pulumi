@@ -37,7 +37,7 @@ jobs:
                "target-pulumi-version": ${{ inputs.ref }},
                "target-bridge-version": "",
                "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
-               "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature.\n\n- pulumi/pulumi-terraform-bridge#${{ github.event.number }}\n\n- https://github.com/pulumi/pulumi-terraform-bridge/commit/${{github.sha}}\n\nDO NOT MERGE.",
+               "pr-description": "This is a downstream codegen test for ${{ github.run_id }}.",
                "automerge": false
             }
     needs: generate-providers-list
