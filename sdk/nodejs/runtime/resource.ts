@@ -460,7 +460,7 @@ export function registerResource(
             req.setDeletedwith(resop.deletedWithURN || "");
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
-            req.setExtension(resop.extension);
+            req.setExtension$(resop.extension);
 
             if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
                 throw new Error(
@@ -817,7 +817,7 @@ export async function prepareResource(
             extension.setVersion(opts.extensionVersion ?? "");
             if (opts!.parameterValue != undefined) {
                 const parameter = new resproto.ResourceParameter();
-                parameter.setValue(opts.parameterValue);
+                parameter.setValue(gstruct.Value.fromJavaScript(opts.parameterValue));
                 parameter.setAdditive(opts.parameterExtension);
                 extension.setParameter(parameter);
             }
