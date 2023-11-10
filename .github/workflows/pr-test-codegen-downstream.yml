@@ -24,7 +24,7 @@ permissions:
 jobs:
     build:
     runs-on: ubuntu-latest
-    name: Test upgrading ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.sha }}
+    name: Test Downstream ${{ matrix.provider }} Codegen Tests
     steps:
       - name: Trigger upgrade
         uses: peter-evans/repository-dispatch@v2
