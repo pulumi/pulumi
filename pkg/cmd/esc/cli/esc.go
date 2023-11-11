@@ -61,6 +61,30 @@ type escCommand struct {
 	account   workspace.Account
 }
 
+func newESC(opts *Options) *escCommand {
+	fs := valueOrDefault(opts.fs, newFS())
+
+	esc := &escCommand{
+		fs:        fs,
+		environ:   valueOrDefault(opts.environ, newEnviron()),
+		exec:      valueOrDefault(opts.exec, newCmdExec()),
+		stdin:     valueOrDefault(opts.Stdin, io.Reader(os.Stdin)),
+		stdout:    valueOrDefault(opts.Stdout, io.Writer(os.Stdout)),
+		stderr:    valueOrDefault(opts.Stderr, io.Writer(os.Stderr)),
+		command:   valueOrDefault(opts.ParentPath, "esc"),
+		colors:    valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
+		login:     valueOrDefault(opts.Login, httpstate.NewLoginManager()),
+		workspace: workspace.New(fs, valueOrDefault(opts.PulumiWorkspace, workspace.DefaultPulumiWorkspace())),
+		userAgent: valueOrDefault(opts.UserAgent, fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)),
+		newClient: opts.newClient,
+	}
+	if esc.newClient == nil {
+		esc.newClient = client.New
+	}
+
+	return esc
+}
+
 // New creates a new ESC CLI instance.
 func New(opts *Options) *cobra.Command {
 	if opts == nil {
@@ -95,25 +119,7 @@ func New(opts *Options) *cobra.Command {
 			"For more information, please visit the project page: https://www.pulumi.com/docs/esc", command),
 	}
 
-	fs := valueOrDefault(opts.fs, newFS())
-
-	esc := &escCommand{
-		fs:        fs,
-		environ:   valueOrDefault(opts.environ, newEnviron()),
-		exec:      valueOrDefault(opts.exec, newCmdExec()),
-		stdin:     valueOrDefault(opts.Stdin, io.Reader(os.Stdin)),
-		stdout:    valueOrDefault(opts.Stdout, io.Writer(os.Stdout)),
-		stderr:    valueOrDefault(opts.Stderr, io.Writer(os.Stderr)),
-		command:   valueOrDefault(opts.ParentPath, "esc"),
-		colors:    valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
-		login:     valueOrDefault(opts.Login, httpstate.NewLoginManager()),
-		workspace: workspace.New(fs, valueOrDefault(opts.PulumiWorkspace, workspace.DefaultPulumiWorkspace())),
-		userAgent: valueOrDefault(opts.UserAgent, fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)),
-		newClient: opts.newClient,
-	}
-	if esc.newClient == nil {
-		esc.newClient = client.New
-	}
+	esc := newESC(opts)
 
 	env := newEnvCmd(esc)
 	cmd.AddCommand(env)
