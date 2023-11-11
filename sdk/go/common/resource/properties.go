@@ -212,6 +212,18 @@ func (props PropertyMap) StableKeys() []PropertyKey {
 	return sorted
 }
 
+// PropertyValueType enumerates the actual types that may be stored in a PropertyValue.
+//
+//nolint:lll
+type PropertyValueType interface {
+	bool | float64 | string | *Asset | *Archive | Computed | Output | *Secret | ResourceReference | []PropertyValue | PropertyMap
+}
+
+// NewProperty creates a new PropertyValue.
+func NewProperty[T PropertyValueType](v T) PropertyValue {
+	return PropertyValue{v}
+}
+
 func NewNullProperty() PropertyValue                                 { return PropertyValue{nil} }
 func NewBoolProperty(v bool) PropertyValue                           { return PropertyValue{v} }
 func NewNumberProperty(v float64) PropertyValue                      { return PropertyValue{v} }
@@ -226,20 +238,20 @@ func NewSecretProperty(v *Secret) PropertyValue                      { return Pr
 func NewResourceReferenceProperty(v ResourceReference) PropertyValue { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
-	return NewComputedProperty(Computed{Element: v})
+	return NewProperty(Computed{Element: v})
 }
 
 func MakeOutput(v PropertyValue) PropertyValue {
-	return NewOutputProperty(Output{Element: v})
+	return NewProperty(Output{Element: v})
 }
 
 func MakeSecret(v PropertyValue) PropertyValue {
-	return NewSecretProperty(&Secret{Element: v})
+	return NewProperty(&Secret{Element: v})
 }
 
 // MakeComponentResourceReference creates a reference to a component resource.
 func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
-	return NewResourceReferenceProperty(ResourceReference{
+	return NewProperty(ResourceReference{
 		URN:            urn,
 		PackageVersion: packageVersion,
 	})
@@ -248,12 +260,12 @@ func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValu
 // MakeCustomResourceReference creates a reference to a custom resource. If the resource's ID is the empty string, it
 // will be treated as unknown.
 func MakeCustomResourceReference(urn URN, id ID, packageVersion string) PropertyValue {
-	idProp := NewStringProperty(string(id))
+	idProp := NewProperty(string(id))
 	if id == "" {
-		idProp = MakeComputed(NewStringProperty(""))
+		idProp = MakeComputed(NewProperty(""))
 	}
 
-	return NewResourceReferenceProperty(ResourceReference{
+	return NewProperty(ResourceReference{
 		ID:             idProp,
 		URN:            urn,
 		PackageVersion: packageVersion,
@@ -285,37 +297,37 @@ func NewPropertyValueRepl(v interface{},
 	// Else, check for some known primitive types.
 	switch t := v.(type) {
 	case bool:
-		return NewBoolProperty(t)
+		return NewProperty(t)
 	case int:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case int32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case int64:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint64:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case float32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case float64:
-		return NewNumberProperty(t)
+		return NewProperty(t)
 	case string:
-		return NewStringProperty(t)
+		return NewProperty(t)
 	case *Asset:
-		return NewAssetProperty(t)
+		return NewProperty(t)
 	case *Archive:
-		return NewArchiveProperty(t)
+		return NewProperty(t)
 	case Computed:
-		return NewComputedProperty(t)
+		return NewProperty(t)
 	case Output:
-		return NewOutputProperty(t)
+		return NewProperty(t)
 	case *Secret:
-		return NewSecretProperty(t)
+		return NewProperty(t)
 	case ResourceReference:
-		return NewResourceReferenceProperty(t)
+		return NewProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
@@ -328,7 +340,7 @@ func NewPropertyValueRepl(v interface{},
 			elem := rv.Index(i)
 			arr = append(arr, NewPropertyValueRepl(elem.Interface(), replk, replv))
 		}
-		return NewArrayProperty(arr)
+		return NewProperty(arr)
 	case reflect.Ptr:
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
@@ -355,17 +367,16 @@ func NewPropertyValueRepl(v interface{},
 			pv := NewPropertyValueRepl(val, replk, replv)
 			obj[pk] = pv
 		}
-		return NewObjectProperty(obj)
+		return NewProperty(obj)
 	case reflect.String:
-		return NewStringProperty(rv.String())
+		return NewProperty(rv.String())
 	case reflect.Struct:
 		obj := NewPropertyMapRepl(v, replk, replv)
-		return NewObjectProperty(obj)
+		return NewProperty(obj)
 	default:
 		contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
+		return NewNullProperty()
 	}
-
-	return NewNullProperty()
 }
 
 // HasValue returns true if a value is semantically meaningful.
