@@ -47,21 +47,8 @@ $DOCKER_RUN /bin/bash -c 'set -x && GO_PULUMIRPC=/go && \
     rm -rf "$GO_PULUMIRPC"/* && \
     cp -r "$TEMP_DIR"/pulumi/* "$GO_PULUMIRPC"'
 
-# Protoc for JavaScript has a bug where it emits Google Closure Compiler directives in the module prologue that mutate
-# the global object, which causes side-by-side bugs in pulumi/pulumi (pulumi/pulumi#2401). The protoc compiler
-# absolutely should not be emitting commonjs modules that mutate global, but alas, it does, and we have to sed the
-# output to not do that.
-#
-# We're replacing the literal code string
-#   var global = Function('return this')();
-# with
-#   var proto = { pulumirpc: ... }, global = proto;
-#
-# This sets up the remainder of the protobuf file so that it works fine, but doesn't mess with global. Note
-# that we have to skip this transformation for the google/protobuf/status_pb.js file because it _does_ depend
-# on that global state (https://github.com/pulumi/pulumi/pull/2403#issuecomment-458673703).
 $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
-    JS_PROTOFLAGS="import_style=commonjs,binary"   && \
+    JS_PROTOFLAGS="import_style=commonjs_strict,binary"   && \
     PROTO_FILES=$(find . -name "*.proto") && \
     echo -e "\tJavaScript: $JS_PULUMIRPC [$JS_PROTOFLAGS]" && \
     TEMP_DIR=/tmp/nodejs-build                 && \
@@ -69,7 +56,6 @@ $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     mkdir -p "$TEMP_DIR"                       && \
     protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=grpc_js,minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin $PROTO_FILES && \
     find $TEMP_DIR && \
-    find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|^var global = .*;|var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../pulumi/|require('\''./|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../../pulumi/|require('\''../|" {} \; && \
     rm -rf "$JS_PULUMIRPC"/* && \
