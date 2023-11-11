@@ -120,6 +120,18 @@ def invoke(
 
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, "return")
+
+        # To avoid breaking older versions of the Kubernetes Python SDK, if the result of
+        # the invoke is not truthy (e.g. it's an empty struct), and the token is one of the
+        # known kubernetes invoke tokens, return None instead of an empty dict.
+        # See https://github.com/pulumi/pulumi/issues/14508.
+        if not ret_obj and tok in {
+            "kubernetes:yaml:decode",
+            "kubernetes:helm:template",
+            "kubernetes:kustomize:directory",
+        }:
+            return None, None
+
         deserialized = rpc.deserialize_properties(ret_obj)
         # If typ is not None, call translate_output_properties to instantiate any output types.
         return (

@@ -30,3 +30,32 @@ def test_invoke_empty_return() -> None:
 
     ret = pulumi.runtime.invoke("test:index:MyFunction", {})
     assert ret.value == {}, "Expected the return value of the invoke to be an empty dict"
+
+
+class MyKubernetesMocks(pulumi.runtime.Mocks):
+    def new_resource(self, args: pulumi.runtime.MockResourceArgs):
+        return [args.name + '_id', args.inputs]
+
+    def call(self, args: pulumi.runtime.MockCallArgs):
+        assert args.token in {
+            "kubernetes:yaml:decode",
+            "kubernetes:helm:template",
+            "kubernetes:kustomize:directory",
+        }
+        return {"result": "mock"} if args.args.get("nonempty") else {}
+
+
+# Regression test for https://github.com/pulumi/pulumi/issues/14508.
+@pulumi.runtime.test
+def test_invoke_kubernetes() -> None:
+    pulumi.runtime.mocks.set_mocks(MyKubernetesMocks())
+
+    # Invokes to these specific Kubernetes functions return None rather than an empty dict for empty results.
+    assert pulumi.runtime.invoke("kubernetes:yaml:decode", {}).value is None
+    assert pulumi.runtime.invoke("kubernetes:helm:template", {}).value is None
+    assert pulumi.runtime.invoke("kubernetes:kustomize:directory", {}).value is None
+
+    # Non-empty results are returned as-is.
+    assert pulumi.runtime.invoke("kubernetes:yaml:decode", {"nonempty": True}).value == {"result": "mock"}
+    assert pulumi.runtime.invoke("kubernetes:helm:template", {"nonempty": True}).value == {"result": "mock"}
+    assert pulumi.runtime.invoke("kubernetes:kustomize:directory", {"nonempty": True}).value == {"result": "mock"}
