@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"sync"
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -696,9 +699,21 @@ func newTestContext(t testing.TB) *Context {
 type stubClient struct {
 	pulumirpc.ResourceProviderClient
 
-	ConstructF func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
-	ConfigureF func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
-	DeleteF    func(*pulumirpc.DeleteRequest) error
+	DiffConfigF func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
+	ConstructF  func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
+	ConfigureF  func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
+	DeleteF     func(*pulumirpc.DeleteRequest) error
+}
+
+func (c *stubClient) DiffConfig(
+	ctx context.Context,
+	req *pulumirpc.DiffRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.DiffResponse, error) {
+	if f := c.DiffConfigF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.DiffConfig(ctx, req, opts...)
 }
 
 func (c *stubClient) Construct(
@@ -733,4 +748,45 @@ func (c *stubClient) Delete(
 		return &emptypb.Empty{}, err
 	}
 	return c.ResourceProviderClient.Delete(ctx, req, opts...)
+}
+
+// Test for https://github.com/pulumi/pulumi/issues/14529, ensure a kubernetes DiffConfig error is ignored
+func TestKubernetesDiffError(t *testing.T) {
+	t.Parallel()
+
+	diffErr := status.Errorf(codes.Unknown, "failed to parse kubeconfig: %s",
+		fmt.Errorf("couldn't get version/kind; json parse error: %w",
+			fmt.Errorf("json: cannot unmarshal string into Go value of type struct "+
+				"{ APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }")))
+
+	client := &stubClient{
+		DiffConfigF: func(req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+			return nil, diffErr
+		},
+	}
+
+	// Test that the error from 14529 is NOT ignored if reported by something other than kubernetes
+	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
+	_, err := az.DiffConfig(
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
+		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
+		false, nil)
+	assert.Error(t, err)
+
+	// Test that the error from 14529 is ignored if reported by kubernetes
+	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
+	diff, err := k8s.DiffConfig(
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
+		false, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, DiffUnknown, diff.Changes)
+
+	// Test that some other error is not ignored if reported by kubernetes
+	diffErr = status.Errorf(codes.Unknown, "some other error")
+	_, err = k8s.DiffConfig(
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
+		false, nil)
+	assert.Error(t, err)
 }

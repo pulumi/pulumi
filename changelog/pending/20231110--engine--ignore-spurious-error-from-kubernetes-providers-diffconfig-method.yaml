@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Ignore spurious error from Kubernetes providers DiffConfig method.
