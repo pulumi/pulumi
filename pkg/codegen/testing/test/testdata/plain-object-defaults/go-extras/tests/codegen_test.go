@@ -16,6 +16,7 @@ package codegentest
 
 import (
 	"fmt"
+	"plain-object-defaults/example"
 	"testing"
 	"time"
 
@@ -23,8 +24,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-
-	"plain-object-defaults/example"
 )
 
 type mocks int
@@ -32,8 +31,8 @@ type mocks int
 // We assert that default values were passed to our constuctor
 func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
 	checkFloat64 := func(v resource.PropertyValue, k string, expected float64) {
-		m := v.V.(resource.PropertyMap)
-		if m[resource.PropertyKey(k)].V.(float64) != expected {
+		m := v.ObjectValue()
+		if m[resource.PropertyKey(k)].NumberValue() != expected {
 			panic(fmt.Sprintf("Expected %s to have value %.2f", k, expected))
 		}
 	}
