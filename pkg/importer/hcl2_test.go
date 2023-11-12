@@ -145,20 +145,20 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.
 		if !assert.Len(t, x.Args, 1) {
 			return resource.NewNullProperty()
 		}
-		path, ok := renderExpr(t, x.Args[0]).V.(string)
-		if !assert.True(t, ok) {
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
 			return resource.NewNullProperty()
 		}
-		return resource.NewStringProperty(path)
+		return resource.NewStringProperty(expr.StringValue())
 	case "fileAsset":
 		if !assert.Len(t, x.Args, 1) {
 			return resource.NewNullProperty()
 		}
-		path, ok := renderExpr(t, x.Args[0]).V.(string)
-		if !assert.True(t, ok) {
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
 			return resource.NewNullProperty()
 		}
-		return resource.NewStringProperty(path)
+		return resource.NewStringProperty(expr.StringValue())
 	case "secret":
 		if !assert.Len(t, x.Args, 1) {
 			return resource.NewNullProperty()
