@@ -28,7 +28,6 @@ import (
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccMinimal_withLocalState(t *testing.T) {
-	t.Skip("Skipping until we can fix")
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "minimal"),
