@@ -139,6 +139,9 @@ type ProgressDisplay struct {
 
 	// Structure that tracks the time taken to perform an action on a resource.
 	opStopwatch opStopwatch
+
+	// Indicates whether we already printed the loading policy packs message.
+	shownPolicyRunEvent bool
 }
 
 type opStopwatch struct {
@@ -176,9 +179,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return event.Payload().(engine.PolicyRemediationEventPayload).ResourceURN, nil
 	case engine.PolicyViolationEvent:
 		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
-	case engine.PolicyRunEvent, engine.PolicyDoneEvent:
-		payload := event.Payload().(engine.PolicyRunEventPayload)
-		return payload.Metadata.URN, &payload.Metadata
+	case engine.PolicyRunEvent:
+		return event.Payload().(engine.PolicyRunEventPayload).ResourceURN, nil
 	default:
 		return "", nil
 	}
@@ -847,6 +849,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			display.println(preludeEventString)
 		}
 		return
+	case engine.PolicyRunEvent:
+		if !display.shownPolicyRunEvent {
+			policyRunEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
+			display.println(policyRunEventString)
+			display.shownPolicyRunEvent = true
+		}
+		return
 	case engine.SummaryEvent:
 		// keep track of the summary event so that we can display it after all other
 		// resource-related events we receive.
@@ -957,30 +966,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else if event.Type == engine.PolicyRemediationEvent {
 		// record this remediation so we print it at the end.
 		row.RecordPolicyRemediationEvent(event)
-	} else if event.Type == engine.PolicyRunEvent {
-		step := event.Payload().(engine.PolicyRunEventPayload).Metadata
-
-		// Register the policy pack start time to calculate duration
-		// to display.
-		display.opStopwatch.start[step.URN] = time.Now()
-		delete(display.opStopwatch.end, step.URN)
-
-		row.SetStep(step)
-	} else if event.Type == engine.PolicyDoneEvent {
-		step := event.Payload().(engine.PolicyRunEventPayload).Metadata
-
-		// Register the policy pack end time to calculate duration
-		// to display.
-		display.opStopwatch.end[step.URN] = time.Now()
-
-		row.SetStep(step)
-		row.AddOutputStep(step)
-
-		// If we're not in a terminal, we do not want to display this row again
-		if !display.isTerminal {
-			return
-		}
-
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
@@ -1206,8 +1191,6 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 		return "import"
 	case deploy.OpImportReplacement:
 		return "import replacement"
-	case deploy.OpRun:
-		return "run"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1237,8 +1220,6 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 		return "discard"
 	case deploy.OpImport, deploy.OpImportReplacement:
 		return "import"
-	case deploy.OpRun:
-		return "run"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1318,8 +1299,6 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			opText = "importing"
 		case deploy.OpImportReplacement:
 			opText = "importing replacement"
-		case deploy.OpRun:
-			opText = "run"
 		default:
 			contract.Failf("Unrecognized resource step op: %v", op)
 			return ""

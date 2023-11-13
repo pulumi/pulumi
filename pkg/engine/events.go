@@ -64,8 +64,6 @@ func NewEvent(typ EventType, payload interface{}) Event {
 		_, ok = payload.(PolicyRemediationEventPayload)
 	case PolicyRunEvent:
 		_, ok = payload.(PolicyRunEventPayload)
-	case PolicyDoneEvent:
-		_, ok = payload.(PolicyRunEventPayload)
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -91,7 +89,6 @@ const (
 	PolicyViolationEvent    EventType = "policy-violation"
 	PolicyRemediationEvent  EventType = "policy-remediation"
 	PolicyRunEvent          EventType = "policy-run"
-	PolicyDoneEvent         EventType = "policy-done"
 )
 
 func (e Event) Payload() interface{} {
@@ -138,9 +135,7 @@ type PolicyRemediationEventPayload struct {
 
 // PolicyRunEventPayload is the payload for an event with type `policy-run`.
 type PolicyRunEventPayload struct {
-	Metadata      StepEventMetadata
-	PolicyName    string
-	PolicyVersion string
+	ResourceURN resource.URN
 }
 
 type StdoutEventPayload struct {
@@ -503,23 +498,11 @@ func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remedia
 	}))
 }
 
-func (e *eventEmitter) PolicyRunEvent(metadata StepEventMetadata, policyName string, policyVersion string) {
+func (e *eventEmitter) PolicyRunEvent(urn resource.URN) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(PolicyRunEvent, PolicyRunEventPayload{
-		Metadata:      metadata,
-		PolicyName:    policyName,
-		PolicyVersion: policyVersion,
-	}))
-}
-
-func (e *eventEmitter) PolicyDoneEvent(metadata StepEventMetadata, policyName string, policyVersion string) {
-	contract.Requiref(e != nil, "e", "!= nil")
-
-	e.sendEvent(NewEvent(PolicyDoneEvent, PolicyRunEventPayload{
-		Metadata:      metadata,
-		PolicyName:    policyName,
-		PolicyVersion: policyVersion,
+		ResourceURN: urn,
 	}))
 }
 

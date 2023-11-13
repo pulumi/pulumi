@@ -292,12 +292,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
 		urn := resource.NewURN("pulumi", "pulumi", "", "PolicyPack", tokens.QName(fmt.Sprintf("%s@%s", policy.Name(), policy.Version())))
-		deployOpts.Events.PolicyRunEvent(StepEventMetadata{
-			Op:   deploy.OpRun,
-			URN:  urn,
-			Type: "PolicyEvent",
-		},
-			policy.Name(), policy.Version())
+		deployOpts.Events.PolicyRunEvent(urn)
 		policyPath, err := policy.Install(ctx)
 		if err != nil {
 			return err
@@ -333,21 +328,12 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 		if err = analyzer.Configure(config); err != nil {
 			return fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 		}
-		deployOpts.Events.PolicyDoneEvent(StepEventMetadata{
-			Op:   deploy.OpSame,
-			URN:  urn,
-			Type: "PolicyEvent",
-		}, policy.Name(), policy.Version())
 	}
 
 	// Load local policy packs.
 	for i, pack := range deployOpts.LocalPolicyPacks {
 		urn := resource.NewURN("pulumi", "pulumi", "", "PolicyPack", tokens.QName(fmt.Sprintf("%s@%s", pack.NameForEvents(), pack.Version)))
-		deployOpts.Events.PolicyRunEvent(StepEventMetadata{
-			Op:   deploy.OpRun,
-			URN:  urn,
-			Type: "PolicyEvent",
-		}, pack.NameForEvents(), pack.Version)
+		deployOpts.Events.PolicyRunEvent(urn)
 		abs, err := filepath.Abs(pack.Path)
 		if err != nil {
 			return err
@@ -393,11 +379,6 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 		if err = analyzer.Configure(config); err != nil {
 			return fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 		}
-		deployOpts.Events.PolicyDoneEvent(StepEventMetadata{
-			Op:   deploy.OpRun,
-			URN:  urn,
-			Type: "PolicyEvent",
-		}, pack.NameForEvents(), pack.Version)
 	}
 
 	// Report any policy config validation errors and return an error.
