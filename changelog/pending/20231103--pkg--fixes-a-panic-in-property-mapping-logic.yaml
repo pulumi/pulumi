@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pkg
-  description: Fixes a panic in property mapping logic
