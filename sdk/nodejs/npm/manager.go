@@ -161,9 +161,6 @@ func ResolvePackageManager(pwd string) (PackageManager, error) {
 		return loadPNPMOrFallback()
 	}
 
-	// TODO: These warning logs are inconsistent. i.e. they're not
-	//       executed if we call `loadOrFallback`
-
 	// Case 4: both lockfiles found.
 	// Prefer Yarn, fallback to PNPM, fallback to NPM.
 	// Even if there's also an PNPM lockfile, we prefer Yarn
