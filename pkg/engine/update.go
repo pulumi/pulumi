@@ -293,15 +293,14 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
-		wg.Add(1)
-		go func(policy RequiredPolicy) {
-			defer wg.Done()
-			policyPath, err := policy.Install(ctx)
-			if err != nil {
-				errs <- err
-				return
-			}
+		policyPath, err := policy.Install(ctx)
+		if err != nil {
+			return err
+		}
 
+		wg.Add(1)
+		go func(policy RequiredPolicy, policyPath string) {
+			defer wg.Done()
 			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
 			if err != nil {
 				errs <- err
@@ -337,7 +336,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
-		}(policy)
+		}(policy, policyPath)
 	}
 
 	// Load local policy packs.
