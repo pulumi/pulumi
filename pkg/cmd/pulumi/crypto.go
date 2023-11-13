@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -28,8 +29,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func getStackEncrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Encrypter, bool, error) {
-	sm, needsSave, err := getStackSecretsManager(s, ps)
+func getStackEncrypter(
+	ctx context.Context, s backend.Stack, ps *workspace.ProjectStack,
+) (config.Encrypter, bool, error) {
+	sm, needsSave, err := getStackSecretsManager(ctx, s, ps)
 	if err != nil {
 		return nil, false, err
 	}
@@ -41,8 +44,10 @@ func getStackEncrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Encr
 	return enc, needsSave, nil
 }
 
-func getStackDecrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Decrypter, bool, error) {
-	sm, needsSave, err := getStackSecretsManager(s, ps)
+func getStackDecrypter(
+	ctx context.Context, s backend.Stack, ps *workspace.ProjectStack,
+) (config.Decrypter, bool, error) {
+	sm, needsSave, err := getStackSecretsManager(ctx, s, ps)
 	if err != nil {
 		return nil, false, err
 	}
@@ -54,11 +59,38 @@ func getStackDecrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Decr
 	return dec, needsSave, nil
 }
 
-func getStackSecretsManager(s backend.Stack, ps *workspace.ProjectStack) (secrets.Manager, bool, error) {
+func getStackSecretsManagerFromState(ctx context.Context, s backend.Stack) (secrets.Manager, error) {
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use the current snapshot secrets manager, if there is one, as the fallback secrets manager.
+	var defaultSecretsManager secrets.Manager
+	if snap != nil {
+		defaultSecretsManager = snap.SecretsManager
+	}
+	return defaultSecretsManager, nil
+}
+
+func getStackSecretsManager(
+	ctx context.Context, s backend.Stack, ps *workspace.ProjectStack,
+) (secrets.Manager, bool, error) {
+	// Try to get the secret manager from the stack's current state snapshot.
+	sm, err := getStackSecretsManagerFromState(ctx, s)
+	if err != nil {
+		return nil, false, err
+	}
+	if sm != nil {
+		// If we have a secrets manager from the snapshot, use it.
+		// Do not update the stack's configuration.
+		// TODO: Consider warning if the snapshot secrets manager is different from the
+		// one in the stack's configuration.
+		return sm, false, nil
+	}
+
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 
-	var sm secrets.Manager
-	var err error
 	if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
 		sm, err = cloud.NewCloudSecretsManager(
 			ps, ps.SecretsProvider, false /* rotateSecretsProvider */)

@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
 //nolint:paralleltest // mutates environment variables
@@ -426,6 +427,150 @@ func TestStackBackups(t *testing.T) {
 
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestSecretsProviderFromState(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	gcpKmsKey := os.Getenv("PULUMI_TEST_GCP_KEY")
+	if gcpKmsKey == "" {
+		t.Skipf("Skipping: PULUMI_TEST_GCP_KEY is not set")
+	}
+
+	const stackName = "imulup"
+	stackConfigFileName := fmt.Sprintf("Pulumi.%s.yaml", stackName)
+	wd := e.RootPath
+	stackConfigFile := filepath.Join(wd, stackConfigFileName)
+	stateFile := filepath.Join(wd, ".pulumi", "stacks", "stack_outputs", fmt.Sprintf("%s.json", stackName))
+
+	// Each clause simulates running on a clean machine (we delete the stack file)
+
+	// Init - secret provider should live on
+	{
+		integration.CreateBasicPulumiRepo(e)
+
+		e.ImportDirectory("integration/stack_outputs/nodejs")
+
+		provider := fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey)
+
+		e.SetBackend(e.LocalURL())
+		e.RunCommand(
+			"pulumi", "stack", "init", stackName,
+			"--secrets-provider", fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey),
+		)
+
+		d, err := os.ReadFile(stateFile)
+		assert.NoError(t, err)
+
+		versionedCheckpoint := &apitype.VersionedCheckpoint{}
+		err = json.Unmarshal(d, versionedCheckpoint)
+		assert.NoError(t, err)
+		assert.Equal(t, versionedCheckpoint.Version, 3)
+
+		checkpoint := &apitype.CheckpointV3{}
+		err = json.Unmarshal(versionedCheckpoint.Checkpoint, checkpoint)
+		assert.NoError(t, err)
+
+		type cloudSecretsManagerState struct {
+			URL          string `json:"url"`
+			EncryptedKey []byte `json:"encryptedkey"`
+		}
+
+		smState := &cloudSecretsManagerState{}
+		err = json.Unmarshal(checkpoint.Latest.SecretsProviders.State, smState)
+		assert.NoError(t, err)
+
+		assert.Equal(t, checkpoint.Latest.SecretsProviders.Type, "cloud")
+		assert.Equal(t, smState.URL, provider)
+
+		// Delete stack config.
+		err = os.Remove(stackConfigFile)
+		assert.NoError(t, err)
+	}
+	// Set secure config using the same secrets provider - will not persist
+	{
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "install")
+
+		e.RunCommand("pulumi", "config", "set", "--secret", "token", "cookie")
+
+		d, err := os.ReadFile(stackConfigFile)
+		assert.NoError(t, err)
+		ps := &workspace.ProjectStack{}
+		err = yaml.Unmarshal(d, ps)
+		assert.NoError(t, err)
+
+		assert.Empty(t, ps.EncryptedKey)
+		assert.Empty(t, ps.SecretsProvider)
+		assert.Empty(t, ps.EncryptionSalt)
+		assert.True(t, ps.Config.HasSecureValue())
+
+		// Delete stack config.
+		err = os.Remove(stackConfigFile)
+		assert.NoError(t, err)
+	}
+	// "pulumi config refresh" retrieves the secrets provider from the state file
+	// even without history
+	{
+		e.RunCommand("pulumi", "config", "refresh")
+
+		d, err := os.ReadFile(stackConfigFile)
+		assert.NoError(t, err)
+		ps := &workspace.ProjectStack{}
+		err = yaml.Unmarshal(d, ps)
+		assert.NoError(t, err)
+		// Secrets provider is set
+		assert.NotEmpty(t, ps.EncryptedKey)
+		assert.NotEmpty(t, ps.SecretsProvider)
+		// Secret did not persist
+		assert.False(t, ps.Config.HasSecureValue())
+
+		// Delete stack config.
+		err = os.Remove(stackConfigFile)
+		assert.NoError(t, err)
+	}
+	// Set secure config using the same secrets provider - will persist
+	// "pulumi up" works
+	{
+		e.RunCommand("pulumi", "config", "set", "--secret", "token", "cookie")
+
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+
+		// Delete stack config.
+		err := os.Remove(stackConfigFile)
+		assert.NoError(t, err)
+	}
+	// "pulumi config refresh" retrieves the secrets provider and the config
+	{
+		e.RunCommand("pulumi", "config", "refresh")
+
+		d, err := os.ReadFile(stackConfigFile)
+		assert.NoError(t, err)
+		ps := &workspace.ProjectStack{}
+		err = yaml.Unmarshal(d, ps)
+		assert.NoError(t, err)
+		// Secrets provider is set
+		assert.NotEmpty(t, ps.EncryptedKey)
+		assert.NotEmpty(t, ps.SecretsProvider)
+		// Secret did persist
+		assert.True(t, ps.Config.HasSecureValue())
+
+		// Delete stack config.
+		err = os.Remove(stackConfigFile)
+		assert.NoError(t, err)
+	}
+	// Now run pulumi destroy without stack file.
+	{
+		e.RunCommand("pulumi", "destroy", "--non-interactive", "--yes", "--skip-preview")
+	}
+
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
 //nolint:paralleltest // mutates environment variables

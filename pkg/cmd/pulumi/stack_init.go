@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -178,6 +179,21 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
+	// get the project for the newly created stack
+	newProjectStack, err := loadProjectStack(proj, newStack)
+	if err != nil {
+		return err
+	}
+
+	// Set the newly created stack's secrets provider in the state as well.
+	// TODO: Consider doing this in `createStack()`
+	err = migrateOldConfigAndCheckpointToNewSecretsProvider(
+		ctx, project, newStack, newProjectStack, config.NewPanicCrypter(),
+	)
+	if err != nil {
+		return err
+	}
+
 	if cmd.stackToCopy != "" {
 		if projectErr != nil {
 			return projectErr
@@ -200,7 +216,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// copy the config from the old to the new
-		return copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+		return copyEntireConfigMap(ctx, copyStack, copyProjectStack, newStack, newProjectStack)
 	}
 
 	return nil

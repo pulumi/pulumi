@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -190,24 +189,13 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			// Use the current snapshot secrets manager, if there is one, as the fallback secrets manager.
-			var defaultSecretsManager secrets.Manager
-			if snap != nil {
-				defaultSecretsManager = snap.SecretsManager
-			}
-
 			getConfig := getStackConfiguration
 			if stackName != "" {
 				// `pulumi destroy --stack <stack>` can be run outside of the project directory.
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = getStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, s, proj, defaultSecretsManager)
+			cfg, sm, err := getConfig(ctx, s, proj, nil)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
