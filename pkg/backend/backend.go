@@ -179,7 +179,9 @@ type Backend interface {
 	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	Preview(
+		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+	) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	// Import imports resources into a stack.

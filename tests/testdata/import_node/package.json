@@ -1,0 +1,11 @@
+{
+  "name": "import_node",
+  "main": "index.ts",
+  "devDependencies": {
+    "@types/node": "^16"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.19.0",
+    "@pulumi/random": "4.12.0"
+  }
+}

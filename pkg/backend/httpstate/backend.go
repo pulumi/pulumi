@@ -1014,7 +1014,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
@@ -1022,7 +1022,7 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 		ShowLink: true,
 	}
 	return b.apply(
-		ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
+		ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,

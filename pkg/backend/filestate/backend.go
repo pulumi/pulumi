@@ -883,14 +883,14 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
+	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
