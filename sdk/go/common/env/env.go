@@ -108,3 +108,9 @@ Currently this disables validation of the following formats:
 This should only be used in cases where current data does not conform to the format and either cannot be migrated
 without using the system itself, or show that the validation is too strict. Over time entries in the list above will be
 removed and enforced to be validated.`)
+
+// Environment variables that affect javascript package manager behavior.
+var (
+	PreferYarn = env.Bool("PREFER_YARN", "Prefer Yarn for JavaScript package manager.")
+	PreferPNPM = env.Bool("PREFER_PNPM", "Prefer PNPM for JavaScript package manager.")
+)

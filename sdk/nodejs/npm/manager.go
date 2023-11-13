@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -194,10 +194,10 @@ func loadPNPMOrFallback() (PackageManager, error) {
 
 // preferYarn returns true if the `PULUMI_PREFER_YARN` environment variable is set.
 func preferYarn() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_PREFER_YARN"))
+	return env.PreferYarn.Value()
 }
 
 // preferYarn returns true if the `PULUMI_PREFER_PNPM` environment variable is set.
 func preferPNPM() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_PREFER_PNPM"))
+	return env.PreferPNPM.Value()
 }
