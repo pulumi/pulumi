@@ -4,7 +4,6 @@ package lifecycletest
 import (
 	"context"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/mitchellh/copystructure"
@@ -17,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -114,21 +114,23 @@ func (op TestOp) runWithContext(
 	}()
 
 	// Begin draining events.
-	var wg sync.WaitGroup
-	var firedEvents []Event
-	wg.Add(1)
-	go func() {
+	firedEventsPromise := promise.Run(func() ([]Event, error) {
+		var firedEvents []Event
 		for e := range events {
 			firedEvents = append(firedEvents, e)
 		}
-		wg.Done()
-	}()
+		return firedEvents, nil
+	})
 
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	wg.Wait()
 	contract.IgnoreClose(journal)
+
+	firedEvents, err := firedEventsPromise.Result(callerCtx)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if validate != nil {
 		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
