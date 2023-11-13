@@ -84,7 +84,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/esc v0.5.7-0.20231030195049-f71961c0d5fa
 	github.com/pulumi/pulumi-java/pkg v0.9.8
-	github.com/pulumi/pulumi-yaml v1.4.0
+	github.com/pulumi/pulumi-yaml v1.4.1
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/spf13/afero v1.9.5
