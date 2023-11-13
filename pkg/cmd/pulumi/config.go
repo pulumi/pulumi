@@ -34,7 +34,10 @@ import (
 	"github.com/pulumi/esc/cmd/esc/cli"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -412,7 +415,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 	return rmAllCmd
 }
 
-func newConfigRefreshCmd(stack *string) *cobra.Command {
+func newConfigRefreshCmd(stk *string) *cobra.Command {
 	var force bool
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
@@ -430,7 +433,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, *stk, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -451,6 +454,35 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			}
 
 			ps.Config = c
+			// Also restore the secrets provider from state
+			untypedDeployment, err := s.ExportDeployment(ctx)
+			if err != nil {
+				return fmt.Errorf("getting deployment: %w", err)
+			}
+			deployment, err := stack.UnmarshalUntypedDeployment(ctx, untypedDeployment)
+			if err != nil {
+				return fmt.Errorf("unmarshaling deployment: %w", err)
+			}
+			if deployment.SecretsProviders != nil {
+				// TODO: It would be really nice if the format of secrets state in the config file matched
+				// what we kept in the statefile. That would go well with the pluginification of secret
+				// providers as well, but for now just switch on the secret provider type and ask it to fill in
+				// the config file for us.
+				if deployment.SecretsProviders.Type == passphrase.Type {
+					err = passphrase.EditProjectStack(ps, deployment.SecretsProviders.State)
+				} else if deployment.SecretsProviders.Type == cloud.Type {
+					err = cloud.EditProjectStack(ps, deployment.SecretsProviders.State)
+				} else {
+					// Anything else assume we can just clear all the secret bits
+					ps.EncryptionSalt = ""
+					ps.SecretsProvider = ""
+					ps.EncryptedKey = ""
+				}
+
+				if err != nil {
+					return err
+				}
+			}
 
 			// If the configuration file doesn't exist, or force has been passed, save it in place.
 			if _, err = os.Stat(configPath); os.IsNotExist(err) || force {
