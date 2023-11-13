@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: components/yaml
+  description: Upgrade yaml to 1.4.1
