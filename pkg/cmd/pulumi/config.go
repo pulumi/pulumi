@@ -881,10 +881,10 @@ func listConfig(ctx context.Context,
 			rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
 		}
 
-		cmdutil.PrintTable(cmdutil.Table{
+		printTable(cmdutil.Table{
 			Headers: []string{"KEY", "VALUE"},
 			Rows:    rows,
-		})
+		}, nil)
 	}
 
 	if showSecrets {
