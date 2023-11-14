@@ -26,6 +26,8 @@ jobs:
       timeout-minutes: 90
       name: Test ${{ matrix.provider }} (bridged)
       runs-on: ubuntu-latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
       strategy:
         matrix:
           provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes"]
