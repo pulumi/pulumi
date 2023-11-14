@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Adds nested directory support to pulumi new .zip

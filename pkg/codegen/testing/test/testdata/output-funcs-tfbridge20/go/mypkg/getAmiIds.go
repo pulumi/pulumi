@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"output-funcs-tfbridge20/mypkg/internal"
 )
 
@@ -109,12 +108,6 @@ func (o GetAmiIdsResultOutput) ToGetAmiIdsResultOutput() GetAmiIdsResultOutput {
 
 func (o GetAmiIdsResultOutput) ToGetAmiIdsResultOutputWithContext(ctx context.Context) GetAmiIdsResultOutput {
 	return o
-}
-
-func (o GetAmiIdsResultOutput) ToOutput(ctx context.Context) pulumix.Output[GetAmiIdsResult] {
-	return pulumix.Output[GetAmiIdsResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o GetAmiIdsResultOutput) ExecutableUsers() pulumi.StringArrayOutput {

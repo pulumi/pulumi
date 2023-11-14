@@ -11,7 +11,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-methods-schema/go/example/internal"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-methods-schema/go/example/nested"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type Foo struct {
@@ -163,12 +162,6 @@ func (i *Foo) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FooOutput)
 }
 
-func (i *Foo) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
-	return pulumix.Output[*Foo]{
-		OutputState: i.ToFooOutputWithContext(ctx).OutputState,
-	}
-}
-
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
@@ -181,12 +174,6 @@ func (o FooOutput) ToFooOutput() FooOutput {
 
 func (o FooOutput) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return o
-}
-
-func (o FooOutput) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
-	return pulumix.Output[*Foo]{
-		OutputState: o.OutputState,
-	}
 }
 
 func init() {

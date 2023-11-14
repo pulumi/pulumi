@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix parsing of property paths such as "root.[1]" being returned from providers.

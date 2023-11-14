@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"go-plain-ref-repro/repro/internal"
 )
 
@@ -45,12 +44,6 @@ func (i TaskDefinitionContainerDefinitionArgs) ToTaskDefinitionContainerDefiniti
 
 func (i TaskDefinitionContainerDefinitionArgs) ToTaskDefinitionContainerDefinitionOutputWithContext(ctx context.Context) TaskDefinitionContainerDefinitionOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(TaskDefinitionContainerDefinitionOutput)
-}
-
-func (i TaskDefinitionContainerDefinitionArgs) ToOutput(ctx context.Context) pulumix.Output[TaskDefinitionContainerDefinition] {
-	return pulumix.Output[TaskDefinitionContainerDefinition]{
-		OutputState: i.ToTaskDefinitionContainerDefinitionOutputWithContext(ctx).OutputState,
-	}
 }
 
 func (i TaskDefinitionContainerDefinitionArgs) ToTaskDefinitionContainerDefinitionPtrOutput() TaskDefinitionContainerDefinitionPtrOutput {
@@ -94,12 +87,6 @@ func (i *taskDefinitionContainerDefinitionPtrType) ToTaskDefinitionContainerDefi
 	return pulumi.ToOutputWithContext(ctx, i).(TaskDefinitionContainerDefinitionPtrOutput)
 }
 
-func (i *taskDefinitionContainerDefinitionPtrType) ToOutput(ctx context.Context) pulumix.Output[*TaskDefinitionContainerDefinition] {
-	return pulumix.Output[*TaskDefinitionContainerDefinition]{
-		OutputState: i.ToTaskDefinitionContainerDefinitionPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 // TaskDefinitionContainerDefinitionMapInput is an input type that accepts TaskDefinitionContainerDefinitionMap and TaskDefinitionContainerDefinitionMapOutput values.
 // You can construct a concrete instance of `TaskDefinitionContainerDefinitionMapInput` via:
 //
@@ -123,12 +110,6 @@ func (i TaskDefinitionContainerDefinitionMap) ToTaskDefinitionContainerDefinitio
 
 func (i TaskDefinitionContainerDefinitionMap) ToTaskDefinitionContainerDefinitionMapOutputWithContext(ctx context.Context) TaskDefinitionContainerDefinitionMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(TaskDefinitionContainerDefinitionMapOutput)
-}
-
-func (i TaskDefinitionContainerDefinitionMap) ToOutput(ctx context.Context) pulumix.Output[map[string]TaskDefinitionContainerDefinition] {
-	return pulumix.Output[map[string]TaskDefinitionContainerDefinition]{
-		OutputState: i.ToTaskDefinitionContainerDefinitionMapOutputWithContext(ctx).OutputState,
-	}
 }
 
 type TaskDefinitionContainerDefinitionOutput struct{ *pulumi.OutputState }
@@ -155,12 +136,6 @@ func (o TaskDefinitionContainerDefinitionOutput) ToTaskDefinitionContainerDefini
 	}).(TaskDefinitionContainerDefinitionPtrOutput)
 }
 
-func (o TaskDefinitionContainerDefinitionOutput) ToOutput(ctx context.Context) pulumix.Output[TaskDefinitionContainerDefinition] {
-	return pulumix.Output[TaskDefinitionContainerDefinition]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o TaskDefinitionContainerDefinitionOutput) Command() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v TaskDefinitionContainerDefinition) []string { return v.Command }).(pulumi.StringArrayOutput)
 }
@@ -181,12 +156,6 @@ func (o TaskDefinitionContainerDefinitionPtrOutput) ToTaskDefinitionContainerDef
 
 func (o TaskDefinitionContainerDefinitionPtrOutput) ToTaskDefinitionContainerDefinitionPtrOutputWithContext(ctx context.Context) TaskDefinitionContainerDefinitionPtrOutput {
 	return o
-}
-
-func (o TaskDefinitionContainerDefinitionPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*TaskDefinitionContainerDefinition] {
-	return pulumix.Output[*TaskDefinitionContainerDefinition]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o TaskDefinitionContainerDefinitionPtrOutput) Elem() TaskDefinitionContainerDefinitionOutput {
@@ -229,12 +198,6 @@ func (o TaskDefinitionContainerDefinitionMapOutput) ToTaskDefinitionContainerDef
 
 func (o TaskDefinitionContainerDefinitionMapOutput) ToTaskDefinitionContainerDefinitionMapOutputWithContext(ctx context.Context) TaskDefinitionContainerDefinitionMapOutput {
 	return o
-}
-
-func (o TaskDefinitionContainerDefinitionMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]TaskDefinitionContainerDefinition] {
-	return pulumix.Output[map[string]TaskDefinitionContainerDefinition]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o TaskDefinitionContainerDefinitionMapOutput) MapIndex(k pulumi.StringInput) TaskDefinitionContainerDefinitionOutput {

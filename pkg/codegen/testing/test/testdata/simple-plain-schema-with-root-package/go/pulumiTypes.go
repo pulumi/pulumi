@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"simple-plain-schema-with-root-package/internal"
 )
 
@@ -55,12 +54,6 @@ func (i FooArgs) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FooOutput)
 }
 
-func (i FooArgs) ToOutput(ctx context.Context) pulumix.Output[Foo] {
-	return pulumix.Output[Foo]{
-		OutputState: i.ToFooOutputWithContext(ctx).OutputState,
-	}
-}
-
 func (i FooArgs) ToFooPtrOutput() FooPtrOutput {
 	return i.ToFooPtrOutputWithContext(context.Background())
 }
@@ -102,12 +95,6 @@ func (i *fooPtrType) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(FooPtrOutput)
 }
 
-func (i *fooPtrType) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
-	return pulumix.Output[*Foo]{
-		OutputState: i.ToFooPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 // FooArrayInput is an input type that accepts FooArray and FooArrayOutput values.
 // You can construct a concrete instance of `FooArrayInput` via:
 //
@@ -133,12 +120,6 @@ func (i FooArray) ToFooArrayOutputWithContext(ctx context.Context) FooArrayOutpu
 	return pulumi.ToOutputWithContext(ctx, i).(FooArrayOutput)
 }
 
-func (i FooArray) ToOutput(ctx context.Context) pulumix.Output[[]Foo] {
-	return pulumix.Output[[]Foo]{
-		OutputState: i.ToFooArrayOutputWithContext(ctx).OutputState,
-	}
-}
-
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
@@ -161,12 +142,6 @@ func (o FooOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Foo) *Foo {
 		return &v
 	}).(FooPtrOutput)
-}
-
-func (o FooOutput) ToOutput(ctx context.Context) pulumix.Output[Foo] {
-	return pulumix.Output[Foo]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o FooOutput) A() pulumi.BoolOutput {
@@ -205,12 +180,6 @@ func (o FooPtrOutput) ToFooPtrOutput() FooPtrOutput {
 
 func (o FooPtrOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 	return o
-}
-
-func (o FooPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
-	return pulumix.Output[*Foo]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o FooPtrOutput) Elem() FooOutput {
@@ -289,12 +258,6 @@ func (o FooArrayOutput) ToFooArrayOutput() FooArrayOutput {
 
 func (o FooArrayOutput) ToFooArrayOutputWithContext(ctx context.Context) FooArrayOutput {
 	return o
-}
-
-func (o FooArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Foo] {
-	return pulumix.Output[[]Foo]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o FooArrayOutput) Index(i pulumi.IntInput) FooOutput {

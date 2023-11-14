@@ -9,7 +9,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-methods-schema/go/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 var _ = internal.GetEnvOrDefault
@@ -45,12 +44,6 @@ func (i BazArgs) ToBazOutput() BazOutput {
 
 func (i BazArgs) ToBazOutputWithContext(ctx context.Context) BazOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(BazOutput)
-}
-
-func (i BazArgs) ToOutput(ctx context.Context) pulumix.Output[Baz] {
-	return pulumix.Output[Baz]{
-		OutputState: i.ToBazOutputWithContext(ctx).OutputState,
-	}
 }
 
 func (i BazArgs) ToBazPtrOutput() BazPtrOutput {
@@ -94,12 +87,6 @@ func (i *bazPtrType) ToBazPtrOutputWithContext(ctx context.Context) BazPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(BazPtrOutput)
 }
 
-func (i *bazPtrType) ToOutput(ctx context.Context) pulumix.Output[*Baz] {
-	return pulumix.Output[*Baz]{
-		OutputState: i.ToBazPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type BazOutput struct{ *pulumi.OutputState }
 
 func (BazOutput) ElementType() reflect.Type {
@@ -124,12 +111,6 @@ func (o BazOutput) ToBazPtrOutputWithContext(ctx context.Context) BazPtrOutput {
 	}).(BazPtrOutput)
 }
 
-func (o BazOutput) ToOutput(ctx context.Context) pulumix.Output[Baz] {
-	return pulumix.Output[Baz]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o BazOutput) Hello() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Baz) *string { return v.Hello }).(pulumi.StringPtrOutput)
 }
@@ -150,12 +131,6 @@ func (o BazPtrOutput) ToBazPtrOutput() BazPtrOutput {
 
 func (o BazPtrOutput) ToBazPtrOutputWithContext(ctx context.Context) BazPtrOutput {
 	return o
-}
-
-func (o BazPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Baz] {
-	return pulumix.Output[*Baz]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o BazPtrOutput) Elem() BazOutput {

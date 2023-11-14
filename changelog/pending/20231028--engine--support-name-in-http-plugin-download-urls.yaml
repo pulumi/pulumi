@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Support {NAME} in http plugin download URLs.

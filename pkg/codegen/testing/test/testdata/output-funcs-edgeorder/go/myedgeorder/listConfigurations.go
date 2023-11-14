@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"internal"
 )
 
@@ -80,12 +79,6 @@ func (o ListConfigurationsResultOutput) ToListConfigurationsResultOutput() ListC
 
 func (o ListConfigurationsResultOutput) ToListConfigurationsResultOutputWithContext(ctx context.Context) ListConfigurationsResultOutput {
 	return o
-}
-
-func (o ListConfigurationsResultOutput) ToOutput(ctx context.Context) pulumix.Output[ListConfigurationsResult] {
-	return pulumix.Output[ListConfigurationsResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 // Link for the next set of configurations.

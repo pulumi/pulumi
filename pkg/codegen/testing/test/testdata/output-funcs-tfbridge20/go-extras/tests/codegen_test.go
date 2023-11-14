@@ -16,6 +16,7 @@ package codegentest
 
 import (
 	"fmt"
+	"output-funcs-tfbridge20/mypkg"
 	"strings"
 	"testing"
 	"time"
@@ -24,8 +25,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-
-	"output-funcs-tfbridge20/mypkg"
 )
 
 type mocks int
@@ -42,12 +41,12 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		for k, v := range args.Args {
 			switch k {
 			case "accountName":
-				targs.AccountName = v.V.(string)
+				targs.AccountName = v.StringValue()
 			case "expand":
-				expand := v.V.(string)
+				expand := v.StringValue()
 				targs.Expand = &expand
 			case "resourceGroupName":
-				targs.ResourceGroupName = v.V.(string)
+				targs.ResourceGroupName = v.StringValue()
 			}
 		}
 
@@ -82,25 +81,25 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		for k, v := range args.Args {
 			switch k {
 			case "owners":
-				x := v.V.([]resource.PropertyValue)
+				x := v.ArrayValue()
 				for _, owner := range x {
-					targs.Owners = append(targs.Owners, owner.V.(string))
+					targs.Owners = append(targs.Owners, owner.StringValue())
 				}
 			case "nameRegex":
-				x := v.V.(string)
+				x := v.StringValue()
 				targs.NameRegex = &x
 			case "sortAscending":
-				x := v.V.(bool)
+				x := v.BoolValue()
 				targs.SortAscending = &x
 			case "filters":
-				filters := v.V.([]resource.PropertyValue)
+				filters := v.ArrayValue()
 				for _, filter := range filters {
-					propMap := filter.V.(resource.PropertyMap)
-					name := propMap["name"].V.(string)
-					values := propMap["values"].V.([]resource.PropertyValue)
+					propMap := filter.ObjectValue()
+					name := propMap["name"].StringValue()
+					values := propMap["values"].ArrayValue()
 					var theValues []string
 					for _, v := range values {
-						theValues = append(theValues, v.V.(string))
+						theValues = append(theValues, v.StringValue())
 					}
 					targs.Filters = append(targs.Filters, mypkg.GetAmiIdsFilter{
 						Name:   name,
@@ -173,7 +172,6 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 }
 
 func TestGetAmiIdsWorks(t *testing.T) {
-
 	makeFilter := func(n int) mypkg.GetAmiIdsFilterInput {
 		return &mypkg.GetAmiIdsFilterArgs{
 			Name: pulumi.String(fmt.Sprintf("filter-%d-name", n)),

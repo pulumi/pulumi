@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"internal"
 )
 
@@ -84,12 +83,6 @@ func (o ListProductFamiliesResultOutput) ToListProductFamiliesResultOutput() Lis
 
 func (o ListProductFamiliesResultOutput) ToListProductFamiliesResultOutputWithContext(ctx context.Context) ListProductFamiliesResultOutput {
 	return o
-}
-
-func (o ListProductFamiliesResultOutput) ToOutput(ctx context.Context) pulumix.Output[ListProductFamiliesResult] {
-	return pulumix.Output[ListProductFamiliesResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 // Link for the next set of product families.

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Correctly propogate provider errors from DiffConfig.

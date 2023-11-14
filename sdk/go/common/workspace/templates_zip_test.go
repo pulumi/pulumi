@@ -104,6 +104,11 @@ func TestIsZipArchiveURL(t *testing.T) {
 			templateURL: "https://github.com/pulumi/templates/archive/master",
 			expected:    false,
 		},
+		{
+			testName:    "git_ssh_url",
+			templateURL: "git@gitlab.com:group/project.git",
+			expected:    false,
+		},
 	}
 
 	for _, tt := range tests {

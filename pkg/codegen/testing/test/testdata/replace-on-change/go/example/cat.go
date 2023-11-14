@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"replace-on-change/example/internal"
 )
 
@@ -104,12 +103,6 @@ func (i *Cat) ToCatOutputWithContext(ctx context.Context) CatOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(CatOutput)
 }
 
-func (i *Cat) ToOutput(ctx context.Context) pulumix.Output[*Cat] {
-	return pulumix.Output[*Cat]{
-		OutputState: i.ToCatOutputWithContext(ctx).OutputState,
-	}
-}
-
 // CatArrayInput is an input type that accepts CatArray and CatArrayOutput values.
 // You can construct a concrete instance of `CatArrayInput` via:
 //
@@ -133,12 +126,6 @@ func (i CatArray) ToCatArrayOutput() CatArrayOutput {
 
 func (i CatArray) ToCatArrayOutputWithContext(ctx context.Context) CatArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(CatArrayOutput)
-}
-
-func (i CatArray) ToOutput(ctx context.Context) pulumix.Output[[]*Cat] {
-	return pulumix.Output[[]*Cat]{
-		OutputState: i.ToCatArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // CatMapInput is an input type that accepts CatMap and CatMapOutput values.
@@ -166,12 +153,6 @@ func (i CatMap) ToCatMapOutputWithContext(ctx context.Context) CatMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(CatMapOutput)
 }
 
-func (i CatMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*Cat] {
-	return pulumix.Output[map[string]*Cat]{
-		OutputState: i.ToCatMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type CatOutput struct{ *pulumi.OutputState }
 
 func (CatOutput) ElementType() reflect.Type {
@@ -184,12 +165,6 @@ func (o CatOutput) ToCatOutput() CatOutput {
 
 func (o CatOutput) ToCatOutputWithContext(ctx context.Context) CatOutput {
 	return o
-}
-
-func (o CatOutput) ToOutput(ctx context.Context) pulumix.Output[*Cat] {
-	return pulumix.Output[*Cat]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o CatOutput) Foes() ToyMapOutput {
@@ -226,12 +201,6 @@ func (o CatArrayOutput) ToCatArrayOutputWithContext(ctx context.Context) CatArra
 	return o
 }
 
-func (o CatArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*Cat] {
-	return pulumix.Output[[]*Cat]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o CatArrayOutput) Index(i pulumi.IntInput) CatOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Cat {
 		return vs[0].([]*Cat)[vs[1].(int)]
@@ -250,12 +219,6 @@ func (o CatMapOutput) ToCatMapOutput() CatMapOutput {
 
 func (o CatMapOutput) ToCatMapOutputWithContext(ctx context.Context) CatMapOutput {
 	return o
-}
-
-func (o CatMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*Cat] {
-	return pulumix.Output[map[string]*Cat]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o CatMapOutput) MapIndex(k pulumi.StringInput) CatOutput {

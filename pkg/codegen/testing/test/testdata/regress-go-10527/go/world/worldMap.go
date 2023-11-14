@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"regress-go-10527/world/internal"
 )
 
@@ -87,12 +86,6 @@ func (i *WorldMap) ToWorldMapOutputWithContext(ctx context.Context) WorldMapOutp
 	return pulumi.ToOutputWithContext(ctx, i).(WorldMapOutput)
 }
 
-func (i *WorldMap) ToOutput(ctx context.Context) pulumix.Output[*WorldMap] {
-	return pulumix.Output[*WorldMap]{
-		OutputState: i.ToWorldMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type WorldMapOutput struct{ *pulumi.OutputState }
 
 func (WorldMapOutput) ElementType() reflect.Type {
@@ -105,12 +98,6 @@ func (o WorldMapOutput) ToWorldMapOutput() WorldMapOutput {
 
 func (o WorldMapOutput) ToWorldMapOutputWithContext(ctx context.Context) WorldMapOutput {
 	return o
-}
-
-func (o WorldMapOutput) ToOutput(ctx context.Context) pulumix.Output[*WorldMap] {
-	return pulumix.Output[*WorldMap]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o WorldMapOutput) Name() pulumi.StringPtrOutput {

@@ -78,12 +78,6 @@ func (o MyEnumOutput) ToMyEnumPtrOutputWithContext(ctx context.Context) MyEnumPt
 	}).(MyEnumPtrOutput)
 }
 
-func (o MyEnumOutput) ToOutput(ctx context.Context) pulumix.Output[MyEnum] {
-	return pulumix.Output[MyEnum]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o MyEnumOutput) ToFloat64Output() pulumi.Float64Output {
 	return o.ToFloat64OutputWithContext(context.Background())
 }
@@ -117,12 +111,6 @@ func (o MyEnumPtrOutput) ToMyEnumPtrOutput() MyEnumPtrOutput {
 
 func (o MyEnumPtrOutput) ToMyEnumPtrOutputWithContext(ctx context.Context) MyEnumPtrOutput {
 	return o
-}
-
-func (o MyEnumPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*MyEnum] {
-	return pulumix.Output[*MyEnum]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o MyEnumPtrOutput) Elem() MyEnumOutput {

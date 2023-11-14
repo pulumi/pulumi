@@ -42,12 +42,6 @@ func (o OutputOnlyEnumTypeOutput) ToOutputOnlyEnumTypePtrOutputWithContext(ctx c
 	}).(OutputOnlyEnumTypePtrOutput)
 }
 
-func (o OutputOnlyEnumTypeOutput) ToOutput(ctx context.Context) pulumix.Output[OutputOnlyEnumType] {
-	return pulumix.Output[OutputOnlyEnumType]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o OutputOnlyEnumTypeOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -81,12 +75,6 @@ func (o OutputOnlyEnumTypePtrOutput) ToOutputOnlyEnumTypePtrOutput() OutputOnlyE
 
 func (o OutputOnlyEnumTypePtrOutput) ToOutputOnlyEnumTypePtrOutputWithContext(ctx context.Context) OutputOnlyEnumTypePtrOutput {
 	return o
-}
-
-func (o OutputOnlyEnumTypePtrOutput) ToOutput(ctx context.Context) pulumix.Output[*OutputOnlyEnumType] {
-	return pulumix.Output[*OutputOnlyEnumType]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o OutputOnlyEnumTypePtrOutput) Elem() OutputOnlyEnumTypeOutput {
@@ -125,12 +113,6 @@ func (o OutputOnlyEnumTypeMapOutput) ToOutputOnlyEnumTypeMapOutput() OutputOnlyE
 
 func (o OutputOnlyEnumTypeMapOutput) ToOutputOnlyEnumTypeMapOutputWithContext(ctx context.Context) OutputOnlyEnumTypeMapOutput {
 	return o
-}
-
-func (o OutputOnlyEnumTypeMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]OutputOnlyEnumType] {
-	return pulumix.Output[map[string]OutputOnlyEnumType]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o OutputOnlyEnumTypeMapOutput) MapIndex(k pulumi.StringInput) OutputOnlyEnumTypeOutput {
@@ -211,12 +193,6 @@ func (o RubberTreeVarietyOutput) ToRubberTreeVarietyPtrOutputWithContext(ctx con
 	}).(RubberTreeVarietyPtrOutput)
 }
 
-func (o RubberTreeVarietyOutput) ToOutput(ctx context.Context) pulumix.Output[RubberTreeVariety] {
-	return pulumix.Output[RubberTreeVariety]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o RubberTreeVarietyOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -250,12 +226,6 @@ func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutput() RubberTreeVar
 
 func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutputWithContext(ctx context.Context) RubberTreeVarietyPtrOutput {
 	return o
-}
-
-func (o RubberTreeVarietyPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*RubberTreeVariety] {
-	return pulumix.Output[*RubberTreeVariety]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o RubberTreeVarietyPtrOutput) Elem() RubberTreeVarietyOutput {

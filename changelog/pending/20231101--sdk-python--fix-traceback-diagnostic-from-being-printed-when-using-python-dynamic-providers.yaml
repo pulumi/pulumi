@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix traceback diagnostic from being printed when using Python dynamic providers

@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"simple-resource-schema-custom-pypackage-name/example/internal"
 )
 
@@ -63,12 +62,6 @@ func (o ArgFunctionResultOutput) ToArgFunctionResultOutput() ArgFunctionResultOu
 
 func (o ArgFunctionResultOutput) ToArgFunctionResultOutputWithContext(ctx context.Context) ArgFunctionResultOutput {
 	return o
-}
-
-func (o ArgFunctionResultOutput) ToOutput(ctx context.Context) pulumix.Output[ArgFunctionResult] {
-	return pulumix.Output[ArgFunctionResult]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ArgFunctionResultOutput) Result() ResourceOutput {
