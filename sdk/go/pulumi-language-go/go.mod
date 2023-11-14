@@ -7,6 +7,12 @@ replace (
 	github.com/pulumi/pulumi/sdk/v3 => ../../
 )
 
+// github.com/mitchellh/osext has been removed. Workaround by using github.com/kardianos/osext instead.
+// When we upgrade gocloud.dev in the pkg module, we can likely remove this replace as later versions
+// of gocloud.dev don't have github.com/mitchellh/osext as a transitive dependency.
+// See https://github.com/pulumi/pulumi/issues/14541.
+replace github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f => github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
+
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.3

@@ -9,6 +9,12 @@ replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 
 replace github.com/xanzy/ssh-agent => github.com/pulumi/ssh-agent v0.5.1
 
+// github.com/mitchellh/osext has been removed. Workaround by using github.com/kardianos/osext instead.
+// When we upgrade gocloud.dev, we can likely remove this replace as later versions of gocloud.dev don't
+// have github.com/mitchellh/osext as a transitive dependency.
+// See https://github.com/pulumi/pulumi/issues/14541.
+replace github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f => github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
+
 require (
 	cloud.google.com/go/logging v1.7.0
 	cloud.google.com/go/storage v1.30.1
@@ -46,6 +52,8 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.13.2
 	// DO NOT UPDATE gocloud.dev until https://github.com/pulumi/pulumi/issues/11986 is resolved
+	// When upgrading gocloud.dev to a version greater than v0.27.0, look into removing the
+	// `replace github.com/mitchellh/osext ...` line above, which likely won't be needed anymore.
 	gocloud.dev v0.27.0
 	gocloud.dev/secrets/hashivault v0.27.0
 	golang.org/x/crypto v0.14.0 // indirect
