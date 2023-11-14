@@ -81,7 +81,7 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			return listConfig(ctx, project, stack, ps, showSecrets, jsonOut)
+			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut)
 		}),
 	}
 
@@ -105,6 +105,7 @@ func newConfigCmd() *cobra.Command {
 	cmd.AddCommand(newConfigSetAllCmd(&stack))
 	cmd.AddCommand(newConfigRefreshCmd(&stack))
 	cmd.AddCommand(newConfigCopyCmd(&stack))
+	cmd.AddCommand(newConfigEnvCmd(&stack))
 
 	return cmd
 }
@@ -830,6 +831,7 @@ type configValueJSON struct {
 
 func listConfig(
 	ctx context.Context,
+	stdout io.Writer,
 	project *workspace.Project,
 	stack backend.Stack,
 	ps *workspace.ProjectStack,
@@ -928,7 +930,7 @@ func listConfig(
 
 			configValues[key.String()] = entry
 		}
-		err := printJSON(configValues)
+		err := fprintJSON(stdout, configValues)
 		if err != nil {
 			return err
 		}
@@ -943,7 +945,7 @@ func listConfig(
 			rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
 		}
 
-		printTable(cmdutil.Table{
+		fprintTable(stdout, cmdutil.Table{
 			Headers: []string{"KEY", "VALUE"},
 			Rows:    rows,
 		}, nil)
@@ -964,20 +966,20 @@ func listConfig(
 					environRows[i] = cmdutil.TableRow{Columns: []string{key, value}}
 				}
 
-				fmt.Println()
-				printTable(cmdutil.Table{
+				fmt.Fprintln(stdout)
+				fprintTable(stdout, cmdutil.Table{
 					Headers: []string{"ENVIRONMENT VARIABLE", "VALUE"},
 					Rows:    environRows,
 				}, nil)
 			}
 
 			if len(diags) != 0 {
-				fmt.Println()
-				fmt.Println("Environment diagnostics:")
-				printESCDiagnostics(os.Stdout, diags)
+				fmt.Fprintln(stdout)
+				fmt.Fprintln(stdout, "Environment diagnostics:")
+				printESCDiagnostics(stdout, diags)
 			}
 
-			warnOnNoEnvironmentEffects(env)
+			warnOnNoEnvironmentEffects(stdout, env)
 		}
 	}
 
@@ -1288,7 +1290,7 @@ func getStackConfigurationWithFallback(
 
 	var pulumiEnv esc.Value
 	if env != nil {
-		warnOnNoEnvironmentEffects(env)
+		warnOnNoEnvironmentEffects(os.Stdout, env)
 
 		pulumiEnv = env.Properties["pulumiConfig"]
 
@@ -1332,7 +1334,7 @@ func getStackConfigurationWithFallback(
 	}, sm, nil
 }
 
-func warnOnNoEnvironmentEffects(env *esc.Environment) {
+func warnOnNoEnvironmentEffects(out io.Writer, env *esc.Environment) {
 	hasEnvVars := len(env.GetEnvironmentVariables()) != 0
 	hasFiles := len(env.GetTemporaryFiles()) != 0
 	_, hasPulumiConfig := env.Properties["pulumiConfig"].Value.(map[string]esc.Value)
@@ -1340,8 +1342,8 @@ func warnOnNoEnvironmentEffects(env *esc.Environment) {
 	//nolint:lll
 	if !hasEnvVars && !hasFiles && !hasPulumiConfig {
 		color := cmdutil.GetGlobalColorization()
-		fmt.Println(color.Colorize(colors.SpecWarning + "The stack's environment does not define the `environmentVariables`, `files`, or `pulumiConfig` properties."))
-		fmt.Println(color.Colorize(colors.SpecWarning + "Without at least one of these properties, the environment will not affect the stack's behavior." + colors.Reset))
-		fmt.Println()
+		fmt.Fprintln(out, color.Colorize(colors.SpecWarning+"The stack's environment does not define the `environmentVariables`, `files`, or `pulumiConfig` properties."))
+		fmt.Fprintln(out, color.Colorize(colors.SpecWarning+"Without at least one of these properties, the environment will not affect the stack's behavior."+colors.Reset))
+		fmt.Fprintln(out)
 	}
 }

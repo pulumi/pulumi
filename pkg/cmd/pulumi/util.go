@@ -1136,7 +1136,11 @@ func promptUser(msg string, options []string, defaultOption string, colorization
 }
 
 func printTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
-	fmt.Print(renderTable(table, opts))
+	fprintTable(os.Stdout, table, opts)
+}
+
+func fprintTable(out io.Writer, table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
+	fmt.Fprint(out, renderTable(table, opts))
 }
 
 func renderTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) string {

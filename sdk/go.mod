@@ -43,9 +43,11 @@ require (
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/go-git/go-git/v5 v5.9.0
 	github.com/hashicorp/hcl/v2 v2.17.0
+	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/esc v0.5.6
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/term v0.13.0
 	lukechampine.com/frand v1.4.2
 )
@@ -77,7 +79,6 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/skeema/knownhosts v1.2.0 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230706204954-ccb25ca9f130 // indirect
