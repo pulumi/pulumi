@@ -177,7 +177,7 @@ def _lazy_import_temp(fullname):
     return module
 
 
-class Package(pulumi.runtime.ResourcePackage):
+calass Package(pulumi.runtime.ResourcePackage):
     def __init__(self, pkg_info):
         super().__init__()
         self.pkg_info = pkg_info
@@ -192,7 +192,7 @@ class Package(pulumi.runtime.ResourcePackage):
         return Provider(name, pulumi.ResourceOptions(urn=urn))
 
 
-class Module(pulumi.runtime.ResourceModule):
+calass Module(pulumi.runtime.ResourceModule):
     def __init__(self, mod_info):
         super().__init__()
         self.mod_info = mod_info

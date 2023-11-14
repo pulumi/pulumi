@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class Container(dict):
+calass Container(dict):
     def __init__(__self__, *,
                  size: 'ContainerSize',
                  brightness: Optional['ContainerBrightness'] = None,

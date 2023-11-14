@@ -9,10 +9,10 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
-__all__ = ['Component2Args', 'Component2']
+__all__ = ['Component2Arrgs', 'Component2']
 
 @pulumi.input_type
-class Component2Args:
+calass Component2Arrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a Component2 resource.
@@ -20,7 +20,7 @@ class Component2Args:
         pass
 
 
-class Component2(pulumi.CustomResource):
+calass Component2(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -35,17 +35,17 @@ class Component2(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[Component2Args] = None,
+                 args: Optional[Component2Arrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Component2 resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param Component2Args args: The arguments to use to populate this resource's properties.
+        :param Component2Arrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(Component2Args, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(Component2Arrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -61,7 +61,7 @@ class Component2(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = Component2Args.__new__(Component2Args)
+            __props__ = Component2Arrgs.__new__(Component2Arrgs)
 
         super(Component2, __self__).__init__(
             'example:mod:Component2',
@@ -83,7 +83,7 @@ class Component2(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = Component2Args.__new__(Component2Args)
+        __props__ = Component2Arrgs.__new__(Component2Arrgs)
 
         return Component2(resource_name, opts=opts, __props__=__props__)
 

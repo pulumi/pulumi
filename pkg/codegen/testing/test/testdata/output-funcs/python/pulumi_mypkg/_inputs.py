@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.input_type
-class BastionShareableLink:
+calass BastionShareableLink:
     def __init__(__self__, *,
                  vm: str):
         """

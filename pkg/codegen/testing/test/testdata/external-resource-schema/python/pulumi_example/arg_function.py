@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class ArgFunctionResult:
+calass ArgFunctionResult:
     def __init__(__self__, age=None):
         if age and not isinstance(age, int):
             raise TypeError("Expected argument 'age' to be a int")
@@ -30,7 +30,7 @@ class ArgFunctionResult:
         return pulumi.get(self, "age")
 
 
-class AwaitableArgFunctionResult(ArgFunctionResult):
+calass AwaitableArgFunctionResult(ArgFunctionResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

@@ -11,21 +11,21 @@ from . import _utilities
 from . import outputs
 from ._inputs import *
 
-__all__ = ['ComponentArgs', 'Component']
+__all__ = ['ComponentArrgs', 'Component']
 
 @pulumi.input_type
-class ComponentArgs:
+calass ComponentArrgs:
     def __init__(__self__, *,
                  a: bool,
                  c: int,
                  e: str,
                  b: Optional[bool] = None,
-                 bar: Optional['FooArgs'] = None,
-                 baz: Optional[Sequence[pulumi.Input['FooArgs']]] = None,
-                 baz_map: Optional[Mapping[str, pulumi.Input['FooArgs']]] = None,
+                 bar: Optional['FooArrgs'] = None,
+                 baz: Optional[Sequence[pulumi.Input['FooArrgs']]] = None,
+                 baz_map: Optional[Mapping[str, pulumi.Input['FooArrgs']]] = None,
                  d: Optional[int] = None,
                  f: Optional[str] = None,
-                 foo: Optional[pulumi.Input['FooArgs']] = None):
+                 foo: Optional[pulumi.Input['FooArrgs']] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -85,29 +85,29 @@ class ComponentArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional['FooArgs']:
+    def bar(self) -> Optional['FooArrgs']:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional['FooArgs']):
+    def bar(self, value: Optional['FooArrgs']):
         pulumi.set(self, "bar", value)
 
     @property
     @pulumi.getter
-    def baz(self) -> Optional[Sequence[pulumi.Input['FooArgs']]]:
+    def baz(self) -> Optional[Sequence[pulumi.Input['FooArrgs']]]:
         return pulumi.get(self, "baz")
 
     @baz.setter
-    def baz(self, value: Optional[Sequence[pulumi.Input['FooArgs']]]):
+    def baz(self, value: Optional[Sequence[pulumi.Input['FooArrgs']]]):
         pulumi.set(self, "baz", value)
 
     @property
     @pulumi.getter(name="bazMap")
-    def baz_map(self) -> Optional[Mapping[str, pulumi.Input['FooArgs']]]:
+    def baz_map(self) -> Optional[Mapping[str, pulumi.Input['FooArrgs']]]:
         return pulumi.get(self, "baz_map")
 
     @baz_map.setter
-    def baz_map(self, value: Optional[Mapping[str, pulumi.Input['FooArgs']]]):
+    def baz_map(self, value: Optional[Mapping[str, pulumi.Input['FooArrgs']]]):
         pulumi.set(self, "baz_map", value)
 
     @property
@@ -130,29 +130,29 @@ class ComponentArgs:
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['FooArgs']]:
+    def foo(self) -> Optional[pulumi.Input['FooArrgs']]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['FooArgs']]):
+    def foo(self, value: Optional[pulumi.Input['FooArrgs']]):
         pulumi.set(self, "foo", value)
 
 
-class Component(pulumi.ComponentResource):
+calass Component(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[bool] = None,
                  b: Optional[bool] = None,
-                 bar: Optional[pulumi.InputType['FooArgs']] = None,
-                 baz: Optional[Sequence[pulumi.Input[pulumi.InputType['FooArgs']]]] = None,
-                 baz_map: Optional[Mapping[str, pulumi.Input[pulumi.InputType['FooArgs']]]] = None,
+                 bar: Optional[pulumi.InputType['FooArrgs']] = None,
+                 baz: Optional[Sequence[pulumi.Input[pulumi.InputType['FooArrgs']]]] = None,
+                 baz_map: Optional[Mapping[str, pulumi.Input[pulumi.InputType['FooArrgs']]]] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,
                  f: Optional[str] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['FooArgs']]] = None,
+                 foo: Optional[pulumi.Input[pulumi.InputType['FooArrgs']]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -163,17 +163,17 @@ class Component(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: ComponentArgs,
+                 args: ComponentArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Component resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ComponentArgs args: The arguments to use to populate this resource's properties.
+        :param ComponentArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ComponentArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ComponentArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -184,14 +184,14 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[bool] = None,
                  b: Optional[bool] = None,
-                 bar: Optional[pulumi.InputType['FooArgs']] = None,
-                 baz: Optional[Sequence[pulumi.Input[pulumi.InputType['FooArgs']]]] = None,
-                 baz_map: Optional[Mapping[str, pulumi.Input[pulumi.InputType['FooArgs']]]] = None,
+                 bar: Optional[pulumi.InputType['FooArrgs']] = None,
+                 baz: Optional[Sequence[pulumi.Input[pulumi.InputType['FooArrgs']]]] = None,
+                 baz_map: Optional[Mapping[str, pulumi.Input[pulumi.InputType['FooArrgs']]]] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,
                  f: Optional[str] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['FooArgs']]] = None,
+                 foo: Optional[pulumi.Input[pulumi.InputType['FooArrgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -201,7 +201,7 @@ class Component(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ComponentArgs.__new__(ComponentArgs)
+            __props__ = ComponentArrgs.__new__(ComponentArrgs)
 
             if a is None and not opts.urn:
                 raise TypeError("Missing required property 'a'")

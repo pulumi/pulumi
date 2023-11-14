@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class SsisEnvironmentReferenceResponse(dict):
+calass SsisEnvironmentReferenceResponse(dict):
     """
     Ssis environment reference.
     """
@@ -81,7 +81,7 @@ class SsisEnvironmentReferenceResponse(dict):
 
 
 @pulumi.output_type
-class SsisEnvironmentResponse(dict):
+calass SsisEnvironmentResponse(dict):
     """
     Ssis environment.
     """
@@ -165,7 +165,7 @@ class SsisEnvironmentResponse(dict):
 
 
 @pulumi.output_type
-class SsisFolderResponse(dict):
+calass SsisFolderResponse(dict):
     """
     Ssis folder.
     """
@@ -225,7 +225,7 @@ class SsisFolderResponse(dict):
 
 
 @pulumi.output_type
-class SsisPackageResponse(dict):
+calass SsisPackageResponse(dict):
     """
     Ssis Package.
     """
@@ -333,7 +333,7 @@ class SsisPackageResponse(dict):
 
 
 @pulumi.output_type
-class SsisParameterResponse(dict):
+calass SsisParameterResponse(dict):
     """
     Ssis parameter.
     """
@@ -488,7 +488,7 @@ class SsisParameterResponse(dict):
 
 
 @pulumi.output_type
-class SsisProjectResponse(dict):
+calass SsisProjectResponse(dict):
     """
     Ssis project.
     """
@@ -596,7 +596,7 @@ class SsisProjectResponse(dict):
 
 
 @pulumi.output_type
-class SsisVariableResponse(dict):
+calass SsisVariableResponse(dict):
     """
     Ssis variable.
     """
@@ -691,7 +691,7 @@ class SsisVariableResponse(dict):
 
 
 @pulumi.output_type
-class StorageAccountKeyResponse(dict):
+calass StorageAccountKeyResponse(dict):
     """
     An access key for the storage account.
     """

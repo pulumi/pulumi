@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class GetPolicyDocumentResult:
+calass GetPolicyDocumentResult:
     def __init__(__self__, id=None, json=None, statements=None):
         if id and not isinstance(id, str):
             raise TypeError("Expected argument 'id' to be a str")
@@ -46,7 +46,7 @@ class GetPolicyDocumentResult:
         return pulumi.get(self, "statements")
 
 
-class AwaitableGetPolicyDocumentResult(GetPolicyDocumentResult):
+calass AwaitableGetPolicyDocumentResult(GetPolicyDocumentResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:
@@ -57,7 +57,7 @@ class AwaitableGetPolicyDocumentResult(GetPolicyDocumentResult):
             statements=self.statements)
 
 
-def get_policy_document(statements: Optional[Sequence[pulumi.InputType['_x.GetPolicyDocumentStatementArgs']]] = None,
+def get_policy_document(statements: Optional[Sequence[pulumi.InputType['_x.GetPolicyDocumentStatementArrgs']]] = None,
                         opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableGetPolicyDocumentResult:
     """
     Use this data source to access information about an existing resource.
@@ -74,7 +74,7 @@ def get_policy_document(statements: Optional[Sequence[pulumi.InputType['_x.GetPo
 
 
 @_utilities.lift_output_func(get_policy_document)
-def get_policy_document_output(statements: Optional[pulumi.Input[Optional[Sequence[pulumi.InputType['_x.GetPolicyDocumentStatementArgs']]]]] = None,
+def get_policy_document_output(statements: Optional[pulumi.Input[Optional[Sequence[pulumi.InputType['_x.GetPolicyDocumentStatementArrgs']]]]] = None,
                                opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetPolicyDocumentResult]:
     """
     Use this data source to access information about an existing resource.

@@ -10,62 +10,62 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._inputs import *
 
-__all__ = ['ProviderArgs', 'Provider']
+__all__ = ['ProviderArrgs', 'Provider']
 
 @pulumi.input_type
-class ProviderArgs:
+calass ProviderArrgs:
     def __init__(__self__, *,
-                 helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None):
+                 helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArrgs']] = None):
         """
         The set of arguments for constructing a Provider resource.
-        :param pulumi.Input['HelmReleaseSettingsArgs'] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
+        :param pulumi.Input['HelmReleaseSettingsArrgs'] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
         """
         if helm_release_settings is not None:
             pulumi.set(__self__, "helm_release_settings", helm_release_settings)
 
     @property
     @pulumi.getter(name="helmReleaseSettings")
-    def helm_release_settings(self) -> Optional[pulumi.Input['HelmReleaseSettingsArgs']]:
+    def helm_release_settings(self) -> Optional[pulumi.Input['HelmReleaseSettingsArrgs']]:
         """
         BETA FEATURE - Options to configure the Helm Release resource.
         """
         return pulumi.get(self, "helm_release_settings")
 
     @helm_release_settings.setter
-    def helm_release_settings(self, value: Optional[pulumi.Input['HelmReleaseSettingsArgs']]):
+    def helm_release_settings(self, value: Optional[pulumi.Input['HelmReleaseSettingsArrgs']]):
         pulumi.set(self, "helm_release_settings", value)
 
 
-class Provider(pulumi.ProviderResource):
+calass Provider(pulumi.ProviderResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
+                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArrgs']]] = None,
                  __props__=None):
         """
         The provider type for the kubernetes package.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
+        :param pulumi.Input[pulumi.InputType['HelmReleaseSettingsArrgs']] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
         """
         ...
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ProviderArgs] = None,
+                 args: Optional[ProviderArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         The provider type for the kubernetes package.
 
         :param str resource_name: The name of the resource.
-        :param ProviderArgs args: The arguments to use to populate this resource's properties.
+        :param ProviderArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ProviderArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ProviderArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -74,7 +74,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
+                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArrgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -82,7 +82,7 @@ class Provider(pulumi.ProviderResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ProviderArgs.__new__(ProviderArgs)
+            __props__ = ProviderArrgs.__new__(ProviderArrgs)
 
             __props__.__dict__["helm_release_settings"] = pulumi.Output.from_input(helm_release_settings).apply(pulumi.runtime.to_json) if helm_release_settings is not None else None
         super(Provider, __self__).__init__(

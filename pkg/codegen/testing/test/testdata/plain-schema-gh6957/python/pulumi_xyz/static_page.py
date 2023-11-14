@@ -11,13 +11,13 @@ from . import _utilities
 from ._inputs import *
 import pulumi_aws
 
-__all__ = ['StaticPageArgs', 'StaticPage']
+__all__ = ['StaticPageArrgs', 'StaticPage']
 
 @pulumi.input_type
-class StaticPageArgs:
+calass StaticPageArrgs:
     def __init__(__self__, *,
                  index_content: pulumi.Input[str],
-                 foo: Optional['FooArgs'] = None):
+                 foo: Optional['FooArrgs'] = None):
         """
         The set of arguments for constructing a StaticPage resource.
         :param pulumi.Input[str] index_content: The HTML content for index.html.
@@ -40,20 +40,20 @@ class StaticPageArgs:
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional['FooArgs']:
+    def foo(self) -> Optional['FooArrgs']:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional['FooArgs']):
+    def foo(self, value: Optional['FooArrgs']):
         pulumi.set(self, "foo", value)
 
 
-class StaticPage(pulumi.ComponentResource):
+calass StaticPage(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 foo: Optional[pulumi.InputType['FooArgs']] = None,
+                 foo: Optional[pulumi.InputType['FooArrgs']] = None,
                  index_content: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         """
@@ -66,17 +66,17 @@ class StaticPage(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: StaticPageArgs,
+                 args: StaticPageArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a StaticPage resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param StaticPageArgs args: The arguments to use to populate this resource's properties.
+        :param StaticPageArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(StaticPageArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(StaticPageArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -85,7 +85,7 @@ class StaticPage(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 foo: Optional[pulumi.InputType['FooArgs']] = None,
+                 foo: Optional[pulumi.InputType['FooArrgs']] = None,
                  index_content: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -96,7 +96,7 @@ class StaticPage(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = StaticPageArgs.__new__(StaticPageArgs)
+            __props__ = StaticPageArrgs.__new__(StaticPageArrgs)
 
             __props__.__dict__["foo"] = foo
             if index_content is None and not opts.urn:

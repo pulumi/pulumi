@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from ... import _utilities
 from ._enums import *
 
-__all__ = ['NurseryArgs', 'Nursery']
+__all__ = ['NurseryArrgs', 'Nursery']
 
 @pulumi.input_type
-class NurseryArgs:
+calass NurseryArrgs:
     def __init__(__self__, *,
                  varieties: pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]],
                  sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None):
@@ -51,7 +51,7 @@ class NurseryArgs:
         pulumi.set(self, "sizes", value)
 
 
-class Nursery(pulumi.CustomResource):
+calass Nursery(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -70,17 +70,17 @@ class Nursery(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: NurseryArgs,
+                 args: NurseryArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Nursery resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param NurseryArgs args: The arguments to use to populate this resource's properties.
+        :param NurseryArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(NurseryArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(NurseryArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -98,7 +98,7 @@ class Nursery(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = NurseryArgs.__new__(NurseryArgs)
+            __props__ = NurseryArrgs.__new__(NurseryArrgs)
 
             __props__.__dict__["sizes"] = sizes
             if varieties is None and not opts.urn:
@@ -124,7 +124,7 @@ class Nursery(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = NurseryArgs.__new__(NurseryArgs)
+        __props__ = NurseryArrgs.__new__(NurseryArrgs)
 
         return Nursery(resource_name, opts=opts, __props__=__props__)
 

@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class FuncWithDictParamResult:
+calass FuncWithDictParamResult:
     def __init__(__self__, r=None):
         if r and not isinstance(r, str):
             raise TypeError("Expected argument 'r' to be a str")
@@ -29,7 +29,7 @@ class FuncWithDictParamResult:
         return pulumi.get(self, "r")
 
 
-class AwaitableFuncWithDictParamResult(FuncWithDictParamResult):
+calass AwaitableFuncWithDictParamResult(FuncWithDictParamResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

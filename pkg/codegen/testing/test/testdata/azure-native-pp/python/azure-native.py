@@ -3,40 +3,40 @@ import pulumi_azure_native as azure_native
 
 front_door = azure_native.network.FrontDoor("frontDoor",
     resource_group_name="someGroupName",
-    routing_rules=[azure_native.network.RoutingRuleArgs(
-        route_configuration=azure_native.network.ForwardingConfigurationArgs(
+    routing_rules=[azure_native.network.RoutingRuleArrgs(
+        route_configuration=azure_native.network.ForwardingConfigurationArrgs(
             odata_type="#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
-            backend_pool=azure_native.network.SubResourceArgs(
+            backend_pool=azure_native.network.SubResourceArrgs(
                 id="/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
             ),
         ),
     )])
 endpoint = azure_native.cdn.Endpoint("endpoint",
     origins=[],
-    delivery_policy=azure_native.cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs(
-        rules=[azure_native.cdn.DeliveryRuleArgs(
+    delivery_policy=azure_native.cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArrgs(
+        rules=[azure_native.cdn.DeliveryRuleArrgs(
             actions=[
-                azure_native.cdn.DeliveryRuleCacheExpirationActionArgs(
+                azure_native.cdn.DeliveryRuleCacheExpirationActionArrgs(
                     name="CacheExpiration",
-                    parameters=azure_native.cdn.CacheExpirationActionParametersArgs(
+                    parameters=azure_native.cdn.CacheExpirationActionParametersArrgs(
                         cache_behavior="Override",
                         cache_duration="10:10:09",
                         cache_type="All",
                         odata_type="#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters",
                     ),
                 ),
-                azure_native.cdn.DeliveryRuleResponseHeaderActionArgs(
+                azure_native.cdn.DeliveryRuleResponseHeaderActionArrgs(
                     name="ModifyResponseHeader",
-                    parameters=azure_native.cdn.HeaderActionParametersArgs(
+                    parameters=azure_native.cdn.HeaderActionParametersArrgs(
                         header_action="Overwrite",
                         header_name="Access-Control-Allow-Origin",
                         odata_type="#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
                         value="*",
                     ),
                 ),
-                azure_native.cdn.DeliveryRuleRequestHeaderActionArgs(
+                azure_native.cdn.DeliveryRuleRequestHeaderActionArrgs(
                     name="ModifyRequestHeader",
-                    parameters=azure_native.cdn.HeaderActionParametersArgs(
+                    parameters=azure_native.cdn.HeaderActionParametersArrgs(
                         header_action="Overwrite",
                         header_name="Accept-Encoding",
                         odata_type="#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
@@ -44,9 +44,9 @@ endpoint = azure_native.cdn.Endpoint("endpoint",
                     ),
                 ),
             ],
-            conditions=[azure_native.cdn.DeliveryRuleRemoteAddressConditionArgs(
+            conditions=[azure_native.cdn.DeliveryRuleRemoteAddressConditionArrgs(
                 name="RemoteAddress",
-                parameters=azure_native.cdn.RemoteAddressMatchConditionParametersArgs(
+                parameters=azure_native.cdn.RemoteAddressMatchConditionParametersArrgs(
                     match_values=[
                         "192.168.1.0/24",
                         "10.0.0.0/24",

@@ -18,7 +18,7 @@ eks_igw = aws.ec2.InternetGateway("eksIgw",
     })
 eks_route_table = aws.ec2.RouteTable("eksRouteTable",
     vpc_id=eks_vpc.id,
-    routes=[aws.ec2.RouteTableRouteArgs(
+    routes=[aws.ec2.RouteTableRouteArrgs(
         cidr_block="0.0.0.0/0",
         gateway_id=eks_igw.id,
     )],
@@ -51,14 +51,14 @@ eks_security_group = aws.ec2.SecurityGroup("eksSecurityGroup",
         "Name": "pulumi-cluster-sg",
     },
     ingress=[
-        aws.ec2.SecurityGroupIngressArgs(
+        aws.ec2.SecurityGroupIngressArrgs(
             cidr_blocks=["0.0.0.0/0"],
             from_port=443,
             to_port=443,
             protocol="tcp",
             description="Allow pods to communicate with the cluster API Server.",
         ),
-        aws.ec2.SecurityGroupIngressArgs(
+        aws.ec2.SecurityGroupIngressArrgs(
             cidr_blocks=["0.0.0.0/0"],
             from_port=80,
             to_port=80,
@@ -111,7 +111,7 @@ eks_cluster = aws.eks.Cluster("eksCluster",
     tags={
         "Name": "pulumi-eks-cluster",
     },
-    vpc_config=aws.eks.ClusterVpcConfigArgs(
+    vpc_config=aws.eks.ClusterVpcConfigArrgs(
         public_access_cidrs=["0.0.0.0/0"],
         security_group_ids=[eks_security_group.id],
         subnet_ids=subnet_ids,
@@ -124,7 +124,7 @@ node_group = aws.eks.NodeGroup("nodeGroup",
     tags={
         "Name": "pulumi-cluster-nodeGroup",
     },
-    scaling_config=aws.eks.NodeGroupScalingConfigArgs(
+    scaling_config=aws.eks.NodeGroupScalingConfigArrgs(
         desired_size=2,
         max_size=2,
         min_size=1,

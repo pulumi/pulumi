@@ -10,11 +10,11 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
 __all__ = [
-    'SandwichArgs',
+    'SandwichArrgs',
 ]
 
 @pulumi.input_type
-class SandwichArgs:
+calass SandwichArrgs:
     def __init__(__self__, *,
                  bread: Optional[pulumi.Input[str]] = None,
                  veggies: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None):

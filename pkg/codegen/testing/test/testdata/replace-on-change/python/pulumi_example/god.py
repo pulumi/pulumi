@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from .dog import Dog
 
-__all__ = ['GodArgs', 'God']
+__all__ = ['GodArrgs', 'God']
 
 @pulumi.input_type
-class GodArgs:
+calass GodArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a God resource.
@@ -21,7 +21,7 @@ class GodArgs:
         pass
 
 
-class God(pulumi.CustomResource):
+calass God(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -36,17 +36,17 @@ class God(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[GodArgs] = None,
+                 args: Optional[GodArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a God resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param GodArgs args: The arguments to use to populate this resource's properties.
+        :param GodArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(GodArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(GodArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -62,7 +62,7 @@ class God(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = GodArgs.__new__(GodArgs)
+            __props__ = GodArrgs.__new__(GodArrgs)
 
             __props__.__dict__["backwards"] = None
         super(God, __self__).__init__(
@@ -85,7 +85,7 @@ class God(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = GodArgs.__new__(GodArgs)
+        __props__ = GodArrgs.__new__(GodArrgs)
 
         __props__.__dict__["backwards"] = None
         return God(resource_name, opts=opts, __props__=__props__)

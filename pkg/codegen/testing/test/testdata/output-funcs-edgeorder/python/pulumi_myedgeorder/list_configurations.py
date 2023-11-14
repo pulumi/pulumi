@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class ListConfigurationsResult:
+calass ListConfigurationsResult:
     """
     The list of configurations.
     """
@@ -49,7 +49,7 @@ class ListConfigurationsResult:
         return pulumi.get(self, "value")
 
 
-class AwaitableListConfigurationsResult(ListConfigurationsResult):
+calass AwaitableListConfigurationsResult(ListConfigurationsResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

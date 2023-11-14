@@ -19,7 +19,7 @@ __all__ = [
 ]
 
 @pulumi.input_type
-class ConfigurationFilters:
+calass ConfigurationFilters:
     def __init__(__self__, *,
                  hierarchy_information: 'HierarchyInformation',
                  filterable_property: Optional[Sequence['FilterableProperty']] = None):
@@ -58,7 +58,7 @@ class ConfigurationFilters:
 
 
 @pulumi.input_type
-class CustomerSubscriptionDetails:
+calass CustomerSubscriptionDetails:
     def __init__(__self__, *,
                  quota_id: str,
                  location_placement_id: Optional[str] = None,
@@ -113,7 +113,7 @@ class CustomerSubscriptionDetails:
 
 
 @pulumi.input_type
-class CustomerSubscriptionRegisteredFeatures:
+calass CustomerSubscriptionRegisteredFeatures:
     def __init__(__self__, *,
                  name: Optional[str] = None,
                  state: Optional[str] = None):
@@ -153,7 +153,7 @@ class CustomerSubscriptionRegisteredFeatures:
 
 
 @pulumi.input_type
-class FilterableProperty:
+calass FilterableProperty:
     def __init__(__self__, *,
                  supported_values: Sequence[str],
                  type: Union[str, 'SupportedFilterTypes']):
@@ -191,7 +191,7 @@ class FilterableProperty:
 
 
 @pulumi.input_type
-class HierarchyInformation:
+calass HierarchyInformation:
     def __init__(__self__, *,
                  configuration_name: Optional[str] = None,
                  product_family_name: Optional[str] = None,

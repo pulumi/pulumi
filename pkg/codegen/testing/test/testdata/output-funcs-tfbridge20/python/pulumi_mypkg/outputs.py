@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class StorageAccountKeyResponseResult(dict):
+calass StorageAccountKeyResponseResult(dict):
     """
     An access key for the storage account.
     """
@@ -70,7 +70,7 @@ class StorageAccountKeyResponseResult(dict):
 
 
 @pulumi.output_type
-class GetAmiIdsFilterResult(dict):
+calass GetAmiIdsFilterResult(dict):
     def __init__(__self__, *,
                  name: str,
                  values: Sequence[str]):

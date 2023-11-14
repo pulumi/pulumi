@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class TopLevel(dict):
+calass TopLevel(dict):
     def __init__(__self__, *,
                  buzz: Optional[str] = None):
         if buzz is not None:

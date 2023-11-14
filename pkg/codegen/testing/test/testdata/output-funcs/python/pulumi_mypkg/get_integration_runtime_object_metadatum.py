@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class GetIntegrationRuntimeObjectMetadatumResult:
+calass GetIntegrationRuntimeObjectMetadatumResult:
     """
     A list of SSIS object metadata.
     """
@@ -47,7 +47,7 @@ class GetIntegrationRuntimeObjectMetadatumResult:
         return pulumi.get(self, "value")
 
 
-class AwaitableGetIntegrationRuntimeObjectMetadatumResult(GetIntegrationRuntimeObjectMetadatumResult):
+calass AwaitableGetIntegrationRuntimeObjectMetadatumResult(GetIntegrationRuntimeObjectMetadatumResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 from . import outputs
 
-__all__ = ['SqlResourceSqlContainerArgs', 'SqlResourceSqlContainer']
+__all__ = ['SqlResourceSqlContainerArrgs', 'SqlResourceSqlContainer']
 
 @pulumi.input_type
-class SqlResourceSqlContainerArgs:
+calass SqlResourceSqlContainerArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a SqlResourceSqlContainer resource.
@@ -21,7 +21,7 @@ class SqlResourceSqlContainerArgs:
         pass
 
 
-class SqlResourceSqlContainer(pulumi.CustomResource):
+calass SqlResourceSqlContainer(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -101,7 +101,7 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[SqlResourceSqlContainerArgs] = None,
+                 args: Optional[SqlResourceSqlContainerArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         An Azure Cosmos DB container.
@@ -171,12 +171,12 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
         ```
 
         :param str resource_name: The name of the resource.
-        :param SqlResourceSqlContainerArgs args: The arguments to use to populate this resource's properties.
+        :param SqlResourceSqlContainerArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(SqlResourceSqlContainerArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(SqlResourceSqlContainerArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -192,7 +192,7 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = SqlResourceSqlContainerArgs.__new__(SqlResourceSqlContainerArgs)
+            __props__ = SqlResourceSqlContainerArrgs.__new__(SqlResourceSqlContainerArrgs)
 
             __props__.__dict__["resource"] = None
         super(SqlResourceSqlContainer, __self__).__init__(
@@ -215,7 +215,7 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = SqlResourceSqlContainerArgs.__new__(SqlResourceSqlContainerArgs)
+        __props__ = SqlResourceSqlContainerArrgs.__new__(SqlResourceSqlContainerArrgs)
 
         __props__.__dict__["resource"] = None
         return SqlResourceSqlContainer(resource_name, opts=opts, __props__=__props__)

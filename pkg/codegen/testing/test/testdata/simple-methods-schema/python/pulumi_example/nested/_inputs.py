@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.input_type
-class Baz:
+calass Baz:
     def __init__(__self__, *,
                  hello: Optional[str] = None,
                  world: Optional[str] = None):

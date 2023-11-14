@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class GetCustomDbRolesResult:
+calass GetCustomDbRolesResult:
     def __init__(__self__, result=None):
         if result and not isinstance(result, dict):
             raise TypeError("Expected argument 'result' to be a dict")
@@ -30,7 +30,7 @@ class GetCustomDbRolesResult:
         return pulumi.get(self, "result")
 
 
-class AwaitableGetCustomDbRolesResult(GetCustomDbRolesResult):
+calass AwaitableGetCustomDbRolesResult(GetCustomDbRolesResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

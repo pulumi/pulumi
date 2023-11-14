@@ -11,14 +11,14 @@ from . import _utilities
 from . import outputs
 from ._inputs import *
 
-__all__ = ['ResourceArgs', 'Resource']
+__all__ = ['ResourceArrgs', 'Resource']
 
 @pulumi.input_type
-class ResourceArgs:
+calass ResourceArrgs:
     def __init__(__self__, *,
-                 config: pulumi.Input['ConfigArgs'],
-                 config_array: pulumi.Input[Sequence[pulumi.Input['ConfigArgs']]],
-                 config_map: pulumi.Input[Mapping[str, pulumi.Input['ConfigArgs']]],
+                 config: pulumi.Input['ConfigArrgs'],
+                 config_array: pulumi.Input[Sequence[pulumi.Input['ConfigArrgs']]],
+                 config_map: pulumi.Input[Mapping[str, pulumi.Input['ConfigArrgs']]],
                  foo: pulumi.Input[str],
                  foo_array: pulumi.Input[Sequence[pulumi.Input[str]]],
                  foo_map: pulumi.Input[Mapping[str, pulumi.Input[str]]]):
@@ -34,29 +34,29 @@ class ResourceArgs:
 
     @property
     @pulumi.getter
-    def config(self) -> pulumi.Input['ConfigArgs']:
+    def config(self) -> pulumi.Input['ConfigArrgs']:
         return pulumi.get(self, "config")
 
     @config.setter
-    def config(self, value: pulumi.Input['ConfigArgs']):
+    def config(self, value: pulumi.Input['ConfigArrgs']):
         pulumi.set(self, "config", value)
 
     @property
     @pulumi.getter(name="configArray")
-    def config_array(self) -> pulumi.Input[Sequence[pulumi.Input['ConfigArgs']]]:
+    def config_array(self) -> pulumi.Input[Sequence[pulumi.Input['ConfigArrgs']]]:
         return pulumi.get(self, "config_array")
 
     @config_array.setter
-    def config_array(self, value: pulumi.Input[Sequence[pulumi.Input['ConfigArgs']]]):
+    def config_array(self, value: pulumi.Input[Sequence[pulumi.Input['ConfigArrgs']]]):
         pulumi.set(self, "config_array", value)
 
     @property
     @pulumi.getter(name="configMap")
-    def config_map(self) -> pulumi.Input[Mapping[str, pulumi.Input['ConfigArgs']]]:
+    def config_map(self) -> pulumi.Input[Mapping[str, pulumi.Input['ConfigArrgs']]]:
         return pulumi.get(self, "config_map")
 
     @config_map.setter
-    def config_map(self, value: pulumi.Input[Mapping[str, pulumi.Input['ConfigArgs']]]):
+    def config_map(self, value: pulumi.Input[Mapping[str, pulumi.Input['ConfigArrgs']]]):
         pulumi.set(self, "config_map", value)
 
     @property
@@ -87,14 +87,14 @@ class ResourceArgs:
         pulumi.set(self, "foo_map", value)
 
 
-class Resource(pulumi.CustomResource):
+calass Resource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 config: Optional[pulumi.Input[pulumi.InputType['ConfigArgs']]] = None,
-                 config_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['ConfigArgs']]]]] = None,
-                 config_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['ConfigArgs']]]]] = None,
+                 config: Optional[pulumi.Input[pulumi.InputType['ConfigArrgs']]] = None,
+                 config_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['ConfigArrgs']]]]] = None,
+                 config_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['ConfigArrgs']]]]] = None,
                  foo: Optional[pulumi.Input[str]] = None,
                  foo_array: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  foo_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
@@ -108,17 +108,17 @@ class Resource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: ResourceArgs,
+                 args: ResourceArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Resource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ResourceArgs args: The arguments to use to populate this resource's properties.
+        :param ResourceArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ResourceArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -127,9 +127,9 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 config: Optional[pulumi.Input[pulumi.InputType['ConfigArgs']]] = None,
-                 config_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['ConfigArgs']]]]] = None,
-                 config_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['ConfigArgs']]]]] = None,
+                 config: Optional[pulumi.Input[pulumi.InputType['ConfigArrgs']]] = None,
+                 config_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['ConfigArrgs']]]]] = None,
+                 config_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['ConfigArrgs']]]]] = None,
                  foo: Optional[pulumi.Input[str]] = None,
                  foo_array: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  foo_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
@@ -140,7 +140,7 @@ class Resource(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ResourceArgs.__new__(ResourceArgs)
+            __props__ = ResourceArrgs.__new__(ResourceArrgs)
 
             if config is None and not opts.urn:
                 raise TypeError("Missing required property 'config'")
@@ -182,7 +182,7 @@ class Resource(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = ResourceArgs.__new__(ResourceArgs)
+        __props__ = ResourceArrgs.__new__(ResourceArrgs)
 
         __props__.__dict__["config"] = None
         __props__.__dict__["config_array"] = None

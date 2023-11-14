@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class ArgFunctionResult:
+calass ArgFunctionResult:
     def __init__(__self__, result=None):
         if result and not isinstance(result, Resource):
             raise TypeError("Expected argument 'result' to be a Resource")
@@ -30,7 +30,7 @@ class ArgFunctionResult:
         return pulumi.get(self, "result")
 
 
-class AwaitableArgFunctionResult(ArgFunctionResult):
+calass AwaitableArgFunctionResult(ArgFunctionResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

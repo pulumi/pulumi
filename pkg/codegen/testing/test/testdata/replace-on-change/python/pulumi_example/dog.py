@@ -9,10 +9,10 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
-__all__ = ['DogArgs', 'Dog']
+__all__ = ['DogArrgs', 'Dog']
 
 @pulumi.input_type
-class DogArgs:
+calass DogArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a Dog resource.
@@ -20,7 +20,7 @@ class DogArgs:
         pass
 
 
-class Dog(pulumi.CustomResource):
+calass Dog(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -35,17 +35,17 @@ class Dog(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[DogArgs] = None,
+                 args: Optional[DogArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Dog resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param DogArgs args: The arguments to use to populate this resource's properties.
+        :param DogArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(DogArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(DogArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -61,7 +61,7 @@ class Dog(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = DogArgs.__new__(DogArgs)
+            __props__ = DogArrgs.__new__(DogArrgs)
 
             __props__.__dict__["bone"] = None
         replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["bone"])
@@ -86,7 +86,7 @@ class Dog(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = DogArgs.__new__(DogArgs)
+        __props__ = DogArrgs.__new__(DogArrgs)
 
         __props__.__dict__["bone"] = None
         return Dog(resource_name, opts=opts, __props__=__props__)

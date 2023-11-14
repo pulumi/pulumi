@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class Config(dict):
+calass Config(dict):
     def __init__(__self__, *,
                  foo: Optional[str] = None):
         if foo is not None:

@@ -9,6 +9,6 @@ __all__ = [
 ]
 
 
-class MyEnum(float, Enum):
+calass MyEnum(float, Enum):
     PI = 3.1415
     SMALL = 1e-07

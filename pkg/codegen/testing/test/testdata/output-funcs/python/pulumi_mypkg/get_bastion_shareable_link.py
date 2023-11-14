@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class GetBastionShareableLinkResult:
+calass GetBastionShareableLinkResult:
     """
     Response for all the Bastion Shareable Link endpoints.
     """
@@ -36,7 +36,7 @@ class GetBastionShareableLinkResult:
         return pulumi.get(self, "next_link")
 
 
-class AwaitableGetBastionShareableLinkResult(GetBastionShareableLinkResult):
+calass AwaitableGetBastionShareableLinkResult(GetBastionShareableLinkResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

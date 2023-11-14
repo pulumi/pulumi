@@ -7,7 +7,7 @@ test_lambda = aws.lambda_.Function("testLambda",
     role=iam_for_lambda.arn,
     handler="index.test",
     runtime="nodejs12.x",
-    environment=aws.lambda_.FunctionEnvironmentArgs(
+    environment=aws.lambda_.FunctionEnvironmentArrgs(
         variables={
             "foo": "bar",
         },

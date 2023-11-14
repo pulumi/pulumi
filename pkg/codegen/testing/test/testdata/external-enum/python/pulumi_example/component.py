@@ -11,10 +11,10 @@ from . import _utilities
 from . import local
 import pulumi_google_native
 
-__all__ = ['ComponentArgs', 'Component']
+__all__ = ['ComponentArrgs', 'Component']
 
 @pulumi.input_type
-class ComponentArgs:
+calass ComponentArrgs:
     def __init__(__self__, *,
                  local_enum: Optional[pulumi.Input['local.MyEnum']] = None,
                  remote_enum: Optional[pulumi.Input['pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem']] = None):
@@ -45,7 +45,7 @@ class ComponentArgs:
         pulumi.set(self, "remote_enum", value)
 
 
-class Component(pulumi.CustomResource):
+calass Component(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -62,17 +62,17 @@ class Component(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ComponentArgs] = None,
+                 args: Optional[ComponentArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Component resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ComponentArgs args: The arguments to use to populate this resource's properties.
+        :param ComponentArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ComponentArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ComponentArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -90,7 +90,7 @@ class Component(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ComponentArgs.__new__(ComponentArgs)
+            __props__ = ComponentArrgs.__new__(ComponentArrgs)
 
             __props__.__dict__["local_enum"] = local_enum
             __props__.__dict__["remote_enum"] = remote_enum
@@ -114,7 +114,7 @@ class Component(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = ComponentArgs.__new__(ComponentArgs)
+        __props__ = ComponentArrgs.__new__(ComponentArrgs)
 
         __props__.__dict__["local_enum"] = None
         __props__.__dict__["remote_enum"] = None

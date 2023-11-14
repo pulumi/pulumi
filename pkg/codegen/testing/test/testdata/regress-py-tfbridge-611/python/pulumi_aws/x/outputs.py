@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class GetPolicyDocumentStatementResult(dict):
+calass GetPolicyDocumentStatementResult(dict):
     def __init__(__self__, *,
                  actions: Optional[Sequence[str]] = None):
         if actions is not None:

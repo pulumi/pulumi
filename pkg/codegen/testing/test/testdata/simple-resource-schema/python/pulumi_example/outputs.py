@@ -19,7 +19,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class ConfigMap(dict):
+calass ConfigMap(dict):
     def __init__(__self__, *,
                  config: Optional[str] = None):
         if config is not None:
@@ -32,7 +32,7 @@ class ConfigMap(dict):
 
 
 @pulumi.output_type
-class Object(dict):
+calass Object(dict):
     @staticmethod
     def __key_warning(key: str):
         suggest = None
@@ -104,7 +104,7 @@ class Object(dict):
 
 
 @pulumi.output_type
-class ObjectWithNodeOptionalInputs(dict):
+calass ObjectWithNodeOptionalInputs(dict):
     def __init__(__self__, *,
                  foo: str,
                  bar: Optional[int] = None):
@@ -124,7 +124,7 @@ class ObjectWithNodeOptionalInputs(dict):
 
 
 @pulumi.output_type
-class SomeOtherObject(dict):
+calass SomeOtherObject(dict):
     def __init__(__self__, *,
                  baz: Optional[str] = None):
         if baz is not None:

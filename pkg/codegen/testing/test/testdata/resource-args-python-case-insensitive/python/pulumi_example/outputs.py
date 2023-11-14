@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class Pet(dict):
+calass Pet(dict):
     def __init__(__self__, *,
                  name: Optional[str] = None):
         if name is not None:

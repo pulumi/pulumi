@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class Child(dict):
+calass Child(dict):
     def __init__(__self__, *,
                  age: Optional[int] = None,
                  name: Optional[str] = None):

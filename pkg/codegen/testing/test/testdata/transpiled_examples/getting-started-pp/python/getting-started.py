@@ -1,7 +1,7 @@
 import pulumi
 import pulumi_aws as aws
 
-mybucket = aws.s3.Bucket("mybucket", website=aws.s3.BucketWebsiteArgs(
+mybucket = aws.s3.Bucket("mybucket", website=aws.s3.BucketWebsiteArrgs(
     index_document="index.html",
 ))
 indexhtml = aws.s3.BucketObject("indexhtml",

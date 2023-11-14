@@ -10,11 +10,11 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
-    'FooArgs',
+    'FooArrgs',
 ]
 
 @pulumi.input_type
-class FooArgs:
+calass FooArrgs:
     def __init__(__self__, *,
                  a: bool,
                  c: int,

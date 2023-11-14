@@ -11,13 +11,13 @@ from . import _utilities
 from . import outputs
 from ._inputs import *
 
-__all__ = ['PersonArgs', 'Person']
+__all__ = ['PersonArrgs', 'Person']
 
 @pulumi.input_type
-class PersonArgs:
+calass PersonArrgs:
     def __init__(__self__, *,
                  name: Optional[pulumi.Input[str]] = None,
-                 pets: Optional[pulumi.Input[Sequence[pulumi.Input['PetArgs']]]] = None):
+                 pets: Optional[pulumi.Input[Sequence[pulumi.Input['PetArrgs']]]] = None):
         """
         The set of arguments for constructing a Person resource.
         """
@@ -37,21 +37,21 @@ class PersonArgs:
 
     @property
     @pulumi.getter
-    def pets(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['PetArgs']]]]:
+    def pets(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['PetArrgs']]]]:
         return pulumi.get(self, "pets")
 
     @pets.setter
-    def pets(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['PetArgs']]]]):
+    def pets(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['PetArrgs']]]]):
         pulumi.set(self, "pets", value)
 
 
-class Person(pulumi.CustomResource):
+calass Person(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  name: Optional[pulumi.Input[str]] = None,
-                 pets: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['PetArgs']]]]] = None,
+                 pets: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['PetArrgs']]]]] = None,
                  __props__=None):
         """
         Create a Person resource with the given unique name, props, and options.
@@ -62,17 +62,17 @@ class Person(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[PersonArgs] = None,
+                 args: Optional[PersonArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Person resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param PersonArgs args: The arguments to use to populate this resource's properties.
+        :param PersonArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(PersonArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(PersonArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -82,7 +82,7 @@ class Person(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  name: Optional[pulumi.Input[str]] = None,
-                 pets: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['PetArgs']]]]] = None,
+                 pets: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['PetArrgs']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -90,7 +90,7 @@ class Person(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = PersonArgs.__new__(PersonArgs)
+            __props__ = PersonArrgs.__new__(PersonArrgs)
 
             __props__.__dict__["name"] = name
             __props__.__dict__["pets"] = pets
@@ -114,7 +114,7 @@ class Person(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = PersonArgs.__new__(PersonArgs)
+        __props__ = PersonArrgs.__new__(PersonArrgs)
 
         __props__.__dict__["name"] = None
         __props__.__dict__["pets"] = None

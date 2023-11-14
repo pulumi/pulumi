@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class Sandwich(dict):
+calass Sandwich(dict):
     def __init__(__self__, *,
                  bread: Optional[str] = None,
                  veggies: Optional[Sequence[str]] = None):

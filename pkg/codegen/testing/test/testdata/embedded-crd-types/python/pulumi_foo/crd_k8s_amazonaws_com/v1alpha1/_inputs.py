@@ -10,11 +10,11 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from ... import _utilities
 
 __all__ = [
-    'ENIConfigSpecArgs',
+    'ENIConfigSpecArrgs',
 ]
 
 @pulumi.input_type
-class ENIConfigSpecArgs:
+calass ENIConfigSpecArrgs:
     def __init__(__self__, *,
                  security_groups: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
                  subnet: Optional[pulumi.Input[str]] = None):

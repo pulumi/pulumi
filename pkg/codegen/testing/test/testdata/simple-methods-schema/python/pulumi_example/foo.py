@@ -11,10 +11,10 @@ from . import _utilities
 from . import nested as _nested
 import pulumi_random
 
-__all__ = ['FooArgs', 'Foo']
+__all__ = ['FooArrgs', 'Foo']
 
 @pulumi.input_type
-class FooArgs:
+calass FooArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a Foo resource.
@@ -22,7 +22,7 @@ class FooArgs:
         pass
 
 
-class Foo(pulumi.ComponentResource):
+calass Foo(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -37,17 +37,17 @@ class Foo(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[FooArgs] = None,
+                 args: Optional[FooArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Foo resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param FooArgs args: The arguments to use to populate this resource's properties.
+        :param FooArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(FooArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(FooArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -65,7 +65,7 @@ class Foo(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = FooArgs.__new__(FooArgs)
+            __props__ = FooArrgs.__new__(FooArrgs)
 
         super(Foo, __self__).__init__(
             'example::Foo',
@@ -75,7 +75,7 @@ class Foo(pulumi.ComponentResource):
             remote=True)
 
     @pulumi.output_type
-    class BarResult:
+    calass BarResult:
         def __init__(__self__, some_value=None):
             if some_value and not isinstance(some_value, str):
                 raise TypeError("Expected argument 'some_value' to be a str")
@@ -87,12 +87,12 @@ class Foo(pulumi.ComponentResource):
             return pulumi.get(self, "some_value")
 
     def bar(__self__, *,
-            baz_required: pulumi.Input['_nested.BazArgs'],
+            baz_required: pulumi.Input['_nested.BazArrgs'],
             bool_value_required: pulumi.Input[bool],
             name_required: pulumi.Input['pulumi_random.RandomPet'],
             string_value_required: pulumi.Input[str],
-            baz: Optional[pulumi.Input['_nested.BazArgs']] = None,
-            baz_plain: Optional['_nested.BazArgs'] = None,
+            baz: Optional[pulumi.Input['_nested.BazArrgs']] = None,
+            baz_plain: Optional['_nested.BazArrgs'] = None,
             bool_value: Optional[pulumi.Input[bool]] = None,
             bool_value_plain: Optional[bool] = None,
             name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
@@ -124,7 +124,7 @@ class Foo(pulumi.ComponentResource):
         pulumi.runtime.call('example::Foo/baz', __args__, res=__self__)
 
     @pulumi.output_type
-    class GenerateKubeconfigResult:
+    calass GenerateKubeconfigResult:
         def __init__(__self__, kubeconfig=None):
             if kubeconfig and not isinstance(kubeconfig, str):
                 raise TypeError("Expected argument 'kubeconfig' to be a str")

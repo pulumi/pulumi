@@ -16,7 +16,7 @@ import types
 __config__ = pulumi.Config('configstation')
 
 
-class _ExportableConfig(types.ModuleType):
+calass _ExportableConfig(types.ModuleType):
     @property
     def favorite_plants(self) -> Optional[str]:
         return __config__.get('favoritePlants')

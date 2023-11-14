@@ -10,11 +10,11 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 
 __all__ = [
-    'GetPolicyDocumentStatementArgs',
+    'GetPolicyDocumentStatementArrgs',
 ]
 
 @pulumi.input_type
-class GetPolicyDocumentStatementArgs:
+calass GetPolicyDocumentStatementArrgs:
     def __init__(__self__, *,
                  actions: Optional[Sequence[str]] = None):
         if actions is not None:

@@ -5,7 +5,7 @@ config = pulumi.Config()
 instance_type = config.get("instanceType")
 if instance_type is None:
     instance_type = "t2.micro"
-ami = aws.ec2.get_ami(filters=[aws.ec2.GetAmiFilterArgs(
+ami = aws.ec2.get_ami(filters=[aws.ec2.GetAmiFilterArrgs(
         name="name",
         values=["amzn-ami-hvm-*"],
     )],
@@ -16,7 +16,7 @@ echo "Hello, World from Pulumi!" > index.html
 nohup python -m SimpleHTTPServer 80 &"""
 sec_group = aws.ec2.SecurityGroup("secGroup",
     description="Enable HTTP access",
-    ingress=[aws.ec2.SecurityGroupIngressArgs(
+    ingress=[aws.ec2.SecurityGroupIngressArrgs(
         from_port=80,
         to_port=80,
         protocol="tcp",

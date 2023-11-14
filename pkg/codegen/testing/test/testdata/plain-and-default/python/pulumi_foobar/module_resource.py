@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._enums import *
 
-__all__ = ['ModuleResourceArgs', 'ModuleResource']
+__all__ = ['ModuleResourceArrgs', 'ModuleResource']
 
 @pulumi.input_type
-class ModuleResourceArgs:
+calass ModuleResourceArrgs:
     def __init__(__self__, *,
                  plain_required_bool: Optional[bool] = None,
                  plain_required_const: Optional[str] = None,
@@ -250,7 +250,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_optional_string", value)
 
 
-class ModuleResource(pulumi.CustomResource):
+calass ModuleResource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -282,17 +282,17 @@ class ModuleResource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: ModuleResourceArgs,
+                 args: ModuleResourceArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a ModuleResource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ModuleResourceArgs args: The arguments to use to populate this resource's properties.
+        :param ModuleResourceArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ModuleResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ModuleResourceArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -325,7 +325,7 @@ class ModuleResource(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
+            __props__ = ModuleResourceArrgs.__new__(ModuleResourceArrgs)
 
             if optional_bool is None:
                 optional_bool = True
@@ -414,7 +414,7 @@ class ModuleResource(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
+        __props__ = ModuleResourceArrgs.__new__(ModuleResourceArrgs)
 
         __props__.__dict__["optional_bool"] = None
         return ModuleResource(resource_name, opts=opts, __props__=__props__)

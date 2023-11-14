@@ -2,13 +2,13 @@ import pulumi
 import pulumi_aws as aws
 
 # Create a new security group for port 80.
-security_group = aws.ec2.SecurityGroup("securityGroup", ingress=[aws.ec2.SecurityGroupIngressArgs(
+security_group = aws.ec2.SecurityGroup("securityGroup", ingress=[aws.ec2.SecurityGroupIngressArrgs(
     protocol="tcp",
     from_port=0,
     to_port=0,
     cidr_blocks=["0.0.0.0/0"],
 )])
-ami = aws.get_ami(filters=[aws.GetAmiFilterArgs(
+ami = aws.get_ami(filters=[aws.GetAmiFilterArrgs(
         name="name",
         values=["amzn-ami-hvm-*-x86_64-ebs"],
     )],

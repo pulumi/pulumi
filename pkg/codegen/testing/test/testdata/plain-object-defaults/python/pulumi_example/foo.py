@@ -11,20 +11,20 @@ from . import _utilities
 from . import outputs
 from ._inputs import *
 
-__all__ = ['FooArgs', 'Foo']
+__all__ = ['FooArrgs', 'Foo']
 
 @pulumi.input_type
-class FooArgs:
+calass FooArrgs:
     def __init__(__self__, *,
-                 backup_kube_client_settings: pulumi.Input['KubeClientSettingsArgs'],
+                 backup_kube_client_settings: pulumi.Input['KubeClientSettingsArrgs'],
                  argument: Optional[str] = None,
-                 kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
-                 settings: Optional[pulumi.Input['LayeredTypeArgs']] = None):
+                 kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArrgs']] = None,
+                 settings: Optional[pulumi.Input['LayeredTypeArrgs']] = None):
         """
         The set of arguments for constructing a Foo resource.
-        :param pulumi.Input['KubeClientSettingsArgs'] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input['LayeredTypeArgs'] settings: describing things
+        :param pulumi.Input['KubeClientSettingsArrgs'] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input['KubeClientSettingsArrgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input['LayeredTypeArrgs'] settings: describing things
         """
         pulumi.set(__self__, "backup_kube_client_settings", backup_kube_client_settings)
         if argument is not None:
@@ -36,14 +36,14 @@ class FooArgs:
 
     @property
     @pulumi.getter(name="backupKubeClientSettings")
-    def backup_kube_client_settings(self) -> pulumi.Input['KubeClientSettingsArgs']:
+    def backup_kube_client_settings(self) -> pulumi.Input['KubeClientSettingsArrgs']:
         """
         Options for tuning the Kubernetes client used by a Provider.
         """
         return pulumi.get(self, "backup_kube_client_settings")
 
     @backup_kube_client_settings.setter
-    def backup_kube_client_settings(self, value: pulumi.Input['KubeClientSettingsArgs']):
+    def backup_kube_client_settings(self, value: pulumi.Input['KubeClientSettingsArrgs']):
         pulumi.set(self, "backup_kube_client_settings", value)
 
     @property
@@ -57,64 +57,64 @@ class FooArgs:
 
     @property
     @pulumi.getter(name="kubeClientSettings")
-    def kube_client_settings(self) -> Optional[pulumi.Input['KubeClientSettingsArgs']]:
+    def kube_client_settings(self) -> Optional[pulumi.Input['KubeClientSettingsArrgs']]:
         """
         Options for tuning the Kubernetes client used by a Provider.
         """
         return pulumi.get(self, "kube_client_settings")
 
     @kube_client_settings.setter
-    def kube_client_settings(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
+    def kube_client_settings(self, value: Optional[pulumi.Input['KubeClientSettingsArrgs']]):
         pulumi.set(self, "kube_client_settings", value)
 
     @property
     @pulumi.getter
-    def settings(self) -> Optional[pulumi.Input['LayeredTypeArgs']]:
+    def settings(self) -> Optional[pulumi.Input['LayeredTypeArrgs']]:
         """
         describing things
         """
         return pulumi.get(self, "settings")
 
     @settings.setter
-    def settings(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
+    def settings(self, value: Optional[pulumi.Input['LayeredTypeArrgs']]):
         pulumi.set(self, "settings", value)
 
 
-class Foo(pulumi.CustomResource):
+calass Foo(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
-                 backup_kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
-                 kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
-                 settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
+                 backup_kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArrgs']]] = None,
+                 kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArrgs']]] = None,
+                 settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArrgs']]] = None,
                  __props__=None):
         """
         test new feature with resoruces
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input[pulumi.InputType['LayeredTypeArgs']] settings: describing things
+        :param pulumi.Input[pulumi.InputType['KubeClientSettingsArrgs']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[pulumi.InputType['KubeClientSettingsArrgs']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[pulumi.InputType['LayeredTypeArrgs']] settings: describing things
         """
         ...
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: FooArgs,
+                 args: FooArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         test new feature with resoruces
 
         :param str resource_name: The name of the resource.
-        :param FooArgs args: The arguments to use to populate this resource's properties.
+        :param FooArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(FooArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(FooArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -124,9 +124,9 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
-                 backup_kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
-                 kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
-                 settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
+                 backup_kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArrgs']]] = None,
+                 kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArrgs']]] = None,
+                 settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArrgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -134,7 +134,7 @@ class Foo(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = FooArgs.__new__(FooArgs)
+            __props__ = FooArrgs.__new__(FooArrgs)
 
             __props__.__dict__["argument"] = argument
             if backup_kube_client_settings is None and not opts.urn:
@@ -163,7 +163,7 @@ class Foo(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = FooArgs.__new__(FooArgs)
+        __props__ = FooArrgs.__new__(FooArrgs)
 
         __props__.__dict__["default_kube_client_settings"] = None
         return Foo(resource_name, opts=opts, __props__=__props__)

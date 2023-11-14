@@ -11,10 +11,10 @@ from . import _utilities
 from . import outputs
 from .god import God
 
-__all__ = ['CatArgs', 'Cat']
+__all__ = ['CatArrgs', 'Cat']
 
 @pulumi.input_type
-class CatArgs:
+calass CatArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a Cat resource.
@@ -22,7 +22,7 @@ class CatArgs:
         pass
 
 
-class Cat(pulumi.CustomResource):
+calass Cat(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -37,17 +37,17 @@ class Cat(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[CatArgs] = None,
+                 args: Optional[CatArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Cat resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param CatArgs args: The arguments to use to populate this resource's properties.
+        :param CatArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(CatArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(CatArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -63,7 +63,7 @@ class Cat(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = CatArgs.__new__(CatArgs)
+            __props__ = CatArrgs.__new__(CatArrgs)
 
             __props__.__dict__["foes"] = None
             __props__.__dict__["friends"] = None
@@ -94,7 +94,7 @@ class Cat(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = CatArgs.__new__(CatArgs)
+        __props__ = CatArrgs.__new__(CatArrgs)
 
         __props__.__dict__["foes"] = None
         __props__.__dict__["friends"] = None

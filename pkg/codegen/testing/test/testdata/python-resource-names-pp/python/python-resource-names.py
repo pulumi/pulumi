@@ -2,7 +2,7 @@ import pulumi
 import pulumi_azure_native as azure_native
 
 cluster = azure_native.containerservice.ManagedCluster("cluster",
-    agent_pool_profiles=[azure_native.containerservice.ManagedClusterAgentPoolProfileArgs(
+    agent_pool_profiles=[azure_native.containerservice.ManagedClusterAgentPoolProfileArrgs(
         count=2,
         enable_fips=False,
         kubelet_disk_type="OS",
@@ -22,14 +22,14 @@ cluster = azure_native.containerservice.ManagedCluster("cluster",
     enable_rbac=True,
     kubernetes_version="1.21.9",
     location="eastus",
-    network_profile=azure_native.containerservice.ContainerServiceNetworkProfileArgs(
+    network_profile=azure_native.containerservice.ContainerServiceNetworkProfileArrgs(
         dns_service_ip="10.10.0.10",
         docker_bridge_cidr="172.17.0.1/16",
-        load_balancer_profile=azure_native.containerservice.ManagedClusterLoadBalancerProfileArgs(
-            effective_outbound_ips=[azure_native.containerservice.ResourceReferenceArgs(
+        load_balancer_profile=azure_native.containerservice.ManagedClusterLoadBalancerProfileArrgs(
+            effective_outbound_ips=[azure_native.containerservice.ResourceReferenceArrgs(
                 id="/subscriptions/0282681f-7a9e-424b-80b2-96babd57a8a1/resourceGroups/MC_test-rga2bd359a_test-aks5fb1e730_eastus/providers/Microsoft.Network/publicIPAddresses/2a2610b5-67f3-4aec-a277-a032b2364d70",
             )],
-            managed_outbound_ips=azure_native.containerservice.ManagedClusterLoadBalancerProfileManagedOutboundIPsArgs(
+            managed_outbound_ips=azure_native.containerservice.ManagedClusterLoadBalancerProfileManagedOutboundIPsArrgs(
                 count=1,
             ),
         ),
@@ -41,10 +41,10 @@ cluster = azure_native.containerservice.ManagedCluster("cluster",
     node_resource_group="MC_test-rga2bd359a_test-aks5fb1e730_eastus",
     resource_group_name="test-rga2bd359a",
     resource_name_="test-aks5fb1e730",
-    service_principal_profile=azure_native.containerservice.ManagedClusterServicePrincipalProfileArgs(
+    service_principal_profile=azure_native.containerservice.ManagedClusterServicePrincipalProfileArrgs(
         client_id="64e3783f-3214-4ba7-bb52-12ad85412527",
     ),
-    sku=azure_native.containerservice.ManagedClusterSKUArgs(
+    sku=azure_native.containerservice.ManagedClusterSKUArrgs(
         name="Basic",
         tier="Free",
     ),

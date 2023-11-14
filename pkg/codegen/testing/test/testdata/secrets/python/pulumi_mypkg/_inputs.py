@@ -10,11 +10,11 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
-    'ConfigArgs',
+    'ConfigArrgs',
 ]
 
 @pulumi.input_type
-class ConfigArgs:
+calass ConfigArrgs:
     def __init__(__self__, *,
                  foo: Optional[pulumi.Input[str]] = None):
         if foo is not None:

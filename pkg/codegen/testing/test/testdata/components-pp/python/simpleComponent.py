@@ -3,7 +3,7 @@ from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_random as random
 
-class SimpleComponent(pulumi.ComponentResource):
+calass SimpleComponent(pulumi.ComponentResource):
     def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
         super().__init__("components:index:SimpleComponent", name, {}, opts)
 

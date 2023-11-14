@@ -11,13 +11,13 @@ from .. import _utilities
 from .. import mod1 as _mod1
 
 __all__ = [
-    'TypArgs',
+    'TypArrgs',
 ]
 
 @pulumi.input_type
-class TypArgs:
+calass TypArrgs:
     def __init__(__self__, *,
-                 mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
+                 mod1: Optional[pulumi.Input['_mod1.TypArrgs']] = None,
                  val: Optional[pulumi.Input[str]] = None):
         """
         A test for namespaces (mod 2)
@@ -31,11 +31,11 @@ class TypArgs:
 
     @property
     @pulumi.getter
-    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArgs']]:
+    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArrgs']]:
         return pulumi.get(self, "mod1")
 
     @mod1.setter
-    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArgs']]):
+    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArrgs']]):
         pulumi.set(self, "mod1", value)
 
     @property

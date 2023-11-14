@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class ListProductFamiliesResult:
+calass ListProductFamiliesResult:
     """
     The list of product families.
     """
@@ -49,7 +49,7 @@ class ListProductFamiliesResult:
         return pulumi.get(self, "value")
 
 
-class AwaitableListProductFamiliesResult(ListProductFamiliesResult):
+calass AwaitableListProductFamiliesResult(ListProductFamiliesResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

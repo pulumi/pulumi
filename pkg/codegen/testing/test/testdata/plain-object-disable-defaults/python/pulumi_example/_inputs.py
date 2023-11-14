@@ -13,14 +13,14 @@ from . import mod2 as _mod2
 
 __all__ = [
     'HelmReleaseSettings',
-    'HelmReleaseSettingsArgs',
-    'KubeClientSettingsArgs',
-    'LayeredTypeArgs',
-    'TypArgs',
+    'HelmReleaseSettingsArrgs',
+    'KubeClientSettingsArrgs',
+    'LayeredTypeArrgs',
+    'TypArrgs',
 ]
 
 @pulumi.input_type
-class HelmReleaseSettings:
+calass HelmReleaseSettings:
     def __init__(__self__, *,
                  required_arg: str,
                  driver: Optional[str] = None,
@@ -79,7 +79,7 @@ class HelmReleaseSettings:
 
 
 @pulumi.input_type
-class HelmReleaseSettingsArgs:
+calass HelmReleaseSettingsArrgs:
     def __init__(__self__, *,
                  required_arg: pulumi.Input[str],
                  driver: Optional[pulumi.Input[str]] = None,
@@ -138,11 +138,11 @@ class HelmReleaseSettingsArgs:
 
 
 @pulumi.input_type
-class KubeClientSettingsArgs:
+calass KubeClientSettingsArrgs:
     def __init__(__self__, *,
                  burst: Optional[pulumi.Input[int]] = None,
                  qps: Optional[pulumi.Input[float]] = None,
-                 rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None):
+                 rec_test: Optional[pulumi.Input['KubeClientSettingsArrgs']] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input[int] burst: Maximum burst for throttle. Default value is 10.
@@ -185,28 +185,28 @@ class KubeClientSettingsArgs:
 
     @property
     @pulumi.getter(name="recTest")
-    def rec_test(self) -> Optional[pulumi.Input['KubeClientSettingsArgs']]:
+    def rec_test(self) -> Optional[pulumi.Input['KubeClientSettingsArrgs']]:
         return pulumi.get(self, "rec_test")
 
     @rec_test.setter
-    def rec_test(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
+    def rec_test(self, value: Optional[pulumi.Input['KubeClientSettingsArrgs']]):
         pulumi.set(self, "rec_test", value)
 
 
 @pulumi.input_type
-class LayeredTypeArgs:
+calass LayeredTypeArrgs:
     def __init__(__self__, *,
-                 other: pulumi.Input['HelmReleaseSettingsArgs'],
+                 other: pulumi.Input['HelmReleaseSettingsArrgs'],
                  thinker: Optional[pulumi.Input[str]] = None,
                  answer: Optional[pulumi.Input[float]] = None,
-                 plain_other: Optional['HelmReleaseSettingsArgs'] = None,
+                 plain_other: Optional['HelmReleaseSettingsArrgs'] = None,
                  question: Optional[pulumi.Input[str]] = None,
-                 recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None):
+                 recursive: Optional[pulumi.Input['LayeredTypeArrgs']] = None):
         """
         Make sure that defaults propagate through types
         :param pulumi.Input[str] thinker: To ask and answer
         :param pulumi.Input[float] answer: The answer to the question
-        :param 'HelmReleaseSettingsArgs' plain_other: Test how plain types interact
+        :param 'HelmReleaseSettingsArrgs' plain_other: Test how plain types interact
         :param pulumi.Input[str] question: The question already answered
         """
         pulumi.set(__self__, "other", other)
@@ -228,11 +228,11 @@ class LayeredTypeArgs:
 
     @property
     @pulumi.getter
-    def other(self) -> pulumi.Input['HelmReleaseSettingsArgs']:
+    def other(self) -> pulumi.Input['HelmReleaseSettingsArrgs']:
         return pulumi.get(self, "other")
 
     @other.setter
-    def other(self, value: pulumi.Input['HelmReleaseSettingsArgs']):
+    def other(self, value: pulumi.Input['HelmReleaseSettingsArrgs']):
         pulumi.set(self, "other", value)
 
     @property
@@ -261,14 +261,14 @@ class LayeredTypeArgs:
 
     @property
     @pulumi.getter(name="plainOther")
-    def plain_other(self) -> Optional['HelmReleaseSettingsArgs']:
+    def plain_other(self) -> Optional['HelmReleaseSettingsArrgs']:
         """
         Test how plain types interact
         """
         return pulumi.get(self, "plain_other")
 
     @plain_other.setter
-    def plain_other(self, value: Optional['HelmReleaseSettingsArgs']):
+    def plain_other(self, value: Optional['HelmReleaseSettingsArrgs']):
         pulumi.set(self, "plain_other", value)
 
     @property
@@ -285,19 +285,19 @@ class LayeredTypeArgs:
 
     @property
     @pulumi.getter
-    def recursive(self) -> Optional[pulumi.Input['LayeredTypeArgs']]:
+    def recursive(self) -> Optional[pulumi.Input['LayeredTypeArrgs']]:
         return pulumi.get(self, "recursive")
 
     @recursive.setter
-    def recursive(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
+    def recursive(self, value: Optional[pulumi.Input['LayeredTypeArrgs']]):
         pulumi.set(self, "recursive", value)
 
 
 @pulumi.input_type
-class TypArgs:
+calass TypArrgs:
     def __init__(__self__, *,
-                 mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
-                 mod2: Optional[pulumi.Input['_mod2.TypArgs']] = None,
+                 mod1: Optional[pulumi.Input['_mod1.TypArrgs']] = None,
+                 mod2: Optional[pulumi.Input['_mod2.TypArrgs']] = None,
                  val: Optional[pulumi.Input[str]] = None):
         """
         A test for namespaces (mod main)
@@ -313,20 +313,20 @@ class TypArgs:
 
     @property
     @pulumi.getter
-    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArgs']]:
+    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArrgs']]:
         return pulumi.get(self, "mod1")
 
     @mod1.setter
-    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArgs']]):
+    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArrgs']]):
         pulumi.set(self, "mod1", value)
 
     @property
     @pulumi.getter
-    def mod2(self) -> Optional[pulumi.Input['_mod2.TypArgs']]:
+    def mod2(self) -> Optional[pulumi.Input['_mod2.TypArrgs']]:
         return pulumi.get(self, "mod2")
 
     @mod2.setter
-    def mod2(self, value: Optional[pulumi.Input['_mod2.TypArgs']]):
+    def mod2(self, value: Optional[pulumi.Input['_mod2.TypArrgs']]):
         pulumi.set(self, "mod2", value)
 
     @property

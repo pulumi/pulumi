@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 
-class EnumThing(int, Enum):
+calass EnumThing(int, Enum):
     FOUR = 4
     SIX = 6
     EIGHT = 8

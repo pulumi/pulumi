@@ -12,10 +12,10 @@ from . import outputs
 from .cat import Cat
 from .dog import Dog
 
-__all__ = ['ToyStoreArgs', 'ToyStore']
+__all__ = ['ToyStoreArrgs', 'ToyStore']
 
 @pulumi.input_type
-class ToyStoreArgs:
+calass ToyStoreArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a ToyStore resource.
@@ -23,7 +23,7 @@ class ToyStoreArgs:
         pass
 
 
-class ToyStore(pulumi.CustomResource):
+calass ToyStore(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -38,17 +38,17 @@ class ToyStore(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ToyStoreArgs] = None,
+                 args: Optional[ToyStoreArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a ToyStore resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ToyStoreArgs args: The arguments to use to populate this resource's properties.
+        :param ToyStoreArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ToyStoreArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ToyStoreArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -64,7 +64,7 @@ class ToyStore(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ToyStoreArgs.__new__(ToyStoreArgs)
+            __props__ = ToyStoreArrgs.__new__(ToyStoreArrgs)
 
             __props__.__dict__["chew"] = None
             __props__.__dict__["laser"] = None
@@ -92,7 +92,7 @@ class ToyStore(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = ToyStoreArgs.__new__(ToyStoreArgs)
+        __props__ = ToyStoreArrgs.__new__(ToyStoreArrgs)
 
         __props__.__dict__["chew"] = None
         __props__.__dict__["laser"] = None

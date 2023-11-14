@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 
-__all__ = ['FooArgs', 'Foo']
+__all__ = ['FooArrgs', 'Foo']
 
 @pulumi.input_type
-class FooArgs:
+calass FooArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a Foo resource.
@@ -21,7 +21,7 @@ class FooArgs:
         pass
 
 
-class Foo(pulumi.CustomResource):
+calass Foo(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -36,17 +36,17 @@ class Foo(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[FooArgs] = None,
+                 args: Optional[FooArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Foo resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param FooArgs args: The arguments to use to populate this resource's properties.
+        :param FooArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(FooArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(FooArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -62,7 +62,7 @@ class Foo(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = FooArgs.__new__(FooArgs)
+            __props__ = FooArrgs.__new__(FooArrgs)
 
             __props__.__dict__["condition_sets"] = None
         super(Foo, __self__).__init__(
@@ -85,7 +85,7 @@ class Foo(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = FooArgs.__new__(FooArgs)
+        __props__ = FooArrgs.__new__(FooArrgs)
 
         __props__.__dict__["condition_sets"] = None
         return Foo(resource_name, opts=opts, __props__=__props__)

@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 
-class SupportedFilterTypes(str, Enum):
+calass SupportedFilterTypes(str, Enum):
     """
     Type of product filter.
     """

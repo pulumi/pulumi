@@ -6,12 +6,12 @@ cluster = aws.ecs.Cluster("cluster")
 lb = awsx.lb.ApplicationLoadBalancer("lb")
 nginx = awsx.ecs.FargateService("nginx",
     cluster=cluster.arn,
-    task_definition_args=awsx.ecs.FargateServiceTaskDefinitionArgs(
-        container=awsx.ecs.TaskDefinitionContainerDefinitionArgs(
+    task_definition_args=awsx.ecs.FargateServiceTaskDefinitionArrgs(
+        container=awsx.ecs.TaskDefinitionContainerDefinitionArrgs(
             image="nginx:latest",
             cpu=512,
             memory=128,
-            port_mappings=[awsx.ecs.TaskDefinitionPortMappingArgs(
+            port_mappings=[awsx.ecs.TaskDefinitionPortMappingArrgs(
                 container_port=80,
                 target_group=lb.default_target_group,
             )],

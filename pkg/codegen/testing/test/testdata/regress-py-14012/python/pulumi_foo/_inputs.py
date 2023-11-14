@@ -10,11 +10,11 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
-    'ProviderCertmanagerArgs',
+    'ProviderCertmanagerArrgs',
 ]
 
 @pulumi.input_type
-class ProviderCertmanagerArgs:
+calass ProviderCertmanagerArrgs:
     def __init__(__self__, *,
                  mtls_cert_pem: pulumi.Input[str],
                  mtls_key_pem: pulumi.Input[str]):

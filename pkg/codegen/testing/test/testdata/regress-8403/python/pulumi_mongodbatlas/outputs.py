@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class GetCustomDbRolesResult(dict):
+calass GetCustomDbRolesResult(dict):
     def __init__(__self__):
         pass
 

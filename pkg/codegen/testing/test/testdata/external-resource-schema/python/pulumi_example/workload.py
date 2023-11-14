@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 import pulumi_kubernetes
 
-__all__ = ['WorkloadArgs', 'Workload']
+__all__ = ['WorkloadArrgs', 'Workload']
 
 @pulumi.input_type
-class WorkloadArgs:
+calass WorkloadArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a Workload resource.
@@ -21,7 +21,7 @@ class WorkloadArgs:
         pass
 
 
-class Workload(pulumi.CustomResource):
+calass Workload(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -36,17 +36,17 @@ class Workload(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[WorkloadArgs] = None,
+                 args: Optional[WorkloadArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Workload resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param WorkloadArgs args: The arguments to use to populate this resource's properties.
+        :param WorkloadArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(WorkloadArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(WorkloadArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -62,7 +62,7 @@ class Workload(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = WorkloadArgs.__new__(WorkloadArgs)
+            __props__ = WorkloadArrgs.__new__(WorkloadArrgs)
 
             __props__.__dict__["pod"] = None
         super(Workload, __self__).__init__(
@@ -85,7 +85,7 @@ class Workload(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = WorkloadArgs.__new__(WorkloadArgs)
+        __props__ = WorkloadArrgs.__new__(WorkloadArrgs)
 
         __props__.__dict__["pod"] = None
         return Workload(resource_name, opts=opts, __props__=__props__)

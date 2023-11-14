@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class KubeClientSettings(dict):
+calass KubeClientSettings(dict):
     """
     Options for tuning the Kubernetes client used by a Provider.
     """

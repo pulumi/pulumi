@@ -31,7 +31,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class AvailabilityInformationResponse(dict):
+calass AvailabilityInformationResponse(dict):
     """
     Availability information of a product system.
     """
@@ -75,7 +75,7 @@ class AvailabilityInformationResponse(dict):
 
 
 @pulumi.output_type
-class BillingMeterDetailsResponse(dict):
+calass BillingMeterDetailsResponse(dict):
     """
     Holds billing meter details for each type of billing
     """
@@ -130,7 +130,7 @@ class BillingMeterDetailsResponse(dict):
 
 
 @pulumi.output_type
-class ConfigurationResponse(dict):
+calass ConfigurationResponse(dict):
     """
     Configuration object.
     """
@@ -240,7 +240,7 @@ class ConfigurationResponse(dict):
 
 
 @pulumi.output_type
-class CostInformationResponse(dict):
+calass CostInformationResponse(dict):
     """
     Cost information for the product system
     """
@@ -273,7 +273,7 @@ class CostInformationResponse(dict):
 
 
 @pulumi.output_type
-class DescriptionResponse(dict):
+calass DescriptionResponse(dict):
     """
     Description related properties of a product system.
     """
@@ -350,7 +350,7 @@ class DescriptionResponse(dict):
 
 
 @pulumi.output_type
-class DimensionsResponse(dict):
+calass DimensionsResponse(dict):
     """
     Dimensions of a configuration.
     """
@@ -438,7 +438,7 @@ class DimensionsResponse(dict):
 
 
 @pulumi.output_type
-class FilterablePropertyResponse(dict):
+calass FilterablePropertyResponse(dict):
     """
     Different types of filters supported and its values.
     """
@@ -471,7 +471,7 @@ class FilterablePropertyResponse(dict):
 
 
 @pulumi.output_type
-class HierarchyInformationResponse(dict):
+calass HierarchyInformationResponse(dict):
     """
     Holds details about product hierarchy information
     """
@@ -530,7 +530,7 @@ class HierarchyInformationResponse(dict):
 
 
 @pulumi.output_type
-class ImageInformationResponse(dict):
+calass ImageInformationResponse(dict):
     """
     Image for the product
     """
@@ -563,7 +563,7 @@ class ImageInformationResponse(dict):
 
 
 @pulumi.output_type
-class LinkResponse(dict):
+calass LinkResponse(dict):
     """
     Returns link related to the product
     """
@@ -596,7 +596,7 @@ class LinkResponse(dict):
 
 
 @pulumi.output_type
-class Pav2MeterDetailsResponse(dict):
+calass Pav2MeterDetailsResponse(dict):
     """
     Billing type PAV2 meter details
     """
@@ -653,7 +653,7 @@ class Pav2MeterDetailsResponse(dict):
 
 
 @pulumi.output_type
-class ProductFamilyResponse(dict):
+calass ProductFamilyResponse(dict):
     """
     Product Family
     """
@@ -752,7 +752,7 @@ class ProductFamilyResponse(dict):
 
 
 @pulumi.output_type
-class ProductLineResponse(dict):
+calass ProductLineResponse(dict):
     """
     Product line
     """
@@ -851,7 +851,7 @@ class ProductLineResponse(dict):
 
 
 @pulumi.output_type
-class ProductResponse(dict):
+calass ProductResponse(dict):
     """
     List of Products
     """
@@ -950,7 +950,7 @@ class ProductResponse(dict):
 
 
 @pulumi.output_type
-class PurchaseMeterDetailsResponse(dict):
+calass PurchaseMeterDetailsResponse(dict):
     """
     Billing type Purchase meter details
     """
@@ -1029,7 +1029,7 @@ class PurchaseMeterDetailsResponse(dict):
 
 
 @pulumi.output_type
-class SpecificationResponse(dict):
+calass SpecificationResponse(dict):
     """
     Specifications of the configurations
     """

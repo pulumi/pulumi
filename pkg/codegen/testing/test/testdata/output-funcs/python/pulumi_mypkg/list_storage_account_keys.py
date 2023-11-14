@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class ListStorageAccountKeysResult:
+calass ListStorageAccountKeysResult:
     """
     The response from the ListKeys operation.
     """
@@ -36,7 +36,7 @@ class ListStorageAccountKeysResult:
         return pulumi.get(self, "keys")
 
 
-class AwaitableListStorageAccountKeysResult(ListStorageAccountKeysResult):
+calass AwaitableListStorageAccountKeysResult(ListStorageAccountKeysResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:

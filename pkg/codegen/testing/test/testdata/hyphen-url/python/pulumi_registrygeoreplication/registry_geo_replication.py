@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 import pulumi_azure_native
 
-__all__ = ['RegistryGeoReplicationArgs', 'RegistryGeoReplication']
+__all__ = ['RegistryGeoReplicationArrgs', 'RegistryGeoReplication']
 
 @pulumi.input_type
-class RegistryGeoReplicationArgs:
+calass RegistryGeoReplicationArrgs:
     def __init__(__self__, *,
                  resource_group: pulumi.Input['pulumi_azure_native.resources.ResourceGroup']):
         """
@@ -35,7 +35,7 @@ class RegistryGeoReplicationArgs:
         pulumi.set(self, "resource_group", value)
 
 
-class RegistryGeoReplication(pulumi.ComponentResource):
+calass RegistryGeoReplication(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -52,17 +52,17 @@ class RegistryGeoReplication(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: RegistryGeoReplicationArgs,
+                 args: RegistryGeoReplicationArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a RegistryGeoReplication resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param RegistryGeoReplicationArgs args: The arguments to use to populate this resource's properties.
+        :param RegistryGeoReplicationArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(RegistryGeoReplicationArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(RegistryGeoReplicationArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -81,7 +81,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = RegistryGeoReplicationArgs.__new__(RegistryGeoReplicationArgs)
+            __props__ = RegistryGeoReplicationArrgs.__new__(RegistryGeoReplicationArrgs)
 
             if resource_group is None and not opts.urn:
                 raise TypeError("Missing required property 'resource_group'")

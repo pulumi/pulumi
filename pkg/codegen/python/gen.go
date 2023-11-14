@@ -204,14 +204,14 @@ func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input boo
 
 	if mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		if t.IsInputShape() {
-			return name + "Args"
+			return name + "Arrgs"
 		}
 		return name
 	}
 
 	switch {
 	case input:
-		return name + "Args"
+		return name + "Arrgs"
 	case mod.details(t).plainType:
 		return name + "Result"
 	}
@@ -889,7 +889,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	// the `ModuleType` type and implements property getters for each config key. We then overwrite
 	// the `__class__` attribute of the current module as described in the proposal for PEP-549. This allows
 	// us to maintain the existing interface for users but implement dynamic getters behind the scenes.
-	fmt.Fprintf(w, "class _ExportableConfig(types.ModuleType):\n")
+	fmt.Fprintf(w, "calass _ExportableConfig(types.ModuleType):\n")
 	indent := "    "
 
 	// Emit an entry for all config variables.
@@ -1083,7 +1083,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "@pulumi.output_type\n")
-	fmt.Fprintf(w, "class %s:\n", baseName)
+	fmt.Fprintf(w, "calass %s:\n", baseName)
 	printComment(w, obj.Comment, "    ")
 
 	// Now generate an initializer with properties for all inputs.
@@ -1116,7 +1116,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 
 	// Produce an awaitable subclass.
 	fmt.Fprint(w, "\n")
-	fmt.Fprintf(w, "class %s(%s):\n", awaitableName, baseName)
+	fmt.Fprintf(w, "calass %s(%s):\n", awaitableName, baseName)
 
 	// Emit __await__ and __iter__ in order to make this type awaitable.
 	//
@@ -1173,12 +1173,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	name := resourceName(res)
 
-	resourceArgsName := fmt.Sprintf("%sArgs", name)
+	resourceArgsName := fmt.Sprintf("%sArrgs", name)
 	// Some providers (e.g. Kubernetes) have types with the same name as resources (e.g. StorageClass in Kubernetes).
 	// We've already shipped the input type (e.g. StorageClassArgs) in the same module as the resource, so we can't use
 	// the same name for the resource's args class. When an input type exists that would conflict with the name of the
 	// resource args class, we'll use a different name: `<Resource>InitArgs` instead of `<Resource>Args`.
-	const alternateSuffix = "InitArgs"
+	const alternateSuffix = "InitArrgs"
 	for _, t := range mod.types {
 		if mod.details(t).inputType {
 			if mod.unqualifiedObjectTypeName(t, true) == resourceArgsName {
@@ -1238,7 +1238,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
+	fmt.Fprintf(w, "calass %s(%s):\n", name, baseType)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
@@ -1542,7 +1542,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 
 		// Produce a class definition with optional """ comment.
 		fmt.Fprintf(w, "    @pulumi.output_type\n")
-		fmt.Fprintf(w, "    class %s:\n", name)
+		fmt.Fprintf(w, "    calass %s:\n", name)
 		printComment(w, obj.Comment, "        ")
 
 		// Now generate an initializer with properties for all inputs.
@@ -1962,7 +1962,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 
 	switch enum.ElementType {
 	case schema.StringType, schema.IntType, schema.NumberType:
-		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
+		fmt.Fprintf(w, "calass %s(%s, Enum):\n", enumName, underlyingType)
 		printComment(w, enum.Comment, indent)
 		for _, e := range enum.Elements {
 			// If the enum doesn't have a name, set the value as the name.
@@ -2490,7 +2490,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	name = pythonCase(name)
 	fmt.Fprintf(w, "%s\n", decorator)
-	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
+	fmt.Fprintf(w, "calass %s%s:\n", name, suffix)
 	if !input && comment != "" {
 		printComment(w, comment, "    ")
 	}
@@ -3370,7 +3370,7 @@ def _lazy_import_temp(fullname):
     return module
 
 
-class Package(pulumi.runtime.ResourcePackage):
+calass Package(pulumi.runtime.ResourcePackage):
     def __init__(self, pkg_info):
         super().__init__()
         self.pkg_info = pkg_info
@@ -3385,7 +3385,7 @@ class Package(pulumi.runtime.ResourcePackage):
         return Provider(name, pulumi.ResourceOptions(urn=urn))
 
 
-class Module(pulumi.runtime.ResourceModule):
+calass Module(pulumi.runtime.ResourceModule):
     def __init__(self, mod_info):
         super().__init__()
         self.mod_info = mod_info

@@ -19,7 +19,7 @@ private_s3_network_acl_rule = aws.ec2.NetworkAclRule("privateS3NetworkAclRule",
     from_port=443,
     to_port=443)
 amis = aws.ec2.get_ami_ids_output(owners=[bar.id],
-    filters=[aws.ec2.GetAmiIdsFilterArgs(
+    filters=[aws.ec2.GetAmiIdsFilterArrgs(
         name=bar.id,
         values=["pulumi*"],
     )])

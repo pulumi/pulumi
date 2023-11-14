@@ -163,7 +163,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
 			objectTypeName := title(variableName)
-			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
+			g.Fprintf(w, "calass %s(TypedDict, total=False):\n", objectTypeName)
 			g.Indented(func() {
 				propertyNames := pcl.SortedStringKeys(objectType.Properties)
 				for _, propertyName := range propertyNames {
@@ -179,7 +179,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		}
 
 		// emit args class
-		g.Fgenf(w, "clas_ %sArgs(TypedDict, total=False):\n", componentName)
+		g.Fgenf(w, "calass %sArrgs(TypedDict, total=False):\n", componentName)
 		g.Indented(func() {
 			// define constructor args
 			for _, configVar := range configVars {
@@ -215,12 +215,12 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 	}
 
 	componentToken := fmt.Sprintf("components:index:%s", componentName)
-	g.Fgenf(w, "class %s(pulumi.ComponentResource):\n", componentName)
+	g.Fgenf(w, "calass %s(pulumi.ComponentResource):\n", componentName)
 	g.Indented(func() {
 		if hasAnyInputVariables {
 			g.Fgenf(w, "%sdef __init__(self, name: str, args: %s, opts:Optional[pulumi.ResourceOptions] = None):\n",
 				g.Indent,
-				fmt.Sprintf("%sArgs", componentName))
+				fmt.Sprintf("%sArrgs", componentName))
 
 			g.Fgenf(w, "%s%ssuper().__init__(\"%s\", name, args, opts)\n",
 				g.Indent,
@@ -641,7 +641,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 			modName = m
 		}
 	}
-	return tokenToQualifiedName(pkgName, modName, member) + "Args"
+	return tokenToQualifiedName(pkgName, modName, member) + "Arrgs"
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

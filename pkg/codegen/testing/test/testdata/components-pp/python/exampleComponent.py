@@ -4,18 +4,18 @@ from simpleComponent import SimpleComponent
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_random as random
 
-class DeploymentZones(TypedDict, total=False):
+calass DeploymentZones(TypedDict, total=False):
     zone: Input[str]
 
-class GithubApp(TypedDict, total=False):
+calass GithubApp(TypedDict, total=False):
     id: Input[str]
     keyBase64: Input[str]
     webhookSecret: Input[str]
 
-class Servers(TypedDict, total=False):
+calass Servers(TypedDict, total=False):
     name: Input[str]
 
-clas_ ExampleComponentArgs(TypedDict, total=False):
+calass ExampleComponentArrgs(TypedDict, total=False):
     input: Input[str]
     cidrBlocks: Input[Dict[str, str]]
     githubApp: Input[GithubApp]
@@ -23,8 +23,8 @@ clas_ ExampleComponentArgs(TypedDict, total=False):
     deploymentZones: Input[Dict[str, DeploymentZones]]
     ipAddress: Input[list[int]]
 
-class ExampleComponent(pulumi.ComponentResource):
-    def __init__(self, name: str, args: ExampleComponentArgs, opts:Optional[pulumi.ResourceOptions] = None):
+calass ExampleComponent(pulumi.ComponentResource):
+    def __init__(self, name: str, args: ExampleComponentArrgs, opts:Optional[pulumi.ResourceOptions] = None):
         super().__init__("components:index:ExampleComponent", name, args, opts)
 
         password = random.RandomPassword(f"{name}-password",

@@ -11,10 +11,10 @@ from . import _utilities
 from . import gcp as _gcp
 import pulumi_google_native
 
-__all__ = ['ReplicatedBucketArgs', 'ReplicatedBucket']
+__all__ = ['ReplicatedBucketArrgs', 'ReplicatedBucket']
 
 @pulumi.input_type
-class ReplicatedBucketArgs:
+calass ReplicatedBucketArrgs:
     def __init__(__self__, *,
                  destination_region: pulumi.Input[str]):
         """
@@ -36,7 +36,7 @@ class ReplicatedBucketArgs:
         pulumi.set(self, "destination_region", value)
 
 
-class ReplicatedBucket(pulumi.ComponentResource):
+calass ReplicatedBucket(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -53,17 +53,17 @@ class ReplicatedBucket(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: ReplicatedBucketArgs,
+                 args: ReplicatedBucketArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a ReplicatedBucket resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ReplicatedBucketArgs args: The arguments to use to populate this resource's properties.
+        :param ReplicatedBucketArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ReplicatedBucketArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ReplicatedBucketArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -82,7 +82,7 @@ class ReplicatedBucket(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ReplicatedBucketArgs.__new__(ReplicatedBucketArgs)
+            __props__ = ReplicatedBucketArrgs.__new__(ReplicatedBucketArrgs)
 
             if destination_region is None and not opts.urn:
                 raise TypeError("Missing required property 'destination_region'")

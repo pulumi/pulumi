@@ -7,13 +7,13 @@ subnets = aws.ec2.get_subnet_ids(vpc_id=vpc.id)
 # Create a security group that permits HTTP ingress and unrestricted egress.
 web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
     vpc_id=vpc.id,
-    egress=[aws.ec2.SecurityGroupEgressArgs(
+    egress=[aws.ec2.SecurityGroupEgressArrgs(
         protocol="-1",
         from_port=0,
         to_port=0,
         cidr_blocks=["0.0.0.0/0"],
     )],
-    ingress=[aws.ec2.SecurityGroupIngressArgs(
+    ingress=[aws.ec2.SecurityGroupIngressArrgs(
         protocol="tcp",
         from_port=80,
         to_port=80,
@@ -48,7 +48,7 @@ web_target_group = aws.elasticloadbalancingv2.TargetGroup("webTargetGroup",
 web_listener = aws.elasticloadbalancingv2.Listener("webListener",
     load_balancer_arn=web_load_balancer.arn,
     port=80,
-    default_actions=[aws.elasticloadbalancingv2.ListenerDefaultActionArgs(
+    default_actions=[aws.elasticloadbalancingv2.ListenerDefaultActionArrgs(
         type="forward",
         target_group_arn=web_target_group.arn,
     )])
@@ -74,12 +74,12 @@ app_service = aws.ecs.Service("appService",
     desired_count=5,
     launch_type="FARGATE",
     task_definition=app_task.arn,
-    network_configuration=aws.ecs.ServiceNetworkConfigurationArgs(
+    network_configuration=aws.ecs.ServiceNetworkConfigurationArrgs(
         assign_public_ip=True,
         subnets=subnets.ids,
         security_groups=[web_security_group.id],
     ),
-    load_balancers=[aws.ecs.ServiceLoadBalancerArgs(
+    load_balancers=[aws.ecs.ServiceLoadBalancerArrgs(
         target_group_arn=web_target_group.arn,
         container_name="my-app",
         container_port=80,

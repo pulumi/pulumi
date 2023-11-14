@@ -11,11 +11,11 @@ from . import _utilities
 import pulumi_random
 
 __all__ = [
-    'PetArgs',
+    'PetArrgs',
 ]
 
 @pulumi.input_type
-class PetArgs:
+calass PetArrgs:
     def __init__(__self__, *,
                  required_name: pulumi.Input['pulumi_random.RandomPet'],
                  required_name_array: pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]],

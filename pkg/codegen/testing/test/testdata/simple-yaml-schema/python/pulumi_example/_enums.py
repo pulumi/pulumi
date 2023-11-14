@@ -10,12 +10,12 @@ __all__ = [
 ]
 
 
-class OutputOnlyEnumType(str, Enum):
+calass OutputOnlyEnumType(str, Enum):
     FOO = "foo"
     BAR = "bar"
 
 
-class RubberTreeVariety(str, Enum):
+calass RubberTreeVariety(str, Enum):
     """
     types of rubber trees
     """

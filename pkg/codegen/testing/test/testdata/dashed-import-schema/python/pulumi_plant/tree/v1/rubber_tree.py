@@ -13,14 +13,14 @@ from ... import _inputs as _root_inputs
 from ... import outputs as _root_outputs
 from ._enums import *
 
-__all__ = ['RubberTreeArgs', 'RubberTree']
+__all__ = ['RubberTreeArrgs', 'RubberTree']
 
 @pulumi.input_type
-class RubberTreeArgs:
+calass RubberTreeArrgs:
     def __init__(__self__, *,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
                  type: Optional[pulumi.Input['RubberTreeVariety']] = None,
-                 container: Optional[pulumi.Input['_root_inputs.ContainerArgs']] = None,
+                 container: Optional[pulumi.Input['_root_inputs.ContainerArrgs']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
                  size: Optional[pulumi.Input['TreeSize']] = None):
         """
@@ -63,11 +63,11 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
-    def container(self) -> Optional[pulumi.Input['_root_inputs.ContainerArgs']]:
+    def container(self) -> Optional[pulumi.Input['_root_inputs.ContainerArrgs']]:
         return pulumi.get(self, "container")
 
     @container.setter
-    def container(self, value: Optional[pulumi.Input['_root_inputs.ContainerArgs']]):
+    def container(self, value: Optional[pulumi.Input['_root_inputs.ContainerArrgs']]):
         pulumi.set(self, "container", value)
 
     @property
@@ -90,7 +90,7 @@ class RubberTreeArgs:
 
 
 @pulumi.input_type
-class _RubberTreeState:
+calass _RubberTreeState:
     def __init__(__self__, *,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None):
         """
@@ -111,12 +111,12 @@ class _RubberTreeState:
         pulumi.set(self, "farm", value)
 
 
-class RubberTree(pulumi.CustomResource):
+calass RubberTree(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
+                 container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArrgs']]] = None,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
                  size: Optional[pulumi.Input['TreeSize']] = None,
@@ -131,17 +131,17 @@ class RubberTree(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: RubberTreeArgs,
+                 args: RubberTreeArrgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a RubberTree resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param RubberTreeArgs args: The arguments to use to populate this resource's properties.
+        :param RubberTreeArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(RubberTreeArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(RubberTreeArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -150,7 +150,7 @@ class RubberTree(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
+                 container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArrgs']]] = None,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
                  size: Optional[pulumi.Input['TreeSize']] = None,
@@ -162,7 +162,7 @@ class RubberTree(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = RubberTreeArgs.__new__(RubberTreeArgs)
+            __props__ = RubberTreeArrgs.__new__(RubberTreeArrgs)
 
             __props__.__dict__["container"] = container
             if diameter is None:

@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class CompositePathResponse(dict):
+calass CompositePathResponse(dict):
     def __init__(__self__, *,
                  order: Optional[str] = None,
                  path: Optional[str] = None):
@@ -48,7 +48,7 @@ class CompositePathResponse(dict):
 
 
 @pulumi.output_type
-class IndexingPolicyResponse(dict):
+calass IndexingPolicyResponse(dict):
     """
     Cosmos DB indexing policy
     """
@@ -88,7 +88,7 @@ class IndexingPolicyResponse(dict):
 
 
 @pulumi.output_type
-class SqlContainerGetPropertiesResponseResource(dict):
+calass SqlContainerGetPropertiesResponseResource(dict):
     @staticmethod
     def __key_warning(key: str):
         suggest = None

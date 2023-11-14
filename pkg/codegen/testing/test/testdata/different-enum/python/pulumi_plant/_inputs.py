@@ -11,11 +11,11 @@ from . import _utilities
 from ._enums import *
 
 __all__ = [
-    'ContainerArgs',
+    'ContainerArrgs',
 ]
 
 @pulumi.input_type
-class ContainerArgs:
+calass ContainerArrgs:
     def __init__(__self__, *,
                  size: pulumi.Input['ContainerSize'],
                  brightness: Optional[pulumi.Input['ContainerBrightness']] = None,

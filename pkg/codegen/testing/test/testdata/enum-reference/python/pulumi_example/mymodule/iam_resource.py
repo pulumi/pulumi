@@ -10,12 +10,12 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
 import pulumi_google_native
 
-__all__ = ['IamResourceArgs', 'IamResource']
+__all__ = ['IamResourceArrgs', 'IamResource']
 
 @pulumi.input_type
-class IamResourceArgs:
+calass IamResourceArrgs:
     def __init__(__self__, *,
-                 config: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']] = None):
+                 config: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArrgs']] = None):
         """
         The set of arguments for constructing a IamResource resource.
         """
@@ -24,20 +24,20 @@ class IamResourceArgs:
 
     @property
     @pulumi.getter
-    def config(self) -> Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']]:
+    def config(self) -> Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArrgs']]:
         return pulumi.get(self, "config")
 
     @config.setter
-    def config(self, value: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']]):
+    def config(self, value: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArrgs']]):
         pulumi.set(self, "config", value)
 
 
-class IamResource(pulumi.ComponentResource):
+calass IamResource(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 config: Optional[pulumi.Input[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArgs']]] = None,
+                 config: Optional[pulumi.Input[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArrgs']]] = None,
                  __props__=None):
         """
         Create a IamResource resource with the given unique name, props, and options.
@@ -48,17 +48,17 @@ class IamResource(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[IamResourceArgs] = None,
+                 args: Optional[IamResourceArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a IamResource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param IamResourceArgs args: The arguments to use to populate this resource's properties.
+        :param IamResourceArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(IamResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(IamResourceArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -67,7 +67,7 @@ class IamResource(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 config: Optional[pulumi.Input[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArgs']]] = None,
+                 config: Optional[pulumi.Input[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArrgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -77,7 +77,7 @@ class IamResource(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = IamResourceArgs.__new__(IamResourceArgs)
+            __props__ = IamResourceArrgs.__new__(IamResourceArrgs)
 
             __props__.__dict__["config"] = config
         super(IamResource, __self__).__init__(

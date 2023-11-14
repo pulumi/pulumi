@@ -11,17 +11,17 @@ from . import _utilities
 from . import config as _config
 from ._enums import *
 
-__all__ = ['ProviderArgs', 'Provider']
+__all__ = ['ProviderArrgs', 'Provider']
 
 @pulumi.input_type
-class ProviderArgs:
+calass ProviderArrgs:
     def __init__(__self__, *,
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
-                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]] = None):
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArrgs']]]] = None):
         """
         The set of arguments for constructing a Provider resource.
         :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
-        :param pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]] secret_sandwiches: Super duper secret sandwiches.
+        :param pulumi.Input[Sequence[pulumi.Input['_config.SandwichArrgs']]] secret_sandwiches: Super duper secret sandwiches.
         """
         if favorite_color is None:
             favorite_color = _utilities.get_env('FAVE_COLOR')
@@ -44,47 +44,47 @@ class ProviderArgs:
 
     @property
     @pulumi.getter(name="secretSandwiches")
-    def secret_sandwiches(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]]:
+    def secret_sandwiches(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArrgs']]]]:
         """
         Super duper secret sandwiches.
         """
         return pulumi.get(self, "secret_sandwiches")
 
     @secret_sandwiches.setter
-    def secret_sandwiches(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]]):
+    def secret_sandwiches(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArrgs']]]]):
         pulumi.set(self, "secret_sandwiches", value)
 
 
-class Provider(pulumi.ProviderResource):
+calass Provider(pulumi.ProviderResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
-                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]]] = None,
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArrgs']]]]] = None,
                  __props__=None):
         """
         Create a Configstation resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
-        :param pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]] secret_sandwiches: Super duper secret sandwiches.
+        :param pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArrgs']]]] secret_sandwiches: Super duper secret sandwiches.
         """
         ...
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ProviderArgs] = None,
+                 args: Optional[ProviderArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Configstation resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ProviderArgs args: The arguments to use to populate this resource's properties.
+        :param ProviderArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ProviderArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ProviderArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -94,7 +94,7 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
-                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]]] = None,
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArrgs']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -102,7 +102,7 @@ class Provider(pulumi.ProviderResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ProviderArgs.__new__(ProviderArgs)
+            __props__ = ProviderArrgs.__new__(ProviderArrgs)
 
             if favorite_color is None:
                 favorite_color = _utilities.get_env('FAVE_COLOR')

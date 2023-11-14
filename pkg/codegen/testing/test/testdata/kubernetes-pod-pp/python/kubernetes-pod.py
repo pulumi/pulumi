@@ -3,32 +3,32 @@ import pulumi_kubernetes as kubernetes
 
 bar = kubernetes.core.v1.Pod("bar",
     api_version="v1",
-    metadata=kubernetes.meta.v1.ObjectMetaArgs(
+    metadata=kubernetes.meta.v1.ObjectMetaArrgs(
         namespace="foo",
         name="bar",
     ),
-    spec=kubernetes.core.v1.PodSpecArgs(
+    spec=kubernetes.core.v1.PodSpecArrgs(
         containers=[
-            kubernetes.core.v1.ContainerArgs(
+            kubernetes.core.v1.ContainerArrgs(
                 name="nginx",
                 image="nginx:1.14-alpine",
-                ports=[kubernetes.core.v1.ContainerPortArgs(
+                ports=[kubernetes.core.v1.ContainerPortArrgs(
                     container_port=80,
                 )],
-                resources=kubernetes.core.v1.ResourceRequirementsArgs(
+                resources=kubernetes.core.v1.ResourceRequirementsArrgs(
                     limits={
                         "memory": "20Mi",
                         "cpu": "0.2",
                     },
                 ),
             ),
-            kubernetes.core.v1.ContainerArgs(
+            kubernetes.core.v1.ContainerArrgs(
                 name="nginx2",
                 image="nginx:1.14-alpine",
-                ports=[kubernetes.core.v1.ContainerPortArgs(
+                ports=[kubernetes.core.v1.ContainerPortArrgs(
                     container_port=80,
                 )],
-                resources=kubernetes.core.v1.ResourceRequirementsArgs(
+                resources=kubernetes.core.v1.ResourceRequirementsArrgs(
                     limits={
                         "memory": "20Mi",
                         "cpu": "0.2",

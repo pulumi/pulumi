@@ -42,7 +42,7 @@ jobs:
             client-payload: |-
               {
                  "target-pulumi-version": ${{ toJSON( github.event.pull_request.head.sha ) }},
-                 "target-bridge-version": "",
+                 "target-bridge-version": "v3.65.0",
                  "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
                  "pr-description": "This is a downstream codegen test for pulumi/pulumi#${{ github.event.pull_request.number }}. (run-id: ${{ github.run_id }})",
                  "automerge": false

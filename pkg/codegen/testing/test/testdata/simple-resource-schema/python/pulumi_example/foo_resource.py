@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from .resource import Resource
 
-__all__ = ['FooResourceArgs', 'FooResource']
+__all__ = ['FooResourceArrgs', 'FooResource']
 
 @pulumi.input_type
-class FooResourceArgs:
+calass FooResourceArrgs:
     def __init__(__self__, *,
                  foo: Optional[pulumi.Input['Resource']] = None):
         """
@@ -32,7 +32,7 @@ class FooResourceArgs:
         pulumi.set(self, "foo", value)
 
 
-class FooResource(pulumi.ComponentResource):
+calass FooResource(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -48,17 +48,17 @@ class FooResource(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[FooResourceArgs] = None,
+                 args: Optional[FooResourceArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a FooResource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param FooResourceArgs args: The arguments to use to populate this resource's properties.
+        :param FooResourceArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(FooResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(FooResourceArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -77,7 +77,7 @@ class FooResource(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = FooResourceArgs.__new__(FooResourceArgs)
+            __props__ = FooResourceArrgs.__new__(FooResourceArrgs)
 
             __props__.__dict__["foo"] = foo
         super(FooResource, __self__).__init__(

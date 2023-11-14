@@ -11,16 +11,16 @@ __all__ = [
 ]
 
 
-class ExampleEnum(str, Enum):
+calass ExampleEnum(str, Enum):
     ONE = "one"
     TWO = "two"
 
 
-class ExampleEnumInput(str, Enum):
+calass ExampleEnumInput(str, Enum):
     ONE = "one"
     TWO = "two"
 
 
-class ResourceType(str, Enum):
+calass ResourceType(str, Enum):
     HAHA = "haha"
     BUSINESS = "business"

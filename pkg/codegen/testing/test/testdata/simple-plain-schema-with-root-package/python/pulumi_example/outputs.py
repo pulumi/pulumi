@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class Foo(dict):
+calass Foo(dict):
     def __init__(__self__, *,
                  a: bool,
                  c: int,

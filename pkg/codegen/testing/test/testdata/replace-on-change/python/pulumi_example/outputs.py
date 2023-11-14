@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class Chew(dict):
+calass Chew(dict):
     """
     A toy for a dog
     """
@@ -39,7 +39,7 @@ class Chew(dict):
 
 
 @pulumi.output_type
-class Laser(dict):
+calass Laser(dict):
     """
     A Toy for a cat
     """
@@ -74,7 +74,7 @@ class Laser(dict):
 
 
 @pulumi.output_type
-class Rec(dict):
+calass Rec(dict):
     def __init__(__self__, *,
                  rec1: Optional['outputs.Rec'] = None):
         if rec1 is not None:
@@ -87,7 +87,7 @@ class Rec(dict):
 
 
 @pulumi.output_type
-class Toy(dict):
+calass Toy(dict):
     """
     This is a toy
     """

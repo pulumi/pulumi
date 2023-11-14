@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class NodePoolAutoscaling(dict):
+calass NodePoolAutoscaling(dict):
     @staticmethod
     def __key_warning(key: str):
         suggest = None

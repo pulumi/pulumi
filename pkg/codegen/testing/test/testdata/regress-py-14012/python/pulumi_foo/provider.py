@@ -10,12 +10,12 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._inputs import *
 
-__all__ = ['ProviderArgs', 'Provider']
+__all__ = ['ProviderArrgs', 'Provider']
 
 @pulumi.input_type
-class ProviderArgs:
+calass ProviderArrgs:
     def __init__(__self__, *,
-                 certmanager: Optional[pulumi.Input['ProviderCertmanagerArgs']] = None):
+                 certmanager: Optional[pulumi.Input['ProviderCertmanagerArrgs']] = None):
         """
         The set of arguments for constructing a Provider resource.
         """
@@ -24,20 +24,20 @@ class ProviderArgs:
 
     @property
     @pulumi.getter
-    def certmanager(self) -> Optional[pulumi.Input['ProviderCertmanagerArgs']]:
+    def certmanager(self) -> Optional[pulumi.Input['ProviderCertmanagerArrgs']]:
         return pulumi.get(self, "certmanager")
 
     @certmanager.setter
-    def certmanager(self, value: Optional[pulumi.Input['ProviderCertmanagerArgs']]):
+    def certmanager(self, value: Optional[pulumi.Input['ProviderCertmanagerArrgs']]):
         pulumi.set(self, "certmanager", value)
 
 
-class Provider(pulumi.ProviderResource):
+calass Provider(pulumi.ProviderResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArgs']]] = None,
+                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArrgs']]] = None,
                  __props__=None):
         """
         Create a Foo resource with the given unique name, props, and options.
@@ -48,17 +48,17 @@ class Provider(pulumi.ProviderResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ProviderArgs] = None,
+                 args: Optional[ProviderArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Foo resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ProviderArgs args: The arguments to use to populate this resource's properties.
+        :param ProviderArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ProviderArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ProviderArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -67,7 +67,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArgs']]] = None,
+                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArrgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -75,7 +75,7 @@ class Provider(pulumi.ProviderResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ProviderArgs.__new__(ProviderArgs)
+            __props__ = ProviderArrgs.__new__(ProviderArrgs)
 
             __props__.__dict__["certmanager"] = pulumi.Output.from_input(certmanager).apply(pulumi.runtime.to_json) if certmanager is not None else None
         super(Provider, __self__).__init__(

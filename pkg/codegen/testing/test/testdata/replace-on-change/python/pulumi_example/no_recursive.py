@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 
-__all__ = ['NoRecursiveArgs', 'NoRecursive']
+__all__ = ['NoRecursiveArrgs', 'NoRecursive']
 
 @pulumi.input_type
-class NoRecursiveArgs:
+calass NoRecursiveArrgs:
     def __init__(__self__):
         """
         The set of arguments for constructing a NoRecursive resource.
@@ -21,7 +21,7 @@ class NoRecursiveArgs:
         pass
 
 
-class NoRecursive(pulumi.CustomResource):
+calass NoRecursive(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -36,17 +36,17 @@ class NoRecursive(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[NoRecursiveArgs] = None,
+                 args: Optional[NoRecursiveArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a NoRecursive resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param NoRecursiveArgs args: The arguments to use to populate this resource's properties.
+        :param NoRecursiveArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(NoRecursiveArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(NoRecursiveArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -62,7 +62,7 @@ class NoRecursive(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = NoRecursiveArgs.__new__(NoRecursiveArgs)
+            __props__ = NoRecursiveArrgs.__new__(NoRecursiveArrgs)
 
             __props__.__dict__["rec"] = None
             __props__.__dict__["replace"] = None
@@ -88,7 +88,7 @@ class NoRecursive(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = NoRecursiveArgs.__new__(NoRecursiveArgs)
+        __props__ = NoRecursiveArrgs.__new__(NoRecursiveArrgs)
 
         __props__.__dict__["rec"] = None
         __props__.__dict__["replace"] = None

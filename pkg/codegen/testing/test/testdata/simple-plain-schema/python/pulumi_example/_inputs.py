@@ -11,11 +11,11 @@ from . import _utilities
 
 __all__ = [
     'Foo',
-    'FooArgs',
+    'FooArrgs',
 ]
 
 @pulumi.input_type
-class Foo:
+calass Foo:
     def __init__(__self__, *,
                  a: bool,
                  c: int,
@@ -89,7 +89,7 @@ class Foo:
 
 
 @pulumi.input_type
-class FooArgs:
+calass FooArrgs:
     def __init__(__self__, *,
                  a: bool,
                  c: int,

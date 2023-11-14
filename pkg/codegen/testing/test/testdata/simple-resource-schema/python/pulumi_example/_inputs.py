@@ -11,14 +11,14 @@ from . import _utilities
 from .resource import Resource
 
 __all__ = [
-    'ConfigMapArgs',
-    'ObjectWithNodeOptionalInputsArgs',
-    'ObjectArgs',
-    'SomeOtherObjectArgs',
+    'ConfigMapArrgs',
+    'ObjectWithNodeOptionalInputsArrgs',
+    'ObjectArrgs',
+    'SomeOtherObjectArrgs',
 ]
 
 @pulumi.input_type
-class ConfigMapArgs:
+calass ConfigMapArrgs:
     def __init__(__self__, *,
                  config: Optional[pulumi.Input[str]] = None):
         if config is not None:
@@ -35,7 +35,7 @@ class ConfigMapArgs:
 
 
 @pulumi.input_type
-class ObjectWithNodeOptionalInputsArgs:
+calass ObjectWithNodeOptionalInputsArrgs:
     def __init__(__self__, *,
                  foo: pulumi.Input[str],
                  bar: Optional[pulumi.Input[int]] = None):
@@ -63,16 +63,16 @@ class ObjectWithNodeOptionalInputsArgs:
 
 
 @pulumi.input_type
-class ObjectArgs:
+calass ObjectArrgs:
     def __init__(__self__, *,
                  bar: Optional[pulumi.Input[str]] = None,
-                 configs: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]] = None,
+                 configs: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArrgs']]]] = None,
                  foo: Optional[pulumi.Input['Resource']] = None,
-                 others: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
-                 still_others: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None):
+                 others: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]]] = None,
+                 still_others: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]]] = None):
         """
-        :param pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]] others: List of lists of other objects
-        :param pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]] still_others: Mapping from string to list of some other object
+        :param pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]] others: List of lists of other objects
+        :param pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]] still_others: Mapping from string to list of some other object
         """
         if bar is not None:
             pulumi.set(__self__, "bar", bar)
@@ -96,11 +96,11 @@ class ObjectArgs:
 
     @property
     @pulumi.getter
-    def configs(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]]:
+    def configs(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArrgs']]]]:
         return pulumi.get(self, "configs")
 
     @configs.setter
-    def configs(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]]):
+    def configs(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArrgs']]]]):
         pulumi.set(self, "configs", value)
 
     @property
@@ -114,31 +114,31 @@ class ObjectArgs:
 
     @property
     @pulumi.getter
-    def others(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
+    def others(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]]]:
         """
         List of lists of other objects
         """
         return pulumi.get(self, "others")
 
     @others.setter
-    def others(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
+    def others(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]]]):
         pulumi.set(self, "others", value)
 
     @property
     @pulumi.getter(name="stillOthers")
-    def still_others(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
+    def still_others(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]]]:
         """
         Mapping from string to list of some other object
         """
         return pulumi.get(self, "still_others")
 
     @still_others.setter
-    def still_others(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
+    def still_others(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArrgs']]]]]]):
         pulumi.set(self, "still_others", value)
 
 
 @pulumi.input_type
-class SomeOtherObjectArgs:
+calass SomeOtherObjectArrgs:
     def __init__(__self__, *,
                  baz: Optional[pulumi.Input[str]] = None):
         if baz is not None:

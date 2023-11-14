@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 
-class CloudAuditOptionsLogName(str, Enum):
+calass CloudAuditOptionsLogName(str, Enum):
     """
     The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
     """
@@ -35,12 +35,12 @@ class CloudAuditOptionsLogName(str, Enum):
     CLOUD_AUDIT_OPTIONS_LOG_NAME_N_O_NAME = "_NO_NAME"
 
 
-class ContainerBrightness(float, Enum):
+calass ContainerBrightness(float, Enum):
     ZERO_POINT_ONE = 0.1
     ONE = 1
 
 
-class ContainerColor(str, Enum):
+calass ContainerColor(str, Enum):
     """
     plant container colors
     """
@@ -49,7 +49,7 @@ class ContainerColor(str, Enum):
     YELLOW = "yellow"
 
 
-class ContainerSize(int, Enum):
+calass ContainerSize(int, Enum):
     """
     plant container sizes
     """

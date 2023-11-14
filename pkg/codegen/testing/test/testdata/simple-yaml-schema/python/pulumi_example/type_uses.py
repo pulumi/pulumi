@@ -13,14 +13,14 @@ from ._enums import *
 from ._inputs import *
 from .resource import Resource
 
-__all__ = ['TypeUsesArgs', 'TypeUses']
+__all__ = ['TypeUsesArrgs', 'TypeUses']
 
 @pulumi.input_type
-class TypeUsesArgs:
+calass TypeUsesArrgs:
     def __init__(__self__, *,
-                 bar: Optional[pulumi.Input['SomeOtherObjectArgs']] = None,
-                 baz: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']] = None,
-                 foo: Optional[pulumi.Input['ObjectArgs']] = None,
+                 bar: Optional[pulumi.Input['SomeOtherObjectArrgs']] = None,
+                 baz: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArrgs']] = None,
+                 foo: Optional[pulumi.Input['ObjectArrgs']] = None,
                  qux: Optional[pulumi.Input['RubberTreeVariety']] = None):
         """
         The set of arguments for constructing a TypeUses resource.
@@ -36,29 +36,29 @@ class TypeUsesArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[pulumi.Input['SomeOtherObjectArgs']]:
+    def bar(self) -> Optional[pulumi.Input['SomeOtherObjectArrgs']]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[pulumi.Input['SomeOtherObjectArgs']]):
+    def bar(self, value: Optional[pulumi.Input['SomeOtherObjectArrgs']]):
         pulumi.set(self, "bar", value)
 
     @property
     @pulumi.getter
-    def baz(self) -> Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']]:
+    def baz(self) -> Optional[pulumi.Input['ObjectWithNodeOptionalInputsArrgs']]:
         return pulumi.get(self, "baz")
 
     @baz.setter
-    def baz(self, value: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']]):
+    def baz(self, value: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArrgs']]):
         pulumi.set(self, "baz", value)
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['ObjectArgs']]:
+    def foo(self) -> Optional[pulumi.Input['ObjectArrgs']]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['ObjectArgs']]):
+    def foo(self, value: Optional[pulumi.Input['ObjectArrgs']]):
         pulumi.set(self, "foo", value)
 
     @property
@@ -71,14 +71,14 @@ class TypeUsesArgs:
         pulumi.set(self, "qux", value)
 
 
-class TypeUses(pulumi.CustomResource):
+calass TypeUses(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[pulumi.InputType['SomeOtherObjectArgs']]] = None,
-                 baz: Optional[pulumi.Input[pulumi.InputType['ObjectWithNodeOptionalInputsArgs']]] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['ObjectArgs']]] = None,
+                 bar: Optional[pulumi.Input[pulumi.InputType['SomeOtherObjectArrgs']]] = None,
+                 baz: Optional[pulumi.Input[pulumi.InputType['ObjectWithNodeOptionalInputsArrgs']]] = None,
+                 foo: Optional[pulumi.Input[pulumi.InputType['ObjectArrgs']]] = None,
                  qux: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  __props__=None):
         """
@@ -90,17 +90,17 @@ class TypeUses(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[TypeUsesArgs] = None,
+                 args: Optional[TypeUsesArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a TypeUses resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param TypeUsesArgs args: The arguments to use to populate this resource's properties.
+        :param TypeUsesArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(TypeUsesArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(TypeUsesArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -109,9 +109,9 @@ class TypeUses(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[pulumi.InputType['SomeOtherObjectArgs']]] = None,
-                 baz: Optional[pulumi.Input[pulumi.InputType['ObjectWithNodeOptionalInputsArgs']]] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['ObjectArgs']]] = None,
+                 bar: Optional[pulumi.Input[pulumi.InputType['SomeOtherObjectArrgs']]] = None,
+                 baz: Optional[pulumi.Input[pulumi.InputType['ObjectWithNodeOptionalInputsArrgs']]] = None,
+                 foo: Optional[pulumi.Input[pulumi.InputType['ObjectArrgs']]] = None,
                  qux: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -120,7 +120,7 @@ class TypeUses(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
+            __props__ = TypeUsesArrgs.__new__(TypeUsesArrgs)
 
             __props__.__dict__["bar"] = bar
             __props__.__dict__["baz"] = baz
@@ -150,7 +150,7 @@ class TypeUses(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
+        __props__ = TypeUsesArrgs.__new__(TypeUsesArrgs)
 
         __props__.__dict__["alpha"] = None
         __props__.__dict__["bar"] = None

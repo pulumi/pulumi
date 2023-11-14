@@ -9,6 +9,6 @@ __all__ = [
 ]
 
 
-class MyEnum(str, Enum):
+calass MyEnum(str, Enum):
     ONE = "one"
     TWO = "two"

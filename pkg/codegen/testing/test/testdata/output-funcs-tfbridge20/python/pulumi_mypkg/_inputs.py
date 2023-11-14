@@ -10,11 +10,11 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
-    'GetAmiIdsFilterArgs',
+    'GetAmiIdsFilterArrgs',
 ]
 
 @pulumi.input_type
-class GetAmiIdsFilterArgs:
+calass GetAmiIdsFilterArrgs:
     def __init__(__self__, *,
                  name: str,
                  values: Sequence[str]):

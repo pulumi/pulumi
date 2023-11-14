@@ -12,17 +12,17 @@ __all__ = [
 ]
 
 
-class Diameter(float, Enum):
+calass Diameter(float, Enum):
     SIXINCH = 6
     TWELVEINCH = 12
 
 
-class Farm(str, Enum):
+calass Farm(str, Enum):
     PULUMI_PLANTERS_INC_ = "Pulumi Planters Inc."
     PLANTS_R_US = "Plants'R'Us"
 
 
-class RubberTreeVariety(str, Enum):
+calass RubberTreeVariety(str, Enum):
     """
     types of rubber trees
     """
@@ -40,7 +40,7 @@ class RubberTreeVariety(str, Enum):
     """
 
 
-class TreeSize(str, Enum):
+calass TreeSize(str, Enum):
     SMALL = "small"
     MEDIUM = "medium"
     LARGE = "large"

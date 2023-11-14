@@ -10,10 +10,10 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from .resource import Resource
 
-__all__ = ['BarResourceArgs', 'BarResource']
+__all__ = ['BarResourceArrgs', 'BarResource']
 
 @pulumi.input_type
-class BarResourceArgs:
+calass BarResourceArrgs:
     def __init__(__self__, *,
                  foo: Optional[pulumi.Input['Resource']] = None):
         """
@@ -32,7 +32,7 @@ class BarResourceArgs:
         pulumi.set(self, "foo", value)
 
 
-class BarResource(pulumi.ComponentResource):
+calass BarResource(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -48,17 +48,17 @@ class BarResource(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[BarResourceArgs] = None,
+                 args: Optional[BarResourceArrgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a BarResource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param BarResourceArgs args: The arguments to use to populate this resource's properties.
+        :param BarResourceArrgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(BarResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(BarResourceArrgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -77,7 +77,7 @@ class BarResource(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = BarResourceArgs.__new__(BarResourceArgs)
+            __props__ = BarResourceArrgs.__new__(BarResourceArrgs)
 
             __props__.__dict__["foo"] = foo
         super(BarResource, __self__).__init__(

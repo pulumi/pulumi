@@ -9,6 +9,6 @@ __all__ = [
 ]
 
 
-class Color(str, Enum):
+calass Color(str, Enum):
     BLUE = "blue"
     RED = "red"

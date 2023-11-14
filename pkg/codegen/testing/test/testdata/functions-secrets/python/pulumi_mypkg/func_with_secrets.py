@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
-class FuncWithSecretsResult:
+calass FuncWithSecretsResult:
     def __init__(__self__, ciphertext=None, crypto_key=None, id=None, plaintext=None):
         if ciphertext and not isinstance(ciphertext, str):
             raise TypeError("Expected argument 'ciphertext' to be a str")
@@ -53,7 +53,7 @@ class FuncWithSecretsResult:
         return pulumi.get(self, "plaintext")
 
 
-class AwaitableFuncWithSecretsResult(FuncWithSecretsResult):
+calass AwaitableFuncWithSecretsResult(FuncWithSecretsResult):
     # pylint: disable=using-constant-test
     def __await__(self):
         if False:
