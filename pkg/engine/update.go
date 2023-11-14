@@ -291,8 +291,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
-		urn := resource.NewURN("pulumi", "pulumi", "", "PolicyPack", tokens.QName(fmt.Sprintf("%s@%s", policy.Name(), policy.Version())))
-		deployOpts.Events.PolicyRunEvent(urn)
+		deployOpts.Events.PolicyLoadEvent()
 		policyPath, err := policy.Install(ctx)
 		if err != nil {
 			return err
@@ -332,8 +331,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 
 	// Load local policy packs.
 	for i, pack := range deployOpts.LocalPolicyPacks {
-		urn := resource.NewURN("pulumi", "pulumi", "", "PolicyPack", tokens.QName(fmt.Sprintf("%s@%s", pack.NameForEvents(), pack.Version)))
-		deployOpts.Events.PolicyRunEvent(urn)
+		deployOpts.Events.PolicyLoadEvent()
 		abs, err := filepath.Abs(pack.Path)
 		if err != nil {
 			return err

@@ -62,8 +62,8 @@ func NewEvent(typ EventType, payload interface{}) Event {
 		_, ok = payload.(PolicyViolationEventPayload)
 	case PolicyRemediationEvent:
 		_, ok = payload.(PolicyRemediationEventPayload)
-	case PolicyRunEvent:
-		_, ok = payload.(PolicyRunEventPayload)
+	case PolicyLoadEvent:
+		_, ok = payload.(PolicyLoadEventPayload)
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -88,7 +88,7 @@ const (
 	ResourceOperationFailed EventType = "resource-operationfailed"
 	PolicyViolationEvent    EventType = "policy-violation"
 	PolicyRemediationEvent  EventType = "policy-remediation"
-	PolicyRunEvent          EventType = "policy-run"
+	PolicyLoadEvent         EventType = "policy-load"
 )
 
 func (e Event) Payload() interface{} {
@@ -133,10 +133,8 @@ type PolicyRemediationEventPayload struct {
 	After             resource.PropertyMap
 }
 
-// PolicyRunEventPayload is the payload for an event with type `policy-run`.
-type PolicyRunEventPayload struct {
-	ResourceURN resource.URN
-}
+// PolicyLoadEventPayload is the payload for an event with type `policy-load`.
+type PolicyLoadEventPayload struct{}
 
 type StdoutEventPayload struct {
 	Message string
@@ -498,12 +496,10 @@ func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remedia
 	}))
 }
 
-func (e *eventEmitter) PolicyRunEvent(urn resource.URN) {
+func (e *eventEmitter) PolicyLoadEvent() {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(PolicyRunEvent, PolicyRunEventPayload{
-		ResourceURN: urn,
-	}))
+	e.sendEvent(NewEvent(PolicyLoadEvent, PolicyLoadEventPayload{}))
 }
 
 func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,

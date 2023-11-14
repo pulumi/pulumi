@@ -141,7 +141,7 @@ type ProgressDisplay struct {
 	opStopwatch opStopwatch
 
 	// Indicates whether we already printed the loading policy packs message.
-	shownPolicyRunEvent bool
+	shownPolicyLoadEvent bool
 }
 
 type opStopwatch struct {
@@ -179,8 +179,6 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return event.Payload().(engine.PolicyRemediationEventPayload).ResourceURN, nil
 	case engine.PolicyViolationEvent:
 		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
-	case engine.PolicyRunEvent:
-		return event.Payload().(engine.PolicyRunEventPayload).ResourceURN, nil
 	default:
 		return "", nil
 	}
@@ -849,11 +847,11 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			display.println(preludeEventString)
 		}
 		return
-	case engine.PolicyRunEvent:
-		if !display.shownPolicyRunEvent {
-			policyRunEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
-			display.println(policyRunEventString)
-			display.shownPolicyRunEvent = true
+	case engine.PolicyLoadEvent:
+		if !display.shownPolicyLoadEvent {
+			policyLoadEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
+			display.println(policyLoadEventString)
+			display.shownPolicyLoadEvent = true
 		}
 		return
 	case engine.SummaryEvent:
