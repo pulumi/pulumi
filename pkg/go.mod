@@ -70,6 +70,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.0
 	github.com/aws/aws-sdk-go-v2/service/kms v1.18.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.10
+	github.com/charmbracelet/glamour v0.6.0
 	github.com/creack/pty v1.1.17
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/erikgeiser/promptkit v0.9.0
@@ -152,7 +153,6 @@ require (
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/charmbracelet/bubbles v0.16.1 // indirect
 	github.com/charmbracelet/bubbletea v0.24.2 // indirect
-	github.com/charmbracelet/glamour v0.6.0 // indirect
 	github.com/charmbracelet/lipgloss v0.7.1 // indirect
 	github.com/cheggaaa/pb v1.0.29 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect

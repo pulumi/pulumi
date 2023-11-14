@@ -220,6 +220,13 @@ type Backend interface {
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
 type EnvironmentsBackend interface {
+	CreateEnvironment(
+		ctx context.Context,
+		org string,
+		name string,
+		yaml []byte,
+	) (apitype.EnvironmentDiagnostics, error)
+
 	CheckYAMLEnvironment(
 		ctx context.Context,
 		org string,
