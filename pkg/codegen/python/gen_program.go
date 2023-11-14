@@ -179,7 +179,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		}
 
 		// emit args class
-		g.Fgenf(w, "class %sArgs(TypedDict, total=False):\n", componentName)
+		g.Fgenf(w, "clas_ %sArgs(TypedDict, total=False):\n", componentName)
 		g.Indented(func() {
 			// define constructor args
 			for _, configVar := range configVars {

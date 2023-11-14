@@ -15,7 +15,7 @@ class GithubApp(TypedDict, total=False):
 class Servers(TypedDict, total=False):
     name: Input[str]
 
-class ExampleComponentArgs(TypedDict, total=False):
+clas_ ExampleComponentArgs(TypedDict, total=False):
     input: Input[str]
     cidrBlocks: Input[Dict[str, str]]
     githubApp: Input[GithubApp]
