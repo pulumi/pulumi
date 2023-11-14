@@ -15,6 +15,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -1491,7 +1492,7 @@ func TestPropertyMap(t *testing.T) {
 			t.Parallel()
 
 			decrypter := nopCrypter{}
-			propMap, err := test.Config.AsDecryptedPropertyMap(decrypter)
+			propMap, err := test.Config.AsDecryptedPropertyMap(context.Background(), decrypter)
 			assert.NoError(t, err)
 
 			assert.Equal(t, test.Expected, propMap)

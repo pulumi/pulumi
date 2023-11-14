@@ -15,6 +15,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,7 +77,7 @@ func (m Map) HasSecureValue() bool {
 }
 
 // AsDecryptedPropertyMap returns the config as a property map, with secret values decrypted.
-func (m Map) AsDecryptedPropertyMap(decrypter Decrypter) (resource.PropertyMap, error) {
+func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (resource.PropertyMap, error) {
 	pm := resource.PropertyMap{}
 
 	for k, v := range m {
@@ -84,7 +85,11 @@ func (m Map) AsDecryptedPropertyMap(decrypter Decrypter) (resource.PropertyMap, 
 		if err != nil {
 			return resource.PropertyMap{}, err
 		}
-		pm[resource.PropertyKey(k.String())] = newV.toDecryptedPropertyValue(decrypter)
+		plaintext, err := newV.toDecryptedPropertyValue(ctx, decrypter)
+		if err != nil {
+			return resource.PropertyMap{}, err
+		}
+		pm[resource.PropertyKey(k.String())] = plaintext
 	}
 	return pm, nil
 }
