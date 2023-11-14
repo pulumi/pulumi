@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Maintain old behavior for empty Kubernetes invoke results
