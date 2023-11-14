@@ -2950,32 +2950,11 @@ func TestListAllStacksFunction(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	createStack := func(ctx context.Context, project string) Stack {
-		opts := []LocalWorkspaceOption{
-			SecretsProvider("passphrase"),
-			EnvVars(map[string]string{
-				"PULUMI_CONFIG_PASSPHRASE": "password",
-			}),
-		}
-
-		name := randomStackName()
-		sName := FullyQualifiedStackName(pulumiOrg, project, name)
-
-		// initialize
-		pDir := filepath.Join(".", "test", project)
-		s, err := NewStackLocalSource(ctx, sName, pDir, opts...)
-		if err != nil {
-			t.Errorf("failed to initialize stack, err: %v", err)
-			t.FailNow()
-		}
-
-		return s
-	}
 
 	// it's possible we will encounter additional stacks across other projects, however,
 	// we will validate we can see these two stacks across different projects
-	s1 := createStack(ctx, "testproj")
-	s2 := createStack(ctx, "correct_project")
+	s1 := newListStacksSource(ctx, t, "testproj")
+	s2 := newListStacksSource(ctx, t, "correct_project")
 
 	ws, err := NewLocalWorkspace(ctx)
 	if err != nil {
