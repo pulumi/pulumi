@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: `import` can now create empty component resource to use as the parent of other imported resources.
