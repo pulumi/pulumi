@@ -4,7 +4,6 @@ on:
     paths:
     - 'pkg/codegen/**'
     - '!pkg/codegen/docs/**'
-    - '.github/workflows/pr-test-codegen-downstream.yml'
 
 permissions:
   contents: read
