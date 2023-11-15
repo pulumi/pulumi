@@ -146,12 +146,12 @@ func makeImportFile(
 type importSpec struct {
 	Type              tokens.Type  `json:"type"`
 	Name              tokens.QName `json:"name"`
-	ID                resource.ID  `json:"id"`
-	Parent            string       `json:"parent"`
-	Provider          string       `json:"provider"`
-	Version           string       `json:"version"`
-	PluginDownloadURL string       `json:"pluginDownloadUrl"`
-	Properties        []string     `json:"properties"`
+	ID                resource.ID  `json:"id,omitempty"`
+	Parent            string       `json:"parent,omitempty"`
+	Provider          string       `json:"provider,omitempty"`
+	Version           string       `json:"version,omitempty"`
+	PluginDownloadURL string       `json:"pluginDownloadUrl,omitempty"`
+	Properties        []string     `json:"properties,omitempty"`
 	Component         bool         `json:"component,omitempty"`
 	Remote            bool         `json:"remote,omitempty"`
 }
