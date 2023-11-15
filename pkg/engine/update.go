@@ -291,6 +291,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
+		deployOpts.Events.PolicyLoadEvent()
 		policyPath, err := policy.Install(ctx)
 		if err != nil {
 			return err
@@ -330,6 +331,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 
 	// Load local policy packs.
 	for i, pack := range deployOpts.LocalPolicyPacks {
+		deployOpts.Events.PolicyLoadEvent()
 		abs, err := filepath.Abs(pack.Path)
 		if err != nil {
 			return err

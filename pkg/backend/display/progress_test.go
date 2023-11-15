@@ -251,3 +251,33 @@ func TestPrintDiagnosticsIsTolerantOfDiagnostics(t *testing.T) {
 		})
 	}
 }
+
+func TestProgressPolicyPacks(t *testing.T) {
+	t.Parallel()
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	go ShowProgressEvents(
+		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
+		Options{
+			IsInteractive:        true,
+			Color:                colors.Raw,
+			ShowConfig:           true,
+			ShowReplacementSteps: true,
+			ShowSameResources:    true,
+			ShowReads:            true,
+			Stdout:               &stdout,
+			Stderr:               &stderr,
+			term:                 terminal.NewMockTerminal(&stdout, 80, 24, true),
+			deterministicOutput:  true,
+		}, false)
+
+	// Send policy pack event to the channel
+	eventChannel <- engine.NewEvent(engine.PolicyLoadEvent, engine.PolicyLoadEventPayload{})
+	close(eventChannel)
+	<-doneChannel
+
+	assert.Contains(t, stdout.String(), "Loading policy packs...")
+}

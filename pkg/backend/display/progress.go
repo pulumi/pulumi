@@ -139,6 +139,9 @@ type ProgressDisplay struct {
 
 	// Structure that tracks the time taken to perform an action on a resource.
 	opStopwatch opStopwatch
+
+	// Indicates whether we already printed the loading policy packs message.
+	shownPolicyLoadEvent bool
 }
 
 type opStopwatch struct {
@@ -842,6 +845,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			}))
 		} else {
 			display.println(preludeEventString)
+		}
+		return
+	case engine.PolicyLoadEvent:
+		if !display.shownPolicyLoadEvent {
+			policyLoadEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
+			display.println(policyLoadEventString)
+			display.shownPolicyLoadEvent = true
 		}
 		return
 	case engine.SummaryEvent:
