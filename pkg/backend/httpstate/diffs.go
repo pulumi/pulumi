@@ -21,9 +21,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 )
 
 type deploymentDiffState struct {
@@ -80,21 +80,19 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 	before := dds.lastSavedDeployment.raw
 	after := deployment.raw
 
-	var checkpointHash string
-	checkpointHashReady := &sync.WaitGroup{}
-
-	checkpointHashReady.Add(1)
-	go func() {
-		defer checkpointHashReady.Done()
-		checkpointHash = dds.computeHash(childCtx, after)
-	}()
+	checkpointHashPromise := promise.Run(func() (string, error) {
+		return dds.computeHash(childCtx, after), nil
+	})
 
 	delta, err := dds.computeEdits(childCtx, dds.lastSavedDeployment, deployment)
 	if err != nil {
 		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %v", err)
 	}
 
-	checkpointHashReady.Wait()
+	checkpointHash, err := checkpointHashPromise.Result(ctx)
+	if err != nil {
+		return deploymentDiff{}, fmt.Errorf("Cannot compute the checkpoint hash: %v", err)
+	}
 
 	tracingSpan.SetTag("before", len(before))
 	tracingSpan.SetTag("after", len(after))
