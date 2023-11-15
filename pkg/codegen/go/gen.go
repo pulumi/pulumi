@@ -1333,7 +1333,7 @@ func (pkg *pkgContext) genOutputType(w io.Writer, baseName, elementType string, 
 	// Generate 'ToOuput(context.Context) pulumix.Output[T]' method
 	// to satisfy pulumix.Input[T].
 	goPackageInfo := goPackageInfo(pkg.pkg)
-	if goPackageInfo.Generics == GenericsSettingSideBySide {
+	if goPackageInfo.Generics == GenericsSettingSideBySide || goPackageInfo.Generics == GenericsSettingGenericsOnly {
 		fmt.Fprintf(w, "func (o %sOutput) ToOutput(ctx context.Context) pulumix.Output[%s] {\n", baseName, elementType)
 		fmt.Fprintf(w, "\treturn pulumix.Output[%s]{\n", elementType)
 		fmt.Fprintf(w, "\t\tOutputState: o.OutputState,\n")
