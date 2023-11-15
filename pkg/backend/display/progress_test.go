@@ -259,18 +259,20 @@ func TestProgressPolicyPacks(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	go ShowProgressEvents("test", "update", "stack", "project", "link", eventChannel, doneChannel, Options{
-		IsInteractive:        true,
-		Color:                colors.Raw,
-		ShowConfig:           true,
-		ShowReplacementSteps: true,
-		ShowSameResources:    true,
-		ShowReads:            true,
-		Stdout:               &stdout,
-		Stderr:               &stderr,
-		term:                 terminal.NewMockTerminal(&stdout, 80, 24, true),
-		deterministicOutput:  true,
-	}, false)
+	go ShowProgressEvents(
+		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
+		Options{
+			IsInteractive:        true,
+			Color:                colors.Raw,
+			ShowConfig:           true,
+			ShowReplacementSteps: true,
+			ShowSameResources:    true,
+			ShowReads:            true,
+			Stdout:               &stdout,
+			Stderr:               &stderr,
+			term:                 terminal.NewMockTerminal(&stdout, 80, 24, true),
+			deterministicOutput:  true,
+		}, false)
 
 	// Send policy pack event to the channel
 	eventChannel <- engine.NewEvent(engine.PolicyLoadEvent, engine.PolicyLoadEventPayload{})
