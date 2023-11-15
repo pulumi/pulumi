@@ -313,10 +313,21 @@ func (p PropertyPath) Contains(other PropertyPath) bool {
 	return true
 }
 
+func unwrapSecrets(v PropertyValue) PropertyValue {
+	if v.IsSecret() {
+		return unwrapSecrets(v.SecretValue().Element)
+	}
+	return v
+}
+
 func (p PropertyPath) reset(old, new PropertyValue) bool {
 	if len(p) == 0 {
 		return false
 	}
+
+	// Unwrap any secrets from old & new, we can just go through them for this traversal.
+	old = unwrapSecrets(old)
+	new = unwrapSecrets(new)
 
 	// If this is the last component we want to do the reset, else we want to search for the next component.
 	key := p[0]

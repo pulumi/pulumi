@@ -1317,10 +1317,19 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}), []string{"b[1]"}, []display.StepOp{deploy.OpSame})
 
 	// Check that ignoring all sub-elements of an array works
-	_ = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"a": 3,
 		"b": []string{"foo", "baz"},
 	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame})
+
+	// Check that ignoring a secret value works
+	_ = updateProgramWithProps(snap, resource.PropertyMap{
+		"a": resource.NewNumberProperty(3),
+		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("foo"),
+			resource.NewStringProperty("baz"),
+		})),
+	}, []string{"b[*]"}, []display.StepOp{deploy.OpSame})
 }
 
 func TestIgnoreChangesInvalidPaths(t *testing.T) {

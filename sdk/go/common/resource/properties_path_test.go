@@ -733,6 +733,75 @@ func TestReset(t *testing.T) {
 			})},
 			nil,
 		},
+		{
+			"Nested path, secret old",
+			PropertyPath{"root", "secret"},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+			PropertyMap{"root": NewProperty(PropertyMap{"secret": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"secret": NewProperty(1.0)})},
+		},
+		{
+			"Nested path, secret new",
+			PropertyPath{"root", "secret"},
+			PropertyMap{"root": NewProperty(PropertyMap{"secret": NewProperty(1.0)})},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(2.0)}))},
+			&PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+		},
+		{
+			"Nested path, secret both",
+			PropertyPath{"root", "secret"},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(2.0)}))},
+			&PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+		},
+		{
+			"Nested array, secret old",
+			PropertyPath{"root", 0},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			}))},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			})},
+			&PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(4.0),
+			})},
+		},
+		{
+			"Nested array, secret new",
+			PropertyPath{"root", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			}))},
+			&PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(4.0),
+			}))},
+		},
+		{
+			"Nested array, secret both",
+			PropertyPath{"root", 0},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			}))},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			}))},
+			&PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(4.0),
+			}))},
+		},
 	}
 
 	for _, tt := range cases {
