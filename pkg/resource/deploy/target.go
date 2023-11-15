@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 
 // Target represents information about a deployment target.
 type Target struct {
-	Name         tokens.Name      // the target stack name.
+	Name         tokens.StackName // the target stack name.
 	Organization tokens.Name      // the target organization name (if any).
 	Config       config.Map       // optional configuration key/value pairs.
 	Decrypter    config.Decrypter // decrypter for secret configuration values.

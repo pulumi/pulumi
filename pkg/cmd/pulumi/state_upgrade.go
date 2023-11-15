@@ -118,7 +118,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 	return lb.Upgrade(ctx, &opts)
 }
 
-func (cmd *stateUpgradeCmd) projectsForDetachedStacks(stacks []tokens.Name) ([]tokens.Name, error) {
+func (cmd *stateUpgradeCmd) projectsForDetachedStacks(stacks []tokens.StackName) ([]tokens.Name, error) {
 	projects := make([]tokens.Name, len(stacks))
 	err := (&stateUpgradeProjectNameWidget{
 		Stdin:  cmd.Stdin,
@@ -143,7 +143,7 @@ type stateUpgradeProjectNameWidget struct {
 // and stores the result in the corresponding index of projects.
 //
 // The length of projects must be equal to the length of stacks.
-func (w *stateUpgradeProjectNameWidget) Prompt(stacks, projects []tokens.Name) error {
+func (w *stateUpgradeProjectNameWidget) Prompt(stacks []tokens.StackName, projects []tokens.Name) error {
 	contract.Assertf(len(stacks) == len(projects),
 		"length of stacks (%d) must equal length of projects (%d)", len(stacks), len(projects))
 

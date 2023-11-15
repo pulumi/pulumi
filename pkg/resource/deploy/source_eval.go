@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ func (src *evalSource) Project() tokens.PackageName {
 }
 
 // Stack is the name of the stack being targeted by this evaluation source.
-func (src *evalSource) Stack() tokens.Name {
+func (src *evalSource) Stack() tokens.StackName {
 	return src.runinfo.Target.Name
 }
 
@@ -230,7 +230,7 @@ func (iter *evalSourceIterator) forkRun(
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
 				MonitorAddress:    iter.mon.Address(),
-				Stack:             string(iter.src.runinfo.Target.Name),
+				Stack:             iter.src.runinfo.Target.Name.String(),
 				Project:           string(iter.src.runinfo.Proj.Name),
 				Pwd:               iter.src.runinfo.Pwd,
 				Program:           iter.src.runinfo.Program,
@@ -584,7 +584,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	resmon.constructInfo = plugin.ConstructInfo{
 		Project:          string(src.runinfo.Proj.Name),
-		Stack:            string(src.runinfo.Target.Name),
+		Stack:            src.runinfo.Target.Name.String(),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           src.dryRun,

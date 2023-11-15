@@ -219,7 +219,7 @@ func TestParseImportFile_errors(t *testing.T) {
 
 			require.NotEmpty(t, tt.wantErrs, "invalid test: wantErrs must not be empty")
 
-			_, _, err := parseImportFile(tt.give, "stack", "proj", false)
+			_, _, err := parseImportFile(tt.give, tokens.MustParseStackName("stack"), "proj", false)
 			require.Error(t, err)
 			for _, wantErr := range tt.wantErrs {
 				assert.ErrorContains(t, err, wantErr)
@@ -246,7 +246,7 @@ func TestParseImportFileSameName(t *testing.T) {
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, "stack", "proj", false)
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
 	resourceNames := map[tokens.QName]struct{}{}
 	for _, imp := range imports {
@@ -286,7 +286,7 @@ func TestParseImportFileRenameNoClash(t *testing.T) {
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, "stack", "proj", false)
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
 	resourceNames := map[tokens.QName]struct{}{}
 	// Check resource names are unique.
@@ -329,7 +329,7 @@ func TestParseImportFileAutoURN(t *testing.T) {
 			},
 		},
 	}
-	imports, nt, err := parseImportFile(f, "stack", "proj", false)
+	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
 
 	// Check the parent URN was auto filled in.

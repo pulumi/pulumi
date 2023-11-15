@@ -194,7 +194,7 @@ type TestPlan struct {
 	Steps          []TestStep
 }
 
-func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
+func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
 		project = "test"
@@ -203,9 +203,9 @@ func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, ru
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.Name(p.Stack)
-	if stack == "" {
-		stack = "test"
+	stack = tokens.MustParseStackName("test")
+	if p.Stack != "" {
+		stack = tokens.MustParseStackName(p.Stack)
 	}
 	return stack, project, runtime
 }
