@@ -1322,14 +1322,23 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		"b": []string{"foo", "baz"},
 	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame})
 
-	// Check that ignoring a secret value works
+	// Check that ignoring a secret value works, first update to make foo, bar secret
+	snap = updateProgramWithProps(snap, resource.PropertyMap{
+		"a": resource.NewNumberProperty(3),
+		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("foo"),
+			resource.NewStringProperty("bar"),
+		})),
+	}, nil, []display.StepOp{deploy.OpUpdate})
+
+	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
 		"a": resource.NewNumberProperty(3),
 		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewStringProperty("foo"),
 			resource.NewStringProperty("baz"),
 		})),
-	}, []string{"b[*]"}, []display.StepOp{deploy.OpSame})
+	}, []string{"b[1]"}, []display.StepOp{deploy.OpSame})
 }
 
 func TestIgnoreChangesInvalidPaths(t *testing.T) {

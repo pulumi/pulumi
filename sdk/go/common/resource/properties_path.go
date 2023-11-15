@@ -313,21 +313,26 @@ func (p PropertyPath) Contains(other PropertyPath) bool {
 	return true
 }
 
-func unwrapSecrets(v PropertyValue) PropertyValue {
+// unwrapSecrets recursively unwraps any secrets from the given PropertyValue returning true if any secrets were
+// unwrapped.
+func unwrapSecrets(v PropertyValue) (PropertyValue, bool) {
 	if v.IsSecret() {
-		return unwrapSecrets(v.SecretValue().Element)
+		inner, _ := unwrapSecrets(v.SecretValue().Element)
+		return inner, true
 	}
-	return v
+	return v, false
 }
 
-func (p PropertyPath) reset(old, new PropertyValue) bool {
+func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret bool) bool {
 	if len(p) == 0 {
 		return false
 	}
 
 	// Unwrap any secrets from old & new, we can just go through them for this traversal.
-	old = unwrapSecrets(old)
-	new = unwrapSecrets(new)
+	old, isSecret := unwrapSecrets(old)
+	oldIsSecret = oldIsSecret || isSecret
+	new, isSecret = unwrapSecrets(new)
+	newIsSecret = newIsSecret || isSecret
 
 	// If this is the last component we want to do the reset, else we want to search for the next component.
 	key := p[0]
@@ -362,6 +367,11 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 			// Otherwise both arrays contain this index and we can reset the value of it in new to what is in
 			// old.
 			v := old.ArrayValue()[key]
+			// If this was a secret value in old, but new isn't currently a secret context then we need to mark this
+			// reset value as secret.
+			if oldIsSecret && !newIsSecret {
+				v = MakeSecret(v)
+			}
 			new.ArrayValue()[key] = v
 			return true
 		}
@@ -379,7 +389,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 		}
 		old = old.ArrayValue()[key]
 		new = new.ArrayValue()[key]
-		return p[1:].reset(old, new)
+		return p[1:].reset(old, new, oldIsSecret, newIsSecret)
 
 	case string:
 		if key == "*" {
@@ -388,6 +398,11 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 					if old.IsObject() {
 						for k := range old.ObjectValue() {
 							v := old.ObjectValue()[k]
+							// If this was a secret value in old, but new isn't currently a secret context then we need
+							// to mark this reset value as secret.
+							if oldIsSecret && !newIsSecret {
+								v = MakeSecret(v)
+							}
 							new.ObjectValue()[k] = v
 						}
 						for k := range new.ObjectValue() {
@@ -401,6 +416,11 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 					if old.IsArray() {
 						for i := range old.ArrayValue() {
 							v := old.ArrayValue()[i]
+							// If this was a secret value in old, but new isn't currently a secret context then we need
+							// to mark this reset value as secret.
+							if oldIsSecret && !newIsSecret {
+								v = MakeSecret(v)
+							}
 							new.ArrayValue()[i] = v
 						}
 					}
@@ -422,7 +442,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 						return false
 					}
 
-					if !p[1:].reset(oldValue, newValue) {
+					if !p[1:].reset(oldValue, newValue, oldIsSecret, newIsSecret) {
 						return false
 					}
 				}
@@ -432,7 +452,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 				newArray := new.ArrayValue()
 
 				for i := range oldArray {
-					if !p[1:].reset(oldArray[i], newArray[i]) {
+					if !p[1:].reset(oldArray[i], newArray[i], oldIsSecret, newIsSecret) {
 						return false
 					}
 				}
@@ -459,7 +479,11 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 					if !new.IsObject() {
 						return false
 					}
-					// Else simply overwrite the value in new with the value from old
+					// Else simply overwrite the value in new with the value from old, if this was a secret value in
+					// old, but new isn't currently a secret context then we need to mark this reset value as secret.
+					if oldIsSecret && !newIsSecret {
+						v = MakeSecret(v)
+					}
 					new.ObjectValue()[pkey] = v
 				} else {
 					// If the path doesn't exist in old then we want to delete it from new, but if new isn't
@@ -492,7 +516,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 				return true
 			}
 
-			return p[1:].reset(old, new)
+			return p[1:].reset(old, new, oldIsSecret, newIsSecret)
 		}
 	}
 
@@ -505,7 +529,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 // intermediate locations, it also won't create or delete array locations (because that would change the size
 // of the array).
 func (p PropertyPath) Reset(old, new PropertyMap) bool {
-	return p.reset(NewObjectProperty(old), NewObjectProperty(new))
+	return p.reset(NewObjectProperty(old), NewObjectProperty(new), false, false)
 }
 
 func requiresQuote(c rune) bool {

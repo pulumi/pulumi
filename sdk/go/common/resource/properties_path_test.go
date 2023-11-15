@@ -738,7 +738,7 @@ func TestReset(t *testing.T) {
 			PropertyPath{"root", "secret"},
 			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
 			PropertyMap{"root": NewProperty(PropertyMap{"secret": NewProperty(2.0)})},
-			&PropertyMap{"root": NewProperty(PropertyMap{"secret": NewProperty(1.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"secret": MakeSecret(NewProperty(1.0))})},
 		},
 		{
 			"Nested path, secret new",
@@ -766,7 +766,7 @@ func TestReset(t *testing.T) {
 				NewProperty(4.0),
 			})},
 			&PropertyMap{"root": NewProperty([]PropertyValue{
-				NewProperty(1.0),
+				MakeSecret(NewProperty(1.0)),
 				NewProperty(4.0),
 			})},
 		},
