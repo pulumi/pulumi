@@ -19,6 +19,7 @@ from threading import Event, Lock
 import sys
 import time
 
+import typing
 import dill
 import grpc
 from google.protobuf import empty_pb2
@@ -34,7 +35,7 @@ _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
-_PROVIDER_CACHE: dict[str, ResourceProvider] = {}
+_PROVIDER_CACHE: typing.Dict[str, ResourceProvider] = {}
 _PROVIDER_LOCK = Lock()
 
 
