@@ -159,8 +159,10 @@ func newUpCmd() *cobra.Command {
 			TargetDependents:          targetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan: true,
-			Experimental: hasExperimentalCommands(),
+			GeneratePlan:    true,
+			Experimental:    hasExperimentalCommands(),
+			EnableDebugging: enableDebugging(),
+			WaitForAttach:   waitForAttach(),
 		}
 
 		if planFilePath != "" {
@@ -324,7 +326,7 @@ func newUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		pwd, _, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return result.FromError(fmt.Errorf("building project context: %w", err))
 		}
@@ -377,8 +379,10 @@ func newUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: hasExperimentalCommands(),
-			Experimental: hasExperimentalCommands(),
+			GeneratePlan:    hasExperimentalCommands(),
+			Experimental:    hasExperimentalCommands(),
+			EnableDebugging: enableDebugging(),
+			WaitForAttach:   waitForAttach(),
 		}
 
 		// TODO for the URL case:

@@ -230,8 +230,10 @@ func newPreviewCmd() *cobra.Command {
 					TargetDependents:          targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan: hasExperimentalCommands() || planFilePath != "",
-					Experimental: hasExperimentalCommands(),
+					GeneratePlan:    hasExperimentalCommands() || planFilePath != "",
+					Experimental:    hasExperimentalCommands(),
+					EnableDebugging: enableDebugging(),
+					WaitForAttach:   waitForAttach(),
 				},
 				Display: displayOpts,
 			}

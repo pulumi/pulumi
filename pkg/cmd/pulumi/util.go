@@ -69,6 +69,15 @@ func hasDebugCommands() bool {
 	return env.DebugCommands.Value()
 }
 
+func enableDebugging() bool {
+	return env.EnableDebugging.Value()
+}
+
+func waitForAttach() bool {
+	// always true when debugging is enabled
+	return enableDebugging()
+}
+
 func hasExperimentalCommands() bool {
 	return env.Experimental.Value()
 }

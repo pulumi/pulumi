@@ -62,6 +62,8 @@ func NewEvent(typ EventType, payload interface{}) Event {
 		_, ok = payload.(PolicyViolationEventPayload)
 	case PolicyRemediationEvent:
 		_, ok = payload.(PolicyRemediationEventPayload)
+	case StartDebuggingEvent:
+		_, ok = payload.(StartDebuggingEventPayload)
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -86,6 +88,7 @@ const (
 	ResourceOperationFailed EventType = "resource-operationfailed"
 	PolicyViolationEvent    EventType = "policy-violation"
 	PolicyRemediationEvent  EventType = "policy-remediation"
+	StartDebuggingEvent     EventType = "debugging-start"
 )
 
 func (e Event) Payload() interface{} {
@@ -128,6 +131,11 @@ type PolicyRemediationEventPayload struct {
 	PolicyPackVersion string
 	Before            resource.PropertyMap
 	After             resource.PropertyMap
+}
+
+// StartDebuggingEventPayload is the payload for an event of type `debugging-start`
+type StartDebuggingEventPayload struct {
+	Config map[string]interface{} // the debug configuration (language-specific, see Debug Adapter Protocol)
 }
 
 type StdoutEventPayload struct {
@@ -524,6 +532,13 @@ func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemera
 
 func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
 	diagEvent(e, d, prefix, msg, diag.Warning, ephemeral)
+}
+
+func (e *eventEmitter) startDebugging(info plugin.DebuggingInfo) {
+	contract.Requiref(e != nil, "e", "!= nil")
+	e.sendEvent(NewEvent(StartDebuggingEvent, StartDebuggingEventPayload{
+		Config: info.Config,
+	}))
 }
 
 func filterResourceProperties(m resource.PropertyMap, debug bool) resource.PropertyMap {

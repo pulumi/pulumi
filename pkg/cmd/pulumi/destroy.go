@@ -272,6 +272,8 @@ func newDestroyCmd() *cobra.Command {
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
 				Experimental:              hasExperimentalCommands(),
+				EnableDebugging:           enableDebugging(),
+				WaitForAttach:             waitForAttach(),
 			}
 
 			_, res := s.Destroy(ctx, backend.UpdateOperation{

@@ -196,6 +196,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			nil,
 			cmdutil.Diag(),
 			cmdutil.Diag(),
+			nil,
 			false,
 			span,
 			nil,

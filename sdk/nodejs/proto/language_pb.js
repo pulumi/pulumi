@@ -1598,7 +1598,9 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     querymode: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
     organization: jspb.Message.getFieldWithDefault(msg, 12, ""),
-    configpropertymap: (f = msg.getConfigpropertymap()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    configpropertymap: (f = msg.getConfigpropertymap()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    debug: jspb.Message.getBooleanFieldWithDefault(msg, 14, false),
+    waitforattach: jspb.Message.getBooleanFieldWithDefault(msg, 15, false)
   };
 
   if (includeInstance) {
@@ -1689,6 +1691,14 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setConfigpropertymap(value);
+      break;
+    case 14:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDebug(value);
+      break;
+    case 15:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setWaitforattach(value);
       break;
     default:
       reader.skipField();
@@ -1806,6 +1816,20 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
       13,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getDebug();
+  if (f) {
+    writer.writeBool(
+      14,
+      f
+    );
+  }
+  f = message.getWaitforattach();
+  if (f) {
+    writer.writeBool(
+      15,
+      f
     );
   }
 };
@@ -2103,6 +2127,42 @@ proto.pulumirpc.RunRequest.prototype.clearConfigpropertymap = function() {
  */
 proto.pulumirpc.RunRequest.prototype.hasConfigpropertymap = function() {
   return jspb.Message.getField(this, 13) != null;
+};
+
+
+/**
+ * optional bool debug = 14;
+ * @return {boolean}
+ */
+proto.pulumirpc.RunRequest.prototype.getDebug = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 14, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.setDebug = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 14, value);
+};
+
+
+/**
+ * optional bool waitForAttach = 15;
+ * @return {boolean}
+ */
+proto.pulumirpc.RunRequest.prototype.getWaitforattach = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 15, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.setWaitforattach = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 15, value);
 };
 
 
