@@ -197,7 +197,7 @@ func writeImportFile(v importFile) (string, error) {
 }
 
 func parseImportFile(
-	f importFile, stack tokens.Name, proj tokens.PackageName, protectResources bool,
+	f importFile, stack tokens.StackName, proj tokens.PackageName, protectResources bool,
 ) ([]deploy.Import, importer.NameTable, error) {
 	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
 	// it's ambiguous (it's true).
@@ -444,7 +444,7 @@ type programGeneratorFunc func(
 ) (map[string][]byte, hcl.Diagnostics, error)
 
 func generateImportedDefinitions(ctx *plugin.Context,
-	out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
+	out io.Writer, stackName tokens.StackName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool,
 ) (bool, error) {

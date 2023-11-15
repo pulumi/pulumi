@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			stackName := string(s.Ref().Name())
+			stackName := s.Ref().Name().String()
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
 			if cmdutil.Interactive() && (!yes && !confirmPrompt(prompt, stackName, opts)) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")

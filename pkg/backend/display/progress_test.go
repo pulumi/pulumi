@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,18 +63,20 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	go ShowProgressEvents("test", "update", "stack", "project", "link", eventChannel, doneChannel, Options{
-		IsInteractive:        interactive,
-		Color:                colors.Raw,
-		ShowConfig:           true,
-		ShowReplacementSteps: true,
-		ShowSameResources:    true,
-		ShowReads:            true,
-		Stdout:               &stdout,
-		Stderr:               &stderr,
-		term:                 terminal.NewMockTerminal(&stdout, width, height, true),
-		deterministicOutput:  true,
-	}, false)
+	go ShowProgressEvents(
+		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
+		Options{
+			IsInteractive:        interactive,
+			Color:                colors.Raw,
+			ShowConfig:           true,
+			ShowReplacementSteps: true,
+			ShowSameResources:    true,
+			ShowReads:            true,
+			Stdout:               &stdout,
+			Stderr:               &stderr,
+			term:                 terminal.NewMockTerminal(&stdout, width, height, true),
+			deterministicOutput:  true,
+		}, false)
 
 	for _, e := range events {
 		eventChannel <- e

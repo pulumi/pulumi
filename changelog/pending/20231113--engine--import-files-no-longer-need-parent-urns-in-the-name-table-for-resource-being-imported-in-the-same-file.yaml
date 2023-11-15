@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Import files no longer need parent URNs in the name table for resource being imported in the same file.
