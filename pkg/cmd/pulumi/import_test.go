@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -340,4 +342,69 @@ func TestParseImportFileAutoURN(t *testing.T) {
 	// Check the nameTable was filled in.
 	assert.Equal(t, "otherThing", nt[imports[0].Parent])
 	assert.Equal(t, "thing", nt[imports[2].Parent])
+}
+
+// Small test to ensure that importFile is marshalled to JSON sensibly, mostly checking that optional fields
+// don't show up.
+func TestImportFileMarshal(t *testing.T) {
+	t.Parallel()
+
+	importFile := importFile{
+		NameTable: map[string]resource.URN{
+			"foo": "urn:pulumi:stack::proj::foo:bar:a::arb",
+		},
+		Resources: []importSpec{
+			{
+				Name: "bar",
+				Type: "foo:bar:b",
+				ID:   "123",
+			},
+			{
+				Name:      "comp",
+				Type:      "some/comp",
+				Component: true,
+			},
+			{
+				Name:              "thirdParty",
+				Type:              "some:third:party",
+				ID:                "abc123",
+				Parent:            "bar",
+				Version:           "1.2.3",
+				PluginDownloadURL: "https://example.com",
+			},
+		},
+	}
+
+	expected := `{
+  "nameTable": {
+    "foo": "urn:pulumi:stack::proj::foo:bar:a::arb"
+  },
+  "resources": [
+    {
+      "type": "foo:bar:b",
+      "name": "bar",
+      "id": "123"
+    },
+    {
+      "type": "some/comp",
+      "name": "comp",
+      "component": true
+    },
+    {
+      "type": "some:third:party",
+      "name": "thirdParty",
+      "id": "abc123",
+      "parent": "bar",
+      "version": "1.2.3",
+      "pluginDownloadUrl": "https://example.com"
+    }
+  ]
+}
+`
+	var buffer bytes.Buffer
+	enc := json.NewEncoder(&buffer)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(importFile)
+	require.NoError(t, err)
+	assert.Equal(t, expected, buffer.String())
 }
