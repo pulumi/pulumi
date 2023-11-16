@@ -127,7 +127,10 @@ func (op TestOp) runWithContext(
 	close(events)
 	contract.IgnoreClose(journal)
 
-	firedEvents, err := firedEventsPromise.Result(callerCtx)
+	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
+	// the deployment context, not expecting it to have any effect on the test code here. See
+	// https://github.com/pulumi/pulumi/issues/14588 for what happens if you try to use callerCtx here.
+	firedEvents, err := firedEventsPromise.Result(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
