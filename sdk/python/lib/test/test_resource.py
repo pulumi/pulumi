@@ -14,6 +14,7 @@
 
 from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
+import os
 import pytest
 import unittest
 
@@ -21,6 +22,7 @@ from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
 from pulumi.runtime.proto import resource_pb2
 from pulumi import ResourceOptions
+from pulumi.runtime.rpc import ERROR_ON_DEPENDENCY_CYCLES_VAR
 import pulumi
 
 
@@ -33,6 +35,12 @@ class DependencyProviderResourceTests(unittest.TestCase):
         res = DependencyProviderResource("urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0")
         self.assertEqual("aws", res.package)
 
+@pytest.fixture(autouse=True)
+def clean_up_env_vars():
+    try:
+        del os.environ[ERROR_ON_DEPENDENCY_CYCLES_VAR]
+    except KeyError:
+        pass
 
 @pulumi.runtime.test
 def test_depends_on_accepts_outputs(dep_tracker):
@@ -247,6 +255,7 @@ class MergeResourceOptions(unittest.TestCase):
 # Regression test for https://github.com/pulumi/pulumi/issues/12032
 @pulumi.runtime.test
 def test_parent_and_depends_on_are_the_same_12032():
+    os.environ[ERROR_ON_DEPENDENCY_CYCLES_VAR] = "false"
     mocks.set_mocks(MinimalMocks())
 
     parent = pulumi.ComponentResource("pkg:index:first", "first")
@@ -266,6 +275,7 @@ def test_parent_and_depends_on_are_the_same_12032():
 # Regression test for https://github.com/pulumi/pulumi/issues/12736
 @pulumi.runtime.test
 def test_complex_parent_child_dependencies():
+    os.environ[ERROR_ON_DEPENDENCY_CYCLES_VAR] = "false"
     mocks.set_mocks(MinimalMocks())
 
     class A(pulumi.ComponentResource):
@@ -295,6 +305,7 @@ def test_complex_parent_child_dependencies():
         parent=a.b,
         depends_on=[a.b]
     ))
+
 
 # Regression test for https://github.com/pulumi/pulumi/issues/13997
 @pulumi.runtime.test
