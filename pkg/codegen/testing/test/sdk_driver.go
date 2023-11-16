@@ -361,6 +361,31 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
 		Skip:        allLanguages.Except("python/any"),
 	},
+	{
+		Directory:   "output-funcs-go-generics-only",
+		Description: "Tests targeting the $fn_output code generation feature, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "plain-and-default-go-generics-only",
+		Description: "resource with a plain default property works, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "secrets-go-generics-only",
+		Description: "Generate a resource with secret properties, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "simple-enum-schema-go-generics-only",
+		Description: "Simple schema with enum types, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "simple-plain-schema-go-generics-only",
+		Description: "Simple schema with plain properties, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool
