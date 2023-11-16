@@ -1052,3 +1052,34 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 		))
 	assert.Truef(t, called, "expected resolution to be called with duplicate name")
 }
+
+//nolint:paralleltest // changes directory for process
+func TestCreatingYamlProjectWithLanguageSpecified(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+	uniqueProjectName := filepath.Base(tempdir) + "test"
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		name:              uniqueProjectName,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: "aws-yaml",
+		language:          "go",
+	}
+
+	err := runNew(context.Background(), args)
+	require.NoError(t, err)
+
+	removeStack(t, tempdir, stackName)
+
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, "go", proj.Runtime.Name())
+
+	_, err = os.Stat(filepath.Join(tempdir, "main.go"))
+	assert.NoError(t, err)
+}

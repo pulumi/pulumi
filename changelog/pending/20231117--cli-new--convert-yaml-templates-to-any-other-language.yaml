@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Convert yaml templates to any other language.

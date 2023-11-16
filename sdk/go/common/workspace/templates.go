@@ -205,6 +205,7 @@ type Template struct {
 	Error       error                                 // Non-nil if the template is broken.
 
 	ProjectName        string // Name of the project.
+	ProjectRuntime     string // The runtime of the project.
 	ProjectDescription string // Optional description of the project.
 }
 
@@ -466,7 +467,8 @@ func LoadTemplate(path string) (Template, error) {
 		Dir:  path,
 		Name: filepath.Base(path),
 
-		ProjectName: proj.Name.String(),
+		ProjectName:    proj.Name.String(),
+		ProjectRuntime: proj.Runtime.Name(),
 	}
 	if proj.Template != nil {
 		template.Description = proj.Template.Description

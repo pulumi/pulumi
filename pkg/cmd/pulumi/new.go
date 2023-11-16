@@ -31,10 +31,13 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 
+	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -42,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -71,6 +75,7 @@ type newArgs struct {
 	templateNameOrURL string
 	yes               bool
 	listTemplates     bool
+	language          string
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -171,9 +176,35 @@ func runNew(ctx context.Context, args newArgs) error {
 		return fmt.Errorf("template '%s' is currently broken: %w", template.Name, template.Error)
 	}
 
-	// Do a dry run, if we're not forcing files to be overwritten.
-	if !args.force {
-		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
+	// If this is a YAML template we can convert it to any other language, so ask the user which language they want.
+	targetLanguage := args.language
+	// templateTargetDirectory defaults to cwd, but if we're doing a language conversion will be repointed to
+	// a temporary directory.
+	templateTargetDirectory := cwd
+	if template.ProjectRuntime == "yaml" {
+		if targetLanguage == "" {
+			targetLanguage, err = chooseLanguage(opts)
+			if err != nil {
+				return err
+			}
+		}
+
+		// If the language selected is yaml then no conversion needed.
+		if targetLanguage != "yaml" {
+			// Else we'll convert the template to the chosen language in a new temporary directory.
+			templateTargetDirectory, err = os.MkdirTemp("", "pulumi-new-")
+			if err != nil {
+				return err
+			}
+			defer os.RemoveAll(templateTargetDirectory)
+		}
+	}
+
+	// Do a dry run, if we're not forcing files to be overwritten. Only worth doing this check if we're
+	// templating directly out to the cwd, else we need to do this check later after templating and
+	// conversion.
+	if !args.force && templateTargetDirectory == cwd {
+		if err = workspace.CopyTemplateFilesDryRun(template.Dir, templateTargetDirectory, args.name); err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
@@ -262,11 +293,76 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Actually copy the files.
-	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
+	if err = workspace.CopyTemplateFiles(
+		template.Dir, templateTargetDirectory, args.force, args.name, args.description,
+	); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
 		return err
+	}
+
+	// And if we're doing a conversion then actually convert it out to the target language.
+	if templateTargetDirectory != cwd {
+		pclTmp, err := os.MkdirTemp("", "pulumi-new-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(pclTmp)
+
+		projectTmp, err := os.MkdirTemp("", "pulumi-new-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(projectTmp)
+
+		pCtx, err := newPluginContext(templateTargetDirectory)
+		if err != nil {
+			return fmt.Errorf("create plugin host: %w", err)
+		}
+		defer contract.IgnoreClose(pCtx.Host)
+
+		loader := schema.NewPluginLoader(pCtx.Host)
+		proj, program, err := yamlgen.Eject(templateTargetDirectory, loader)
+		if err != nil {
+			return fmt.Errorf("load yaml program: %w", err)
+		}
+		err = writeProgram(pclTmp, proj, program)
+		if err != nil {
+			return fmt.Errorf("write program to intermediate directory: %w", err)
+		}
+		diagnostics, err := generateProject(pCtx, targetLanguage, pclTmp, projectTmp, proj, loader, false)
+
+		// If we have error diagnostics then program generation failed, print an error to the user that they
+		// should raise an issue about this
+		if diagnostics.HasErrors() {
+			fmt.Fprintln(os.Stderr, "================================================================================")
+			fmt.Fprintln(os.Stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
+			fmt.Fprintln(os.Stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
+			fmt.Fprintln(os.Stderr, "Please provide all of the below text in your report.")
+			fmt.Fprintln(os.Stderr, "================================================================================")
+			fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
+			printDiagnostics(pCtx.Diag, diagnostics)
+		}
+
+		if err != nil {
+			return fmt.Errorf("could not generate template program: %w", err)
+		} else if diagnostics.HasErrors() {
+			return fmt.Errorf("could not generate template program")
+		}
+
+		// We need to do the "force" check now that we've actually got the files that are going to be copied.
+		if !args.force {
+			if err = workspace.CopyTemplateFilesDryRun(projectTmp, cwd, args.name); err != nil {
+				return err
+			}
+		}
+
+		// Finally copy the files over to cwd the actual target directory.
+		err = fsutil.CopyFile(cwd, projectTmp, nil)
+		if err != nil {
+			return fmt.Errorf("copying files to target directory: %w", err)
+		}
 	}
 
 	fmt.Printf("Created project '%s'\n", args.name)
@@ -535,6 +631,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.listTemplates, "list-templates", "l", false,
 		"List locally installed templates and exit")
+	cmd.PersistentFlags().StringVar(
+		&args.language, "language", "", "If using a YAML template, the language to convert it to.")
 
 	return cmd
 }
@@ -869,6 +967,33 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	}
 
 	return optionToTemplateMap[option], nil
+}
+
+// chooseLanguage will prompt the user to choose amongst the available languages. It defaults to YAML.
+func chooseLanguage(opts display.Options) (string, error) {
+	if !opts.IsInteractive {
+		return "yaml", nil
+	}
+
+	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+
+	// TODO: This should be driven by language plugins and not hardcoded.
+	options := []string{
+		"yaml", "typescript", "python", "go", "csharp", "java",
+	}
+	message := "\rPlease choose a language:\n"
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message: message,
+		Options: options,
+	}, &option, surveyIcons(opts.Color)); err != nil {
+		return "", err
+	}
+
+	return option, nil
 }
 
 // parseConfig parses the config values passed via command line flags.

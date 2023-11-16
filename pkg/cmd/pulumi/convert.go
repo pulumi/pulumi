@@ -47,8 +47,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
-type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
-
 func loadConverterPlugin(
 	ctx *plugin.Context,
 	name string,
@@ -218,30 +216,95 @@ func pclGenerateProject(
 	return diagnostics, err
 }
 
-type projectGeneratorFunction func(
-	string, string, *workspace.Project, schema.ReferenceLoader, bool,
-) (hcl.Diagnostics, error)
+func generateProject(
+	pCtx *plugin.Context,
+	language, sourceDirectory, targetDirectory string,
+	project *workspace.Project, loader schema.ReferenceLoader, strict bool,
+) (hcl.Diagnostics, error) {
+	// Wrapper function for some of the project generators that take a pcl.Program.
+	generatorWrapper := func(
+		generator func(string, workspace.Project, *pcl.Program) error,
+	) func(string, string, *workspace.Project, schema.ReferenceLoader, bool) (hcl.Diagnostics, error) {
+		return func(
+			sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
+		) (hcl.Diagnostics, error) {
+			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) projectGeneratorFunction {
-	return func(
-		sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
-	) (hcl.Diagnostics, error) {
-		contract.Requiref(proj != nil, "proj", "must not be nil")
+			extraOptions := make([]pcl.BindOption, 0)
+			if !strict {
+				extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
+			}
 
-		extraOptions := make([]pcl.BindOption, 0)
-		if !strict {
-			extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
+			program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
+			if err != nil {
+				return diagnostics, fmt.Errorf("failed to bind program: %w", err)
+			} else if program == nil {
+				// We've already printed the diagnostics above
+				return diagnostics, fmt.Errorf("failed to bind program")
+			}
+			return diagnostics, generator(targetDirectory, *proj, program)
 		}
-
-		program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
-		if err != nil {
-			return diagnostics, fmt.Errorf("failed to bind program: %w", err)
-		} else if program == nil {
-			// We've already printed the diagnostics above
-			return diagnostics, fmt.Errorf("failed to bind program")
-		}
-		return diagnostics, generator(targetDirectory, *proj, program)
 	}
+
+	// Translate well known languages to runtimes
+	switch language {
+	case "csharp", "c#":
+		language = "dotnet"
+	case "typescript":
+		language = "nodejs"
+	}
+
+	var projectGenerator func(string, string, *workspace.Project, schema.ReferenceLoader, bool) (hcl.Diagnostics, error)
+	switch language {
+	case "dotnet":
+		projectGenerator = generatorWrapper(
+			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
+				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
+			})
+	case "java":
+		projectGenerator = generatorWrapper(javagen.GenerateProject)
+	case "yaml":
+		projectGenerator = generatorWrapper(yamlgen.GenerateProject)
+	case "pulumi", "pcl":
+		projectGenerator = pclGenerateProject
+	default:
+		projectGenerator = func(
+			sourceDirectory, targetDirectory string,
+			project *workspace.Project,
+			loader schema.ReferenceLoader,
+			strict bool,
+		) (hcl.Diagnostics, error) {
+			contract.Requiref(project != nil, "proj", "must not be nil")
+
+			languagePlugin, err := pCtx.Host.LanguageRuntime(sourceDirectory, sourceDirectory, language, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			loaderServer := schema.NewLoaderServer(loader)
+			grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+			if err != nil {
+				return nil, err
+			}
+			defer contract.IgnoreClose(grpcServer)
+
+			projectBytes, err := encoding.JSON.Marshal(project)
+			if err != nil {
+				return nil, err
+			}
+			projectJSON := string(projectBytes)
+
+			diagnostics, err := languagePlugin.GenerateProject(
+				sourceDirectory, targetDirectory, projectJSON,
+				strict, grpcServer.Addr(), nil /*localDependencies*/)
+			if err != nil {
+				return diagnostics, err
+			}
+			return diagnostics, nil
+		}
+	}
+
+	return projectGenerator(sourceDirectory, targetDirectory, project, loader, strict)
 }
 
 func runConvert(
@@ -262,66 +325,6 @@ func runConvert(
 		from = "terraform"
 	case "":
 		from = "yaml"
-	}
-
-	// Translate well known languages to runtimes
-	switch language {
-	case "csharp", "c#":
-		language = "dotnet"
-	case "typescript":
-		language = "nodejs"
-	}
-
-	var projectGenerator projectGeneratorFunction
-	switch language {
-	case "dotnet":
-		projectGenerator = generatorWrapper(
-			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
-				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
-			}, language)
-	case "java":
-		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
-	case "yaml":
-		projectGenerator = generatorWrapper(yamlgen.GenerateProject, language)
-	case "pulumi", "pcl":
-		// No plugin for PCL to install dependencies with
-		generateOnly = true
-		projectGenerator = pclGenerateProject
-	default:
-		projectGenerator = func(
-			sourceDirectory, targetDirectory string,
-			proj *workspace.Project,
-			loader schema.ReferenceLoader,
-			strict bool,
-		) (hcl.Diagnostics, error) {
-			contract.Requiref(proj != nil, "proj", "must not be nil")
-
-			languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			loaderServer := schema.NewLoaderServer(loader)
-			grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
-			if err != nil {
-				return nil, err
-			}
-			defer contract.IgnoreClose(grpcServer)
-
-			projectBytes, err := encoding.JSON.Marshal(proj)
-			if err != nil {
-				return nil, err
-			}
-			projectJSON := string(projectBytes)
-
-			diagnostics, err := languagePlugin.GenerateProject(
-				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), nil /*localDependencies*/)
-			if err != nil {
-				return diagnostics, err
-			}
-			return diagnostics, nil
-		}
 	}
 
 	if outDir != "." {
@@ -447,7 +450,7 @@ func runConvert(
 	}
 
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
-	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, strict)
+	diagnostics, err := generateProject(pCtx, language, pclDirectory, outDir, proj, loader, strict)
 	// If we have error diagnostics then program generation failed, print an error to the user that they
 	// should raise an issue about this
 	if diagnostics.HasErrors() {
@@ -475,6 +478,11 @@ func runConvert(
 	// If we've got code generation warnings only print them if we've got PULUMI_DEV set or emitting pcl
 	if e.GetBool(env.Dev) || language == "pcl" {
 		printDiagnostics(pCtx.Diag, diagnostics)
+	}
+
+	// No plugin for PCL to install dependencies with
+	if language == "pcl" || language == "pulumi" {
+		generateOnly = true
 	}
 
 	// Project should now exist at outDir. Run installDependencies in that directory (if requested)

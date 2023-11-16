@@ -250,18 +250,18 @@ func promptMock(name string, stackName string) promptForValueFunc {
 
 func loadProject(t *testing.T, dir string) *workspace.Project {
 	path, err := workspace.DetectProjectPathFrom(dir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	proj, err := workspace.LoadProject(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return proj
 }
 
 func currentUser(t *testing.T) string {
 	ctx := context.Background()
 	b, err := currentBackend(ctx, nil, display.Options{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	currentUser, _, _, err := b.CurrentUser()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return currentUser
 }
 
@@ -275,13 +275,13 @@ func removeStack(t *testing.T, dir, name string) {
 	project := loadProject(t, dir)
 	ctx := context.Background()
 	b, err := currentBackend(ctx, project, display.Options{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	stack, err := b.GetStack(context.Background(), ref)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = b.RemoveStack(context.Background(), stack, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func skipIfShortOrNoPulumiAccessToken(t *testing.T) {
