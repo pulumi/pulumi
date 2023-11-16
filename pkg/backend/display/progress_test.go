@@ -275,7 +275,7 @@ func TestProgressPolicyPacks(t *testing.T) {
 		}, false)
 
 	// Send policy pack event to the channel
-	eventChannel <- engine.NewEvent(engine.PolicyLoadEvent, engine.PolicyLoadEventPayload{})
+	eventChannel <- engine.NewEvent(engine.PolicyLoadEventPayload{})
 	close(eventChannel)
 	<-doneChannel
 

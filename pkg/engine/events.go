@@ -39,35 +39,42 @@ type Event struct {
 	payload interface{}
 }
 
-func NewEvent(typ EventType, payload interface{}) Event {
-	ok := false
-	switch typ {
-	case CancelEvent:
-		ok = payload == nil
-	case StdoutColorEvent:
-		_, ok = payload.(StdoutEventPayload)
-	case DiagEvent:
-		_, ok = payload.(DiagEventPayload)
-	case PreludeEvent:
-		_, ok = payload.(PreludeEventPayload)
-	case SummaryEvent:
-		_, ok = payload.(SummaryEventPayload)
-	case ResourcePreEvent:
-		_, ok = payload.(ResourcePreEventPayload)
-	case ResourceOutputsEvent:
-		_, ok = payload.(ResourceOutputsEventPayload)
-	case ResourceOperationFailed:
-		_, ok = payload.(ResourceOperationFailedPayload)
-	case PolicyViolationEvent:
-		_, ok = payload.(PolicyViolationEventPayload)
-	case PolicyRemediationEvent:
-		_, ok = payload.(PolicyRemediationEventPayload)
-	case PolicyLoadEvent:
-		_, ok = payload.(PolicyLoadEventPayload)
+type EventPayload interface {
+	StdoutEventPayload | DiagEventPayload | PreludeEventPayload | SummaryEventPayload |
+		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
+		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload
+}
+
+func NewCancelEvent() Event {
+	return Event{Type: CancelEvent}
+}
+
+func NewEvent[T EventPayload](payload T) Event {
+	var typ EventType
+	switch any(payload).(type) {
+	case StdoutEventPayload:
+		typ = StdoutColorEvent
+	case DiagEventPayload:
+		typ = DiagEvent
+	case PreludeEventPayload:
+		typ = PreludeEvent
+	case SummaryEventPayload:
+		typ = SummaryEvent
+	case ResourcePreEventPayload:
+		typ = ResourcePreEvent
+	case ResourceOutputsEventPayload:
+		typ = ResourceOutputsEvent
+	case ResourceOperationFailedPayload:
+		typ = ResourceOperationFailed
+	case PolicyViolationEventPayload:
+		typ = PolicyViolationEvent
+	case PolicyRemediationEventPayload:
+		typ = PolicyRemediationEvent
+	case PolicyLoadEventPayload:
+		typ = PolicyLoadEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
-	contract.Assertf(ok, "invalid payload of type %T for event type %v", payload, typ)
 	return Event{
 		Type:    typ,
 		payload: deepcopy.Copy(payload),
@@ -93,10 +100,6 @@ const (
 
 func (e Event) Payload() interface{} {
 	return e.payload
-}
-
-func cancelEvent() Event {
-	return Event{Type: CancelEvent}
 }
 
 // DiagEventPayload is the payload for an event with type `diag`
@@ -381,7 +384,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
+	e.sendEvent(NewEvent(ResourceOperationFailedPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Status:   status,
 		Steps:    steps,
@@ -391,7 +394,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
+	e.sendEvent(NewEvent(ResourceOutputsEventPayload{
 		Metadata: makeStepEventMetadata(op, step, debug),
 		Planning: planning,
 		Debug:    debug,
@@ -403,7 +406,7 @@ func (e *eventEmitter) resourcePreEvent(
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(ResourcePreEvent, ResourcePreEventPayload{
+	e.sendEvent(NewEvent(ResourcePreEventPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Planning: planning,
 		Debug:    debug,
@@ -421,7 +424,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 		configStringMap[keyString] = valueString
 	}
 
-	e.sendEvent(NewEvent(PreludeEvent, PreludeEventPayload{
+	e.sendEvent(NewEvent(PreludeEventPayload{
 		IsPreview: isPreview,
 		Config:    configStringMap,
 	}))
@@ -432,7 +435,7 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(SummaryEvent, SummaryEventPayload{
+	e.sendEvent(NewEvent(SummaryEventPayload{
 		IsPreview:       preview,
 		MaybeCorrupt:    maybeCorrupt,
 		Duration:        duration,
@@ -468,7 +471,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
-	e.sendEvent(NewEvent(PolicyViolationEvent, PolicyViolationEventPayload{
+	e.sendEvent(NewEvent(PolicyViolationEventPayload{
 		ResourceURN:       urn,
 		Message:           logging.FilterString(buffer.String()),
 		Color:             colors.Raw,
@@ -485,7 +488,7 @@ func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remedia
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(PolicyRemediationEvent, PolicyRemediationEventPayload{
+	e.sendEvent(NewEvent(PolicyRemediationEventPayload{
 		ResourceURN:       urn,
 		Color:             colors.Raw,
 		PolicyName:        t.PolicyName,
@@ -499,7 +502,7 @@ func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remedia
 func (e *eventEmitter) PolicyLoadEvent() {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(PolicyLoadEvent, PolicyLoadEventPayload{}))
+	e.sendEvent(NewEvent(PolicyLoadEventPayload{}))
 }
 
 func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
@@ -507,7 +510,7 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(DiagEvent, DiagEventPayload{
+	e.sendEvent(NewEvent(DiagEventPayload{
 		URN:       d.URN,
 		Prefix:    logging.FilterString(prefix),
 		Message:   logging.FilterString(msg),

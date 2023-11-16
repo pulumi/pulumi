@@ -1844,7 +1844,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 		if continuationToken == nil {
 			// If the event stream does not terminate with a cancel event, synthesize one here.
 			if lastEvent.Type != engine.CancelEvent {
-				events <- engine.NewEvent(engine.CancelEvent, nil)
+				events <- engine.NewCancelEvent()
 			}
 
 			close(events)
