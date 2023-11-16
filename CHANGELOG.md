@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.94.1 (2023-11-16)
+
+
+### Features
+
+- [cli/display] Adds display when policy packs are being loaded
+  [#14493](https://github.com/pulumi/pulumi/pull/14493)
+
+- [sdk/dotnet] Update dotnet language host to 3.59.0.
+  [#14577](https://github.com/pulumi/pulumi/pull/14577)
+
+
+### Bug Fixes
+
+- [engine] Fix ignore changes ignoring secret values.
+  [#14565](https://github.com/pulumi/pulumi/pull/14565)
+
+- [sdk/python] Use `typing.Dict` in type annotation instead of `dict`.
+  [#14579](https://github.com/pulumi/pulumi/pull/14579)
+
 ## 3.94.0 (2023-11-14)
 
 
