@@ -63,7 +63,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
 						"and other inconsistencies.\n" + colors.Reset
 				}
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				engine.NewEvent(engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})
@@ -71,7 +71,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 				cancelSource.Cancel()
 			} else {
 				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				engine.NewEvent(engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})

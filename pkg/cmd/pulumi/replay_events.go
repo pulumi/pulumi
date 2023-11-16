@@ -187,7 +187,7 @@ func loadEvents(path string) ([]engine.Event, error) {
 	// If there are no events or if the event stream does not terminate with a cancel event,
 	// synthesize one here.
 	if len(events) == 0 || events[len(events)-1].Type != engine.CancelEvent {
-		events = append(events, engine.NewEvent(engine.CancelEvent, nil))
+		events = append(events, engine.NewCancelEvent())
 	}
 
 	return events, nil
