@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Use `typing.Dict` in type annotation instead of `dict`.

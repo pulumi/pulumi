@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -155,7 +155,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -254,7 +254,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -348,7 +348,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -440,7 +440,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -581,7 +581,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 
 			runInfo := &EvalRunInfo{
 				Proj:   &workspace.Project{Name: "test"},
-				Target: &Target{Name: "test"},
+				Target: &Target{Name: tokens.MustParseStackName("test")},
 			}
 			if tt.disableDefault {
 				disableDefaultProviders(runInfo, "pkgA")
@@ -724,7 +724,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {

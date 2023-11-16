@@ -9,7 +9,6 @@ import (
 
 	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"internal"
 )
 
@@ -58,12 +57,6 @@ func (i PetArgs) ToPetOutputWithContext(ctx context.Context) PetOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PetOutput)
 }
 
-func (i PetArgs) ToOutput(ctx context.Context) pulumix.Output[Pet] {
-	return pulumix.Output[Pet]{
-		OutputState: i.ToPetOutputWithContext(ctx).OutputState,
-	}
-}
-
 func (i PetArgs) ToPetPtrOutput() PetPtrOutput {
 	return i.ToPetPtrOutputWithContext(context.Background())
 }
@@ -105,12 +98,6 @@ func (i *petPtrType) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(PetPtrOutput)
 }
 
-func (i *petPtrType) ToOutput(ctx context.Context) pulumix.Output[*Pet] {
-	return pulumix.Output[*Pet]{
-		OutputState: i.ToPetPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type PetOutput struct{ *pulumi.OutputState }
 
 func (PetOutput) ElementType() reflect.Type {
@@ -133,12 +120,6 @@ func (o PetOutput) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Pet) *Pet {
 		return &v
 	}).(PetPtrOutput)
-}
-
-func (o PetOutput) ToOutput(ctx context.Context) pulumix.Output[Pet] {
-	return pulumix.Output[Pet]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o PetOutput) Age() pulumi.IntPtrOutput {
@@ -181,12 +162,6 @@ func (o PetPtrOutput) ToPetPtrOutput() PetPtrOutput {
 
 func (o PetPtrOutput) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
 	return o
-}
-
-func (o PetPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Pet] {
-	return pulumix.Output[*Pet]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o PetPtrOutput) Elem() PetOutput {

@@ -293,6 +293,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
+		deployOpts.Events.PolicyLoadEvent()
 		policyPath, err := policy.Install(ctx)
 		if err != nil {
 			return err
@@ -344,6 +345,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 		wg.Add(1)
 		go func(i int, pack LocalPolicyPack) {
 			defer wg.Done()
+			deployOpts.Events.PolicyLoadEvent()
 			abs, err := filepath.Abs(pack.Path)
 			if err != nil {
 				errs <- err

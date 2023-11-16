@@ -124,6 +124,20 @@ func (m *Manager) State() json.RawMessage               { return m.state }
 func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
 func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
 
+func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
+	info.EncryptionSalt = ""
+
+	var s cloudSecretsManagerState
+	err := json.Unmarshal(state, &s)
+	if err != nil {
+		return fmt.Errorf("unmarshalling cloud state: %w", err)
+	}
+
+	info.SecretsProvider = s.URL
+	info.EncryptedKey = base64.StdEncoding.EncodeToString(s.EncryptedKey)
+	return nil
+}
+
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for
 // envelope encryption of secrets values.

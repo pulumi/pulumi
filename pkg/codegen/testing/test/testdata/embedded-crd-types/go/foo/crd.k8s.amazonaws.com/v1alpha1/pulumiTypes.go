@@ -9,7 +9,6 @@ import (
 
 	"embedded-crd-types/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 var _ = internal.GetEnvOrDefault
@@ -53,12 +52,6 @@ func (i ENIConfigSpecArgs) ToENIConfigSpecOutputWithContext(ctx context.Context)
 	return pulumi.ToOutputWithContext(ctx, i).(ENIConfigSpecOutput)
 }
 
-func (i ENIConfigSpecArgs) ToOutput(ctx context.Context) pulumix.Output[ENIConfigSpec] {
-	return pulumix.Output[ENIConfigSpec]{
-		OutputState: i.ToENIConfigSpecOutputWithContext(ctx).OutputState,
-	}
-}
-
 // ENIConfigSpecMapInput is an input type that accepts ENIConfigSpecMap and ENIConfigSpecMapOutput values.
 // You can construct a concrete instance of `ENIConfigSpecMapInput` via:
 //
@@ -84,12 +77,6 @@ func (i ENIConfigSpecMap) ToENIConfigSpecMapOutputWithContext(ctx context.Contex
 	return pulumi.ToOutputWithContext(ctx, i).(ENIConfigSpecMapOutput)
 }
 
-func (i ENIConfigSpecMap) ToOutput(ctx context.Context) pulumix.Output[map[string]ENIConfigSpec] {
-	return pulumix.Output[map[string]ENIConfigSpec]{
-		OutputState: i.ToENIConfigSpecMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type ENIConfigSpecOutput struct{ *pulumi.OutputState }
 
 func (ENIConfigSpecOutput) ElementType() reflect.Type {
@@ -102,12 +89,6 @@ func (o ENIConfigSpecOutput) ToENIConfigSpecOutput() ENIConfigSpecOutput {
 
 func (o ENIConfigSpecOutput) ToENIConfigSpecOutputWithContext(ctx context.Context) ENIConfigSpecOutput {
 	return o
-}
-
-func (o ENIConfigSpecOutput) ToOutput(ctx context.Context) pulumix.Output[ENIConfigSpec] {
-	return pulumix.Output[ENIConfigSpec]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ENIConfigSpecOutput) SecurityGroups() pulumi.StringArrayOutput {
@@ -130,12 +111,6 @@ func (o ENIConfigSpecMapOutput) ToENIConfigSpecMapOutput() ENIConfigSpecMapOutpu
 
 func (o ENIConfigSpecMapOutput) ToENIConfigSpecMapOutputWithContext(ctx context.Context) ENIConfigSpecMapOutput {
 	return o
-}
-
-func (o ENIConfigSpecMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]ENIConfigSpec] {
-	return pulumix.Output[map[string]ENIConfigSpec]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o ENIConfigSpecMapOutput) MapIndex(k pulumi.StringInput) ENIConfigSpecOutput {

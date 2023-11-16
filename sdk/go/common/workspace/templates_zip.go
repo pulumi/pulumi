@@ -37,7 +37,10 @@ func sanitizeArchivePath(d, t string) (v string, err error) {
 }
 
 func isZIPTemplateURL(templateNamePathOrURL string) bool {
-	parsedURL, _ := url.Parse(templateNamePathOrURL)
+	parsedURL, err := url.Parse(templateNamePathOrURL)
+	if err != nil {
+		return false
+	}
 	return parsedURL.Path != "" && strings.HasSuffix(parsedURL.Path, ".zip")
 }
 
@@ -49,7 +52,7 @@ func retrieveZIPTemplates(templateURL string) (TemplateRepository, error) {
 		return TemplateRepository{}, err
 	}
 
-	parsedURL, err := url.Parse(strings.ReplaceAll(templateURL, ".zip", ""))
+	parsedURL, err := url.Parse(templateURL)
 	if err != nil {
 		return TemplateRepository{}, err
 	}

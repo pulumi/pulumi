@@ -383,6 +383,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Regression test for rewriting qoutes in python",
 		Skip:        allProgLanguages.Except("python"),
 	},
+	{
+		Directory:   "inline-invokes",
+		Description: "Tests whether using inline invoke expressions works",
+		SkipCompile: codegen.NewStringSet("go"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

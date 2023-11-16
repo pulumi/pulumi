@@ -9,7 +9,6 @@ import (
 
 	"dash-named-schema/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 var _ = internal.GetEnvOrDefault
@@ -43,12 +42,6 @@ func (i TopLevelArgs) ToTopLevelOutput() TopLevelOutput {
 
 func (i TopLevelArgs) ToTopLevelOutputWithContext(ctx context.Context) TopLevelOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(TopLevelOutput)
-}
-
-func (i TopLevelArgs) ToOutput(ctx context.Context) pulumix.Output[TopLevel] {
-	return pulumix.Output[TopLevel]{
-		OutputState: i.ToTopLevelOutputWithContext(ctx).OutputState,
-	}
 }
 
 func (i TopLevelArgs) ToTopLevelPtrOutput() TopLevelPtrOutput {
@@ -92,12 +85,6 @@ func (i *topLevelPtrType) ToTopLevelPtrOutputWithContext(ctx context.Context) To
 	return pulumi.ToOutputWithContext(ctx, i).(TopLevelPtrOutput)
 }
 
-func (i *topLevelPtrType) ToOutput(ctx context.Context) pulumix.Output[*TopLevel] {
-	return pulumix.Output[*TopLevel]{
-		OutputState: i.ToTopLevelPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type TopLevelOutput struct{ *pulumi.OutputState }
 
 func (TopLevelOutput) ElementType() reflect.Type {
@@ -122,12 +109,6 @@ func (o TopLevelOutput) ToTopLevelPtrOutputWithContext(ctx context.Context) TopL
 	}).(TopLevelPtrOutput)
 }
 
-func (o TopLevelOutput) ToOutput(ctx context.Context) pulumix.Output[TopLevel] {
-	return pulumix.Output[TopLevel]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o TopLevelOutput) Buzz() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v TopLevel) *string { return v.Buzz }).(pulumi.StringPtrOutput)
 }
@@ -144,12 +125,6 @@ func (o TopLevelPtrOutput) ToTopLevelPtrOutput() TopLevelPtrOutput {
 
 func (o TopLevelPtrOutput) ToTopLevelPtrOutputWithContext(ctx context.Context) TopLevelPtrOutput {
 	return o
-}
-
-func (o TopLevelPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*TopLevel] {
-	return pulumix.Output[*TopLevel]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o TopLevelPtrOutput) Elem() TopLevelOutput {

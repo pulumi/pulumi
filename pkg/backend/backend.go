@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ type StackReference interface {
 	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that information is not part of the StackName() we pass to the engine.
-	Name() tokens.Name
+	Name() tokens.StackName
 
 	// Project is the project name that this stack belongs to.
 	// For old filestate backends this will return false.

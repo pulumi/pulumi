@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ func TestStackTagValidation(t *testing.T) {
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr,
-			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods")
+			"a stack name may only contain alphanumeric, hyphens, underscores, or periods")
 	})
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 
 	"dash-named-schema/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type FOOEncryptedBarClass struct {
@@ -85,12 +84,6 @@ func (i *FOOEncryptedBarClass) ToFOOEncryptedBarClassOutputWithContext(ctx conte
 	return pulumi.ToOutputWithContext(ctx, i).(FOOEncryptedBarClassOutput)
 }
 
-func (i *FOOEncryptedBarClass) ToOutput(ctx context.Context) pulumix.Output[*FOOEncryptedBarClass] {
-	return pulumix.Output[*FOOEncryptedBarClass]{
-		OutputState: i.ToFOOEncryptedBarClassOutputWithContext(ctx).OutputState,
-	}
-}
-
 type FOOEncryptedBarClassOutput struct{ *pulumi.OutputState }
 
 func (FOOEncryptedBarClassOutput) ElementType() reflect.Type {
@@ -103,12 +96,6 @@ func (o FOOEncryptedBarClassOutput) ToFOOEncryptedBarClassOutput() FOOEncryptedB
 
 func (o FOOEncryptedBarClassOutput) ToFOOEncryptedBarClassOutputWithContext(ctx context.Context) FOOEncryptedBarClassOutput {
 	return o
-}
-
-func (o FOOEncryptedBarClassOutput) ToOutput(ctx context.Context) pulumix.Output[*FOOEncryptedBarClass] {
-	return pulumix.Output[*FOOEncryptedBarClass]{
-		OutputState: o.OutputState,
-	}
 }
 
 func init() {

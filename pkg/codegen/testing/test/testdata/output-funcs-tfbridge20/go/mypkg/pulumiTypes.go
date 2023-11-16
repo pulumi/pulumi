@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"output-funcs-tfbridge20/mypkg/internal"
 )
 
@@ -61,12 +60,6 @@ func (i StorageAccountKeyResponseArgs) ToStorageAccountKeyResponseOutputWithCont
 	return pulumi.ToOutputWithContext(ctx, i).(StorageAccountKeyResponseOutput)
 }
 
-func (i StorageAccountKeyResponseArgs) ToOutput(ctx context.Context) pulumix.Output[StorageAccountKeyResponse] {
-	return pulumix.Output[StorageAccountKeyResponse]{
-		OutputState: i.ToStorageAccountKeyResponseOutputWithContext(ctx).OutputState,
-	}
-}
-
 // StorageAccountKeyResponseArrayInput is an input type that accepts StorageAccountKeyResponseArray and StorageAccountKeyResponseArrayOutput values.
 // You can construct a concrete instance of `StorageAccountKeyResponseArrayInput` via:
 //
@@ -92,12 +85,6 @@ func (i StorageAccountKeyResponseArray) ToStorageAccountKeyResponseArrayOutputWi
 	return pulumi.ToOutputWithContext(ctx, i).(StorageAccountKeyResponseArrayOutput)
 }
 
-func (i StorageAccountKeyResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]StorageAccountKeyResponse] {
-	return pulumix.Output[[]StorageAccountKeyResponse]{
-		OutputState: i.ToStorageAccountKeyResponseArrayOutputWithContext(ctx).OutputState,
-	}
-}
-
 // An access key for the storage account.
 type StorageAccountKeyResponseOutput struct{ *pulumi.OutputState }
 
@@ -111,12 +98,6 @@ func (o StorageAccountKeyResponseOutput) ToStorageAccountKeyResponseOutput() Sto
 
 func (o StorageAccountKeyResponseOutput) ToStorageAccountKeyResponseOutputWithContext(ctx context.Context) StorageAccountKeyResponseOutput {
 	return o
-}
-
-func (o StorageAccountKeyResponseOutput) ToOutput(ctx context.Context) pulumix.Output[StorageAccountKeyResponse] {
-	return pulumix.Output[StorageAccountKeyResponse]{
-		OutputState: o.OutputState,
-	}
 }
 
 // Creation time of the key, in round trip date format.
@@ -151,12 +132,6 @@ func (o StorageAccountKeyResponseArrayOutput) ToStorageAccountKeyResponseArrayOu
 
 func (o StorageAccountKeyResponseArrayOutput) ToStorageAccountKeyResponseArrayOutputWithContext(ctx context.Context) StorageAccountKeyResponseArrayOutput {
 	return o
-}
-
-func (o StorageAccountKeyResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]StorageAccountKeyResponse] {
-	return pulumix.Output[[]StorageAccountKeyResponse]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o StorageAccountKeyResponseArrayOutput) Index(i pulumi.IntInput) StorageAccountKeyResponseOutput {
@@ -198,12 +173,6 @@ func (i GetAmiIdsFilterArgs) ToGetAmiIdsFilterOutputWithContext(ctx context.Cont
 	return pulumi.ToOutputWithContext(ctx, i).(GetAmiIdsFilterOutput)
 }
 
-func (i GetAmiIdsFilterArgs) ToOutput(ctx context.Context) pulumix.Output[GetAmiIdsFilter] {
-	return pulumix.Output[GetAmiIdsFilter]{
-		OutputState: i.ToGetAmiIdsFilterOutputWithContext(ctx).OutputState,
-	}
-}
-
 // GetAmiIdsFilterArrayInput is an input type that accepts GetAmiIdsFilterArray and GetAmiIdsFilterArrayOutput values.
 // You can construct a concrete instance of `GetAmiIdsFilterArrayInput` via:
 //
@@ -229,12 +198,6 @@ func (i GetAmiIdsFilterArray) ToGetAmiIdsFilterArrayOutputWithContext(ctx contex
 	return pulumi.ToOutputWithContext(ctx, i).(GetAmiIdsFilterArrayOutput)
 }
 
-func (i GetAmiIdsFilterArray) ToOutput(ctx context.Context) pulumix.Output[[]GetAmiIdsFilter] {
-	return pulumix.Output[[]GetAmiIdsFilter]{
-		OutputState: i.ToGetAmiIdsFilterArrayOutputWithContext(ctx).OutputState,
-	}
-}
-
 type GetAmiIdsFilterOutput struct{ *pulumi.OutputState }
 
 func (GetAmiIdsFilterOutput) ElementType() reflect.Type {
@@ -247,12 +210,6 @@ func (o GetAmiIdsFilterOutput) ToGetAmiIdsFilterOutput() GetAmiIdsFilterOutput {
 
 func (o GetAmiIdsFilterOutput) ToGetAmiIdsFilterOutputWithContext(ctx context.Context) GetAmiIdsFilterOutput {
 	return o
-}
-
-func (o GetAmiIdsFilterOutput) ToOutput(ctx context.Context) pulumix.Output[GetAmiIdsFilter] {
-	return pulumix.Output[GetAmiIdsFilter]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o GetAmiIdsFilterOutput) Name() pulumi.StringOutput {
@@ -275,12 +232,6 @@ func (o GetAmiIdsFilterArrayOutput) ToGetAmiIdsFilterArrayOutput() GetAmiIdsFilt
 
 func (o GetAmiIdsFilterArrayOutput) ToGetAmiIdsFilterArrayOutputWithContext(ctx context.Context) GetAmiIdsFilterArrayOutput {
 	return o
-}
-
-func (o GetAmiIdsFilterArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]GetAmiIdsFilter] {
-	return pulumix.Output[[]GetAmiIdsFilter]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o GetAmiIdsFilterArrayOutput) Index(i pulumi.IntInput) GetAmiIdsFilterOutput {

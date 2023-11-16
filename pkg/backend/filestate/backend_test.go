@@ -109,7 +109,7 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 	t.Parallel()
 
 	target := &deploy.Target{
-		Name:      "test",
+		Name:      tokens.MustParseStackName("test"),
 		Config:    config.Map{},
 		Decrypter: config.NopDecrypter,
 		Snapshot:  nil,
@@ -1070,12 +1070,16 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
 	// For the first two stacks, we'll return project names to upgrade them.
 	// For the third stack, we will not set a project name, and it should be skipped.
 	err = b.Upgrade(ctx, &UpgradeOptions{
-		ProjectsForDetachedStacks: func(stacks []tokens.Name) (projects []tokens.Name, err error) {
-			assert.ElementsMatch(t, []tokens.Name{"foo", "bar", "baz"}, stacks)
+		ProjectsForDetachedStacks: func(stacks []tokens.StackName) (projects []tokens.Name, err error) {
+			assert.ElementsMatch(t, []tokens.StackName{
+				tokens.MustParseStackName("foo"),
+				tokens.MustParseStackName("bar"),
+				tokens.MustParseStackName("baz"),
+			}, stacks)
 
 			projects = make([]tokens.Name, len(stacks))
 			for idx, stack := range stacks {
-				switch stack {
+				switch stack.String() {
 				case "foo":
 					projects[idx] = "proj1"
 				case "bar":
@@ -1142,8 +1146,10 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
 
 	giveErr := errors.New("canceled operation")
 	err = b.Upgrade(ctx, &UpgradeOptions{
-		ProjectsForDetachedStacks: func(stacks []tokens.Name) (projects []tokens.Name, err error) {
-			assert.Equal(t, []tokens.Name{"bar"}, stacks)
+		ProjectsForDetachedStacks: func(stacks []tokens.StackName) (projects []tokens.Name, err error) {
+			assert.Equal(t, []tokens.StackName{
+				tokens.MustParseStackName("bar"),
+			}, stacks)
 			return nil, giveErr
 		},
 	})

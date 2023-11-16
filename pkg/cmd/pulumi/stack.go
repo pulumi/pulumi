@@ -134,11 +134,11 @@ func newStackCmd() *cobra.Command {
 					}
 				}
 
-				cmdutil.PrintTable(cmdutil.Table{
+				printTable(cmdutil.Table{
 					Headers: []string{"TYPE", "NAME"},
 					Rows:    rows,
 					Prefix:  "    ",
-				})
+				}, nil)
 
 				outputs, err := getStackOutputs(snap, showSecrets)
 				if err == nil {

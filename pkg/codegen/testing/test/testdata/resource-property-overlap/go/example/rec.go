@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"resource-property-overlap/example/internal"
 )
 
@@ -87,12 +86,6 @@ func (i *Rec) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RecOutput)
 }
 
-func (i *Rec) ToOutput(ctx context.Context) pulumix.Output[*Rec] {
-	return pulumix.Output[*Rec]{
-		OutputState: i.ToRecOutputWithContext(ctx).OutputState,
-	}
-}
-
 // RecArrayInput is an input type that accepts RecArray and RecArrayOutput values.
 // You can construct a concrete instance of `RecArrayInput` via:
 //
@@ -116,12 +109,6 @@ func (i RecArray) ToRecArrayOutput() RecArrayOutput {
 
 func (i RecArray) ToRecArrayOutputWithContext(ctx context.Context) RecArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RecArrayOutput)
-}
-
-func (i RecArray) ToOutput(ctx context.Context) pulumix.Output[[]*Rec] {
-	return pulumix.Output[[]*Rec]{
-		OutputState: i.ToRecArrayOutputWithContext(ctx).OutputState,
-	}
 }
 
 // RecMapInput is an input type that accepts RecMap and RecMapOutput values.
@@ -149,12 +136,6 @@ func (i RecMap) ToRecMapOutputWithContext(ctx context.Context) RecMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RecMapOutput)
 }
 
-func (i RecMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*Rec] {
-	return pulumix.Output[map[string]*Rec]{
-		OutputState: i.ToRecMapOutputWithContext(ctx).OutputState,
-	}
-}
-
 type RecOutput struct{ *pulumi.OutputState }
 
 func (RecOutput) ElementType() reflect.Type {
@@ -167,12 +148,6 @@ func (o RecOutput) ToRecOutput() RecOutput {
 
 func (o RecOutput) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return o
-}
-
-func (o RecOutput) ToOutput(ctx context.Context) pulumix.Output[*Rec] {
-	return pulumix.Output[*Rec]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o RecOutput) Rec() RecOutput {
@@ -193,12 +168,6 @@ func (o RecArrayOutput) ToRecArrayOutputWithContext(ctx context.Context) RecArra
 	return o
 }
 
-func (o RecArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*Rec] {
-	return pulumix.Output[[]*Rec]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o RecArrayOutput) Index(i pulumi.IntInput) RecOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Rec {
 		return vs[0].([]*Rec)[vs[1].(int)]
@@ -217,12 +186,6 @@ func (o RecMapOutput) ToRecMapOutput() RecMapOutput {
 
 func (o RecMapOutput) ToRecMapOutputWithContext(ctx context.Context) RecMapOutput {
 	return o
-}
-
-func (o RecMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*Rec] {
-	return pulumix.Output[map[string]*Rec]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o RecMapOutput) MapIndex(k pulumi.StringInput) RecOutput {

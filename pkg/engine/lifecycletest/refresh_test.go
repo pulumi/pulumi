@@ -775,7 +775,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 
 	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "BAIL: canceled")
 	assert.Equal(t, 1, len(refreshed))
 
 	provURN := p.NewProviderURN("pkgA", "default", "")

@@ -81,12 +81,6 @@ func (o SupportedFilterTypesOutput) ToSupportedFilterTypesPtrOutputWithContext(c
 	}).(SupportedFilterTypesPtrOutput)
 }
 
-func (o SupportedFilterTypesOutput) ToOutput(ctx context.Context) pulumix.Output[SupportedFilterTypes] {
-	return pulumix.Output[SupportedFilterTypes]{
-		OutputState: o.OutputState,
-	}
-}
-
 func (o SupportedFilterTypesOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -120,12 +114,6 @@ func (o SupportedFilterTypesPtrOutput) ToSupportedFilterTypesPtrOutput() Support
 
 func (o SupportedFilterTypesPtrOutput) ToSupportedFilterTypesPtrOutputWithContext(ctx context.Context) SupportedFilterTypesPtrOutput {
 	return o
-}
-
-func (o SupportedFilterTypesPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*SupportedFilterTypes] {
-	return pulumix.Output[*SupportedFilterTypes]{
-		OutputState: o.OutputState,
-	}
 }
 
 func (o SupportedFilterTypesPtrOutput) Elem() SupportedFilterTypesOutput {

@@ -956,12 +956,10 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 func newImportDeploymentStep(deployment *Deployment, new *resource.State, randomSeed []byte) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID != "", "new", "must have an ID")
-	contract.Requiref(new.Custom, "new", "must be a custom resource")
+	contract.Requiref(!new.Custom || new.ID != "", "new", "must have an ID")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
-
-	contract.Requiref(randomSeed != nil, "randomSeed", "must not be nil")
+	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
 
 	return &ImportStep{
 		deployment: deployment,
@@ -1001,44 +999,56 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
 		}
 		if s.new.Parent.Type() != resource.RootStackType {
-			if _, ok := s.deployment.olds[s.new.Parent]; !ok {
+			_, ok := s.deployment.news.get(s.new.Parent)
+			if !ok {
 				return resource.StatusOK, nil, fmt.Errorf("unknown parent '%v' for resource '%v'",
 					s.new.Parent, s.new.URN)
 			}
 		}
 	}
 
-	// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
-	// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
-	prov, err := getProvider(s)
-	if err != nil {
-		return resource.StatusOK, nil, err
-	}
-	read, rst, err := prov.Read(s.new.URN, s.new.ID, nil, nil)
-	if err != nil {
-		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
-			s.new.InitErrors = initErr.Reasons
-		} else {
-			return rst, nil, err
+	// Only need to do anything here for custom resources, components just import as empty
+	inputs := resource.PropertyMap{}
+	outputs := resource.PropertyMap{}
+	var prov plugin.Provider
+	rst := resource.StatusOK
+	if s.new.Custom {
+		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
+		// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
+		var err error
+		prov, err = getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
 		}
+		var read plugin.ReadResult
+		read, rst, err = prov.Read(s.new.URN, s.new.ID, nil, nil)
+		if err != nil {
+			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+				s.new.InitErrors = initErr.Reasons
+			} else {
+				return rst, nil, err
+			}
+		}
+		if read.Outputs == nil {
+			return rst, nil, fmt.Errorf("resource '%v' does not exist", s.new.ID)
+		}
+		if read.Inputs == nil {
+			return resource.StatusOK, nil,
+				fmt.Errorf("provider does not support importing resources; please try updating the '%v' plugin",
+					s.new.URN.Type().Package())
+		}
+		if read.ID != "" {
+			s.new.ID = read.ID
+		}
+		inputs = read.Inputs
+		outputs = read.Outputs
 	}
-	if read.Outputs == nil {
-		return rst, nil, fmt.Errorf("resource '%v' does not exist", s.new.ID)
-	}
-	if read.Inputs == nil {
-		return resource.StatusOK, nil,
-			fmt.Errorf("provider does not support importing resources; please try updating the '%v' plugin",
-				s.new.URN.Type().Package())
-	}
-	if read.ID != "" {
-		s.new.ID = read.ID
-	}
-	s.new.Outputs = read.Outputs
 
+	s.new.Outputs = outputs
 	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
 	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
 	// differences between the old and new states are between the inputs and outputs.
-	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
+	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, inputs, outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
 		s.new.DeletedWith, nil, nil, s.new.SourcePosition)
@@ -1048,6 +1058,11 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Modified = &now
 	// Set Created to now as the resource has been created in the state.
 	s.new.Created = &now
+
+	// If this is a component we don't need to do the rest of the input validation
+	if !s.new.Custom {
+		return rst, complete, nil
+	}
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
