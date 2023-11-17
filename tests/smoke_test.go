@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -28,6 +30,8 @@ var Languages = map[string]string{
 	"dotnet": "csharp",
 }
 
+var minimumDotnetVersion = semver.MustParse("8.0.0")
+
 // Quick sanity tests for each downstream language to check that a minimal example can be created and run.
 //
 //nolint:paralleltest // pulumi new is not parallel safe
@@ -41,6 +45,14 @@ func TestLanguageNewSmoke(t *testing.T) {
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
+
+			if runtime == "dotnet" {
+				stdout, _ := e.RunCommand("dotnet", "--version")
+				dotnetVersion := semver.MustParse(strings.TrimSpace(stdout))
+				if dotnetVersion.LT(minimumDotnetVersion) {
+					t.Skipf("Skipping dotnet because the template requires .NET %s or greater", minimumDotnetVersion)
+				}
+			}
 
 			// `new` wants to work in an empty directory but our use of local filestate means we have a
 			// ".pulumi" directory at root.
