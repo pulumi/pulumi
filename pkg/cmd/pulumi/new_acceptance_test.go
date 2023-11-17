@@ -15,16 +15,20 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
@@ -225,6 +229,90 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	b, err = currentBackend(ctx, nil, display.Options{})
 	require.NoError(t, err)
 	assert.Equal(t, backendURL, b.URL())
+}
+
+//nolint:paralleltest // changes directory for process
+func TestTemplateDisplayName(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+	uniqueProjectName := filepath.Base(tempdir)
+
+	// Make up a dummy template folder that sets display name
+	templateDir := t.TempDir()
+	err := os.Mkdir(filepath.Join(templateDir, "templateA"), 0o700)
+	require.NoError(t, err)
+	template := workspace.Project{
+		Name:    "${PROJECT}",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Template: &workspace.ProjectTemplate{
+			DisplayName: "My Template",
+		},
+	}
+	err = template.Save(filepath.Join(templateDir, "templateA", "Pulumi.yaml"))
+	require.NoError(t, err)
+	err = os.Mkdir(filepath.Join(templateDir, "templateB"), 0o700)
+	require.NoError(t, err)
+	template = workspace.Project{
+		Name:    "${PROJECT}",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Template: &workspace.ProjectTemplate{
+			Metadata: map[string]string{
+				"test": "value",
+			},
+		},
+	}
+	err = template.Save(filepath.Join(templateDir, "templateB", "Pulumi.yaml"))
+	require.NoError(t, err)
+
+	outR, outW, err := os.Pipe()
+	require.NoError(t, err)
+
+	inR, inW, err := os.Pipe()
+	require.NoError(t, err)
+
+	args := newArgs{
+		interactive:       true,
+		prompt:            promptMock(uniqueProjectName, stackName),
+		secretsProvider:   "default",
+		templateNameOrURL: templateDir,
+		generateOnly:      true,
+		askOpt:            survey.WithStdio(inR, outW, os.Stderr),
+	}
+
+	readPromise := promise.Run(func() ([]byte, error) {
+		return io.ReadAll(outR)
+	})
+	_, err = inW.Write([]byte{13})
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = runNew(context.Background(), args)
+		assert.NoError(t, err)
+	}()
+	wg.Wait()
+	err = outW.Close()
+	require.NoError(t, err)
+
+	read, err := readPromise.Result(context.Background())
+	require.NoError(t, err)
+	expected := "\x1b7\x1b[?25l\x1b8\x1b[0G\x1b[2K \rPlease choose a template (2/2 shown):\n" +
+		"  [Use arrows to move, type to filter]\n" +
+		"> My Template    \n" +
+		"  templateB      \n" +
+		"\x1b7\x1b[1A\x1b[0G\x1b[1A\x1b[0G\x1b8\x1b[?25h\x1b8\x1b[0G\x1b[2K\x1b[1A\x1b" +
+		"[0G\x1b[2K\x1b[1A\x1b[0G\x1b[2K\x1b[1A\x1b[0G\x1b[2K\x1b[1A\x1b[0G\x1b[2K \r" +
+		"Please choose a template (2/2 shown):\n" +
+		" My Template    \n"
+	assert.Equal(t, expected, string(read))
+
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, uniqueProjectName, proj.Name.String())
+	assert.Equal(t, "nodejs", proj.Runtime.Name())
 }
 
 const (

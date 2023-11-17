@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Use templates `DisplayName` when listing templates.

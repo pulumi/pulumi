@@ -71,6 +71,9 @@ type newArgs struct {
 	templateNameOrURL string
 	yes               bool
 	listTemplates     bool
+
+	// For testing to simulate user input with survey.WithStdio.
+	askOpt survey.AskOpt
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -163,7 +166,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else {
-		if template, err = chooseTemplate(templates, opts); err != nil {
+		if template, err = chooseTemplate(templates, opts, args.askOpt); err != nil {
 			return err
 		}
 	}
@@ -844,7 +847,8 @@ func pythonCommands() []string {
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
-func chooseTemplate(templates []workspace.Template, opts display.Options) (workspace.Template, error) {
+func chooseTemplate(templates []workspace.Template, opts display.Options, askOpt survey.AskOpt,
+) (workspace.Template, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
 	if !opts.IsInteractive {
 		return workspace.Template{}, errors.New(chooseTemplateErr)
@@ -864,7 +868,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		Message:  message,
 		Options:  options,
 		PageSize: pageSize,
-	}, &option, surveyIcons(opts.Color)); err != nil {
+	}, &option, surveyIcons(opts.Color), askOpt); err != nil {
 		return workspace.Template{}, errors.New(chooseTemplateErr)
 	}
 
@@ -1117,7 +1121,13 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 	maxNameLength := 0
 	for _, template := range templates {
 		if len(template.Name) > maxNameLength {
-			maxNameLength = len(template.Name)
+			// Prefer the display name
+			name := template.DisplayName
+			// But if its empty use the base name
+			if name == "" {
+				name = template.Name
+			}
+			maxNameLength = len(name)
 		}
 	}
 
@@ -1135,9 +1145,16 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 			template.ProjectDescription = brokenTemplateDescription
 		}
 
+		// Prefer the display name
+		name := template.DisplayName
+		// But if its empty use the base name
+		if name == "" {
+			name = template.Name
+		}
+
 		// Create the option string that combines the name, padding, and description.
 		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), name, desc)
 
 		nameToTemplateMap[option] = template
 		if template.Errored() {

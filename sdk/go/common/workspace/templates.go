@@ -198,6 +198,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 type Template struct {
 	Dir         string                                // The directory containing Pulumi.yaml.
 	Name        string                                // The name of the template.
+	DisplayName string                                // The optional display name of the template.
 	Description string                                // Description of the template.
 	Quickstart  string                                // Optional text to be displayed after template creation.
 	Config      map[string]ProjectTemplateConfigValue // Optional template config.
@@ -469,6 +470,7 @@ func LoadTemplate(path string) (Template, error) {
 		ProjectName: proj.Name.String(),
 	}
 	if proj.Template != nil {
+		template.DisplayName = proj.Template.DisplayName
 		template.Description = proj.Template.Description
 		template.Quickstart = proj.Template.Quickstart
 		template.Config = proj.Template.Config
