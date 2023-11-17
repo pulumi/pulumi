@@ -102,6 +102,18 @@ func (e Event) Payload() interface{} {
 	return e.payload
 }
 
+// Returns true if this is a ResourcePreEvent or ResourceOutputsEvent with the internal flag set.
+func (e Event) Internal() bool {
+	switch payload := e.payload.(type) {
+	case ResourcePreEventPayload:
+		return payload.Internal
+	case ResourceOutputsEventPayload:
+		return payload.Internal
+	default:
+		return false
+	}
+}
+
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {
 	URN       resource.URN
@@ -167,12 +179,18 @@ type ResourceOutputsEventPayload struct {
 	Metadata StepEventMetadata
 	Planning bool
 	Debug    bool
+	// Internal is set for events that should not be shown to a user but are expected to be used in other parts of the
+	// Pulumi system.
+	Internal bool
 }
 
 type ResourcePreEventPayload struct {
 	Metadata StepEventMetadata
 	Planning bool
 	Debug    bool
+	// Internal is set for events that should not be shown to a user but are expected to be used in other parts of the
+	// Pulumi system.
+	Internal bool
 }
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
@@ -391,18 +409,21 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 	}))
 }
 
-func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step, planning bool, debug bool) {
+func (e *eventEmitter) resourceOutputsEvent(
+	op display.StepOp, step deploy.Step, planning, debug, internal bool,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(ResourceOutputsEventPayload{
 		Metadata: makeStepEventMetadata(op, step, debug),
 		Planning: planning,
 		Debug:    debug,
+		Internal: internal,
 	}))
 }
 
 func (e *eventEmitter) resourcePreEvent(
-	step deploy.Step, planning bool, debug bool,
+	step deploy.Step, planning, debug, internal bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -410,6 +431,7 @@ func (e *eventEmitter) resourcePreEvent(
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Planning: planning,
 		Debug:    debug,
+		Internal: internal,
 	}))
 }
 

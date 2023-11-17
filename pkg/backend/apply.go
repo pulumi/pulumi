@@ -95,6 +95,10 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	go func() {
 		// Pull out relevant events we will want to display in the confirmation below.
 		for e := range eventsChannel {
+			// Don't include internal events in the confirmation stats.
+			if e.Internal() {
+				continue
+			}
 			if e.Type == engine.ResourcePreEvent ||
 				e.Type == engine.ResourceOutputsEvent ||
 				e.Type == engine.PolicyRemediationEvent ||

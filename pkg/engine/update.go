@@ -153,9 +153,6 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
-	// true if we should report events for steps that involve default providers.
-	reportDefaultProviderSteps bool
-
 	// the plugin host to use for this update
 	Host plugin.Host
 
@@ -558,10 +555,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if shouldReportStep(step, acts.Opts) {
-		acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
-	}
+	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	// Inform the snapshot service that we are about to perform a step.
 	return acts.Context.SnapshotManager.BeginMutation(step)
@@ -581,7 +575,7 @@ func (acts *updateActions) OnResourceStepPost(
 		return nil
 	}
 
-	reportStep := shouldReportStep(step, acts.Opts)
+	isInternalStep := isInternalStep(step)
 
 	// Report the result of the step.
 	if err != nil {
@@ -590,16 +584,14 @@ func (acts *updateActions) OnResourceStepPost(
 		}
 
 		errorURN := resource.URN("")
-		if reportStep {
+		if !isInternalStep {
 			errorURN = step.URN()
 		}
 
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
-		if reportStep {
-			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
-		}
-	} else if reportStep {
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
+	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
@@ -610,7 +602,7 @@ func (acts *updateActions) OnResourceStepPost(
 			record = ShouldRecordReadStep(step)
 		}
 
-		if record {
+		if record && !isInternalStep {
 			// Increment the counters.
 			acts.MapLock.Lock()
 			acts.Steps++
@@ -623,7 +615,7 @@ func (acts *updateActions) OnResourceStepPost(
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
 		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh || step.Op() == deploy.OpDelete {
-			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug)
+			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug, isInternalStep)
 		}
 	}
 
@@ -663,10 +655,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if shouldReportStep(step, acts.Opts) {
-		acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug)
-	}
+	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
@@ -698,9 +687,8 @@ type previewActions struct {
 	MapLock sync.Mutex
 }
 
-func shouldReportStep(step deploy.Step, opts *deploymentOptions) bool {
-	return step.Op() != deploy.OpRemovePendingReplace &&
-		(opts.reportDefaultProviderSteps || !isDefaultProviderStep(step))
+func isInternalStep(step deploy.Step) bool {
+	return step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step)
 }
 
 func ShouldRecordReadStep(step deploy.Step) bool {
@@ -729,12 +717,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if !shouldReportStep(step, acts.Opts) {
-		return nil, nil
-	}
-
-	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	return nil, nil
 }
@@ -746,18 +729,18 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	reportStep := shouldReportStep(step, acts.Opts)
+	isInternalStep := isInternalStep(step)
 
 	if err != nil {
 		// We always want to report a failure. If we intend to elide this step overall, though, we report it as a
 		// global message.
 		reportedURN := resource.URN("")
-		if reportStep {
+		if !isInternalStep {
 			reportedURN = step.URN()
 		}
 
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
-	} else if reportStep {
+	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
@@ -769,13 +752,13 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
-		if record {
+		if record && !isInternalStep {
 			acts.MapLock.Lock()
 			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 
-		acts.Opts.Events.resourceOutputsEvent(op, step, true /*planning*/, acts.Opts.Debug)
+		acts.Opts.Events.resourceOutputsEvent(op, step, true /*planning*/, acts.Opts.Debug, isInternalStep)
 	}
 
 	return nil
@@ -786,13 +769,8 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if !shouldReportStep(step, acts.Opts) {
-		return nil
-	}
-
 	// Print the resource outputs separately.
-	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	return nil
 }

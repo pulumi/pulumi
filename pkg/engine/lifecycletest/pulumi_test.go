@@ -1238,7 +1238,11 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
+								if payload.Metadata.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" {
+									assert.Subset(t,
+										allowedOps, []display.StepOp{payload.Metadata.Op},
+										"event operation unexpected: %v", payload)
+								}
 							}
 						}
 						return err
@@ -1477,7 +1481,10 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 							for _, event := range events {
 								if event.Type == ResourcePreEvent {
 									payload := event.Payload().(ResourcePreEventPayload)
-									assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
+									// Ignore any events for default providers
+									if !payload.Internal {
+										assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
+									}
 								}
 							}
 							return err

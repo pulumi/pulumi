@@ -100,6 +100,9 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
+								if payload.Metadata.Type == "pulumi:providers:pkgA" {
+									continue
+								}
 								assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
 							}
 						}
