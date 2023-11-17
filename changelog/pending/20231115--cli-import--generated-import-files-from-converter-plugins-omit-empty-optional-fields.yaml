@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/import
-  description: Generated import files from converter plugins omit empty optional fields.
