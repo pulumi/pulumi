@@ -98,6 +98,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
+	case engine.PolicyLoadEvent:
+		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.
