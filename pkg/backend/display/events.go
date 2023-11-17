@@ -168,6 +168,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Steps:    p.Steps,
 		}
 
+	case engine.PolicyLoadEvent:
+		apiEvent.PolicyLoadEvent = &apitype.PolicyLoadEvent{}
+
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}
@@ -373,6 +376,9 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Status:   resource.Status(p.Status),
 			Steps:    p.Steps,
 		})
+
+	case apiEvent.PolicyLoadEvent != nil:
+		event = engine.NewEvent(engine.PolicyLoadEventPayload{})
 
 	default:
 		return event, errors.New("unknown event type")
