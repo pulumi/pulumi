@@ -20,6 +20,7 @@ package gen
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"go/format"
 	"io"
@@ -2398,7 +2399,14 @@ func (pkg *pkgContext) genResource(
 			argsig = fmt.Sprintf("%s, args *%s%sArgs", argsig, name, methodName)
 		}
 		var retty string
-		if objectReturnType == nil {
+		if f.ReturnTypePlain {
+			if objectReturnType == nil {
+				t := pkg.typeString(codegen.ResolvedType(f.ReturnType))
+				retty = fmt.Sprintf("(o %s, e error)", t)
+			} else {
+				retty = fmt.Sprintf("(o %s%sResult, e error)", name, methodName)
+			}
+		} else if objectReturnType == nil {
 			retty = "error"
 		} else if liftReturn {
 			if useGenericVariant {
@@ -2426,15 +2434,28 @@ func (pkg *pkgContext) genResource(
 
 		// Now simply invoke the runtime function with the arguments.
 		outputsType := "pulumi.AnyOutput"
-		if objectReturnType != nil {
+		if objectReturnType != nil || f.ReturnTypePlain {
 			if liftReturn {
 				outputsType = fmt.Sprintf("%s%sResultOutput", cgstrings.Camel(name), methodName)
 			} else {
 				outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
 			}
 		}
-		fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
-		if objectReturnType == nil {
+
+		if !f.ReturnTypePlain {
+			fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
+		}
+
+		if f.ReturnTypePlain {
+			// single-value returning methods use a magic property "res" on the wire
+			property := ""
+			if objectReturnType == nil {
+				property = cgstrings.UppercaseFirst("res")
+			}
+			fmt.Fprintf(w, "\tinternal.CallPlain(ctx, %q, %s, %s{}, r, %q, reflect.ValueOf(&o), &e)\n",
+				f.Token, inputsVar, outputsType, property)
+			fmt.Fprintf(w, "\treturn\n")
+		} else if objectReturnType == nil {
 			fmt.Fprintf(w, "\treturn err\n")
 		} else if liftReturn {
 			// Check the error before proceeding.
@@ -2490,8 +2511,23 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", cgstrings.Camel(name), methodName)
 			fmt.Fprintf(w, "}\n\n")
 		}
-		if objectReturnType != nil {
+		if objectReturnType != nil || f.ReturnTypePlain {
 			outputStructName := name
+
+			var comment string
+			var properties []*schema.Property
+			if f.ReturnTypePlain && objectReturnType == nil {
+				properties = []*schema.Property{
+					{
+						Name:  "res",
+						Type:  f.ReturnType,
+						Plain: true,
+					},
+				}
+			} else {
+				properties = objectReturnType.Properties
+				comment = objectReturnType.Comment
+			}
 
 			// Don't export the result struct if we're lifting the value
 			if liftReturn {
@@ -2499,8 +2535,7 @@ func (pkg *pkgContext) genResource(
 			}
 
 			fmt.Fprintf(w, "\n")
-			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), objectReturnType.Comment, "",
-				objectReturnType.Properties)
+			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), comment, "", properties)
 
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "type %s%sResultOutput struct{ *pulumi.OutputState }\n\n", outputStructName, methodName)
@@ -2509,7 +2544,7 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sResult)(nil)).Elem()\n", outputStructName, methodName)
 			fmt.Fprintf(w, "}\n")
 
-			for _, p := range objectReturnType.Properties {
+			for _, p := range properties {
 				fmt.Fprintf(w, "\n")
 				outputTypeName := pkg.outputType(p.Type)
 				if useGenericVariant {
@@ -2529,6 +2564,7 @@ func (pkg *pkgContext) genResource(
 				fmt.Fprintf(w, "}\n")
 			}
 		}
+
 	}
 
 	if !useGenericVariant {
@@ -3571,16 +3607,13 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 				}
 			}
 
-			var returnType *schema.ObjectType
 			if method.Function.ReturnType != nil {
 				if objectType, ok := method.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-					returnType = objectType
-				}
-			}
-
-			if returnType != nil {
-				for _, p := range returnType.Properties {
-					pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
+					for _, p := range objectType.Properties {
+						pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
+					}
+				} else if method.Function.ReturnTypePlain {
+					pkg.getTypeImports(method.Function.ReturnType, false, importsAndAliases, seen)
 				}
 			}
 		}
@@ -4798,85 +4831,19 @@ func goPackage(name string) string {
 	return strings.ReplaceAll(name, "-", "")
 }
 
+//go:embed embeddedUtilities.go
+var embeddedUtilities string
+
 func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error {
-	const utilitiesFile = `
-type envParser func(v string) interface{}
-
-func ParseEnvBool(v string) interface{} {
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return nil
+	subtitutions := map[string]string{
+		`"${packageRegex}"`: fmt.Sprintf("%q", packageRegex),
 	}
-	return b
-}
-
-func ParseEnvInt(v string) interface{} {
-	i, err := strconv.ParseInt(v, 0, 0)
-	if err != nil {
-		return nil
+	i := strings.Index(embeddedUtilities, "package utilities")
+	code := embeddedUtilities[i+len("package utilities"):]
+	for x, y := range subtitutions {
+		code = strings.ReplaceAll(code, x, y)
 	}
-	return int(i)
-}
-
-func ParseEnvFloat(v string) interface{} {
-	f, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return nil
-	}
-	return f
-}
-
-func ParseEnvStringArray(v string) interface{} {
-	var result pulumi.StringArray
-	for _, item := range strings.Split(v, ";") {
-		result = append(result, pulumi.String(item))
-	}
-	return result
-}
-
-func GetEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {
-	for _, v := range vars {
-		if value, ok := os.LookupEnv(v); ok {
-			if parser != nil {
-				return parser(value)
-			}
-			return value
-		}
-	}
-	return def
-}
-
-// PkgVersion uses reflection to determine the version of the current package.
-// If a version cannot be determined, v1 will be assumed. The second return
-// value is always nil.
-func PkgVersion() (semver.Version, error) {
-    // emptyVersion defaults to v0.0.0
-	if !%[1]s.Equals(semver.Version{}) {
-		return %[1]s, nil
-	}
-	type sentinal struct{}
-	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile(%[2]q)
-	if match := re.FindStringSubmatch(pkgPath); match != nil {
-		vStr := match[1]
-		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
-			return semver.Version{Major: 1}, nil
-		}
-		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
-	}
-	return semver.Version{Major: 1}, nil
-}
-
-// isZero is a null safe check for if a value is it's types zero value.
-func IsZero(v interface{}) bool {
-	if v == nil {
-		return true
-	}
-	return reflect.ValueOf(v).IsZero()
-}
-`
-	versionPackageRef := "SdkVersion"
-	_, err := fmt.Fprintf(w, utilitiesFile, versionPackageRef, packageRegex)
+	_, err := fmt.Fprintf(w, "%s", code)
 	if err != nil {
 		return err
 	}

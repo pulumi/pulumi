@@ -59,6 +59,27 @@ func (p *Promise[T]) Result(ctx context.Context) (T, error) {
 	return p.result, p.err
 }
 
+// TryResult returns the result and true if the promise has been resolved, otherwise it returns false.
+//
+//nolint:revive // This error _isn't_ an error from the function, so ignore the "error should be last" rule.
+func (p *Promise[T]) TryResult() (T, error, bool) {
+	// We don't need to lock here because we're just reading the status and the result and err are immutable
+	// once set.
+	status := p.status.Load()
+
+	if status == statusUninitialized {
+		panic("Promise must be initialized")
+	}
+
+	if status == statusPending {
+		var t T
+		return t, nil, false
+	}
+	// If the status is not pending then the promise is resolved and we can return the result and err. There
+	// is no race between status being set to fulfilled or rejected and result and err being changed.
+	return p.result, p.err, true
+}
+
 // CompletionSource is a source for a promise that can be resolved or rejected. It is safe to call Resolve or
 // Reject multiple times concurrently, the first will apply and all others will return that they couldn't set the
 // promise.

@@ -1,0 +1,3 @@
+name: construct_component_configure_provider
+description: A program that configures a Provider from inside a Component.
+runtime: python

@@ -162,3 +162,52 @@ func TestAwaitCancelled(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 12, i)
 }
+
+func TestTryResult(t *testing.T) {
+	t.Parallel()
+
+	ps := &CompletionSource[int]{}
+	p := ps.Promise()
+
+	// TryResult should return false if the promise is not yet resolved.
+	_, _, ok := p.TryResult()
+	assert.False(t, ok)
+
+	// Fulfilling the promise should return true.
+	set := ps.Fulfill(42)
+	assert.True(t, set, "set should be true")
+
+	// TryResult should now return true and the result.
+	i, err, ok := p.TryResult()
+	assert.True(t, ok)
+	assert.NoError(t, err)
+	assert.Equal(t, 42, i)
+}
+
+func TestTryResultRace(t *testing.T) {
+	t.Parallel()
+
+	ps := &CompletionSource[int]{}
+	p := ps.Promise()
+
+	// Start a promise that will keep trying to get the result of p.
+	result := Run(func() (int, error) {
+		for {
+			i, err, ok := p.TryResult()
+			if ok {
+				return i, err
+			}
+		}
+	})
+
+	// Set the result of p, setting should return true.
+	go func() {
+		set := ps.Fulfill(42)
+		assert.True(t, set, "set should be true")
+	}()
+
+	// Wait for the result promise.
+	i, err := result.Result(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 42, i)
+}
