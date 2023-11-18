@@ -362,6 +362,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
+		Directory:   "assets-and-archives",
+		Description: "A schema with assets and archives",
+	},
+	{
 		Directory:   "regress-py-14012",
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
 		Skip:        allLanguages.Except("python/any"),
