@@ -1032,3 +1032,280 @@ func TestBindDefaultInt(t *testing.T) {
 		assert.Fail(t, "did not catch underflow")
 	}
 }
+
+func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name   string
+		fspec  FunctionSpec
+		serial any
+		// For legacy forms, after turning around through serde FunctionSpec will be
+		// normalized and not exactly equal to the original; tests will check against the
+		// normalized form if provided.
+		normalized *FunctionSpec
+	}
+
+	ots := &ObjectTypeSpec{
+		Type: "object",
+		Properties: map[string]PropertySpec{
+			"x": {
+				TypeSpec: TypeSpec{
+					Type: "integer",
+				},
+			},
+		},
+	}
+
+	otsPlain := &ObjectTypeSpec{
+		Type: "object",
+		Properties: map[string]PropertySpec{
+			"x": {
+				TypeSpec: TypeSpec{
+					Type: "integer",
+				},
+			},
+		},
+		Plain: []string{"x"},
+	}
+
+	testCases := []testCase{
+		{
+			name: "legacy-outputs-form",
+			fspec: FunctionSpec{
+				Outputs: ots,
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+			normalized: &FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: ots,
+				},
+			},
+		},
+		{
+			name: "legacy-outputs-form-plain-array",
+			fspec: FunctionSpec{
+				Outputs: otsPlain,
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"plain": []interface{}{"x"},
+					"type":  "object",
+				},
+			},
+			normalized: &FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: otsPlain,
+				},
+			},
+		},
+		{
+			name: "return-plain-integer",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type:  "integer",
+						Plain: true,
+					},
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"plain": true,
+					"type":  "integer",
+				},
+			},
+		},
+		{
+			name: "return-integer",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type: "integer",
+					},
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"type": "integer",
+				},
+			},
+		},
+		{
+			name: "return-plain-object",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec:        ots,
+					ObjectTypeSpecIsPlain: true,
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"plain": true,
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+		},
+		{
+			name: "return-object",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: ots,
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+		},
+		{
+			name: "return-object-plain-array",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: otsPlain,
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"plain": []interface{}{"x"},
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		fspec := tc.fspec
+		expectSerial := tc.serial
+		expectFSpec := fspec
+		if tc.normalized != nil {
+			expectFSpec = *tc.normalized
+		}
+
+		// Test JSON serialization and turnaround.
+		t.Run(tc.name+"/json", func(t *testing.T) {
+			t.Parallel()
+			var serial any
+
+			bytes, err := json.MarshalIndent(fspec, "", "  ")
+			require.NoError(t, err)
+
+			err = json.Unmarshal(bytes, &serial)
+			require.NoError(t, err)
+			require.Equalf(t, expectSerial, serial, "Unexpected JSON serial form")
+
+			var actual FunctionSpec
+			err = json.Unmarshal(bytes, &actual)
+			require.NoError(t, err)
+			require.Equal(t, expectFSpec, actual)
+		})
+
+		// Test YAML serialization and turnaround.
+		t.Run(tc.name+"/yaml", func(t *testing.T) {
+			t.Parallel()
+			var serial any
+
+			bytes, err := yaml.Marshal(fspec)
+			require.NoError(t, err)
+
+			err = yaml.Unmarshal(bytes, &serial)
+			require.NoError(t, err)
+			require.Equalf(t, expectSerial, serial, "Unexpected YAML serial form")
+
+			var actual FunctionSpec
+			err = yaml.Unmarshal(bytes, &actual)
+			require.NoError(t, err)
+			require.Equal(t, expectFSpec, actual)
+		})
+	}
+}
+
+func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name  string
+		fn    *Function
+		fspec FunctionSpec
+	}
+
+	testCases := []testCase{
+		{
+			name: "return-type-plain",
+			fn: &Function{
+				PackageReference: packageDefRef{},
+				Token:            "token",
+				ReturnType:       IntType,
+				ReturnTypePlain:  true,
+				Language:         map[string]interface{}{},
+			},
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type:  "integer",
+						Plain: true,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name+"/marshalFunction", func(t *testing.T) {
+			t.Parallel()
+			pkg := Package{}
+			fspec, err := pkg.marshalFunction(tc.fn)
+			require.NoError(t, err)
+			require.Equal(t, tc.fspec, fspec)
+		})
+		t.Run(tc.name+"/bindFunctionDef", func(t *testing.T) {
+			t.Parallel()
+			ts := types{
+				spec: packageSpecSource{
+					&PackageSpec{
+						Functions: map[string]FunctionSpec{
+							"token": tc.fspec,
+						},
+					},
+				},
+				functionDefs: map[string]*Function{},
+			}
+			fn, diags, err := ts.bindFunctionDef("token")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors())
+			require.Equal(t, tc.fn, fn)
+		})
+	}
+}

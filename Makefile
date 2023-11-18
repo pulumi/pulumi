@@ -199,7 +199,8 @@ get_schemas: \
 			schema-awsx!1.0.0-beta.5    \
 			schema-aws-native!0.13.0    \
 			schema-google-native!0.18.2 \
-			schema-google-native!0.27.0
+			schema-google-native!0.27.0 \
+			schema-tls!4.10.0
 
 .PHONY: changelog
 changelog:
