@@ -3,6 +3,14 @@ resource siteBucket "aws-native:s3:Bucket" {
 	websiteConfiguration = {
 		indexDocument = "index.html"
 	}
+	publicAccessBlockConfiguration = {
+		blockPublicAcls = false
+	}
+	ownershipControls = {
+		rules = [{
+			objectOwnership = "ObjectWriter"
+		}]
+	}
 }
 
 resource indexHtml "aws:s3/bucketObject:BucketObject" {
@@ -19,12 +27,6 @@ resource faviconPng "aws:s3/bucketObject:BucketObject" {
 	source = fileAsset("./www/favicon.png")
 	acl = "public-read"
 	contentType = "image/png"
-}
-
-resource bucketPolicy "aws:s3/bucketPolicy:BucketPolicy" {
-	__logicalName = "bucketPolicy"
-	bucket = siteBucket.id
-	policy = "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": \"*\",\n      \"Action\": [\"s3:GetObject\"],\n      \"Resource\": [\"${siteBucket.arn}/*\"]\n    }\n  ]\n}\n"
 }
 
 output bucketName {
