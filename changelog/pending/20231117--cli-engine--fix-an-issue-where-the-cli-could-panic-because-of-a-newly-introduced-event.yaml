@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/engine
-  description: Fix an issue where the CLI could panic because of a newly introduced event

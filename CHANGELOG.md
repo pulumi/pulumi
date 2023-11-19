@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.94.2 (2023-11-17)
+
+
+### Features
+
+- [cli/import] Generated import files from converter plugins omit empty optional fields.
+  [#14574](https://github.com/pulumi/pulumi/pull/14574)
+
+
+### Bug Fixes
+
+- [yaml] Upgrade yaml to 1.4.2
+  [#14603](https://github.com/pulumi/pulumi/pull/14603)
+
+- [cli/engine] Fix an issue where the CLI could panic because of a newly introduced event
+  [#14600](https://github.com/pulumi/pulumi/pull/14600)
+
+- [sdkgen/go] Fix generics-only option for go missing ToOutput(...) methods
+  [#14584](https://github.com/pulumi/pulumi/pull/14584)
+
 ## 3.94.1 (2023-11-16)
 
 
