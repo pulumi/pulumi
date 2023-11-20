@@ -77,9 +77,9 @@ func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names N
 
 	typ, name := state.URN.Type(), state.URN.Name()
 	return &model.Block{
-		Tokens: syntax.NewBlockTokens("resource", string(name), string(typ)),
+		Tokens: syntax.NewBlockTokens("resource", name, string(typ)),
 		Type:   "resource",
-		Labels: []string{string(name), string(typ)},
+		Labels: []string{name, string(typ)},
 		Body: &model.Body{
 			Items: items,
 		},

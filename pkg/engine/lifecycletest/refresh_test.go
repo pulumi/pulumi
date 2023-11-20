@@ -62,21 +62,21 @@ func TestParallelRefresh(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	assert.Len(t, snap.Resources, 5)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
-	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
-	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
-	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
 	p.Steps = []TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
 	assert.Len(t, snap.Resources, 5)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
-	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
-	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
-	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 }
 
 func TestExternalRefresh(t *testing.T) {
@@ -106,8 +106,8 @@ func TestExternalRefresh(t *testing.T) {
 	// The read should place "resA" in the snapshot with the "External" bit set.
 	snap := p.Run(t, nil)
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 
 	p = &TestPlan{
@@ -118,8 +118,8 @@ func TestExternalRefresh(t *testing.T) {
 	snap = p.Run(t, snap)
 	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 }
 

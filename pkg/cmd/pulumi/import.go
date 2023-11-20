@@ -83,7 +83,7 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 	for i, res := range resources {
 		specs[i] = importSpec{
 			Type:              tokens.Type(res.Type),
-			Name:              tokens.QName(res.Name),
+			Name:              res.Name,
 			ID:                resource.ID(res.ID),
 			Version:           res.Version,
 			PluginDownloadURL: res.PluginDownloadURL,
@@ -105,7 +105,7 @@ func makeImportFile(
 	nameTable := map[string]resource.URN{}
 	res := importSpec{
 		Type:       tokens.Type(typ),
-		Name:       tokens.QName(name),
+		Name:       name,
 		ID:         resource.ID(id),
 		Version:    version,
 		Properties: properties,
@@ -144,16 +144,16 @@ func makeImportFile(
 }
 
 type importSpec struct {
-	Type              tokens.Type  `json:"type"`
-	Name              tokens.QName `json:"name"`
-	ID                resource.ID  `json:"id,omitempty"`
-	Parent            string       `json:"parent,omitempty"`
-	Provider          string       `json:"provider,omitempty"`
-	Version           string       `json:"version,omitempty"`
-	PluginDownloadURL string       `json:"pluginDownloadUrl,omitempty"`
-	Properties        []string     `json:"properties,omitempty"`
-	Component         bool         `json:"component,omitempty"`
-	Remote            bool         `json:"remote,omitempty"`
+	Type              tokens.Type `json:"type"`
+	Name              string      `json:"name"`
+	ID                resource.ID `json:"id,omitempty"`
+	Parent            string      `json:"parent,omitempty"`
+	Provider          string      `json:"provider,omitempty"`
+	Version           string      `json:"version,omitempty"`
+	PluginDownloadURL string      `json:"pluginDownloadUrl,omitempty"`
+	Properties        []string    `json:"properties,omitempty"`
+	Component         bool        `json:"component,omitempty"`
+	Remote            bool        `json:"remote,omitempty"`
 }
 
 type importFile struct {
@@ -201,13 +201,13 @@ func parseImportFile(
 ) ([]deploy.Import, importer.NameTable, error) {
 	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
 	// it's ambiguous (it's true).
-	takenNames := map[tokens.QName]bool{}
+	takenNames := map[string]bool{}
 	// Prefill takenNames with all the resource names so we can do quick uniqness checks below
 	for _, spec := range f.Resources {
 		takenNames[spec.Name] = false
 	}
 	// A remapping by index from the resource list to it's final unique name.
-	nameMapping := make([]tokens.QName, 0, len(f.Resources))
+	nameMapping := make([]string, 0, len(f.Resources))
 	for i, spec := range f.Resources {
 		// Check if any earlier resource has this name, if so mark it as ambiguous
 		for j, other := range f.Resources {
@@ -226,7 +226,7 @@ func parseImportFile(
 				if _, exists := takenNames[newName]; !exists {
 					break
 				}
-				newName = tokens.QName(fmt.Sprintf("%s_%d", spec.Name, suffix))
+				newName = fmt.Sprintf("%s_%d", spec.Name, suffix)
 			}
 			// At this point newName is unique and can't clash with other names, but need to ensure nothing
 			// else tries to now use it.
@@ -276,7 +276,7 @@ func parseImportFile(
 		urnMapping[name] = urn
 	}
 	for _, spec := range f.Resources {
-		urnMapping[string(spec.Name)] = ""
+		urnMapping[spec.Name] = ""
 	}
 
 	// We need to keep going till all the URNs are filled in or we have an error.
@@ -295,7 +295,7 @@ func parseImportFile(
 	for !done() {
 		for i, spec := range f.Resources {
 			// If we've already done this URN no need to do it again
-			if urnMapping[string(spec.Name)] != "" {
+			if urnMapping[spec.Name] != "" {
 				continue
 			}
 
@@ -305,7 +305,7 @@ func parseImportFile(
 
 				// takenNames will be true if this name is ambiguous, in which case we can't use it as a
 				// parent but we just let the rest of the code below run so we can collect further errors.
-				if takenNames[tokens.QName(spec.Parent)] {
+				if takenNames[spec.Parent] {
 					pusherrf("%v has an ambiguous parent",
 						describeResource(i, spec))
 				}
@@ -334,7 +334,7 @@ func parseImportFile(
 			}
 
 			actualName := nameMapping[i]
-			urnMapping[string(spec.Name)] = resource.NewURN(stack.Q(), proj, parentType, spec.Type, actualName)
+			urnMapping[spec.Name] = resource.NewURN(stack.Q(), proj, parentType, spec.Type, actualName)
 		}
 	}
 
@@ -380,7 +380,7 @@ func parseImportFile(
 		}
 
 		if spec.Provider != "" {
-			if takenNames[tokens.QName(spec.Provider)] {
+			if takenNames[spec.Provider] {
 				pusherrf("%v has an ambiguous provider",
 					describeResource(i, spec))
 			}

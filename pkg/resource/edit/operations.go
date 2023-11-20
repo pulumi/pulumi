@@ -167,7 +167,7 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.StackName, newProject tok
 		// The pulumi:pulumi:Stack resource's name component is of the form `<project>-<stack>` so we want
 		// to rename the name portion as well.
 		if u.QualifiedType() == "pulumi:pulumi:Stack" {
-			return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), tokens.QName(project)+"-"+newName.Q())
+			return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), string(tokens.QName(project)+"-"+newName.Q()))
 		}
 
 		return resource.NewURN(tokens.QName(newName.String()), project, "", u.QualifiedType(), u.Name())

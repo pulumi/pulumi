@@ -242,7 +242,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 
 func newProviderState(pkg, name, id string, delete bool, inputs resource.PropertyMap) *resource.State {
 	typ := MakeProviderType(tokens.Package(pkg))
-	urn := resource.NewURN("test", "test", "", typ, tokens.QName(name))
+	urn := resource.NewURN("test", "test", "", typ, name)
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
 	}
@@ -778,10 +778,10 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			defer wg.Done()
 
 			typ := MakeProviderType("pkgA")
-			providerURN := resource.NewURN("test", "test", "", typ, tokens.QName(fmt.Sprintf("p%d", i)))
+			providerURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d", i))
 
 			for j := 0; j < 1000; j++ {
-				aliasURN := resource.NewURN("test", "test", "", typ, tokens.QName(fmt.Sprintf("p%d_%d", i, j)))
+				aliasURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d_%d", i, j))
 				r.RegisterAlias(providerURN, aliasURN)
 			}
 

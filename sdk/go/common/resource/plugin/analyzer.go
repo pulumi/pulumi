@@ -51,7 +51,7 @@ type Analyzer interface {
 type AnalyzerResource struct {
 	URN        resource.URN
 	Type       tokens.Type
-	Name       tokens.QName
+	Name       string
 	Properties resource.PropertyMap
 	Options    AnalyzerResourceOptions
 	Provider   *AnalyzerProviderResource
@@ -80,7 +80,7 @@ type AnalyzerResourceOptions struct {
 type AnalyzerProviderResource struct {
 	URN        resource.URN
 	Type       tokens.Type
-	Name       tokens.QName
+	Name       string
 	Properties resource.PropertyMap
 }
 

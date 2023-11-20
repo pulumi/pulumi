@@ -250,7 +250,7 @@ func TestParseImportFileSameName(t *testing.T) {
 	}
 	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
-	resourceNames := map[tokens.QName]struct{}{}
+	resourceNames := map[string]struct{}{}
 	for _, imp := range imports {
 		_, exists := resourceNames[imp.Name]
 		assert.False(t, exists, "name %s should not have been seen already", imp.Name)
@@ -258,7 +258,7 @@ func TestParseImportFileSameName(t *testing.T) {
 	}
 
 	// Check expected names are present.
-	for _, name := range []tokens.QName{"thing", "thing_1"} {
+	for _, name := range []string{"thing", "thing_1"} {
 		_, exists := resourceNames[name]
 		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
 	}
@@ -290,7 +290,7 @@ func TestParseImportFileRenameNoClash(t *testing.T) {
 	}
 	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
-	resourceNames := map[tokens.QName]struct{}{}
+	resourceNames := map[string]struct{}{}
 	// Check resource names are unique.
 	for _, imp := range imports {
 		_, exists := resourceNames[imp.Name]
@@ -299,7 +299,7 @@ func TestParseImportFileRenameNoClash(t *testing.T) {
 	}
 
 	// Check expected names are present.
-	for _, name := range []tokens.QName{"thing", "thing_1", "thing_2"} {
+	for _, name := range []string{"thing", "thing_1", "thing_2"} {
 		_, exists := resourceNames[name]
 		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
 	}

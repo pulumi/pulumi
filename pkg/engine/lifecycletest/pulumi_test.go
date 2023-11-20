@@ -1746,8 +1746,8 @@ func TestCustomTimeouts(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default")
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.NotNil(t, snap.Resources[1].CustomTimeouts)
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Create, float64(60))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Update, float64(240))
@@ -4278,6 +4278,7 @@ func TestResourceNames(t *testing.T) {
 		"& @ $ % ^ * #",
 		"'quotes'",
 		"\"double quotes\"",
+		"double::colons", // https://github.com/pulumi/pulumi/issues/13968
 	}
 
 	for _, tt := range cases {
@@ -4297,8 +4298,26 @@ func TestResourceNames(t *testing.T) {
 				}),
 			}
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", tt, true, deploytest.ResourceOptions{})
+				// Check the name works as a provider
+				provURN, provID, _, err := monitor.RegisterResource("pulumi:providers:pkgA", tt, true)
 				assert.NoError(t, err)
+
+				provRef, err := providers.NewReference(provURN, provID)
+				assert.NoError(t, err)
+
+				// And a custom resource
+				urnCustom, _, _, err := monitor.RegisterResource("pkgA:m:typA", tt, true, deploytest.ResourceOptions{
+					Provider: provRef.String(),
+				})
+				assert.NoError(t, err)
+
+				// And a component resource
+				_, _, _, err = monitor.RegisterResource("pkgA:m:typB", tt, false, deploytest.ResourceOptions{
+					// And as a URN parameter
+					Parent: urnCustom,
+				})
+				assert.NoError(t, err)
+
 				return nil
 			})
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -4309,8 +4328,10 @@ func TestResourceNames(t *testing.T) {
 			snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 			require.NoError(t, err)
-			require.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 3)
+			assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::"+tt), snap.Resources[0].URN)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::"+tt), snap.Resources[1].URN)
+			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::"+tt), snap.Resources[2].URN)
 		})
 	}
 }

@@ -65,7 +65,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// We get the aws:lambda/function:Function child and request it's logs, parsing out the
 		// user-visible content from those logs to project into our own log output, but leaving out
 		// explicit Lambda metadata.
-		name := string(state.URN.Name())
+		name := state.URN.Name()
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
@@ -94,7 +94,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// centrally archived into the log collector. As a result, we will combine reading these logs with reading the
 		// live Lambda logs from individual functions, de-duplicating the results, to piece together the full set of
 		// logs.
-		name := string(state.URN.Name())
+		name := state.URN.Name()
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
@@ -142,7 +142,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only
 		// populated by user code within containers, so we can safely project these logs back unmodified.
 		urn := state.URN
-		name := string(urn.Name())
+		name := urn.Name()
 		logGroup, ok := ops.component.GetChild(awsLogGroupTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLogGroupTypeName, name)

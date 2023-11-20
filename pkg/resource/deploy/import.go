@@ -33,7 +33,7 @@ import (
 // An Import specifies a resource to import.
 type Import struct {
 	Type              tokens.Type       // The type token for the resource. Required.
-	Name              tokens.QName      // The name of the resource. Required.
+	Name              string            // The name of the resource. Required.
 	ID                resource.ID       // The ID of the resource. Required.
 	Parent            resource.URN      // The parent of the resource, if any.
 	Provider          resource.URN      // The specific provider to use for the resource, if any.
@@ -174,7 +174,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
-	urn := resource.NewURN(stackName.Q(), projectName, "", typ, tokens.QName(name))
+	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
 		nil, false, nil, nil, nil, "", false, "", nil, nil, "")
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?

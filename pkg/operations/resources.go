@@ -115,7 +115,7 @@ func (r *Resource) GetChild(typ string, name string) (*Resource, bool) {
 		if childURN.Stack() == r.Stack &&
 			childURN.Project() == r.Project &&
 			childURN.Type() == tokens.Type(typ) &&
-			childURN.Name() == tokens.QName(name) {
+			childURN.Name() == name {
 			return childResource, true
 		}
 	}
@@ -245,11 +245,11 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 		// The filter matched the full URN
 		return true
 	}
-	if string(*filter) == string(urn.Type())+"::"+string(urn.Name()) {
+	if string(*filter) == string(urn.Type())+"::"+urn.Name() {
 		// The filter matched the '<type>::<name>' part of the URN
 		return true
 	}
-	if tokens.QName(*filter) == urn.Name() {
+	if string(*filter) == urn.Name() {
 		// The filter matched the '<name>' part of the URN
 		return true
 	}

@@ -1126,7 +1126,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 					return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
 				}
 				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
-					aliasedChildName := string(resource.URN(urn).Name())
+					aliasedChildName := resource.URN(urn).Name()
 					aliasedChildType := string(resource.URN(urn).Type())
 					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
 				}).ApplyT(func(urn interface{}) URN {

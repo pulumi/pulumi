@@ -380,7 +380,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 					var hasExpectedResource bool
 					var result string
 					for _, res := range stackInfo.Deployment.Resources {
-						if res.URN.Name().String() == "myrandom" {
+						if res.URN.Name() == "myrandom" {
 							hasExpectedResource = true
 							result = res.Outputs["result"].(string)
 							assert.Equal(t, float64(10), res.Inputs["length"])

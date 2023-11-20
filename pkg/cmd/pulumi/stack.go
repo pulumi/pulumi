@@ -322,7 +322,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 }
 
 func renderResourceRow(res *resource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
-	columns := []string{prefix + string(res.Type), string(res.URN.Name())}
+	columns := []string{prefix + string(res.Type), res.URN.Name()}
 	additionalInfo := ""
 
 	// If the ID and/or URN is requested, show it on the following line.  It would be nice to do

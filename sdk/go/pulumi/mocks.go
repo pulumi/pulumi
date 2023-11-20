@@ -77,7 +77,7 @@ func (m *mockMonitor) newURN(parent, typ, name string) string {
 	}
 
 	return string(resource.NewURN(tokens.QName(m.stack), tokens.PackageName(m.project), parentType, tokens.Type(typ),
-		tokens.QName(name)))
+		name))
 }
 
 func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.SupportsFeatureRequest,

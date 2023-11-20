@@ -221,7 +221,7 @@ func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) res
 	if parent != "" {
 		pt = parent.QualifiedType()
 	}
-	return resource.NewURN(stack.Q(), project, pt, typ, tokens.QName(name))
+	return resource.NewURN(stack.Q(), project, pt, typ, name)
 }
 
 func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resource.URN) resource.URN {

@@ -135,7 +135,7 @@ func urnGenerator(ctx *StackContext) *rapid.Generator[resource.URN] {
 		projectName := tokens.PackageName(projectNameGenerator.Draw(t, "project name"))
 		parentType := TypeGenerator().Draw(t, "parent type")
 		resourceType := TypeGenerator().Draw(t, "resource type")
-		resourceName := tokens.QName(rapid.StringMatching(`^((:[^:])[^:]*)*:?$`).Draw(t, "resource name"))
+		resourceName := rapid.StringMatching(`^((:[^:])[^:]*)*:?$`).Draw(t, "resource name")
 		return resource.NewURN(stackName, projectName, parentType, resourceType, resourceName)
 	})
 }
