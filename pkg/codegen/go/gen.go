@@ -532,9 +532,13 @@ func reduceInputType(t schema.Type) schema.Type {
 	}
 }
 
+func (pkg *pkgContext) genericTypeNeedsPointer(t schema.Type) bool {
+	return isOptionalType(reduceInputType(t)) && !isArrayType(codegen.UnwrapType(t)) && !isMapType(codegen.UnwrapType(t))
+}
+
 func (pkg *pkgContext) genericInputType(t schema.Type) string {
 	optionalPointer := ""
-	if isOptionalType(reduceInputType(t)) && !isArrayType(codegen.UnwrapType(t)) && !isMapType(codegen.UnwrapType(t)) {
+	if pkg.genericTypeNeedsPointer(t) {
 		optionalPointer = "*"
 	}
 
@@ -544,6 +548,20 @@ func (pkg *pkgContext) genericInputType(t schema.Type) string {
 	}
 
 	return fmt.Sprintf("pulumix.Input[%s%s]", optionalPointer, inputType)
+}
+
+func (pkg *pkgContext) plainGenericInputType(t schema.Type) string {
+	optionalPointer := ""
+	if pkg.genericTypeNeedsPointer(t) {
+		optionalPointer = "*"
+	}
+
+	inputType := pkg.genericInputTypeImpl(t)
+	if strings.HasPrefix(inputType, "*") {
+		optionalPointer = ""
+	}
+
+	return fmt.Sprintf("%s%s", optionalPointer, inputType)
 }
 
 func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
@@ -1653,6 +1671,20 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 	fmt.Fprintf(w, "}\n\n")
 }
 
+// genGenericPlainType is the same as genPlainType, but used for generic variant SDKs
+// where it maintains optionalness of property types
+func (pkg *pkgContext) genGenericPlainType(w io.Writer, name, comment, deprecationMessage string,
+	properties []*schema.Property,
+) {
+	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
+	fmt.Fprintf(w, "type %s struct {\n", name)
+	for _, p := range properties {
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), pkg.plainGenericInputType(p.Type), p.Name)
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
 func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property,
 	useGenericTypes bool,
@@ -1797,7 +1829,11 @@ func (pkg *pkgContext) genInputArgsStruct(
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		inputType := pkg.typeString(p.Type)
 		if useGenericTypes {
-			inputType = pkg.genericInputType(p.Type)
+			if p.Plain {
+				inputType = pkg.plainGenericInputType(p.Type)
+			} else {
+				inputType = pkg.genericInputType(p.Type)
+			}
 		}
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), inputType, p.Name)
 	}
@@ -1853,10 +1889,10 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 				needsCast := genericTypeNeedsExplicitCasting(outputType)
 				if !needsCast {
 					fmt.Fprintf(w, "\treturn pulumix.Apply[%s](o, func (v %s) %s { return v.%s })\n",
-						name, name, pkg.typeString(p.Type), pkg.fieldName(nil, p))
+						name, name, pkg.plainGenericInputType(p.Type), pkg.fieldName(nil, p))
 				} else {
 					fmt.Fprintf(w, "\tvalue := pulumix.Apply[%s](o, func (v %s) %s { return v.%s })\n",
-						name, name, pkg.typeString(p.Type), pkg.fieldName(nil, p))
+						name, name, pkg.plainGenericInputType(p.Type), pkg.fieldName(nil, p))
 					fmt.Fprintf(w, "\treturn %s{OutputState: value.OutputState}\n", outputType)
 				}
 			}
@@ -3182,7 +3218,12 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType, usingGeneric
 	}
 
 	plainName := pkg.tokenToType(obj.Token)
-	pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties)
+	if !usingGenericTypes {
+		pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties)
+	} else {
+		pkg.genGenericPlainType(w, plainName, obj.Comment, "", obj.Properties)
+	}
+
 	if !pkg.disableObjectDefaults {
 		if err := pkg.genObjectDefaultFunc(w, plainName, obj.Properties, usingGenericTypes); err != nil {
 			return err
