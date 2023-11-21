@@ -215,7 +215,7 @@ func TestOpenStackEnv(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
-		) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
 			assert.Equal(t, []byte(`{"imports":["test"]}`), yaml)
 			assert.Equal(t, 2*time.Hour, duration)
@@ -249,7 +249,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
-		) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, []apitype.EnvironmentDiagnostic{{Summary: "diag"}}, nil
 		},
 	}
@@ -279,7 +279,7 @@ func TestOpenStackEnvError(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
-		) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, nil, errors.New("error")
 		},
 	}

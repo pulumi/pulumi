@@ -96,6 +96,9 @@ const (
 	// UpdatePlan ("true", "false") indicates if an explicit update plan was used for the update (either
 	// saving one, or constraining to one).
 	UpdatePlan = "updatePlan"
+
+	// StackEnvironments indicates the list of ESC environments imported by the stack being updated.
+	StackEnvironments = "stack.environments"
 )
 
 // UpdateInfo describes a previous update.
