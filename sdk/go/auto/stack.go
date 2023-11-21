@@ -205,7 +205,9 @@ func (s *Stack) Workspace() Workspace {
 }
 
 // ChangeSecretsProvider edits the secrets provider for the stack.
-func (s *Stack) ChangeSecretsProvider(ctx context.Context, newSecretsProvider string, opts *ChangeSecretsProviderOptions) error {
+func (s *Stack) ChangeSecretsProvider(
+	ctx context.Context, newSecretsProvider string, opts *ChangeSecretsProviderOptions,
+) error {
 	return s.workspace.ChangeStackSecretsProvider(ctx, s.stackName, newSecretsProvider, opts)
 }
 
