@@ -461,8 +461,8 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 	return nil, nil
 }
 
-// StackChangeSecretsProvider edits the secrets provider for the given stack.
-func (l *LocalWorkspace) StackChangeSecretsProvider(
+// ChangeStackSecretsProvider edits the secrets provider for the given stack.
+func (l *LocalWorkspace) ChangeStackSecretsProvider(
 	ctx context.Context, stackName, newSecretsProvider, stdin string,
 ) error {
 	args := []string{"stack", "change-secrets-provider", "--stack", stackName, newSecretsProvider}
