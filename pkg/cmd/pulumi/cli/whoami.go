@@ -64,11 +64,7 @@ type whoAmICmd struct {
 	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
-func (cmd *whoAmICmd) Run(ctx context.Context) error {
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-
+func (cmd *whoAmICmd) whoAmI(ctx context.Context) (*WhoAmIJSON, error) {
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = currentBackend
 	}
@@ -81,32 +77,48 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	// Try to read the current project
 	project, _, err := readProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return err
+		return nil, err
 	}
 
 	b, err := currentBackend(ctx, project, opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	name, orgs, tokenInfo, err := b.CurrentUser()
+	if err != nil {
+		return nil, err
+	}
+
+	return &WhoAmIJSON{
+		User:             name,
+		Organizations:    orgs,
+		URL:              b.URL(),
+		TokenInformation: tokenInfo,
+	}, nil
+}
+
+func (cmd *whoAmICmd) Run(ctx context.Context) error {
+	if cmd.Stdout == nil {
+		cmd.Stdout = os.Stdout
+	}
+
+	who, err := cmd.whoAmI(ctx)
 	if err != nil {
 		return err
 	}
 
 	if cmd.jsonOut {
-		return fprintJSON(cmd.Stdout, WhoAmIJSON{
-			User:             name,
-			Organizations:    orgs,
-			URL:              b.URL(),
-			TokenInformation: tokenInfo,
-		})
+		return fprintJSON(cmd.Stdout, who)
 	}
 
+	name := who.User
 	if cmd.verbose {
+		orgs, tokenInfo := who.Organizations, who.TokenInformation
+
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
-		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
+		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", who.URL)
 		if tokenInfo != nil {
 			tokenType := "unknown"
 			if tokenInfo.Team != "" {

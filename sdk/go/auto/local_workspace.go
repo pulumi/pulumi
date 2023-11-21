@@ -996,6 +996,13 @@ func EnvVars(envvars map[string]string) LocalWorkspaceOption {
 	})
 }
 
+// Commands sets the Pulumi implementation to use.
+func Commands(commands cli.PulumiCommands) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.Commands = commands
+	})
+}
+
 // remoteEnvVars is a map of environment values scoped to the workspace.
 // These values will be passed to the remote Pulumi operation.
 func remoteEnvVars(envvars map[string]EnvVarValue) LocalWorkspaceOption {
