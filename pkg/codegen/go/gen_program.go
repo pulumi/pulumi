@@ -711,10 +711,9 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 			if err != nil {
 				if r.Schema != nil {
 					panic(err)
-				} else {
-					// for unknown resources, make a best guess
-					vPath = "/v1"
 				}
+				// for unknown resources, make a best guess
+				vPath = "/v1"
 			}
 
 			g.addPulumiImport(pkg, vPath, mod, name)

@@ -425,9 +425,8 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 						}
 					}
 					return true
-				} else {
-					return false
 				}
+				return false
 			}
 
 			if old.IsObject() && new.IsObject() {
@@ -457,9 +456,8 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 					}
 				}
 				return true
-			} else {
-				return false
 			}
+			return false
 		} else {
 			pkey := PropertyKey(key)
 

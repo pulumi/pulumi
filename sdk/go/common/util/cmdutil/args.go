@@ -67,9 +67,8 @@ func SpecificArgs(argNames []string) cobra.PositionalArgs {
 				result = multierror.Append(result, errors.Errorf("missing required argument: %s", argNames[i]))
 			}
 			return result
-		} else {
-			return nil
 		}
+		return nil
 	})
 }
 
