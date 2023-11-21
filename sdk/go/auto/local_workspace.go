@@ -55,6 +55,7 @@ type LocalWorkspace struct {
 	remoteEnvVars                 map[string]EnvVarValue
 	preRunCommands                []string
 	remoteSkipInstallDependencies bool
+	pulumiCommand                 string
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -725,6 +726,7 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 		nil, /* additionalOutputs */
 		nil, /* additionalErrorOutputs */
 		env,
+		l.pulumiCommand,
 		args...,
 	)
 }
@@ -738,7 +740,7 @@ func (l *LocalWorkspace) supportsPulumiCmdFlag(ctx context.Context, flag string,
 	}
 
 	// Run the command with `--help`, and then we'll look for the flag in the output.
-	stdout, _, _, err := runPulumiCommandSync(ctx, l.WorkDir(), nil, nil, env, append(args, "--help")...)
+	stdout, _, _, err := runPulumiCommandSync(ctx, l.WorkDir(), nil, nil, env, l.pulumiCommand, append(args, "--help")...)
 	if err != nil {
 		return false, err
 	}
@@ -787,6 +789,10 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		program = lwOpts.Program
 	}
 
+	if lwOpts.PulumiCommand == "" {
+		lwOpts.PulumiCommand = "pulumi"
+	}
+
 	l := &LocalWorkspace{
 		workDir:                       workDir,
 		preRunCommands:                lwOpts.PreRunCommands,
@@ -796,6 +802,14 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
 		repo:                          lwOpts.Repo,
+		pulumiCommand:                 lwOpts.PulumiCommand,
+	}
+
+	// Environment values
+	if lwOpts.EnvVars != nil {
+		if err := setEnvVars(l, lwOpts.EnvVars); err != nil {
+			return nil, fmt.Errorf("failed to set environment values: %w", err)
+		}
 	}
 
 	// optOut indicates we should skip the version check.
@@ -851,13 +865,6 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		l.secretsProvider = lwOpts.SecretsProvider
 	}
 
-	// Environment values
-	if lwOpts.EnvVars != nil {
-		if err := setEnvVars(l, lwOpts.EnvVars); err != nil {
-			return nil, fmt.Errorf("failed to set environment values: %w", err)
-		}
-	}
-
 	return l, nil
 }
 
@@ -897,6 +904,8 @@ type localWorkspaceOptions struct {
 	PreRunCommands []string
 	// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step
 	RemoteSkipInstallDependencies bool
+
+	PulumiCommand string
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -1015,6 +1024,12 @@ func SecretsProvider(secretsProvider string) LocalWorkspaceOption {
 func EnvVars(envvars map[string]string) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.EnvVars = envvars
+	})
+}
+
+func PulumiCommand(command string) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.PulumiCommand = command
 	})
 }
 

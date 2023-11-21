@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
@@ -32,12 +33,24 @@ func runPulumiCommandSync(
 	additionalOutput []io.Writer,
 	additionalErrorOutput []io.Writer,
 	additionalEnv []string,
+	command string,
 	args ...string,
 ) (string, string, int, error) {
+	command, err := exec.LookPath(command)
+	if err != nil {
+		return "", "", unknownErrorCode, err
+	}
+	if !filepath.IsAbs(command) {
+		command, err = filepath.Abs(command)
+		if err != nil {
+			return "", "", unknownErrorCode, err
+		}
+	}
+
 	// all commands should be run in non-interactive mode.
 	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
 	args = withNonInteractiveArg(args)
-	cmd := exec.CommandContext(ctx, "pulumi", args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = workdir
 	cmd.Env = append(os.Environ(), additionalEnv...)
 
@@ -49,7 +62,7 @@ func runPulumiCommandSync(
 	cmd.Stderr = io.MultiWriter(additionalErrorOutput...)
 
 	code := unknownErrorCode
-	err := cmd.Run()
+	err = cmd.Run()
 	if exitError, ok := err.(*exec.ExitError); ok {
 		code = exitError.ExitCode()
 	} else if err == nil {

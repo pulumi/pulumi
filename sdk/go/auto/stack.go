@@ -937,9 +937,10 @@ func (s *Stack) runPulumiCmdSync(
 	debugEnv := fmt.Sprintf("%s=%s", "PULUMI_DEBUG_COMMANDS", "true")
 	env = append(env, debugEnv)
 
+	pulumiCommand := "pulumi"
 	var remote bool
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
-		remote = lws.remote
+		remote, pulumiCommand = lws.remote, lws.pulumiCommand
 	}
 	if remote {
 		experimentalEnv := fmt.Sprintf("%s=%s", "PULUMI_EXPERIMENTAL", "true")
@@ -969,6 +970,7 @@ func (s *Stack) runPulumiCmdSync(
 		additionalOutput,
 		additionalErrorOutput,
 		env,
+		pulumiCommand,
 		args...,
 	)
 	if err != nil {
