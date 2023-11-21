@@ -463,10 +463,17 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 
 // ChangeStackSecretsProvider edits the secrets provider for the given stack.
 func (l *LocalWorkspace) ChangeStackSecretsProvider(
-	ctx context.Context, stackName, newSecretsProvider, stdin string,
+	ctx context.Context, stackName, newSecretsProvider string, opts *ChangeSecretsProviderOptions,
 ) error {
 	args := []string{"stack", "change-secrets-provider", "--stack", stackName, newSecretsProvider}
-	reader := strings.NewReader(stdin)
+
+	var reader io.Reader
+	if newSecretsProvider == "passphrase" {
+		if opts == nil || opts.NewPassphrase == nil {
+			return fmt.Errorf("new passphrase must be provided")
+		}
+		reader = strings.NewReader(*opts.NewPassphrase)
+	}
 	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, reader, args...)
 	if err != nil {
 		return newAutoError(fmt.Errorf("failed to change secrets provider: %w", err), stdout, stderr, errCode)

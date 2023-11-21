@@ -123,7 +123,10 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	assert.Equal(t, true, conf.Secret)
 
 	// -- change passphrase --
-	err = s.Workspace().ChangeStackSecretsProvider(ctx, s.Name(), "passphrase", "newpassphrase")
+	newPassphrase := "newpassphrase"
+	err = s.Workspace().ChangeStackSecretsProvider(ctx, s.Name(), "passphrase", &ChangeSecretsProviderOptions{
+		NewPassphrase: &newPassphrase,
+	})
 	require.NoError(t, err)
 	s = mkstack("newpassphrase")
 

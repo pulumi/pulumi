@@ -107,7 +107,7 @@ type Workspace interface {
 	// logged-in Pulumi identity.
 	WhoAmIDetails(ctx context.Context) (WhoAmIResult, error)
 	// ChangeStackSecretsProvider edits the secrets provider for the given stack.
-	ChangeStackSecretsProvider(ctx context.Context, stackName, newSecretsProvider, stdin string) error
+	ChangeStackSecretsProvider(ctx context.Context, stackName, newSecretsProvider string, opts *ChangeSecretsProviderOptions) error
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
@@ -174,4 +174,9 @@ type WhoAmIResult struct {
 	User          string   `json:"user"`
 	Organizations []string `json:"organizations,omitempty"`
 	URL           string   `json:"url"`
+}
+
+type ChangeSecretsProviderOptions struct {
+	// NewPassphrase is the new passphrase when changing to a `passphrase` provider
+	NewPassphrase *string
 }
