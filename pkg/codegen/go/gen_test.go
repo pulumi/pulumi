@@ -73,6 +73,7 @@ func TestGeneratePackage(t *testing.T) {
 
 		return GeneratePackage(tool, pkg)
 	}
+
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "go",
 		GenPackage: generatePackage,

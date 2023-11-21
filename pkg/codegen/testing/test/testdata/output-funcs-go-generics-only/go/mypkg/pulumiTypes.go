@@ -163,7 +163,7 @@ type SsisEnvironmentResponse struct {
 	// Expected value is 'Environment'.
 	Type string `pulumi:"type"`
 	// Variable in environment
-	Variables []SsisVariableResponse `pulumi:"variables"`
+	Variables []*SsisVariableResponse `pulumi:"variables"`
 }
 
 // Ssis environment.
@@ -248,7 +248,7 @@ func (o SsisEnvironmentResponseOutput) Type() pulumix.Output[string] {
 
 // Variable in environment
 func (o SsisEnvironmentResponseOutput) Variables() pulumix.GArrayOutput[SsisVariableResponse, SsisVariableResponseOutput] {
-	value := pulumix.Apply[SsisEnvironmentResponse](o, func(v SsisEnvironmentResponse) []SsisVariableResponse { return v.Variables })
+	value := pulumix.Apply[SsisEnvironmentResponse](o, func(v SsisEnvironmentResponse) []*SsisVariableResponse { return v.Variables })
 	return pulumix.GArrayOutput[SsisVariableResponse, SsisVariableResponseOutput]{OutputState: value.OutputState}
 }
 
@@ -347,7 +347,7 @@ type SsisPackageResponse struct {
 	// Metadata name.
 	Name *string `pulumi:"name"`
 	// Parameters in package
-	Parameters []SsisParameterResponse `pulumi:"parameters"`
+	Parameters []*SsisParameterResponse `pulumi:"parameters"`
 	// Project id which contains package.
 	ProjectId *float64 `pulumi:"projectId"`
 	// Project version which contains package.
@@ -437,7 +437,7 @@ func (o SsisPackageResponseOutput) Name() pulumix.Output[*string] {
 
 // Parameters in package
 func (o SsisPackageResponseOutput) Parameters() pulumix.GArrayOutput[SsisParameterResponse, SsisParameterResponseOutput] {
-	value := pulumix.Apply[SsisPackageResponse](o, func(v SsisPackageResponse) []SsisParameterResponse { return v.Parameters })
+	value := pulumix.Apply[SsisPackageResponse](o, func(v SsisPackageResponse) []*SsisParameterResponse { return v.Parameters })
 	return pulumix.GArrayOutput[SsisParameterResponse, SsisParameterResponseOutput]{OutputState: value.OutputState}
 }
 
@@ -615,7 +615,7 @@ type SsisProjectResponse struct {
 	// Metadata description.
 	Description *string `pulumi:"description"`
 	// Environment reference in project
-	EnvironmentRefs []SsisEnvironmentReferenceResponse `pulumi:"environmentRefs"`
+	EnvironmentRefs []*SsisEnvironmentReferenceResponse `pulumi:"environmentRefs"`
 	// Folder id which contains project.
 	FolderId *float64 `pulumi:"folderId"`
 	// Metadata id.
@@ -623,7 +623,7 @@ type SsisProjectResponse struct {
 	// Metadata name.
 	Name *string `pulumi:"name"`
 	// Parameters in project
-	Parameters []SsisParameterResponse `pulumi:"parameters"`
+	Parameters []*SsisParameterResponse `pulumi:"parameters"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Project'.
 	Type string `pulumi:"type"`
@@ -696,7 +696,7 @@ func (o SsisProjectResponseOutput) Description() pulumix.Output[*string] {
 
 // Environment reference in project
 func (o SsisProjectResponseOutput) EnvironmentRefs() pulumix.GArrayOutput[SsisEnvironmentReferenceResponse, SsisEnvironmentReferenceResponseOutput] {
-	value := pulumix.Apply[SsisProjectResponse](o, func(v SsisProjectResponse) []SsisEnvironmentReferenceResponse { return v.EnvironmentRefs })
+	value := pulumix.Apply[SsisProjectResponse](o, func(v SsisProjectResponse) []*SsisEnvironmentReferenceResponse { return v.EnvironmentRefs })
 	return pulumix.GArrayOutput[SsisEnvironmentReferenceResponse, SsisEnvironmentReferenceResponseOutput]{OutputState: value.OutputState}
 }
 
@@ -717,7 +717,7 @@ func (o SsisProjectResponseOutput) Name() pulumix.Output[*string] {
 
 // Parameters in project
 func (o SsisProjectResponseOutput) Parameters() pulumix.GArrayOutput[SsisParameterResponse, SsisParameterResponseOutput] {
-	value := pulumix.Apply[SsisProjectResponse](o, func(v SsisProjectResponse) []SsisParameterResponse { return v.Parameters })
+	value := pulumix.Apply[SsisProjectResponse](o, func(v SsisProjectResponse) []*SsisParameterResponse { return v.Parameters })
 	return pulumix.GArrayOutput[SsisParameterResponse, SsisParameterResponseOutput]{OutputState: value.OutputState}
 }
 

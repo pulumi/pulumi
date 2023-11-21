@@ -395,6 +395,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple schema with plain properties, only for Go generics == generics-only",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory:   "assets-and-archives-go-generics-only",
+		Description: "Testing generating a schema with assets and archives for go using generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool
