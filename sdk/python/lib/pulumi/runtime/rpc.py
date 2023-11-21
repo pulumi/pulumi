@@ -21,6 +21,7 @@ import inspect
 from abc import ABC, abstractmethod
 from collections import abc
 from enum import Enum
+import os
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -56,6 +57,9 @@ if TYPE_CHECKING:
     )
     from ..output import Input, Inputs, Output
     from ..resource import CustomResource, ProviderResource, Resource
+
+ERROR_ON_DEPENDENCY_CYCLES_VAR = "PULUMI_ERROR_ON_DEPENDENCY_CYCLES"
+"""The name of the environment variable to set to false if you want to disable erroring on dependency cycles."""
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -263,7 +267,17 @@ async def _add_dependency(
     # Exit early if there are cycles to avoid hangs.
     no_cycles = declare_dependency(from_resource, res) if from_resource else True
     if not no_cycles:
-        return
+        error_on_cycles = (
+            os.getenv(ERROR_ON_DEPENDENCY_CYCLES_VAR, "true").lower() == "true"
+        )
+        if not error_on_cycles:
+            return
+        raise RuntimeError(
+            "We have detected a circular dependency involving a resource of type"
+            + f" {res._type} named {res._name}.\n"
+            + "Please review any `depends_on`, `parent` or other dependency relationships between your resources to ensure "
+            + "no cycles have been introduced in your program."
+        )
 
     from .. import ComponentResource  # pylint: disable=import-outside-toplevel
 

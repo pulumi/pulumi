@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -1087,4 +1088,25 @@ func TestConstructProviderExplicitPython(t *testing.T) {
 	testConstructProviderExplicit(t, "python", []string{
 		filepath.Join("..", "..", "sdk", "python", "env", "src"),
 	})
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13551
+func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "implicit-dependency-cycles"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Stdout: stdout,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Contains(t, stdout.String(), "RuntimeError: We have detected a circular dependency involving a resource of type my:module:Child-1 named a-child-1.")
+			assert.Contains(t, stdout.String(), "Please review any `depends_on`, `parent` or other dependency relationships between your resources to ensure no cycles have been introduced in your program.")
+		},
+	})
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	t.Cleanup(pt.TestCleanUp)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview")
 }
