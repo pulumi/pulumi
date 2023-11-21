@@ -598,31 +598,6 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "{ ")
-
-	var parts []string
-	if alias.Name != nil {
-		parts = append(parts, fmt.Sprintf("name: \"%v\"", *alias.Name))
-	}
-	if alias.Project != nil {
-		parts = append(parts, fmt.Sprintf("project: \"%v\"", *alias.Project))
-	}
-	if alias.Type != nil {
-		parts = append(parts, fmt.Sprintf("type: \"%v\"", *alias.Type))
-	}
-
-	for i, part := range parts {
-		if i > 0 {
-			fmt.Fprintf(w, ", ")
-		}
-
-		fmt.Fprintf(w, "%s", part)
-	}
-
-	fmt.Fprintf(w, " }")
-}
-
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFileInfo, error) {
 	info := resourceFileInfo{}
 
@@ -905,10 +880,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	if len(r.Aliases) > 0 {
 		fmt.Fprintf(w, "        const aliasOpts = { aliases: [")
 		for i, alias := range r.Aliases {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
+			if alias.Type != nil {
+				fmt.Fprintf(w, "{ type: \"%v\" }", *alias.Type)
+				if i != len(r.Aliases)-1 {
+					fmt.Fprintf(w, ", ")
+				}
 			}
-			mod.genAlias(w, alias)
 		}
 		fmt.Fprintf(w, "] };\n")
 		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, aliasOpts);\n")

@@ -173,6 +173,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple use of replaceOnChange in schema",
 	},
 	{
+		Directory:   "simple-resource-with-aliases",
+		Description: "Simple schema with a resource that has aliases",
+	},
+	{
 		Directory:        "resource-property-overlap",
 		Description:      "A resource with the same name as its property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
