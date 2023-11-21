@@ -36,68 +36,83 @@ func newAutoError(err error, stdout, stderr string, code int) autoError {
 	}
 }
 
+func (ae autoError) Stdout() string {
+	return ae.stdout
+}
+
+func (ae autoError) Stderr() string {
+	return ae.stderr
+}
+
 func (ae autoError) Error() string {
 	return fmt.Sprintf("%s\ncode: %d\nstdout: %s\nstderr: %s\n", ae.err.Error(), ae.code, ae.stdout, ae.stderr)
 }
 
+type outputError interface {
+	error
+
+	Stdout() string
+	Stderr() string
+}
+
 // IsConcurrentUpdateError returns true if the error was a result of a conflicting update locking the stack.
 func IsConcurrentUpdateError(e error) bool {
-	ae, ok := e.(autoError)
+	ae, ok := e.(outputError)
 	if !ok {
 		return false
 	}
 
 	conflictText := "[409] Conflict: Another update is currently in progress."
 	localBackendConflictText := "the stack is currently locked by"
-	return strings.Contains(ae.stderr, conflictText) || strings.Contains(ae.stderr, localBackendConflictText)
+	return strings.Contains(ae.Stderr(), conflictText) || strings.Contains(ae.Stderr(), localBackendConflictText)
 }
 
 // IsSelectStack404Error returns true if the error was a result of selecting a stack that does not exist.
 func IsSelectStack404Error(e error) bool {
-	ae, ok := e.(autoError)
+	ae, ok := e.(outputError)
 	if !ok {
 		return false
 	}
 
 	regex := regexp.MustCompile(`no stack named.*found`)
-	return regex.MatchString(ae.stderr)
+	return regex.MatchString(ae.Stderr())
 }
 
 // IsCreateStack409Error returns true if the error was a result of creating a stack that already exists.
 func IsCreateStack409Error(e error) bool {
-	ae, ok := e.(autoError)
+	ae, ok := e.(outputError)
 	if !ok {
 		return false
 	}
 
 	regex := regexp.MustCompile(`stack.*already exists`)
-	return regex.MatchString(ae.stderr)
+	return regex.MatchString(ae.Stderr())
 }
 
 // IsCompilationError returns true if the program failed at the build/run step (only Typescript, Go, .NET)
 func IsCompilationError(e error) bool {
-	as, ok := e.(autoError)
+	as, ok := e.(outputError)
 	if !ok {
 		return false
 	}
 
 	// dotnet
-	if strings.Contains(as.stdout, "Build FAILED.") {
+	if strings.Contains(as.Stdout(), "Build FAILED.") {
 		return true
 	}
 
 	// go
 	// TODO: flimsy for go
-	if strings.Contains(as.stdout, ": syntax error:") {
+	if strings.Contains(as.Stdout(), ": syntax error:") {
 		return true
 	}
 
-	if strings.Contains(as.stdout, ": undefined:") {
+	if strings.Contains(as.Stdout(), ": undefined:") {
 		return true
 	}
 
 	// typescript
-	if strings.Contains(as.stdout, "Unable to compile TypeScript") {
+	if strings.Contains(as.Stdout(), "Unable to compile TypeScript") {
 		return true
 	}
 
@@ -106,7 +121,7 @@ func IsCompilationError(e error) bool {
 
 // IsRuntimeError returns true if there was an error in the user program at during execution.
 func IsRuntimeError(e error) bool {
-	as, ok := e.(autoError)
+	as, ok := e.(outputError)
 	if !ok {
 		return false
 	}
@@ -116,15 +131,15 @@ func IsRuntimeError(e error) bool {
 	}
 
 	// js/ts/dotnet/python
-	if strings.Contains(as.stdout, "failed with an unhandled exception:") {
+	if strings.Contains(as.Stdout(), "failed with an unhandled exception:") {
 		return true
 	}
 
 	// go
-	if strings.Contains(as.stdout, "panic: runtime error:") {
+	if strings.Contains(as.Stdout(), "panic: runtime error:") {
 		return true
 	}
-	if strings.Contains(as.stdout, "an unhandled error occurred:") {
+	if strings.Contains(as.Stdout(), "an unhandled error occurred:") {
 		return true
 	}
 
@@ -138,10 +153,10 @@ func IsRuntimeError(e error) bool {
 // IsUnexpectedEngineError returns true if the pulumi core engine encountered an error (most likely a bug).
 func IsUnexpectedEngineError(e error) bool {
 	// TODO: figure out how to write a test for this
-	as, ok := e.(autoError)
+	as, ok := e.(outputError)
 	if !ok {
 		return false
 	}
 
-	return strings.Contains(as.stdout, "The Pulumi CLI encountered a fatal error. This is a bug!")
+	return strings.Contains(as.Stdout(), "The Pulumi CLI encountered a fatal error. This is a bug!")
 }

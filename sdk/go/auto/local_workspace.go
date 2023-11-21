@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/cli"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -55,6 +56,8 @@ type LocalWorkspace struct {
 	remoteEnvVars                 map[string]EnvVarValue
 	preRunCommands                []string
 	remoteSkipInstallDependencies bool
+
+	commands cli.PulumiCommands
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -413,37 +416,25 @@ func (l *LocalWorkspace) PulumiVersion() string {
 
 // WhoAmI returns the currently authenticated user
 func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
+	details, err := l.WhoAmIDetails(ctx)
 	if err != nil {
-		return "", newAutoError(fmt.Errorf("could not determine authenticated user: %w", err), stdout, stderr, errCode)
+		return "", err
 	}
-	return strings.TrimSpace(stdout), nil
+	return details.User, nil
 }
 
 // WhoAmIDetails returns detailed information about the currently
 // logged-in Pulumi identity.
 func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIResult, error) {
-	// 3.58 added the --json flag (https://github.com/pulumi/pulumi/releases/tag/v3.58.0)
-	if l.pulumiVersion.GTE(semver.Version{Major: 3, Minor: 58}) {
-		var whoAmIDetailedInfo WhoAmIResult
-		stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami", "--json")
-		if err != nil {
-			return whoAmIDetailedInfo, newAutoError(
-				fmt.Errorf("could not retrieve WhoAmIDetailedInfo: %w", err), stdout, stderr, errCode)
-		}
-		err = json.Unmarshal([]byte(stdout), &whoAmIDetailedInfo)
-		if err != nil {
-			return whoAmIDetailedInfo, fmt.Errorf("unable to unmarshal WhoAmIDetailedInfo: %w", err)
-		}
-		return whoAmIDetailedInfo, nil
-	}
-
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
+	who, err := l.commands.WhoAmI(ctx)
 	if err != nil {
-		return WhoAmIResult{}, newAutoError(
-			fmt.Errorf("could not determine authenticated user: %w", err), stdout, stderr, errCode)
+		return WhoAmIResult{}, nil
 	}
-	return WhoAmIResult{User: strings.TrimSpace(stdout)}, nil
+	return WhoAmIResult{
+		User:          who.User,
+		Organizations: who.Organizations,
+		URL:           who.URL,
+	}, nil
 }
 
 // Stack returns a summary of the currently selected stack, if any.
@@ -687,24 +678,6 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (string, error) {
 	return stdout, nil
 }
 
-//nolint:lll
-func parseAndValidatePulumiVersion(minVersion semver.Version, currentVersion string, optOut bool) (semver.Version, error) {
-	version, err := semver.ParseTolerant(currentVersion)
-	if err != nil && !optOut {
-		return semver.Version{}, fmt.Errorf("Unable to parse Pulumi CLI version (skip with %s=true): %w", skipVersionCheckVar, err)
-	}
-	if optOut {
-		return version, nil
-	}
-	if minVersion.Major < version.Major {
-		return semver.Version{}, fmt.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major) //nolint
-	}
-	if minVersion.GT(version) {
-		return semver.Version{}, fmt.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion) //nolint
-	}
-	return version, nil
-}
-
 func (l *LocalWorkspace) runPulumiCmdSync(
 	ctx context.Context,
 	args ...string,
@@ -787,6 +760,10 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		program = lwOpts.Program
 	}
 
+	if lwOpts.Commands == nil {
+		lwOpts.Commands = cli.OutOfProcess(workDir, lwOpts.PulumiHome, lwOpts.EnvVars)
+	}
+
 	l := &LocalWorkspace{
 		workDir:                       workDir,
 		preRunCommands:                lwOpts.PreRunCommands,
@@ -796,19 +773,18 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
 		repo:                          lwOpts.Repo,
+		commands:                      lwOpts.Commands,
 	}
 
-	// optOut indicates we should skip the version check.
-	optOut := cmdutil.IsTruthy(os.Getenv(skipVersionCheckVar))
-	if val, ok := lwOpts.EnvVars[skipVersionCheckVar]; ok {
-		optOut = optOut || cmdutil.IsTruthy(val)
-	}
-	currentVersion, err := l.getPulumiVersion(ctx)
+	version, err := l.commands.Version(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if l.pulumiVersion, err = parseAndValidatePulumiVersion(minimumVersion, currentVersion, optOut); err != nil {
-		return nil, err
+	l.pulumiVersion = *version
+
+	optOut := cmdutil.IsTruthy(os.Getenv(skipVersionCheckVar))
+	if val, ok := lwOpts.EnvVars[skipVersionCheckVar]; ok {
+		optOut = optOut || cmdutil.IsTruthy(val)
 	}
 
 	// If remote was specified, ensure the CLI supports it.
@@ -897,6 +873,8 @@ type localWorkspaceOptions struct {
 	PreRunCommands []string
 	// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step
 	RemoteSkipInstallDependencies bool
+	// Commands sets the CLI command implementation to use.
+	Commands cli.PulumiCommands
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
