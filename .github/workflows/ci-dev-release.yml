@@ -1,0 +1,139 @@
+name: Create dev release
+
+permissions:
+  # To sign artifacts.
+  id-token: write
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        description: "Version to use for the release"
+        type: string
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version-set:
+        required: false
+        description: "Set of language versions to use for builds, lints, releases, etc."
+        type: string
+
+jobs:
+  gather-info:
+    name: gather-info
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Git describe
+        id: ghd
+        uses: proudust/gh-describe@v1
+    outputs:
+      describe: "${{ steps.ghd.outputs.describe }}"
+      version: ${{ inputs.version }}
+
+  matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: build matrix
+        id: matrix
+        run: |
+          echo "::group::Version set variable"
+          VERSION_SET=$(./scripts/get-job-matrix.py \
+            generate-version-set \
+            --version-set current
+          )
+          echo "::endgroup::"
+
+          echo "::group::Version set"
+          echo "$VERSION_SET" | yq -P '.'
+          echo "::endgroup::"
+
+          echo "::group::Set outputs"
+          ./.github/scripts/set-output version-set "${VERSION_SET}"
+          echo "::endgroup::"
+    outputs:
+      version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
+
+  build-release:
+    name: build-release
+    needs: [gather-info, matrix]
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["linux", "darwin"]
+        arch: ["amd64", "arm64"]
+        build-platform: ["ubuntu-latest"]
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      dev-version: ${{ needs.gather-info.outputs.describe }}
+      os: ${{ matrix.os }}
+      arch: ${{ matrix.arch }}
+      build-platform: ${{ matrix.build-platform }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
+      enable-coverage: false
+    secrets: inherit
+
+  sign:
+    name: sign
+    needs: [build-release]
+    uses: ./.github/workflows/sign.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+
+  s3-blobs:
+    name: s3 blobs
+    runs-on: ubuntu-latest
+    needs: [sign, gather-info]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-2
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-external-id: upload-pulumi-release
+          role-session-name: pulumi@githubActions
+          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+      - name: Make artifacts directory
+        run: |
+          mkdir -p artifacts.tmp
+      - name: Download artifacts from previous step
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts.tmp
+      - name: Flatten artifact directories
+        run: |
+          find artifacts.tmp
+          mkdir -p ./artifacts
+          mv ./artifacts.tmp/artifacts-*/pulumi-* ./artifacts
+
+      - name: Find artifacts
+        run: |
+          find artifacts
+      - name: Rename artifacts
+        run: |
+          (
+            cd artifacts
+            for file in *; do
+              mv "$file" "${file//${{inputs.version}}(-SNAPSHOT|)/${{ needs.gather-info.outputs.describe }}}"
+            done
+          )
+      - name: Find artifacts
+        run: |
+          find artifacts | sort
+
+      - name: Publish Blobs
+        run: |
+          aws s3 sync artifacts s3://get.pulumi.com/releases/sdk --acl public-read

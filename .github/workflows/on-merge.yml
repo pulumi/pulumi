@@ -56,9 +56,23 @@ jobs:
       project: ${{ github.repository }}
     secrets: inherit
 
+  dev-release:
+    name: dev-release
+    needs: [info, ci]
+    uses: ./.github/workflows/ci-dev-release.yml
+    permissions:
+      contents: write
+      # To sign artifacts.
+      id-token: write
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+      project: ${{ github.repository }}
+    secrets: inherit
+
   ci-ok:
     name: ci-ok
-    needs: [ci, prepare-release]
+    needs: [ci, prepare-release, dev-release]
     if: always() # always report a status
     runs-on: ubuntu-latest
     steps:
