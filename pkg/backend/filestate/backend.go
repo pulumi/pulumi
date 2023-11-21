@@ -827,9 +827,12 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 		return err
 	}
 
-	// TODO: This should work on the Checkpoint data directly, there's no need to deserialize to a snapshot
-	// really but that's currently how RenameStack is written.
-	snap, err := stk.Snapshot(ctx, stack.DefaultSecretsProvider)
+	// TODO: This should work on the Checkpoint data directly, there's no need to deserialize to a snapshot really but
+	// that's currently how RenameStack is written.
+	//
+	// Safe to pass "nil" to the DefaultSecretsProvider function here as we know a filestate checkpoint won't be using
+	// service secrets.
+	snap, err := stk.Snapshot(ctx, stack.DefaultSecretsProvider(nil))
 	if err != nil {
 		return err
 	}

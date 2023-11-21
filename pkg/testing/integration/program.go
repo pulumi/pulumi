@@ -699,7 +699,7 @@ func GetLogs(
 	snap, err := stack.DeserializeDeploymentV3(
 		context.Background(),
 		*stackInfo.Deployment,
-		stack.DefaultSecretsProvider)
+		stack.DefaultSecretsProvider(nil))
 	assert.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)

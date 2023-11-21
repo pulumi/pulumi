@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -29,16 +30,22 @@ import (
 )
 
 // DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.
-var DefaultSecretsProvider secrets.Provider = &defaultSecretsProvider{}
+func DefaultSecretsProvider(
+	clientFactory func(url string, insecure bool) (*client.Client, error),
+) secrets.Provider {
+	return &defaultSecretsProvider{clientFactory: clientFactory}
+}
 
 // defaultSecretsProvider implements the secrets.ManagerProviderFactory interface. Essentially
 // it is the global location where new secrets managers can be registered for use when
 // decrypting checkpoints.
-type defaultSecretsProvider struct{}
+type defaultSecretsProvider struct {
+	clientFactory func(url string, insecure bool) (*client.Client, error)
+}
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
-// if the type is uknown or the state is invalid.
-func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+// if the type is unknown or the state is invalid.
+func (dsp defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {
@@ -47,7 +54,10 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(state)
+		if dsp.clientFactory == nil {
+			return nil, fmt.Errorf("no client provided for service secrets manager")
+		}
+		sm, err = service.NewServiceSecretsManagerFromState(dsp.clientFactory, state)
 	case cloud.Type:
 		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:
