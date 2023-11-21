@@ -14,7 +14,7 @@
 
 //go:build !xplatform_acceptance
 
-package main
+package cli
 
 import (
 	"context"

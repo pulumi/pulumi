@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Terminal detection utilities.
-package main
+package cli
 
 import "golang.org/x/term"
 

@@ -15,4 +15,4 @@
 // This is the implementation of the Pulumi CLI, including logic related to the CLI lifecycle such as updating, tracing,
 // profiling, and environmental config options. All of the command logic is dispatched using the Cobra CLI package and
 // is wrapped in a panic handler.
-package main
+package cli

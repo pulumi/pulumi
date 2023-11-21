@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/cli"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -51,8 +52,6 @@ func (e *pulumiError) Error() string {
 }
 
 type pulumiCommands struct {
-	version *semver.Version
-
 	workDir string
 	home    string
 	envVars map[string]string
@@ -68,114 +67,129 @@ func Auto(workDir, home string, envVars map[string]string) cli.PulumiCommands {
 	}
 }
 
-func (cli *pulumiCommands) Debug(opts *cli.DebugOptions) cli.PulumiCommands {
+func (auto *pulumiCommands) Debug(opts *cli.DebugOptions) cli.PulumiCommands {
 	return &pulumiCommands{
-		version: cli.version,
-		workDir: cli.workDir,
-		home:    cli.home,
-		envVars: cli.envVars,
+		workDir: auto.workDir,
+		home:    auto.home,
+		envVars: auto.envVars,
 		opts:    opts,
 	}
 }
 
-func (cli *pulumiCommands) Stack(name string) cli.StackCommands {
+func (auto *pulumiCommands) Stack(name string) cli.StackCommands {
 	return &pulumiStackCommands{
-		cli:   cli,
+		auto:  auto,
 		stack: name,
 	}
 }
 
-func (cli *pulumiCommands) Plugin() cli.PluginCommands {
-	return &pulumiPluginCommands{cli: cli}
+func (auto *pulumiCommands) Plugin() cli.PluginCommands {
+	return &pulumiPluginCommands{auto: auto}
 }
 
-func (cli *pulumiCommands) WhoAmI(ctx context.Context) (*cli.WhoAmIResult, error) {
-	panic("NYI")
+func (auto *pulumiCommands) WhoAmI(ctx context.Context) (*cli.WhoAmIResult, error) {
+	var whoCmd whoAmICmd
+	who, err := whoCmd.whoAmI(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &cli.WhoAmIResult{
+		User:          who.User,
+		Organizations: who.Organizations,
+		URL:           who.URL,
+	}, nil
 }
 
-func (cli *pulumiCommands) Version(ctx context.Context) (*semver.Version, error) {
-	panic("NYI")
+func (auto *pulumiCommands) Version(ctx context.Context) (*semver.Version, error) {
+	if version.Version == "" {
+		return &semver.Version{}, nil
+	}
+	v, err := semver.ParseTolerant(version.Version)
+	if err != nil {
+		return nil, err
+	}
+	return &v, nil
 }
 
 type pulumiPluginCommands struct {
-	cli *pulumiCommands
+	auto *pulumiCommands
 }
 
-func (cli *pulumiPluginCommands) Install(ctx context.Context, name, version string, opts *cli.PluginInstallOptions) error {
+func (auto *pulumiPluginCommands) Install(ctx context.Context, name, version string, opts *cli.PluginInstallOptions) error {
 	panic("NYI")
 }
 
-func (cli *pulumiPluginCommands) Rm(ctx context.Context, name, version string) {
+func (auto *pulumiPluginCommands) Rm(ctx context.Context, name, version string) {
 	panic("NYI")
 }
 
-func (cli *pulumiPluginCommands) Ls(ctx context.Context) ([]workspace.PluginInfo, error) {
+func (auto *pulumiPluginCommands) Ls(ctx context.Context) ([]workspace.PluginInfo, error) {
 	panic("NYI")
 }
 
 type pulumiStackCommands struct {
-	cli *pulumiCommands
+	auto *pulumiCommands
 
 	stack string
 }
 
-func (cli *pulumiStackCommands) Config() cli.ConfigCommands {
-	return &pulumiConfigCommands{stack: cli}
+func (auto *pulumiStackCommands) Config() cli.ConfigCommands {
+	return &pulumiConfigCommands{stack: auto}
 }
 
-func (cli *pulumiStackCommands) Tag() cli.TagCommands {
-	return &pulumiTagCommands{stack: cli}
+func (auto *pulumiStackCommands) Tag() cli.TagCommands {
+	return &pulumiTagCommands{stack: auto}
 }
 
-func (cli *pulumiStackCommands) Preview(ctx context.Context, opts *cli.StackPreviewOptions) (*cli.StackPreviewResult, error) {
+func (auto *pulumiStackCommands) Preview(ctx context.Context, opts *cli.StackPreviewOptions) (*cli.StackPreviewResult, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Update(ctx context.Context, opts *cli.StackUpdateOptions) (*cli.StackUpdateResult, error) {
+func (auto *pulumiStackCommands) Update(ctx context.Context, opts *cli.StackUpdateOptions) (*cli.StackUpdateResult, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Refresh(ctx context.Context, opts *cli.StackRefreshOptions) (*cli.StackRefreshResult, error) {
+func (auto *pulumiStackCommands) Refresh(ctx context.Context, opts *cli.StackRefreshOptions) (*cli.StackRefreshResult, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Destroy(ctx context.Context, opts *cli.StackDestroyOptions) (*cli.StackDestroyResult, error) {
+func (auto *pulumiStackCommands) Destroy(ctx context.Context, opts *cli.StackDestroyOptions) (*cli.StackDestroyResult, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Cancel(ctx context.Context) error {
+func (auto *pulumiStackCommands) Cancel(ctx context.Context) error {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Init(ctx context.Context, opts *cli.StackInitOptions) error {
+func (auto *pulumiStackCommands) Init(ctx context.Context, opts *cli.StackInitOptions) error {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Select(ctx context.Context) error {
+func (auto *pulumiStackCommands) Select(ctx context.Context) error {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Rm(ctx context.Context, opts *cli.StackRmOptions) error {
+func (auto *pulumiStackCommands) Rm(ctx context.Context, opts *cli.StackRmOptions) error {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Ls(ctx context.Context) ([]cli.StackSummary, error) {
+func (auto *pulumiStackCommands) Ls(ctx context.Context) ([]cli.StackSummary, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Export(ctx context.Context) (apitype.UntypedDeployment, error) {
+func (auto *pulumiStackCommands) Export(ctx context.Context) (apitype.UntypedDeployment, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Import(ctx context.Context, state apitype.UntypedDeployment) error {
+func (auto *pulumiStackCommands) Import(ctx context.Context, state apitype.UntypedDeployment) error {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) Outputs(ctx context.Context) (map[string]cli.OutputValue, error) {
+func (auto *pulumiStackCommands) Outputs(ctx context.Context) (map[string]cli.OutputValue, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiStackCommands) History(ctx context.Context, opts *cli.StackHistoryOptions) ([]cli.UpdateSummary, error) {
+func (auto *pulumiStackCommands) History(ctx context.Context, opts *cli.StackHistoryOptions) ([]cli.UpdateSummary, error) {
 	panic("NYI")
 }
 
@@ -183,27 +197,27 @@ type pulumiConfigCommands struct {
 	stack *pulumiStackCommands
 }
 
-func (cli *pulumiConfigCommands) Get(ctx context.Context, key string, opts *cli.ConfigGetOptions) (cli.ConfigValue, error) {
+func (auto *pulumiConfigCommands) Get(ctx context.Context, key string, opts *cli.ConfigGetOptions) (cli.ConfigValue, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiConfigCommands) Set(ctx context.Context, key string, value cli.ConfigValue, opts *cli.ConfigSetOptions) error {
+func (auto *pulumiConfigCommands) Set(ctx context.Context, key string, value cli.ConfigValue, opts *cli.ConfigSetOptions) error {
 	panic("NYI")
 }
 
-func (cli *pulumiConfigCommands) GetAll(ctx context.Context) (map[string]cli.ConfigValue, error) {
+func (auto *pulumiConfigCommands) GetAll(ctx context.Context) (map[string]cli.ConfigValue, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiConfigCommands) SetAll(ctx context.Context, values map[string]cli.ConfigValue) error {
+func (auto *pulumiConfigCommands) SetAll(ctx context.Context, values map[string]cli.ConfigValue) error {
 	panic("NYI")
 }
 
-func (cli *pulumiConfigCommands) Rm(ctx context.Context, key string, opts *cli.ConfigRmOptions) error {
+func (auto *pulumiConfigCommands) Rm(ctx context.Context, key string, opts *cli.ConfigRmOptions) error {
 	panic("NYI")
 }
 
-func (cli *pulumiConfigCommands) Refresh(ctx context.Context) error {
+func (auto *pulumiConfigCommands) Refresh(ctx context.Context) error {
 	panic("NYI")
 }
 
@@ -211,18 +225,18 @@ type pulumiTagCommands struct {
 	stack *pulumiStackCommands
 }
 
-func (cli *pulumiTagCommands) Get(ctx context.Context, key string) (string, error) {
+func (auto *pulumiTagCommands) Get(ctx context.Context, key string) (string, error) {
 	panic("NYI")
 }
 
-func (cli *pulumiTagCommands) Set(ctx context.Context, key, value string) error {
+func (auto *pulumiTagCommands) Set(ctx context.Context, key, value string) error {
 	panic("NYI")
 }
 
-func (cli *pulumiTagCommands) Rm(ctx context.Context, key string) error {
+func (auto *pulumiTagCommands) Rm(ctx context.Context, key string) error {
 	panic("NYI")
 }
 
-func (cli *pulumiTagCommands) Ls(ctx context.Context) (map[string]string, error) {
+func (auto *pulumiTagCommands) Ls(ctx context.Context) (map[string]string, error) {
 	panic("NYI")
 }
