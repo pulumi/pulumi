@@ -861,31 +861,6 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "new global::Pulumi.Alias { ")
-
-	parts := []string{}
-	if alias.Name != nil {
-		parts = append(parts, fmt.Sprintf("Name = \"%v\"", *alias.Name))
-	}
-	if alias.Project != nil {
-		parts = append(parts, fmt.Sprintf("Project = \"%v\"", *alias.Project))
-	}
-	if alias.Type != nil {
-		parts = append(parts, fmt.Sprintf("Type = \"%v\"", *alias.Type))
-	}
-
-	for i, part := range parts {
-		if i > 0 {
-			fmt.Fprintf(w, ", ")
-		}
-
-		fmt.Fprintf(w, "%s", part)
-	}
-
-	fmt.Fprintf(w, "}")
-}
-
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
@@ -1069,8 +1044,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "                {\n")
 		for _, alias := range r.Aliases {
 			fmt.Fprintf(w, "                    ")
-			genAlias(w, alias)
-			fmt.Fprintf(w, ",\n")
+			if alias.Type != nil {
+				fmt.Fprintf(w, "new global::Pulumi.Alias { Type = \"%v\" },\n", *alias.Type)
+			}
 		}
 		fmt.Fprintf(w, "                },\n")
 	}
