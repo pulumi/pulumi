@@ -131,8 +131,8 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
 
-	var fn *schema.Function
-	if f, tk, ok, err := pkgSchema.LookupFunction(token); err != nil {
+	fn, tk, ok, err := pkgSchema.LookupFunction(token)
+	if err != nil {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -144,10 +144,9 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		}
 
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
-	} else {
-		fn = f
-		lit.Value = cty.StringVal(tk)
 	}
+
+	lit.Value = cty.StringVal(tk)
 
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
