@@ -21,6 +21,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -32,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -52,6 +55,28 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			NameTable: map[string]resource.URN{},
 		}
 
+		// A mapping of names to the index of the resourceSpec in imports.Resources that used it. We have to
+		// fix up names _as we go_ because we're mapping over the event stream, and it would be pretty
+		// inefficient to wait for the whole thing to finish before building the import specs.
+		takenNames := map[string]int{}
+
+		// We want to prefer using the urns name for the source name, but if it conflicts with other resources
+		// we'll auto suffix it, first with the type, then with rising numbers. This function does that
+		// auto-suffixing.
+		uniqueName := func(name string, typ tokens.Type) string {
+			caser := cases.Title(language.English, cases.NoLower)
+			typeSuffix := caser.String(string(typ.Name()))
+			baseName := fmt.Sprintf("%s%s", name, typeSuffix)
+			name = baseName
+
+			counter := 2
+			for _, has := takenNames[name]; has; _, has = takenNames[name] {
+				name = fmt.Sprintf("%s%d", baseName, counter)
+				counter++
+			}
+			return name
+		}
+
 		// This is a pretty trivial mapping of Create operations to import declarations.
 		for e := range events {
 			preEvent, ok := e.Payload().(engine.ResourcePreEventPayload)
@@ -60,7 +85,36 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			}
 
 			urn := preEvent.Metadata.URN
-			fullNameTable[urn] = urn.Name()
+			name := urn.Name()
+			if i, has := takenNames[name]; has {
+				// Another resource already has this name, lets check if that was it's original name or if it was a rename
+				importI := imports.Resources[i]
+				if importI.LogicalName != "" {
+					// i was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
+					newName := uniqueName(importI.LogicalName, importI.Type)
+					imports.Resources[i].Name = newName
+					// Go through all the resources and fix up any parent references to use the new name.
+					for j := range imports.Resources {
+						if imports.Resources[j].Parent == name {
+							imports.Resources[j].Parent = newName
+						}
+					}
+					// Fix up the nametable if needed
+					if urn, has := imports.NameTable[name]; has {
+						delete(imports.NameTable, name)
+						imports.NameTable[newName] = urn
+					}
+					// Fix up takenNames incase this is hit again
+					takenNames[newName] = i
+				} else {
+					// i just had the same name as us, lets find a new one
+					name = uniqueName(name, urn.Type())
+				}
+			}
+
+			// Name is unique at this point
+			takenNames[name] = len(imports.Resources)
+			fullNameTable[urn] = name
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
 			// any resources that use it.
@@ -92,7 +146,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			var parent string
 			if new.Parent != "" {
 				// If the parent is just the root stack then skip it as we don't need to import that.
-				if new.Parent.Type() != resource.RootStackType {
+				if new.Parent.QualifiedType() != resource.RootStackType {
 					var has bool
 					parent, has = fullNameTable[new.Parent]
 					contract.Assertf(has, "expected parent %q to be in full name table", new.Parent)
@@ -148,9 +202,15 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 				id = "<PLACEHOLDER>"
 			}
 
+			// We only want to set logical name if we need to
+			var logicalName string
+			if name != urn.Name() {
+				logicalName = urn.Name()
+			}
+
 			imports.Resources = append(imports.Resources, importSpec{
 				Type:              new.Type,
-				Name:              urn.Name(),
+				Name:              name,
 				ID:                id,
 				Parent:            parent,
 				Provider:          provider,
@@ -158,6 +218,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 				Remote:            !new.Custom && new.Provider != "",
 				Version:           version,
 				PluginDownloadURL: pluginDownloadURL,
+				LogicalName:       logicalName,
 			})
 		}
 
