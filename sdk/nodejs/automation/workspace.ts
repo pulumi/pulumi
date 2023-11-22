@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Pulumi } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
@@ -44,6 +45,10 @@ export interface Workspace {
      * The version of the underlying Pulumi CLI/Engine.
      */
     readonly pulumiVersion: string;
+    /**
+     * The underlying Pulumi CLI.
+     */
+    readonly pulumi: Pulumi;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.

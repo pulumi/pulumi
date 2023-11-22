@@ -22,7 +22,7 @@ import * as grpc from "@grpc/grpc-js";
 import TailFile from "@logdna/tail-file";
 
 import * as log from "../log";
-import { CommandResult, runPulumiCmd } from "./cmd";
+import { CommandResult, Pulumi } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
@@ -698,7 +698,7 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
+        const result = await this.workspace.pulumi.run(args, this.workspace.workDir, envs, onOutput);
         await this.workspace.postCommandCallback(this.name);
         return result;
     }

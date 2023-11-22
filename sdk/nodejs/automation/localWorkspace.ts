@@ -18,7 +18,7 @@ import * as os from "os";
 import * as semver from "semver";
 import * as upath from "upath";
 
-import { CommandResult, runPulumiCmd } from "./cmd";
+import { CommandResult, Pulumi } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
@@ -58,6 +58,16 @@ export class LocalWorkspace implements Workspace {
      * See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
      */
     readonly secretsProvider?: string;
+    private _pulumi?: Pulumi;
+    /**
+     * The underlying Pulumi CLI.
+     */
+    public get pulumi(): Pulumi {
+        if (this._pulumi === undefined) {
+            throw new Error("Failed to get Pulumi CLI");
+        }
+        return this._pulumi;
+    }
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
@@ -291,7 +301,14 @@ export class LocalWorkspace implements Workspace {
         this.workDir = dir;
         this.envVars = envs;
 
-        const readinessPromises: Promise<any>[] = [this.getPulumiVersion(minimumVersion)];
+        const pulumi = opts?.pulumi ? Promise.resolve(opts.pulumi) : Pulumi.get();
+
+        const readinessPromises: Promise<any>[] = [
+            pulumi.then((p) => {
+                this._pulumi = p;
+                return this.getPulumiVersion(minimumVersion);
+            }),
+        ];
 
         if (opts?.projectSettings) {
             readinessPromises.push(this.saveProjectSettings(opts.projectSettings));
@@ -779,7 +796,7 @@ export class LocalWorkspace implements Workspace {
             envs["PULUMI_EXPERIMENTAL"] = "true";
         }
         envs = { ...envs, ...this.envVars };
-        return runPulumiCmd(args, this.workDir, envs);
+        return this.pulumi.run(args, this.workDir, envs);
     }
     /** @internal */
     get isRemote(): boolean {
@@ -882,13 +899,17 @@ export interface LocalProgramArgs {
  */
 export interface LocalWorkspaceOptions {
     /**
-     * The directory to run Pulumi commands and read settings (Pulumi.yaml and Pulumi.<stack>.yaml)l.
+     * The directory to run Pulumi commands and read settings (Pulumi.yaml and Pulumi.<stack>.yaml).
      */
     workDir?: string;
     /**
      * The directory to override for CLI metadata
      */
     pulumiHome?: string;
+    /**
+     * The underlying Pulumi CLI.
+     */
+    pulumi?: Pulumi;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.

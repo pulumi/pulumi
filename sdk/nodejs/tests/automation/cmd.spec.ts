@@ -13,13 +13,14 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { runPulumiCmd } from "../../automation";
+import { Pulumi } from "../../automation";
 
 describe("automation/cmd", () => {
     it("calls onOutput when provided to runPulumiCmd", async () => {
         let output = "";
         let numCalls = 0;
-        await runPulumiCmd(["--help"], ".", {}, (data: string) => {
+        const pulumi = await Pulumi.get();
+        await pulumi.run(["--help"], ".", {}, (data: string) => {
             output += data;
             numCalls += 1;
         });
