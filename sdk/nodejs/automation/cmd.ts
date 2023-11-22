@@ -53,10 +53,7 @@ export class Pulumi {
     static async get(opts?: PulumiOptions): Promise<Pulumi> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
 
-        const { stdout, stderr, exitCode } = await execa(command, ["version"]);
-        if (exitCode !== 0) {
-            throw createCommandError(new CommandResult(stdout, stderr, exitCode));
-        }
+        const { stdout } = await exec(command, ["version"]);
 
         const version = semver.parse(stdout) || semver.parse("3.0.0")!;
         if (opts?.version && version.compare(opts.version.toString()) < 0) {
@@ -106,10 +103,7 @@ export class Pulumi {
                 args.push("-Version", `${opts.version}`);
             }
 
-            const { stdout, stderr, exitCode } = await execa(command, args);
-            if (exitCode !== 0) {
-                throw createCommandError(new CommandResult(stdout, stderr, exitCode));
-            }
+            await exec(command, args);
         } finally {
             script.cleanup();
         }
@@ -127,23 +121,18 @@ export class Pulumi {
                 args.push("--version", `${opts.version}`);
             }
 
-            const { stdout, stderr, exitCode } = await execa("/bin/sh", args);
-            if (exitCode !== 0) {
-                throw createCommandError(new CommandResult(stdout, stderr, exitCode));
-            }
+            await exec("/bin/sh", args);
         } finally {
             script.cleanup();
         }
     }
 
-    public async run(
+    public run(
         args: string[],
         cwd: string,
         additionalEnv: { [key: string]: string },
         onOutput?: (data: string) => void,
     ): Promise<CommandResult> {
-        const unknownErrCode = -2;
-
         // all commands should be run in non-interactive mode.
         // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
 
@@ -151,31 +140,43 @@ export class Pulumi {
             args.push("--non-interactive");
         }
 
-        const env = { ...additionalEnv };
+        return exec(this.command || "pulumi", args, cwd, additionalEnv, onOutput);
+    }
+}
 
-        try {
-            const proc = execa(this.command || "pulumi", args, { env, cwd });
+async function exec(
+    command: string,
+    args: string[],
+    cwd?: string,
+    additionalEnv?: { [key: string]: string },
+    onOutput?: (data: string) => void,
+): Promise<CommandResult> {
+    const unknownErrCode = -2;
 
-            if (onOutput && proc.stdout) {
-                proc.stdout!.on("data", (data: any) => {
-                    if (data?.toString) {
-                        data = data.toString();
-                    }
-                    onOutput(data);
-                });
-            }
+    const env = additionalEnv ? { ...additionalEnv } : undefined;
 
-            const { stdout, stderr, exitCode } = await proc;
-            const commandResult = new CommandResult(stdout, stderr, exitCode);
-            if (exitCode !== 0) {
-                throw createCommandError(commandResult);
-            }
+    try {
+        const proc = execa(command, args, { env, cwd });
 
-            return commandResult;
-        } catch (err) {
-            const error = err as Error;
-            throw createCommandError(new CommandResult("", error.message, unknownErrCode, error));
+        if (onOutput && proc.stdout) {
+            proc.stdout!.on("data", (data: any) => {
+                if (data?.toString) {
+                    data = data.toString();
+                }
+                onOutput(data);
+            });
         }
+
+        const { stdout, stderr, exitCode } = await proc;
+        const commandResult = new CommandResult(stdout, stderr, exitCode);
+        if (exitCode !== 0) {
+            throw createCommandError(commandResult);
+        }
+
+        return commandResult;
+    } catch (err) {
+        const error = err as Error;
+        throw createCommandError(new CommandResult("", error.message, unknownErrCode, error));
     }
 }
 
