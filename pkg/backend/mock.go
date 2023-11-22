@@ -377,6 +377,13 @@ var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
 type MockEnvironmentsBackend struct {
 	MockBackend
 
+	CreateEnvironmentF func(
+		ctx context.Context,
+		org string,
+		name string,
+		yaml []byte,
+	) (apitype.EnvironmentDiagnostics, error)
+
 	CheckYAMLEnvironmentF func(
 		ctx context.Context,
 		org string,
@@ -389,6 +396,18 @@ type MockEnvironmentsBackend struct {
 		yaml []byte,
 		duration time.Duration,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+}
+
+func (be *MockEnvironmentsBackend) CreateEnvironment(
+	ctx context.Context,
+	org string,
+	name string,
+	yaml []byte,
+) (apitype.EnvironmentDiagnostics, error) {
+	if be.CreateEnvironmentF != nil {
+		return be.CreateEnvironmentF(ctx, org, name, yaml)
+	}
+	panic("not implemented")
 }
 
 func (be *MockEnvironmentsBackend) CheckYAMLEnvironment(

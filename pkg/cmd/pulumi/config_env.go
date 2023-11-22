@@ -47,10 +47,12 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "env",
 		Short: "Manage ESC environments for a stack",
-		Long:  "Manages the ESC environment associated with a specific stack.",
-		Args:  cmdutil.NoArgs,
+		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
+			"from a stack's configuration, use `pulumi config env init`.",
+		Args: cmdutil.NoArgs,
 	}
 
+	cmd.AddCommand(newConfigEnvInitCmd(&impl))
 	cmd.AddCommand(newConfigEnvAddCmd(&impl))
 	cmd.AddCommand(newConfigEnvRmCmd(&impl))
 
