@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -235,6 +236,16 @@ func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 
 func loadProjectStackFromText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp("", "*.yaml")
+	assert.NoError(t, err)
+	path := tmp.Name()
+	err = os.WriteFile(path, []byte(content), 0o600)
+	assert.NoError(t, err)
+	defer deleteFile(t, tmp)
+	return LoadProjectStack(project, path)
+}
+
+func loadProjectStackFromJSONText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
+	tmp, err := os.CreateTemp("", "*.json")
 	assert.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
@@ -1195,4 +1206,406 @@ func TestProjectEditRoundtrip(t *testing.T) {
 			assert.Equal(t, tt.expected, string(actualYaml))
 		})
 	}
+}
+
+func TestEnvironmentAppend(t *testing.T) {
+	t.Parallel()
+
+	t.Run("JSON list", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackJSON := "{}"
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("env")
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "{\n    \"environment\": [\n        \"env\"\n    ]\n}\n", string(marshaled))
+
+		stack.Environment = stack.Environment.Append("env2")
+		marshaled, err = encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "{\n    \"environment\": [\n        \"env\",\n        \"env2\"\n    ]\n}\n", string(marshaled))
+	})
+
+	t.Run("JSON literal", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackJSON := `{
+    "environment": {
+        "values": {
+            "pulumiConfig": {
+                "aws:region": "us-west-2"
+            }
+        }
+    }
+}
+`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		require.NoError(t, err)
+
+		expected := `{
+    "environment": {
+        "imports": [
+            "env"
+        ],
+        "values": {
+            "pulumiConfig": {
+                "aws:region": "us-west-2"
+            }
+        }
+    }
+}
+`
+
+		stack.Environment = stack.Environment.Append("env")
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		expected = `{
+    "environment": {
+        "imports": [
+            "env",
+            "env2"
+        ],
+        "values": {
+            "pulumiConfig": {
+                "aws:region": "us-west-2"
+            }
+        }
+    }
+}
+`
+
+		stack.Environment = stack.Environment.Append("env2")
+		marshaled, err = encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+	})
+
+	t.Run("YAML list", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackYaml := ""
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("env")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - env\n", string(marshaled))
+
+		stack.Environment = stack.Environment.Append("env2")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - env\n  - env2\n", string(marshaled))
+	})
+
+	t.Run("YAML literal", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackYaml := `environment:
+  values:
+    pulumiConfig:
+      aws:region: us-west-2`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		require.NoError(t, err)
+
+		expected := `environment:
+  imports:
+    - env
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+`
+
+		stack.Environment = stack.Environment.Append("env")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		expected = `environment:
+  imports:
+    - env
+    - env2
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+`
+
+		stack.Environment = stack.Environment.Append("env2")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+	})
+}
+
+func TestEnvironmentRemove(t *testing.T) {
+	t.Parallel()
+
+	t.Run("JSON list", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackJSON := `{
+    "environment": [
+        "env2",
+        "env",
+        "env2"
+    ]
+}
+`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		require.NoError(t, err)
+
+		expected := `{
+    "environment": [
+        "env2",
+        "env"
+    ]
+}
+`
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		expected = `{
+    "environment": [
+        "env2"
+    ]
+}
+`
+
+		stack.Environment = stack.Environment.Remove("env")
+		marshaled, err = encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err = encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "{}\n", string(marshaled))
+	})
+
+	t.Run("JSON literal", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackJSON := `{
+    "environment": {
+        "imports": [
+            {
+                "env2": {
+                    "merge": false
+                }
+            },
+            "env",
+            "env2"
+        ],
+        "values": {
+            "pulumiConfig": {
+                "aws:region": "us-west-2"
+            }
+        }
+    }
+}
+`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		require.NoError(t, err)
+
+		expected := `{
+    "environment": {
+        "imports": [
+            {
+                "env2": {
+                    "merge": false
+                }
+            },
+            "env"
+        ],
+        "values": {
+            "pulumiConfig": {
+                "aws:region": "us-west-2"
+            }
+        }
+    }
+}
+`
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		expected = `{
+    "environment": {
+        "imports": [
+            "env"
+        ],
+        "values": {
+            "pulumiConfig": {
+                "aws:region": "us-west-2"
+            }
+        }
+    }
+}
+`
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err = encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		expected = `{
+    "environment": {
+        "imports": [],
+        "values": {
+            "pulumiConfig": {
+                "aws:region": "us-west-2"
+            }
+        }
+    }
+}
+`
+
+		stack.Environment = stack.Environment.Remove("env")
+		marshaled, err = encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+	})
+
+	t.Run("YAML list", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackYaml := `environment:
+  - env2
+  - env
+  - env2
+`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		require.NoError(t, err)
+
+		expected := `environment:
+  - env2
+  - env
+`
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		stack.Environment = stack.Environment.Remove("env")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - env2\n", string(marshaled))
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "{}\n", string(marshaled))
+	})
+
+	t.Run("YAML literal", func(t *testing.T) {
+		t.Parallel()
+
+		projectYaml := `name: test
+runtime: yaml`
+
+		projectStackYaml := `environment:
+  imports:
+    - {env2: {merge: false}}
+    - env
+    - env2
+  values:
+    pulumiConfig:
+      aws:region: us-west-2`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		require.NoError(t, err)
+
+		expected := `environment:
+  imports:
+    - {env2: {merge: false}}
+    - env
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+`
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		expected = `environment:
+  imports:
+    - env
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+`
+
+		stack.Environment = stack.Environment.Remove("env2")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+
+		expected = `environment:
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+`
+
+		stack.Environment = stack.Environment.Remove("env")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, expected, string(marshaled))
+	})
 }
