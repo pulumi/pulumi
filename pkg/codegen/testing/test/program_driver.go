@@ -110,6 +110,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS IAM Policy",
 	},
 	{
+		Directory:   "read-file-func",
+		Description: "ReadFile function translation works",
+	},
+	{
 		Directory:   "python-regress-10914",
 		Description: "Python regression test for #10914",
 		Skip:        allProgLanguages.Except("python"),
