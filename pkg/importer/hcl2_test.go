@@ -45,16 +45,19 @@ var testdataPath = filepath.Join("..", "codegen", "testing", "test", "testdata")
 const (
 	parentName   = "parent"
 	providerName = "provider"
+	logicalName  = "logical"
 )
 
 var (
 	parentURN   = resource.NewURN("stack", "project", "", "my::parent", "parent")
 	providerURN = resource.NewURN("stack", "project", "", providers.MakeProviderType("pkg"), "provider")
+	logicalURN  = resource.NewURN("stack", "project", "", "random:index/randomId:RandomId", "strange logical name")
 )
 
 var names = NameTable{
 	parentURN:   parentName,
 	providerURN: providerName,
+	logicalURN:  logicalName,
 }
 
 func renderExpr(t *testing.T, x model.Expression) resource.PropertyValue {
@@ -209,7 +212,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	}
 	return &resource.State{
 		Type:     token,
-		URN:      resource.NewURN("stack", "project", parentType, token, r.Name()),
+		URN:      resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
 		Custom:   true,
 		Inputs:   inputs,
 		Parent:   parent,
