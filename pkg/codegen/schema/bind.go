@@ -1051,6 +1051,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	result := slice.Prealloc[*Property](len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
+
 		// NOTE: The correct determination for if we should bind an input is:
 		//
 		// inputShape && !spec.Plain
@@ -1356,6 +1357,14 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 	diags = diags.Extend(propertyDiags)
 	if err != nil {
 		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
+	}
+
+	// Some property names are reserved for resource outputs
+	for _, property := range properties {
+		name := property.Name
+		if name == "id" || name == "urn" {
+			return diags, fmt.Errorf("failed to bind properties for %v: property name %q is reserved", token, name)
+		}
 	}
 
 	inputProperties, _, inputDiags, err := t.bindProperties(path+"/inputProperties", spec.InputProperties,
