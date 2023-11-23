@@ -6,4 +6,4 @@ export const arrVar = [
     "fizz",
     "buzz",
 ];
-export const readme = fs.readFileSync("./Pulumi.README.md");
+export const readme = fs.readFileSync("./Pulumi.README.md", "utf8");
