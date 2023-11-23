@@ -404,6 +404,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing generating a schema with assets and archives for go using generics-only",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory:   "urn-id-properties",
+		Description: "Testing urn and id properties in valid locations",
+	},
 }
 
 var genSDKOnly bool
