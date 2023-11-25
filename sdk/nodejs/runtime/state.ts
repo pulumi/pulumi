@@ -15,6 +15,7 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { Stack } from "./stack";
 import * as config from "./config";
+import type { ResourceModule, ResourcePackage } from "./rpc";
 
 const nodeEnvKeys = {
     project: "PULUMI_NODEJS_PROJECT",
@@ -69,6 +70,8 @@ export interface Store {
     config: Record<string, string>;
     stackResource?: Stack;
     leakCandidates: Set<Promise<any>>;
+    resourcePackages: Map<string, ResourcePackage[]>;
+    resourceModules: Map<string, ResourceModule[]>;
 }
 
 /** @internal */
@@ -100,6 +103,9 @@ export class LocalStore implements Store {
      * leakCandidates tracks the list of potential leak candidates.
      */
     leakCandidates = new Set<Promise<any>>();
+
+    resourcePackages = new Map<string, ResourcePackage[]>();
+    resourceModules = new Map<string, ResourceModule[]>();
 }
 
 /** Get the root stack resource for the current stack deployment

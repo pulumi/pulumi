@@ -25,6 +25,7 @@ import {
     monitorSupportsResourceReferences,
     monitorSupportsSecrets,
 } from "./settings";
+import { getStore } from "./state";
 import { getAllTransitivelyReferencedResourceURNs } from "./resource";
 
 import * as semver from "semver";
@@ -800,10 +801,9 @@ export interface ResourcePackage {
     constructProvider(name: string, type: string, urn: string): ProviderResource;
 }
 
-const resourcePackages = new Map<string, ResourcePackage[]>();
-
 /** @internal Used only for testing purposes. */
 export function _resetResourcePackages() {
+    const { resourcePackages } = getStore();
     resourcePackages.clear();
 }
 
@@ -812,10 +812,12 @@ export function _resetResourcePackages() {
  * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
 export function registerResourcePackage(pkg: string, resourcePackage: ResourcePackage) {
+    const { resourcePackages } = getStore();
     register(resourcePackages, "package", pkg, resourcePackage);
 }
 
 export function getResourcePackage(pkg: string, version: string): ResourcePackage | undefined {
+    const { resourcePackages } = getStore();
     return getRegistration(resourcePackages, pkg, version);
 }
 
@@ -827,14 +829,13 @@ export interface ResourceModule {
     construct(name: string, type: string, urn: string): Resource;
 }
 
-const resourceModules = new Map<string, ResourceModule[]>();
-
 function moduleKey(pkg: string, mod: string): string {
     return `${pkg}:${mod}`;
 }
 
 /** @internal Used only for testing purposes. */
 export function _resetResourceModules() {
+    const { resourceModules } = getStore();
     resourceModules.clear();
 }
 
@@ -844,10 +845,12 @@ export function _resetResourceModules() {
  */
 export function registerResourceModule(pkg: string, mod: string, module: ResourceModule) {
     const key = moduleKey(pkg, mod);
+    const { resourceModules } = getStore();
     register(resourceModules, "module", key, module);
 }
 
 export function getResourceModule(pkg: string, mod: string, version: string): ResourceModule | undefined {
     const key = moduleKey(pkg, mod);
+    const { resourceModules } = getStore();
     return getRegistration(resourceModules, key, version);
 }
