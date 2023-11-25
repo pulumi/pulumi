@@ -343,6 +343,49 @@ func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
 	t.messages = append(t.messages, fmt.Sprintf(msg, args...))
 }
 
+func testConstructMethods(t *testing.T, lang string, dependencies ...string) {
+	t.Parallel()
+
+	testDir := "construct_component_methods"
+	runComponentSetup(t, testDir)
+
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
+	}
+	for _, componentDir := range componentDirs {
+		componentDir := componentDir
+		t.Run(componentDir, func(t *testing.T) {
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, componentDir),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+
+					// TODO[pulumi/pulumi#12471]: Only the Go SDK has been fixed such that rehydrated
+					// components are kept as dependencies. So only check this for the provider written
+					// in Go. Once the other SDKs are fixed, we can test the other providers as well.
+					if componentDir == "testcomponent-go" {
+						var componentURN string
+						for _, res := range stackInfo.Deployment.Resources {
+							if res.URN.Name() == "component" {
+								componentURN = string(res.URN)
+							}
+						}
+						assert.Contains(t, stackInfo.Outputs["messagedeps"], componentURN)
+					}
+				},
+			})
+		})
+	}
+}
+
 // Test methods that create resources.
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
 	t.Parallel()
