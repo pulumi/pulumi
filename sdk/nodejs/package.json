@@ -1,6 +1,6 @@
 {
     "name": "@transcend-io/pulumi",
-    "version": "1.0.23",
+    "version": "1.0.24",
     "description": "Pulumi's Node.js SDK, forked by transcend-io",
     "license": "Apache-2.0",
     "repository": {
