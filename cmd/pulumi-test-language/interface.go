@@ -676,7 +676,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if err != nil {
 			return nil, fmt.Errorf("unmarshal schema for provider %s: %w", pkg, err)
 		}
-		boundSpec, diags, err := schema.BindSpec(spec, nil)
+		boundSpec, diags, err := schema.BindSpec(spec, loader)
 		if err != nil {
 			return nil, fmt.Errorf("bind schema for provider %s: %w", pkg, err)
 		}
