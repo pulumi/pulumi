@@ -132,6 +132,48 @@ func TestRoundtripEnum(t *testing.T) {
 	assertEnum(t, pkg)
 }
 
+func TestRoundtripPlainProperties(t *testing.T) {
+	t.Parallel()
+
+	assertPlainPropertyFromType := func(t *testing.T, pkg *Package) {
+		exampleType, ok := pkg.GetType("plain-properties:index:ExampleType")
+		assert.True(t, ok)
+		exampleObjectType, ok := exampleType.(*ObjectType)
+		assert.True(t, ok)
+		// assert that the property is plain
+		assert.Equal(t, 1, len(exampleObjectType.Properties))
+		assert.True(t, exampleObjectType.Properties[0].Plain)
+	}
+
+	assertPlainPropertyFromResourceInputs := func(t *testing.T, pkg *Package) {
+		exampleResource, ok := pkg.GetResource("plain-properties:index:ExampleResource")
+		assert.True(t, ok)
+		// assert that the property is plain
+		assert.Equal(t, 1, len(exampleResource.InputProperties))
+		assert.True(t, exampleResource.InputProperties[0].Plain)
+	}
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertPlainPropertyFromType(t, pkg)
+	assertPlainPropertyFromResourceInputs(t, pkg)
+
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Try and bind again
+	pkg, diags, err = BindSpec(*newSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertPlainPropertyFromType(t, pkg)
+	assertPlainPropertyFromResourceInputs(t, pkg)
+}
+
 func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
