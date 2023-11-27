@@ -689,9 +689,13 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg, err)
 		}
 
-		err = languageClient.GeneratePackage(sdkTempDir, string(schemaBytes), nil, grpcServer.Addr())
+		diags, err = languageClient.GeneratePackage(sdkTempDir, string(schemaBytes), nil, grpcServer.Addr())
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, err)), nil
+		}
+		// TODO: Might be good to test warning diagnostics here
+		if diags.HasErrors() {
+			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, diags)), nil
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
