@@ -142,6 +142,13 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	if aiOrTemplate, err := chooseWithAIOrTemplate(opts); aiOrTemplate == "ai" {
+		if err != nil {
+			return err
+		}
+		runAINew(ctx, args, opts)
+	}
+
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
@@ -388,6 +395,43 @@ func useSpecifiedDir(dir string) (string, error) {
 		return "", fmt.Errorf("getting the working directory: %w", err)
 	}
 	return cwd, nil
+}
+
+// Iteratively prompt the user for input, sending their input as a prompt tp Pulumi AI
+// Stream the response back to the console, and repeat until the user is done.
+func runAINew(ctx context.Context, args newArgs, opts display.Options) error {
+	var err error = nil
+	for continuePrompt, err := runAINewPromptStep(opts); continuePrompt == "continue" && err == nil; continuePrompt, err = runAINewPromptStep(opts) {
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func runAINewPromptStep(opts display.Options) (string, error) {
+	fmt.Println("foo!")
+	continuePromptOptions := []string{
+		"continue",
+		"done",
+		"abort",
+	}
+	continuePromptOptionsDescriptions := map[string]string{
+		"continue": "Continue to the next prompt",
+		"done":     "Finish the prompt and create the project",
+		"abort":    "Abort the prompt and exit",
+	}
+	var continueSelection string
+	if err := survey.AskOne(&survey.Select{
+		Message: "What would you like to do?",
+		Options: continuePromptOptions,
+		Description: func(opt string, _ int) string {
+			return continuePromptOptionsDescriptions[opt]
+		},
+	}, &continueSelection, surveyIcons(opts.Color)); err != nil {
+		return "template", err
+	}
+	return continueSelection, nil
 }
 
 // newNewCmd creates a New command with default dependencies.
@@ -841,6 +885,35 @@ func pythonCommands() []string {
 	commands = append(commands, "python -m pip install -r requirements.txt")
 
 	return commands
+}
+
+// Prompt the user to decide whether they'd like to enter an interactive AI prompt or use a template.
+func chooseWithAIOrTemplate(opts display.Options) (string, error) {
+	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+
+	options := []string{
+		"ai",
+		"template",
+	}
+
+	optionsDescriptionMap := map[string]string{
+		"ai":       "Create a new Pulumi project using Pulumi AI",
+		"template": "Create a new Pulumi project using a template",
+	}
+
+	var ai string
+	if err := survey.AskOne(&survey.Select{
+		Message: "Would you like to create a new project with Pulumi AI?",
+		Options: options,
+		Description: func(opt string, _ int) string {
+			return optionsDescriptionMap[opt]
+		},
+	}, &ai, surveyIcons(opts.Color)); err != nil {
+		return "template", err
+	}
+
+	return ai, nil
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
