@@ -102,7 +102,9 @@ func TestConstructNode(t *testing.T) {
 	}
 }
 
-func optsForConstructNode(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency) *integration.ProgramTestOptions {
+func optsForConstructNode(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
@@ -127,7 +129,7 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, localProvider
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {

@@ -125,7 +125,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			e.RootPath,
 		)
 		t.Logf("writing new Pulumi.yaml: \npath: %s\ncontents:%s", yamlPath, absYamlContents)
-		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0o644); err != nil {
+		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0o600); err != nil {
 			t.Error(err)
 			return
 		}
@@ -307,7 +307,7 @@ func TestStackParenting(t *testing.T) {
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "a", "f":
 						assert.NotEqual(t, "", res.Parent)
@@ -715,7 +715,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("passphrase"),
+		SecretsProvider: "passphrase",
 		Env:             []string{"PULUMI_CONFIG_PASSPHRASE=\"\""},
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
@@ -917,7 +917,9 @@ func TestConstructPlainNode(t *testing.T) {
 	}
 }
 
-func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency) *integration.ProgramTestOptions {
+func optsForConstructPlainNode(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component_plain", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},

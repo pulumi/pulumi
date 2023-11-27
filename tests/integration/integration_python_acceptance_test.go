@@ -160,7 +160,9 @@ func TestConstructPython(t *testing.T) {
 	}
 }
 
-func optsForConstructPython(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPython(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component", "python"),
@@ -187,7 +189,7 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, localProvid
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {
@@ -262,7 +264,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 			"virtualenv: venv",
 			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
 
-		if err := os.WriteFile(pulumiYaml, newYaml, 0o644); err != nil {
+		if err := os.WriteFile(pulumiYaml, newYaml, 0o600); err != nil {
 			t.Error(err)
 			return
 		}
