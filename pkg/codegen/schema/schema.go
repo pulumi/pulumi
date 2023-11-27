@@ -1230,8 +1230,10 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 			return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
 		}
 
+		propertyType := pkg.marshalType(typ, plain)
+		propertyType.Plain = plain || p.Plain
 		specs[p.Name] = PropertySpec{
-			TypeSpec:             pkg.marshalType(typ, plain),
+			TypeSpec:             propertyType,
 			Description:          p.Comment,
 			Const:                p.ConstValue,
 			Default:              defaultValue,
