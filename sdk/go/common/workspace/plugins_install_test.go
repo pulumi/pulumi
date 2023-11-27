@@ -109,7 +109,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	assert.NoError(t, err)
 	assert.False(t, info.IsDir())
 
-	info, err = os.Stat(filepath.Join(dir, plugin.Dir()+".partial"))
+	_, err = os.Stat(filepath.Join(dir, plugin.Dir()+".partial"))
 	assert.Error(t, err)
 	assert.True(t, os.IsNotExist(err))
 
@@ -175,6 +175,8 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 }
 
 func TestInstallNoDeps(t *testing.T) {
+	t.Parallel()
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -193,6 +195,8 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestReinstall(t *testing.T) {
+	t.Parallel()
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -201,7 +205,7 @@ func TestReinstall(t *testing.T) {
 	err := plugin.Install(tarball, false)
 	require.NoError(t, err)
 
-	pluginInfo := assertPluginInstalled(t, dir, plugin)
+	assertPluginInstalled(t, dir, plugin)
 
 	b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
@@ -211,8 +215,9 @@ func TestReinstall(t *testing.T) {
 	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
 
 	err = plugin.Install(tarball, true)
+	require.NoError(t, err)
 
-	pluginInfo = assertPluginInstalled(t, dir, plugin)
+	pluginInfo := assertPluginInstalled(t, dir, plugin)
 
 	b, err = os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
@@ -222,6 +227,8 @@ func TestReinstall(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
+	t.Parallel()
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -259,6 +266,8 @@ func TestConcurrentInstalls(t *testing.T) {
 }
 
 func TestInstallCleansOldFiles(t *testing.T) {
+	t.Parallel()
+
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	// Leftover temp dirs.
@@ -290,6 +299,8 @@ func TestInstallCleansOldFiles(t *testing.T) {
 }
 
 func TestGetPluginsSkipsPartial(t *testing.T) {
+	t.Parallel()
+
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	err := plugin.Install(tarball, false)
@@ -306,5 +317,6 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 
 	skipMetadata := true
 	plugins, err := getPlugins(dir, skipMetadata)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(plugins))
 }
