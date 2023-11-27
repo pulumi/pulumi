@@ -478,7 +478,7 @@ func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (R
 		}
 	}
 
-	resName := ref.URN.Name().String()
+	resName := ref.URN.Name()
 	resType := ref.URN.Type()
 
 	isProvider := tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers"

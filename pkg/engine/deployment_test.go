@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -53,7 +54,7 @@ func makeUpdateInfo() *updateInfo {
 			Name:    "test",
 			Runtime: workspace.NewProjectRuntimeInfo("test", nil),
 		},
-		target: deploy.Target{Name: "test"},
+		target: deploy.Target{Name: tokens.MustParseStackName("test")},
 	}
 }
 

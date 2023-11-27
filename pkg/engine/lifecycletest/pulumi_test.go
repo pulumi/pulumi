@@ -37,7 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -1238,7 +1238,11 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
+								if payload.Metadata.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" {
+									assert.Subset(t,
+										allowedOps, []display.StepOp{payload.Metadata.Op},
+										"event operation unexpected: %v", payload)
+								}
 							}
 						}
 						return err
@@ -1317,10 +1321,28 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}), []string{"b[1]"}, []display.StepOp{deploy.OpSame})
 
 	// Check that ignoring all sub-elements of an array works
-	_ = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"a": 3,
 		"b": []string{"foo", "baz"},
 	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame})
+
+	// Check that ignoring a secret value works, first update to make foo, bar secret
+	snap = updateProgramWithProps(snap, resource.PropertyMap{
+		"a": resource.NewNumberProperty(3),
+		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("foo"),
+			resource.NewStringProperty("bar"),
+		})),
+	}, nil, []display.StepOp{deploy.OpUpdate})
+
+	// Now check that changing a value (but not secretness) can be ignored
+	_ = updateProgramWithProps(snap, resource.PropertyMap{
+		"a": resource.NewNumberProperty(3),
+		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("foo"),
+			resource.NewStringProperty("baz"),
+		})),
+	}, []string{"b[1]"}, []display.StepOp{deploy.OpSame})
 }
 
 func TestIgnoreChangesInvalidPaths(t *testing.T) {
@@ -1459,7 +1481,10 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 							for _, event := range events {
 								if event.Type == ResourcePreEvent {
 									payload := event.Payload().(ResourcePreEventPayload)
-									assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
+									// Ignore any events for default providers
+									if !payload.Internal {
+										assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
+									}
 								}
 							}
 							return err
@@ -1728,8 +1753,8 @@ func TestCustomTimeouts(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default")
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.NotNil(t, snap.Resources[1].CustomTimeouts)
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Create, float64(60))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Update, float64(240))
@@ -2043,6 +2068,19 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		// providers is specific to the gRPC layer.
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
+				InvokeF: func(
+					tok tokens.ModuleMember, inputs resource.PropertyMap,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					name := inputs["name"]
+					ret := "unexpected"
+					if name.IsString() {
+						ret = "Hello, " + name.StringValue() + "!"
+					}
+
+					return resource.NewPropertyMapFromMap(map[string]interface{}{
+						"message": ret,
+					}), nil, nil
+				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
@@ -2061,6 +2099,24 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					}
 
 					return newInputs, resource.StatusOK, nil
+				},
+				CallF: func(monitor *deploytest.ResourceMonitor, tok tokens.ModuleMember,
+					args resource.PropertyMap, info plugin.CallInfo, options plugin.CallOptions,
+				) (plugin.CallResult, error) {
+					if info.DryRun {
+						sawPreview = true
+					}
+
+					ret := "unexpected"
+					if args["name"].IsString() {
+						ret = "Hello, " + args["name"].StringValue() + "!"
+					}
+
+					return plugin.CallResult{
+						Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+							"message": ret,
+						}),
+					}, nil
 				},
 				ConstructF: func(monitor *deploytest.ResourceMonitor,
 					typ string, name string, parent resource.URN,
@@ -2155,6 +2211,30 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			assert.True(t, cstate.DeepEquals(resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			}))
+		}
+
+		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
+			"name": cstate["foo"],
+		}, provRef.String(), "")
+		assert.NoError(t, err)
+		if preview {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
+		} else {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{
+				"message": resource.NewStringProperty("Hello, bar!"),
+			}), "outs was %v", outs)
+		}
+
+		outs, _, err = monitor.Invoke("pkgA:m:invokeA", resource.PropertyMap{
+			"name": cstate["foo"],
+		}, provRef.String(), "")
+		assert.NoError(t, err)
+		if preview {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
+		} else {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{
+				"message": resource.NewStringProperty("Hello, bar!"),
+			}), "outs was %v", outs)
 		}
 
 		return nil
@@ -4205,6 +4285,7 @@ func TestResourceNames(t *testing.T) {
 		"& @ $ % ^ * #",
 		"'quotes'",
 		"\"double quotes\"",
+		"double::colons", // https://github.com/pulumi/pulumi/issues/13968
 	}
 
 	for _, tt := range cases {
@@ -4224,8 +4305,26 @@ func TestResourceNames(t *testing.T) {
 				}),
 			}
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", tt, true, deploytest.ResourceOptions{})
+				// Check the name works as a provider
+				provURN, provID, _, err := monitor.RegisterResource("pulumi:providers:pkgA", tt, true)
 				assert.NoError(t, err)
+
+				provRef, err := providers.NewReference(provURN, provID)
+				assert.NoError(t, err)
+
+				// And a custom resource
+				urnCustom, _, _, err := monitor.RegisterResource("pkgA:m:typA", tt, true, deploytest.ResourceOptions{
+					Provider: provRef.String(),
+				})
+				assert.NoError(t, err)
+
+				// And a component resource
+				_, _, _, err = monitor.RegisterResource("pkgA:m:typB", tt, false, deploytest.ResourceOptions{
+					// And as a URN parameter
+					Parent: urnCustom,
+				})
+				assert.NoError(t, err)
+
 				return nil
 			})
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -4236,8 +4335,10 @@ func TestResourceNames(t *testing.T) {
 			snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 			require.NoError(t, err)
-			require.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 3)
+			assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::"+tt), snap.Resources[0].URN)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::"+tt), snap.Resources[1].URN)
+			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::"+tt), snap.Resources[2].URN)
 		})
 	}
 }

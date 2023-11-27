@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Engine now correctly handles any resource name.

@@ -46,7 +46,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			tokens.PackageName("resource/test"),
 			tokens.Type(""),
 			tokens.Type("Test"),
-			tokens.QName("resource-x"),
+			"resource-x",
 		),
 		true,
 		false,

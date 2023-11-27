@@ -203,6 +203,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 		case engine.PolicyViolationEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
+		case engine.PolicyLoadEvent:
+			// At this point in time, we don't handle policy events in JSON serialization
+			continue
 		case engine.SummaryEvent:
 			// At the end of the preview, a summary event indicates the final conclusions.
 			p := e.Payload().(engine.SummaryEventPayload)

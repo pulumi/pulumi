@@ -22,7 +22,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -35,6 +34,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	pbstruct "google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -70,11 +70,7 @@ type provider struct {
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
 
-	// Await and provide configuration values.
-	// Use of closures here prevents unintentional unguarded access
-	// to the configuration values.
-	awaitConfig   func(context.Context) (pluginConfig, error)
-	provideConfig func(pluginConfig, error)
+	configSource *promise.CompletionSource[pluginConfig] // the source for the provider's configuration.
 }
 
 // pluginConfig holds the configuration of the provider
@@ -86,44 +82,6 @@ type pluginConfig struct {
 	acceptResources bool // true if this plugin accepts strongly-typed resource refs.
 	acceptOutputs   bool // true if this plugin accepts output values.
 	supportsPreview bool // true if this plugin supports previews for Create and Update.
-}
-
-// pluginConfigPromise is an asynchronously filled value for pluginConfig.
-type pluginConfigPromise struct {
-	done chan struct{} // closed on set
-	once sync.Once     // only one set
-	cfg  pluginConfig
-	err  error // non-nil if the operation failed
-}
-
-func newPluginConfigPromise() *pluginConfigPromise {
-	return &pluginConfigPromise{
-		done: make(chan struct{}),
-	}
-}
-
-// Await blocks until the value in the promise has resolved
-// or the given context expires.
-func (p *pluginConfigPromise) Await(ctx context.Context) (pluginConfig, error) {
-	select {
-	case <-ctx.Done():
-		return pluginConfig{}, ctx.Err()
-	case <-p.done:
-		return p.cfg, p.err
-	}
-}
-
-// Fulfill provides values to the promise.
-// A non-nil error indicates failure.
-//
-// Fulfill can be called only once.
-// Any calls after that will be ignored.
-func (p *pluginConfigPromise) Fulfill(cfg pluginConfig, err error) {
-	p.once.Do(func() {
-		defer close(p.done)
-		p.cfg = cfg
-		p.err = err
-	})
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -196,7 +154,6 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
-	cfgPromise := newPluginConfigPromise()
 	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
@@ -204,8 +161,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
-		awaitConfig:            cfgPromise.Await,
-		provideConfig:          cfgPromise.Fulfill,
+		configSource:           &promise.CompletionSource[pluginConfig]{},
 	}
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
@@ -256,14 +212,12 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
-	cfgPromise := newPluginConfigPromise()
 	p := &provider{
 		ctx:           ctx,
 		plug:          plug,
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,
-		awaitConfig:   cfgPromise.Await,
-		provideConfig: cfgPromise.Fulfill,
+		configSource:  &promise.CompletionSource[pluginConfig]{},
 	}
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
@@ -279,14 +233,12 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool,
 ) Provider {
-	cfgPromise := newPluginConfigPromise()
 	return &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
-		awaitConfig:            cfgPromise.Await,
-		provideConfig:          cfgPromise.Fulfill,
+		configSource:           &promise.CompletionSource[pluginConfig]{},
 	}
 }
 
@@ -504,6 +456,19 @@ func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
+		// https://github.com/pulumi/pulumi/issues/14529: Old versions of kubernetes would error on this
+		// call if "kubeconfig" was set to a file. This didn't cause issues later when the same config was
+		// passed to Configure, and for many years silently "worked".
+		// https://github.com/pulumi/pulumi/pull/14436 fixed this method to start returning errors which
+		// exposed this issue with the kubernetes provider, new versions will be fixed to not error on
+		// this (https://github.com/pulumi/pulumi-kubernetes/issues/2663) but so that the CLI continues to
+		// work for old versions we have an explicit ignore for this one error here.
+		if p.pkg == "kubernetes" &&
+			strings.Contains(rpcError.Error(), "cannot unmarshal string into Go value of type struct") {
+			logging.V(8).Infof("%s ignoring error from kubernetes provider", label)
+			return DiffResult{Changes: DiffUnknown}, nil
+		}
+
 		return DiffResult{}, err
 	}
 
@@ -697,11 +662,11 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		}
 
 		if v.ContainsUnknowns() {
-			p.provideConfig(pluginConfig{
+			p.configSource.MustFulfill(pluginConfig{
 				known:           false,
 				acceptSecrets:   false,
 				acceptResources: false,
-			}, nil)
+			})
 			return nil
 		}
 
@@ -710,7 +675,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			marshalled, err := json.Marshal(mapped)
 			if err != nil {
 				err := errors.Wrapf(err, "marshaling configuration property '%v'", k)
-				p.provideConfig(pluginConfig{}, err)
+				p.configSource.MustReject(err)
 				return err
 			}
 			mapped = string(marshalled)
@@ -729,7 +694,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	})
 	if err != nil {
 		err := errors.Wrapf(err, "marshaling provider inputs")
-		p.provideConfig(pluginConfig{}, err)
+		p.configSource.MustReject(err)
 		return err
 	}
 
@@ -748,15 +713,17 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 			err = createConfigureError(rpcError)
+			p.configSource.MustReject(err)
+			return
 		}
 
-		p.provideConfig(pluginConfig{
+		p.configSource.MustFulfill(pluginConfig{
 			known:           true,
 			acceptSecrets:   resp.GetAcceptSecrets(),
 			acceptResources: resp.GetAcceptResources(),
 			supportsPreview: resp.GetSupportsPreview(),
 			acceptOutputs:   resp.GetAcceptOutputs(),
-		}, err)
+		})
 	}()
 
 	return nil
@@ -772,7 +739,7 @@ func (p *provider) Check(urn resource.URN,
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -863,7 +830,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -966,7 +933,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
@@ -1073,7 +1040,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
 	}
@@ -1202,7 +1169,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return newInputs, resource.StatusOK, err
 	}
@@ -1322,7 +1289,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutput
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return resource.StatusOK, err
 	}
@@ -1371,7 +1338,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutput
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
-func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, parent resource.URN,
 	inputs resource.PropertyMap, options ConstructOptions,
 ) (ConstructResult, error) {
 	contract.Assertf(typ != "", "Construct requires a type")
@@ -1383,7 +1350,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return ConstructResult{}, err
 	}
@@ -1454,7 +1421,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		Parallel:                int32(info.Parallel),
 		MonitorEndpoint:         info.MonitorAddress,
 		Type:                    string(typ),
-		Name:                    string(name),
+		Name:                    name,
 		Parent:                  string(parent),
 		Inputs:                  minputs,
 		Protect:                 options.Protect,
@@ -1520,7 +1487,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1584,7 +1551,7 @@ func (p *provider) StreamInvoke(
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -1662,7 +1629,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return CallResult{}, err
 	}

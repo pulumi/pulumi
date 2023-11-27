@@ -535,6 +535,8 @@ type Function struct {
 	Outputs *ObjectType
 	// The return type of the function, if any.
 	ReturnType Type
+	// The return type is plain and not wrapped in an Output.
+	ReturnTypePlain bool
 	// When InlineObjectAsReturnType is true, it means that the return type definition is defined inline
 	// as an object type that should be generated as a separate type and it is not
 	// a reference to a existing type in the schema.
@@ -1190,9 +1192,15 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 				return FunctionSpec{}, fmt.Errorf("marshaling object spec: %w", err)
 			}
 			returnType.ObjectTypeSpec = &ret.ObjectTypeSpec
+			if f.ReturnTypePlain {
+				returnType.ObjectTypeSpecIsPlain = true
+			}
 		} else {
 			typeSpec := pkg.marshalType(f.ReturnType, true)
 			returnType.TypeSpec = &typeSpec
+			if f.ReturnTypePlain {
+				returnType.TypeSpec.Plain = true
+			}
 		}
 	}
 
@@ -1251,8 +1259,10 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 			return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
 		}
 
+		propertyType := pkg.marshalType(typ, plain)
+		propertyType.Plain = plain || p.Plain
 		specs[p.Name] = PropertySpec{
-			TypeSpec:             pkg.marshalType(typ, plain),
+			TypeSpec:             propertyType,
 			Description:          p.Comment,
 			Const:                p.ConstValue,
 			Default:              defaultValue,
@@ -1566,47 +1576,97 @@ type ResourceSpec struct {
 	Methods map[string]string `json:"methods,omitempty" yaml:"methods,omitempty"`
 }
 
-// ReturnTypeSpec is either ObjectTypeSpec or TypeSpec
+// ReturnTypeSpec is either ObjectTypeSpec or TypeSpec.
 type ReturnTypeSpec struct {
 	ObjectTypeSpec *ObjectTypeSpec
-	TypeSpec       *TypeSpec
+
+	// If ObjectTypeSpec is non-nil, it can also be marked with ObjectTypeSpecIsPlain: true
+	// indicating that the generated code should not wrap in the result in an Output but return
+	// it directly. This option is incompatible with marking individual properties with
+	// ObjectTypSpec.Plain.
+	ObjectTypeSpecIsPlain bool
+
+	TypeSpec *TypeSpec
 }
 
-// Decoder is an alias for a function that takes (in []byte, out interface{}) and potentially returns an error
-// it is used to abstract json.Unmarshal and yaml.Unmarshal which satisfy this function signature
+type returnTypeSpecObjectSerialForm struct {
+	ObjectTypeSpec
+	Plain any `json:"plain,omitempty"`
+}
+
+func (returnTypeSpec *ReturnTypeSpec) marshalJSONLikeObject() (map[string]interface{}, error) {
+	ts := returnTypeSpec
+	bytes, err := ts.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	var r map[string]interface{}
+	if err := json.Unmarshal(bytes, &r); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (returnTypeSpec *ReturnTypeSpec) MarshalJSON() ([]byte, error) {
+	ts := returnTypeSpec
+	if ts.ObjectTypeSpec != nil {
+		form := returnTypeSpecObjectSerialForm{
+			ObjectTypeSpec: *ts.ObjectTypeSpec,
+		}
+		if ts.ObjectTypeSpecIsPlain {
+			form.Plain = true
+		} else if len(ts.ObjectTypeSpec.Plain) > 0 {
+			form.Plain = ts.ObjectTypeSpec.Plain
+		}
+		return json.Marshal(form)
+	}
+	return json.Marshal(ts.TypeSpec)
+}
+
+func (returnTypeSpec *ReturnTypeSpec) UnmarshalJSON(inputJSON []byte) error {
+	ts := returnTypeSpec
+	var m returnTypeSpecObjectSerialForm
+	err := json.Unmarshal(inputJSON, &m)
+	if err == nil {
+		if m.ObjectTypeSpec.Properties != nil {
+			ts.ObjectTypeSpec = &m.ObjectTypeSpec
+			if plain, ok := m.Plain.(bool); ok && plain {
+				ts.ObjectTypeSpecIsPlain = true
+			}
+			if plain, ok := m.Plain.([]interface{}); ok {
+				for _, p := range plain {
+					if ps, ok := p.(string); ok {
+						ts.ObjectTypeSpec.Plain = append(ts.ObjectTypeSpec.Plain, ps)
+					}
+				}
+			}
+			return nil
+		}
+	}
+
+	return json.Unmarshal(inputJSON, &ts.TypeSpec)
+}
+
+// Deprecated.
 type Decoder func([]byte, interface{}) error
 
+// Deprecated.
 func (returnTypeSpec *ReturnTypeSpec) UnmarshalReturnTypeSpec(data []byte, decode Decoder) error {
 	var objectMap map[string]interface{}
 	if err := decode(data, &objectMap); err != nil {
 		return err
 	}
-
 	if len(objectMap) == 0 {
 		return nil
 	}
-
-	var objectSpec *ObjectTypeSpec
-	var typeSpec *TypeSpec
-	if _, hasProperties := objectMap["properties"]; hasProperties {
-		if err := decode(data, &objectSpec); err != nil {
-			return err
-		}
-	} else {
-		if err := decode(data, &typeSpec); err != nil {
-			return err
-		}
+	inputJSON, err := json.Marshal(objectMap)
+	if err != nil {
+		return err
 	}
-
-	returnTypeSpec.TypeSpec = typeSpec
-	returnTypeSpec.ObjectTypeSpec = objectSpec
-	return nil
+	return returnTypeSpec.UnmarshalJSON(inputJSON)
 }
 
-func (returnTypeSpec *ReturnTypeSpec) UnmarshalJSON(inputJSON []byte) error {
-	return returnTypeSpec.UnmarshalReturnTypeSpec(inputJSON, json.Unmarshal)
-}
-
+// Deprecated.
 func (returnTypeSpec *ReturnTypeSpec) UnmarshalYAML(inputYAML []byte) error {
 	return returnTypeSpec.UnmarshalReturnTypeSpec(inputYAML, yaml.Unmarshal)
 }
@@ -1740,13 +1800,11 @@ func (funcSpec FunctionSpec) marshalFunctionSpec() (map[string]interface{}, erro
 	}
 
 	if funcSpec.ReturnType != nil {
-		if funcSpec.ReturnType.ObjectTypeSpec != nil {
-			data["outputs"] = funcSpec.ReturnType.ObjectTypeSpec
+		rto, err := funcSpec.ReturnType.marshalJSONLikeObject()
+		if err != nil {
+			return nil, err
 		}
-
-		if funcSpec.ReturnType.TypeSpec != nil {
-			data["outputs"] = funcSpec.ReturnType.TypeSpec
-		}
+		data["outputs"] = rto
 	}
 
 	// for backward-compat when we only specify the outputs object of the function
@@ -1775,7 +1833,6 @@ func (funcSpec FunctionSpec) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return json.Marshal(data)
 }
 

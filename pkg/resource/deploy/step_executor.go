@@ -19,9 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -108,8 +108,9 @@ type stepExecutor struct {
 	ctx    context.Context    // cancellation context for the current deployment.
 	cancel context.CancelFunc // CancelFunc that cancels the above context.
 
-	// atomic error indicating an error seen by the step executor, if multiple errors are seen this will only hold one.
-	sawError atomic.Value
+	// async promise indicating an error seen by the step executor, if multiple errors are seen this will only
+	// record the first.
+	sawError promise.CompletionSource[struct{}]
 }
 
 //
@@ -240,11 +241,10 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 
 // Errored returns whether or not this step executor saw a step whose execution ended in failure.
 func (se *stepExecutor) Errored() error {
-	err := se.sawError.Load()
-	if err == nil {
-		return nil
-	}
-	return err.(error)
+	// See if the sawError promise has been rejected yet
+	_, err, _ := se.sawError.Promise().TryResult()
+	// err will be nil if the promise has not been rejected yet
+	return err
 }
 
 // SignalCompletion signals to the stepExecutor that there are no more chains left to execute. All worker
@@ -305,7 +305,10 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 }
 
 func (se *stepExecutor) cancelDueToError(err error) {
-	se.sawError.Store(err)
+	set := se.sawError.Reject(err)
+	if !set {
+		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
+	}
 	if !se.continueOnError {
 		se.cancel()
 	}

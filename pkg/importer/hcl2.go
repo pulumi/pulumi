@@ -54,6 +54,23 @@ func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names N
 	}
 
 	var items []model.BodyItem
+	name := state.URN.Name()
+	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
+	// the resource block.
+	if mappedName, ok := names[state.URN]; ok {
+		items = append(items, &model.Attribute{
+			Name: "__logicalName",
+			Value: &model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: cty.StringVal(name),
+					},
+				},
+			},
+		})
+		name = mappedName
+	}
+
 	for _, p := range r.InputProperties {
 		x, err := generatePropertyValue(p, state.Inputs[resource.PropertyKey(p.Name)])
 		if err != nil {
@@ -75,11 +92,11 @@ func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names N
 		items = append(items, resourceOptions)
 	}
 
-	typ, name := state.URN.Type(), state.URN.Name()
+	typ := string(state.URN.Type())
 	return &model.Block{
-		Tokens: syntax.NewBlockTokens("resource", string(name), string(typ)),
+		Tokens: syntax.NewBlockTokens("resource", name, typ),
 		Type:   "resource",
-		Labels: []string{string(name), string(typ)},
+		Labels: []string{name, typ},
 		Body: &model.Body{
 			Items: items,
 		},

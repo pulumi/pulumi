@@ -137,10 +137,10 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}
 
-	cmdutil.PrintTable(cmdutil.Table{
+	printTable(cmdutil.Table{
 		Headers: []string{"NAME", "VALUE"},
 		Rows:    rows,
-	})
+	}, nil)
 }
 
 func newStackTagRmCmd(stack *string) *cobra.Command {

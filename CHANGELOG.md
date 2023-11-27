@@ -1,5 +1,77 @@
 # Changelog
 
+## 3.94.2 (2023-11-17)
+
+
+### Features
+
+- [cli/import] Generated import files from converter plugins omit empty optional fields.
+  [#14574](https://github.com/pulumi/pulumi/pull/14574)
+
+
+### Bug Fixes
+
+- [yaml] Upgrade yaml to 1.4.2
+  [#14603](https://github.com/pulumi/pulumi/pull/14603)
+
+- [cli/engine] Fix an issue where the CLI could panic because of a newly introduced event
+  [#14600](https://github.com/pulumi/pulumi/pull/14600)
+
+- [sdkgen/go] Fix generics-only option for go missing ToOutput(...) methods
+  [#14584](https://github.com/pulumi/pulumi/pull/14584)
+
+## 3.94.1 (2023-11-16)
+
+
+### Features
+
+- [cli/display] Adds display when policy packs are being loaded
+  [#14493](https://github.com/pulumi/pulumi/pull/14493)
+
+- [sdk/dotnet] Update dotnet language host to 3.59.0.
+  [#14577](https://github.com/pulumi/pulumi/pull/14577)
+
+
+### Bug Fixes
+
+- [engine] Fix ignore changes ignoring secret values.
+  [#14565](https://github.com/pulumi/pulumi/pull/14565)
+
+- [sdk/python] Use `typing.Dict` in type annotation instead of `dict`.
+  [#14579](https://github.com/pulumi/pulumi/pull/14579)
+
+## 3.94.0 (2023-11-14)
+
+
+### Features
+
+- [engine] `import` can now create empty component resource to use as the parent of other imported resources.
+  [#14467](https://github.com/pulumi/pulumi/pull/14467)
+
+- [engine] `import` can now import a parent resource in the same deployment as a child resource.
+  [#14461](https://github.com/pulumi/pulumi/pull/14461)
+
+- [engine] Import files no longer need parent URNs in the name table for resource being imported in the same file.
+  [#14524](https://github.com/pulumi/pulumi/pull/14524)
+
+- [cli/config] `config refresh` will now restore secret provider config from the last deployment.
+  [#13900](https://github.com/pulumi/pulumi/pull/13900)
+
+- [cli/new] Simplifies URL parsing for pulumi new zip
+  [#14546](https://github.com/pulumi/pulumi/pull/14546)
+
+
+### Bug Fixes
+
+- [components/yaml] Upgrade yaml to 1.4.1
+  [#14542](https://github.com/pulumi/pulumi/pull/14542)
+
+- [engine] Ignore spurious error from Kubernetes providers DiffConfig method.
+  [#14533](https://github.com/pulumi/pulumi/pull/14533)
+
+- [sdk/python] Maintain old behavior for empty Kubernetes invoke results
+  [#14535](https://github.com/pulumi/pulumi/pull/14535)
+
 ## 3.92.0 (2023-11-03)
 
 

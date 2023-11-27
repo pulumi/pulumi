@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -814,7 +814,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 								continue
 							}
 
-							switch entry.Step.URN().Name().String() {
+							switch entry.Step.URN().Name() {
 							case resName, resBName:
 								assert.Equal(t, expectedStep, entry.Step.Op())
 							}
@@ -836,11 +836,11 @@ func TestDefaultProviderDiff(t *testing.T) {
 	for _, res := range snap.Resources {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
-			assert.Equal(t, "default", res.URN.Name().String())
-		case res.URN.Name().String() == resName || res.URN.Name().String() == resBName:
+			assert.Equal(t, "default", res.URN.Name())
+		case res.URN.Name() == resName || res.URN.Name() == resBName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
-			assert.Equal(t, "default", provRef.URN().Name().String())
+			assert.Equal(t, "default", provRef.URN().Name())
 		}
 	}
 
@@ -855,11 +855,11 @@ func TestDefaultProviderDiff(t *testing.T) {
 	for _, res := range snap.Resources {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
-			assert.Equal(t, "default_0_17_10", res.URN.Name().String())
-		case res.URN.Name().String() == resName || res.URN.Name().String() == resBName:
+			assert.Equal(t, "default_0_17_10", res.URN.Name())
+		case res.URN.Name() == resName || res.URN.Name() == resBName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
-			assert.Equal(t, "default_0_17_10", provRef.URN().Name().String())
+			assert.Equal(t, "default_0_17_10", provRef.URN().Name())
 		}
 	}
 
@@ -871,15 +871,15 @@ func TestDefaultProviderDiff(t *testing.T) {
 	for _, res := range snap.Resources {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
-			assert.True(t, res.URN.Name().String() == "default_0_17_11" || res.URN.Name().String() == "default_0_17_12")
-		case res.URN.Name().String() == resName:
+			assert.True(t, res.URN.Name() == "default_0_17_11" || res.URN.Name() == "default_0_17_12")
+		case res.URN.Name() == resName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
-			assert.Equal(t, "default_0_17_11", provRef.URN().Name().String())
-		case res.URN.Name().String() == resBName:
+			assert.Equal(t, "default_0_17_11", provRef.URN().Name())
+		case res.URN.Name() == resBName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
-			assert.Equal(t, "default_0_17_12", provRef.URN().Name().String())
+			assert.Equal(t, "default_0_17_12", provRef.URN().Name())
 		}
 	}
 }
@@ -941,7 +941,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 								continue
 							}
 
-							switch entry.Step.URN().Name().String() {
+							switch entry.Step.URN().Name() {
 							case resName:
 								assert.Subset(t, expectedSteps, []display.StepOp{entry.Step.Op()})
 							case resBName:
@@ -964,11 +964,11 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 	for _, res := range snap.Resources {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
-			assert.Equal(t, "default", res.URN.Name().String())
-		case res.URN.Name().String() == resName || res.URN.Name().String() == resBName:
+			assert.Equal(t, "default", res.URN.Name())
+		case res.URN.Name() == resName || res.URN.Name() == resBName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
-			assert.Equal(t, "default", provRef.URN().Name().String())
+			assert.Equal(t, "default", provRef.URN().Name())
 		}
 	}
 
@@ -978,15 +978,15 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 	for _, res := range snap.Resources {
 		switch {
 		case providers.IsDefaultProvider(res.URN):
-			assert.True(t, res.URN.Name().String() == "default_0_17_10" || res.URN.Name().String() == "default_0_17_11")
-		case res.URN.Name().String() == resName:
+			assert.True(t, res.URN.Name() == "default_0_17_10" || res.URN.Name() == "default_0_17_11")
+		case res.URN.Name() == resName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
-			assert.Equal(t, "default_0_17_10", provRef.URN().Name().String())
-		case res.URN.Name().String() == resBName:
+			assert.Equal(t, "default_0_17_10", provRef.URN().Name())
+		case res.URN.Name() == resBName:
 			provRef, err := providers.ParseReference(res.Provider)
 			assert.NoError(t, err)
-			assert.Equal(t, "default_0_17_11", provRef.URN().Name().String())
+			assert.Equal(t, "default_0_17_11", provRef.URN().Name())
 		}
 	}
 }

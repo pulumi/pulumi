@@ -2,13 +2,14 @@ package lifecycletest
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -882,4 +883,210 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	// We should still have the baz output but will be missing its input
 	assert.Equal(t, resource.NewNumberProperty(2), snap.Resources[2].Outputs["baz"])
 	assert.NotContains(t, snap.Resources[2].Inputs, "baz")
+}
+
+// Test that we can import one resource, then import another resource with the first one as a parent.
+func TestImportIntoParent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", news, resource.StatusUnknown, fmt.Errorf("not implemented")
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run the initial import.
+	project := p.GetProject()
+	snap, err := ImportOp([]deploy.Import{
+		{
+			Type:   "pkgA:m:typA",
+			Name:   "resB",
+			ID:     "imported-idB",
+			Parent: p.NewURN("pkgA:m:typA", "resA", ""),
+		},
+		{
+			Type: "pkgA:m:typA",
+			Name: "resA",
+			ID:   "imported-idA",
+		},
+	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 4)
+}
+
+func TestImportComponent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run the initial import.
+	project := p.GetProject()
+	snap, err := ImportOp([]deploy.Import{
+		{
+			Type:      "my-component",
+			Name:      "comp",
+			Component: true,
+		},
+		{
+			Type:   "pkgA:m:typA",
+			Name:   "resB",
+			ID:     "imported-id",
+			Parent: p.NewURN("my-component", "comp", ""),
+		},
+	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 4)
+
+	// Ensure that the resource 2 is the component.
+	comp := snap.Resources[2]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::my-component::comp"), comp.URN)
+	// Ensure it's marked as a component.
+	assert.False(t, comp.Custom, "expected component resource to not be marked as custom")
+
+	// Ensure resource 3 is the custom resource
+	custom := snap.Resources[3]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::my-component$pkgA:m:typA::resB"), custom.URN)
+	// Ensure it's marked as custom.
+	assert.True(t, custom.Custom, "expected custom resource to be marked as custom")
+}
+
+func TestImportRemoteComponent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("mlc", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run the initial import.
+	project := p.GetProject()
+	snap, err := ImportOp([]deploy.Import{
+		{
+			Type:      "mlc:index:Component",
+			Name:      "comp",
+			Component: true,
+			Remote:    true,
+		},
+		{
+			Type:   "pkgA:m:typA",
+			Name:   "resB",
+			ID:     "imported-id",
+			Parent: p.NewURN("mlc:index:Component", "comp", ""),
+		},
+	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 5)
+
+	// Ensure that the resource 3 is the component.
+	comp := snap.Resources[3]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::mlc:index:Component::comp"), comp.URN)
+	// Ensure it's marked as a component.
+	assert.False(t, comp.Custom, "expected component resource to not be marked as custom")
+
+	// Ensure resource 4 is the custom resource
+	custom := snap.Resources[4]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::mlc:index:Component$pkgA:m:typA::resB"), custom.URN)
+	// Ensure it's marked as custom.
+	assert.True(t, custom.Custom, "expected custom resource to be marked as custom")
 }

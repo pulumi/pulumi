@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -854,17 +854,17 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 			switch len(parts) {
 			case 1:
 				return &backend.MockStackReference{
-					NameV: tokens.Name(parts[0]),
+					NameV: tokens.MustParseStackName(parts[0]),
 				}, nil
 			case 2:
 				return &backend.MockStackReference{
 					ProjectV: tokens.Name(parts[0]),
-					NameV:    tokens.Name(parts[1]),
+					NameV:    tokens.MustParseStackName(parts[1]),
 				}, nil
 			case 3:
 				return &backend.MockStackReference{
 					ProjectV: tokens.Name(parts[1]),
-					NameV:    tokens.Name(parts[2]),
+					NameV:    tokens.MustParseStackName(parts[2]),
 				}, nil
 
 			default:

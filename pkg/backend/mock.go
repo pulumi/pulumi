@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -151,23 +151,28 @@ func (be *MockBackend) ParseStackReference(s string) (StackReference, error) {
 
 	// default implementation
 	split := strings.Split(s, "/")
-	var project, name tokens.Name
+	var project, name string
 	switch len(split) {
 	case 1:
-		name = tokens.Name(split[0])
+		name = split[0]
 	case 2:
-		project = tokens.Name(split[0])
-		name = tokens.Name(split[1])
+		project = split[0]
+		name = split[1]
 	case 3:
 		// org is unused
-		project = tokens.Name(split[1])
-		name = tokens.Name(split[2])
+		project = split[1]
+		name = split[2]
+	}
+
+	parsedName, err := tokens.ParseStackName(name)
+	if err != nil {
+		return nil, err
 	}
 
 	return &MockStackReference{
 		StringV:             s,
-		NameV:               name,
-		ProjectV:            project,
+		NameV:               parsedName,
+		ProjectV:            tokens.Name(project),
 		FullyQualifiedNameV: tokens.QName(s),
 	}, nil
 }
@@ -367,15 +372,53 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 	panic("not implemented")
 }
 
+var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
+
 type MockEnvironmentsBackend struct {
 	MockBackend
+
+	CreateEnvironmentF func(
+		ctx context.Context,
+		org string,
+		name string,
+		yaml []byte,
+	) (apitype.EnvironmentDiagnostics, error)
+
+	CheckYAMLEnvironmentF func(
+		ctx context.Context,
+		org string,
+		yaml []byte,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 
 	OpenYAMLEnvironmentF func(
 		ctx context.Context,
 		org string,
 		yaml []byte,
 		duration time.Duration,
-	) (*esc.Environment, []apitype.EnvironmentDiagnostic, error)
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+}
+
+func (be *MockEnvironmentsBackend) CreateEnvironment(
+	ctx context.Context,
+	org string,
+	name string,
+	yaml []byte,
+) (apitype.EnvironmentDiagnostics, error) {
+	if be.CreateEnvironmentF != nil {
+		return be.CreateEnvironmentF(ctx, org, name, yaml)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) CheckYAMLEnvironment(
+	ctx context.Context,
+	org string,
+	yaml []byte,
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	if be.CheckYAMLEnvironmentF != nil {
+		return be.CheckYAMLEnvironmentF(ctx, org, yaml)
+	}
+	panic("not implemented")
 }
 
 func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
@@ -383,7 +426,7 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 	org string,
 	yaml []byte,
 	duration time.Duration,
-) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	if be.OpenYAMLEnvironmentF != nil {
 		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration)
 	}
@@ -568,7 +611,7 @@ func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 // Set the fields on this struct to control the behavior of the mock.
 type MockStackReference struct {
 	StringV             string
-	NameV               tokens.Name
+	NameV               tokens.StackName
 	ProjectV            tokens.Name
 	FullyQualifiedNameV tokens.QName
 }
@@ -582,8 +625,8 @@ func (r *MockStackReference) String() string {
 	panic("not implemented")
 }
 
-func (r *MockStackReference) Name() tokens.Name {
-	if r.NameV != "" {
+func (r *MockStackReference) Name() tokens.StackName {
+	if !r.NameV.IsEmpty() {
 		return r.NameV
 	}
 	panic("not implemented")
