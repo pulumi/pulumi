@@ -1118,8 +1118,11 @@ func (host *goLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
-		return nil, diags
+		return &pulumirpc.GeneratePackageResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
 	files, err := codegen.GeneratePackage("pulumi-language-go", pkg)
 	if err != nil {
@@ -1140,7 +1143,9 @@ func (host *goLanguageHost) GeneratePackage(
 		}
 	}
 
-	return &pulumirpc.GeneratePackageResponse{}, nil
+	return &pulumirpc.GeneratePackageResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {

@@ -1127,8 +1127,11 @@ func (host *nodeLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
-		return nil, diags
+		return &pulumirpc.GeneratePackageResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
 	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles)
 	if err != nil {
@@ -1149,7 +1152,9 @@ func (host *nodeLanguageHost) GeneratePackage(
 		}
 	}
 
-	return &pulumirpc.GeneratePackageResponse{}, nil
+	return &pulumirpc.GeneratePackageResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func readPackageJSON(packageJSONPath string) (map[string]interface{}, error) {
