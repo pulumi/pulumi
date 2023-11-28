@@ -65,8 +65,21 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Cat</span><span class="p"></span>
-<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
-<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p">properties</span><span class="p">: </span><span class="c">
+  age: 1
+  pet:
+    age: 1
+    name: ${res}
+    nameArray:
+      - ${res}
+    nameMap:
+      foo: ${res}
+    requiredName: ${res}
+    requiredNameArray:
+      - ${res}
+    requiredNameMap:
+      foo: ${res}</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c"># Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
 </code></pre></div>
 </pulumi-choosable>

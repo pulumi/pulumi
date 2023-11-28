@@ -66,8 +66,23 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:TypeUses</span><span class="p"></span>
-<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
-<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p">properties</span><span class="p">: </span><span class="c">
+  bar:
+    baz: string
+  baz:
+    bar: 1
+    foo: string
+  foo:
+    bar: string
+    configs:
+      - config: string
+    foo: ${res}
+    others:
+      - - baz: string
+    stillOthers:
+      foo:
+        - baz: string</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c"># Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
 </code></pre></div>
 </pulumi-choosable>

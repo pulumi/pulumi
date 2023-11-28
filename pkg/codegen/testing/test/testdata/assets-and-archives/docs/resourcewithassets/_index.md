@@ -66,8 +66,15 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:ResourceWithAssets</span><span class="p"></span>
-<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
-<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p">properties</span><span class="p">: </span><span class="c">
+  archive: https://example.com/archive.zip
+  nested:
+    archive: https://example.com/archive.zip
+    asset: https://example.com/asset.txt
+    plainArchive: https://example.com/archive.zip
+    plainAsset: https://example.com/asset.txt
+  source: https://example.com/asset.txt</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c"># Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
 </code></pre></div>
 </pulumi-choosable>

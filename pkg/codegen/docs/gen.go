@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
 )
 
 //go:embed templates/*.tmpl
@@ -303,6 +304,8 @@ type formalParam struct {
 
 	// Comment is an optional description of the parameter.
 	Comment string
+
+	ExampleValue string
 }
 
 type packageDetails struct {
@@ -851,15 +854,96 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
-func (mod *modContext) genConstructorYaml() []formalParam {
+func exampleValueForType(t schema.Type, seen []schema.Type) interface{} {
+	for _, s := range seen {
+		if s == t {
+			return nil
+		}
+	}
+	seen = append(seen, t)
+	switch t {
+	case schema.BoolType:
+		return true
+	case schema.IntType:
+		return 1
+	case schema.NumberType:
+		return 1.0
+	case schema.StringType:
+		return "string"
+	case schema.ArchiveType:
+		return "https://example.com/archive.zip"
+	case schema.AssetType:
+		return "https://example.com/asset.txt"
+	case schema.JSONType:
+		return map[string]interface{}{"foo": "bar"}
+	default:
+		switch t := t.(type) {
+		case *schema.ArrayType:
+			return []interface{}{exampleValueForType(t.ElementType, seen)}
+		case *schema.ObjectType:
+			ret := map[string]interface{}{}
+			for _, prop := range t.Properties {
+				v := exampleValueForType(prop.Type, seen)
+				if v != nil {
+					ret[prop.Name] = v
+				}
+			}
+			return ret
+		case *schema.MapType:
+			return map[string]interface{}{"foo": exampleValueForType(t.ElementType, seen)}
+		case *schema.UnionType:
+			return exampleValueForType(t.ElementTypes[0], seen)
+		case *schema.EnumType:
+			v := t.Elements[0].Value
+			if _, ok := v.(string); ok {
+				var vs []string
+				for _, e := range t.Elements {
+					vs = append(vs, e.Value.(string))
+				}
+				v = strings.Join(vs, "|")
+			}
+			return v
+		case *schema.OptionalType:
+			return exampleValueForType(t.ElementType, seen)
+		case *schema.InputType:
+			return exampleValueForType(t.ElementType, seen)
+		case *schema.ResourceType:
+			return "${res}"
+		case *schema.TokenType:
+			return "token??"
+		default:
+			return fmt.Sprintf("unexpected type: %T", t)
+		}
+	}
+}
+
+func (mod *modContext) genConstructorYaml(r *schema.Resource) []formalParam {
+	obj := map[string]interface{}{}
+	for _, inputProperty := range r.InputProperties {
+		propValue := exampleValueForType(inputProperty.Type, nil)
+		obj[inputProperty.Name] = propValue
+	}
+	var s string
+	if len(obj) == 0 {
+		s = "# " + ctorArgsArgComment
+	} else {
+		byts, err := yamlutil.YamlEncode(obj)
+		if err != nil {
+			byts = []byte("# not sure")
+		}
+		s = string(byts)
+		s = "\n" + strings.TrimRight(s, "\n")
+		s = strings.ReplaceAll(s, "\n", "\n  ")
+	}
 	return []formalParam{
 		{
-			Name:    "properties",
-			Comment: ctorArgsArgComment,
+			Name:         "properties",
+			ExampleValue: s,
 		},
 		{
-			Name:    "options",
-			Comment: ctorOptsArgComment,
+			Name:         "options",
+			ExampleValue: "# " + ctorOptsArgComment,
+			// Comment: ctorOptsArgComment,
 		},
 	}
 }
@@ -1250,7 +1334,7 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			paramSeparatorTemplate = "py_param_separator"
 			ps = paramSeparator{Indent: strings.Repeat(" ", len("def (")+len(resourceName(r)))}
 		case "yaml":
-			params = mod.genConstructorYaml()
+			params = mod.genConstructorYaml(r)
 		}
 
 		if paramTemplate != "" {

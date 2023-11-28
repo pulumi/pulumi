@@ -77,8 +77,25 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">foobar:ModuleResource</span><span class="p"></span>
-<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
-<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p">properties</span><span class="p">: </span><span class="c">
+  optional_bool: true
+  optional_const: string
+  optional_enum: 4
+  optional_number: 1
+  optional_string: string
+  plain_optional_bool: true
+  plain_optional_const: string
+  plain_optional_number: 1
+  plain_optional_string: string
+  plain_required_bool: true
+  plain_required_const: string
+  plain_required_number: 1
+  plain_required_string: string
+  required_bool: true
+  required_enum: 4
+  required_number: 1
+  required_string: string</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c"># Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
 </code></pre></div>
 </pulumi-choosable>

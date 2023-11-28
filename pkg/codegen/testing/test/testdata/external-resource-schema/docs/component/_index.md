@@ -69,8 +69,214 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Component</span><span class="p"></span>
-<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
-<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p">properties</span><span class="p">: </span><span class="c">
+  metadata:
+    annotations:
+      foo: string
+    clusterName: string
+    creationTimestamp: string
+    deletionGracePeriodSeconds: 1
+    deletionTimestamp: string
+    finalizers:
+      - string
+    generateName: string
+    generation: 1
+    labels:
+      foo: string
+    managedFields:
+      - apiVersion: string
+        fieldsType: string
+        fieldsV1:
+          foo: bar
+        manager: string
+        operation: string
+        subresource: string
+        time: string
+    name: string
+    namespace: string
+    ownerReferences:
+      - apiVersion: string
+        blockOwnerDeletion: true
+        controller: true
+        kind: string
+        name: string
+        uid: string
+    resourceVersion: string
+    selfLink: string
+    uid: string
+  metadataArray:
+    - annotations:
+        foo: string
+      clusterName: string
+      creationTimestamp: string
+      deletionGracePeriodSeconds: 1
+      deletionTimestamp: string
+      finalizers:
+        - string
+      generateName: string
+      generation: 1
+      labels:
+        foo: string
+      managedFields:
+        - apiVersion: string
+          fieldsType: string
+          fieldsV1:
+            foo: bar
+          manager: string
+          operation: string
+          subresource: string
+          time: string
+      name: string
+      namespace: string
+      ownerReferences:
+        - apiVersion: string
+          blockOwnerDeletion: true
+          controller: true
+          kind: string
+          name: string
+          uid: string
+      resourceVersion: string
+      selfLink: string
+      uid: string
+  metadataMap:
+    foo:
+      annotations:
+        foo: string
+      clusterName: string
+      creationTimestamp: string
+      deletionGracePeriodSeconds: 1
+      deletionTimestamp: string
+      finalizers:
+        - string
+      generateName: string
+      generation: 1
+      labels:
+        foo: string
+      managedFields:
+        - apiVersion: string
+          fieldsType: string
+          fieldsV1:
+            foo: bar
+          manager: string
+          operation: string
+          subresource: string
+          time: string
+      name: string
+      namespace: string
+      ownerReferences:
+        - apiVersion: string
+          blockOwnerDeletion: true
+          controller: true
+          kind: string
+          name: string
+          uid: string
+      resourceVersion: string
+      selfLink: string
+      uid: string
+  requiredMetadata:
+    annotations:
+      foo: string
+    clusterName: string
+    creationTimestamp: string
+    deletionGracePeriodSeconds: 1
+    deletionTimestamp: string
+    finalizers:
+      - string
+    generateName: string
+    generation: 1
+    labels:
+      foo: string
+    managedFields:
+      - apiVersion: string
+        fieldsType: string
+        fieldsV1:
+          foo: bar
+        manager: string
+        operation: string
+        subresource: string
+        time: string
+    name: string
+    namespace: string
+    ownerReferences:
+      - apiVersion: string
+        blockOwnerDeletion: true
+        controller: true
+        kind: string
+        name: string
+        uid: string
+    resourceVersion: string
+    selfLink: string
+    uid: string
+  requiredMetadataArray:
+    - annotations:
+        foo: string
+      clusterName: string
+      creationTimestamp: string
+      deletionGracePeriodSeconds: 1
+      deletionTimestamp: string
+      finalizers:
+        - string
+      generateName: string
+      generation: 1
+      labels:
+        foo: string
+      managedFields:
+        - apiVersion: string
+          fieldsType: string
+          fieldsV1:
+            foo: bar
+          manager: string
+          operation: string
+          subresource: string
+          time: string
+      name: string
+      namespace: string
+      ownerReferences:
+        - apiVersion: string
+          blockOwnerDeletion: true
+          controller: true
+          kind: string
+          name: string
+          uid: string
+      resourceVersion: string
+      selfLink: string
+      uid: string
+  requiredMetadataMap:
+    foo:
+      annotations:
+        foo: string
+      clusterName: string
+      creationTimestamp: string
+      deletionGracePeriodSeconds: 1
+      deletionTimestamp: string
+      finalizers:
+        - string
+      generateName: string
+      generation: 1
+      labels:
+        foo: string
+      managedFields:
+        - apiVersion: string
+          fieldsType: string
+          fieldsV1:
+            foo: bar
+          manager: string
+          operation: string
+          subresource: string
+          time: string
+      name: string
+      namespace: string
+      ownerReferences:
+        - apiVersion: string
+          blockOwnerDeletion: true
+          controller: true
+          kind: string
+          name: string
+          uid: string
+      resourceVersion: string
+      selfLink: string
+      uid: string</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c"># Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
 </code></pre></div>
 </pulumi-choosable>
