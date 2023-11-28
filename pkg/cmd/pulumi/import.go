@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/spf13/cobra"
@@ -199,46 +198,56 @@ func writeImportFile(v importFile) (string, error) {
 func parseImportFile(
 	f importFile, stack tokens.StackName, proj tokens.PackageName, protectResources bool,
 ) ([]deploy.Import, importer.NameTable, error) {
-	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
-	// it's ambiguous (it's true).
-	takenNames := map[string]bool{}
-	// Prefill takenNames with all the resource names so we can do quick uniqness checks below
-	for _, spec := range f.Resources {
-		takenNames[spec.Name] = false
-	}
-	// A remapping by index from the resource list to it's final unique name.
-	nameMapping := make([]string, 0, len(f.Resources))
-	for i, spec := range f.Resources {
-		// Check if any earlier resource has this name, if so mark it as ambiguous
-		for j, other := range f.Resources {
-			if i > j && spec.Name == other.Name {
-				takenNames[spec.Name] = true
-			}
-		}
+	// The trickiest job we do while parsing the import file is name disambiguation.
+	//
+	// The name of an import serves as both the logical name of the imported resource
+	// (e.g. "foo" in `new aws.s3.Bucket("foo")`) and as the name of the resource's definition (e.g. `foo_1` in
+	// `const foo_1 = new aws.s3.Bucket("foo")`). The logical name of the resource need only be unique within its
+	// qualified type--that is, two resources may have the same logical name if they are of different types or have
+	// different ancestors--but the name of the resource's definition must always be unique.
+	//
+	// Other systems that serve as input for import (notably Terraform) also have this sort of peculiar type-based
+	// namespacing. We often see overlapping names when importing from these systems. In order to make `pulumi import`
+	// cooperate nicely with `pulumi convert`, we need the logical names of the imported resource to agree with the
+	// logical name of the corresponding converted resource.
+	//
+	// To address this:
+	// - We only change the logical name of a resource if not doing so would cause it to conflict with another resource
+	//   (i.e. because they end up with the same URN)
+	// - We change the definition name of a resource if not doing so would cause its definition in the generated source
+	//   to conflict with another resource
 
-		if !takenNames[spec.Name] {
-			// This name isn't ambiguous so we can use it as is
-			nameMapping = append(nameMapping, spec.Name)
-		} else {
-			// This names already used so we need to make it unique
-			newName := spec.Name
+	// First check for uniqueness and ambiguity, ambiguousNames tracks both that a name is used (it's in the map) and if
+	// it's ambiguous (it's true).
+	nameToIndex, ambiguousNames := map[string]int{}, map[string]bool{}
+	for i, spec := range f.Resources {
+		if _, ok := nameToIndex[spec.Name]; !ok {
+			nameToIndex[spec.Name] = i
+		}
+		ambiguousNames[spec.Name] = false
+	}
+
+	// Disambiguate definition names.
+	nameMapping := make([]string, len(f.Resources))
+	for i, spec := range f.Resources {
+		name := spec.Name
+
+		// Check if another resource has this name. If so, compute a new, unique name for this resource.
+		if other, ok := nameToIndex[name]; ok && other != i {
+			ambiguousNames[name] = true
+
 			for suffix := 1; ; suffix++ {
-				if _, exists := takenNames[newName]; !exists {
+				if _, exists := ambiguousNames[name]; !exists {
 					break
 				}
-				newName = fmt.Sprintf("%s_%d", spec.Name, suffix)
+				name = fmt.Sprintf("%s_%d", spec.Name, suffix)
 			}
-			// At this point newName is unique and can't clash with other names, but need to ensure nothing
+			// At this point name is unique and can't clash with other names, but need to ensure nothing
 			// else tries to now use it.
-			takenNames[newName] = false
-			nameMapping = append(nameMapping, newName)
+			ambiguousNames[name] = false
 		}
-	}
 
-	// TODO: When Go 1.21 is released, switch to errors.Join.
-	var errs error
-	pusherrf := func(format string, args ...interface{}) {
-		errs = multierror.Append(errs, fmt.Errorf(format, args...))
+		nameMapping[i] = name
 	}
 
 	// Attempts to generate a human-readable description of the given import spec
@@ -269,100 +278,87 @@ func parseImportFile(
 		return sb.String()
 	}
 
-	// A mapping from name to URN, prefilled with emptys and what was in the name table so we can do existence checks
-	// for expected names.
-	urnMapping := make(map[string]resource.URN)
-	for name, urn := range f.NameTable {
-		urnMapping[name] = urn
-	}
-	for _, spec := range f.Resources {
-		urnMapping[spec.Name] = ""
-	}
+	var errs []error
 
-	// We need to keep going till all the URNs are filled in or we have an error.
-	done := func() bool {
-		if errs != nil {
-			return true
+	// Assign a URN to each resource and disambiguate logical names. We disambiguate logical names by replacing the
+	// resource's logical name as declared in the imports with its disambiguated definition name as calculated
+	// earler. Any ambiguous logical name must also be an ambiguous definition, as an ambiguous logical name only
+	// occurs if there are two imports with the same type, parent, and name.
+	urns, allURNs := make([]resource.URN, len(f.Resources)), map[resource.URN]struct{}{}
+	var assignURN func(i int) (resource.URN, bool)
+	assignURN = func(i int) (resource.URN, bool) {
+		if urn := urns[i]; urn != "" {
+			return urn, true
 		}
-		for _, urn := range urnMapping {
-			if urn == "" {
-				return false
-			}
-		}
-		return true
-	}
+		spec := f.Resources[i]
 
-	for !done() {
-		for i, spec := range f.Resources {
-			// If we've already done this URN no need to do it again
-			if urnMapping[spec.Name] != "" {
-				continue
+		var parentType tokens.Type
+		if spec.Parent != "" {
+			// We can find the parent type by looking up the parent by name then finding its type.
+
+			if ambiguousNames[spec.Parent] {
+				errs = append(errs, fmt.Errorf("%v has an ambiguous parent", describeResource(i, spec)))
+				return "", false
 			}
 
-			var parentType tokens.Type
-			if spec.Parent != "" {
-				// We can find the parent type by looking up the parent by name then finding it's type
-
-				// takenNames will be true if this name is ambiguous, in which case we can't use it as a
-				// parent but we just let the rest of the code below run so we can collect further errors.
-				if takenNames[spec.Parent] {
-					pusherrf("%v has an ambiguous parent",
-						describeResource(i, spec))
+			// Is this name already in the name table?
+			if urn, ok := f.NameTable[spec.Parent]; ok {
+				parentType = urn.QualifiedType()
+			} else {
+				// Not in the name table. Check to see if this is a resource we know about.
+				parentIndex, ok := nameToIndex[spec.Parent]
+				if !ok {
+					errs = append(errs, fmt.Errorf("the parent '%v' for %v has no entry in 'nameTable'",
+						spec.Parent, describeResource(i, spec)))
+					return "", false
 				}
 
-				// Is this name already in the name table?
-				if urn, ok := f.NameTable[spec.Parent]; ok {
+				// Map the parent's URN.
+				if urn, ok := assignURN(parentIndex); ok {
 					parentType = urn.QualifiedType()
-				} else {
-					// Not in the name table, is it in the urn mapping yet?
-					urn, ok := urnMapping[spec.Parent]
-
-					// There's three cases to cover here:
-					// 1. We didn't find the parent, in which case just push an error
-					// 2. We found the parent but it's urn is currently blank, in which case we'll loop around
-					// 3. We found the parent and got it's URN
-					if !ok {
-						pusherrf("the parent '%v' for %v has no entry in 'nameTable'",
-							spec.Parent, describeResource(i, spec))
-					} else if urn == "" {
-						// Skip this resource for now, we'll have to loop again to get it once it's parent URN is worked out
-						continue
-					} else {
-						parentType = urn.QualifiedType()
-					}
 				}
 			}
-
-			actualName := nameMapping[i]
-			urnMapping[spec.Name] = resource.NewURN(stack.Q(), proj, parentType, spec.Type, actualName)
 		}
+
+		urn := resource.NewURN(stack.Q(), proj, parentType, spec.Type, spec.Name)
+		if _, exists := allURNs[urn]; exists {
+			urn = resource.NewURN(stack.Q(), proj, parentType, spec.Type, nameMapping[i])
+		}
+		urns[i], allURNs[urn] = urn, struct{}{}
+		return urn, true
+	}
+	for i := range f.Resources {
+		assignURN(i)
+	}
+	if len(errs) != 0 {
+		return nil, nil, errors.Join(errs...)
 	}
 
-	// If we've got errors already just exit
-	if errs != nil {
-		return nil, nil, errs
-	}
-
-	imports := make([]deploy.Import, len(f.Resources))
+	imports, names := make([]deploy.Import, len(f.Resources)), importer.NameTable{}
 	for i, spec := range f.Resources {
 		if spec.Type == "" {
-			pusherrf("%v has no type", describeResource(i, spec))
+			errs = append(errs, fmt.Errorf("%v has no type", describeResource(i, spec)))
 		}
 		if spec.Name == "" {
-			pusherrf("%v has no name", describeResource(i, spec))
+			errs = append(errs, fmt.Errorf("%v has no name", describeResource(i, spec)))
 		}
 		if !spec.Component && spec.ID == "" {
-			pusherrf("%v has no ID", describeResource(i, spec))
+			errs = append(errs, fmt.Errorf("%v has no ID", describeResource(i, spec)))
 		} else if spec.Component && spec.ID != "" {
-			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
+			errs = append(errs, fmt.Errorf("%v has an ID, but is marked as a component", describeResource(i, spec)))
 		}
 		if spec.Remote && !spec.Component {
-			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
+			errs = append(errs, fmt.Errorf("%v is marked as remote, but not as a component", describeResource(i, spec)))
+		}
+
+		urn := urns[i]
+		if definitionName := nameMapping[i]; definitionName != spec.Name {
+			names[urn] = definitionName
 		}
 
 		imp := deploy.Import{
 			Type:              spec.Type,
-			Name:              nameMapping[i],
+			Name:              urn.Name(),
 			ID:                spec.ID,
 			Protect:           protectResources,
 			Properties:        spec.Properties,
@@ -372,22 +368,21 @@ func parseImportFile(
 		}
 
 		if spec.Parent != "" {
-			urn, ok := urnMapping[spec.Parent]
-			if ok {
-				// No need to add errors here, we'll have done that above when building URNs
-				imp.Parent = urn
+			urn, ok := f.NameTable[spec.Parent]
+			if !ok {
+				urn = urns[nameToIndex[spec.Parent]]
 			}
+			imp.Parent = urn
 		}
 
 		if spec.Provider != "" {
-			if takenNames[spec.Provider] {
-				pusherrf("%v has an ambiguous provider",
-					describeResource(i, spec))
+			if ambiguousNames[spec.Provider] {
+				errs = append(errs, fmt.Errorf("%v has an ambiguous provider", describeResource(i, spec)))
 			}
 			urn, ok := f.NameTable[spec.Provider]
 			if !ok {
-				pusherrf("the provider '%v' for %v has no entry in 'nameTable'",
-					spec.Provider, describeResource(i, spec))
+				errs = append(errs, fmt.Errorf("the provider '%v' for %v has no entry in 'nameTable'",
+					spec.Provider, describeResource(i, spec)))
 			} else {
 				imp.Provider = urn
 			}
@@ -396,8 +391,8 @@ func parseImportFile(
 		if spec.Version != "" {
 			v, err := semver.ParseTolerant(spec.Version)
 			if err != nil {
-				pusherrf("could not parse version '%v' for %v: %w",
-					spec.Version, describeResource(i, spec), err)
+				errs = append(errs, fmt.Errorf("could not parse version '%v' for %v: %w",
+					spec.Version, describeResource(i, spec), err))
 			} else {
 				imp.Version = &v
 			}
@@ -406,13 +401,7 @@ func parseImportFile(
 		imports[i] = imp
 	}
 
-	// Build the name table.
-	names := importer.NameTable{}
-	for name, urn := range urnMapping {
-		names[urn] = name
-	}
-
-	return imports, names, errs
+	return imports, names, errors.Join(errs...)
 }
 
 func getCurrentDeploymentForStack(
@@ -954,7 +943,7 @@ func newImportCmd() *cobra.Command {
 					}
 					pCtx.Diag.Infof(diag.Message("",
 						"Generated import file written out, edit and rerun import with --file %s"),
-						path, path)
+						path)
 				}
 
 				return PrintEngineResult(res)
