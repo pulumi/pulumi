@@ -1,0 +1,3 @@
+name: props
+description: A program that exercises Pulumi property names.
+runtime: nodejs
