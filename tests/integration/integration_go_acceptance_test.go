@@ -33,6 +33,8 @@ import (
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "go"),
@@ -44,6 +46,8 @@ func TestEmptyGo(t *testing.T) {
 }
 
 // Tests that stack references work in Go.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferenceGo(t *testing.T) {
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
@@ -104,6 +108,7 @@ func TestConstructGo(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -116,6 +121,8 @@ func TestConstructGo(t *testing.T) {
 }
 
 // Test remote component construction in Go.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNestedConstructGo(t *testing.T) {
 	testDir := "construct_component"
 	runComponentSetup(t, testDir)
@@ -181,6 +188,8 @@ func optsForConstructGo(
 }
 
 func TestConstructComponentConfigureProviderGo(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows")
 	}
@@ -214,6 +223,7 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
 			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
 		},
+		NoParallel: true,
 	})
 	integration.ProgramTest(t, &opts)
 }

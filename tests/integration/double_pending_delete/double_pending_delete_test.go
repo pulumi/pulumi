@@ -13,6 +13,8 @@ import (
 )
 
 // Test that the engine tolerates two deletions of the same URN in the same plan.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDoublePendingDelete(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",

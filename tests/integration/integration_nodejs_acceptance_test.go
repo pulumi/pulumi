@@ -32,6 +32,8 @@ import (
 )
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("empty", "nodejs"),
@@ -41,6 +43,8 @@ func TestEmptyNodeJS(t *testing.T) {
 }
 
 // Tests that stack references work in Node.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferenceNodeJS(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
@@ -90,6 +94,7 @@ func TestConstructNode(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -155,6 +160,8 @@ func optsForConstructNode(
 }
 
 func TestConstructComponentConfigureProviderNode(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows")
 	}
@@ -201,7 +208,8 @@ func TestConstructComponentConfigureProviderNode(t *testing.T) {
 
 	opts := testConstructComponentConfigureProviderCommonOptions()
 	opts = opts.With(integration.ProgramTestOptions{
-		Dir: filepath.Join(testDir, "nodejs"),
+		NoParallel: true,
+		Dir:        filepath.Join(testDir, "nodejs"),
 		Dependencies: []string{
 			"@pulumi/pulumi",
 			"@pulumi/metaprovider",

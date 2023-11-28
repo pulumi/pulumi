@@ -26,6 +26,7 @@ func TestPythonAliases(t *testing.T) {
 		"retype_component_child",
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, dir := range dirs {
 		d := filepath.Join("python", dir)
 		t.Run(d, func(t *testing.T) {

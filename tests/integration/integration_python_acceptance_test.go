@@ -37,6 +37,8 @@ func boolPointer(b bool) *bool {
 }
 
 // TestEmptyPython simply tests that we can run an empty Python project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
@@ -47,6 +49,7 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferencePython(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
@@ -71,6 +74,8 @@ func TestStackReferencePython(t *testing.T) {
 }
 
 // Tests dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicPython(t *testing.T) {
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -148,6 +153,7 @@ func TestConstructPython(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -215,6 +221,8 @@ func optsForConstructPython(
 }
 
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
+	t.Parallel()
+
 	const testDir = "construct_component_configure_provider"
 	runComponentSetup(t, testDir)
 	pulumiRoot, err := filepath.Abs("../..")
@@ -225,6 +233,7 @@ func TestConstructComponentConfigureProviderPython(t *testing.T) {
 	opts = opts.With(integration.ProgramTestOptions{
 		Dir:          filepath.Join(testDir, "python"),
 		Dependencies: []string{pulumiPySDK, componentSDK},
+		NoParallel:   true,
 	})
 	integration.ProgramTest(t, &opts)
 }
@@ -238,8 +247,6 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	// handling by the pulumi CLI itself.
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
-		t.Parallel()
-
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -295,18 +302,22 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	}
 
 	t.Run("RelativePath", func(t *testing.T) {
+		t.Parallel()
 		check(t, "venv", filepath.Join("python", "venv"))
 	})
 
 	t.Run("AbsolutePath", func(t *testing.T) {
+		t.Parallel()
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv"))
 	})
 
 	t.Run("RelativePathWithMain", func(t *testing.T) {
+		t.Parallel()
 		check(t, "venv", filepath.Join("python", "venv-with-main"))
 	})
 
 	t.Run("AbsolutePathWithMain", func(t *testing.T) {
+		t.Parallel()
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
 	})
 

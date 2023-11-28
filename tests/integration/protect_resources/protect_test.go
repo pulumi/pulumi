@@ -14,6 +14,8 @@ import (
 )
 
 // TestProtectedResources tests some interesting operations on protected resources.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestProtectedResources(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
