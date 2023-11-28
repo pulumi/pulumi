@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: Fixes event stream lag on windows runtime
