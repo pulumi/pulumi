@@ -46,7 +46,7 @@ func TestBuildTarget(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(filepath.Join("go", "go-build-target"))
@@ -630,7 +630,9 @@ func TestConstructPlainGo(t *testing.T) {
 	}
 }
 
-func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPlainGo(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "go"),
@@ -867,7 +869,7 @@ func TestAboutGo(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(dir)
@@ -965,7 +967,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))

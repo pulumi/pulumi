@@ -127,7 +127,9 @@ func TestNestedConstructGo(t *testing.T) {
 	integration.ProgramTest(t, optsForConstructGo(t, "construct_nested_component", 18, localProviders))
 }
 
-func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructGo(
+	t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join(dir, "go"),
@@ -153,7 +155,7 @@ func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, loc
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {

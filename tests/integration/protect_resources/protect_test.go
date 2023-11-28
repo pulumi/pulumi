@@ -28,7 +28,7 @@ func TestProtectedResources(t *testing.T) {
 			providerRes := stackInfo.Deployment.Resources[1]
 			assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 			a := stackInfo.Deployment.Resources[2]
-			assert.Equal(t, "eternal", string(a.URN.Name()))
+			assert.Equal(t, "eternal", a.URN.Name())
 			assert.True(t, a.Protect)
 		},
 		EditDirs: []integration.EditDir{
@@ -44,7 +44,7 @@ func TestProtectedResources(t *testing.T) {
 					providerRes := stackInfo.Deployment.Resources[1]
 					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 					a := stackInfo.Deployment.Resources[2]
-					assert.Equal(t, "eternal", string(a.URN.Name()))
+					assert.Equal(t, "eternal", a.URN.Name())
 					assert.True(t, a.Protect)
 				},
 			},
@@ -62,7 +62,7 @@ func TestProtectedResources(t *testing.T) {
 					providerRes := stackInfo.Deployment.Resources[1]
 					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 					a := stackInfo.Deployment.Resources[2]
-					assert.Equal(t, "eternal", string(a.URN.Name()))
+					assert.Equal(t, "eternal", a.URN.Name())
 					assert.True(t, a.Protect)
 				},
 			},
@@ -78,7 +78,7 @@ func TestProtectedResources(t *testing.T) {
 					providerRes := stackInfo.Deployment.Resources[1]
 					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 					a := stackInfo.Deployment.Resources[2]
-					assert.Equal(t, "eternal", string(a.URN.Name()))
+					assert.Equal(t, "eternal", a.URN.Name())
 					assert.False(t, a.Protect)
 				},
 			},

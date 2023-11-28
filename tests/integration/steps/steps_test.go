@@ -38,7 +38,7 @@ func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNam
 
 	// Ensure that exactly the provided resources are in the array.
 	for _, res := range resources {
-		name := string(res.URN.Name())
+		name := res.URN.Name()
 		_, ok := expectedNamesTable[name]
 		assert.True(t, ok)
 		delete(expectedNamesTable, name)

@@ -1019,7 +1019,7 @@ func TestAboutPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(dir)
@@ -1100,8 +1100,14 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 		},
 		Stdout: stdout,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Contains(t, stdout.String(), "RuntimeError: We have detected a circular dependency involving a resource of type my:module:Child-1 named a-child-1.")
-			assert.Contains(t, stdout.String(), "Please review any `depends_on`, `parent` or other dependency relationships between your resources to ensure no cycles have been introduced in your program.")
+			assert.Contains(
+				t, stdout.String(),
+				"RuntimeError: We have detected a circular dependency involving a resource of type "+
+					"my:module:Child-1 named a-child-1.")
+			assert.Contains(
+				t, stdout.String(),
+				"Please review any `depends_on`, `parent` or other dependency relationships between "+
+					"your resources to ensure no cycles have been introduced in your program.")
 		},
 	})
 	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
