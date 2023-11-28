@@ -26,8 +26,8 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 		return false
 	}
 
-	// Zaid's bicep converter so that `pulumi convert --from bicep` just works.
-	if spec.Kind == workspace.ConverterPlugin && spec.Name == "bicep" {
+	// Zaid's arm and bicep converters so that `pulumi convert --from arm/bicep` just works.
+	if spec.Kind == workspace.ConverterPlugin && (spec.Name == "arm" || spec.Name == "bicep") {
 		spec.PluginDownloadURL = "github://api.github.com/Zaid-Ajaj"
 		return true
 	}
