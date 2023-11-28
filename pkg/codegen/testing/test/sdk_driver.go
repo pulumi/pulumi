@@ -366,6 +366,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
+		Directory:   "unions-inside-arrays",
+		Description: "A schema with a union type inside an array",
+	},
+	{
 		Directory:   "assets-and-archives",
 		Description: "A schema with assets and archives",
 	},
