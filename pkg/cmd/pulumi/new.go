@@ -476,11 +476,11 @@ func sendPromptToPulumiAI(promptMessage string, conversationID string, language 
 	reader := bufio.NewReader(res.Body)
 	fmt.Println("Pulumi AI response:")
 	for {
-		line, err := reader.ReadBytes('\n')
+		chunk, err := reader.ReadByte()
 		if err != nil && err.Error() != "EOF" {
 			return "", err
 		}
-		fmt.Print(string(line))
+		fmt.Print(string(chunk))
 		if err != nil && err.Error() == "EOF" {
 			break
 		}
