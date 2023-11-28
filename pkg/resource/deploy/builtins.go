@@ -8,6 +8,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -18,18 +19,20 @@ import (
 type builtinProvider struct {
 	context context.Context
 	cancel  context.CancelFunc
+	diag    diag.Sink
 
 	backendClient BackendClient
 	resources     *resourceMap
 }
 
-func newBuiltinProvider(backendClient BackendClient, resources *resourceMap) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, d diag.Sink) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
 		cancel:        cancel,
 		backendClient: backendClient,
 		resources:     resources,
+		diag:          d,
 	}
 }
 
@@ -82,7 +85,12 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 		return nil, nil, fmt.Errorf("unrecognized resource type '%v'", urn.Type())
 	}
 
-	var name resource.PropertyValue
+	// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
+	// call Check first.
+	msg := "The \"pulumi:pulumi:StackReference\" resource type is deprecated. " +
+		"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
+	p.diag.Warningf(diag.Message(urn, msg))
+
 	for k := range inputs {
 		if k != "name" {
 			return nil, []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}}, nil
@@ -161,6 +169,12 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	contract.Requiref(urn != "", "urn", "must not be empty")
 	contract.Requiref(id != "", "id", "must not be empty")
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
+
+	for k := range inputs {
+		if k != "name" {
+			return plugin.ReadResult{}, resource.StatusUnknown, fmt.Errorf("unknown property \"%v\"", k)
+		}
+	}
 
 	outputs, err := p.readStackReference(state)
 	if err != nil {
