@@ -375,6 +375,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
+		Directory:   "regress-py-14539",
+		Description: "Regresses https://github.com/pulumi/pulumi/issues/14539",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
 		Directory:   "output-funcs-go-generics-only",
 		Description: "Tests targeting the $fn_output code generation feature, only for Go generics == generics-only",
 		Skip:        allLanguages.Except("go/any"),
