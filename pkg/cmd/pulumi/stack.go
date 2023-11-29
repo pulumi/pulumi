@@ -43,8 +43,8 @@ func newStackCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "stack",
-		Short: "Manage stacks",
-		Long: "Manage stacks\n" +
+		Short: "Manage stacks and view stack state",
+		Long: "Manage stacks and view stack state\n" +
 			"\n" +
 			"A stack is a named update target, and a single project may have many of them.\n" +
 			"Each stack has a configuration and update history associated with it, stored in\n" +
