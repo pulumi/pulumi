@@ -103,8 +103,8 @@ func (h *L1EmptyLanguageHost) GenerateProject(
 func (h *L1EmptyLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	if req.Directory != filepath.Join(h.tempDir, "projects", "l1-empty") {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Directory)
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
+		return fmt.Errorf("unexpected directory to install dependencies %s", req.Info.ProgramDirectory)
 	}
 	return nil
 }

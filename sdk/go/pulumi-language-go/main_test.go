@@ -52,11 +52,6 @@ func TestParseRunParams(t *testing.T) {
 			},
 		},
 		{
-			desc:    "binary buildTarget exclusivity",
-			give:    []string{"-binary", "foo", "-buildTarget=bar"},
-			wantErr: "binary and buildTarget cannot both be specified",
-		},
-		{
 			desc: "tracing",
 			give: []string{"-tracing", "foo.trace", "localhost:1234"},
 			want: runParams{
@@ -68,7 +63,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "binary",
 			give: []string{"-binary", "foo", "localhost:1234"},
 			want: runParams{
-				binary:        "foo",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -76,7 +70,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "buildTarget",
 			give: []string{"-buildTarget", "foo", "localhost:1234"},
 			want: runParams{
-				buildTarget:   "foo",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -84,7 +77,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "root",
 			give: []string{"-root", "path/to/root", "localhost:1234"},
 			want: runParams{
-				root:          "path/to/root",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -409,7 +401,7 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
-	host := newLanguageHost("0.0.0.0:0", progDir, "", "", "")
+	host := newLanguageHost("0.0.0.0:0", progDir, "")
 	ctx := context.Background()
 
 	t.Run("GetRequiredPlugins", func(t *testing.T) {
@@ -419,6 +411,11 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		res, err := host.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{
 			Project: "prog",
 			Pwd:     progDir,
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    progDir,
+				ProgramDirectory: progDir,
+				EntryPoint:       ".",
+			},
 		})
 		require.NoError(t, err)
 
@@ -439,6 +436,11 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 			Project:                "prog",
 			Pwd:                    progDir,
 			TransitiveDependencies: true,
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    progDir,
+				ProgramDirectory: progDir,
+				EntryPoint:       ".",
+			},
 		})
 		require.NoError(t, err)
 

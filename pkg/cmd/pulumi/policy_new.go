@@ -191,7 +191,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			Main:    proj.Main,
 			Runtime: proj.Runtime,
 		}, Root: root}
-		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
+		_, main, pluginCtx, err := engine.ProjectInfoContext(
 			projinfo,
 			nil,
 			cmdutil.Diag(),
@@ -206,7 +206,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 		defer pluginCtx.Close()
 
-		if err := installPolicyPackDependencies(pluginCtx, proj, pwd); err != nil {
+		if err := installPolicyPackDependencies(pluginCtx, proj, main); err != nil {
 			return err
 		}
 	}
@@ -223,7 +223,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 }
 
 func installPolicyPackDependencies(ctx *plugin.Context,
-	proj *workspace.PolicyPackProject, directory string,
+	proj *workspace.PolicyPackProject, main string,
 ) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
@@ -232,7 +232,7 @@ func installPolicyPackDependencies(ctx *plugin.Context,
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(directory); err != nil {
+	if err = lang.InstallDependencies(ctx.Pwd, main); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}
