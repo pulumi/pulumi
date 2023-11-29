@@ -77,6 +77,58 @@ func TestIgnoreChanges(t *testing.T) {
 			ignoreChanges: []string{"a.b"},
 		},
 		{
+			name: "Present in old and new sets, using [\"\"]",
+			oldInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "bar",
+					},
+				},
+				"c": 42,
+			},
+			expected: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+				"c": 42,
+			},
+			ignoreChanges: []string{"a.b[\"c\"]"},
+		},
+		{
+			name: "Missing in new sets, using [\"\"]",
+			oldInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{},
+				},
+				"c": 42,
+			},
+			expected: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+				"c": 42,
+			},
+			ignoreChanges: []string{"a.b[\"c\"]"},
+		},
+		{
 			name:      "Missing in old deletes",
 			oldInputs: map[string]interface{}{},
 			newInputs: map[string]interface{}{
