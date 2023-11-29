@@ -1231,7 +1231,7 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 		}
 
 		propertyType := pkg.marshalType(typ, plain)
-		propertyType.Plain = plain || p.Plain
+		propertyType.Plain = p.Plain
 		specs[p.Name] = PropertySpec{
 			TypeSpec:             propertyType,
 			Description:          p.Comment,

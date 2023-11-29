@@ -135,22 +135,60 @@ func TestRoundtripEnum(t *testing.T) {
 func TestRoundtripPlainProperties(t *testing.T) {
 	t.Parallel()
 
-	assertPlainPropertyFromType := func(t *testing.T, pkg *Package) {
+	assertPlainnessFromType := func(t *testing.T, pkg *Package) {
 		exampleType, ok := pkg.GetType("plain-properties:index:ExampleType")
 		assert.True(t, ok)
 		exampleObjectType, ok := exampleType.(*ObjectType)
 		assert.True(t, ok)
-		// assert that the property is plain
-		assert.Equal(t, 1, len(exampleObjectType.Properties))
-		assert.True(t, exampleObjectType.Properties[0].Plain)
+
+		assert.Equal(t, 2, len(exampleObjectType.Properties))
+		var exampleProperty *Property
+		var nonPlainProperty *Property
+		for _, p := range exampleObjectType.Properties {
+			if p.Name == "exampleProperty" {
+				exampleProperty = p
+			}
+
+			if p.Name == "nonPlainProperty" {
+				nonPlainProperty = p
+			}
+		}
+
+		assert.NotNil(t, exampleProperty)
+		assert.NotNil(t, nonPlainProperty)
+
+		assert.True(t, exampleProperty.Plain)
+		assert.False(t, nonPlainProperty.Plain)
 	}
 
-	assertPlainPropertyFromResourceInputs := func(t *testing.T, pkg *Package) {
+	assertPlainnessFromResource := func(t *testing.T, pkg *Package) {
 		exampleResource, ok := pkg.GetResource("plain-properties:index:ExampleResource")
 		assert.True(t, ok)
-		// assert that the property is plain
-		assert.Equal(t, 1, len(exampleResource.InputProperties))
-		assert.True(t, exampleResource.InputProperties[0].Plain)
+
+		check := func(properties []*Property) {
+			var exampleProperty *Property
+			var nonPlainProperty *Property
+			for _, p := range exampleResource.InputProperties {
+				if p.Name == "exampleProperty" {
+					exampleProperty = p
+				}
+
+				if p.Name == "nonPlainProperty" {
+					nonPlainProperty = p
+				}
+			}
+
+			// assert that the input property "exampleProperty" is plain
+			assert.NotNil(t, exampleProperty)
+			assert.True(t, exampleProperty.Plain)
+
+			// assert that the output property is not plain
+			assert.NotNil(t, nonPlainProperty)
+			assert.False(t, nonPlainProperty.Plain)
+		}
+
+		check(exampleResource.InputProperties)
+		check(exampleResource.Properties)
 	}
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
@@ -159,8 +197,8 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader)
 	require.NoError(t, err)
 	assert.Empty(t, diags)
-	assertPlainPropertyFromType(t, pkg)
-	assertPlainPropertyFromResourceInputs(t, pkg)
+	assertPlainnessFromType(t, pkg)
+	assertPlainnessFromResource(t, pkg)
 
 	newSpec, err := pkg.MarshalSpec()
 	require.NoError(t, err)
@@ -170,8 +208,8 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	pkg, diags, err = BindSpec(*newSpec, loader)
 	require.NoError(t, err)
 	assert.Empty(t, diags)
-	assertPlainPropertyFromType(t, pkg)
-	assertPlainPropertyFromResourceInputs(t, pkg)
+	assertPlainnessFromType(t, pkg)
+	assertPlainnessFromResource(t, pkg)
 }
 
 func TestImportSpec(t *testing.T) {
