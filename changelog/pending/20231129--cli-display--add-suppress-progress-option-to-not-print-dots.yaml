@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Add --suppress-progress option to not print dots
