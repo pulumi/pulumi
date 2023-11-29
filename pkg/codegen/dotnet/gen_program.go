@@ -935,6 +935,14 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 
+	if r.Schema != nil {
+		if val1, ok := r.Schema.Language["csharp"]; ok {
+			val2, ok := val1.(CSharpResourceInfo)
+			contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+			member = val2.Name
+		}
+	}
+
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 

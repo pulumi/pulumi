@@ -1075,6 +1075,58 @@ func TestBindDefaultInt(t *testing.T) {
 	}
 }
 
+func TestMarshalResourceWithLanguageSettings(t *testing.T) {
+	t.Parallel()
+
+	prop := &Property{
+		Name: "prop1",
+		Language: map[string]interface{}{
+			"csharp": map[string]string{
+				"name": "CSharpProp1",
+			},
+		},
+		Type: stringType,
+	}
+	r := Resource{
+		Token: "xyz:index:resource",
+		Properties: []*Property{
+			prop,
+		},
+		Language: map[string]interface{}{
+			"csharp": map[string]string{
+				"name": "CSharpResource",
+			},
+		},
+	}
+	p := Package{
+		Name:        "xyz",
+		DisplayName: "xyz package",
+		Version: &semver.Version{
+			Major: 0,
+			Minor: 0,
+			Patch: 0,
+		},
+		Provider: &Resource{
+			IsProvider: true,
+			Token:      "provider",
+		},
+		Resources: []*Resource{
+			&r,
+		},
+	}
+	pspec, err := p.MarshalSpec()
+	assert.NoError(t, err)
+	res, ok := pspec.Resources[r.Token]
+	assert.True(t, ok)
+	assert.Contains(t, res.Language, "csharp")
+	assert.IsType(t, RawMessage{}, res.Language["csharp"])
+
+	prspec, ok := res.Properties[prop.Name]
+	assert.True(t, ok)
+	assert.Contains(t, prspec.Language, "csharp")
+	assert.IsType(t, RawMessage{}, prspec.Language["csharp"])
+}
+
 func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	t.Parallel()
 
