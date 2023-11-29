@@ -1535,8 +1535,8 @@ github.com/pulumi/esc v0.6.1-0.20231111193429-44b746a5b3b5 h1:1DJMji9F7XPea46bSu
 github.com/pulumi/esc v0.6.1-0.20231111193429-44b746a5b3b5/go.mod h1:Y6W21yUukvxS2NnS5ae1beMSPhMvj0xNAYcDqDHVj/g=
 github.com/pulumi/pulumi-java/pkg v0.9.8 h1:c8mYsalnRXA2Ibgvv6scefOn6mW1Vb0UT0mcDqjsivQ=
 github.com/pulumi/pulumi-java/pkg v0.9.8/go.mod h1:c6rSw/+q4O0IImgJ9axxoC6QesbPYWBaG5gimbHouUQ=
-github.com/pulumi/pulumi-yaml v1.4.2 h1:LKptNH2lG6f5IjJmR7bvu7ouBE4sgkTRNd4I8ZHmjHw=
-github.com/pulumi/pulumi-yaml v1.4.2/go.mod h1:1hwsXFnT7hm2ZeftY5fzjkngjs2eT/rv9MsPE48Leb4=
+github.com/pulumi/pulumi-yaml v1.4.3 h1:GO36c7FTl8If20Dn/w2Hi3huP7kmsO00KNaz3GJU0Ws=
+github.com/pulumi/pulumi-yaml v1.4.3/go.mod h1:1hwsXFnT7hm2ZeftY5fzjkngjs2eT/rv9MsPE48Leb4=
 github.com/pulumi/ssh-agent v0.5.1 h1:7DT4FcZNHWBAp9BFI+k0+HeBYGWbJvilJ29ra/4FlRM=
 github.com/pulumi/ssh-agent v0.5.1/go.mod h1:e6cyz/FUcE3PcJZ0tiuygkRsnHnCZcSQoQU+APbnrVA=
 github.com/rakyll/embedmd v0.0.0-20171029212350-c8060a0752a2/go.mod h1:7jOTMgqac46PZcF54q6l2hkLEG8op93fZu61KmxWDV4=
