@@ -35,6 +35,7 @@ run_tests() {
     done
 
     success=true
+    echo "::info Tests successful.. failures refer to test flakes that were successfully re-run."
 }
 
 run_tests "${@}"
