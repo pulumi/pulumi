@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Generate non-plain type variants for types used as inputs inside unions

@@ -4045,6 +4045,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			pkg.schemaNames.Add(tokenToName(typ.Token))
 
 			populateDetailsForPropertyTypes(seen, typ.Properties, optional, input, output)
+		case *schema.UnionType:
+			for _, e := range typ.ElementTypes {
+				populateDetailsForTypes(seen, e, optional, input, output)
+			}
 		case *schema.EnumType:
 			pkg := getPkgFromToken(typ.Token)
 			pkg.detailsForType(typ).mark(input || goInfo.GenerateExtraInputTypes, output)
