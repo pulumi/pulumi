@@ -77,6 +77,12 @@ type newArgs struct {
 	templateNameOrURL string
 	yes               bool
 	listTemplates     bool
+	aiPrompt          string
+	aiLanguage        string
+}
+
+func shouldPromptForAIOrTemplate(args newArgs) bool {
+	return args.aiPrompt == "" && args.aiLanguage == ""
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -148,17 +154,24 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	if aiOrTemplate, err := chooseWithAIOrTemplate(opts); aiOrTemplate == "ai" {
+	if args.templateNameOrURL == "" {
+		var aiOrTemplate string
+		if shouldPromptForAIOrTemplate(args) {
+			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
+		} else {
+			aiOrTemplate = "ai"
+		}
 		if err != nil {
 			return err
 		}
-		conversationURL, err := runAINew(ctx, args, opts)
-		if err != nil {
-			return err
+		if aiOrTemplate == "ai" {
+			conversationURL, err := runAINew(ctx, args, opts, args.aiPrompt, args.aiLanguage, args.yes)
+			if err != nil {
+				return err
+			}
+			args.templateNameOrURL = conversationURL
 		}
-		args.templateNameOrURL = conversationURL
 	}
-
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
@@ -418,8 +431,14 @@ type AIPromptRequestBody struct {
 
 // Iteratively prompt the user for input, sending their input as a prompt tp Pulumi AI
 // Stream the response back to the console, and repeat until the user is done.
-func runAINew(ctx context.Context, args newArgs, opts display.Options) (conversationURL string, err error) {
-	var language string
+func runAINew(
+	ctx context.Context,
+	args newArgs,
+	opts display.Options,
+	prompt string,
+	language string,
+	yes bool,
+) (conversationURL string, err error) {
 	languageOptions := []string{
 		"TypeScript",
 		"JavaScript",
@@ -427,14 +446,26 @@ func runAINew(ctx context.Context, args newArgs, opts display.Options) (conversa
 		"Go",
 		"C#",
 	}
-	if err := survey.AskOne(&survey.Select{
-		Message: "Please select a language for your project:",
-		Options: languageOptions,
-	}, &language, surveyIcons(opts.Color)); err != nil {
-		return "", err
+	if language == "" {
+		if err = survey.AskOne(&survey.Select{
+			Message: "Please select a language for your project:",
+			Options: languageOptions,
+		}, &language, surveyIcons(opts.Color)); err != nil {
+			return "", err
+		}
 	}
 	var continuePrompt string
-	for continuePrompt, conversationURL, err = runAINewPromptStep(opts, language); continuePrompt == "continue" && err == nil; continuePrompt, conversationURL, err = runAINewPromptStep(opts, language) {
+	for continuePrompt, conversationURL, err = runAINewPromptStep(
+		opts,
+		language,
+		prompt,
+		yes,
+	); continuePrompt == "continue"; continuePrompt, conversationURL, err = runAINewPromptStep(
+		opts,
+		language,
+		prompt,
+		yes,
+	) {
 		if err != nil {
 			return "", err
 		}
@@ -490,12 +521,21 @@ func sendPromptToPulumiAI(promptMessage string, conversationID string, language 
 	return conversationURL, nil
 }
 
-func runAINewPromptStep(opts display.Options, language string) (continueSelection string, conversationURL string, err error) {
+func runAINewPromptStep(
+	opts display.Options,
+	language string,
+	prompt string,
+	yes bool,
+) (continueSelection string, conversationURL string, err error) {
 	var promptMessage string
-	if err := survey.AskOne(&survey.Input{
-		Message: "Please input your prompt here:\n",
-	}, &promptMessage, surveyIcons(opts.Color)); err != nil {
-		return "", "", err
+	if prompt == "" {
+		if err := survey.AskOne(&survey.Input{
+			Message: "Please input your prompt here:\n",
+		}, &promptMessage, surveyIcons(opts.Color)); err != nil {
+			return "", "", err
+		}
+	} else {
+		promptMessage = prompt
 	}
 	parsedURL, err := url.Parse(conversationURL)
 	if err != nil {
@@ -516,17 +556,21 @@ func runAINewPromptStep(opts display.Options, language string) (continueSelectio
 		"done":     "Finish the prompt and create the project",
 		"abort":    "Abort the prompt and exit",
 	}
-	if err := survey.AskOne(&survey.Select{
-		Message: "What would you like to do?",
-		Options: continuePromptOptions,
-		Description: func(opt string, _ int) string {
-			return continuePromptOptionsDescriptions[opt]
-		},
-	}, &continueSelection, surveyIcons(opts.Color)); err != nil {
-		return "", "", err
-	}
-	if continueSelection == "abort" {
-		return "", "", errors.New("aborting prompt")
+	if !yes {
+		if err := survey.AskOne(&survey.Select{
+			Message: "What would you like to do?",
+			Options: continuePromptOptions,
+			Description: func(opt string, _ int) string {
+				return continuePromptOptionsDescriptions[opt]
+			},
+		}, &continueSelection, surveyIcons(opts.Color)); err != nil {
+			return "", "", err
+		}
+		if continueSelection == "abort" {
+			return "", "", errors.New("aborting prompt")
+		}
+	} else {
+		continueSelection = "done"
 	}
 	return continueSelection, conversationURL, nil
 }
@@ -676,6 +720,13 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.listTemplates, "list-templates", "l", false,
 		"List locally installed templates and exit")
+	cmd.PersistentFlags().StringVarP(
+		&args.aiPrompt, "prompt", "p", "", "Prompt to use for Pulumi AI",
+	)
+	cmd.PersistentFlags().StringVar(
+		&args.aiLanguage, "language", "", "Language to use for Pulumi AI "+
+			"(possible choices: TypeScript, JavaScript, Python, Go, C#)",
+	)
 
 	return cmd
 }
