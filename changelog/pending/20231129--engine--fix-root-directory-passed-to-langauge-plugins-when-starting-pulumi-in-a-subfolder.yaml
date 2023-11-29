@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix root directory passed to langauge plugins when starting pulumi in a subfolder.

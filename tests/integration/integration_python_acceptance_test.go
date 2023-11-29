@@ -269,6 +269,12 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 		t.Logf("Wrote Pulumi.yaml:\n%s\n", string(newYaml))
 
+		// Make a subdir and change to it to ensure paths aren't just relative to the working directory.
+		subdir := filepath.Join(e.RootPath, "subdir")
+		err = os.Mkdir(subdir, 0o755)
+		require.NoError(t, err)
+		e.CWD = subdir
+
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "teststack")
 		e.RunCommand("pulumi", "preview")
