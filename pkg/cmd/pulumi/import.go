@@ -527,6 +527,7 @@ func newImportCmd() *cobra.Command {
 	var showConfig bool
 	var skipPreview bool
 	var suppressOutputs bool
+	var suppressProgress bool
 	var suppressPermalink string
 	var yes bool
 	var protectResources bool
@@ -763,13 +764,14 @@ func newImportCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:           cmdutil.GetGlobalColorization(),
-				ShowConfig:      showConfig,
-				SuppressOutputs: suppressOutputs,
-				IsInteractive:   interactive,
-				Type:            displayType,
-				EventLogPath:    eventLogPath,
-				Debug:           debug,
+				Color:            cmdutil.GetGlobalColorization(),
+				ShowConfig:       showConfig,
+				SuppressOutputs:  suppressOutputs,
+				SuppressProgress: suppressProgress,
+				IsInteractive:    interactive,
+				Type:             displayType,
+				EventLogPath:     eventLogPath,
+				Debug:            debug,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -1005,6 +1007,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")

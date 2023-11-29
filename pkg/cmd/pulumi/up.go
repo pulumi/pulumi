@@ -75,6 +75,7 @@ func newUpCmd() *cobra.Command {
 	var skipPreview bool
 	var showFullOutput bool
 	var suppressOutputs bool
+	var suppressProgress bool
 	var suppressPermalink string
 	var yes bool
 	var secretsProvider string
@@ -463,6 +464,7 @@ func newUpCmd() *cobra.Command {
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
 				SuppressOutputs:        suppressOutputs,
+				SuppressProgress:       suppressProgress,
 				TruncateOutput:         !showFullOutput,
 				IsInteractive:          interactive,
 				Type:                   displayType,
@@ -605,6 +607,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().BoolVar(
 		&showFullOutput, "show-full-output", true,
 		"Display full length of stack outputs")

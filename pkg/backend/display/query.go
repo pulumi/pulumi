@@ -36,7 +36,7 @@ func ShowQueryEvents(op string, events <-chan engine.Event,
 	var ticker *time.Ticker
 
 	if opts.IsInteractive {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/)
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/, opts.SuppressProgress)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
