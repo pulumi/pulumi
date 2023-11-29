@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/blang/semver"
@@ -155,6 +156,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		for i := 0; i < numFields; i++ {
 			destField, _ := getMappedField(reflect.Value{}, i)
 			tag := destField.Tag.Get("pulumi")
+			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 			if tag == "" {
 				continue
 			}
@@ -448,6 +450,7 @@ func marshalInputImpl(v interface{},
 			for i := 0; i < typ.NumField(); i++ {
 				destField, _ := getMappedField(reflect.Value{}, i)
 				tag := destField.Tag.Get("pulumi")
+				tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 				if tag == "" {
 					continue
 				}
@@ -789,6 +792,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			}
 
 			tag := typ.Field(i).Tag.Get("pulumi")
+			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 			if tag == "" {
 				continue
 			}

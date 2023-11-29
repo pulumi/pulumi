@@ -226,7 +226,7 @@ type NestedMapOutputArgs struct {
 
 type Nested struct {
 	Foo string `pulumi:"foo"`
-	Bar int    `pulumi:"bar"`
+	Bar int    `pulumi:"bar,optional"`
 }
 
 type NestedOutput struct {
