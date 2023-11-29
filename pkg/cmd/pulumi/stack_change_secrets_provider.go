@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -35,7 +36,8 @@ import (
 type stackChangeSecretsProviderCmd struct {
 	stdout io.Writer
 
-	stack string
+	stack    string
+	useStdin bool
 }
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
@@ -72,6 +74,12 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 		&scspcmd.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
+	cmd.PersistentFlags().BoolVarP(
+		&scspcmd.useStdin, "stdin", "", false,
+		"If secret provider is passphrase, read the passphrase from stdin. "+
+			"Only works in non-interactive mode",
+	)
+
 	return cmd
 }
 
@@ -87,6 +95,10 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 
 	if err := validateSecretsProvider(args[0]); err != nil {
 		return err
+	}
+
+	if cmd.useStdin && args[0] != passphrase.Type {
+		return fmt.Errorf("--stdin only works with the passphrase secrets provider")
 	}
 
 	project, _, err := readProject()
@@ -126,7 +138,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
 	if err := createSecretsManager(ctx, currentStack, secretsProvider, rotateProvider,
-		false /*creatingStack*/); err != nil {
+		false /*creatingStack*/, cmd.useStdin); err != nil {
 		return err
 	}
 

@@ -196,7 +196,7 @@ func commandContext() context.Context {
 
 func createSecretsManager(
 	ctx context.Context, stack backend.Stack, secretsProvider string,
-	rotateSecretsProvider, creatingStack bool,
+	rotateSecretsProvider, creatingStack, useStdin bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
@@ -227,7 +227,7 @@ func createSecretsManager(
 	if isDefaultSecretsProvider {
 		_, err = stack.DefaultSecretManager(ps)
 	} else if secretsProvider == passphrase.Type {
-		_, err = passphrase.NewPromptingPassphraseSecretsManager(ps, rotateSecretsProvider)
+		_, err = passphrase.NewPromptingPassphraseSecretsManagerWithStdin(ps, rotateSecretsProvider, useStdin)
 	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
@@ -266,7 +266,7 @@ func createStack(ctx context.Context,
 	}
 
 	if err := createSecretsManager(ctx, stack, secretsProvider,
-		false /*rotateSecretsManager*/, true /*creatingStack*/); err != nil {
+		false /*rotateSecretsManager*/, true /*creatingStack*/, false /*useStdin*/); err != nil {
 		return nil, err
 	}
 
