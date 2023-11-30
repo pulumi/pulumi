@@ -231,6 +231,97 @@ func TestStackOutputsNodeJS(t *testing.T) {
 	})
 }
 
+// TestStackOutputsProgramErrorNodeJS tests that when a program error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "nodejs")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// A program error in TypeScript means we won't get any new stack outputs from the module exports,
+				// so we expect the values to remain the same.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+		},
+	})
+}
+
+// TestStackOutputsResourceErrorNodeJS ensures that prior stack outputs aren't overwritten when a
+// resource operation error occurs during an update.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "nodejs")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
+				// called for the stack.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+			{
+				Dir:           filepath.Join(d, "step3"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to be updated.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",
+					"foo": float64(1),
+				}),
+			},
+		},
+	})
+}
+
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
 func TestStackOutputsJSON(t *testing.T) {
 	t.Parallel()
