@@ -959,7 +959,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`can run successfully after a previous failure`, async () => {
+    it(`runs successfully after a previous failure`, async () => {
         let shouldFail = true;
         const program = async () => {
             if (shouldFail) {
@@ -974,7 +974,7 @@ describe("LocalWorkspace", () => {
         // pulumi up rejects the first time
         await assert.rejects(stack.up());
 
-        // pulumi up the 2nd time succeeds
+        // pulumi up succeeds the 2nd time
         shouldFail = false;
         await assert.doesNotReject(stack.up());
 
