@@ -70,7 +70,7 @@ version_tests = [
 test_min_version = VersionInfo.parse("2.21.1")
 
 
-def test_path(*paths):
+def get_test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
 
 
@@ -98,7 +98,7 @@ def get_stack(stack_list: List[StackSummary], name: str) -> Optional[StackSummar
 class TestLocalWorkspace(unittest.TestCase):
     def test_project_settings(self):
         for ext in extensions:
-            ws = LocalWorkspace(work_dir=test_path("data", ext))
+            ws = LocalWorkspace(work_dir=get_test_path("data", ext))
             settings = ws.project_settings()
             self.assertEqual(settings.name, "testproj")
             self.assertEqual(settings.runtime, "go")
@@ -106,7 +106,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
     def test_stack_settings(self):
         for ext in extensions:
-            ws = LocalWorkspace(work_dir=test_path("data", ext))
+            ws = LocalWorkspace(work_dir=get_test_path("data", ext))
             settings = ws.stack_settings("dev")
             self.assertEqual(settings.secrets_provider, "abc")
             self.assertEqual(settings.encryption_salt, "blahblah")
@@ -433,7 +433,7 @@ class TestLocalWorkspace(unittest.TestCase):
         if get_test_org() != "pulumi-test":
             return
         stack_name = fully_qualified_stack_name("pulumi-test", "nested_config", "dev")
-        project_dir = test_path("data", "nested_config")
+        project_dir = get_test_path("data", "nested_config")
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
 
         all_config = stack.get_all_config()
@@ -499,7 +499,7 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_local_program(self):
         project_name = "testproj"
         stack_name = stack_namer(project_name)
-        work_dir = test_path("data", project_name)
+        work_dir = get_test_path("data", project_name)
         stack = create_stack(stack_name, work_dir=work_dir)
         self.assertIsNone(print(stack))
 
@@ -646,10 +646,30 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = create_stack(stack_name,
                              program=pulumi_program,
                              project_name=project_name,
-                             opts=LocalWorkspaceOptions(work_dir=test_path("data", project_name)))
+                             opts=LocalWorkspaceOptions(work_dir=get_test_path("data", project_name)))
         project_settings = stack.workspace.project_settings()
         self.assertEqual(project_settings.description, "This is a description")
         stack.workspace.remove_stack(stack_name)
+
+    def test_project_settings_populates_main(self):
+        main_cases = [
+            ('none', None, os.getcwd()),
+            ('blank', '', ''),
+            ('string', 'foo', 'foo'),
+        ]
+
+        for case_name, initial_main, expected_main in main_cases:
+            project_name = f"project_populates_main_with_{case_name}"
+            stack_name = stack_namer(project_name)
+            project_settings = ProjectSettings(name=project_name, runtime="python", main=initial_main)
+            stack = create_stack(stack_name,
+                                program=pulumi_program,
+                                project_name=project_name,
+                                opts=LocalWorkspaceOptions(project_settings=project_settings))
+            project_settings = stack.workspace.project_settings()
+            self.assertEqual(expected_main, project_settings.main)
+            stack.workspace.remove_stack(stack_name)
+
 
     def test_structured_events(self):
         project_name = "structured_events"

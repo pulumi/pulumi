@@ -725,11 +725,18 @@ def _inline_source_stack_helper(
         work_dir = workspace_options.work_dir
         if work_dir:
             try:
+                # This attempts to load the project settings, and if it
+                # succeeds, then discards them. This is ok because the
+                # LocalWorkspace will load them when it needs to. This is simply
+                # establishing whether there is an appropritate file in
+                # `work_dir`
                 _load_project_settings(work_dir)
             except FileNotFoundError:
                 workspace_options.project_settings = default_project(project_name)
         else:
             workspace_options.project_settings = default_project(project_name)
+    elif workspace_options.project_settings.main is None:
+        workspace_options.project_settings.main = os.getcwd()
 
     ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)
