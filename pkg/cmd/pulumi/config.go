@@ -157,11 +157,11 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// Do we need to copy a single value or the entire map
 			if len(args) > 0 {
 				// A single key was specified so we only need to copy that specific value
-				return copySingleConfigKey(args[0], path, currentStack, currentProjectStack, destinationStack,
+				return copySingleConfigKey(ctx, args[0], path, currentStack, currentProjectStack, destinationStack,
 					destinationProjectStack)
 			}
 
-			return copyEntireConfigMap(currentStack, currentProjectStack, destinationStack, destinationProjectStack)
+			return copyEntireConfigMap(ctx, currentStack, currentProjectStack, destinationStack, destinationProjectStack)
 		}),
 	}
 
@@ -175,7 +175,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 	return cpCommand
 }
 
-func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack,
+func copySingleConfigKey(ctx context.Context, configKey string, path bool, currentStack backend.Stack,
 	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
 	destinationProjectStack *workspace.ProjectStack,
 ) error {
@@ -195,7 +195,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	if v.Secure() {
 		var err error
 		var needsSave bool
-		if decrypter, needsSave, err = getStackDecrypter(currentStack, currentProjectStack); err != nil {
+		if decrypter, needsSave, err = getStackDecrypter(ctx, currentStack, currentProjectStack); err != nil {
 			return fmt.Errorf("could not create a decrypter: %w", err)
 		}
 		contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
@@ -203,7 +203,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 		decrypter = config.NewPanicCrypter()
 	}
 
-	encrypter, _, cerr := getStackEncrypter(destinationStack, destinationProjectStack)
+	encrypter, _, cerr := getStackEncrypter(ctx, destinationStack, destinationProjectStack)
 	if cerr != nil {
 		return cerr
 	}
@@ -221,14 +221,14 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	return saveProjectStack(destinationStack, destinationProjectStack)
 }
 
-func copyEntireConfigMap(currentStack backend.Stack,
+func copyEntireConfigMap(ctx context.Context, currentStack backend.Stack,
 	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
 	destinationProjectStack *workspace.ProjectStack,
 ) error {
 	var decrypter config.Decrypter
 	currentConfig := currentProjectStack.Config
 	if currentConfig.HasSecureValue() {
-		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
+		dec, needsSave, decerr := getStackDecrypter(ctx, currentStack, currentProjectStack)
 		if decerr != nil {
 			return decerr
 		}
@@ -238,7 +238,7 @@ func copyEntireConfigMap(currentStack backend.Stack,
 		decrypter = config.NewPanicCrypter()
 	}
 
-	encrypter, _, cerr := getStackEncrypter(destinationStack, destinationProjectStack)
+	encrypter, _, cerr := getStackEncrypter(ctx, destinationStack, destinationProjectStack)
 	if cerr != nil {
 		return cerr
 	}
@@ -446,7 +446,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			}
 
 			c, err := backend.GetLatestConfiguration(ctx, s)
-			if err != nil {
+			if err != nil && !errors.Is(err, backend.ErrNoPreviousDeployment) {
 				return err
 			}
 
@@ -603,7 +603,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			if secret {
 				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
 				// config data.
-				c, _, cerr := getStackEncrypter(s, ps)
+				c, _, cerr := getStackEncrypter(ctx, s, ps)
 				if cerr != nil {
 					return cerr
 				}
@@ -707,7 +707,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
 				// config data.
-				c, _, cerr := getStackEncrypter(stack, ps)
+				c, _, cerr := getStackEncrypter(ctx, stack, ps)
 				if cerr != nil {
 					return cerr
 				}
@@ -878,7 +878,7 @@ func listConfig(
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		stackDecrypter, needsSave, err := getStackDecrypter(stack, ps)
+		stackDecrypter, needsSave, err := getStackDecrypter(ctx, stack, ps)
 		if err != nil {
 			return err
 		}
@@ -1045,7 +1045,7 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 		if v.Secure() {
 			var err error
 			var needsSave bool
-			if d, needsSave, err = getStackDecrypter(stack, ps); err != nil {
+			if d, needsSave, err = getStackDecrypter(ctx, stack, ps); err != nil {
 				return fmt.Errorf("could not create a decrypter: %w", err)
 			}
 			// This may have setup the stack's secrets provider, so save the stack if needed.
@@ -1131,8 +1131,10 @@ func looksLikeSecret(k config.Key, v string) bool {
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
 }
 
-func getAndSaveSecretsManager(stack backend.Stack, workspaceStack *workspace.ProjectStack) (secrets.Manager, error) {
-	sm, needsSave, err := getStackSecretsManager(stack, workspaceStack)
+func getAndSaveSecretsManager(
+	ctx context.Context, stack backend.Stack, workspaceStack *workspace.ProjectStack,
+) (secrets.Manager, error) {
+	sm, needsSave, err := getStackSecretsManager(ctx, stack, workspaceStack)
 	if err != nil {
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
@@ -1270,7 +1272,7 @@ func getStackConfigurationWithFallback(
 		}
 	}
 
-	sm, err := getAndSaveSecretsManager(stack, workspaceStack)
+	sm, err := getAndSaveSecretsManager(ctx, stack, workspaceStack)
 	if err != nil {
 		if fallbackSecretsManager != nil {
 			sm = fallbackSecretsManager

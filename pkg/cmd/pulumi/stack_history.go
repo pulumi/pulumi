@@ -60,7 +60,7 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
-				crypter, needsSave, err := getStackDecrypter(s, ps)
+				crypter, needsSave, err := getStackDecrypter(ctx, s, ps)
 				if err != nil {
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}

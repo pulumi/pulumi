@@ -108,7 +108,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Build decrypter based on the existing secrets provider
 	var decrypter config.Decrypter
 	if currentProjectStack.Config.HasSecureValue() {
-		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
+		dec, needsSave, decerr := getStackDecrypter(ctx, currentStack, currentProjectStack)
 		if decerr != nil {
 			return decerr
 		}
@@ -147,7 +147,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	}
 
 	// Get the newly created secrets manager for the stack
-	newSecretsManager, needsSave, err := getStackSecretsManager(currentStack, reloadedProjectStack)
+	newSecretsManager, needsSave, err := getStackSecretsManager(ctx, currentStack, reloadedProjectStack)
 	if err != nil {
 		return err
 	}
