@@ -27,9 +27,9 @@ import (
 	"testing"
 
 	"github.com/grapl-security/pulumi-hcp/sdk/go/hcp"
+	"github.com/pulumi/appdash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sourcegraph.com/sourcegraph/appdash"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"

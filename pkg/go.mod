@@ -57,7 +57,6 @@ require (
 	google.golang.org/grpc v1.57.1
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.6.1
-	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
 )
 
 require (
@@ -85,6 +84,7 @@ require (
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pkg/errors v0.9.1
+	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.6.1-0.20231111193429-44b746a5b3b5
 	github.com/pulumi/pulumi-java/pkg v0.9.8
 	github.com/pulumi/pulumi-yaml v1.4.2
@@ -241,6 +241,7 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/skeema/knownhosts v1.2.0 // indirect
+	github.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/texttheater/golang-levenshtein v1.0.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
@@ -267,5 +268,4 @@ require (
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	lukechampine.com/frand v1.4.2 // indirect
-	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
 )

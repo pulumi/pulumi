@@ -34,7 +34,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.5.5
-	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
 )
 
 require (
@@ -45,6 +44,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
+	github.com/pulumi/appdash v0.0.0-20231130102013-538fec2a741d
 	github.com/pulumi/esc v0.5.6
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
