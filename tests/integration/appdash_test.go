@@ -7,7 +7,7 @@ package ints
 import (
 	"os"
 
-	"sourcegraph.com/sourcegraph/appdash"
+	"github.com/pulumi/appdash"
 )
 
 func ReadMemoryStoreFromFile(file string) (*appdash.MemoryStore, error) {
