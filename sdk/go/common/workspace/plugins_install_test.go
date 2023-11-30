@@ -312,7 +312,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	assert.False(t, HasPlugin(plugin))
 
 	has, err := HasPluginGTE(plugin)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.False(t, has)
 
 	skipMetadata := true

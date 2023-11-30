@@ -490,12 +490,12 @@ func (host *pluginHost) ResolvePlugin(
 		semverRange = version.EQ
 	}
 
-	match, err := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
-	if err == nil {
-		return &match, nil
+	match := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
+	if match == nil {
+		return nil, fmt.Errorf("could not locate a compatible plugin in deploytest, the makefile and " +
+			"& constructor of the plugin host must define the location of the schema")
 	}
-	return nil, fmt.Errorf("could not locate a compatible plugin in deploytest, the makefile and "+
-		"& constructor of the plugin host must define the location of the schema: %w", err)
+	return match, nil
 }
 
 func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
