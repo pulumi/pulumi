@@ -111,6 +111,11 @@ type stepExecutor struct {
 	// async promise indicating an error seen by the step executor, if multiple errors are seen this will only
 	// record the first.
 	sawError promise.CompletionSource[struct{}]
+
+	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
+	// can be finalized at the end of the deployment via FinalizeStackOutputs. We do this so we can determine
+	// whether or not the deployment succeeded. If there were errors, we keep the old stack outputs.
+	stackOutputsEvent RegisterResourceOutputsEvent
 }
 
 //
@@ -172,8 +177,31 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
 func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) error {
-	// Look up the final state in the pending registration list.
+	return se.executeRegisterResourceOutputs(e, false /* errored */, false /* finalizingStackOutputs */)
+}
+
+func (se *stepExecutor) executeRegisterResourceOutputs(
+	e RegisterResourceOutputsEvent,
+	errored,
+	finalizingStackOutputs bool,
+) error {
 	urn := e.URN()
+
+	if finalizingStackOutputs {
+		contract.Assertf(urn.Type() == resource.RootStackType, "expected a stack resource urn, got %v", urn)
+	}
+
+	// If we're not finalizing and we've received an event for the stack's outputs, save the event for finalization
+	// later. We finalize stack outputs at the end of the deployment, so we can determine whether or not the
+	// deployment succeeded. If the deployment was successful, we use the new stack outputs. If there were errors,
+	// we keep the old stack outputs.
+	if !finalizingStackOutputs && urn.Type() == resource.RootStackType {
+		se.stackOutputsEvent = e
+		e.Done()
+		return nil
+	}
+
+	// Look up the final state in the pending registration list.
 	value, has := se.pendingNews.Load(urn)
 	if !has {
 		return fmt.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
@@ -186,12 +214,19 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	outs := e.Outputs()
 	se.log(synchronousWorkerID,
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
-	reg.New().Outputs = outs
 
 	old := se.deployment.Olds()[urn]
 	var oldOuts resource.PropertyMap
 	if old != nil {
 		oldOuts = old.Outputs
+	}
+
+	// If we're finalizing stack outputs and there was an error with the deployment, then we
+	// keep the old outputs.
+	if finalizingStackOutputs && errored {
+		reg.New().Outputs = oldOuts
+	} else {
+		reg.New().Outputs = outs
 	}
 
 	// If a plan is present check that these outputs match what we recorded before
@@ -235,7 +270,9 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			return nil
 		}
 	}
-	e.Done()
+	if !finalizingStackOutputs {
+		e.Done()
+	}
 	return nil
 }
 
@@ -259,6 +296,14 @@ func (se *stepExecutor) WaitForCompletion() {
 	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): waiting for worker threads to exit")
 	se.workers.Wait()
 	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): worker threads all exited")
+}
+
+// FinalizeStackOutputs executes the RegisterResourceOutputsEvent for the stack resource's outputs.
+func (se *stepExecutor) FinalizeStackOutputs(errored bool) error {
+	if e := se.stackOutputsEvent; e != nil {
+		return se.executeRegisterResourceOutputs(e, errored, true /* finalizingStackOutputs */)
+	}
+	return nil
 }
 
 //

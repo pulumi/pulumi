@@ -266,6 +266,15 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}()
 
 	ex.stepExec.WaitForCompletion()
+
+	stepExecutorError := ex.stepExec.Errored()
+
+	// Finalize the stack outputs.
+	errored := stepExecutorError != nil || ex.stepGen.Errored()
+	if finalizeErr := ex.stepExec.FinalizeStackOutputs(errored); finalizeErr != nil {
+		return nil, result.BailError(finalizeErr)
+	}
+
 	logging.V(4).Infof("deploymentExecutor.Execute(...): step executor has completed")
 
 	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
@@ -311,7 +320,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
-	stepExecutorError := ex.stepExec.Errored()
 	if err == nil && stepExecutorError == nil {
 		err := ex.stepGen.AnalyzeResources()
 		if err != nil {

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: "Fix: Update stack outputs only on successful deployments"

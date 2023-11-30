@@ -4783,3 +4783,82 @@ func TestAutomaticDiff(t *testing.T) {
 		})
 	assert.NoError(t, err)
 }
+
+// TestPreviousStackOutputsKeptOnError tests that previous stack outputs are kept when an update fails.
+func TestPreviousStackOutputsKeptOnError(t *testing.T) {
+	t.Parallel()
+
+	var step int
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					assert.Greater(t, step, 0)
+					assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), urn)
+					if step == 1 {
+						return "", news, resource.StatusUnknown, errors.New("oh no")
+					}
+					return "create-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		stackURN, _, _, err := monitor.RegisterResource(resource.RootStackType, "test", false)
+		assert.NoError(t, err)
+
+		// In real-world programs, calls to RegisterResourceOutputs for the stack resource
+		// can complete before RegisterResource calls for other resources complete, so we
+		// do that first here.
+		err = monitor.RegisterResourceOutputs(stackURN, resource.PropertyMap{
+			"foo": resource.NewProperty(fmt.Sprintf("step %v", step)),
+		})
+		assert.NoError(t, err)
+
+		if step > 0 {
+			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			if step == 1 {
+				assert.ErrorContains(t, err, "oh no")
+			} else {
+				assert.NoError(t, err)
+			}
+		}
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedValue string) {
+		assert.Len(t, snap.Resources, expectedResourceCount)
+		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
+		assert.Equal(t, resource.PropertyMap{
+			"foo": resource.NewStringProperty(expectedValue),
+		}, snap.Resources[0].Outputs)
+	}
+
+	// Run the initial update which sets a stack output.
+	snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	validateSnapshot(snap, 1, "step 0")
+
+	// Run another update that will modify the stack outputs and also fail when creating a new resource.
+	// Ensure the original stack outputs are preserved.
+	step = 1
+	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "oh no")
+	validateSnapshot(snap, 2, "step 0")
+
+	// Run again, this time without erroring, to ensure the stack outputs are updated.
+	step = 2
+	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	validateSnapshot(snap, 3, "step 2")
+}
