@@ -959,6 +959,32 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`can run successfully after a previous failure`, async () => {
+        let shouldFail = true;
+        const program = async () => {
+            if (shouldFail) {
+                Promise.reject(new Error());
+            }
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up rejects the first time
+        await assert.rejects(stack.up());
+
+        // pulumi up the 2nd time succeeds
+        shouldFail = false;
+        await assert.doesNotReject(stack.up());
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`sets pulumi version`, async () => {
         const ws = await LocalWorkspace.create({});
         assert(ws.pulumiVersion);
