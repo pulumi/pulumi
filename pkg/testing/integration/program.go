@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	sha256 "crypto/sha256"
@@ -27,11 +28,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -883,8 +886,94 @@ func MakeTempBackend(t *testing.T) string {
 	return fmt.Sprintf("file://%s", filepath.ToSlash(tempDir))
 }
 
+var (
+	hashLock   sync.RWMutex
+	sourceHash = ""
+)
+
+// checkPulumiBinaryMatchesSource checks that the provided pulumi binary matches the
+func checkPulumiBinaryMatchesSource(pulumiBin string) error {
+	hash, err := hashFile(pulumiBin)
+	if err != nil {
+		return err
+	}
+
+	hashLock.Lock()
+	defer hashLock.Unlock()
+	if sourceHash == "" {
+		// Memoize computing the source hash to avoid recompiling on every call.
+
+		var pkgPath string
+		{
+			cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+			stdout := &bytes.Buffer{}
+			cmd.Stdout = stdout
+			if err := cmd.Run(); err != nil {
+				return err
+			}
+			gitRoot := strings.TrimSpace(stdout.String())
+			pkgPath = path.Join(gitRoot, "pkg")
+		}
+
+		var ldflags string
+		{
+			// Version is set dynamically at build time and will cause hashes to mismatch.
+			// To counteract this, we set the version to the version on PATH.
+			cmd := exec.Command("pulumi", "version")
+			stdout := &bytes.Buffer{}
+			cmd.Stdout = stdout
+			if err := cmd.Run(); err != nil {
+				return err
+			}
+			version := strings.TrimSpace(stdout.String())
+			ldflags = fmt.Sprintf(
+				"-X github.com/pulumi/pulumi/pkg/v3/version.Version=%s",
+				version,
+			)
+		}
+
+		expectedBin := path.Join(os.TempDir(), "pulumi-bin-expected")
+		defer os.Remove(expectedBin)
+
+		cmd := exec.Command("go", "build",
+			"-C", pkgPath,
+			"-ldflags", ldflags,
+			"-o", expectedBin,
+			"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi",
+		)
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+
+		hash, err := hashFile(expectedBin)
+		if err != nil {
+			return err
+		}
+		sourceHash = hash
+	}
+	contract.Assertf(hash != "", `hash must not be ""`)
+	contract.Assertf(sourceHash != "", `sourceHash must not be ""`)
+
+	if hash != sourceHash {
+		cmd := exec.Command("pulumi", "version")
+		stdout := &bytes.Buffer{}
+		cmd.Stdout = stdout
+		contract.IgnoreError(cmd.Run())
+		version := strings.TrimSpace(stdout.String())
+		return fmt.Errorf("pulumi on PATH (%s) does not match source hash", version)
+	}
+	return nil
+}
+
 func (pt *ProgramTester) getBin() (string, error) {
-	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
+	bin, err := getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
+	if err != nil {
+		return "", err
+	}
+	if err := checkPulumiBinaryMatchesSource(bin); err != nil {
+		return "", err
+	}
+	return bin, nil
 }
 
 func (pt *ProgramTester) getYarnBin() (string, error) {
