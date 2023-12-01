@@ -239,11 +239,11 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			prefixResourceNames = inputs["prefixResourceNames"].BoolValue()
 		}
 
-		input_source := inputs["config"]
-		if input_source.IsNull() {
-			input_source = resource.NewObjectProperty(resource.PropertyMap{})
+		config_source := inputs["config"]
+		if config_source.IsNull() {
+			config_source = resource.NewObjectProperty(resource.PropertyMap{})
 		}
-		inputs := input_source.ObjectValue()
+		config_inputs := config_source.ObjectValue()
 
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
@@ -260,15 +260,16 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		monitor = pulumirpc.NewResourceMonitorClient(monitorConn)
 
 		registerSubStackResourceResponse, err := monitor.RegisterResource(p.context, &pulumirpc.RegisterResourceRequest{
-			Type:   string(typ),
+			Type: string(typ),
+			// Top-level stacks are named as PROJECT-STACK, but in sub-stacks we only use the name specified in the Program resource.
 			Name:   string(name),
 			Parent: string(parent),
 		})
 		if err != nil {
-			return plugin.ConstructResult{}, fmt.Errorf("registering substack resource: %w", err)
+			return plugin.ConstructResult{}, fmt.Errorf("registering sub-stack resource: %w", err)
 		}
 
-		urn := registerSubStackResourceResponse.GetUrn()
+		subStackResourceUrn := registerSubStackResourceResponse.GetUrn()
 
 		// TODO: Do we need an interrupt handler?
 		cancelChannel := make(chan bool)
@@ -281,7 +282,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		// Fire up a gRPC server and start listening for incomings.
 		monitorProxy := subStackMonitorProxy{
 			monitor:             monitor,
-			subStackUrn:         resource.URN(urn),
+			subStackUrn:         resource.URN(subStackResourceUrn),
 			prefixResourceNames: prefixResourceNames,
 			dependencies:        options.Dependencies,
 		}
@@ -314,9 +315,13 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			return plugin.ConstructResult{}, fmt.Errorf("loading project: %w", err)
 		}
 
-		if inputs.ContainsUnknowns() && info.DryRun {
+		// We can't yet handle unknowns during a preview as unknowns can't be represented in a config object yet.
+		// Therefore we just mark the whole output as unknown during preview for now.
+		// In the future we should be able to handle unknowns in config objects.
+		if config_inputs.ContainsUnknowns() {
+			contract.Assertf(info.DryRun, "config inputs must be known in non-dry-run mode")
 			return plugin.ConstructResult{
-				URN:     resource.URN(urn),
+				URN:     resource.URN(subStackResourceUrn),
 				Outputs: resource.PropertyMap{"outputs": resource.MakeComputed(resource.NewStringProperty(""))},
 			}, nil
 		}
@@ -348,7 +353,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			}
 		}
 		secretKeys := make([]config.Key, 0)
-		for key, val := range inputs {
+		for key, val := range config_inputs {
 			unwrappedVal := val
 			if val.IsOutput() {
 				unwrappedVal = val.OutputValue().Element
@@ -388,7 +393,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			Args:              []string{}, // TODO: make this an arg
 			Config:            configs,
 			ConfigSecretKeys:  secretKeys,
-			ConfigPropertyMap: inputs,
+			ConfigPropertyMap: config_inputs,
 			DryRun:            info.DryRun,
 			Parallel:          info.Parallel,
 			Organization:      string(p.organization),
@@ -415,7 +420,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		}
 
 		return plugin.ConstructResult{
-			URN:     resource.URN(urn),
+			URN:     resource.URN(subStackResourceUrn),
 			Outputs: outPropMap,
 		}, nil
 	}
