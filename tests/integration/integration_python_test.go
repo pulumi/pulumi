@@ -1092,6 +1092,8 @@ func TestConstructProviderExplicitPython(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/13551
 func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
+	t.Skip("Temporarily skipping flakey test - pulumi/pulumi#14708")
+
 	stdout := &bytes.Buffer{}
 	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "implicit-dependency-cycles"),
