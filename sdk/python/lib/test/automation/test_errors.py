@@ -23,7 +23,7 @@ from pulumi.automation import (
     RuntimeError,
     CompilationError,
 )
-from .test_local_workspace import stack_namer, test_path
+from .test_local_workspace import stack_namer, get_test_path
 
 compilation_error_project = "compilation_error"
 runtime_error_project = "runtime_error"
@@ -50,7 +50,7 @@ class TestErrors(unittest.TestCase):
     def test_runtime_errors(self):
         for lang in ["python", "go", "dotnet", "javascript", "typescript"]:
             stack_name = stack_namer(runtime_error_project)
-            project_dir = test_path("errors", runtime_error_project, lang)
+            project_dir = get_test_path("errors", runtime_error_project, lang)
 
             if lang in ["javascript", "typescript"]:
                 subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
@@ -73,7 +73,7 @@ class TestErrors(unittest.TestCase):
 
     def test_compilation_error_go(self):
         stack_name = stack_namer(compilation_error_project)
-        project_dir = test_path("errors", compilation_error_project, "go")
+        project_dir = get_test_path("errors", compilation_error_project, "go")
         stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
@@ -84,7 +84,7 @@ class TestErrors(unittest.TestCase):
 
     def test_compilation_error_dotnet(self):
         stack_name = stack_namer(compilation_error_project)
-        project_dir = test_path("errors", compilation_error_project, "dotnet")
+        project_dir = get_test_path("errors", compilation_error_project, "dotnet")
         stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
@@ -98,7 +98,7 @@ class TestErrors(unittest.TestCase):
     @pytest.mark.skipif(sys.platform == "win32", reason="skipping on windows")
     def test_compilation_error_typescript(self):
         stack_name = stack_namer(compilation_error_project)
-        project_dir = test_path("errors", compilation_error_project, "typescript")
+        project_dir = get_test_path("errors", compilation_error_project, "typescript")
         subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
         stack = create_stack(stack_name, work_dir=project_dir)
 
