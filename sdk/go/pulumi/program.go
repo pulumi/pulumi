@@ -77,7 +77,7 @@ func NewProgram(ctx *Context, name string, args *ProgramArgs, opts ...ResourceOp
 	id := StringInput(String(name)).ToStringOutput().ApplyT(func(s string) ID { return ID(s) }).(IDOutput)
 
 	ref := Program{ctx: ctx}
-	if err := ctx.ReadResource("pulumi:pulumi:Program", name, id, args, &ref, opts...); err != nil {
+	if err := ctx.ReadResource("pulumi:pulumi:Stack", name, id, args, &ref, opts...); err != nil {
 		return nil, err
 	}
 	return &ref, nil

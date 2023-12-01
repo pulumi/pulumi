@@ -34,7 +34,7 @@ export class Program extends ComponentResource {
             resourceInputs["prefixResourceNames"] = true;
         }
         resourceInputs["outputs"] = undefined;
-        super("pulumi:pulumi:Program", name, resourceInputs, opts, true);
+        super("pulumi:pulumi:Stack", name, resourceInputs, opts, true);
     }
 }
 

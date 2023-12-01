@@ -25,7 +25,7 @@ func newPulumiPackage() *Package {
 					"name": {TypeSpec: TypeSpec{Type: "string"}},
 				},
 			},
-			"pulumi:pulumi:Program": {
+			"pulumi:pulumi:Stack": {
 				IsComponent: true,
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{

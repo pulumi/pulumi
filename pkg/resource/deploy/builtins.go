@@ -217,7 +217,7 @@ func createConfigValue(rawValue interface{}) (string, error) {
 func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions,
 ) (plugin.ConstructResult, error) {
-	if typ == "pulumi:pulumi:Program" {
+	if typ == "pulumi:pulumi:Stack" {
 		source := inputs["source"].StringValue()
 
 		_, err := os.Stat(source)
