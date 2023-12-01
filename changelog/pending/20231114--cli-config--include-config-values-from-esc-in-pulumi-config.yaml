@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/config
-  description: Include config values from ESC in `pulumi config`

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet,go,nodejs,python
-  description: No longer writing out name and project from alias definitions into SDKs, only type

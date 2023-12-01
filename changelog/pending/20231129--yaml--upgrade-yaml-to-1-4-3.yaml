@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: yaml
-  description: Upgrade yaml to 1.4.3

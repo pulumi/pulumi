@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go
-  description: Fix a datarace in cloning git repos.
