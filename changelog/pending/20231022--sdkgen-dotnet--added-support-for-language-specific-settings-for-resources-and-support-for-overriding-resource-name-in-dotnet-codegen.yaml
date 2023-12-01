@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/dotnet
-  description: Added support for language specific settings for resources and support for overriding resource name in dotnet codegen

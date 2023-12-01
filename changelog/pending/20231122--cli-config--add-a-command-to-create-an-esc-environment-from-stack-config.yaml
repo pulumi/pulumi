@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/config
-  description: Add a command to create an ESC environment from stack config

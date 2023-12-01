@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen
-  description: Fixes marshalling the "plain" flag from object or resource properties

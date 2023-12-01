@@ -15,7 +15,7 @@ require (
 	github.com/hexops/autogold v1.3.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.91.0
-	github.com/pulumi/pulumi/sdk/v3 v3.94.2
+	github.com/pulumi/pulumi/sdk/v3 v3.95.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.57.1
 )

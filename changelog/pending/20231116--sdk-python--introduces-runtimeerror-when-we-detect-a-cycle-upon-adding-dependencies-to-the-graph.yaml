@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Introduces RuntimeError when we detect a cycle upon adding dependencies to the graph. Additionally adds "PULUMI_ERROR_ON_DEPENDENCY_CYCLES" as a new environment variable to control this behavior. Set to `False` to return to the previous behavior, which could potentially re-introduce infinite hangs for some programs.
