@@ -148,7 +148,7 @@ func DeserializeCheckpoint(
 func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 	if snap != nil {
 		for _, res := range snap.Resources {
-			if res.Type == resource.RootStackType {
+			if res.Type == resource.RootStackType && res.Parent == "" {
 				return res, nil
 			}
 		}

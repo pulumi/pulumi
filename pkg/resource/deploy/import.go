@@ -166,7 +166,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	// Get or create the root resource.
 	if i.deployment.prev != nil {
 		for _, res := range i.deployment.prev.Resources {
-			if res.Type == resource.RootStackType {
+			if res.Type == resource.RootStackType && res.Parent == "" {
 				return res.URN, false, true
 			}
 		}

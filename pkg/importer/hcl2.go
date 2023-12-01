@@ -128,7 +128,7 @@ func appendResourceOption(block *model.Block, name string, value model.Expressio
 
 func makeResourceOptions(state *resource.State, names NameTable) (*model.Block, error) {
 	var resourceOptions *model.Block
-	if state.Parent != "" && state.Parent.Type() != resource.RootStackType {
+	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
 		name, ok := names[state.Parent]
 		if !ok {
 			return nil, fmt.Errorf("no name for parent %v", state.Parent)
