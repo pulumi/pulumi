@@ -1260,7 +1260,12 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		},
 		"d": []interface{}{1},
 		"e": []interface{}{1},
-	}), []string{"a", "b.c", "d", "e[0]"}, []display.StepOp{deploy.OpCreate})
+		"f": map[string]interface{}{
+			"g": map[string]interface{}{
+				"h": "bar",
+			},
+		},
+	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpCreate})
 
 	// Ensure that a change to an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1270,7 +1275,12 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		},
 		"d": []interface{}{2},
 		"e": []interface{}{2},
-	}), []string{"a", "b.c", "d", "e[0]"}, []display.StepOp{deploy.OpSame})
+		"f": map[string]interface{}{
+			"g": map[string]interface{}{
+				"h": "baz",
+			},
+		},
+	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpSame})
 
 	// Ensure that a change to an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1280,12 +1290,17 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		},
 		"d": []interface{}{3},
 		"e": []interface{}{3},
+		"f": map[string]interface{}{
+			"g": map[string]interface{}{
+				"h": "qux",
+			},
+		},
 	}), nil, []display.StepOp{deploy.OpUpdate})
 
 	// Ensure that a removing an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"e": []interface{}{},
-	}), []string{"a", "b", "d", "e"}, []display.StepOp{deploy.OpSame})
+	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpSame})
 
 	// Ensure that a removing an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1300,13 +1315,13 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		},
 		"d": []interface{}{4},
 		"e": []interface{}{},
-	}), []string{"a", "b", "d", "e[0]"}, []display.StepOp{deploy.OpSame})
+	}), []string{"a", "b", "d", "e[0]", "f"}, []display.StepOp{deploy.OpSame})
 
 	// Ensure that adding an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"e": []interface{}{},
-		"f": 4,
-	}), []string{"a", "b", "d", "e"}, []display.StepOp{deploy.OpUpdate})
+		"i": 4,
+	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpUpdate})
 
 	// Ensure that sub-elements of arrays can be ignored, first reset to a simple state
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
