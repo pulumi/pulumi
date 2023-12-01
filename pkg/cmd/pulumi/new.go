@@ -509,7 +509,7 @@ func sendPromptToPulumiAI(promptMessage string, conversationID string, connectio
 	requestBody := AIPromptRequestBody{
 		Language:       language,
 		Instructions:   promptMessage,
-		Model:          "gpt-4",
+		Model:          "gpt-4-turbo",
 		ResponseMode:   "code",
 		ConversationID: conversationID,
 		ConnectionID:   connectionID,
