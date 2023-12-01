@@ -69,6 +69,7 @@ export interface Store {
     config: Record<string, string>;
     stackResource?: Stack;
     leakCandidates: Set<Promise<any>>;
+    logErrorCount: number;
 }
 
 /** @internal */
@@ -100,6 +101,8 @@ export class LocalStore implements Store {
      * leakCandidates tracks the list of potential leak candidates.
      */
     leakCandidates = new Set<Promise<any>>();
+
+    logErrorCount = 0;
 }
 
 /** Get the root stack resource for the current stack deployment
