@@ -525,6 +525,7 @@ class Stack:
         log_verbosity: Optional[int] = None,
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
+        exclude_protected: Optional[bool] = None,
         debug: Optional[bool] = None,
     ) -> DestroyResult:
         """
@@ -543,6 +544,7 @@ class Stack:
         :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param exclude_protected: Do not destroy protected resources. Destroy all other resources.
         :param debug: Print detailed debugging output during resource operations
         :returns: DestroyResult
         """
@@ -829,6 +831,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     log_verbosity: Optional[int] = kwargs.get("log_verbosity")
     log_to_std_err: Optional[bool] = kwargs.get("log_to_std_err")
     tracing: Optional[str] = kwargs.get("tracing")
+    exclude_protected: Optional[bool] = kwargs.get("exclude_protected")
     debug: Optional[bool] = kwargs.get("debug")
 
     if message:
@@ -863,6 +866,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--logtostderr"])
     if tracing:
         extra_args.extend(["--tracing", tracing])
+    if exclude_protected:
+        extra_args.extend(["--exclude-protected"])
     if debug:
         extra_args.extend(["--debug"])
     return extra_args

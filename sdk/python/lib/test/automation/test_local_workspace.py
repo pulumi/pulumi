@@ -39,6 +39,8 @@ from pulumi.automation import (
     StackSettings,
     StackAlreadyExistsError,
     fully_qualified_stack_name,
+    ResourceOptions,
+    CustomResource
 )
 from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
 
@@ -68,6 +70,13 @@ version_tests = [
     ("invalid", None, True),
 ]
 test_min_version = VersionInfo.parse("2.21.1")
+
+
+class TestResource(CustomResource):
+    def __init__(self,
+                 resource_name: str,
+                 opts: Optional[ResourceOptions] = None):
+        super().__init__("TestProvider::TestResource", resource_name, {}, opts)
 
 
 def test_path(*paths):
@@ -575,6 +584,51 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_stack_lifecycle_inline_program_with_exclude_protected(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+
+        def destroy_program():
+            TestResource('protected_res', opts=ResourceOptions(protect=True))
+            TestResource('unprotected_res')
+
+        stack = create_stack(stack_name, program=destroy_program, project_name=project_name)
+        stack_config: ConfigMap = {}
+
+        try:
+            stack.set_all_config(stack_config)
+
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(len(up_res.outputs), 2)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            preview_result = stack.preview()
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 2)
+
+            # pulumi refresh
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi destroy with exclude protected
+            destroy_res = stack.destroy(exclude_protected=True)
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
+            self.assertEqual(preview_result.change_summary.get(OpType.DELETE), 1)
+
+            # pulumi destroy without exclude protected
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+            self.assertEqual(preview_result.change_summary.get(OpType.DELETE), 1)
+
         finally:
             stack.workspace.remove_stack(stack_name)
 
