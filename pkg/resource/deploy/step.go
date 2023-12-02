@@ -713,7 +713,10 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			return resource.StatusOK, nil, err
 		}
 
-		result, rst, err := prov.Read(urn, id, nil, s.new.Inputs)
+		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
+		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
+		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
+		result, rst, err := prov.Read(urn, id, s.new.Inputs, s.new.Inputs)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
