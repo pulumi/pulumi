@@ -13,6 +13,7 @@ import (
 func TestPythonTransformations(t *testing.T) {
 	t.Parallel()
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, dir := range Dirs {
 		d := filepath.Join("python", dir)
 		t.Run(d, func(t *testing.T) {

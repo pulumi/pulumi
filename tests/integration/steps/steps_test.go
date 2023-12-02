@@ -46,6 +46,8 @@ func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNam
 }
 
 // TestSteps tests many combinations of creates, updates, deletes, replacements, and so on.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestSteps(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",

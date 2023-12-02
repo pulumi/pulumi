@@ -85,8 +85,6 @@ func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
 }
 
 func testComponentProviderSchema(t *testing.T, path string) {
-	t.Parallel()
-
 	runComponentSetup(t, "component_provider_schema")
 
 	tests := []struct {
@@ -156,8 +154,6 @@ func testComponentProviderSchema(t *testing.T, path string) {
 
 // Test remote component inputs properly handle unknowns.
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_unknown"
 	runComponentSetup(t, testDir)
 
@@ -197,8 +193,6 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 
 // Test methods properly handle unknowns.
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_methods_unknown"
 	runComponentSetup(t, testDir)
 	tests := []struct {
@@ -345,8 +339,6 @@ func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
 
 // Test methods that create resources.
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_methods_resources"
 	runComponentSetup(t, testDir)
 
@@ -397,8 +389,6 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 
 // Test failures returned from methods are observed.
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_methods_errors"
 	runComponentSetup(t, testDir)
 
@@ -442,8 +432,6 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 
 // Tests methods work when there is an explicit provider for another provider set on the component.
 func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_methods_provider"
 	runComponentSetup(t, testDir)
 
@@ -484,8 +472,6 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 }
 
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_output_values"
 	runComponentSetup(t, testDir)
 
@@ -574,6 +560,7 @@ func testConstructComponentConfigureProviderCommonOptions() integration.ProgramT
 		Package: "metaprovider", Path: filepath.Join(testDir, "testcomponent-go"),
 	}
 	return integration.ProgramTestOptions{
+		NoParallel: true,
 		Config: map[string]string{
 			"proxy": "FromEnv",
 		},

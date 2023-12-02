@@ -17,6 +17,8 @@ import (
 //
 // The setup of this test uses a dynamic provider that will partially fail if a resource's state
 // value is the number 4.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialState(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",

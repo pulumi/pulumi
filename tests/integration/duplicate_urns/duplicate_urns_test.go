@@ -23,6 +23,8 @@ import (
 )
 
 // Test that the engine does not tolerate duplicate URNs in the same plan.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDuplicateURNs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",
