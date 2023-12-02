@@ -1242,7 +1242,8 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 			// Make sure _all_ the string was consumed as YAML. Unlike JsonDecoder above, the YamlDecoder
 			// doesn't give an easy way to do this, so our workaround is we ask it to try and decode another
 			// value, and if it fails with io.EOF, then we know we've consumed the whole string.
-			eofErr := yamlDecoder.Decode(nil)
+			var ignored interface{}
+			eofErr := yamlDecoder.Decode(&ignored)
 			if errors.Is(eofErr, io.EOF) {
 				translated, ok := p.translateYAMLValue(object)
 				if !ok {
