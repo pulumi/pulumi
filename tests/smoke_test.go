@@ -68,10 +68,7 @@ func TestYamlConvertSmoke(t *testing.T) {
 	e.ImportDirectory("testdata/random_yaml")
 
 	// Make sure random is installed
-	out, _ := e.RunCommand("pulumi", "plugin", "ls")
-	if !strings.Contains(out, "random  resource  4.13.0") {
-		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-	}
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
@@ -105,10 +102,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/random_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -139,10 +133,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/bad_random_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -175,10 +166,7 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/component_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "convert", "--language", Languages[runtime], "--from", "pcl", "--out", "out")
