@@ -1515,3 +1515,87 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 7, len(snap.Resources))
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/14531. This test ensures that when
+// --targets is set non-targeted parents in creates trigger an error.
+func TestTargetUntargetedParent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		parent, _, _, err := monitor.RegisterResource("component", "parent", false)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent: parent,
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	//nolint:paralleltest // Requires serial access to TestPlan
+	t.Run("target update", func(t *testing.T) {
+		// Create all resources.
+		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+			HostF: hostF,
+		}, false, p.BackendClient, nil)
+		require.NoError(t, err)
+		// Check we have 4 resources in the stack (stack, parent, provider, child)
+		require.Equal(t, 4, len(snap.Resources))
+
+		// Run an update to target the child. This works because we don't need to create the parent so can just
+		// SameStep it using the data currently in state.
+		inputs = resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+		}
+		snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+			HostF: hostF,
+			UpdateOptions: UpdateOptions{
+				Targets: deploy.NewUrnTargets([]string{
+					"**child**",
+				}),
+			},
+		}, false, p.BackendClient, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 4, len(snap.Resources))
+		parentURN := snap.Resources[1].URN
+		assert.Equal(t, "parent", parentURN.Name())
+		assert.Equal(t, parentURN, snap.Resources[3].Parent)
+	})
+
+	//nolint:paralleltest // Requires serial access to TestPlan
+	t.Run("target create", func(t *testing.T) {
+		// Create all resources from scratch (nil snapshot) but only target the child. This should error that the parent
+		// needs to be created.
+		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+			HostF: hostF,
+			UpdateOptions: UpdateOptions{
+				Targets: deploy.NewUrnTargets([]string{
+					"**child**",
+				}),
+			},
+		}, false, p.BackendClient, nil)
+		assert.ErrorContains(t, err, "untargeted create")
+		// We should have two resources the stack and the default provider we made for the child.
+		assert.Equal(t, 2, len(snap.Resources))
+		assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
+		assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
+	})
+}
