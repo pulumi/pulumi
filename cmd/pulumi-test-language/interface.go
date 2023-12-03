@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -401,44 +403,29 @@ func (h *testHost) LanguageRuntime(
 	return h.runtime, nil
 }
 
-// difference returns the elements in `a` that aren't in `b`.
-func difference(a, b []string) []string {
-	mb := make(map[string]struct{}, len(b))
-	for _, x := range b {
-		mb[x] = struct{}{}
-	}
-	var diff []string
-	for _, x := range a {
-		if _, found := mb[x]; !found {
-			diff = append(diff, x)
-		}
-	}
-	return diff
-}
-
 func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
-	expected := []string{
+	expected := mapset.NewSet(
 		fmt.Sprintf("language-%s@<nil>", h.runtimeName),
-	}
+	)
 	for _, provider := range h.providers {
 		pkg := provider.Pkg()
 		version, err := getProviderVersion(provider)
 		if err != nil {
 			return fmt.Errorf("get provider version %s: %w", pkg, err)
 		}
-		expected = append(expected, fmt.Sprintf("resource-%s@%s", pkg, version))
+		expected.Add(fmt.Sprintf("resource-%s@%s", pkg, version))
 	}
 
-	actual := make([]string, len(plugins))
-	for i, plugin := range plugins {
-		actual[i] = fmt.Sprintf("%s-%s@%s", plugin.Kind, plugin.Name, plugin.Version)
+	actual := mapset.NewSetWithSize[string](len(plugins))
+	for _, plugin := range plugins {
+		actual.Add(fmt.Sprintf("%s-%s@%s", plugin.Kind, plugin.Name, plugin.Version))
 	}
 
 	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
-	diff := append(difference(expected, actual), difference(actual, expected)...)
-	if len(diff) > 0 {
+	diff := expected.SymmetricDifference(actual)
+	if !diff.IsEmpty() {
 		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actual, expected)
 	}
 
