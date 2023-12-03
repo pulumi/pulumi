@@ -992,11 +992,10 @@ func TestStackReference(t *testing.T) {
 
 	// Test that the normal lifecycle works correctly.
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
-		_, _, state, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		_, state, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
-			}),
-		})
+			}), "", "", "")
 		assert.NoError(t, err)
 		if !info.DryRun {
 			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
@@ -1018,6 +1017,162 @@ func TestStackReference(t *testing.T) {
 		},
 		Options: TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
+	}
+	p.Run(t, nil)
+
+	// Test that changes to `name` cause replacement.
+	resURN := p.NewURN("pulumi:pulumi:StackReference", "other", "")
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:     resURN.Type(),
+				URN:      resURN,
+				Custom:   true,
+				ID:       "1",
+				External: true,
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"name": "other2",
+				}),
+				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"name":    "other2",
+					"outputs": resource.PropertyMap{},
+				}),
+			},
+		},
+	}
+	p.Steps = []TestStep{{
+		Op:          Update,
+		SkipPreview: true,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
+			for _, entry := range entries {
+				switch urn := entry.Step.URN(); urn {
+				case resURN:
+					switch entry.Step.Op() {
+					case deploy.OpRead:
+						// OK
+					default:
+						t.Fatalf("unexpected journal operation: %v", entry.Step.Op())
+					}
+				}
+			}
+
+			return err
+		},
+	}}
+	p.Run(t, old)
+
+	// Test that unknown stacks are handled appropriately.
+	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "rehto",
+			}), "", "", "")
+		assert.Error(t, err)
+		return err
+	})
+	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: true,
+		SkipPreview:   true,
+	}}
+	p.Run(t, nil)
+
+	// Test that unknown properties cause errors.
+	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "other",
+				"foo":  "bar",
+			}), "", "", "")
+		assert.Error(t, err)
+		return err
+	})
+	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Run(t, nil)
+}
+
+// Tests that registering (rather than reading) a StackReference resource works as intended, but warns the user that
+// it's deprecated.
+func TestStackReferenceRegister(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{}
+
+	// Test that the normal lifecycle works correctly.
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, _, state, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name": "other",
+			}),
+		})
+		assert.NoError(t, err)
+		if !info.DryRun {
+			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
+		}
+		return nil
+	})
+
+	steps := MakeBasicLifecycleSteps(t, 2)
+	// Add an extra validate stage to each step to check we get the diagnostic that this use of stack reference is
+	// obsolete if a stack resource was registered.
+	for i := range steps {
+		v := steps[i].Validate
+		steps[i].Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, err error,
+		) error {
+			// Check if we registered a stack reference resource (i.e. same/update/create). Ideally we'd warn on refresh
+			// as well but that's just a Read so it's hard to tell in the built-in provider if that's a Read for a
+			// ReadResource or a Read for a refresh, so we don't worry about that case.
+			registered := false
+			for _, entry := range entries {
+				if entry.Step.URN().Type() == "pulumi:pulumi:StackReference" &&
+					(entry.Step.Op() == deploy.OpCreate ||
+						entry.Step.Op() == deploy.OpUpdate ||
+						entry.Step.Op() == deploy.OpSame) {
+					registered = true
+				}
+			}
+
+			if registered {
+				found := false
+				for _, evt := range evts {
+					if evt.Type == DiagEvent {
+						payload := evt.Payload().(DiagEventPayload)
+
+						ok := payload.Severity == "warning" &&
+							payload.URN.Type() == "pulumi:pulumi:StackReference" &&
+							strings.Contains(
+								payload.Message,
+								"The \"pulumi:pulumi:StackReference\" resource type is deprecated.")
+						found = found || ok
+					}
+				}
+				assert.True(t, found, "diagnostic warning not found in: %+v", evts)
+			}
+
+			return v(project, target, entries, evts, err)
+		}
+	}
+
+	p := &TestPlan{
+		BackendClient: &deploytest.BackendClient{
+			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+				switch name {
+				case "other":
+					return resource.NewPropertyMapFromMap(map[string]interface{}{
+						"foo": "bar",
+					}), nil
+				default:
+					return nil, fmt.Errorf("unknown stack \"%s\"", name)
+				}
+			},
+		},
+		Options: TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
+		Steps:   steps,
 	}
 	p.Run(t, nil)
 
