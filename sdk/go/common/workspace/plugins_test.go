@@ -36,6 +36,87 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestLegacyPluginSelection_Prerelease(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("0.1.0")
+	v2 := semver.MustParse("0.2.0")
+	v3 := semver.MustParse("0.3.0-alpha")
+	candidatePlugins := []PluginInfo{
+		{
+			Name:    "myplugin",
+			Kind:    ResourcePlugin,
+			Version: &v1,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    ResourcePlugin,
+			Version: &v2,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "notmyplugin",
+			Kind:    ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    AnalyzerPlugin,
+			Version: &v3,
+		},
+	}
+
+	result := LegacySelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", nil)
+	assert.NotNil(t, result)
+	assert.Equal(t, "myplugin", result.Name)
+	assert.Equal(t, "0.2.0", result.Version.String())
+}
+
+func TestLegacyPluginSelection_PrereleaseRequested(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("0.1.0")
+	v2 := semver.MustParse("0.2.0-alpha")
+	v3 := semver.MustParse("0.3.0-alpha")
+	candidatePlugins := []PluginInfo{
+		{
+			Name:    "myplugin",
+			Kind:    ResourcePlugin,
+			Version: &v1,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    ResourcePlugin,
+			Version: &v2,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "notmyplugin",
+			Kind:    ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    AnalyzerPlugin,
+			Version: &v3,
+		},
+	}
+
+	v := semver.MustParse("0.2.0")
+	result := LegacySelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", &v)
+	assert.NotNil(t, result)
+	assert.Equal(t, "myplugin", result.Name)
+	assert.Equal(t, "0.3.0-alpha", result.Version.String())
+}
+
 func TestPluginSelection_ExactMatch(t *testing.T) {
 	t.Parallel()
 
@@ -71,8 +152,8 @@ func TestPluginSelection_ExactMatch(t *testing.T) {
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -112,8 +193,8 @@ func TestPluginSelection_ExactMatchNotFound(t *testing.T) {
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	_, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.Error(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
+	assert.Nil(t, result)
 }
 
 func TestPluginSelection_PatchVersionSlide(t *testing.T) {
@@ -157,8 +238,8 @@ func TestPluginSelection_PatchVersionSlide(t *testing.T) {
 	}
 
 	requested := semver.MustParseRange(">=0.2.0 <0.3.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.1", result.Version.String())
 }
@@ -203,8 +284,8 @@ func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Nil(t, result.Version)
 }
@@ -254,8 +335,8 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
