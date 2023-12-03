@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1410,10 +1412,10 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the deployment executor for safe execution.
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
-	var antichains []antichain                // the list of parallelizable steps we intend to return.
-	dg := sg.deployment.depGraph              // the current deployment's dependency graph.
-	condemned := make(graph.ResourceSet)      // the set of condemned resources.
-	stepMap := make(map[*resource.State]Step) // a map from resource states to the steps that delete them.
+	var antichains []antichain                    // the list of parallelizable steps we intend to return.
+	dg := sg.deployment.depGraph                  // the current deployment's dependency graph.
+	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
+	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
 
 	// If we don't trust the dependency graph we've been given, we must be conservative and delete everything serially.
 	if !sg.opts.TrustDependencies {
@@ -1430,17 +1432,17 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	// For every step we've been given, record it as condemned and save the step that will be used to delete it. We'll
 	// iteratively place these steps into antichains as we remove elements from the condemned set.
 	for _, step := range deleteSteps {
-		condemned[step.Res()] = true
+		condemned.Add(step.Res())
 		stepMap[step.Res()] = step
 	}
 
-	for len(condemned) > 0 {
+	for !condemned.IsEmpty() {
 		var steps antichain
 		logging.V(7).Infof("Planner beginning schedule of new deletion antichain")
-		for res := range condemned {
+		for res := range condemned.Iter() {
 			// Does res have any outgoing edges to resources that haven't already been removed from the graph?
 			condemnedDependencies := dg.DependenciesOf(res).Intersect(condemned)
-			if len(condemnedDependencies) == 0 {
+			if condemnedDependencies.IsEmpty() {
 				// If not, it's safe to delete res at this stage.
 				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
 				steps = append(steps, stepMap[res])
@@ -1452,7 +1454,7 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 
 		// For all reosurces that are to be deleted in this round, remove them from the graph.
 		for _, step := range steps {
-			delete(condemned, step.Res())
+			condemned.Remove(step.Res())
 		}
 
 		antichains = append(antichains, steps)

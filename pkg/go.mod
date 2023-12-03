@@ -71,6 +71,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.10
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/creack/pty v1.1.17
+	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/go-git/go-git/v5 v5.9.0
