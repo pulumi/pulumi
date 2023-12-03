@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "HttpApi.cs",
+    "Inputs/HttpAuthorizerArgs.cs",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

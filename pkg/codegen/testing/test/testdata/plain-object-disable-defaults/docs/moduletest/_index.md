@@ -248,7 +248,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_go" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type"><a href="#typ">Typ</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
