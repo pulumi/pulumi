@@ -61,11 +61,11 @@ func TestStackReferencePython(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step1",
+				Dir:      filepath.Join("stack_reference", "python", "step1"),
 				Additive: true,
 			},
 			{
-				Dir:      "step2",
+				Dir:      filepath.Join("stack_reference", "python", "step2"),
 				Additive: true,
 			},
 		},
@@ -87,7 +87,7 @@ func TestDynamicPython(t *testing.T) {
 			randomVal = stack.Outputs["random_val"].(string)
 		},
 		EditDirs: []integration.EditDir{{
-			Dir:      "step1",
+			Dir:      filepath.Join("dynamic", "python", "step1"),
 			Additive: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))

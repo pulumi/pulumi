@@ -54,11 +54,11 @@ func TestStackReferenceNodeJS(t *testing.T) {
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step1",
+				Dir:      filepath.Join("stack_reference", "nodejs", "step1"),
 				Additive: true,
 			},
 			{
-				Dir:      "step2",
+				Dir:      filepath.Join("stack_reference", "nodejs", "step2"),
 				Additive: true,
 			},
 		},
