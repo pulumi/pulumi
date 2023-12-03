@@ -44,7 +44,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
-	github.com/pulumi/appdash v0.0.0-20231130102013-538fec2a741d
+	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.5.6
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
