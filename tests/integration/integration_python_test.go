@@ -1152,13 +1152,14 @@ func TestConstructProviderExplicitPython(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/13551
 //
-//nolint:paralleltest // ProgramTestManualLifeCycle calls t.Parallel()
+//nolint:paralleltest // Mutates envvars
 func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
-	t.Skip("Temporarily skipping flakey test - pulumi/pulumi#14708")
-
 	stdout := &bytes.Buffer{}
+	t.Setenv("PULUMI_ERROR_ON_DEPENDENCY_CYCLES", "true")
+
 	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("python", "implicit-dependency-cycles"),
+		NoParallel: true,
+		Dir:        filepath.Join("python", "implicit-dependency-cycles"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -1178,5 +1179,7 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 	t.Cleanup(pt.TestCleanUp)
 
 	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
-	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview")
+	require.ErrorContains(t,
+		pt.TestPreviewUpdateAndEdits(),
+		"pulumi preview --non-interactive --diff] did not succeed after 1 tries")
 }
