@@ -19,10 +19,13 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIgnoreChanges(t *testing.T) {
@@ -527,4 +530,433 @@ func TestDeleteProtectedErrorUsesCorrectQuotesOnOS(t *testing.T) {
 		}
 		assert.Contains(t, gotErrMsg, contains)
 	})
+}
+
+func TestGenerateReadSteps_read(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+		},
+		reads:    map[resource.URN]bool{},
+		replaces: map[resource.URN]bool{},
+	}
+	steps, err := sg.GenerateReadSteps(&readResourceEvent{
+		id:       "new-id",
+		baseType: "my-type",
+		props:    resource.NewPropertyMapFromMap(map[string]interface{}{}),
+	})
+	assert.NoError(t, err)
+	assert.Len(t, steps, 1)
+	assert.IsType(t, &ReadStep{}, steps[0])
+
+	assert.NotContains(t, sg.replaces, "urn:pulumi:stack-name::::my-type::")
+	assert.True(t, sg.reads["urn:pulumi:stack-name::::my-type::"])
+}
+
+func TestGenerateReadSteps_replace(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds: map[resource.URN]*resource.State{
+				"urn:pulumi:stack-name::::my-type::": {
+					External: false,
+					ID:       "old-id",
+					Type:     "my-type",
+					URN:      "urn:pulumi:stack-name::::my-type::",
+				},
+			},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+		},
+		reads:    map[resource.URN]bool{},
+		replaces: map[resource.URN]bool{},
+	}
+	steps, err := sg.GenerateReadSteps(&readResourceEvent{
+		id:       "new-id",
+		baseType: "my-type",
+		props:    resource.NewPropertyMapFromMap(map[string]interface{}{}),
+	})
+	assert.NoError(t, err)
+	assert.Len(t, steps, 2)
+	assert.IsType(t, &ReadStep{}, steps[0])
+	assert.IsType(t, &ReplaceStep{}, steps[1])
+
+	// Check side effects.
+	assert.NotContains(t, sg.reads, "urn:pulumi:stack-name::::my-type::")
+	assert.True(t, sg.replaces["urn:pulumi:stack-name::::my-type::"])
+}
+
+func TestGenerateReadSteps_duplicateURN(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{
+			"urn:pulumi:stack-name::::my-type::": true,
+		},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+				Diag: sink,
+			},
+		},
+		reads:    map[resource.URN]bool{},
+		replaces: map[resource.URN]bool{},
+	}
+	_, err = sg.GenerateReadSteps(&readResourceEvent{
+		id:       "new-id",
+		baseType: "my-type",
+		props:    resource.NewPropertyMapFromMap(map[string]interface{}{}),
+	})
+	assert.ErrorContains(t, err, "Duplicate resource URN 'urn:pulumi:stack-name::::my-type::'")
+}
+
+func TestGenerateReadSteps_badParent(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{
+			"urn:pulumi:stack-name::::my-type::": true,
+		},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+				Diag: sink,
+			},
+		},
+		reads:    map[resource.URN]bool{},
+		replaces: map[resource.URN]bool{},
+	}
+	_, err = sg.GenerateReadSteps(&readResourceEvent{
+		id:       "new-id",
+		baseType: "my-type",
+		parent:   "does-not-exist",
+		props:    resource.NewPropertyMapFromMap(map[string]interface{}{}),
+	})
+	assert.ErrorContains(t, err, "could not find parent resource does-not-exist")
+}
+
+func TestGenerateReadSteps_badID(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			ctx: &plugin.Context{},
+		},
+	}
+	_, err = sg.GenerateReadSteps(&readResourceEvent{
+		id:       "",
+		baseType: "my-type",
+		props:    resource.NewPropertyMapFromMap(map[string]interface{}{}),
+	})
+	assert.ErrorContains(t, err, "Expected an ID for urn:pulumi:stack-name::::my-type::")
+}
+
+func TestGenerateSteps_same(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+
+	sg := &stepGenerator{
+		urns:  map[resource.URN]bool{},
+		sames: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds: map[resource.URN]*resource.State{
+				"urn:pulumi:stack-name::::my-type::": {
+					External: false,
+					ID:       "old-id",
+					Type:     "my-type",
+					URN:      "urn:pulumi:stack-name::::my-type::",
+				},
+			},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			goals: &goalMap{},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+			},
+		},
+	}
+	steps, err := sg.GenerateSteps(&registerResourceEvent{
+		goal: &resource.Goal{
+			Type: "my-type",
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, steps, 1)
+	assert.IsType(t, &SameStep{}, steps[0])
+}
+
+func TestGenerateSteps_badParent(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+
+	sg := &stepGenerator{
+		deployment: &Deployment{
+			olds: map[resource.URN]*resource.State{
+				"urn:pulumi:stack-name::::my-type::": {
+					External: false,
+					ID:       "old-id",
+					Type:     "my-type",
+					URN:      "urn:pulumi:stack-name::::my-type::",
+				},
+			},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			goals: &goalMap{},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+			},
+		},
+	}
+	_, err = sg.GenerateSteps(&registerResourceEvent{
+		goal: &resource.Goal{
+			Type:   "my-type",
+			Parent: "does-not-exist",
+		},
+	})
+	assert.ErrorContains(t, err, "could not find parent resource does-not-exist")
+}
+
+func TestGenerateSteps_duplicateURN(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{
+			"urn:pulumi:stack-name::::my-type::": true,
+		},
+		sames: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			goals: &goalMap{},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+				Diag: sink,
+			},
+		},
+	}
+	_, err = sg.GenerateSteps(&registerResourceEvent{
+		goal: &resource.Goal{
+			Type: "my-type",
+		},
+	})
+	assert.ErrorContains(t, err, "Duplicate resource URN 'urn:pulumi:stack-name::::my-type::'")
+}
+
+func TestGenerateSteps_alias_alreadyAliased(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+
+	sg := &stepGenerator{
+		urns:  map[resource.URN]bool{},
+		sames: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			goals: &goalMap{},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+				Diag: sink,
+			},
+		},
+		aliased: map[resource.URN]resource.URN{
+			"urn:pulumi:stack-name::::my-type::": "urn:pulumi:stack-name::::my-type::other",
+		},
+	}
+	_, err = sg.GenerateSteps(&registerResourceEvent{
+		goal: &resource.Goal{
+			ID:         "some-id",
+			Type:       "my-type",
+			Properties: resource.NewPropertyMapFromMap(map[string]interface{}{}),
+		},
+	})
+	assert.ErrorContains(t, err, "resource urn:pulumi:stack-name::::my-type:: is invalid")
+}
+
+func TestGenerateSteps_alias_lookupError(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			goals: &goalMap{},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+				Diag: sink,
+			},
+			providers: providers.NewRegistry(defaultHost, true, nil),
+		},
+		aliased: map[resource.URN]resource.URN{},
+		aliases: map[resource.URN]resource.URN{},
+	}
+
+	// Fake registering a resource with a URN that will be another resource's Alias.
+	sg.urns["urn:pulumi:stack-name::::my-type::foo"] = true
+	sg.deployment.olds["urn:pulumi:stack-name::::my-type::foo"] = &resource.State{}
+
+	_, err = sg.GenerateSteps(&registerResourceEvent{
+		goal: &resource.Goal{
+			ID:         "some-id",
+			Type:       "my-type",
+			Properties: resource.NewPropertyMapFromMap(map[string]interface{}{}),
+			Aliases: []resource.Alias{
+				{
+					URN: "urn:pulumi:stack-name::::my-type::foo",
+				},
+			},
+		},
+	})
+	assert.ErrorContains(t, err, "resource urn:pulumi:stack-name::::my-type:: is invalid")
+}
+
+func TestGenerateSteps_alias_lookupError2(t *testing.T) {
+	t.Parallel()
+	sn, err := tokens.ParseStackName("stack-name")
+	require.NoError(t, err)
+	sink := diagtest.LogSink(t)
+
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	defaultHost, err := plugin.NewDefaultHost(ctx, nil, true, nil, nil)
+	require.NoError(t, err)
+
+	sg := &stepGenerator{
+		urns: map[resource.URN]bool{},
+		deployment: &Deployment{
+			olds:   map[resource.URN]*resource.State{},
+			source: &nullSource{},
+			target: &Target{
+				Name: sn,
+			},
+			goals: &goalMap{},
+			ctx: &plugin.Context{
+				Host: defaultHost,
+				Diag: sink,
+			},
+			providers: providers.NewRegistry(defaultHost, true, nil),
+		},
+		aliased: map[resource.URN]resource.URN{},
+		aliases: map[resource.URN]resource.URN{},
+	}
+
+	// Fake registering a resource with a URN that will be another resource's Alias.
+	sg.aliased["urn:pulumi:stack-name::::my-type::foo"] = ""
+	sg.deployment.olds["urn:pulumi:stack-name::::my-type::foo"] = &resource.State{}
+
+	_, err = sg.GenerateSteps(&registerResourceEvent{
+		goal: &resource.Goal{
+			ID:         "some-id",
+			Type:       "my-type",
+			Properties: resource.NewPropertyMapFromMap(map[string]interface{}{}),
+			Aliases: []resource.Alias{
+				{
+					URN: "urn:pulumi:stack-name::::my-type::foo",
+				},
+			},
+		},
+	})
+	assert.ErrorContains(t, err, "resource urn:pulumi:stack-name::::my-type:: is invalid")
 }
