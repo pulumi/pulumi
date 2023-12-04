@@ -93,6 +93,23 @@ jobs:
     timeout-minutes: 60
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      # Create a coverage file to register a testing job was started.
+      # This artifact will be overwritten with "OK" at the end of the job.
+      - name: Write test started file
+        shell: bash
+        run: |
+          HASH=$(echo '${{ inputs.test-name }}' | git hash-object --literally --stdin | awk '{ print $1 }')
+          echo "TEST_HASH_ID=${HASH}" >> "$GITHUB_ENV"
+          echo "TEST_STATUS_FILE=status/test-${HASH}.txt" >> "$GITHUB_ENV"
+      # Consume env.TEST_STATUS_FILE to ensure it's able to be successfully used later.
+      - shell: bash
+        run: |
+          mkdir status
+          echo "incomplete" > "${{ env.TEST_STATUS_FILE }}"
+      - name: Register test started.
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{ env.TEST_STATUS_FILE }}
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
@@ -333,14 +350,20 @@ jobs:
             go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration.$TS.cov"
           fi
       - name: Upload code coverage
+        uses: actions/upload-artifact@v2
         if: ${{ inputs.enable-coverage }}
-        uses: codecov/codecov-action@v3
         with:
-          directory: coverage
-          files: "*,!.gitkeep"
-          fail_ci_if_error: false
-          verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-${{ env.TEST_HASH_ID }}
+          path: |
+            coverage/*
+            !coverage/.gitkeep
+      - name: Register test OK.
+        shell: bash
+        run: mkdir status; echo "OK" > "${{ env.TEST_STATUS_FILE }}"
+      - name: Register test successful.
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{ env.TEST_STATUS_FILE }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:
