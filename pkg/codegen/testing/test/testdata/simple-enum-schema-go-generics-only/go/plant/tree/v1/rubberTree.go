@@ -32,7 +32,7 @@ func NewRubberTree(ctx *pulumi.Context,
 	}
 
 	if args.Container != nil {
-		args.Container = pulumix.Apply(args.Container, func(o *plant.ContainerArgs) *plant.ContainerArgs { return o.Defaults() })
+		args.Container = pulumix.Apply(args.Container, func(o *plant.Container) *plant.Container { return o.Defaults() })
 	}
 	if args.Diameter == nil {
 		args.Diameter = pulumix.Val(Diameter(6.0))
@@ -90,7 +90,7 @@ type rubberTreeArgs struct {
 
 // The set of arguments for constructing a RubberTree resource.
 type RubberTreeArgs struct {
-	Container pulumix.Input[*plant.ContainerArgs]
+	Container pulumix.Input[*plant.Container]
 	Diameter  pulumix.Input[Diameter]
 	Farm      pulumix.Input[*string]
 	Size      pulumix.Input[*TreeSize]
