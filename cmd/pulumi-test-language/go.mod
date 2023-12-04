@@ -8,6 +8,7 @@ replace github.com/pulumi/pulumi/pkg/v3 => ../../pkg
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/pulumi/pulumi/pkg/v3 v3.81.0
 	github.com/pulumi/pulumi/sdk/v3 v3.95.0
 	github.com/segmentio/encoding v0.3.6
@@ -83,7 +84,6 @@ require (
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deckarep/golang-set/v2 v2.5.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
