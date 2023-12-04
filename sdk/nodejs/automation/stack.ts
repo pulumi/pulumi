@@ -26,12 +26,12 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
-import { LanguageServer, maxRPCMessageSize } from "./server";
-import { Deployment, PulumiFn, Workspace } from "./workspace";
 import { LocalWorkspace } from "./localWorkspace";
+import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
+import { Deployment, PulumiFn, Workspace } from "./workspace";
 
-const langrpc = require("../proto/language_grpc_pb.js");
+import * as langrpc from "../proto/language_grpc_pb";
 
 interface ReadlineResult {
     tail: TailFile;

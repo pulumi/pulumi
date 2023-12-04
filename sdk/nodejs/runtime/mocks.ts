@@ -16,9 +16,8 @@ import { deserializeProperties, serializeProperties } from "./rpc";
 import { getProject, getStack, setMockOptions } from "./settings";
 
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
-
-const provproto = require("../proto/provider_pb.js");
-const resproto = require("../proto/resource_pb.js");
+import * as provproto from "../proto/provider_pb";
+import * as resproto from "../proto/resource_pb";
 
 /**
  * MockResourceArgs is used to construct a newResource Mock.
@@ -201,7 +200,7 @@ export class MockMonitor {
 
             const response = new resproto.RegisterResourceResponse();
             response.setUrn(urn);
-            response.setId(result.id);
+            response.setId(result.id || "");
             response.setObject(structproto.Struct.fromJavaScript(serializedState));
             callback(null, response);
         } catch (err) {

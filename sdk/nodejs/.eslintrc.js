@@ -11,6 +11,7 @@ module.exports = {
     },
     plugins: ["eslint-plugin-import", "@typescript-eslint", "header"],
     ignorePatterns: [
+        "proto/**/*.d.ts",
         "**/bin/**/*.ts",
         "cmd/pulumi-language-nodejs",
         "tests/automation/data/tcfg/*.ts",
