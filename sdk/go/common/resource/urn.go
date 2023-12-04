@@ -107,22 +107,10 @@ func (urn URN) IsValid() bool {
 		return false
 	}
 
-	urn = urn[len(URNPrefix):]
-
 	split := strings.SplitN(string(urn), URNNameDelimiter, 4)
-	if len(split) != 4 {
-		return false
-	}
-
-	stack := split[0]
-	if !tokens.IsName(stack) {
-		return false
-	}
-
-	project := split[1]
-	return tokens.IsName(project)
-
-	// TODO: We should validate the type tokens in split[2] here
+	return len(split) == 4
+	// TODO: We should validate the stack, project and type tokens here, but currently those fields might not
+	// actually be "valid" (e.g. spaces in project names, custom component types, etc).
 }
 
 // URNName returns the URN name part of a URN (i.e., strips off the prefix).

@@ -78,6 +78,7 @@ func TestIsValid(t *testing.T) {
 		"urn:pulumi:stack-name::project-name::my:customtype$aws:s3/bucket:Bucket::bob",
 		"urn:pulumi:stack::project::type::",
 		"urn:pulumi:stack::project::type::some really ::^&\n*():: crazy name",
+		"urn:pulumi:stack::project with whitespace::type::some name",
 	}
 	for _, str := range goodUrns {
 		urn := URN(str)

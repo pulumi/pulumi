@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Don't validate URNs, this was causing issues with unexpected data from filestate backends.
