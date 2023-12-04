@@ -294,7 +294,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 				nodes[res.Parent] = p
 			}
 			p.children = append(p.children, node)
-		case res.Type == resource.RootStackType:
+		case res.Type == resource.RootStackType && res.Parent == "":
 			root = node
 		default:
 			orphans = append(orphans, node)

@@ -1824,7 +1824,7 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	var rootResource apitype.ResourceV3
 	var outputs map[string]interface{}
 	for _, res := range deployment.Resources {
-		if res.Type == resource.RootStackType {
+		if res.Type == resource.RootStackType && res.Parent == "" {
 			rootResource = res
 			outputs = res.Outputs
 		}

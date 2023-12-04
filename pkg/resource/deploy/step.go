@@ -1001,7 +1001,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
 		}
-		if s.new.Parent.Type() != resource.RootStackType {
+		if s.new.Parent.QualifiedType() != resource.RootStackType {
 			_, ok := s.deployment.news.get(s.new.Parent)
 			if !ok {
 				return resource.StatusOK, nil, fmt.Errorf("unknown parent '%v' for resource '%v'",

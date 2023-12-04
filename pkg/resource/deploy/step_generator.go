@@ -119,46 +119,38 @@ func (sg *stepGenerator) Errored() bool {
 // if there is one.
 func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Type) (resource.URN, error) {
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	if resourceType == resource.RootStackType {
-		// The RootStack must not have a parent set
-		if parent != "" {
-			return "", fmt.Errorf("root stack resource can not have a parent (tried to set it to %v)", parent)
+
+	// TODO(fraser): I think every resource but the RootStack should have a parent, however currently a
+	// number of our tests do not create a RootStack resource, feels odd that it's possible for the engine
+	// to run without a RootStack resource. I feel this ought to be fixed by making the engine always
+	// create the RootStack before running the user program, however that leaves some questions of what to
+	// do if we ever support changing any of the settings (such as the provider map) on the RootStack
+	// resource. For now we set it to the root stack if we can find it, but we don't error on blank parents
+
+	// If it is set check the parent exists.
+	if parent != "" {
+		// The parent for this resource hasn't been registered yet. That's an error and we can't continue.
+		if _, hasParent := sg.urns[parent]; !hasParent {
+			return "", fmt.Errorf("could not find parent resource %v", parent)
 		}
-	} else {
-		// For other resources they may or may not have a parent.
-		//
-		// TODO(fraser): I think every resource but the RootStack should have a parent, however currently a
-		// number of our tests do not create a RootStack resource, feels odd that it's possible for the engine
-		// to run without a RootStack resource. I feel this ought to be fixed by making the engine always
-		// create the RootStack before running the user program, however that leaves some questions of what to
-		// do if we ever support changing any of the settings (such as the provider map) on the RootStack
-		// resource. For now we set it to the root stack if we can find it, but we don't error on blank parents
+	} else { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/10950
+		// Else try and set it to the root stack
 
-		// If it is set check the parent exists.
-		if parent != "" {
-			// The parent for this resource hasn't been registered yet. That's an error and we can't continue.
-			if _, hasParent := sg.urns[parent]; !hasParent {
-				return "", fmt.Errorf("could not find parent resource %v", parent)
-			}
-		} else { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/10950
-			// Else try and set it to the root stack
+		// TODO: It looks like this currently has some issues with state ordering (see
+		// https://github.com/pulumi/pulumi/issues/10950). Best I can guess is the stack resource is
+		// hitting the step generator and so saving it's URN to sg.urns and issuing a Create step but not
+		// actually getting to writing it's state to the snapshot. Then in parallel with this something
+		// else is causing a pulumi:providers:pulumi default provider to be created, this picks up the
+		// stack URN from sg.urns and so sets it's parent automatically, but then races the step executor
+		// to write itself to state before the stack resource manages to. Long term we want to ensure
+		// there's always a stack resource present, and so that all resources (except the stack) have a
+		// parent (this will save us some work in each SDK), but for now lets just turn this support off.
 
-			// TODO: It looks like this currently has some issues with state ordering (see
-			// https://github.com/pulumi/pulumi/issues/10950). Best I can guess is the stack resource is
-			// hitting the step generator and so saving it's URN to sg.urns and issuing a Create step but not
-			// actually getting to writing it's state to the snapshot. Then in parallel with this something
-			// else is causing a pulumi:providers:pulumi default provider to be created, this picks up the
-			// stack URN from sg.urns and so sets it's parent automatically, but then races the step executor
-			// to write itself to state before the stack resource manages to. Long term we want to ensure
-			// there's always a stack resource present, and so that all resources (except the stack) have a
-			// parent (this will save us some work in each SDK), but for now lets just turn this support off.
-
-			//for urn := range sg.urns {
-			//	if urn.Type() == resource.RootStackType {
-			//		return urn, nil
-			//	}
-			//}
-		}
+		//for urn := range sg.urns {
+		//	if urn.Type() == resource.RootStackType {
+		//		return urn, nil
+		//	}
+		//}
 	}
 
 	return parent, nil
@@ -398,7 +390,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 			parent = parentAlias
 		}
 	}
-	parentIsRootStack := parent != "" && parent.Type() == resource.RootStackType
+	parentIsRootStack := parent != "" && parent.QualifiedType() == resource.RootStackType
 	if alias.NoParent || parentIsRootStack {
 		parent = ""
 	}
@@ -651,7 +643,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
-	isImplicitlyTargetedResource := providers.IsProviderType(urn.Type()) || urn.Type() == resource.RootStackType
+	isImplicitlyTargetedResource := providers.IsProviderType(urn.Type()) || urn.QualifiedType() == resource.RootStackType
 
 	// Internally managed resources are under Pulumi's control and changes or creations should be invisible to
 	// the user, we also implicitly target providers (both default and explicit, see

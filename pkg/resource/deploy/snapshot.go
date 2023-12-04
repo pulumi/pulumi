@@ -75,7 +75,7 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 		}
 		// If our parent has changed URN, then we need to update our URN as well.
 		if parent, has := aliased[state.Parent]; has {
-			if parent != "" && parent.Type() != resource.RootStackType {
+			if parent != "" && parent.QualifiedType() != resource.RootStackType {
 				aliased[state.URN] = resource.NewURN(
 					state.URN.Stack(), state.URN.Project(),
 					parent.QualifiedType(), state.URN.Type(),

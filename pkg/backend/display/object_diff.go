@@ -346,7 +346,7 @@ func getResourceOutputsPropertiesString(
 	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool,
 ) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
-	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
+	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
 		showSames = true
 	}
 
@@ -371,7 +371,7 @@ func getResourceOutputsPropertiesString(
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
 			step.Op == deploy.OpImportReplacement ||
-			step.URN.Type() == resource.RootStackType
+			step.URN.QualifiedType() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""
 		}
@@ -403,7 +403,7 @@ func getResourceOutputsPropertiesString(
 
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
-		if planning && step.URN.Type() == resource.RootStackType {
+		if planning && step.URN.QualifiedType() == resource.RootStackType {
 			massageStackPreviewOutputDiff(outputDiff, false)
 		}
 

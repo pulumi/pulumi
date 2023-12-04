@@ -185,7 +185,7 @@ func isRootStack(step engine.StepEventMetadata) bool {
 }
 
 func isRootURN(urn resource.URN) bool {
-	return urn != "" && urn.Type() == resource.RootStackType
+	return urn != "" && urn.QualifiedType() == resource.RootStackType
 }
 
 // shouldShow returns true if a step should show in the output.

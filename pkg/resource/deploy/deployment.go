@@ -542,7 +542,7 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name string) resource.URN {
 	// Use the resource goal state name to produce a globally unique URN.
 	parentType := tokens.Type("")
-	if parent != "" && parent.Type() != resource.RootStackType {
+	if parent != "" && parent.QualifiedType() != resource.RootStackType {
 		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
 		parentType = parent.QualifiedType()
 	}
