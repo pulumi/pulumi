@@ -1558,6 +1558,14 @@
 				"byteLength": 42,
 				"prefix": "f${oo}ba%{}r"
 			}
+		},
+		{
+			"urn": "urn:pulumi:stack::project::random:index/randomId:RandomId::strange logical name",
+			"custom": true,
+			"type": "random:index/randomId:RandomId",
+			"inputs": {
+				"byteLength": 42
+			}
 		}
     ]
 }

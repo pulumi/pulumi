@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 
+	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
@@ -45,7 +46,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -127,6 +127,7 @@ type cloudBackend struct {
 	d            diag.Sink
 	url          string
 	client       *client.Client
+	escClient    esc_client.Client
 	capabilities func(context.Context) capabilities
 
 	// The current project, if any.
@@ -145,13 +146,15 @@ func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool
 	}
 	apiToken := account.AccessToken
 
-	client := client.NewClient(cloudURL, apiToken, insecure, d)
-	capabilities := detectCapabilities(d, client)
+	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
+	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
+	capabilities := detectCapabilities(d, apiClient)
 
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
-		client:         client,
+		client:         apiClient,
+		escClient:      escClient,
 		capabilities:   capabilities,
 		currentProject: project,
 	}, nil
@@ -694,16 +697,15 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		qualifiedName.Project = b.currentProject.Name.String()
 	}
 
-	if err := validation.ValidateStackName(qualifiedName.Name); err != nil {
+	parsedName, err := tokens.ParseStackName(qualifiedName.Name)
+	if err != nil {
 		return nil, err
 	}
-	contract.Assertf(tokens.IsName(qualifiedName.Name),
-		"qualifiedName.Name must be a valid name because it is a valid stack name")
 
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: tokens.Name(qualifiedName.Project),
-		name:    tokens.Name(qualifiedName.Name),
+		name:    parsedName,
 		b:       b,
 	}, nil
 }
@@ -728,7 +730,8 @@ func (b *cloudBackend) ValidateStackName(s string) error {
 		}
 	}
 
-	return validation.ValidateStackName(qualifiedName.Name)
+	_, err = tokens.ParseStackName(qualifiedName.Name)
+	return err
 }
 
 // validateOwnerName checks if a stack owner name is valid. An "owner" is simply the namespace
@@ -785,7 +788,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
 // must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
-	return path.Join(stackID.Owner, stackID.Project, stackID.Stack)
+	return path.Join(stackID.Owner, stackID.Project, stackID.Stack.String())
 }
 
 func inferOrg(ctx context.Context,
@@ -1535,7 +1538,7 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 	return client.StackIdentifier{
 		Owner:   cloudBackendStackRef.owner,
 		Project: cleanProjectName(string(cloudBackendStackRef.project)),
-		Stack:   string(cloudBackendStackRef.name),
+		Stack:   cloudBackendStackRef.name,
 	}, nil
 }
 
@@ -1820,7 +1823,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 	permalink := b.getPermalink(update, version, dryRun)
 	go display.ShowEvents(
-		backend.ActionLabel(kind, dryRun), kind, tokens.Name(stackID.Stack), tokens.PackageName(stackID.Project),
+		backend.ActionLabel(kind, dryRun), kind, stackID.Stack, tokens.PackageName(stackID.Project),
 		permalink, events, done, opts, dryRun)
 
 	// The UpdateEvents API returns a continuation token to only get events after the previous call.
@@ -1845,7 +1848,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 		if continuationToken == nil {
 			// If the event stream does not terminate with a cancel event, synthesize one here.
 			if lastEvent.Type != engine.CancelEvent {
-				events <- engine.NewEvent(engine.CancelEvent, nil)
+				events <- engine.NewCancelEvent()
 			}
 
 			close(events)

@@ -16,6 +16,7 @@ package codegentest
 
 import (
 	"fmt"
+	"output-funcs/mypkg"
 	"testing"
 	"time"
 
@@ -23,8 +24,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-
-	"output-funcs/mypkg"
 )
 
 type mocks int
@@ -41,12 +40,12 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		for k, v := range args.Args {
 			switch k {
 			case "accountName":
-				targs.AccountName = v.V.(string)
+				targs.AccountName = v.StringValue()
 			case "expand":
-				expand := v.V.(string)
+				expand := v.StringValue()
 				targs.Expand = &expand
 			case "resourceGroupName":
-				targs.ResourceGroupName = v.V.(string)
+				targs.ResourceGroupName = v.StringValue()
 			}
 		}
 
@@ -90,14 +89,14 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		for k, v := range args.Args {
 			switch k {
 			case "factoryName":
-				targs.FactoryName = v.V.(string)
+				targs.FactoryName = v.StringValue()
 			case "integrationRuntimeName":
-				targs.IntegrationRuntimeName = v.V.(string)
+				targs.IntegrationRuntimeName = v.StringValue()
 			case "metadataPath":
-				metadataPath := v.V.(string)
+				metadataPath := v.StringValue()
 				targs.MetadataPath = &metadataPath
 			case "resourceGroupName":
-				targs.ResourceGroupName = v.V.(string)
+				targs.ResourceGroupName = v.StringValue()
 			}
 		}
 		nextLink := "my-next-link"

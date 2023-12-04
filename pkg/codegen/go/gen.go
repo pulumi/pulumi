@@ -20,6 +20,7 @@ package gen
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"go/format"
 	"io"
@@ -531,9 +532,13 @@ func reduceInputType(t schema.Type) schema.Type {
 	}
 }
 
+func (pkg *pkgContext) genericTypeNeedsPointer(t schema.Type) bool {
+	return isOptionalType(reduceInputType(t)) && !isArrayType(codegen.UnwrapType(t)) && !isMapType(codegen.UnwrapType(t))
+}
+
 func (pkg *pkgContext) genericInputType(t schema.Type) string {
 	optionalPointer := ""
-	if isOptionalType(reduceInputType(t)) && !isArrayType(codegen.UnwrapType(t)) && !isMapType(codegen.UnwrapType(t)) {
+	if pkg.genericTypeNeedsPointer(t) {
 		optionalPointer = "*"
 	}
 
@@ -543,6 +548,20 @@ func (pkg *pkgContext) genericInputType(t schema.Type) string {
 	}
 
 	return fmt.Sprintf("pulumix.Input[%s%s]", optionalPointer, inputType)
+}
+
+func (pkg *pkgContext) plainGenericInputType(t schema.Type) string {
+	optionalPointer := ""
+	if pkg.genericTypeNeedsPointer(t) {
+		optionalPointer = "*"
+	}
+
+	inputType := pkg.genericInputTypeImpl(t)
+	if strings.HasPrefix(inputType, "*") {
+		optionalPointer = ""
+	}
+
+	return fmt.Sprintf("%s%s", optionalPointer, inputType)
 }
 
 func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
@@ -1333,7 +1352,7 @@ func (pkg *pkgContext) genOutputType(w io.Writer, baseName, elementType string, 
 	// Generate 'ToOuput(context.Context) pulumix.Output[T]' method
 	// to satisfy pulumix.Input[T].
 	goPackageInfo := goPackageInfo(pkg.pkg)
-	if goPackageInfo.Generics == GenericsSettingSideBySide {
+	if goPackageInfo.Generics == GenericsSettingSideBySide || goPackageInfo.Generics == GenericsSettingGenericsOnly {
 		fmt.Fprintf(w, "func (o %sOutput) ToOutput(ctx context.Context) pulumix.Output[%s] {\n", baseName, elementType)
 		fmt.Fprintf(w, "\treturn pulumix.Output[%s]{\n", elementType)
 		fmt.Fprintf(w, "\t\tOutputState: o.OutputState,\n")
@@ -1652,6 +1671,20 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 	fmt.Fprintf(w, "}\n\n")
 }
 
+// genGenericPlainType is the same as genPlainType, but used for generic variant SDKs
+// where it maintains optionalness of property types
+func (pkg *pkgContext) genGenericPlainType(w io.Writer, name, comment, deprecationMessage string,
+	properties []*schema.Property,
+) {
+	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
+	fmt.Fprintf(w, "type %s struct {\n", name)
+	for _, p := range properties {
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), pkg.plainGenericInputType(p.Type), p.Name)
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
 func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property,
 	useGenericTypes bool,
@@ -1796,7 +1829,11 @@ func (pkg *pkgContext) genInputArgsStruct(
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		inputType := pkg.typeString(p.Type)
 		if useGenericTypes {
-			inputType = pkg.genericInputType(p.Type)
+			if p.Plain {
+				inputType = pkg.plainGenericInputType(p.Type)
+			} else {
+				inputType = pkg.genericInputType(p.Type)
+			}
 		}
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), inputType, p.Name)
 	}
@@ -1852,10 +1889,10 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 				needsCast := genericTypeNeedsExplicitCasting(outputType)
 				if !needsCast {
 					fmt.Fprintf(w, "\treturn pulumix.Apply[%s](o, func (v %s) %s { return v.%s })\n",
-						name, name, pkg.typeString(p.Type), pkg.fieldName(nil, p))
+						name, name, pkg.plainGenericInputType(p.Type), pkg.fieldName(nil, p))
 				} else {
 					fmt.Fprintf(w, "\tvalue := pulumix.Apply[%s](o, func (v %s) %s { return v.%s })\n",
-						name, name, pkg.typeString(p.Type), pkg.fieldName(nil, p))
+						name, name, pkg.plainGenericInputType(p.Type), pkg.fieldName(nil, p))
 					fmt.Fprintf(w, "\treturn %s{OutputState: value.OutputState}\n", outputType)
 				}
 			}
@@ -2192,12 +2229,6 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "\taliases := pulumi.Aliases([]pulumi.Alias{\n")
 		for _, alias := range r.Aliases {
 			s := "\t\t{\n"
-			if alias.Name != nil {
-				s += fmt.Sprintf("\t\t\tName: pulumi.String(%q),\n", *alias.Name)
-			}
-			if alias.Project != nil {
-				s += fmt.Sprintf("\t\t\tProject: pulumi.String(%q),\n", *alias.Project)
-			}
 			if alias.Type != nil {
 				s += fmt.Sprintf("\t\t\tType: pulumi.String(%q),\n", *alias.Type)
 			}
@@ -2398,7 +2429,14 @@ func (pkg *pkgContext) genResource(
 			argsig = fmt.Sprintf("%s, args *%s%sArgs", argsig, name, methodName)
 		}
 		var retty string
-		if objectReturnType == nil {
+		if f.ReturnTypePlain {
+			if objectReturnType == nil {
+				t := pkg.typeString(codegen.ResolvedType(f.ReturnType))
+				retty = fmt.Sprintf("(o %s, e error)", t)
+			} else {
+				retty = fmt.Sprintf("(o %s%sResult, e error)", name, methodName)
+			}
+		} else if objectReturnType == nil {
 			retty = "error"
 		} else if liftReturn {
 			if useGenericVariant {
@@ -2426,15 +2464,28 @@ func (pkg *pkgContext) genResource(
 
 		// Now simply invoke the runtime function with the arguments.
 		outputsType := "pulumi.AnyOutput"
-		if objectReturnType != nil {
+		if objectReturnType != nil || f.ReturnTypePlain {
 			if liftReturn {
 				outputsType = fmt.Sprintf("%s%sResultOutput", cgstrings.Camel(name), methodName)
 			} else {
 				outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
 			}
 		}
-		fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
-		if objectReturnType == nil {
+
+		if !f.ReturnTypePlain {
+			fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
+		}
+
+		if f.ReturnTypePlain {
+			// single-value returning methods use a magic property "res" on the wire
+			property := ""
+			if objectReturnType == nil {
+				property = cgstrings.UppercaseFirst("res")
+			}
+			fmt.Fprintf(w, "\tinternal.CallPlain(ctx, %q, %s, %s{}, r, %q, reflect.ValueOf(&o), &e)\n",
+				f.Token, inputsVar, outputsType, property)
+			fmt.Fprintf(w, "\treturn\n")
+		} else if objectReturnType == nil {
 			fmt.Fprintf(w, "\treturn err\n")
 		} else if liftReturn {
 			// Check the error before proceeding.
@@ -2490,8 +2541,23 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", cgstrings.Camel(name), methodName)
 			fmt.Fprintf(w, "}\n\n")
 		}
-		if objectReturnType != nil {
+		if objectReturnType != nil || f.ReturnTypePlain {
 			outputStructName := name
+
+			var comment string
+			var properties []*schema.Property
+			if f.ReturnTypePlain && objectReturnType == nil {
+				properties = []*schema.Property{
+					{
+						Name:  "res",
+						Type:  f.ReturnType,
+						Plain: true,
+					},
+				}
+			} else {
+				properties = objectReturnType.Properties
+				comment = objectReturnType.Comment
+			}
 
 			// Don't export the result struct if we're lifting the value
 			if liftReturn {
@@ -2499,8 +2565,7 @@ func (pkg *pkgContext) genResource(
 			}
 
 			fmt.Fprintf(w, "\n")
-			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), objectReturnType.Comment, "",
-				objectReturnType.Properties)
+			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), comment, "", properties)
 
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "type %s%sResultOutput struct{ *pulumi.OutputState }\n\n", outputStructName, methodName)
@@ -2509,7 +2574,7 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sResult)(nil)).Elem()\n", outputStructName, methodName)
 			fmt.Fprintf(w, "}\n")
 
-			for _, p := range objectReturnType.Properties {
+			for _, p := range properties {
 				fmt.Fprintf(w, "\n")
 				outputTypeName := pkg.outputType(p.Type)
 				if useGenericVariant {
@@ -2529,6 +2594,7 @@ func (pkg *pkgContext) genResource(
 				fmt.Fprintf(w, "}\n")
 			}
 		}
+
 	}
 
 	if !useGenericVariant {
@@ -3146,7 +3212,12 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType, usingGeneric
 	}
 
 	plainName := pkg.tokenToType(obj.Token)
-	pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties)
+	if !usingGenericTypes {
+		pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties)
+	} else {
+		pkg.genGenericPlainType(w, plainName, obj.Comment, "", obj.Properties)
+	}
+
 	if !pkg.disableObjectDefaults {
 		if err := pkg.genObjectDefaultFunc(w, plainName, obj.Properties, usingGenericTypes); err != nil {
 			return err
@@ -3571,16 +3642,13 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 				}
 			}
 
-			var returnType *schema.ObjectType
 			if method.Function.ReturnType != nil {
 				if objectType, ok := method.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-					returnType = objectType
-				}
-			}
-
-			if returnType != nil {
-				for _, p := range returnType.Properties {
-					pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
+					for _, p := range objectType.Properties {
+						pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
+					}
+				} else if method.Function.ReturnTypePlain {
+					pkg.getTypeImports(method.Function.ReturnType, false, importsAndAliases, seen)
 				}
 			}
 		}
@@ -3977,6 +4045,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			pkg.schemaNames.Add(tokenToName(typ.Token))
 
 			populateDetailsForPropertyTypes(seen, typ.Properties, optional, input, output)
+		case *schema.UnionType:
+			for _, e := range typ.ElementTypes {
+				populateDetailsForTypes(seen, e, optional, input, output)
+			}
 		case *schema.EnumType:
 			pkg := getPkgFromToken(typ.Token)
 			pkg.detailsForType(typ).mark(input || goInfo.GenerateExtraInputTypes, output)
@@ -4798,85 +4870,19 @@ func goPackage(name string) string {
 	return strings.ReplaceAll(name, "-", "")
 }
 
+//go:embed embeddedUtilities.go
+var embeddedUtilities string
+
 func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error {
-	const utilitiesFile = `
-type envParser func(v string) interface{}
-
-func ParseEnvBool(v string) interface{} {
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return nil
+	subtitutions := map[string]string{
+		`"${packageRegex}"`: fmt.Sprintf("%q", packageRegex),
 	}
-	return b
-}
-
-func ParseEnvInt(v string) interface{} {
-	i, err := strconv.ParseInt(v, 0, 0)
-	if err != nil {
-		return nil
+	i := strings.Index(embeddedUtilities, "package utilities")
+	code := embeddedUtilities[i+len("package utilities"):]
+	for x, y := range subtitutions {
+		code = strings.ReplaceAll(code, x, y)
 	}
-	return int(i)
-}
-
-func ParseEnvFloat(v string) interface{} {
-	f, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return nil
-	}
-	return f
-}
-
-func ParseEnvStringArray(v string) interface{} {
-	var result pulumi.StringArray
-	for _, item := range strings.Split(v, ";") {
-		result = append(result, pulumi.String(item))
-	}
-	return result
-}
-
-func GetEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {
-	for _, v := range vars {
-		if value, ok := os.LookupEnv(v); ok {
-			if parser != nil {
-				return parser(value)
-			}
-			return value
-		}
-	}
-	return def
-}
-
-// PkgVersion uses reflection to determine the version of the current package.
-// If a version cannot be determined, v1 will be assumed. The second return
-// value is always nil.
-func PkgVersion() (semver.Version, error) {
-    // emptyVersion defaults to v0.0.0
-	if !%[1]s.Equals(semver.Version{}) {
-		return %[1]s, nil
-	}
-	type sentinal struct{}
-	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile(%[2]q)
-	if match := re.FindStringSubmatch(pkgPath); match != nil {
-		vStr := match[1]
-		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
-			return semver.Version{Major: 1}, nil
-		}
-		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
-	}
-	return semver.Version{Major: 1}, nil
-}
-
-// isZero is a null safe check for if a value is it's types zero value.
-func IsZero(v interface{}) bool {
-	if v == nil {
-		return true
-	}
-	return reflect.ValueOf(v).IsZero()
-}
-`
-	versionPackageRef := "SdkVersion"
-	_, err := fmt.Fprintf(w, utilitiesFile, versionPackageRef, packageRegex)
+	_, err := fmt.Fprintf(w, "%s", code)
 	if err != nil {
 		return err
 	}

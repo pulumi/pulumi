@@ -93,6 +93,9 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 		contract.Failf("query mode does not support resource operations")
 		return ""
 
+	case engine.PolicyLoadEvent:
+		return ""
+
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""

@@ -4,7 +4,6 @@ package lifecycletest
 import (
 	"context"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/mitchellh/copystructure"
@@ -17,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -114,21 +114,26 @@ func (op TestOp) runWithContext(
 	}()
 
 	// Begin draining events.
-	var wg sync.WaitGroup
-	var firedEvents []Event
-	wg.Add(1)
-	go func() {
+	firedEventsPromise := promise.Run(func() ([]Event, error) {
+		var firedEvents []Event
 		for e := range events {
 			firedEvents = append(firedEvents, e)
 		}
-		wg.Done()
-	}()
+		return firedEvents, nil
+	})
 
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	wg.Wait()
 	contract.IgnoreClose(journal)
+
+	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
+	// the deployment context, not expecting it to have any effect on the test code here. See
+	// https://github.com/pulumi/pulumi/issues/14588 for what happens if you try to use callerCtx here.
+	firedEvents, err := firedEventsPromise.Result(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if validate != nil {
 		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
@@ -194,7 +199,7 @@ type TestPlan struct {
 	Steps          []TestStep
 }
 
-func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
+func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
 		project = "test"
@@ -203,9 +208,9 @@ func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, ru
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.Name(p.Stack)
-	if stack == "" {
-		stack = "test"
+	stack = tokens.MustParseStackName("test")
+	if p.Stack != "" {
+		stack = tokens.MustParseStackName(p.Stack)
 	}
 	return stack, project, runtime
 }
@@ -216,7 +221,7 @@ func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) res
 	if parent != "" {
 		pt = parent.QualifiedType()
 	}
-	return resource.NewURN(stack.Q(), project, pt, typ, tokens.QName(name))
+	return resource.NewURN(stack.Q(), project, pt, typ, name)
 }
 
 func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resource.URN) resource.URN {

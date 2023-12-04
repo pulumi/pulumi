@@ -195,7 +195,7 @@ func (prov *Provider) Read(urn resource.URN, id resource.ID,
 	return prov.ReadF(urn, id, inputs, state)
 }
 
-func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name string, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions,
 ) (plugin.ConstructResult, error) {
 	if prov.ConstructF == nil {
@@ -205,7 +205,7 @@ func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name
 	if err != nil {
 		return plugin.ConstructResult{}, err
 	}
-	return prov.ConstructF(monitor, string(typ), string(name), parent, inputs, info, options)
+	return prov.ConstructF(monitor, string(typ), name, parent, inputs, info, options)
 }
 
 func (prov *Provider) Invoke(tok tokens.ModuleMember,

@@ -32,7 +32,7 @@ download_release() {
 }
 
 # shellcheck disable=SC2043
-for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yaml" "github.com/pulumi/pulumi-dotnet dotnet v3.56.1"; do
+for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yaml" "github.com/pulumi/pulumi-dotnet dotnet v3.59.0"; do
   set -- $i # treat strings in loop as args
   REPO="$1"
   PULUMI_LANG="$2"

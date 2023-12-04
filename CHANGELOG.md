@@ -1,5 +1,154 @@
 # Changelog
 
+## 3.95.0 (2023-12-01)
+
+
+### Features
+
+- [cli/config] Include config values from ESC in `pulumi config`
+  [#14560](https://github.com/pulumi/pulumi/pull/14560)
+
+- [cli/config] Add commands for managing stack environments
+  [#14628](https://github.com/pulumi/pulumi/pull/14628)
+
+- [cli/config] Add a command to create an ESC environment from stack config
+  [#14634](https://github.com/pulumi/pulumi/pull/14634)
+
+- [sdk/go] add optional display name and tag fields to project templates
+  [#14587](https://github.com/pulumi/pulumi/pull/14587)
+
+- [sdk/nodejs] Enable resource imports for nodejs providers
+  [#14668](https://github.com/pulumi/pulumi/pull/14668)
+
+- [cli/plugin] Load policy packs in parallel on startup to reduce startup time
+  [#14495](https://github.com/pulumi/pulumi/pull/14495)
+
+- [sdkgen/dotnet] Added support for language specific settings for resources and support for overriding resource name in dotnet codegen
+  [#14308](https://github.com/pulumi/pulumi/pull/14308)
+
+- [sdkgen/{go,nodejs,python}] Resource methods with plain: true outputs can now return plain values without an Output wrapper. In particular, this feature enables resource methods to serve as explicit provider factories by returning preconfigured explicit providers.
+  [#13592](https://github.com/pulumi/pulumi/pull/13592)
+
+
+### Bug Fixes
+
+- [auto/go] Fix a datarace in cloning git repos.
+  [#14643](https://github.com/pulumi/pulumi/pull/14643)
+
+- [auto/go] Fixes event stream lag on windows runtime
+  [#14659](https://github.com/pulumi/pulumi/pull/14659)
+
+- [engine] Engine now correctly handles any resource name.
+  [#14107](https://github.com/pulumi/pulumi/pull/14107)
+
+- [engine] Fix a panic in cancellation.
+  [#14612](https://github.com/pulumi/pulumi/pull/14612)
+
+- [engine] Fix root directory passed to langauge plugins when starting pulumi in a subfolder.
+  [#14684](https://github.com/pulumi/pulumi/pull/14684)
+
+- [sdkgen] Schemas now validate that 'urn' and 'id' are not used as resource output properties.
+  [#14637](https://github.com/pulumi/pulumi/pull/14637)
+
+- [sdkgen] Fixes marshalling the "plain" flag from object or resource properties
+  [#14648](https://github.com/pulumi/pulumi/pull/14648)
+
+- [yaml] Upgrade yaml to 1.4.3
+  [#14693](https://github.com/pulumi/pulumi/pull/14693)
+
+- [programgen/nodejs] Fix generated readFile function so that it includes the encoding and returns a string
+  [#14633](https://github.com/pulumi/pulumi/pull/14633)
+
+- [sdkgen/{dotnet,go,nodejs,python}] No longer writing out name and project from alias definitions into SDKs, only type
+  [#14625](https://github.com/pulumi/pulumi/pull/14625)
+
+- [sdk/go] Fix optional handling on nested props
+  [#14629](https://github.com/pulumi/pulumi/pull/14629)
+
+- [sdk/nodejs] Use local storage to track per stack error log count
+  [#14702](https://github.com/pulumi/pulumi/pull/14702)
+
+- [sdkgen/go] Fixes plain and optional properties for generated types for Go SDKs using generics
+  [#14616](https://github.com/pulumi/pulumi/pull/14616)
+
+- [sdkgen/go] Generate non-plain type variants for types used as inputs inside unions
+  [#14679](https://github.com/pulumi/pulumi/pull/14679)
+
+- [sdk/python] Introduces RuntimeError when we detect a cycle upon adding dependencies to the graph. Additionally adds "PULUMI_ERROR_ON_DEPENDENCY_CYCLES" as a new environment variable to control this behavior. Set to `False` to return to the previous behavior, which could potentially re-introduce infinite hangs for some programs.
+  [#14597](https://github.com/pulumi/pulumi/pull/14597)
+
+## 3.94.2 (2023-11-17)
+
+
+### Features
+
+- [cli/import] Generated import files from converter plugins omit empty optional fields.
+  [#14574](https://github.com/pulumi/pulumi/pull/14574)
+
+
+### Bug Fixes
+
+- [yaml] Upgrade yaml to 1.4.2
+  [#14603](https://github.com/pulumi/pulumi/pull/14603)
+
+- [cli/engine] Fix an issue where the CLI could panic because of a newly introduced event
+  [#14600](https://github.com/pulumi/pulumi/pull/14600)
+
+- [sdkgen/go] Fix generics-only option for go missing ToOutput(...) methods
+  [#14584](https://github.com/pulumi/pulumi/pull/14584)
+
+## 3.94.1 (2023-11-16)
+
+
+### Features
+
+- [cli/display] Adds display when policy packs are being loaded
+  [#14493](https://github.com/pulumi/pulumi/pull/14493)
+
+- [sdk/dotnet] Update dotnet language host to 3.59.0.
+  [#14577](https://github.com/pulumi/pulumi/pull/14577)
+
+
+### Bug Fixes
+
+- [engine] Fix ignore changes ignoring secret values.
+  [#14565](https://github.com/pulumi/pulumi/pull/14565)
+
+- [sdk/python] Use `typing.Dict` in type annotation instead of `dict`.
+  [#14579](https://github.com/pulumi/pulumi/pull/14579)
+
+## 3.94.0 (2023-11-14)
+
+
+### Features
+
+- [engine] `import` can now create empty component resource to use as the parent of other imported resources.
+  [#14467](https://github.com/pulumi/pulumi/pull/14467)
+
+- [engine] `import` can now import a parent resource in the same deployment as a child resource.
+  [#14461](https://github.com/pulumi/pulumi/pull/14461)
+
+- [engine] Import files no longer need parent URNs in the name table for resource being imported in the same file.
+  [#14524](https://github.com/pulumi/pulumi/pull/14524)
+
+- [cli/config] `config refresh` will now restore secret provider config from the last deployment.
+  [#13900](https://github.com/pulumi/pulumi/pull/13900)
+
+- [cli/new] Simplifies URL parsing for pulumi new zip
+  [#14546](https://github.com/pulumi/pulumi/pull/14546)
+
+
+### Bug Fixes
+
+- [components/yaml] Upgrade yaml to 1.4.1
+  [#14542](https://github.com/pulumi/pulumi/pull/14542)
+
+- [engine] Ignore spurious error from Kubernetes providers DiffConfig method.
+  [#14533](https://github.com/pulumi/pulumi/pull/14533)
+
+- [sdk/python] Maintain old behavior for empty Kubernetes invoke results
+  [#14535](https://github.com/pulumi/pulumi/pull/14535)
+
 ## 3.92.0 (2023-11-03)
 
 

@@ -62,7 +62,7 @@ func TestRenameProvider(t *testing.T) {
 	// Check that the snapshot contains the renamed provider as `our-provider`.
 	for _, res := range snap.Resources {
 		if res.ID == prov.ID {
-			assert.Equal(t, "our-provider", res.URN.Name().String())
+			assert.Equal(t, "our-provider", res.URN.Name())
 		}
 	}
 }
@@ -153,7 +153,7 @@ func TestStateRename_updatesChildren(t *testing.T) {
 	for _, res := range snap.Resources {
 		if res.URN == child {
 			sawChild = true
-			assert.Equal(t, "new-parent", res.Parent.Name().String())
+			assert.Equal(t, "new-parent", res.Parent.Name())
 		}
 	}
 	assert.True(t, sawChild, "child resource not found in snapshot")

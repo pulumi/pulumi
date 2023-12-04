@@ -25,6 +25,11 @@ type CSharpPropertyInfo struct {
 	Name string `json:"name,omitempty"`
 }
 
+// CSharpResourceInfo represents the C# language-specific info for a resource.
+type CSharpResourceInfo struct {
+	Name string `json:"name,omitempty"`
+}
+
 // CSharpPackageInfo represents the C# language-specific info for a package.
 type CSharpPackageInfo struct {
 	PackageReferences      map[string]string `json:"packageReferences,omitempty"`
@@ -76,7 +81,11 @@ func (importer) ImportObjectTypeSpec(object *schema.ObjectType, raw json.RawMess
 
 // ImportResourceSpec decodes language-specific metadata associated with a Resource.
 func (importer) ImportResourceSpec(resource *schema.Resource, raw json.RawMessage) (interface{}, error) {
-	return raw, nil
+	var info CSharpResourceInfo
+	if err := json.Unmarshal([]byte(raw), &info); err != nil {
+		return nil, err
+	}
+	return info, nil
 }
 
 // ImportFunctionSpec decodes language-specific metadata associated with a Function.

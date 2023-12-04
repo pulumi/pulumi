@@ -839,9 +839,8 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 				if !v.Type().AssignableTo(resolved.Type()) {
 					panic(fmt.Errorf("cannot convert an input of type %T to a value of type %v",
 						input, resolved.Type()))
-				} else {
-					assignInput = true
 				}
+				assignInput = true
 			}
 		}
 

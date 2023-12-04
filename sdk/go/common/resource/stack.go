@@ -23,5 +23,5 @@ const RootStackType tokens.Type = "pulumi:pulumi:Stack"
 
 // DefaultRootStackURN constructs a default root stack URN for the given stack and project.
 func DefaultRootStackURN(stack tokens.QName, proj tokens.PackageName) URN {
-	return NewURN(stack, proj, "", RootStackType, tokens.QName(string(proj)+"-"+string(stack)))
+	return NewURN(stack, proj, "", RootStackType, string(proj)+"-"+string(stack))
 }

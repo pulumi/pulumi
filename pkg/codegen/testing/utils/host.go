@@ -50,6 +50,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 	// schema files in the given schema directory. This is the minimal set of schemas that must be
 	// supplied.
 	return NewHostWithProviders(schemaDirectoryPath,
+		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"aws", "4.15.0"},
 		SchemaProvider{"aws", "4.26.0"},
 		SchemaProvider{"aws", "4.36.0"},
@@ -90,5 +91,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"auto-deploy", "0.0.1"},
 		SchemaProvider{"localref", "1.0.0"},
 		SchemaProvider{"enum", "1.0.0"},
+		SchemaProvider{"plain-properties", "1.0.0"},
 	)
 }

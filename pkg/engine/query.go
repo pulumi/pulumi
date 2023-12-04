@@ -42,7 +42,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) error {
 	contract.Requiref(q != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events <- NewCancelEvent() }()
 
 	tracingSpan := func(opName string, parentSpan opentracing.SpanContext) opentracing.Span {
 		// Create a root span for the operation

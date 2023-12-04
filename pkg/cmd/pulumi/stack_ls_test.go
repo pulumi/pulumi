@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ type mockStackSummary struct {
 }
 
 func (mss *mockStackSummary) Name() backend.StackReference {
-	name := tokens.Name(mss.name)
+	name := tokens.MustParseStackName(mss.name)
 	return &backend.MockStackReference{
 		NameV:               name,
 		FullyQualifiedNameV: name.Q(),

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
 					StringV:             "org/project/name",
-					NameV:               "name",
+					NameV:               tokens.MustParseStackName("name"),
 					ProjectV:            "project",
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
@@ -94,7 +94,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
 					StringV:             "org/project/name",
-					NameV:               "name",
+					NameV:               tokens.MustParseStackName("name"),
 					ProjectV:            "project",
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
@@ -215,7 +215,7 @@ func TestOpenStackEnv(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
-		) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
 			assert.Equal(t, []byte(`{"imports":["test"]}`), yaml)
 			assert.Equal(t, 2*time.Hour, duration)
@@ -249,7 +249,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
-		) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, []apitype.EnvironmentDiagnostic{{Summary: "diag"}}, nil
 		},
 	}
@@ -279,7 +279,7 @@ func TestOpenStackEnvError(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
-		) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, nil, errors.New("error")
 		},
 	}

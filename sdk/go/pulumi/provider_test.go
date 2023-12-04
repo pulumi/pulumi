@@ -226,7 +226,7 @@ type NestedMapOutputArgs struct {
 
 type Nested struct {
 	Foo string `pulumi:"foo"`
-	Bar int    `pulumi:"bar"`
+	Bar int    `pulumi:"bar,optional"`
 }
 
 type NestedOutput struct {
@@ -1764,7 +1764,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 				tokens.PackageName(ctx.Project()),
 				"", // parent
 				tokens.Type(typ),
-				tokens.QName(name),
+				name,
 			)
 
 			snap, err := NewResourceOptions(opts)

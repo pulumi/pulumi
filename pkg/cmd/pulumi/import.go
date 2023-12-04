@@ -83,10 +83,11 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 	for i, res := range resources {
 		specs[i] = importSpec{
 			Type:              tokens.Type(res.Type),
-			Name:              tokens.QName(res.Name),
+			Name:              res.Name,
 			ID:                resource.ID(res.ID),
 			Version:           res.Version,
 			PluginDownloadURL: res.PluginDownloadURL,
+			// TODO(https://github.com/pulumi/pulumi/issues/14532): Add Component and Remote to ResourceImport
 		}
 	}
 
@@ -104,7 +105,7 @@ func makeImportFile(
 	nameTable := map[string]resource.URN{}
 	res := importSpec{
 		Type:       tokens.Type(typ),
-		Name:       tokens.QName(name),
+		Name:       name,
 		ID:         resource.ID(id),
 		Version:    version,
 		Properties: properties,
@@ -143,14 +144,16 @@ func makeImportFile(
 }
 
 type importSpec struct {
-	Type              tokens.Type  `json:"type"`
-	Name              tokens.QName `json:"name"`
-	ID                resource.ID  `json:"id"`
-	Parent            string       `json:"parent"`
-	Provider          string       `json:"provider"`
-	Version           string       `json:"version"`
-	PluginDownloadURL string       `json:"pluginDownloadUrl"`
-	Properties        []string     `json:"properties"`
+	Type              tokens.Type `json:"type"`
+	Name              string      `json:"name"`
+	ID                resource.ID `json:"id,omitempty"`
+	Parent            string      `json:"parent,omitempty"`
+	Provider          string      `json:"provider,omitempty"`
+	Version           string      `json:"version,omitempty"`
+	PluginDownloadURL string      `json:"pluginDownloadUrl,omitempty"`
+	Properties        []string    `json:"properties,omitempty"`
+	Component         bool        `json:"component,omitempty"`
+	Remote            bool        `json:"remote,omitempty"`
 }
 
 type importFile struct {
@@ -193,11 +196,49 @@ func writeImportFile(v importFile) (string, error) {
 	return path, f.Close()
 }
 
-func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, importer.NameTable, error) {
-	// Build the name table.
-	names := importer.NameTable{}
-	for name, urn := range f.NameTable {
-		names[urn] = name
+func parseImportFile(
+	f importFile, stack tokens.StackName, proj tokens.PackageName, protectResources bool,
+) ([]deploy.Import, importer.NameTable, error) {
+	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
+	// it's ambiguous (it's true).
+	takenNames := map[string]bool{}
+	// Prefill takenNames with all the resource names so we can do quick uniqness checks below
+	for _, spec := range f.Resources {
+		takenNames[spec.Name] = false
+	}
+	// A remapping by index from the resource list to it's final unique name.
+	nameMapping := make([]string, 0, len(f.Resources))
+	for i, spec := range f.Resources {
+		// Check if any earlier resource has this name, if so mark it as ambiguous
+		for j, other := range f.Resources {
+			if i > j && spec.Name == other.Name {
+				takenNames[spec.Name] = true
+			}
+		}
+
+		if !takenNames[spec.Name] {
+			// This name isn't ambiguous so we can use it as is
+			nameMapping = append(nameMapping, spec.Name)
+		} else {
+			// This names already used so we need to make it unique
+			newName := spec.Name
+			for suffix := 1; ; suffix++ {
+				if _, exists := takenNames[newName]; !exists {
+					break
+				}
+				newName = fmt.Sprintf("%s_%d", spec.Name, suffix)
+			}
+			// At this point newName is unique and can't clash with other names, but need to ensure nothing
+			// else tries to now use it.
+			takenNames[newName] = false
+			nameMapping = append(nameMapping, newName)
+		}
+	}
+
+	// TODO: When Go 1.21 is released, switch to errors.Join.
+	var errs error
+	pusherrf := func(format string, args ...interface{}) {
+		errs = multierror.Append(errs, fmt.Errorf(format, args...))
 	}
 
 	// Attempts to generate a human-readable description of the given import spec
@@ -228,47 +269,79 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		return sb.String()
 	}
 
-	// TODO: When Go 1.21 is released, switch to errors.Join.
-	var errs error
-	pusherrf := func(format string, args ...interface{}) {
-		errs = multierror.Append(errs, fmt.Errorf(format, args...))
+	// A mapping from name to URN, prefilled with emptys and what was in the name table so we can do existence checks
+	// for expected names.
+	urnMapping := make(map[string]resource.URN)
+	for name, urn := range f.NameTable {
+		urnMapping[name] = urn
+	}
+	for _, spec := range f.Resources {
+		urnMapping[spec.Name] = ""
 	}
 
-	makeUnique, checkAmbiguous := func() (func(int, tokens.QName) tokens.QName, func(tokens.QName) bool) {
-		// Track used resource names.
-		takenNames := map[tokens.QName]struct{}{}
-		// Track indexes that are not unique and need to be made unique.
-		duplicateIndexes := map[int]struct{}{}
-		// Track parent/provider/etc references that are ambiguous when referenced.
-		ambiguousNames := map[tokens.QName]struct{}{}
+	// We need to keep going till all the URNs are filled in or we have an error.
+	done := func() bool {
+		if errs != nil {
+			return true
+		}
+		for _, urn := range urnMapping {
+			if urn == "" {
+				return false
+			}
+		}
+		return true
+	}
+
+	for !done() {
 		for i, spec := range f.Resources {
-			if _, exists := takenNames[spec.Name]; exists {
-				duplicateIndexes[i] = struct{}{}
-				ambiguousNames[spec.Name] = struct{}{}
+			// If we've already done this URN no need to do it again
+			if urnMapping[spec.Name] != "" {
+				continue
 			}
-			// Prepopulate already taken names first to avoid using them in makeUnique.
-			takenNames[spec.Name] = struct{}{}
-		}
-		checkAmbiguous := func(name tokens.QName) bool {
-			_, isAmbiguous := ambiguousNames[name]
-			return isAmbiguous
-		}
-		makeUnique := func(i int, name tokens.QName) tokens.QName {
-			if _, isDuplicate := duplicateIndexes[i]; !isDuplicate {
-				return name
-			}
-			newName := name
-			for suffix := 1; ; suffix++ {
-				if _, exists := takenNames[newName]; !exists {
-					// No conflict.
-					takenNames[newName] = struct{}{}
-					return newName
+
+			var parentType tokens.Type
+			if spec.Parent != "" {
+				// We can find the parent type by looking up the parent by name then finding it's type
+
+				// takenNames will be true if this name is ambiguous, in which case we can't use it as a
+				// parent but we just let the rest of the code below run so we can collect further errors.
+				if takenNames[spec.Parent] {
+					pusherrf("%v has an ambiguous parent",
+						describeResource(i, spec))
 				}
-				newName = tokens.QName(fmt.Sprintf("%s_%d", name, suffix))
+
+				// Is this name already in the name table?
+				if urn, ok := f.NameTable[spec.Parent]; ok {
+					parentType = urn.QualifiedType()
+				} else {
+					// Not in the name table, is it in the urn mapping yet?
+					urn, ok := urnMapping[spec.Parent]
+
+					// There's three cases to cover here:
+					// 1. We didn't find the parent, in which case just push an error
+					// 2. We found the parent but it's urn is currently blank, in which case we'll loop around
+					// 3. We found the parent and got it's URN
+					if !ok {
+						pusherrf("the parent '%v' for %v has no entry in 'nameTable'",
+							spec.Parent, describeResource(i, spec))
+					} else if urn == "" {
+						// Skip this resource for now, we'll have to loop again to get it once it's parent URN is worked out
+						continue
+					} else {
+						parentType = urn.QualifiedType()
+					}
+				}
 			}
+
+			actualName := nameMapping[i]
+			urnMapping[spec.Name] = resource.NewURN(stack.Q(), proj, parentType, spec.Type, actualName)
 		}
-		return makeUnique, checkAmbiguous
-	}()
+	}
+
+	// If we've got errors already just exit
+	if errs != nil {
+		return nil, nil, errs
+	}
 
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
@@ -278,35 +351,36 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		if spec.Name == "" {
 			pusherrf("%v has no name", describeResource(i, spec))
 		}
-		if spec.ID == "" {
+		if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
+		} else if spec.Component && spec.ID != "" {
+			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
+		}
+		if spec.Remote && !spec.Component {
+			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
 		}
 
 		imp := deploy.Import{
 			Type:              spec.Type,
-			Name:              makeUnique(i, spec.Name),
+			Name:              nameMapping[i],
 			ID:                spec.ID,
 			Protect:           protectResources,
 			Properties:        spec.Properties,
 			PluginDownloadURL: spec.PluginDownloadURL,
+			Component:         spec.Component,
+			Remote:            spec.Remote,
 		}
 
 		if spec.Parent != "" {
-			if checkAmbiguous(tokens.QName(spec.Parent)) {
-				pusherrf("%v has an ambiguous parent",
-					describeResource(i, spec))
-			}
-			urn, ok := f.NameTable[spec.Parent]
-			if !ok {
-				pusherrf("the parent '%v' for %v has no entry in 'nameTable'",
-					spec.Parent, describeResource(i, spec))
-			} else {
+			urn, ok := urnMapping[spec.Parent]
+			if ok {
+				// No need to add errors here, we'll have done that above when building URNs
 				imp.Parent = urn
 			}
 		}
 
 		if spec.Provider != "" {
-			if checkAmbiguous(tokens.QName(spec.Provider)) {
+			if takenNames[spec.Provider] {
 				pusherrf("%v has an ambiguous provider",
 					describeResource(i, spec))
 			}
@@ -330,6 +404,12 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		}
 
 		imports[i] = imp
+	}
+
+	// Build the name table.
+	names := importer.NameTable{}
+	for name, urn := range urnMapping {
+		names[urn] = name
 	}
 
 	return imports, names, errs
@@ -364,7 +444,7 @@ type programGeneratorFunc func(
 ) (map[string][]byte, hcl.Diagnostics, error)
 
 func generateImportedDefinitions(ctx *plugin.Context,
-	out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
+	out io.Writer, stackName tokens.StackName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool,
 ) (bool, error) {
@@ -659,7 +739,8 @@ func newImportCmd() *cobra.Command {
 				output = f
 			}
 
-			imports, nameTable, err := parseImportFile(importFile, protectResources)
+			// Fetch the project.
+			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -710,8 +791,13 @@ func newImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			// Fetch the project.
-			proj, root, err := readProject()
+			// Fetch the current stack.
+			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, protectResources)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -767,12 +853,6 @@ func newImportCmd() *cobra.Command {
 
 					return files, diagnostics, nil
 				}
-			}
-
-			// Fetch the current stack.
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
-			if err != nil {
-				return result.FromError(err)
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())

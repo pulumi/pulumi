@@ -190,6 +190,13 @@ func resourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
+
+	if val1, ok := r.Language["csharp"]; ok {
+		val2, ok := val1.(CSharpResourceInfo)
+		contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+		return Title(val2.Name)
+	}
+
 	return tokenToName(r.Token)
 }
 
@@ -436,7 +443,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		if typ != "" {
 			typ += "."
 		}
-		return typ + tokenToName(t.Token)
+		return typ + resourceName(t.Resource)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -861,31 +868,6 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "new global::Pulumi.Alias { ")
-
-	parts := []string{}
-	if alias.Name != nil {
-		parts = append(parts, fmt.Sprintf("Name = \"%v\"", *alias.Name))
-	}
-	if alias.Project != nil {
-		parts = append(parts, fmt.Sprintf("Project = \"%v\"", *alias.Project))
-	}
-	if alias.Type != nil {
-		parts = append(parts, fmt.Sprintf("Type = \"%v\"", *alias.Type))
-	}
-
-	for i, part := range parts {
-		if i > 0 {
-			fmt.Fprintf(w, ", ")
-		}
-
-		fmt.Fprintf(w, "%s", part)
-	}
-
-	fmt.Fprintf(w, "}")
-}
-
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
@@ -1069,8 +1051,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "                {\n")
 		for _, alias := range r.Aliases {
 			fmt.Fprintf(w, "                    ")
-			genAlias(w, alias)
-			fmt.Fprintf(w, ",\n")
+			if alias.Type != nil {
+				fmt.Fprintf(w, "new global::Pulumi.Alias { Type = \"%v\" },\n", *alias.Type)
+			}
 		}
 		fmt.Fprintf(w, "                },\n")
 	}
@@ -2521,7 +2504,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 			lr := LanguageResource{
 				Resource: r,
 				Package:  namespaceName(info.Namespaces, modName),
-				Name:     tokenToName(r.Token),
+				Name:     resourceName(r),
 			}
 			resources[r.Token] = lr
 		}

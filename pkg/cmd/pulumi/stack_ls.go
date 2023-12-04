@@ -300,10 +300,10 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 
-	cmdutil.PrintTable(cmdutil.Table{
+	printTable(cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
-	})
+	}, nil)
 
 	return nil
 }

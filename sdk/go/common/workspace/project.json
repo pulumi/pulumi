@@ -149,6 +149,13 @@
                 "null"
             ],
             "properties":{
+                "displayName":{
+                    "description":"Optional user-friendly name of the template.",
+                    "type":[
+                        "string",
+                        "null"
+                    ]
+                },
                 "description":{
                     "description":"Description of the template.",
                     "type":[
@@ -169,6 +176,16 @@
                         "boolean",
                         "null"
                     ]
+                },
+                "metadata":{
+                    "description":"Metadata is a map of key/value pairs to associate with the template",
+                    "type":[
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties":{
+                        "type": "string"
+                    }
                 },
                 "config":{
                     "description":"Config to apply to each stack in the project.",

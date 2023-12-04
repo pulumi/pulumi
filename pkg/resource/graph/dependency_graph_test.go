@@ -15,7 +15,7 @@ func NewProviderResource(pkg, name, id string, deps ...resource.URN) *resource.S
 	t := providers.MakeProviderType(tokens.Package(pkg))
 	return &resource.State{
 		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, tokens.QName(name)),
+		URN:          resource.NewURN("test", "test", "", t, name),
 		ID:           resource.ID(id),
 		Inputs:       resource.PropertyMap{},
 		Outputs:      resource.PropertyMap{},
@@ -36,7 +36,7 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 	t := tokens.Type("test:test:test")
 	return &resource.State{
 		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, tokens.QName(name)),
+		URN:          resource.NewURN("test", "test", "", t, name),
 		Inputs:       resource.PropertyMap{},
 		Outputs:      resource.PropertyMap{},
 		Dependencies: deps,
@@ -159,25 +159,25 @@ func TestDependenciesOf(t *testing.T) {
 	})
 
 	aDepends := dg.DependenciesOf(a)
-	assert.True(t, aDepends[pA])
-	assert.False(t, aDepends[a])
-	assert.False(t, aDepends[b])
+	assert.True(t, aDepends.Contains(pA))
+	assert.False(t, aDepends.Contains(a))
+	assert.False(t, aDepends.Contains(b))
 
 	bDepends := dg.DependenciesOf(b)
-	assert.True(t, bDepends[pA])
-	assert.True(t, bDepends[a])
-	assert.False(t, bDepends[b])
+	assert.True(t, bDepends.Contains(pA))
+	assert.True(t, bDepends.Contains(a))
+	assert.False(t, bDepends.Contains(b))
 
 	cDepends := dg.DependenciesOf(c)
-	assert.True(t, cDepends[pA])
-	assert.False(t, cDepends[a])
-	assert.False(t, cDepends[b])
+	assert.True(t, cDepends.Contains(pA))
+	assert.False(t, cDepends.Contains(a))
+	assert.False(t, cDepends.Contains(b))
 
 	dDepends := dg.DependenciesOf(d)
-	assert.True(t, dDepends[pA])
-	assert.True(t, dDepends[a]) // due to A being the parent of D
-	assert.False(t, dDepends[b])
-	assert.False(t, dDepends[c])
+	assert.True(t, dDepends.Contains(pA))
+	assert.True(t, dDepends.Contains(a)) // due to A being the parent of D
+	assert.False(t, dDepends.Contains(b))
+	assert.False(t, dDepends.Contains(c))
 }
 
 func TestDependenciesOfRemoteComponents(t *testing.T) {
@@ -205,12 +205,12 @@ func TestDependenciesOfRemoteComponents(t *testing.T) {
 	})
 
 	ruleDepends := dg.DependenciesOf(rule)
-	assert.True(t, ruleDepends[first], "direct dependency")
-	assert.True(t, ruleDepends[firstNested], "child of dependency")
-	assert.True(t, ruleDepends[sg], "transitive child of dependency")
-	assert.True(t, ruleDepends[second], "parent")
-	assert.True(t, ruleDepends[aws], "provider")
-	assert.False(t, ruleDepends[xyz], "unrelated")
+	assert.True(t, ruleDepends.Contains(first), "direct dependency")
+	assert.True(t, ruleDepends.Contains(firstNested), "child of dependency")
+	assert.True(t, ruleDepends.Contains(sg), "transitive child of dependency")
+	assert.True(t, ruleDepends.Contains(second), "parent")
+	assert.True(t, ruleDepends.Contains(aws), "provider")
+	assert.False(t, ruleDepends.Contains(xyz), "unrelated")
 }
 
 func TestDependenciesOfRemoteComponentsNoCycle(t *testing.T) {
@@ -230,14 +230,14 @@ func TestDependenciesOfRemoteComponentsNoCycle(t *testing.T) {
 	})
 
 	childDependencies := dg.DependenciesOf(child)
-	assert.True(t, childDependencies[aws])
-	assert.True(t, childDependencies[parent])
-	assert.True(t, childDependencies[r])
+	assert.True(t, childDependencies.Contains(aws))
+	assert.True(t, childDependencies.Contains(parent))
+	assert.True(t, childDependencies.Contains(r))
 
 	rDependencies := dg.DependenciesOf(r)
-	assert.True(t, rDependencies[aws])
-	assert.True(t, rDependencies[parent])
-	assert.False(t, rDependencies[child])
+	assert.True(t, rDependencies.Contains(aws))
+	assert.True(t, rDependencies.Contains(parent))
+	assert.False(t, rDependencies.Contains(child))
 }
 
 func TestTransitiveDependenciesOf(t *testing.T) {
@@ -264,6 +264,6 @@ func TestTransitiveDependenciesOf(t *testing.T) {
 	// <(relation)- as an alias for depends on via relation
 	// baby <(Parent)- child <(Dependency)- uncle <(Parent)- greatUncle <(Provider)- aws
 	set := dg.TransitiveDependenciesOf(baby)
-	assert.True(t, set[aws], "everything should depend on the provider")
-	assert.True(t, set[greatUncle], "child depends on greatUncle")
+	assert.True(t, set.Contains(aws), "everything should depend on the provider")
+	assert.True(t, set.Contains(greatUncle), "child depends on greatUncle")
 }

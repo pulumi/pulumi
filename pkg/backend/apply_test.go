@@ -44,7 +44,7 @@ func TestComputeUpdateStats(t *testing.T) {
 }
 
 func makeResourcePreEvent(urn, resType string, op display.StepOp, retainOnDelete bool) engine.Event {
-	event := engine.NewEvent(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
+	event := engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: engine.StepEventMetadata{
 			Op:   op,
 			URN:  resource.URN(urn),

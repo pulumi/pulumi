@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -271,7 +271,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				}
 				if res.URN.Name() == "res2Child" {
 					foundRes2Child = true
-					assert.Equal(t, res.Parent.Name(), tokens.QName("res2"))
+					assert.Equal(t, res.Parent.Name(), "res2")
 					assert.Equal(t, res.Type, tokens.Type("pkgA:m:typA"))
 					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output"))
 					assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("output2"))
@@ -289,7 +289,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				// result should be "baz".
 				if res.URN.Name() == "res4Child" {
 					foundRes4Child = true
-					assert.Equal(t, res.Parent.Name(), tokens.QName("res4"))
+					assert.Equal(t, res.Parent.Name(), "res4")
 					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
 				}
 			}

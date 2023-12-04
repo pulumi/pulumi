@@ -459,7 +459,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "range":
 		g.genRange(w, expr, false)
 	case "readFile":
-		g.Fgenf(w, "fs.readFileSync(%v)", expr.Args[0])
+		g.Fgenf(w, "fs.readFileSync(%v, \"utf8\")", expr.Args[0])
 	case "readDir":
 		g.Fgenf(w, "fs.readdirSync(%v)", expr.Args[0])
 	case "secret":

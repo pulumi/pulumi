@@ -431,7 +431,7 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 func (p *providerServer) Construct(ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	typ, name, parent := tokens.Type(req.GetType()), tokens.QName(req.GetName()), resource.URN(req.GetParent())
+	typ, name, parent := tokens.Type(req.GetType()), req.GetName(), resource.URN(req.GetParent())
 
 	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs"))
 	if err != nil {

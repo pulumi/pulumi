@@ -52,7 +52,7 @@ func retrieveZIPTemplates(templateURL string) (TemplateRepository, error) {
 		return TemplateRepository{}, err
 	}
 
-	parsedURL, err := url.Parse(strings.ReplaceAll(templateURL, ".zip", ""))
+	parsedURL, err := url.Parse(templateURL)
 	if err != nil {
 		return TemplateRepository{}, err
 	}

@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -170,7 +172,7 @@ func (sg *stepGenerator) bailDaig(diag *diag.Diag, args ...interface{}) error {
 
 // generateURN generates a URN for a new resource and confirms we haven't seen it before in this deployment.
 func (sg *stepGenerator) generateURN(
-	parent resource.URN, ty tokens.Type, name tokens.QName,
+	parent resource.URN, ty tokens.Type, name string,
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, ty, name)
@@ -327,7 +329,22 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 			continue
 		}
 
-		for _, urn := range step.New().Dependencies {
+		// Check direct dependencies but also parents and providers.
+		dependencies := step.New().Dependencies
+		if step.New().Parent != "" {
+			dependencies = append(dependencies, step.New().Parent)
+		}
+		if step.New().Provider != "" {
+			prov, err := providers.ParseReference(step.New().Provider)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"could not parse provider reference %s for %s: %w",
+					step.New().Provider, step.New().URN, err)
+			}
+			dependencies = append(dependencies, prov.URN())
+		}
+
+		for _, urn := range dependencies {
 			if sg.skippedCreates[urn] {
 				// Targets were specified, but didn't include this resource to create.  And a
 				// resource we are producing a step for does depend on this created resource.
@@ -365,7 +382,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 
 	n := alias.Name
 	if n == "" {
-		n = string(goal.Name)
+		n = goal.Name
 	}
 	t := alias.Type
 	if t == "" {
@@ -403,7 +420,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 // from the name of the parent, and the parent name changed.
 func (sg *stepGenerator) inheritedChildAlias(
 	childType tokens.Type,
-	childName, parentName tokens.QName,
+	childName, parentName string,
 	parentAlias resource.URN,
 ) resource.URN {
 	// If the child name has the parent name as a prefix, then we make the assumption that
@@ -420,10 +437,8 @@ func (sg *stepGenerator) inheritedChildAlias(
 	// * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
 
 	aliasName := childName
-	if strings.HasPrefix(childName.String(), parentName.String()) {
-		aliasName = tokens.QName(
-			parentAlias.Name().String() +
-				strings.TrimPrefix(childName.String(), parentName.String()))
+	if strings.HasPrefix(childName, parentName) {
+		aliasName = parentAlias.Name() + strings.TrimPrefix(childName, parentName)
 	}
 	return resource.NewURN(
 		sg.deployment.Target().Name.Q(),
@@ -1412,10 +1427,10 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the deployment executor for safe execution.
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
-	var antichains []antichain                // the list of parallelizable steps we intend to return.
-	dg := sg.deployment.depGraph              // the current deployment's dependency graph.
-	condemned := make(graph.ResourceSet)      // the set of condemned resources.
-	stepMap := make(map[*resource.State]Step) // a map from resource states to the steps that delete them.
+	var antichains []antichain                    // the list of parallelizable steps we intend to return.
+	dg := sg.deployment.depGraph                  // the current deployment's dependency graph.
+	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
+	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
 
 	// If we don't trust the dependency graph we've been given, we must be conservative and delete everything serially.
 	if !sg.opts.TrustDependencies {
@@ -1432,17 +1447,17 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	// For every step we've been given, record it as condemned and save the step that will be used to delete it. We'll
 	// iteratively place these steps into antichains as we remove elements from the condemned set.
 	for _, step := range deleteSteps {
-		condemned[step.Res()] = true
+		condemned.Add(step.Res())
 		stepMap[step.Res()] = step
 	}
 
-	for len(condemned) > 0 {
+	for !condemned.IsEmpty() {
 		var steps antichain
 		logging.V(7).Infof("Planner beginning schedule of new deletion antichain")
-		for res := range condemned {
+		for res := range condemned.Iter() {
 			// Does res have any outgoing edges to resources that haven't already been removed from the graph?
 			condemnedDependencies := dg.DependenciesOf(res).Intersect(condemned)
-			if len(condemnedDependencies) == 0 {
+			if condemnedDependencies.IsEmpty() {
 				// If not, it's safe to delete res at this stage.
 				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
 				steps = append(steps, stepMap[res])
@@ -1454,7 +1469,7 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 
 		// For all reosurces that are to be deleted in this round, remove them from the graph.
 		for _, step := range steps {
-			delete(condemned, step.Res())
+			condemned.Remove(step.Res())
 		}
 
 		antichains = append(antichains, steps)

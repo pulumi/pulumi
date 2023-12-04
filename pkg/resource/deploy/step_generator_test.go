@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,6 +75,58 @@ func TestIgnoreChanges(t *testing.T) {
 				"c": 42,
 			},
 			ignoreChanges: []string{"a.b"},
+		},
+		{
+			name: "Present in old and new sets, using [\"\"]",
+			oldInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "bar",
+					},
+				},
+				"c": 42,
+			},
+			expected: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+				"c": 42,
+			},
+			ignoreChanges: []string{"a.b[\"c\"]"},
+		},
+		{
+			name: "Missing in new sets, using [\"\"]",
+			oldInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{},
+				},
+				"c": 42,
+			},
+			expected: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+				"c": 42,
+			},
+			ignoreChanges: []string{"a.b[\"c\"]"},
 		},
 		{
 			name:      "Missing in old deletes",
@@ -338,11 +391,11 @@ func TestGenerateAliases(t *testing.T) {
 
 	const (
 		project = "project"
-		stack   = "stack"
 	)
+	stack := tokens.MustParseStackName("stack")
 
-	parentTypeAlias := resource.CreateURN("myres", "test:resource:type2", "", project, stack)
-	parentNameAlias := resource.CreateURN("myres2", "test:resource:type", "", project, stack)
+	parentTypeAlias := resource.CreateURN("myres", "test:resource:type2", "", project, stack.String())
+	parentNameAlias := resource.CreateURN("myres2", "test:resource:type", "", project, stack.String())
 
 	cases := []struct {
 		name         string
@@ -389,7 +442,7 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{
 					Type:   "test:resource:child2",
-					Parent: resource.CreateURN("originalparent", "test:resource:original", "", project, stack),
+					Parent: resource.CreateURN("originalparent", "test:resource:original", "", project, stack.String()),
 				},
 			},
 			expected: []resource.URN{
@@ -427,7 +480,7 @@ func TestGenerateAliases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack)
+			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack.String())
 			goal := &resource.Goal{
 				Parent:  parentURN,
 				Name:    "myres-child",

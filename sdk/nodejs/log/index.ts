@@ -18,8 +18,8 @@ import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
 import * as resourceTypes from "../resource";
 import { getEngine, rpcKeepAlive } from "../runtime/settings";
+import { getStore } from "../runtime/state";
 
-let errcnt = 0;
 let lastLog: Promise<any> = Promise.resolve();
 
 const messageLevels = {
@@ -33,7 +33,7 @@ const messageLevels = {
  * hasErrors returns true if any errors have occurred in the program.
  */
 export function hasErrors(): boolean {
-    return errcnt > 0;
+    return getStore().logErrorCount > 0;
 }
 
 /**
@@ -78,7 +78,7 @@ export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: 
  * error logs a fatal condition. Consider raising an exception after calling error to stop the Pulumi program.
  */
 export function error(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
-    errcnt++; // remember the error so we can suppress leaks.
+    getStore().logErrorCount++; // remember the error so we can suppress leaks.
 
     const engine = getEngine();
     if (engine) {

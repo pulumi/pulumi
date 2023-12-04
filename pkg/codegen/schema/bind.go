@@ -1051,6 +1051,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	result := slice.Prealloc[*Property](len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
+
 		// NOTE: The correct determination for if we should bind an input is:
 		//
 		// inputShape && !spec.Plain
@@ -1358,6 +1359,14 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
 	}
 
+	// Some property names are reserved for resource outputs
+	for _, property := range properties {
+		name := property.Name
+		if name == "id" || name == "urn" {
+			return diags, fmt.Errorf("failed to bind properties for %v: property name %q is reserved", token, name)
+		}
+	}
+
 	inputProperties, _, inputDiags, err := t.bindProperties(path+"/inputProperties", spec.InputProperties,
 		path+"/requiredInputs", spec.RequiredInputs, true)
 	diags = diags.Extend(inputDiags)
@@ -1562,6 +1571,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	var inlineObjectAsReturnType bool
 	var returnType Type
+	var returnTypePlain bool
 	if spec.ReturnType != nil && spec.Outputs == nil {
 		// compute the return type from the spec
 		if spec.ReturnType.ObjectTypeSpec != nil {
@@ -1574,6 +1584,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 			returnType = outs
 			outputs = outs
 			inlineObjectAsReturnType = true
+			returnTypePlain = spec.ReturnType.ObjectTypeSpecIsPlain
 		} else if spec.ReturnType.TypeSpec != nil {
 			out, outDiags, err := t.bindTypeSpec(path+"/outputs", *spec.ReturnType.TypeSpec, false)
 			diags = diags.Extend(outDiags)
@@ -1581,6 +1592,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 				return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
 			}
 			returnType = out
+			returnTypePlain = spec.ReturnType.TypeSpec.Plain
 		} else {
 			// Setting `spec.ReturnType` to a value without setting either `TypeSpec` or `ObjectTypeSpec`
 			// indicates a logical bug in our marshaling code.
@@ -1607,6 +1619,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		InlineObjectAsReturnType: inlineObjectAsReturnType,
 		Outputs:                  outputs,
 		ReturnType:               returnType,
+		ReturnTypePlain:          returnTypePlain,
 		DeprecationMessage:       spec.DeprecationMessage,
 		Language:                 language,
 		IsOverlay:                spec.IsOverlay,

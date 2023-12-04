@@ -1,0 +1,13 @@
+{
+  "emittedFiles": [
+    "Outputs/InnerType.cs",
+    "Provider.cs",
+    "Pulumi.Urnid.csproj",
+    "README.md",
+    "Res.cs",
+    "Test.cs",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

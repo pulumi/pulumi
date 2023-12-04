@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ func (src *evalSource) Project() tokens.PackageName {
 }
 
 // Stack is the name of the stack being targeted by this evaluation source.
-func (src *evalSource) Stack() tokens.Name {
+func (src *evalSource) Stack() tokens.StackName {
 	return src.runinfo.Target.Name
 }
 
@@ -120,7 +120,7 @@ func (src *evalSource) Iterate(
 	// Keep track of any config keys that have secure values.
 	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
 
-	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(src.runinfo.Target.Decrypter)
+	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert config to map: %w", err)
 	}
@@ -230,7 +230,7 @@ func (iter *evalSourceIterator) forkRun(
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
 				MonitorAddress:    iter.mon.Address(),
-				Stack:             string(iter.src.runinfo.Target.Name),
+				Stack:             iter.src.runinfo.Target.Name.String(),
 				Project:           string(iter.src.runinfo.Proj.Name),
 				Pwd:               iter.src.runinfo.Pwd,
 				Program:           iter.src.runinfo.Program,
@@ -389,7 +389,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 	if denyCreation {
 		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(tokens.QName(string(req.Package().Name()))), nil
+		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
 	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.
@@ -584,7 +584,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	resmon.constructInfo = plugin.ConstructInfo{
 		Project:          string(src.runinfo.Proj.Name),
-		Stack:            string(src.runinfo.Target.Name),
+		Stack:            src.runinfo.Target.Name.String(),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           src.dryRun,
@@ -958,7 +958,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, rpcerror.New(codes.InvalidArgument, err.Error())
 	}
 
-	name := tokens.QName(req.GetName())
+	name := req.GetName()
 	parent, err := resource.ParseOptionalURN(req.GetParent())
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
@@ -1178,7 +1178,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
-	name := tokens.QName(req.GetName())
+	name := req.GetName()
 	custom := req.GetCustom()
 	remote := req.GetRemote()
 	parent, err := resource.ParseOptionalURN(req.GetParent())
@@ -1722,7 +1722,7 @@ func (g *registerResourceOutputsEvent) Done() {
 
 type readResourceEvent struct {
 	id                      resource.ID
-	name                    tokens.QName
+	name                    string
 	baseType                tokens.Type
 	provider                string
 	parent                  resource.URN
@@ -1738,7 +1738,7 @@ var _ ReadResourceEvent = (*readResourceEvent)(nil)
 func (g *readResourceEvent) event() {}
 
 func (g *readResourceEvent) ID() resource.ID                  { return g.id }
-func (g *readResourceEvent) Name() tokens.QName               { return g.name }
+func (g *readResourceEvent) Name() string                     { return g.name }
 func (g *readResourceEvent) Type() tokens.Type                { return g.baseType }
 func (g *readResourceEvent) Provider() string                 { return g.provider }
 func (g *readResourceEvent) Parent() resource.URN             { return g.parent }

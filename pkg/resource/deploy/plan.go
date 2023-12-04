@@ -108,7 +108,7 @@ type GoalPlan struct {
 	// the type of resource.
 	Type tokens.Type
 	// the name for the resource's URN.
-	Name tokens.QName
+	Name string
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
 	// the resource's checked input properties we expect to change.

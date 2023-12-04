@@ -153,9 +153,6 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
-	// true if we should report events for steps that involve default providers.
-	reportDefaultProviderSteps bool
-
 	// the plugin host to use for this update
 	Host plugin.Host
 
@@ -189,7 +186,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	contract.Requiref(u != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events <- NewCancelEvent() }()
 
 	info, err := newDeploymentContext(u, "update", ctx.ParentSpan)
 	if err != nil {
@@ -289,92 +286,125 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 		}
 	}
 
+	var wg sync.WaitGroup
+	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
+		deployOpts.Events.PolicyLoadEvent()
 		policyPath, err := policy.Install(ctx)
 		if err != nil {
 			return err
 		}
 
-		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
-		if err != nil {
-			return err
-		}
-
-		analyzerInfo, err := analyzer.GetAnalyzerInfo()
-		if err != nil {
-			return err
-		}
-
-		// Parse the config, reconcile & validate it, and pass it to the policy pack.
-		if !analyzerInfo.SupportsConfig {
-			if len(policy.Config()) > 0 {
-				logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
+		wg.Add(1)
+		go func(policy RequiredPolicy, policyPath string) {
+			defer wg.Done()
+			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
+			if err != nil {
+				errs <- err
+				return
 			}
-			continue
-		}
-		configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
-		if err != nil {
-			return err
-		}
-		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
-		if err != nil {
-			return fmt.Errorf("reconciling config for %q: %w", analyzerInfo.Name, err)
-		}
-		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-		if err = analyzer.Configure(config); err != nil {
-			return fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
-		}
+
+			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			// Parse the config, reconcile & validate it, and pass it to the policy pack.
+			if !analyzerInfo.SupportsConfig {
+				if len(policy.Config()) > 0 {
+					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
+				}
+				return
+			}
+			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
+			if err != nil {
+				errs <- err
+				return
+			}
+			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
+			if err != nil {
+				errs <- fmt.Errorf("reconciling config for %q: %w", analyzerInfo.Name, err)
+				return
+			}
+			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+			if err = analyzer.Configure(config); err != nil {
+				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
+				return
+			}
+		}(policy, policyPath)
 	}
 
 	// Load local policy packs.
 	for i, pack := range deployOpts.LocalPolicyPacks {
-		abs, err := filepath.Abs(pack.Path)
-		if err != nil {
-			return err
-		}
-
-		analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, analyzerOpts)
-		if err != nil {
-			return err
-		} else if analyzer == nil {
-			return fmt.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
-		}
-
-		// Update the Policy Pack names now that we have loaded the plugins and can access the name.
-		analyzerInfo, err := analyzer.GetAnalyzerInfo()
-		if err != nil {
-			return err
-		}
-
-		// Read and store the name and version since it won't have been supplied by anyone else yet.
-		deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
-		deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
-
-		// Load config, reconcile & validate it, and pass it to the policy pack.
-		if !analyzerInfo.SupportsConfig {
-			if pack.Config != "" {
-				return fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
-			}
-			continue
-		}
-		var configFromFile map[string]plugin.AnalyzerPolicyConfig
-		if pack.Config != "" {
-			configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
+		wg.Add(1)
+		go func(i int, pack LocalPolicyPack) {
+			defer wg.Done()
+			deployOpts.Events.PolicyLoadEvent()
+			abs, err := filepath.Abs(pack.Path)
 			if err != nil {
-				return err
+				errs <- err
+				return
 			}
-		}
-		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
-		if err != nil {
-			return fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
-		}
-		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-		if err = analyzer.Configure(config); err != nil {
-			return fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
-		}
+
+			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, analyzerOpts)
+			if err != nil {
+				errs <- err
+				return
+			} else if analyzer == nil {
+				errs <- fmt.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
+				return
+			}
+
+			// Update the Policy Pack names now that we have loaded the plugins and can access the name.
+			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			// Read and store the name and version since it won't have been supplied by anyone else yet.
+			deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
+			deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
+
+			// Load config, reconcile & validate it, and pass it to the policy pack.
+			if !analyzerInfo.SupportsConfig {
+				if pack.Config != "" {
+					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
+					return
+				}
+				return
+			}
+			var configFromFile map[string]plugin.AnalyzerPolicyConfig
+			if pack.Config != "" {
+				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
+				if err != nil {
+					errs <- err
+					return
+				}
+			}
+			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
+			if err != nil {
+				errs <- fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				return
+			}
+			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
+			if err = analyzer.Configure(config); err != nil {
+				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				return
+			}
+		}(i, pack)
+	}
+
+	wg.Wait()
+	if len(errs) > 0 {
+		// If we have any errors return the first one.  Even
+		// if we have more than one error, we only return the
+		// first to not overwhelm the user.
+		return <-errs
 	}
 
 	// Report any policy config validation errors and return an error.
@@ -525,10 +555,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if shouldReportStep(step, acts.Opts) {
-		acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
-	}
+	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	// Inform the snapshot service that we are about to perform a step.
 	return acts.Context.SnapshotManager.BeginMutation(step)
@@ -548,7 +575,7 @@ func (acts *updateActions) OnResourceStepPost(
 		return nil
 	}
 
-	reportStep := shouldReportStep(step, acts.Opts)
+	isInternalStep := isInternalStep(step)
 
 	// Report the result of the step.
 	if err != nil {
@@ -557,16 +584,14 @@ func (acts *updateActions) OnResourceStepPost(
 		}
 
 		errorURN := resource.URN("")
-		if reportStep {
+		if !isInternalStep {
 			errorURN = step.URN()
 		}
 
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
-		if reportStep {
-			acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
-		}
-	} else if reportStep {
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
+	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
@@ -577,7 +602,7 @@ func (acts *updateActions) OnResourceStepPost(
 			record = ShouldRecordReadStep(step)
 		}
 
-		if record {
+		if record && !isInternalStep {
 			// Increment the counters.
 			acts.MapLock.Lock()
 			acts.Steps++
@@ -590,7 +615,7 @@ func (acts *updateActions) OnResourceStepPost(
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
 		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh || step.Op() == deploy.OpDelete {
-			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug)
+			acts.Opts.Events.resourceOutputsEvent(op, step, false /*planning*/, acts.Opts.Debug, isInternalStep)
 		}
 	}
 
@@ -630,10 +655,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if shouldReportStep(step, acts.Opts) {
-		acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug)
-	}
+	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
@@ -665,9 +687,8 @@ type previewActions struct {
 	MapLock sync.Mutex
 }
 
-func shouldReportStep(step deploy.Step, opts *deploymentOptions) bool {
-	return step.Op() != deploy.OpRemovePendingReplace &&
-		(opts.reportDefaultProviderSteps || !isDefaultProviderStep(step))
+func isInternalStep(step deploy.Step) bool {
+	return step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step)
 }
 
 func ShouldRecordReadStep(step deploy.Step) bool {
@@ -696,12 +717,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if !shouldReportStep(step, acts.Opts) {
-		return nil, nil
-	}
-
-	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	return nil, nil
 }
@@ -713,18 +729,18 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	reportStep := shouldReportStep(step, acts.Opts)
+	isInternalStep := isInternalStep(step)
 
 	if err != nil {
 		// We always want to report a failure. If we intend to elide this step overall, though, we report it as a
 		// global message.
 		reportedURN := resource.URN("")
-		if reportStep {
+		if !isInternalStep {
 			reportedURN = step.URN()
 		}
 
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
-	} else if reportStep {
+	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
@@ -736,13 +752,13 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
-		if record {
+		if record && !isInternalStep {
 			acts.MapLock.Lock()
 			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}
 
-		acts.Opts.Events.resourceOutputsEvent(op, step, true /*planning*/, acts.Opts.Debug)
+		acts.Opts.Events.resourceOutputsEvent(op, step, true /*planning*/, acts.Opts.Debug, isInternalStep)
 	}
 
 	return nil
@@ -753,13 +769,8 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
-	// Skip reporting if necessary.
-	if !shouldReportStep(step, acts.Opts) {
-		return nil
-	}
-
 	// Print the resource outputs separately.
-	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
 	return nil
 }

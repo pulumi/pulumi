@@ -213,6 +213,12 @@ func (e *Environment) LocalURL() string {
 // GetCommandResults runs the given command and args in the Environments CWD, returning
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResults(command string, args ...string) (string, string, error) {
+	return e.GetCommandResultsIn(e.CWD, command, args...)
+}
+
+// GetCommandResultsIn runs the given command and args in the given directory, returning
+// STDOUT, STDERR, and the result of os/exec.Command{}.Run.
+func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.T.Helper()
 	e.T.Logf("Running command %v %v", command, strings.Join(args, " "))
 
@@ -227,7 +233,7 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 
 	//nolint:gas
 	cmd := exec.Command(command, args...)
-	cmd.Dir = e.CWD
+	cmd.Dir = dir
 	if e.Stdin != nil {
 		cmd.Stdin = e.Stdin
 	}

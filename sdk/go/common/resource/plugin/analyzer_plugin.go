@@ -186,7 +186,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
-		Name:       string(name),
+		Name:       name,
 		Properties: mprops,
 		Options:    marshalResourceOptions(r.Options),
 		Provider:   provider,
@@ -243,7 +243,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
 			Urn:                  string(resource.URN),
 			Type:                 string(resource.Type),
-			Name:                 string(resource.Name),
+			Name:                 resource.Name,
 			Properties:           props,
 			Options:              marshalResourceOptions(resource.Options),
 			Provider:             provider,
@@ -300,7 +300,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 	resp, err := a.client.Remediate(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
-		Name:       string(name),
+		Name:       name,
 		Properties: mprops,
 		Options:    marshalResourceOptions(r.Options),
 		Provider:   provider,
@@ -546,7 +546,7 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	return &pulumirpc.AnalyzerProviderResource{
 		Urn:        string(provider.URN),
 		Type:       string(provider.Type),
-		Name:       string(provider.Name),
+		Name:       provider.Name,
 		Properties: props,
 	}, nil
 }

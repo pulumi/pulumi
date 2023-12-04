@@ -1,0 +1,19 @@
+name: On PR Close
+
+on:
+  pull_request:
+    types: [ closed ]
+
+jobs:
+    cleanup:
+      name: Remove Existing Codegen PRs
+      runs-on: ubuntu-latest
+      continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+      steps:
+        - name: "Close existing Downstream PRs"
+          run: |
+            for url in $(gh search prs --json url --owner pulumi --state open --match body "This is a downstream codegen test for pulumi/pulumi#${{ github.event.pull_request.number }}." | jq -r '.[].url'); do
+                gh pr close "$url"
+            done

@@ -564,6 +564,7 @@ func copyToStruct(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest
 		}
 
 		tag := typ.Field(i).Tag.Get("pulumi")
+		tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 		if tag == "" {
 			continue
 		}

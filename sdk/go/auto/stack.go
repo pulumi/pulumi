@@ -1233,6 +1233,7 @@ type fileWatcher struct {
 func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
 	t, err := tail.TailFile(path, tail.Config{
 		Follow: true,
+		Poll:   runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
 		Logger: tail.DiscardingLogger,
 	})
 	if err != nil {

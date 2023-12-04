@@ -11,6 +11,8 @@ import (
 
 // Test that the engine does not consider old inputs when calling Check during re-creation of
 // a resource that was deleted due to a dependency on a DBR-replaced resource.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceRecreateCheck(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
