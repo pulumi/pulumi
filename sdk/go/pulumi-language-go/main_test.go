@@ -123,12 +123,12 @@ func TestGetPlugin(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		Name      string
-		Mod       *modInfo
-		Expected  *pulumirpc.PluginDependency
-		ShouldErr bool
-		JSON      *plugin.PulumiPluginJSON
-		JSONPath  string
+		Name          string
+		Mod           *modInfo
+		Expected      *pulumirpc.PluginDependency
+		ExpectedError string
+		JSON          *plugin.PulumiPluginJSON
+		JSONPath      string
 	}{
 		{
 			Name: "valid-pulumi-mod",
@@ -158,7 +158,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/moolumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "invalid-version-module",
@@ -166,7 +166,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "42-42-42",
 			},
-			ShouldErr: true,
+			ExpectedError: "module does not have semver compatible version",
 		},
 		{
 			Name: "pulumi-pulumi-mod",
@@ -174,7 +174,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi/sdk",
 				Version: "v1.14.0",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "beta-pulumi-module",
@@ -216,9 +216,9 @@ func TestGetPlugin(t *testing.T) {
 			},
 		},
 		{
-			Name:      "non-resource",
-			Mod:       &modInfo{},
-			ShouldErr: true,
+			Name:          "non-resource",
+			Mod:           &modInfo{},
+			ExpectedError: "module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
 				Resource: false,
 			},
@@ -228,7 +228,7 @@ func TestGetPlugin(t *testing.T) {
 			Mod: &modInfo{
 				Dir: "/not/real",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
 				Name:    "thing2",
 				Version: "v1.2.3",
@@ -277,7 +277,7 @@ func TestGetPlugin(t *testing.T) {
 				Name:     "name",
 				Resource: true,
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "nested-wrong-folder",
@@ -290,7 +290,7 @@ func TestGetPlugin(t *testing.T) {
 				Name:     "name",
 				Resource: true,
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 	}
 
@@ -314,8 +314,8 @@ func TestGetPlugin(t *testing.T) {
 			}
 
 			actual, err := c.Mod.getPlugin(t.TempDir())
-			if c.ShouldErr {
-				assert.Error(t, err)
+			if c.ExpectedError != "" {
+				assert.EqualError(t, err, c.ExpectedError)
 			} else {
 				// Kind must be resource. We can thus exclude it from the test.
 				if c.Expected.Kind == "" {

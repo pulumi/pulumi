@@ -566,7 +566,7 @@ func TestInvalidPathArchive(t *testing.T) {
 
 	// Attempt to construct a PathArchive with the temp file.
 	_, err = NewPathArchive(fileName)
-	assert.Error(t, err)
+	assert.EqualError(t, err, fmt.Sprintf("'%s' is neither a recognized archive type nor a directory", fileName))
 }
 
 func validateTestDirArchive(t *testing.T, arch *Archive, expected int) {

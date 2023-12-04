@@ -56,22 +56,22 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that an invalid asset produces an error.
 	setProperty(pk, assetProps, resource.AssetHashProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected asset hash of type float64")
 	setProperty(pk, assetProps, resource.AssetHashProperty, asset.Hash)
 
 	setProperty(pk, assetProps, resource.AssetTextProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected asset text of type float64")
 	setProperty(pk, assetProps, resource.AssetTextProperty, "")
 
 	setProperty(pk, assetProps, resource.AssetPathProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected asset path of type float64")
 	setProperty(pk, assetProps, resource.AssetPathProperty, "")
 
 	setProperty(pk, assetProps, resource.AssetURIProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected asset URI of type float64")
 	setProperty(pk, assetProps, resource.AssetURIProperty, "")
 
 	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
@@ -104,22 +104,22 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that an invalid archive produces an error.
 	setProperty(pk, archProps, resource.ArchiveHashProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive hash of type float64")
 	setProperty(pk, archProps, resource.ArchiveHashProperty, arch.Hash)
 
 	setProperty(pk, archProps, resource.ArchiveAssetsProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive contents of type float64")
 	setProperty(pk, archProps, resource.ArchiveAssetsProperty, nil)
 
 	setProperty(pk, archProps, resource.ArchivePathProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive path of type float64")
 	setProperty(pk, archProps, resource.ArchivePathProperty, "")
 
 	setProperty(pk, archProps, resource.ArchiveURIProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive URI of type float64")
 	setProperty(pk, archProps, resource.ArchiveURIProperty, "")
 }
 
@@ -183,7 +183,7 @@ func TestComputedReject(t *testing.T) {
 		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected unknown property value for \"pk\"")
 		assert.Nil(t, cprop)
 	}
 	{
@@ -192,7 +192,7 @@ func TestComputedReject(t *testing.T) {
 				resource.Computed{Element: resource.NewStringProperty("")}), MarshalOptions{KeepUnknowns: true})
 		assert.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected unknown property value for \"pk\"")
 		assert.Nil(t, cpropU)
 	}
 }
@@ -210,14 +210,14 @@ func TestAssetReject(t *testing.T) {
 	assert.NoError(t, err)
 	{
 		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
 		assert.Nil(t, assetProps)
 	}
 	{
 		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
 		assert.NoError(t, err)
 		assetPropU, err := UnmarshalPropertyValue(pk, assetProps, opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
 		assert.Nil(t, assetPropU)
 	}
 
@@ -225,14 +225,14 @@ func TestAssetReject(t *testing.T) {
 	assert.NoError(t, err)
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset Archive property value for \"an asset URI\"")
 		assert.Nil(t, archProps)
 	}
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
 		assert.NoError(t, err)
 		archValue, err := UnmarshalPropertyValue(pk, archProps, opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset property value for \"foo\"")
 		assert.Nil(t, archValue)
 	}
 }
@@ -283,7 +283,7 @@ func TestUnknownSig(t *testing.T) {
 	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{})
 	assert.NoError(t, err)
 	_, err = UnmarshalPropertyValue(pk, prop, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unrecognized signature 'foobar' in property map for \"pk\"")
 }
 
 func TestSkipInternalKeys(t *testing.T) {

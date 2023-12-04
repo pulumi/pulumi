@@ -93,15 +93,13 @@ func TestFieldMapper(t *testing.T) {
 	// Try some error conditions; first, wrong type:
 	s.String = "x"
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.String, false)
-	assert.Error(t, err)
-	assert.Equal(t, "Field 'b' on 'mapper.bag' must be a 'string'; got 'bool' instead", err.Error())
+	assert.EqualError(t, err, "Field 'b' on 'mapper.bag' must be a 'string'; got 'bool' instead")
 	assert.Equal(t, "x", s.String)
 
 	// Next, missing required field:
 	s.String = "x"
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "missing", &s.String, false)
-	assert.Error(t, err)
-	assert.Equal(t, "Missing required field 'missing' on 'mapper.bag'", err.Error())
+	assert.EqualError(t, err, "Missing required field 'missing' on 'mapper.bag'")
 	assert.Equal(t, "x", s.String)
 }
 
@@ -285,17 +283,15 @@ func TestMapperDecode(t *testing.T) {
 		"s":  true,
 		"sc": "",
 	}, &b3)
-	assert.Error(t, err)
-	assert.Equal(t, "1 failures decoding:\n"+
-		"\ts: Field 's' on 'mapper.bagtag' must be a 'string'; got 'bool' instead", err.Error())
+	assert.EqualError(t, err, "1 failures decoding:\n"+
+		"\ts: Field 's' on 'mapper.bagtag' must be a 'string'; got 'bool' instead")
 	assert.Equal(t, "", b3.String)
 
 	// Next, missing required field:
 	var b4 bagtag
 	err = md.Decode(map[string]interface{}{}, &b4)
-	assert.Error(t, err)
-	assert.Equal(t, "1 failures decoding:\n"+
-		"\ts: Missing required field 's' on 'mapper.bagtag'", err.Error())
+	assert.EqualError(t, err, "1 failures decoding:\n"+
+		"\ts: Missing required field 's' on 'mapper.bagtag'")
 	assert.Equal(t, "", b4.String)
 }
 

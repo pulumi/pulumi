@@ -54,13 +54,11 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	// Test lack of name
 	proj := Project{}
 	err = proj.Validate()
-	assert.Error(t, err)
-	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
+	assert.EqualError(t, err, "project is missing a 'name' attribute")
 	// Test lack of runtime
 	proj.Name = "a project"
 	err = proj.Validate()
-	assert.Error(t, err)
-	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
+	assert.EqualError(t, err, "project is missing a 'runtime' attribute")
 
 	// Test success
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)

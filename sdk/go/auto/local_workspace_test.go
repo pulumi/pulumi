@@ -209,8 +209,7 @@ func TestRemoveWithForce(t *testing.T) {
 
 	// to make sure stack was removed
 	err = s.Workspace().SelectStack(ctx, s.Name())
-	assert.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), "no stack named"))
+	assert.ErrorContains(t, err, "no stack named")
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -1083,8 +1082,7 @@ func TestNestedStackFails(t *testing.T) {
 
 	t.Log(result)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "nested stack operations are not supported")
+	assert.ErrorContains(t, err, "nested stack operations are not supported")
 
 	// -- pulumi destroy --
 
@@ -2137,8 +2135,7 @@ func TestMinimumVersion(t *testing.T) {
 			_, err := parseAndValidatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
 
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Regexp(t, tt.expectedError, err.Error())
+				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
