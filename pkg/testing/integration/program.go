@@ -647,6 +647,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
 	}
+	if overrides.PostPrepareProject != nil {
+		opts.PostPrepareProject = overrides.PostPrepareProject
+	}
 	if overrides.LocalProviders != nil {
 		opts.LocalProviders = append(opts.LocalProviders, overrides.LocalProviders...)
 	}
