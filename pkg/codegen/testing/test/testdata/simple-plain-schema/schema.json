@@ -31,6 +31,35 @@
       },
       "required": ["a", "c", "e"],
       "type": "object"
+    },
+    "example::AnnotationStoreSchemaValueType": {
+      "type": "string",
+      "enum": [
+          {
+              "name": "Long",
+              "value": "LONG"
+          },
+          {
+              "name": "Int",
+              "value": "INT"
+          },
+          {
+              "name": "String",
+              "value": "STRING"
+          },
+          {
+              "name": "Float",
+              "value": "FLOAT"
+          },
+          {
+              "name": "Double",
+              "value": "DOUBLE"
+          },
+          {
+              "name": "Boolean",
+              "value": "BOOLEAN"
+          }
+      ]
     }
   },
   "resources": {
@@ -70,6 +99,15 @@
       },
       "required": ["a", "c", "e"],
       "inputProperties": {
+        "z": {
+          "type": "array",
+          "items": {
+              "type": "object",
+              "additionalProperties": {
+                  "$ref": "#/types/example::AnnotationStoreSchemaValueType"
+              }
+          }
+        },
         "a": {
           "type": "boolean",
           "plain": true
