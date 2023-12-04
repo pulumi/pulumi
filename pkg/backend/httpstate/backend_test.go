@@ -15,10 +15,22 @@ package httpstate
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // mutates environment variables
@@ -123,4 +135,66 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 			assert.Equal(t, tt.wantOrg, org)
 		})
 	}
+}
+
+func randomStackName() string {
+	b := make([]byte, 4)
+	_, err := cryptorand.Read(b)
+	contract.AssertNoErrorf(err, "failed to generate random stack name")
+	return "test" + hex.EncodeToString(b)
+}
+
+//nolint:paralleltest // mutates global state
+func TestDisableIntegrityChecking(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	ctx := context.Background()
+
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	require.NoError(t, err)
+
+	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	require.NoError(t, err)
+
+	stackName := randomStackName()
+	ref, err := b.ParseStackReference(stackName)
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil)
+	require.NoError(t, err)
+
+	// make up a bad stack
+	deployment := apitype.UntypedDeployment{
+		Version: 3,
+		Deployment: json.RawMessage(`{
+			"resources": [
+				{
+					"urn": "urn:pulumi:stack::proj::type::name1",
+					"type": "type",
+					"parent": "urn:pulumi:stack::proj::type::name2"
+				},
+				{
+					"urn": "urn:pulumi:stack::proj::type::name2",
+					"type": "type"
+				}
+			]
+		}`),
+	}
+
+	// Import deployment doesn't verify the deployment
+	err = b.ImportDeployment(ctx, s, &deployment)
+	require.NoError(t, err)
+
+	backend.DisableIntegrityChecking = false
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	require.ErrorContains(t, err,
+		"child resource urn:pulumi:stack::proj::type::name1's parent urn:pulumi:stack::proj::type::name2 comes after it")
+	assert.Nil(t, snap)
+
+	backend.DisableIntegrityChecking = true
+	snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
 }

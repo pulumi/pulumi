@@ -31,6 +31,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+// DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
+// recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
+// be used as a last resort when a command absolutely must be run.
+var DisableIntegrityChecking bool
+
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
 // persistence. In order to fit into our current model, snapshot persisters have two functions:
 // saving snapshots and invalidating already-persisted snapshots.

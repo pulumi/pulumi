@@ -40,8 +40,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -266,7 +266,7 @@ func NewPulumiCmd() *cobra.Command {
 		"Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
 		"Enable emojis in the output")
-	cmd.PersistentFlags().BoolVar(&filestate.DisableIntegrityChecking, "disable-integrity-checking", false,
+	cmd.PersistentFlags().BoolVar(&backend.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
 		"Flow log settings to child processes (like plugins)")
