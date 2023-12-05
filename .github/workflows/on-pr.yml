@@ -83,30 +83,7 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
-      # codegen tests take quite a while to run.
-      # Run them only if ci/test is set,
-      # or if one of the codegen files changed.
-      test-codegen: >- # No newlines or trailing newline.
-        ${{
-          contains(github.event.pull_request.labels.*.name, 'ci/test') ||
-          (needs.inspect.outputs.test-codegen == 'true')
-        }}
-      test-version-sets: >- # No newlines or trailing newline.
-        ${{
-          contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'minimum current'
-          || 'current'
-        }}
-      integration-test-platforms: ubuntu-latest
-      acceptance-test-platforms: >- # No newlines or trailing newline.
-        ${{
-          contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'macos-latest windows-latest'
-          || ''
-        }}
-      # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
-      enable-coverage: false
+      enable-coverage: true
     secrets: inherit
 
   prepare-release:

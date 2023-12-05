@@ -235,7 +235,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
           repo: gotestyourself/gotestsum
-          tag: v1.8.1
+          tag: v1.11.0
           cache: enable
       - name: Install goteststats
         uses: jaxxstorm/action-install-gh-release@v1.7.1

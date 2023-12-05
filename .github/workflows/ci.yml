@@ -359,7 +359,9 @@ jobs:
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
   test-collect-coverage:
     needs: [unit-test, integration-test, acceptance-test]
-    if: ${{ inputs.enable-coverage }}
+    #if: ${{ inputs.enable-coverage }}
+    # TODO revert this
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve code coverage statuses
