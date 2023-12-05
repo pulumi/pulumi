@@ -17,7 +17,6 @@ package integration
 import (
 	"context"
 	cryptorand "crypto/rand"
-	sha256 "crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -423,34 +422,6 @@ func (opts *ProgramTestOptions) getEnvNameWithOwner(name string) string {
 		return fmt.Sprintf("%v/%v", owner, opts.getEnvName(name))
 	}
 	return opts.getEnvName(name)
-}
-
-// Returns the md5 hash of the file at the given path as a string
-func hashFile(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	buf := make([]byte, 32*1024)
-	hash := sha256.New()
-	for {
-		n, err := file.Read(buf)
-		if n > 0 {
-			_, err := hash.Write(buf[:n])
-			if err != nil {
-				return "", err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return "", err
-		}
-	}
-	sum := string(hash.Sum(nil))
-	return sum, nil
 }
 
 // GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
@@ -2199,12 +2170,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	} else {
 		venvPath := "venv"
 		if pt.opts.GetUseSharedVirtualEnv() {
-			requirementsPath := filepath.Join(cwd, "requirements.txt")
-			requirementsmd5, err := hashFile(requirementsPath)
-			if err != nil {
-				return err
-			}
-			pt.opts.virtualEnvDir = fmt.Sprintf("pulumi-venv-%x", requirementsmd5)
+			pt.opts.virtualEnvDir = pt.t.TempDir()
 			venvPath = filepath.Join(pt.opts.SharedVirtualEnvPath, pt.opts.virtualEnvDir)
 		}
 		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", venvPath}, cwd); err != nil {
