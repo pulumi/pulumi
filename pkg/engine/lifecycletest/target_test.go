@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -1598,4 +1599,357 @@ func TestTargetUntargetedParent(t *testing.T) {
 		assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 		assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
 	})
+}
+
+// TestTargetDestroyDependencyErrors ensures we get an error when doing a targeted destroy of a resource that has a
+// dependency and the dependency isn't specified as a target and TargetDependents isn't set.
+func TestTargetDestroyDependencyErrors(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{aURN},
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	validateSnap := func(snap *deploy.Snapshot) {
+		assert.NotNil(t, snap)
+		assert.Nil(t, snap.VerifyIntegrity())
+		assert.Len(t, snap.Resources, 3)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
+	}
+
+	// Run an update for initial state.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	validateSnap(snap)
+
+	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::resA",
+			}),
+		},
+	}, false, p.BackendClient, nil)
+	assert.Error(t, err) // Expect error because we didn't specify the dependency as a target or TargetDependents
+	validateSnap(snap)
+}
+
+// TestTargetDestroyChildErrors ensures we get an error when doing a targeted destroy of a resource that has a
+// child, and the child isn't specified as a target and TargetDependents isn't set.
+func TestTargetDestroyChildErrors(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: aURN,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	validateSnap := func(snap *deploy.Snapshot) {
+		assert.NotNil(t, snap)
+		assert.Nil(t, snap.VerifyIntegrity())
+		assert.Len(t, snap.Resources, 3)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
+	}
+
+	// Run an update for initial state.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	validateSnap(snap)
+
+	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::resA",
+			}),
+		},
+	}, false, p.BackendClient, nil)
+	assert.Error(t, err) // Expect error because we didn't specify the child as a target or TargetDependents
+	validateSnap(snap)
+}
+
+// TestTargetDestroyDeleteFails ensures a resource that is part of a targeted destroy that fails to delete still
+// remains in the snapshot.
+func TestTargetDestroyDeleteFails(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
+					timeout float64,
+				) (resource.Status, error) {
+					return resource.StatusUnknown, errors.New("can't delete")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	validateSnap := func(snap *deploy.Snapshot) {
+		assert.NotNil(t, snap)
+		assert.Nil(t, snap.VerifyIntegrity())
+		assert.Len(t, snap.Resources, 2)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+	}
+
+	// Run an update for initial state.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	validateSnap(snap)
+
+	// Now run the targeted destroy. We expect an error because the resA errored on delete.
+	// The state should still contain resA.
+	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::resA",
+			}),
+		},
+	}, false, p.BackendClient, nil)
+	assert.Error(t, err)
+	validateSnap(snap)
+}
+
+// TestTargetDestroyDependencyDeleteFails ensures a resource that is part of a targeted destroy that fails to delete
+// still remains in the snapshot.
+func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
+					timeout float64,
+				) (resource.Status, error) {
+					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA::resB", string(urn))
+					return resource.StatusUnknown, errors.New("can't delete")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{aURN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	validateSnap := func(snap *deploy.Snapshot) {
+		assert.NotNil(t, snap)
+		assert.Nil(t, snap.VerifyIntegrity())
+		assert.Len(t, snap.Resources, 3)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[2].URN)
+	}
+
+	// Run an update for initial state.
+	originalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	validateSnap(originalSnap)
+
+	// Now run the targeted destroy specifying TargetDependents.
+	// We expect an error because resB errored on delete.
+	// The state should still contain resA and resB.
+	snap, err := TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::resA",
+			}),
+			TargetDependents: true,
+		},
+	}, false, p.BackendClient, nil)
+	assert.Error(t, err)
+	validateSnap(snap)
+
+	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
+	// We expect an error because resB errored on delete.
+	// The state should still contain resA and resB.
+	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::resA",
+				"urn:pulumi:test::test::pkgA:m:typA::resB",
+			}),
+		},
+	}, false, p.BackendClient, nil)
+	assert.Error(t, err)
+	validateSnap(snap)
+}
+
+// TestTargetDestroyChildDeleteFails ensures a resource that is part of a targeted destroy that fails to delete
+// still remains in the snapshot.
+func TestTargetDestroyChildDeleteFails(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
+					timeout float64,
+				) (resource.Status, error) {
+					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB", string(urn))
+					return resource.StatusUnknown, errors.New("can't delete")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: aURN,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	validateSnap := func(snap *deploy.Snapshot) {
+		assert.NotNil(t, snap)
+		assert.Nil(t, snap.VerifyIntegrity())
+		assert.Len(t, snap.Resources, 3)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+		assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), snap.Resources[2].URN)
+	}
+
+	// Run an update for initial state.
+	originalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	validateSnap(originalSnap)
+
+	// Now run the targeted destroy specifying TargetDependents.
+	// We expect an error because resB errored on delete.
+	// The state should still contain resA and resB.
+	snap, err := TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::resA",
+			}),
+			TargetDependents: true,
+		},
+	}, false, p.BackendClient, nil)
+	assert.Error(t, err)
+	validateSnap(snap)
+
+	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
+	// We expect an error because resB errored on delete.
+	// The state should still contain resA and resB.
+	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::resA",
+				"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
+			}),
+		},
+	}, false, p.BackendClient, nil)
+	assert.Error(t, err)
+	validateSnap(snap)
 }
