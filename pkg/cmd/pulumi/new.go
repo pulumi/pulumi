@@ -754,8 +754,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.listTemplates, "list-templates", "l", false,
 		"List locally installed templates and exit")
-	cmd.PersistentFlags().StringVarP(
-		&args.aiPrompt, "prompt", "p", "", "Prompt to use for Pulumi AI",
+	cmd.PersistentFlags().StringVar(
+		&args.aiPrompt, "ai", "", "Prompt to use for Pulumi AI",
 	)
 	cmd.PersistentFlags().StringVar(
 		&args.aiLanguage, "language", "", "Language to use for Pulumi AI "+
