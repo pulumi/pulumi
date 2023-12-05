@@ -247,6 +247,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/compile"),
 	},
 	{
+		Directory:   "array-of-enum-map",
+		Description: "A schema with an array of maps where the values are enums. Issue pulumi/pulumi#14734",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
 		Directory:   "azure-native-nested-types",
 		Description: "Condensed example of nested collection types from Azure Native",
 		Skip:        codegen.NewStringSet("go/any"),

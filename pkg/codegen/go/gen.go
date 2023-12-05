@@ -3369,6 +3369,8 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 		return pkg.nestedTypeToType(t.ElementType) + "Map"
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)
+	case *schema.EnumType:
+		return pkg.resolveEnumType(t)
 	}
 	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args")
 }
@@ -3972,6 +3974,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			return getPkgFromType(t.ElementType)
 		case *schema.MapType:
 			return getPkgFromType(t.ElementType)
+		case *schema.ObjectType:
+			return getPkgFromToken(t.Token)
+		case *schema.EnumType:
+			return getPkgFromToken(t.Token)
 		default:
 			return getPkgFromToken(t.String())
 		}
@@ -4716,6 +4722,35 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		sort.Slice(sortedKnownTypes, func(i, j int) bool {
 			return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
 		})
+
+		if len(pkg.types) == 0 && len(pkg.enums) > 0 {
+			// If there are no types, but there are enums, we still need to generate the types file.
+			// with the associated nested collection enum types such as arrays of enums, maps of enums etc.
+
+			collectionTypes := map[string]*nestedTypeInfo{}
+			for _, t := range sortedKnownTypes {
+				pkg.collectNestedCollectionTypes(collectionTypes, t)
+			}
+
+			if len(collectionTypes) > 0 {
+				buffer := &bytes.Buffer{}
+				useGenericVariant := false
+				err := generateTypes(buffer, pkg, []*schema.ObjectType{}, sortedKnownTypes, useGenericVariant)
+				if err != nil {
+					return nil, err
+				}
+				typeFilePath := path.Join(mod, "pulumiTypes.go")
+				setFile(typeFilePath, buffer.String())
+
+				genericVariantBuffer := &bytes.Buffer{}
+				useGenericVariant = true
+				err = generateTypes(genericVariantBuffer, pkg, []*schema.ObjectType{}, sortedKnownTypes, useGenericVariant)
+				if err != nil {
+					return nil, err
+				}
+				setGenericVariantFile(typeFilePath, genericVariantBuffer.String())
+			}
+		}
 
 		for types, i := pkg.types, 0; len(types) > 0; i++ {
 			// 500 types corresponds to approximately 5M or 40_000 lines of code.
