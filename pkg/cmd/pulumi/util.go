@@ -35,6 +35,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	git "github.com/go-git/go-git/v5"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -53,6 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -119,6 +121,21 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
+func loginToCloud(
+	ctx context.Context,
+	cloudURL string,
+	project *workspace.Project,
+	insecure bool,
+	opts display.Options,
+) (backend.Backend, error) {
+	lm := httpstate.NewLoginManager()
+	_, err := lm.Login(ctx, cloudURL, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, true /*current*/, opts)
+	if err != nil {
+		return nil, err
+	}
+	return httpstate.New(cmdutil.Diag(), cloudURL, project, insecure)
+}
+
 func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Project) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
@@ -132,7 +149,13 @@ func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Projec
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(ctx, cmdutil.Diag(), url, project)
 	}
-	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url, project, workspace.GetCloudInsecure(url))
+
+	insecure := workspace.GetCloudInsecure(url)
+	_, err = httpstate.NewLoginManager().Current(ctx, url, insecure, true)
+	if err != nil {
+		return nil, err
+	}
+	return httpstate.New(cmdutil.Diag(), url, project, insecure)
 }
 
 func currentBackend(ctx context.Context, project *workspace.Project, opts display.Options) (backend.Backend, error) {
@@ -148,7 +171,8 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(ctx, cmdutil.Diag(), url, project)
 	}
-	return httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), url, project, workspace.GetCloudInsecure(url), opts)
+
+	return loginToCloud(ctx, url, project, workspace.GetCloudInsecure(url), opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -395,7 +419,7 @@ func chooseStack(ctx context.Context,
 		inContToken = outContToken
 	}
 
-	options := make([]string, 0, len(allSummaries))
+	options := slice.Prealloc[string](len(allSummaries))
 	for _, summary := range allSummaries {
 		name := summary.Name().String()
 		options = append(options, name)
@@ -540,12 +564,7 @@ func readProject() (*workspace.Project, string, error) {
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
 // workspace. If the project is successfully detected and read, it is returned along with the path
 // to its containing directory, which will be used as the root of the project's Pulumi program.
-func readPolicyProject() (*workspace.PolicyPackProject, string, string, error) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return nil, "", "", err
-	}
-
+func readPolicyProject(pwd string) (*workspace.PolicyPackProject, string, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectPolicyPackPathFrom(pwd)
 	if err != nil {
@@ -687,11 +706,11 @@ func addPulumiCLIMetadataToEnvironment(env map[string]string, flags *pflag.FlagS
 }
 
 // addGitMetadata populate's the environment metadata bag with Git-related values.
-func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
+func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
-	repo, err := gitutil.GetGitRepository(repoRoot)
+	repo, err := gitutil.GetGitRepository(projectRoot)
 	if err != nil {
 		return fmt.Errorf("detecting Git repository: %w", err)
 	}
@@ -699,11 +718,11 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 		return nil
 	}
 
-	if err := AddGitRemoteMetadataToMap(repo, m.Environment); err != nil {
+	if err := AddGitRemoteMetadataToMap(repo, projectRoot, m.Environment); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	if err := addGitCommitMetadata(repo, repoRoot, m); err != nil {
+	if err := addGitCommitMetadata(repo, projectRoot, m); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
@@ -711,7 +730,7 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 }
 
 // AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.
-func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) error {
+func AddGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map[string]string) error {
 	var allErrors *multierror.Error
 
 	// Get the remote URL for this repo.
@@ -726,6 +745,19 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 	// Check if the remote URL is a GitHub or a GitLab URL.
 	if err := addVCSMetadataToEnvironment(remoteURL, env); err != nil {
 		allErrors = multierror.Append(allErrors, err)
+	}
+
+	// Add the repository root path.
+	tree, err := repo.Worktree()
+	if err != nil {
+		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+	} else {
+		rel, err := filepath.Rel(tree.Filesystem.Root(), projectRoot)
+		if err != nil {
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+		} else if !strings.HasPrefix(rel, "..") {
+			env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+		}
 	}
 
 	return allErrors.ErrorOrNil()
@@ -857,15 +889,33 @@ func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) 
 	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
 }
 
-func makeJSONString(v interface{}) (string, error) {
+// makeJSONString turns the given value into a JSON string.
+// If multiline is true, the JSON will be formatted with indentation and a trailing newline.
+func makeJSONString(v interface{}, multiline bool) (string, error) {
 	var out bytes.Buffer
+
+	// json.Marshal escapes HTML characters, which we don't want,
+	// so change that with json.NewEncoder.
 	encoder := json.NewEncoder(&out)
 	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
+
+	if multiline {
+		encoder.SetIndent("", "  ")
+	}
+
 	if err := encoder.Encode(v); err != nil {
 		return "", err
 	}
-	return out.String(), nil
+
+	// json.NewEncoder always adds a trailing newline. Remove it.
+	bs := out.Bytes()
+	if !multiline {
+		if n := len(bs); n > 0 && bs[n-1] == '\n' {
+			bs = bs[:n-1]
+		}
+	}
+
+	return string(bs), nil
 }
 
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
@@ -875,7 +925,7 @@ func printJSON(v interface{}) error {
 
 // fprintJSON simply prints out some object, formatted as JSON, using standard indentation.
 func fprintJSON(w io.Writer, v interface{}) error {
-	jsonStr, err := makeJSONString(v)
+	jsonStr, err := makeJSONString(v, true /* multi line */)
 	if err != nil {
 		return err
 	}
@@ -1020,4 +1070,92 @@ func surveyIcons(color colors.Colorization) survey.AskOpt {
 		icons.Question = survey.Icon{}
 		icons.SelectFocus = survey.Icon{Text: color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
 	})
+}
+
+// Ask multiple survey based questions.
+//
+// Ctrl-C will go back in the stack, and valid answers will go forward.
+func surveyStack(interactions ...func() error) error {
+	for i := 0; i < len(interactions); {
+		err := interactions[i]()
+		switch err {
+		// No error, so go to the next interaction.
+		case nil:
+			i++
+		// We have received an interrupt, so go back to the previous interaction.
+		case terminal.InterruptErr:
+			// If we have received in interrupt at the beginning of the stack,
+			// the user has asked to go back to before the stack. We can't do
+			// that, so we just return the interrupt.
+			if i == 0 {
+				return err
+			}
+			i--
+		// We have received an unexpected error, so return it.
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+// Format a non-nil error that indicates some arguments are missing for a
+// non-interactive session.
+func missingNonInteractiveArg(args ...string) error {
+	switch len(args) {
+	case 0:
+		panic("cannot create an error message for missing zero args")
+	case 1:
+		return fmt.Errorf("Must supply <%s> unless pulumi is run interactively", args[0])
+	default:
+		for i, s := range args {
+			args[i] = "<" + s + ">"
+		}
+		return fmt.Errorf("Must supply %s and %s unless pulumi is run interactively",
+			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
+	}
+}
+
+func promptUser(msg string, options []string, defaultOption string, colorization colors.Colorization) string {
+	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
+	surveycore.DisableColor = true
+	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question = survey.Icon{}
+		icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
+	})
+
+	var response string
+	if err := survey.AskOne(&survey.Select{
+		Message: prompt,
+		Options: options,
+		Default: defaultOption,
+	}, &response, surveyIcons); err != nil {
+		return ""
+	}
+	return response
+}
+
+func printTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
+	fprintTable(os.Stdout, table, opts)
+}
+
+func fprintTable(out io.Writer, table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
+	fmt.Fprint(out, renderTable(table, opts))
+}
+
+func renderTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) string {
+	if opts == nil {
+		opts = &cmdutil.TableRenderOptions{}
+	}
+	if len(opts.HeaderStyle) == 0 {
+		style := make([]colors.Color, len(table.Headers))
+		for i := range style {
+			style[i] = colors.SpecHeadline
+		}
+		opts.HeaderStyle = style
+	}
+	if opts.Color == "" {
+		opts.Color = cmdutil.GetGlobalColorization()
+	}
+	return table.Render(opts)
 }

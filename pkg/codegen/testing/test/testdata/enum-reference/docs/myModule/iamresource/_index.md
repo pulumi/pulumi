@@ -225,7 +225,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Pulumi.<wbr>Google<wbr>Native.<wbr>IAM.<wbr>V1.<wbr>Inputs.<wbr>Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig">Pulumi.<wbr>Google<wbr>Native.<wbr>IAM.<wbr>V1.<wbr>Inputs.<wbr>Audit<wbr>Config</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -253,7 +253,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -267,7 +267,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">pulumi<wbr>Google<wbr>Native.types.input.iam.v1.<wbr>Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig">pulumi<wbr>Google<wbr>Native.types.input.iam.v1.<wbr>Audit<wbr>Config</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

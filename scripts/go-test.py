@@ -15,6 +15,14 @@ import sys
 import uuid
 import threading
 
+cover_packages = [
+    "github.com/pulumi/pulumi/pkg/v3/...",
+    "github.com/pulumi/pulumi/sdk/v3/...",
+    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/...",
+    "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/...",
+    "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3/...",
+]
+
 dryrun = os.environ.get("PULUMI_TEST_DRYRUN", None) == "true"
 
 def options(options_and_packages: List[str]):
@@ -27,9 +35,18 @@ def packages(options_and_packages: List[str]):
 root = pathlib.Path(__file__).absolute().parent.parent
 integration_test_subset = os.environ.get('PULUMI_INTEGRATION_TESTS', None)
 args = sys.argv[1:]
-cov = os.environ.get('PULUMI_TEST_COVERAGE_PATH', None)
-if cov is not None:
-    args = args + [f'-coverprofile={cov}/go-test-{os.urandom(4).hex()}.cov', '-coverpkg=github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/...']
+
+covdir = os.environ.get('PULUMI_TEST_COVERAGE_PATH', None)
+covprofile = None
+if covdir is not None:
+    covprofile = f'{covdir}/go-test-{os.urandom(4).hex()}.cov'
+elif '-cover' in args:
+    wd = os.getcwd()
+    covprofile = f'{wd}/go-test-{os.urandom(4).hex()}.cov'
+
+if covprofile is not None:
+    coverpkg = ','.join(cover_packages)
+    args += [f'-coverprofile={covprofile}', f'-coverpkg={coverpkg}']
 
 if integration_test_subset:
     print(f"Using test subset: {integration_test_subset}")
@@ -61,8 +78,6 @@ timer.daemon = True
 timer.start()
 
 
-args = sys.argv[1:]
-
 if shutil.which('gotestsum') is not None:
     test_run = str(uuid.uuid4())
 
@@ -80,6 +95,7 @@ else:
     args = ['go', 'test'] + args
 
 if not dryrun:
+    print("Running: " + ' '.join(args))
     sp.check_call(args, shell=False)
 else:
     print("Would have run: " + ' '.join(args))

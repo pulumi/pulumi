@@ -40,15 +40,20 @@ type ProviderRequest struct {
 	version           *semver.Version
 	pkg               tokens.Package
 	pluginDownloadURL string
+	pluginChecksums   map[string][]byte
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
 // pluginDownloadURL and package.
-func NewProviderRequest(version *semver.Version, pkg tokens.Package, pluginDownloadURL string) ProviderRequest {
+func NewProviderRequest(
+	version *semver.Version, pkg tokens.Package,
+	pluginDownloadURL string, checksums map[string][]byte,
+) ProviderRequest {
 	return ProviderRequest{
 		version:           version,
 		pkg:               pkg,
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
+		pluginChecksums:   checksums,
 	}
 }
 
@@ -68,12 +73,17 @@ func (p ProviderRequest) PluginDownloadURL() string {
 	return p.pluginDownloadURL
 }
 
+// PluginChecksums returns this providers checksums. May be nil if no checksums were provided.
+func (p ProviderRequest) PluginChecksums() map[string][]byte {
+	return p.pluginChecksums
+}
+
 // Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
 // name is intended to be unique; as such, the name is derived from the version associated with this request.
 //
 // If a version is not provided, "default" is returned. Otherwise, Name returns a name starting with "default" and
 // followed by a QName-legal representation of the semantic version of the requested provider.
-func (p ProviderRequest) Name() tokens.QName {
+func (p ProviderRequest) Name() string {
 	base := "default"
 	if v := p.version; v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
@@ -91,9 +101,10 @@ func (p ProviderRequest) Name() tokens.QName {
 		base += "_" + tokens.IntoQName(url).String()
 	}
 
-	// This thing that we generated must be a QName.
+	// This thing that we generated must be a QName, the engine doesn't actually care but it probably helps
+	// down the line if we keep these names simple.
 	contract.Assertf(tokens.IsQName(base), "generated provider name %q is not a QName", base)
-	return tokens.QName(base)
+	return base
 }
 
 // String returns a string representation of this request. This string is suitable for use as a hash key.

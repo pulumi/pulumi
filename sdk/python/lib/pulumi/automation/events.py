@@ -328,6 +328,8 @@ class StepEventStateMetadata(BaseEvent):
         True when the resource is pending deletion due to replacement.
     protect: bool
         Protect is true to "protect" this resource (protected resources cannot be deleted).
+    retain_on_delete: boolean;
+        RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
     inputs: Mapping[str, Any]
         Inputs contains the resource's input properties (as specified by the program). Secrets have
         filtered out, and large assets have been replaced by hashes as applicable.
@@ -347,6 +349,7 @@ class StepEventStateMetadata(BaseEvent):
         custom: Optional[bool] = None,
         delete: Optional[bool] = None,
         protect: Optional[bool] = None,
+        retain_on_delete: Optional[bool] = None,
         inputs: Optional[Mapping[str, Any]] = None,
         outputs: Optional[Mapping[str, Any]] = None,
         init_errors: Optional[List[str]] = None,
@@ -359,6 +362,7 @@ class StepEventStateMetadata(BaseEvent):
         self.custom = custom
         self.delete = delete
         self.protect = protect
+        self.retain_on_delete = retain_on_delete
         self.inputs = inputs
         self.outputs = outputs
         self.init_errors = init_errors
@@ -374,6 +378,7 @@ class StepEventStateMetadata(BaseEvent):
             custom=data.get("custom"),
             delete=data.get("delete"),
             protect=data.get("protect"),
+            retain_on_delete=data.get("retainOnDelete"),
             inputs=data.get("inputs"),
             outputs=data.get("outputs"),
             init_errors=data.get("initErrors"),

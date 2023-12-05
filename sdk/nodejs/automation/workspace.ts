@@ -97,8 +97,9 @@ export interface Workspace {
      *
      * @param stackName The stack to read config from
      * @param key The key to use for the config lookup
+     * @param path The key contains a path to a property in a map or list to get
      */
-    getConfig(stackName: string, key: string): Promise<ConfigValue>;
+    getConfig(stackName: string, key: string, path?: boolean): Promise<ConfigValue>;
     /**
      * Returns the config map for the specified stack name, scoped to the current Workspace.
      *
@@ -111,30 +112,34 @@ export interface Workspace {
      * @param stackName The stack to operate on
      * @param key The config key to set
      * @param value The value to set
+     * @param path The key contains a path to a property in a map or list to set
      */
-    setConfig(stackName: string, key: string, value: ConfigValue): Promise<void>;
+    setConfig(stackName: string, key: string, value: ConfigValue, path?: boolean): Promise<void>;
     /**
      * Sets all values in the provided config map for the specified stack name.
      *
      * @param stackName The stack to operate on
-     * @param config The `ConfigMap` to upsert against the existing config.
+     * @param config The `ConfigMap` to upsert against the existing config
+     * @param path The keys contain a path to a property in a map or list to set
      */
-    setAllConfig(stackName: string, config: ConfigMap): Promise<void>;
+    setAllConfig(stackName: string, config: ConfigMap, path?: boolean): Promise<void>;
     /**
      * Removes the specified key-value pair on the provided stack name.
      *
      * @param stackName The stack to operate on
      * @param key The config key to remove
+     * @param path The key contains a path to a property in a map or list to remove
      */
-    removeConfig(stackName: string, key: string): Promise<void>;
+    removeConfig(stackName: string, key: string, path?: boolean): Promise<void>;
     /**
      *
      * Removes all values in the provided key list for the specified stack name.
      *
      * @param stackName The stack to operate on
      * @param keys The list of keys to remove from the underlying config
+     * @param path The keys contain a path to a property in a map or list to remove
      */
-    removeAllConfig(stackName: string, keys: string[]): Promise<void>;
+    removeAllConfig(stackName: string, keys: string[], path?: boolean): Promise<void>;
     /**
      * Gets and sets the config map used with the last update for Stack matching stack name.
      *
@@ -259,7 +264,7 @@ export interface StackSummary {
     name: string;
     current: boolean;
     lastUpdate?: string;
-    updateInProgress: boolean;
+    updateInProgress?: boolean;
     resourceCount?: number;
     url?: string;
 }

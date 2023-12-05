@@ -21,6 +21,9 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 {{with $builtins := .Builtins}}
@@ -62,6 +65,12 @@ func ({{.InputType}}) ElementType() reflect.Type {
 	return {{.Name | Unexported}}Type
 }
 
+func (in {{.InputType}}) ToOutput(ctx context.Context) pulumix.Output[{{.ElementType}}] {
+	return pulumix.Output[{{.ElementType}}]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
 func (in {{.InputType}}) To{{.Name}}Output() {{.Name}}Output {
 	return ToOutput(in).({{.Name}}Output)
 }
@@ -96,6 +105,12 @@ type {{.Name}}Output struct { *OutputState }
 
 func ({{.Name}}Output) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (o {{.Name}}Output) ToOutput(ctx context.Context) pulumix.Output[{{.ElementType}}] {
+	return pulumix.Output[{{.ElementType}}]{
+		OutputState: o.OutputState,
+	}
 }
 
 // ElementType returns the element type of this Output ({{.ElementType}}).
@@ -208,13 +223,9 @@ func To{{.Name}}Output(in map[string]{{.MapIndexReturnType}}Output) {{.Name}}Out
 {{end}}
 {{end}}
 
-func getResolvedValue(input Input) (reflect.Value, bool) {
-	switch input := input.(type) {
-	case *asset, *archive:
-		return reflect.ValueOf(input), true
-	default:
-		return reflect.Value{}, false
-	}
+func init() {
+	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
+	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
 }
 
 {{range .Builtins}}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"resource-args-python/example/internal"
 )
 
 type module struct {
@@ -51,7 +52,10 @@ func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pul
 }
 
 func init() {
-	version, _ := PkgVersion()
+	version, err := internal.PkgVersion()
+	if err != nil {
+		version = semver.Version{Major: 1}
+	}
 	pulumi.RegisterResourceModule(
 		"example",
 		"",

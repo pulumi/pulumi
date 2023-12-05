@@ -13,7 +13,7 @@ no_edit_this_page: true
 
 <h2 id="modules">Modules</h2>
 <ul class="api">
-    <li><a href="module/" title="module"><span class="api-symbol api-symbol--module"></span>module</a></li>
+    <li><a href="module/" title="module">module</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

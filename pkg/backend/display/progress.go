@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,13 +25,14 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dustin/go-humanize/english"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -80,7 +81,7 @@ type ProgressDisplay struct {
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
 	// stack is the stack this progress pertains to.
-	stack tokens.Name
+	stack tokens.StackName
 	// proj is the project this progress pertains to.
 	proj tokens.PackageName
 
@@ -138,6 +139,9 @@ type ProgressDisplay struct {
 
 	// Structure that tracks the time taken to perform an action on a resource.
 	opStopwatch opStopwatch
+
+	// Indicates whether we already printed the loading policy packs message.
+	shownPolicyLoadEvent bool
 }
 
 type opStopwatch struct {
@@ -171,6 +175,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return payload.Metadata.URN, &payload.Metadata
 	case engine.DiagEvent:
 		return event.Payload().(engine.DiagEventPayload).URN, nil
+	case engine.PolicyRemediationEvent:
+		return event.Payload().(engine.PolicyRemediationEventPayload).ResourceURN, nil
 	case engine.PolicyViolationEvent:
 		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
 	default:
@@ -179,7 +185,7 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
-func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
+func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.StackName, proj tokens.PackageName,
 	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
 	stdin := opts.Stdin
@@ -461,20 +467,30 @@ func (display *ProgressDisplay) processEndSteps() {
 	// don't really want to reprint any finished items we've already printed.
 	display.renderer.done(display)
 
-	// Render several "sections" of output based on available data as applicable.
-	display.println("")
-	wroteDiagnosticHeader := display.printDiagnostics()
-	wrotePolicyViolations := display.printPolicyViolations()
+	// Render the policies section; this will print all policy packs that ran plus any specific
+	// policies that led to violations or remediations. This comes before diagnostics since policy
+	// violations yield failures and it is better to see those in advance of the failure message.
+	wroteMandatoryPolicyViolations := display.printPolicies()
+
+	// Render the actual diagnostics streams (warnings, errors, etc).
+	hasError := display.printDiagnostics()
+
+	// Print output variables; this comes last, prior to the summary, since these are the final
+	// outputs after having run all of the above.
 	display.printOutputs()
-	// If no policies violated, print policy packs applied.
-	if !wrotePolicyViolations {
-		display.printSummary(wroteDiagnosticHeader)
+
+	// Print a summary of resource operations unless there were mandatory policy violations.
+	// In that case, we want to abruptly terminate the display so as not to confuse.
+	if !wroteMandatoryPolicyViolations {
+		display.printSummary(hasError)
 	}
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
-// resource. If no diagnostics were emitted, prints nothing.
+// resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
 func (display *ProgressDisplay) printDiagnostics() bool {
+	hasError := false
+
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
@@ -501,6 +517,11 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 			for _, v := range payloads {
 				if v.Ephemeral {
 					continue
+				}
+
+				if v.Severity == diag.Error {
+					// An error occurred and the display should consider this a failure.
+					hasError = true
 				}
 
 				msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
@@ -537,79 +558,151 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 		}
 
 	}
-	return wroteDiagnosticHeader
+	return hasError
 }
 
-// printPolicyViolations prints a new "Policy Violation:" section with all of the violations
-// grouped by policy pack. If no policy violations were encountered, prints nothing.
-func (display *ProgressDisplay) printPolicyViolations() bool {
-	// Loop through every resource and gather up all policy violations encountered.
-	var policyEvents []engine.PolicyViolationEventPayload
-	for _, row := range display.eventUrnToResourceRow {
-		policyPayloads := row.PolicyPayloads()
-		if len(policyPayloads) == 0 {
-			continue
-		}
-		policyEvents = append(policyEvents, policyPayloads...)
-	}
-	if len(policyEvents) == 0 {
+type policyPackSummary struct {
+	IsLocal           bool
+	LocalPath         string
+	ViolationEvents   []engine.PolicyViolationEventPayload
+	RemediationEvents []engine.PolicyRemediationEventPayload
+}
+
+func (display *ProgressDisplay) printPolicies() bool {
+	if display.summaryEventPayload == nil || len(display.summaryEventPayload.PolicyPacks) == 0 {
 		return false
 	}
-	// Sort policy events by: policy pack name, policy pack version, enforcement level,
-	// policy name, and finally the URN of the resource.
-	sort.SliceStable(policyEvents, func(i, j int) bool {
-		eventI, eventJ := policyEvents[i], policyEvents[j]
-		if packNameCmp := strings.Compare(
-			eventI.PolicyPackName,
-			eventJ.PolicyPackName); packNameCmp != 0 {
-			return packNameCmp < 0
-		}
-		if packVerCmp := strings.Compare(
-			eventI.PolicyPackVersion,
-			eventJ.PolicyPackVersion); packVerCmp != 0 {
-			return packVerCmp < 0
-		}
-		if enfLevelCmp := strings.Compare(
-			string(eventI.EnforcementLevel),
-			string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
-			return enfLevelCmp < 0
-		}
-		if policyNameCmp := strings.Compare(
-			eventI.PolicyName,
-			eventJ.PolicyName); policyNameCmp != 0 {
-			return policyNameCmp < 0
-		}
-		urnCmp := strings.Compare(
-			string(eventI.ResourceURN),
-			string(eventJ.ResourceURN))
-		return urnCmp < 0
-	})
 
-	// Print every policy violation, printing a new header when necessary.
-	display.println(display.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset))
+	var hadMandatoryViolations bool
+	display.println(display.opts.Color.Colorize(colors.SpecHeadline + "Policies:" + colors.Reset))
 
-	for _, policyEvent := range policyEvents {
-		// Print the individual policy event.
-		c := colors.SpecImportant
-		if policyEvent.EnforcementLevel == apitype.Mandatory {
-			c = colors.SpecError
+	// Print policy packs that were run and any violations or remediations associated with them.
+	// Gather up all policy packs and their associated violation and remediation events.
+	policyPackInfos := make(map[string]policyPackSummary)
+
+	// First initialize empty lists for all policy packs just to ensure they show if no events are found.
+	for name, version := range display.summaryEventPayload.PolicyPacks {
+		var summary policyPackSummary
+		baseName, path := engine.GetLocalPolicyPackInfoFromEventName(name)
+		if baseName != "" {
+			summary.IsLocal = true
+			summary.LocalPath = path
+			name = baseName
 		}
-
-		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s: %s)",
-			c, policyEvent.EnforcementLevel,
-			policyEvent.PolicyPackName,
-			policyEvent.PolicyPackVersion, colors.Reset,
-			policyEvent.PolicyName,
-			policyEvent.ResourceURN.Type(),
-			policyEvent.ResourceURN.Name())
-		display.println(policyNameLine)
-
-		// The message may span multiple lines, so we massage it so it will be indented properly.
-		message := strings.ReplaceAll(policyEvent.Message, "\n", "\n    ")
-		messageLine := fmt.Sprintf("    %s", message)
-		display.println(messageLine)
+		policyPackInfos[fmt.Sprintf("%s@v%s", name, version)] = summary
 	}
-	return true
+
+	// Next associate all violation events with the corresponding policy pack in the list.
+	for _, row := range display.eventUrnToResourceRow {
+		for _, event := range row.PolicyPayloads() {
+			key := fmt.Sprintf("%s@v%s", event.PolicyPackName, event.PolicyPackVersion)
+			newInfo := policyPackInfos[key]
+			newInfo.ViolationEvents = append(newInfo.ViolationEvents, event)
+			policyPackInfos[key] = newInfo
+		}
+	}
+
+	// Now associate all remediation events with the corresponding policy pack in the list.
+	for _, row := range display.eventUrnToResourceRow {
+		for _, event := range row.PolicyRemediationPayloads() {
+			key := fmt.Sprintf("%s@v%s", event.PolicyPackName, event.PolicyPackVersion)
+			newInfo := policyPackInfos[key]
+			newInfo.RemediationEvents = append(newInfo.RemediationEvents, event)
+			policyPackInfos[key] = newInfo
+		}
+	}
+
+	// Enumerate all policy packs in a deterministic order:
+	policyKeys := make([]string, len(policyPackInfos))
+	policyKeyIndex := 0
+	for key := range policyPackInfos {
+		policyKeys[policyKeyIndex] = key
+		policyKeyIndex++
+	}
+	sort.Strings(policyKeys)
+
+	// Finally, print the policy pack info and any violations and any remediations for each one.
+	for _, key := range policyKeys {
+		info := policyPackInfos[key]
+
+		// Print the policy pack status and name/version as a header:
+		passFailWarn := "✅"
+		for _, violation := range info.ViolationEvents {
+			if violation.EnforcementLevel == apitype.Mandatory {
+				passFailWarn = "❌"
+				hadMandatoryViolations = true
+				break
+			}
+
+			passFailWarn = "⚠️"
+			// do not break; subsequent mandatory violations will override this.
+		}
+
+		var localMark string
+		if info.IsLocal {
+			localMark = fmt.Sprintf(" (local: %s)", info.LocalPath)
+		}
+
+		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
+		subItemIndent := "        "
+
+		// First show any remediations since they happen first.
+		if display.opts.ShowPolicyRemediations {
+			// If the user has requested detailed remediations, print each one. Do not sort them -- show them in the
+			// order in which events arrived, since for remediations, the order matters.
+			for _, remediationEvent := range info.RemediationEvents {
+				// Print the individual policy event.
+				remediationLine := renderDiffPolicyRemediationEvent(
+					remediationEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
+				remediationLine = strings.TrimSuffix(remediationLine, "\n")
+				if remediationLine != "" {
+					display.println(remediationLine)
+				}
+			}
+		} else {
+			// Otherwise, simply print a summary of which remediations ran and how many resources were affected.
+			policyNames := make([]string, 0)
+			policyRemediationCounts := make(map[string]int)
+			for _, e := range info.RemediationEvents {
+				name := e.PolicyName
+				if policyRemediationCounts[name] == 0 {
+					policyNames = append(policyNames, name)
+				}
+				policyRemediationCounts[name]++
+			}
+			sort.Strings(policyKeys)
+			for _, policyName := range policyNames {
+				count := policyRemediationCounts[policyName]
+				display.println(fmt.Sprintf("%s- %s[remediate]  %s%s  (%d %s)",
+					subItemIndent, colors.SpecInfo, policyName, colors.Reset,
+					count, english.PluralWord(count, "resource", "")))
+			}
+		}
+
+		// Next up, display all violations. Sort policy events by: policy pack name, policy pack version,
+		// enforcement level, policy name, and finally the URN of the resource.
+		sort.SliceStable(info.ViolationEvents, func(i, j int) bool {
+			eventI, eventJ := info.ViolationEvents[i], info.ViolationEvents[j]
+			if enfLevelCmp := strings.Compare(
+				string(eventI.EnforcementLevel), string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
+				return enfLevelCmp < 0
+			}
+			if policyNameCmp := strings.Compare(eventI.PolicyName, eventJ.PolicyName); policyNameCmp != 0 {
+				return policyNameCmp < 0
+			}
+			return strings.Compare(string(eventI.ResourceURN), string(eventJ.ResourceURN)) < 0
+		})
+		for _, policyEvent := range info.ViolationEvents {
+			// Print the individual policy event.
+			policyLine := renderDiffPolicyViolationEvent(
+				policyEvent, fmt.Sprintf("%s- ", subItemIndent), subItemIndent+"  ", display.opts)
+			policyLine = strings.TrimSuffix(policyLine, "\n")
+			display.println(policyLine)
+		}
+	}
+
+	display.println("")
+	return hadMandatoryViolations
 }
 
 // printOutputs prints the Stack's outputs for the display in a new section, if appropriate.
@@ -635,13 +728,13 @@ func (display *ProgressDisplay) printOutputs() {
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
-func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
+func (display *ProgressDisplay) printSummary(hasError bool) {
 	// If we never saw the SummaryEvent payload, we have nothing to do.
 	if display.summaryEventPayload == nil {
 		return
 	}
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, hasError, false, display.opts)
 	display.println(msg)
 }
 
@@ -744,7 +837,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		payload := event.Payload().(engine.PreludeEventPayload)
 		preludeEventString := renderPreludeEvent(payload, display.opts)
 		if display.isTerminal {
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
 				Ephemeral: false,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -752,6 +845,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			}))
 		} else {
 			display.println(preludeEventString)
+		}
+		return
+	case engine.PolicyLoadEvent:
+		if !display.shownPolicyLoadEvent {
+			policyLoadEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
+			display.println(policyLoadEventString)
+			display.shownPolicyLoadEvent = true
 		}
 		return
 	case engine.SummaryEvent:
@@ -788,7 +888,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// what's going on, we can show them as ephemeral diagnostic messages that are
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
 				Ephemeral: true,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -861,6 +961,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else if event.Type == engine.PolicyViolationEvent {
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
+	} else if event.Type == engine.PolicyRemediationEvent {
+		// record this remediation so we print it at the end.
+		row.RecordPolicyRemediationEvent(event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}

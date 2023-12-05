@@ -121,7 +121,7 @@
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-resource-schema/go/example",
+      "importBasePath": "simple-resource-schema-custom-pypackage-name/example",
       "generateExtraInputTypes": true
     },
     "nodejs": {

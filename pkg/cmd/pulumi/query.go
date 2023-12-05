@@ -73,7 +73,7 @@ func newQueryCmd() *cobra.Command {
 				Experimental: hasExperimentalCommands(),
 			}
 
-			res := b.Query(ctx, backend.QueryOperation{
+			err = b.Query(ctx, backend.QueryOperation{
 				Proj:            project,
 				Root:            root,
 				Opts:            opts,
@@ -81,10 +81,10 @@ func newQueryCmd() *cobra.Command {
 				SecretsProvider: stack.DefaultSecretsProvider,
 			})
 			switch {
-			case res != nil && res.Error() == context.Canceled:
+			case err != nil && err == context.Canceled:
 				return nil
-			case res != nil:
-				return PrintEngineResult(res)
+			case err != nil:
+				return PrintEngineResult(result.FromError(err))
 			default:
 				return nil
 			}

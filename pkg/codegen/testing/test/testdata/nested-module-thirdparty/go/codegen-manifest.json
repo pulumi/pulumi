@@ -4,8 +4,9 @@
     "foo/deeply/nested/module/resource.go",
     "foo/doc.go",
     "foo/init.go",
+    "foo/internal/pulumiUtilities.go",
+    "foo/internal/pulumiVersion.go",
     "foo/provider.go",
-    "foo/pulumi-plugin.json",
-    "foo/pulumiUtilities.go"
+    "foo/pulumi-plugin.json"
   ]
 }

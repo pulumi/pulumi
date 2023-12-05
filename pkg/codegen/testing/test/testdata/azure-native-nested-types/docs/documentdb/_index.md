@@ -13,7 +13,7 @@ Explore the resources and functions of the azure-native.documentdb module.
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="sqlresourcesqlcontainer/" title="SqlResourceSqlContainer"><span class="api-symbol api-symbol--resource"></span>SqlResourceSqlContainer</a></li>
+    <li><a href="sqlresourcesqlcontainer/" title="SqlResourceSqlContainer">SqlResourceSqlContainer</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

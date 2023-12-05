@@ -216,10 +216,14 @@ class LocalWorkspace(Workspace):
         # Not used by LocalWorkspace
         return
 
-    def get_config(self, stack_name: str, key: str) -> ConfigValue:
-        result = self._run_pulumi_cmd_sync(
-            ["config", "get", key, "--json", "--stack", stack_name]
-        )
+    def get_config(
+        self, stack_name: str, key: str, *, path: bool = False
+    ) -> ConfigValue:
+        args = ["config", "get"]
+        if path:
+            args.append("--path")
+        args.extend([key, "--json", "--stack", stack_name])
+        result = self._run_pulumi_cmd_sync(args)
         val = json.loads(result.stdout)
         return ConfigValue(value=val["value"], secret=val["secret"])
 
@@ -236,12 +240,15 @@ class LocalWorkspace(Workspace):
             )
         return config_map
 
-    def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
+    def set_config(
+        self, stack_name: str, key: str, value: ConfigValue, *, path: bool = False
+    ) -> None:
+        args = ["config", "set"]
+        if path:
+            args.append("--path")
         secret_arg = "--secret" if value.secret else "--plaintext"
-        self._run_pulumi_cmd_sync(
+        args.extend(
             [
-                "config",
-                "set",
                 key,
                 secret_arg,
                 "--stack",
@@ -251,9 +258,14 @@ class LocalWorkspace(Workspace):
                 value.value,
             ]
         )
+        self._run_pulumi_cmd_sync(args)
 
-    def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
+    def set_all_config(
+        self, stack_name: str, config: ConfigMap, *, path: bool = False
+    ) -> None:
         args = ["config", "set-all", "--stack", stack_name]
+        if path:
+            args.append("--path")
 
         for key, value in config.items():
             secret_arg = "--secret" if value.secret else "--plaintext"
@@ -261,11 +273,18 @@ class LocalWorkspace(Workspace):
 
         self._run_pulumi_cmd_sync(args)
 
-    def remove_config(self, stack_name: str, key: str) -> None:
-        self._run_pulumi_cmd_sync(["config", "rm", key, "--stack", stack_name])
+    def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
+        args = ["config", "rm", key, "--stack", stack_name]
+        if path:
+            args.append("--path")
+        self._run_pulumi_cmd_sync(args)
 
-    def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
+    def remove_all_config(
+        self, stack_name: str, keys: List[str], *, path: bool = False
+    ) -> None:
         args = ["config", "rm-all", "--stack", stack_name]
+        if path:
+            args.append("--path")
         args.extend(keys)
         self._run_pulumi_cmd_sync(args)
 
@@ -346,7 +365,9 @@ class LocalWorkspace(Workspace):
             stack = StackSummary(
                 name=stack_json["name"],
                 current=stack_json["current"],
-                update_in_progress=stack_json["updateInProgress"],
+                update_in_progress=stack_json["updateInProgress"]
+                if "updateInProgress" in stack_json
+                else None,
                 last_update=datetime.strptime(
                     stack_json["lastUpdate"], _DATETIME_FORMAT
                 )
@@ -704,11 +725,18 @@ def _inline_source_stack_helper(
         work_dir = workspace_options.work_dir
         if work_dir:
             try:
+                # This attempts to load the project settings, and if it
+                # succeeds, then discards them. This is ok because the
+                # LocalWorkspace will load them when it needs to. This is simply
+                # establishing whether there is an appropritate file in
+                # `work_dir`
                 _load_project_settings(work_dir)
             except FileNotFoundError:
                 workspace_options.project_settings = default_project(project_name)
         else:
             workspace_options.project_settings = default_project(project_name)
+    elif workspace_options.project_settings.main is None:
+        workspace_options.project_settings.main = os.getcwd()
 
     ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)

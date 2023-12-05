@@ -2,36 +2,47 @@ package lifecycletest
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestImportOption(t *testing.T) {
 	t.Parallel()
 
+	readInputs := resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	readOutputs := resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+		"out": resource.NewNumberProperty(41),
+	}
+
+	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
+	// resource inputs.
+	var expectedInputs, expectedState resource.PropertyMap
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
-					if olds["foo"].DeepEquals(news["foo"]) {
+					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
 					diffKind := plugin.DiffUpdate
-					if news["foo"].IsString() && news["foo"].StringValue() == "replace" {
+					if newInputs["foo"].IsString() && newInputs["foo"].StringValue() == "replace" {
 						diffKind = plugin.DiffUpdateReplace
 					}
 
@@ -50,13 +61,12 @@ func TestImportOption(t *testing.T) {
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
+					assert.Equal(t, expectedInputs, inputs)
+					assert.Equal(t, expectedState, state)
+
 					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
-						},
-						Outputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
-						},
+						Inputs:  readInputs,
+						Outputs: readOutputs,
 					}, resource.StatusOK, nil
 				},
 			}, nil
@@ -64,10 +74,10 @@ func TestImportOption(t *testing.T) {
 	}
 
 	readID, importID, inputs := resource.ID(""), resource.ID("id"), resource.PropertyMap{}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		if readID != "" {
-			_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", readID, "", resource.PropertyMap{}, "", "")
+			_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "")
 		} else {
 			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:   inputs,
@@ -77,10 +87,10 @@ func TestImportOption(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -88,13 +98,13 @@ func TestImportOption(t *testing.T) {
 	// Run the initial update. The import should fail due to a mismatch in inputs between the program and the
 	// actual resource state.
 	project := p.GetProject()
-	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
+	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "step application failed: inputs to import do not match the existing resource")
 
 	// Run a second update after fixing the inputs. The import should succeed.
 	inputs["foo"] = resource.NewStringProperty("bar")
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
@@ -105,14 +115,16 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
@@ -121,14 +133,16 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
 	// Change a property value and run a third update. The update should succeed.
 	inputs["foo"] = resource.NewStringProperty("rab")
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
@@ -139,18 +153,21 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
+	// This should call update not read, which just returns the passed inputs as outputs.
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, inputs, snap.Resources[1].Outputs)
 
 	// Change the property value s.t. the resource requires replacement. The update should fail.
 	inputs["foo"] = resource.NewStringProperty("replace")
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "reviously-imported resources that still specify an ID may not be replaced")
 
 	// Finally, destroy the stack. The `Delete` function should be called.
-	_, res = TestOp(Destroy).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	_, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
@@ -159,14 +176,14 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 
 	// Now clear the ID to import and run an initial update to create a resource that we will import-replace.
 	importID, inputs["foo"] = "", resource.NewStringProperty("bar")
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
@@ -175,10 +192,13 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
+	// This will have just called create which returns the inputs as outputs.
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, inputs, snap.Resources[1].Outputs)
 
 	// Set the import ID to the same ID as the existing resource and run an update. This should produce no changes.
 	for _, r := range snap.Resources {
@@ -186,8 +206,8 @@ func TestImportOption(t *testing.T) {
 			importID = r.ID
 		}
 	}
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
@@ -196,15 +216,18 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
+	// This will have 'same'd so the inputs and outputs will be the same as the lat run with create.
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, inputs, snap.Resources[1].Outputs)
 
 	// Then set the import ID and run another update. The update should succeed and should show an import-replace and
 	// a delete-replaced.
 	importID = "id"
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
@@ -220,14 +243,17 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
 	// Change the program to read a resource rather than creating one.
 	readID = "id"
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	expectedInputs, expectedState = inputs, inputs
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
@@ -238,15 +264,18 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
 	// Now have the program import the resource. We should see an import-replace and a read-discard.
 	readID, importID = "", readID
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	expectedInputs, expectedState = nil, nil
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
@@ -262,9 +291,11 @@ func TestImportOption(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
 
 // TestImportWithDifferingImportIdentifierFormat tests importing a resource that has a different format of identifier
@@ -276,9 +307,9 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
-					if olds["foo"].DeepEquals(news["foo"]) {
+					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
@@ -312,7 +343,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
@@ -323,18 +354,18 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
 	// Run the initial update. The import should succeed.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN:
@@ -345,14 +376,14 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 2)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case provURN, resURN:
@@ -361,9 +392,9 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 					t.Fatalf("unexpected resource %v", urn)
 				}
 			}
-			return res
+			return err
 		})
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 }
 
 func TestImportUpdatedID(t *testing.T) {
@@ -392,7 +423,7 @@ func TestImportUpdatedID(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, id, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			ImportID: importID,
 		})
@@ -400,7 +431,7 @@ func TestImportUpdatedID(t *testing.T) {
 		assert.Equal(t, actualID, id)
 		return nil
 	})
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
 
@@ -461,17 +492,17 @@ const importSchema = `{
 }`
 
 func diffImportResource(urn resource.URN, id resource.ID,
-	olds, news resource.PropertyMap, ignoreChanges []string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
-	if olds["foo"].DeepEquals(news["foo"]) && olds["frob"].DeepEquals(news["frob"]) {
+	if oldOutputs["foo"].DeepEquals(newInputs["foo"]) && oldOutputs["frob"].DeepEquals(newInputs["frob"]) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
 
 	detailedDiff := make(map[string]plugin.PropertyDiff)
-	if !olds["foo"].DeepEquals(news["foo"]) {
+	if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 		detailedDiff["foo"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
-	if !olds["frob"].DeepEquals(news["frob"]) {
+	if !oldOutputs["frob"].DeepEquals(newInputs["frob"]) {
 		detailedDiff["frob"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 
@@ -483,6 +514,14 @@ func diffImportResource(urn resource.URN, id resource.ID,
 
 func TestImportPlan(t *testing.T) {
 	t.Parallel()
+
+	readInputs := resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	readOutputs := resource.PropertyMap{
+		"foo":  resource.NewStringProperty("bar"),
+		"frob": resource.NewNumberProperty(1),
+	}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -500,45 +539,45 @@ func TestImportPlan(t *testing.T) {
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
+						ID:      "actual-id",
+						Inputs:  readInputs,
+						Outputs: readOutputs,
 					}, resource.StatusOK, nil
 				},
 			}, nil
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
 
 	// Run an import.
-	snap, res = ImportOp([]deploy.Import{{
+	snap, err = ImportOp([]deploy.Import{{
 		Type: "pkgA:m:typA",
 		Name: "resB",
 		ID:   "imported-id",
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 4)
+
+	// Import should save the ID, inputs and outputs
+	assert.Equal(t, resource.ID("actual-id"), snap.Resources[3].ID)
+	assert.Equal(t, readInputs, snap.Resources[3].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[3].Outputs)
 
 	// Import should set Created and Modified timestamps on state.
 	for _, r := range snap.Resources {
@@ -577,7 +616,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo":  resource.NewStringProperty("foo"),
@@ -589,15 +628,15 @@ func TestImportIgnoreChanges(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
 
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[1].Outputs["foo"])
@@ -636,7 +675,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		stackURN, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		require.NoError(t, err)
 
@@ -654,39 +693,39 @@ func TestImportPlanExistingImport(t *testing.T) {
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
 
 	// Run an import with a different ID. This should fail.
-	_, res = ImportOp([]deploy.Import{{
+	_, err = ImportOp([]deploy.Import{{
 		Type: "pkgA:m:typA",
 		Name: "resA",
 		ID:   "imported-id-2",
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
+	assert.Error(t, err)
 
 	// Run an import with a matching ID. This should succeed and do nothing.
-	snap, res = ImportOp([]deploy.Import{{
+	snap, err = ImportOp([]deploy.Import{{
 		Type: "pkgA:m:typA",
 		Name: "resA",
 		ID:   "imported-id",
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, _ result.Result) result.Result {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, _ error) error {
 			for _, e := range entries {
-				assert.Equal(t, e.Step.Op(), deploy.OpSame)
+				assert.Equal(t, deploy.OpSame, e.Step.Op())
 			}
 			return nil
 		})
 
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }
 
@@ -722,22 +761,22 @@ func TestImportPlanEmptyState(t *testing.T) {
 			}, nil
 		}),
 	}
-	program := deploytest.NewLanguageRuntime(nil)
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	// Run the initial import.
 	project := p.GetProject()
-	snap, res := ImportOp([]deploy.Import{{
+	snap, err := ImportOp([]deploy.Import{{
 		Type: "pkgA:m:typA",
 		Name: "resB",
 		ID:   "imported-id",
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }
 
@@ -774,30 +813,30 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
 
-	snap, res = ImportOp([]deploy.Import{{
+	snap, err = ImportOp([]deploy.Import{{
 		Type:     "pkgA:m:typA",
 		Name:     "resB",
 		ID:       "imported-id",
 		Provider: p.NewProviderURN("pkgA", "provA", ""),
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }
 
@@ -852,24 +891,24 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 	}
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
 
 	// Import specifying to use just foo and frob
-	snap, res = ImportOp([]deploy.Import{{
+	snap, err = ImportOp([]deploy.Import{{
 		Type:       "pkgA:m:typA",
 		Name:       "resB",
 		ID:         "imported-id",
@@ -877,10 +916,216 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 		Properties: []string{"foo", "frob"},
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 
-	assert.Nil(t, res)
+	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 
 	// We should still have the baz output but will be missing its input
 	assert.Equal(t, resource.NewNumberProperty(2), snap.Resources[2].Outputs["baz"])
 	assert.NotContains(t, snap.Resources[2].Inputs, "baz")
+}
+
+// Test that we can import one resource, then import another resource with the first one as a parent.
+func TestImportIntoParent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", news, resource.StatusUnknown, fmt.Errorf("not implemented")
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run the initial import.
+	project := p.GetProject()
+	snap, err := ImportOp([]deploy.Import{
+		{
+			Type:   "pkgA:m:typA",
+			Name:   "resB",
+			ID:     "imported-idB",
+			Parent: p.NewURN("pkgA:m:typA", "resA", ""),
+		},
+		{
+			Type: "pkgA:m:typA",
+			Name: "resA",
+			ID:   "imported-idA",
+		},
+	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 4)
+}
+
+func TestImportComponent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run the initial import.
+	project := p.GetProject()
+	snap, err := ImportOp([]deploy.Import{
+		{
+			Type:      "my-component",
+			Name:      "comp",
+			Component: true,
+		},
+		{
+			Type:   "pkgA:m:typA",
+			Name:   "resB",
+			ID:     "imported-id",
+			Parent: p.NewURN("my-component", "comp", ""),
+		},
+	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 4)
+
+	// Ensure that the resource 2 is the component.
+	comp := snap.Resources[2]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::my-component::comp"), comp.URN)
+	// Ensure it's marked as a component.
+	assert.False(t, comp.Custom, "expected component resource to not be marked as custom")
+
+	// Ensure resource 3 is the custom resource
+	custom := snap.Resources[3]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::my-component$pkgA:m:typA::resB"), custom.URN)
+	// Ensure it's marked as custom.
+	assert.True(t, custom.Custom, "expected custom resource to be marked as custom")
+}
+
+func TestImportRemoteComponent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("mlc", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run the initial import.
+	project := p.GetProject()
+	snap, err := ImportOp([]deploy.Import{
+		{
+			Type:      "mlc:index:Component",
+			Name:      "comp",
+			Component: true,
+			Remote:    true,
+		},
+		{
+			Type:   "pkgA:m:typA",
+			Name:   "resB",
+			ID:     "imported-id",
+			Parent: p.NewURN("mlc:index:Component", "comp", ""),
+		},
+	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 5)
+
+	// Ensure that the resource 3 is the component.
+	comp := snap.Resources[3]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::mlc:index:Component::comp"), comp.URN)
+	// Ensure it's marked as a component.
+	assert.False(t, comp.Custom, "expected component resource to not be marked as custom")
+
+	// Ensure resource 4 is the custom resource
+	custom := snap.Resources[4]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::mlc:index:Component$pkgA:m:typA::resB"), custom.URN)
+	// Ensure it's marked as custom.
+	assert.True(t, custom.Custom, "expected custom resource to be marked as custom")
 }

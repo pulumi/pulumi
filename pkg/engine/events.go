@@ -18,11 +18,11 @@ import (
 	"bytes"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -39,34 +39,45 @@ type Event struct {
 	payload interface{}
 }
 
-func NewEvent(typ EventType, payload interface{}) Event {
-	ok := false
-	switch typ {
-	case CancelEvent:
-		ok = payload == nil
-	case StdoutColorEvent:
-		_, ok = payload.(StdoutEventPayload)
-	case DiagEvent:
-		_, ok = payload.(DiagEventPayload)
-	case PreludeEvent:
-		_, ok = payload.(PreludeEventPayload)
-	case SummaryEvent:
-		_, ok = payload.(SummaryEventPayload)
-	case ResourcePreEvent:
-		_, ok = payload.(ResourcePreEventPayload)
-	case ResourceOutputsEvent:
-		_, ok = payload.(ResourceOutputsEventPayload)
-	case ResourceOperationFailed:
-		_, ok = payload.(ResourceOperationFailedPayload)
-	case PolicyViolationEvent:
-		_, ok = payload.(PolicyViolationEventPayload)
+type EventPayload interface {
+	StdoutEventPayload | DiagEventPayload | PreludeEventPayload | SummaryEventPayload |
+		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
+		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload
+}
+
+func NewCancelEvent() Event {
+	return Event{Type: CancelEvent}
+}
+
+func NewEvent[T EventPayload](payload T) Event {
+	var typ EventType
+	switch any(payload).(type) {
+	case StdoutEventPayload:
+		typ = StdoutColorEvent
+	case DiagEventPayload:
+		typ = DiagEvent
+	case PreludeEventPayload:
+		typ = PreludeEvent
+	case SummaryEventPayload:
+		typ = SummaryEvent
+	case ResourcePreEventPayload:
+		typ = ResourcePreEvent
+	case ResourceOutputsEventPayload:
+		typ = ResourceOutputsEvent
+	case ResourceOperationFailedPayload:
+		typ = ResourceOperationFailed
+	case PolicyViolationEventPayload:
+		typ = PolicyViolationEvent
+	case PolicyRemediationEventPayload:
+		typ = PolicyRemediationEvent
+	case PolicyLoadEventPayload:
+		typ = PolicyLoadEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
-	contract.Assertf(ok, "invalid payload of type %T for event type %v", payload, typ)
 	return Event{
 		Type:    typ,
-		payload: payload,
+		payload: deepcopy.Copy(payload),
 	}
 }
 
@@ -83,14 +94,24 @@ const (
 	ResourceOutputsEvent    EventType = "resource-outputs"
 	ResourceOperationFailed EventType = "resource-operationfailed"
 	PolicyViolationEvent    EventType = "policy-violation"
+	PolicyRemediationEvent  EventType = "policy-remediation"
+	PolicyLoadEvent         EventType = "policy-load"
 )
 
 func (e Event) Payload() interface{} {
-	return deepcopy.Copy(e.payload)
+	return e.payload
 }
 
-func cancelEvent() Event {
-	return Event{Type: CancelEvent}
+// Returns true if this is a ResourcePreEvent or ResourceOutputsEvent with the internal flag set.
+func (e Event) Internal() bool {
+	switch payload := e.payload.(type) {
+	case ResourcePreEventPayload:
+		return payload.Internal
+	case ResourceOutputsEventPayload:
+		return payload.Internal
+	default:
+		return false
+	}
 }
 
 // DiagEventPayload is the payload for an event with type `diag`
@@ -115,6 +136,20 @@ type PolicyViolationEventPayload struct {
 	EnforcementLevel  apitype.EnforcementLevel
 	Prefix            string
 }
+
+// PolicyRemediationEventPayload is the payload for an event with type `policy-remediation`.
+type PolicyRemediationEventPayload struct {
+	ResourceURN       resource.URN
+	Color             colors.Colorization
+	PolicyName        string
+	PolicyPackName    string
+	PolicyPackVersion string
+	Before            resource.PropertyMap
+	After             resource.PropertyMap
+}
+
+// PolicyLoadEventPayload is the payload for an event with type `policy-load`.
+type PolicyLoadEventPayload struct{}
 
 type StdoutEventPayload struct {
 	Message string
@@ -144,12 +179,18 @@ type ResourceOutputsEventPayload struct {
 	Metadata StepEventMetadata
 	Planning bool
 	Debug    bool
+	// Internal is set for events that should not be shown to a user but are expected to be used in other parts of the
+	// Pulumi system.
+	Internal bool
 }
 
 type ResourcePreEventPayload struct {
 	Metadata StepEventMetadata
 	Planning bool
 	Debug    bool
+	// Internal is set for events that should not be shown to a user but are expected to be used in other parts of the
+	// Pulumi system.
+	Internal bool
 }
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
@@ -185,6 +226,8 @@ type StepEventStateMetadata struct {
 	Parent resource.URN
 	// true to "protect" this resource (protected resources cannot be deleted).
 	Protect bool
+	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
+	RetainOnDelete bool `json:"retainOnDelete"`
 	// the resource's input properties (as specified by the program). Note: because this will cross
 	// over rpc boundaries it will be slightly different than the Inputs found in resource_state.
 	// Specifically, secrets will have been filtered out, and large values (like assets) will be
@@ -329,18 +372,19 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 	}
 
 	return &StepEventStateMetadata{
-		State:      state,
-		Type:       state.Type,
-		URN:        state.URN,
-		Custom:     state.Custom,
-		Delete:     state.Delete,
-		ID:         state.ID,
-		Parent:     state.Parent,
-		Protect:    state.Protect,
-		Inputs:     filterResourceProperties(state.Inputs, debug),
-		Outputs:    filterResourceProperties(state.Outputs, debug),
-		Provider:   state.Provider,
-		InitErrors: state.InitErrors,
+		State:          state,
+		Type:           state.Type,
+		URN:            state.URN,
+		Custom:         state.Custom,
+		Delete:         state.Delete,
+		ID:             state.ID,
+		Parent:         state.Parent,
+		Protect:        state.Protect,
+		RetainOnDelete: state.RetainOnDelete,
+		Inputs:         filterResourceProperties(state.Inputs, debug),
+		Outputs:        filterResourceProperties(state.Outputs, debug),
+		Provider:       state.Provider,
+		InitErrors:     state.InitErrors,
 	}
 }
 
@@ -358,32 +402,36 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
+	e.sendEvent(NewEvent(ResourceOperationFailedPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Status:   status,
 		Steps:    steps,
 	}))
 }
 
-func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step, planning bool, debug bool) {
+func (e *eventEmitter) resourceOutputsEvent(
+	op display.StepOp, step deploy.Step, planning, debug, internal bool,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
+	e.sendEvent(NewEvent(ResourceOutputsEventPayload{
 		Metadata: makeStepEventMetadata(op, step, debug),
 		Planning: planning,
 		Debug:    debug,
+		Internal: internal,
 	}))
 }
 
 func (e *eventEmitter) resourcePreEvent(
-	step deploy.Step, planning bool, debug bool,
+	step deploy.Step, planning, debug, internal bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(ResourcePreEvent, ResourcePreEventPayload{
+	e.sendEvent(NewEvent(ResourcePreEventPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Planning: planning,
 		Debug:    debug,
+		Internal: internal,
 	}))
 }
 
@@ -398,7 +446,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 		configStringMap[keyString] = valueString
 	}
 
-	e.sendEvent(NewEvent(PreludeEvent, PreludeEventPayload{
+	e.sendEvent(NewEvent(PreludeEventPayload{
 		IsPreview: isPreview,
 		Config:    configStringMap,
 	}))
@@ -409,7 +457,7 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(SummaryEvent, SummaryEventPayload{
+	e.sendEvent(NewEvent(SummaryEventPayload{
 		IsPreview:       preview,
 		MaybeCorrupt:    maybeCorrupt,
 		Duration:        duration,
@@ -445,7 +493,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
-	e.sendEvent(NewEvent(PolicyViolationEvent, PolicyViolationEventPayload{
+	e.sendEvent(NewEvent(PolicyViolationEventPayload{
 		ResourceURN:       urn,
 		Message:           logging.FilterString(buffer.String()),
 		Color:             colors.Raw,
@@ -457,12 +505,34 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	}))
 }
 
+func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remediation,
+	before resource.PropertyMap, after resource.PropertyMap,
+) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.sendEvent(NewEvent(PolicyRemediationEventPayload{
+		ResourceURN:       urn,
+		Color:             colors.Raw,
+		PolicyName:        t.PolicyName,
+		PolicyPackName:    t.PolicyPackName,
+		PolicyPackVersion: t.PolicyPackVersion,
+		Before:            before,
+		After:             after,
+	}))
+}
+
+func (e *eventEmitter) PolicyLoadEvent() {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.sendEvent(NewEvent(PolicyLoadEventPayload{}))
+}
+
 func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
 	ephemeral bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.sendEvent(NewEvent(DiagEvent, DiagEventPayload{
+	e.sendEvent(NewEvent(DiagEventPayload{
 		URN:       d.URN,
 		Prefix:    logging.FilterString(prefix),
 		Message:   logging.FilterString(msg),

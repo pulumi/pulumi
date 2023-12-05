@@ -44,6 +44,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 const (
@@ -83,8 +85,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Validate name (if specified) before further prompts/operations.
-	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
-		return fmt.Errorf("'%s' is not a valid project name. %w", args.name, workspace.ValidateProjectName(args.name))
+	if args.name != "" && pkgWorkspace.ValidateProjectName(args.name) != nil {
+		return fmt.Errorf("'%s' is not a valid project name: %w", args.name, pkgWorkspace.ValidateProjectName(args.name))
 	}
 
 	// Validate secrets provider type
@@ -118,17 +120,24 @@ func runNew(ctx context.Context, args newArgs) error {
 	// If we're going to be creating a stack, get the current backend, which
 	// will kick off the login flow (if not already logged-in).
 	var b backend.Backend
-	if !args.generateOnly || (args.stack != "" && strings.Count(args.stack, "/") == 2) {
+	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
 		b, err = currentBackend(ctx, nil, opts)
 		if err != nil {
+			return err
+		}
+
+		// Check project name and stack reference project name are the same, we skip this check if
+		// --generate-only is set because we're not going to actually use the --stack argument given.
+		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
 			return err
 		}
 	}
 
 	// Ensure the project doesn't already exist.
 	if args.name != "" {
-		if err := validateProjectName(ctx, b, args.name, args.generateOnly, opts); err != nil {
+		// There is no --org flag at the moment. The backend determines the orgName value if it is "".
+		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
 	}
@@ -178,22 +187,30 @@ func runNew(ctx context.Context, args newArgs) error {
 	// The main purpose of this lookup is getting a proper start with a project
 	// created via the web app.
 	var s backend.Stack
-	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
+	var orgName string
+	if !args.generateOnly && args.stack != "" && strings.Count(args.stack, "/") == 2 {
+		parts := strings.SplitN(args.stack, "/", 3)
+
+		// Set the org name for future use.
+		orgName = parts[0]
+		projectName := parts[1]
+
 		stackName, err := buildStackName(args.stack)
 		if err != nil {
 			return err
 		}
-		existingStack, existingName, existingDesc, err := getStack(ctx, b, stackName, opts)
+
+		existingStack, _, existingDesc, err := getStack(ctx, b, stackName, opts)
 		if err != nil {
 			return err
 		}
-		s = existingStack
-		if args.name == "" {
-			args.name = existingName
+		if existingStack != nil {
+			s = existingStack
+			if args.description == "" {
+				args.description = existingDesc
+			}
 		}
-		if args.description == "" {
-			args.description = existingDesc
-		}
+		args.name = projectName
 	}
 
 	// Show instructions, if we're going to show at least one prompt.
@@ -213,19 +230,20 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
-		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		if err := validateProjectName(ctx, b, defaultValue, args.generateOnly, opts); err != nil {
+		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
+		err := validateProjectName(
+			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false))
+		if err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
 			// See https://github.com/pulumi/pulumi/issues/8747.
 			if args.yes {
 				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
 			}
-
-			// Do not suggest an invalid or existing name as the default project name.
-			defaultValue = ""
 		}
-		validate := func(s string) error { return validateProjectName(ctx, b, s, args.generateOnly, opts) }
+		validate := func(s string) error {
+			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
+		}
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
@@ -234,10 +252,10 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for the project description, if it wasn't already specified.
 	if args.description == "" {
-		defaultValue := workspace.ValueOrDefaultProjectDescription(
+		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 			args.description, template.ProjectDescription, template.Description)
 		args.description, err = args.prompt(
-			args.yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts)
+			args.yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
 		if err != nil {
 			return err
 		}
@@ -296,7 +314,10 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = handleConfig(ctx, proj, s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
+		err = handleConfig(
+			ctx, args.prompt, proj, s,
+			args.templateNameOrURL, template, args.configArray,
+			args.yes, args.configPath, opts)
 		if err != nil {
 			return err
 		}
@@ -425,7 +446,14 @@ func newNewCmd() *cobra.Command {
 			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
 			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
 			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
-			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
+			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n" +
+			"\n" +
+			"To use a private repository as a template source, provide an HTTPS or SSH URL with relevant credentials.\n" +
+			"Ensure your SSH agent has the correct identity (ssh-add) or you may be prompted for your key's passphrase.\n" +
+			"* `pulumi new git@github.com:<user>/<private-repo>`\n" +
+			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
+			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
+			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
@@ -544,9 +572,36 @@ func errorIfNotEmptyDirectory(path string) error {
 }
 
 func validateProjectName(ctx context.Context, b backend.Backend,
-	projectName string, generateOnly bool, opts display.Options,
+	orgName string, projectName string, generateOnly bool, opts display.Options,
 ) error {
-	err := workspace.ValidateProjectName(projectName)
+	handleExistingProjectName := func(projectName string) error {
+		prompt := "\b\n" + opts.Color.Colorize(colors.SpecPrompt+
+			fmt.Sprintf("A project with the name `%s` already exists.", projectName)+
+			colors.Reset)
+
+		accept := fmt.Sprintf("Use '%s' anyway", projectName)
+		retry := "Specify a different project name"
+		response := promptUser(prompt, []string{accept, retry}, accept, opts.Color)
+
+		if response != accept {
+			return errRetry
+		}
+		return nil
+	}
+	if !opts.IsInteractive {
+		handleExistingProjectName = func(projectName string) error {
+			return fmt.Errorf("a project with this name already exists: %s", projectName)
+		}
+	}
+	return validateProjectNameInternal(
+		ctx, b, orgName, projectName, generateOnly, opts, handleExistingProjectName)
+}
+
+func validateProjectNameInternal(ctx context.Context, b backend.Backend,
+	orgName string, projectName string, generateOnly bool, opts display.Options,
+	handleExistingProjectName func(string) error,
+) error {
+	err := pkgWorkspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
 	}
@@ -554,13 +609,13 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 	if !generateOnly {
 		contract.Requiref(b != nil, "b", "must not be nil")
 
-		exists, err := b.DoesProjectExist(ctx, projectName)
+		exists, err := b.DoesProjectExist(ctx, orgName, projectName)
 		if err != nil {
 			return err
 		}
 
 		if exists {
-			return errors.New("A project with this name already exists")
+			return handleExistingProjectName(projectName)
 		}
 	}
 
@@ -848,6 +903,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	prompt promptForValueFunc,
 	project *workspace.Project,
 	stack backend.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
@@ -932,15 +988,20 @@ func promptForConfig(
 		}
 
 		// Prepare the prompt.
-		prompt := prettyKey(k)
+		promptText := prettyKey(k)
 		if templateConfigValue.Description != "" {
-			prompt = prompt + ": " + templateConfigValue.Description
+			promptText = promptText + ": " + templateConfigValue.Description
 		}
 
 		// Prompt.
-		value, err := promptForValue(yes, prompt, defaultValue, secret, nil, opts)
+		value, err := prompt(yes, promptText, defaultValue, secret, nil, opts)
 		if err != nil {
 			return nil, err
+		}
+
+		if value == "" {
+			// Don't add empty values to the config.
+			continue
 		}
 
 		// Encrypt the value if needed.
@@ -969,6 +1030,8 @@ func promptForConfig(
 	return c, nil
 }
 
+var errRetry = errors.New("Try again")
+
 // promptForValue prompts the user for a value with a defaultValue preselected. Hitting enter accepts the
 // default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
 // when specified, it will be run to validate that value entered. When this function returns a non nil error
@@ -989,7 +1052,7 @@ func promptForValue(
 			var prompt string
 			if defaultValue == "" {
 				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
+					fmt.Sprintf("%s%s%s", colors.SpecPrompt, valueType, colors.Reset))
 			} else {
 				defaultValuePrompt := defaultValue
 				if secret {
@@ -997,19 +1060,18 @@ func promptForValue(
 				}
 
 				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
+					fmt.Sprintf("%s%s%s (%s)", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
 			}
-			fmt.Print(prompt)
 
 			// Read the value.
 			var err error
 			if secret {
-				value, err = cmdutil.ReadConsoleNoEcho("")
+				value, err = cmdutil.ReadConsoleNoEcho(prompt)
 				if err != nil {
 					return "", err
 				}
 			} else {
-				value, err = cmdutil.ReadConsole("")
+				value, err = cmdutil.ReadConsole(prompt)
 				if err != nil {
 					return "", err
 				}
@@ -1025,7 +1087,10 @@ func promptForValue(
 		// Ensure the resulting value is valid; note that we even validate the default, since sometimes
 		// we will have invalid default values, like "" for the project name.
 		if isValidFn != nil {
-			if validationError := isValidFn(value); validationError != nil {
+			validationError := isValidFn(value)
+			if validationError == errRetry {
+				continue
+			} else if validationError != nil {
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
 				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
@@ -1071,7 +1136,7 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 		}
 
 		// Create the option string that combines the name, padding, and description.
-		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
+		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
 		nameToTemplateMap[option] = template
@@ -1102,4 +1167,32 @@ func containsWhiteSpace(value string) bool {
 		}
 	}
 	return false
+}
+
+// compareStackProjectName takes a stack name and a project name and returns an error if they are not the same.
+//   - projectName comes from the --name flag.
+//   - stackName comes from the --stack flag. stackName can be a stack name or a fully qualified stack reference
+//     i.e org/project/stack
+func compareStackProjectName(b backend.Backend, stackName, projectName string) error {
+	if stackName == "" || projectName == "" {
+		// No potential for conflicting project names.
+		return nil
+	}
+
+	// Catch the case where the user has specified a fully qualified stack reference.
+	ref, err := b.ParseStackReference(stackName)
+	if err != nil {
+		// If we can't parse the stack reference, we can't compare the project names.
+		// We assume the project names don't conflict and that this parsing issue will be handled downstream.
+		return nil
+	}
+	stackProjectName, hasProject := ref.Project()
+	if !hasProject {
+		return nil
+	}
+	if projectName == stackProjectName.String() {
+		return nil
+	}
+	return fmt.Errorf("project name (--name %s) and stack reference project name (--stack %s) must be the same",
+		projectName, stackProjectName)
 }

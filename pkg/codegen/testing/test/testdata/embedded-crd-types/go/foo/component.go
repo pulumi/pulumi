@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"embedded-crd-types/foo/crd.k8s.amazonaws.com/v1alpha1"
+	"embedded-crd-types/foo/internal"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -26,6 +27,7 @@ func NewComponent(ctx *pulumi.Context,
 		args = &ComponentArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("foo:index:Component", name, args, &resource, opts...)
 	if err != nil {

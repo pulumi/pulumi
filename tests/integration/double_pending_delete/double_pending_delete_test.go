@@ -13,6 +13,8 @@ import (
 )
 
 // Test that the engine tolerates two deletions of the same URN in the same plan.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDoublePendingDelete(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
@@ -34,15 +36,15 @@ func TestDoublePendingDelete(t *testing.T) {
 					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 
 					a := stackInfo.Deployment.Resources[2]
-					assert.Equal(t, "a", string(a.URN.Name()))
+					assert.Equal(t, "a", a.URN.Name())
 					assert.False(t, a.Delete)
 
 					aCondemned := stackInfo.Deployment.Resources[3]
-					assert.Equal(t, "a", string(aCondemned.URN.Name()))
+					assert.Equal(t, "a", aCondemned.URN.Name())
 					assert.True(t, aCondemned.Delete)
 
 					b := stackInfo.Deployment.Resources[4]
-					assert.Equal(t, "b", string(b.URN.Name()))
+					assert.Equal(t, "b", b.URN.Name())
 					assert.False(t, b.Delete)
 				},
 			},
@@ -61,19 +63,19 @@ func TestDoublePendingDelete(t *testing.T) {
 					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 
 					a := stackInfo.Deployment.Resources[2]
-					assert.Equal(t, "a", string(a.URN.Name()))
+					assert.Equal(t, "a", a.URN.Name())
 					assert.False(t, a.Delete)
 
 					aCondemned := stackInfo.Deployment.Resources[3]
-					assert.Equal(t, "a", string(aCondemned.URN.Name()))
+					assert.Equal(t, "a", aCondemned.URN.Name())
 					assert.True(t, aCondemned.Delete)
 
 					aSecondCondemned := stackInfo.Deployment.Resources[4]
-					assert.Equal(t, "a", string(aSecondCondemned.URN.Name()))
+					assert.Equal(t, "a", aSecondCondemned.URN.Name())
 					assert.True(t, aSecondCondemned.Delete)
 
 					b := stackInfo.Deployment.Resources[5]
-					assert.Equal(t, "b", string(b.URN.Name()))
+					assert.Equal(t, "b", b.URN.Name())
 					assert.False(t, b.Delete)
 				},
 			},
@@ -91,11 +93,11 @@ func TestDoublePendingDelete(t *testing.T) {
 					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 
 					a := stackInfo.Deployment.Resources[2]
-					assert.Equal(t, "a", string(a.URN.Name()))
+					assert.Equal(t, "a", a.URN.Name())
 					assert.False(t, a.Delete)
 
 					b := stackInfo.Deployment.Resources[3]
-					assert.Equal(t, "b", string(b.URN.Name()))
+					assert.Equal(t, "b", b.URN.Name())
 					assert.False(t, b.Delete)
 				},
 			},

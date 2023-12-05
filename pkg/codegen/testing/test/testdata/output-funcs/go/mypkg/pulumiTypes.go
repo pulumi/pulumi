@@ -8,7 +8,11 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"output-funcs/mypkg/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 // Bastion Shareable Link.
 type BastionShareableLink struct {
@@ -45,6 +49,12 @@ func (i BastionShareableLinkArgs) ToBastionShareableLinkOutputWithContext(ctx co
 	return pulumi.ToOutputWithContext(ctx, i).(BastionShareableLinkOutput)
 }
 
+func (i BastionShareableLinkArgs) ToOutput(ctx context.Context) pulumix.Output[BastionShareableLink] {
+	return pulumix.Output[BastionShareableLink]{
+		OutputState: i.ToBastionShareableLinkOutputWithContext(ctx).OutputState,
+	}
+}
+
 // BastionShareableLinkArrayInput is an input type that accepts BastionShareableLinkArray and BastionShareableLinkArrayOutput values.
 // You can construct a concrete instance of `BastionShareableLinkArrayInput` via:
 //
@@ -70,6 +80,12 @@ func (i BastionShareableLinkArray) ToBastionShareableLinkArrayOutputWithContext(
 	return pulumi.ToOutputWithContext(ctx, i).(BastionShareableLinkArrayOutput)
 }
 
+func (i BastionShareableLinkArray) ToOutput(ctx context.Context) pulumix.Output[[]BastionShareableLink] {
+	return pulumix.Output[[]BastionShareableLink]{
+		OutputState: i.ToBastionShareableLinkArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Bastion Shareable Link.
 type BastionShareableLinkOutput struct{ *pulumi.OutputState }
 
@@ -83,6 +99,12 @@ func (o BastionShareableLinkOutput) ToBastionShareableLinkOutput() BastionSharea
 
 func (o BastionShareableLinkOutput) ToBastionShareableLinkOutputWithContext(ctx context.Context) BastionShareableLinkOutput {
 	return o
+}
+
+func (o BastionShareableLinkOutput) ToOutput(ctx context.Context) pulumix.Output[BastionShareableLink] {
+	return pulumix.Output[BastionShareableLink]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Reference of the virtual machine resource.
@@ -102,6 +124,12 @@ func (o BastionShareableLinkArrayOutput) ToBastionShareableLinkArrayOutput() Bas
 
 func (o BastionShareableLinkArrayOutput) ToBastionShareableLinkArrayOutputWithContext(ctx context.Context) BastionShareableLinkArrayOutput {
 	return o
+}
+
+func (o BastionShareableLinkArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]BastionShareableLink] {
+	return pulumix.Output[[]BastionShareableLink]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o BastionShareableLinkArrayOutput) Index(i pulumi.IntInput) BastionShareableLinkOutput {
@@ -157,6 +185,12 @@ func (i SsisEnvironmentReferenceResponseArgs) ToSsisEnvironmentReferenceResponse
 	return pulumi.ToOutputWithContext(ctx, i).(SsisEnvironmentReferenceResponseOutput)
 }
 
+func (i SsisEnvironmentReferenceResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SsisEnvironmentReferenceResponse] {
+	return pulumix.Output[SsisEnvironmentReferenceResponse]{
+		OutputState: i.ToSsisEnvironmentReferenceResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // SsisEnvironmentReferenceResponseArrayInput is an input type that accepts SsisEnvironmentReferenceResponseArray and SsisEnvironmentReferenceResponseArrayOutput values.
 // You can construct a concrete instance of `SsisEnvironmentReferenceResponseArrayInput` via:
 //
@@ -182,6 +216,12 @@ func (i SsisEnvironmentReferenceResponseArray) ToSsisEnvironmentReferenceRespons
 	return pulumi.ToOutputWithContext(ctx, i).(SsisEnvironmentReferenceResponseArrayOutput)
 }
 
+func (i SsisEnvironmentReferenceResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]SsisEnvironmentReferenceResponse] {
+	return pulumix.Output[[]SsisEnvironmentReferenceResponse]{
+		OutputState: i.ToSsisEnvironmentReferenceResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Ssis environment reference.
 type SsisEnvironmentReferenceResponseOutput struct{ *pulumi.OutputState }
 
@@ -195,6 +235,12 @@ func (o SsisEnvironmentReferenceResponseOutput) ToSsisEnvironmentReferenceRespon
 
 func (o SsisEnvironmentReferenceResponseOutput) ToSsisEnvironmentReferenceResponseOutputWithContext(ctx context.Context) SsisEnvironmentReferenceResponseOutput {
 	return o
+}
+
+func (o SsisEnvironmentReferenceResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SsisEnvironmentReferenceResponse] {
+	return pulumix.Output[SsisEnvironmentReferenceResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Environment folder name.
@@ -229,6 +275,12 @@ func (o SsisEnvironmentReferenceResponseArrayOutput) ToSsisEnvironmentReferenceR
 
 func (o SsisEnvironmentReferenceResponseArrayOutput) ToSsisEnvironmentReferenceResponseArrayOutputWithContext(ctx context.Context) SsisEnvironmentReferenceResponseArrayOutput {
 	return o
+}
+
+func (o SsisEnvironmentReferenceResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]SsisEnvironmentReferenceResponse] {
+	return pulumix.Output[[]SsisEnvironmentReferenceResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o SsisEnvironmentReferenceResponseArrayOutput) Index(i pulumi.IntInput) SsisEnvironmentReferenceResponseOutput {
@@ -294,6 +346,12 @@ func (i SsisEnvironmentResponseArgs) ToSsisEnvironmentResponseOutputWithContext(
 	return pulumi.ToOutputWithContext(ctx, i).(SsisEnvironmentResponseOutput)
 }
 
+func (i SsisEnvironmentResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SsisEnvironmentResponse] {
+	return pulumix.Output[SsisEnvironmentResponse]{
+		OutputState: i.ToSsisEnvironmentResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Ssis environment.
 type SsisEnvironmentResponseOutput struct{ *pulumi.OutputState }
 
@@ -307,6 +365,12 @@ func (o SsisEnvironmentResponseOutput) ToSsisEnvironmentResponseOutput() SsisEnv
 
 func (o SsisEnvironmentResponseOutput) ToSsisEnvironmentResponseOutputWithContext(ctx context.Context) SsisEnvironmentResponseOutput {
 	return o
+}
+
+func (o SsisEnvironmentResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SsisEnvironmentResponse] {
+	return pulumix.Output[SsisEnvironmentResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Metadata description.
@@ -389,6 +453,12 @@ func (i SsisFolderResponseArgs) ToSsisFolderResponseOutputWithContext(ctx contex
 	return pulumi.ToOutputWithContext(ctx, i).(SsisFolderResponseOutput)
 }
 
+func (i SsisFolderResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SsisFolderResponse] {
+	return pulumix.Output[SsisFolderResponse]{
+		OutputState: i.ToSsisFolderResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Ssis folder.
 type SsisFolderResponseOutput struct{ *pulumi.OutputState }
 
@@ -402,6 +472,12 @@ func (o SsisFolderResponseOutput) ToSsisFolderResponseOutput() SsisFolderRespons
 
 func (o SsisFolderResponseOutput) ToSsisFolderResponseOutputWithContext(ctx context.Context) SsisFolderResponseOutput {
 	return o
+}
+
+func (o SsisFolderResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SsisFolderResponse] {
+	return pulumix.Output[SsisFolderResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Metadata description.
@@ -490,6 +566,12 @@ func (i SsisPackageResponseArgs) ToSsisPackageResponseOutputWithContext(ctx cont
 	return pulumi.ToOutputWithContext(ctx, i).(SsisPackageResponseOutput)
 }
 
+func (i SsisPackageResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SsisPackageResponse] {
+	return pulumix.Output[SsisPackageResponse]{
+		OutputState: i.ToSsisPackageResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Ssis Package.
 type SsisPackageResponseOutput struct{ *pulumi.OutputState }
 
@@ -503,6 +585,12 @@ func (o SsisPackageResponseOutput) ToSsisPackageResponseOutput() SsisPackageResp
 
 func (o SsisPackageResponseOutput) ToSsisPackageResponseOutputWithContext(ctx context.Context) SsisPackageResponseOutput {
 	return o
+}
+
+func (o SsisPackageResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SsisPackageResponse] {
+	return pulumix.Output[SsisPackageResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Metadata description.
@@ -625,6 +713,12 @@ func (i SsisParameterResponseArgs) ToSsisParameterResponseOutputWithContext(ctx 
 	return pulumi.ToOutputWithContext(ctx, i).(SsisParameterResponseOutput)
 }
 
+func (i SsisParameterResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SsisParameterResponse] {
+	return pulumix.Output[SsisParameterResponse]{
+		OutputState: i.ToSsisParameterResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // SsisParameterResponseArrayInput is an input type that accepts SsisParameterResponseArray and SsisParameterResponseArrayOutput values.
 // You can construct a concrete instance of `SsisParameterResponseArrayInput` via:
 //
@@ -650,6 +744,12 @@ func (i SsisParameterResponseArray) ToSsisParameterResponseArrayOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(SsisParameterResponseArrayOutput)
 }
 
+func (i SsisParameterResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]SsisParameterResponse] {
+	return pulumix.Output[[]SsisParameterResponse]{
+		OutputState: i.ToSsisParameterResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Ssis parameter.
 type SsisParameterResponseOutput struct{ *pulumi.OutputState }
 
@@ -663,6 +763,12 @@ func (o SsisParameterResponseOutput) ToSsisParameterResponseOutput() SsisParamet
 
 func (o SsisParameterResponseOutput) ToSsisParameterResponseOutputWithContext(ctx context.Context) SsisParameterResponseOutput {
 	return o
+}
+
+func (o SsisParameterResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SsisParameterResponse] {
+	return pulumix.Output[SsisParameterResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Parameter type.
@@ -739,6 +845,12 @@ func (o SsisParameterResponseArrayOutput) ToSsisParameterResponseArrayOutputWith
 	return o
 }
 
+func (o SsisParameterResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]SsisParameterResponse] {
+	return pulumix.Output[[]SsisParameterResponse]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o SsisParameterResponseArrayOutput) Index(i pulumi.IntInput) SsisParameterResponseOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SsisParameterResponse {
 		return vs[0].([]SsisParameterResponse)[vs[1].(int)]
@@ -810,6 +922,12 @@ func (i SsisProjectResponseArgs) ToSsisProjectResponseOutputWithContext(ctx cont
 	return pulumi.ToOutputWithContext(ctx, i).(SsisProjectResponseOutput)
 }
 
+func (i SsisProjectResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SsisProjectResponse] {
+	return pulumix.Output[SsisProjectResponse]{
+		OutputState: i.ToSsisProjectResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Ssis project.
 type SsisProjectResponseOutput struct{ *pulumi.OutputState }
 
@@ -823,6 +941,12 @@ func (o SsisProjectResponseOutput) ToSsisProjectResponseOutput() SsisProjectResp
 
 func (o SsisProjectResponseOutput) ToSsisProjectResponseOutputWithContext(ctx context.Context) SsisProjectResponseOutput {
 	return o
+}
+
+func (o SsisProjectResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SsisProjectResponse] {
+	return pulumix.Output[SsisProjectResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Metadata description.
@@ -925,6 +1049,12 @@ func (i SsisVariableResponseArgs) ToSsisVariableResponseOutputWithContext(ctx co
 	return pulumi.ToOutputWithContext(ctx, i).(SsisVariableResponseOutput)
 }
 
+func (i SsisVariableResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SsisVariableResponse] {
+	return pulumix.Output[SsisVariableResponse]{
+		OutputState: i.ToSsisVariableResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // SsisVariableResponseArrayInput is an input type that accepts SsisVariableResponseArray and SsisVariableResponseArrayOutput values.
 // You can construct a concrete instance of `SsisVariableResponseArrayInput` via:
 //
@@ -950,6 +1080,12 @@ func (i SsisVariableResponseArray) ToSsisVariableResponseArrayOutputWithContext(
 	return pulumi.ToOutputWithContext(ctx, i).(SsisVariableResponseArrayOutput)
 }
 
+func (i SsisVariableResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]SsisVariableResponse] {
+	return pulumix.Output[[]SsisVariableResponse]{
+		OutputState: i.ToSsisVariableResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Ssis variable.
 type SsisVariableResponseOutput struct{ *pulumi.OutputState }
 
@@ -963,6 +1099,12 @@ func (o SsisVariableResponseOutput) ToSsisVariableResponseOutput() SsisVariableR
 
 func (o SsisVariableResponseOutput) ToSsisVariableResponseOutputWithContext(ctx context.Context) SsisVariableResponseOutput {
 	return o
+}
+
+func (o SsisVariableResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SsisVariableResponse] {
+	return pulumix.Output[SsisVariableResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Variable type.
@@ -1012,6 +1154,12 @@ func (o SsisVariableResponseArrayOutput) ToSsisVariableResponseArrayOutput() Ssi
 
 func (o SsisVariableResponseArrayOutput) ToSsisVariableResponseArrayOutputWithContext(ctx context.Context) SsisVariableResponseArrayOutput {
 	return o
+}
+
+func (o SsisVariableResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]SsisVariableResponse] {
+	return pulumix.Output[[]SsisVariableResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o SsisVariableResponseArrayOutput) Index(i pulumi.IntInput) SsisVariableResponseOutput {
@@ -1067,6 +1215,12 @@ func (i StorageAccountKeyResponseArgs) ToStorageAccountKeyResponseOutputWithCont
 	return pulumi.ToOutputWithContext(ctx, i).(StorageAccountKeyResponseOutput)
 }
 
+func (i StorageAccountKeyResponseArgs) ToOutput(ctx context.Context) pulumix.Output[StorageAccountKeyResponse] {
+	return pulumix.Output[StorageAccountKeyResponse]{
+		OutputState: i.ToStorageAccountKeyResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // StorageAccountKeyResponseArrayInput is an input type that accepts StorageAccountKeyResponseArray and StorageAccountKeyResponseArrayOutput values.
 // You can construct a concrete instance of `StorageAccountKeyResponseArrayInput` via:
 //
@@ -1092,6 +1246,12 @@ func (i StorageAccountKeyResponseArray) ToStorageAccountKeyResponseArrayOutputWi
 	return pulumi.ToOutputWithContext(ctx, i).(StorageAccountKeyResponseArrayOutput)
 }
 
+func (i StorageAccountKeyResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]StorageAccountKeyResponse] {
+	return pulumix.Output[[]StorageAccountKeyResponse]{
+		OutputState: i.ToStorageAccountKeyResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // An access key for the storage account.
 type StorageAccountKeyResponseOutput struct{ *pulumi.OutputState }
 
@@ -1105,6 +1265,12 @@ func (o StorageAccountKeyResponseOutput) ToStorageAccountKeyResponseOutput() Sto
 
 func (o StorageAccountKeyResponseOutput) ToStorageAccountKeyResponseOutputWithContext(ctx context.Context) StorageAccountKeyResponseOutput {
 	return o
+}
+
+func (o StorageAccountKeyResponseOutput) ToOutput(ctx context.Context) pulumix.Output[StorageAccountKeyResponse] {
+	return pulumix.Output[StorageAccountKeyResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Creation time of the key, in round trip date format.
@@ -1139,6 +1305,12 @@ func (o StorageAccountKeyResponseArrayOutput) ToStorageAccountKeyResponseArrayOu
 
 func (o StorageAccountKeyResponseArrayOutput) ToStorageAccountKeyResponseArrayOutputWithContext(ctx context.Context) StorageAccountKeyResponseArrayOutput {
 	return o
+}
+
+func (o StorageAccountKeyResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]StorageAccountKeyResponse] {
+	return pulumix.Output[[]StorageAccountKeyResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o StorageAccountKeyResponseArrayOutput) Index(i pulumi.IntInput) StorageAccountKeyResponseOutput {

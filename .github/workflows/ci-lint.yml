@@ -17,7 +17,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.52
+  GOLANGCI_LINT_VERSION: v1.55.2
 
 jobs:
   golangci:
@@ -31,6 +31,8 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          # golangci-lint-action handles all the caching for Go.
+          cache: false
 
       # We leverage the golangci-lint action to install
       # and maintain the cache,
@@ -65,6 +67,28 @@ jobs:
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             echo "::error go.mod not tidy"
+            echo "::error Please run 'make tidy'"
+            exit 1
+          fi
+
+  gen:
+    name: Generate Go SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+      - name: Run make gen
+        run: cd sdk/go && make gen
+      - name: Fail if there are changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error Running 'make gen' in sdk/go resulted in changes"
+            echo "::error Please run 'make gen' in sdk/go and commit the changes"
             exit 1
           fi
 
@@ -141,15 +165,3 @@ jobs:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - run: |
           make lint_actions
-
-  linear-history:
-    name: linear-history
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          # This should be the merge commit of the PR or candidate merge commit in the staging branch for `bors`.
-          ref: ${{ inputs.ref }}
-          fetch-depth: 0
-      - name: Check for non-linear history
-        run: ./scripts/git-linear-history-check.sh

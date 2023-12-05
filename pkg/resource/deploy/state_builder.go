@@ -29,6 +29,11 @@ func newStateBuilder(state *resource.State) *stateBuilder {
 	return &stateBuilder{*state, state, false}
 }
 
+func (sb *stateBuilder) withUpdatedURN(update func(resource.URN) resource.URN) *stateBuilder {
+	sb.setURN(&sb.state.URN, update(sb.state.URN))
+	return sb
+}
+
 func (sb *stateBuilder) withUpdatedParent(update func(resource.URN) resource.URN) *stateBuilder {
 	if sb.state.Parent != "" {
 		sb.setURN(&sb.state.Parent, update(sb.state.Parent))
@@ -62,6 +67,15 @@ func (sb *stateBuilder) withUpdatedPropertyDependencies(update func(resource.URN
 		sb.state.PropertyDependencies = m
 	}
 	sb.edited = sb.edited || edited
+	return sb
+}
+
+// Removes all "Aliases" from the state. Once URN normalisation is done we don't want to write aliases out.
+func (sb *stateBuilder) withUpdatedAliases() *stateBuilder {
+	if len(sb.state.Aliases) > 0 {
+		sb.state.Aliases = nil
+		sb.edited = true
+	}
 	return sb
 }
 

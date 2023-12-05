@@ -135,8 +135,9 @@
   },
   "language": {
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-plain-schema/go/example",
-      "generateExtraInputTypes": true
+      "importBasePath": "simple-plain-schema/example",
+      "generateExtraInputTypes": true,
+      "generics": "side-by-side"
     },
     "nodejs": {
       "dependencies": {

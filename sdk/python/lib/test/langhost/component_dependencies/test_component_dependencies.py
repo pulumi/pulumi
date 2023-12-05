@@ -11,20 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os import path
+from os import path, environ
 import unittest
 from ..util import LanghostTest
 
 
 class ComponentDependenciesTest(LanghostTest):
     def test_component_dependencies(self):
+        environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"] = "false"
         self.run_test(
             program=path.join(self.base_path(), "component_dependencies"),
             expected_resource_count=16)
+        del environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"]
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
                           _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes):
+                          _replace_on_changes, _providers, source_position):
 
         if name == "resD":
             self.assertListEqual(_dependencies, ["resA"], msg=f"{name}._dependencies")

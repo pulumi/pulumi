@@ -141,13 +141,13 @@ func publishToNPM(path string) error {
 	infoCmd := exec.Command(npm, "info", pkgNameWithVersion)
 	infoCmd.Stderr = os.Stderr
 	logging.V(1).Infof("Running %s", infoCmd)
-	output, err := infoCmd.Output()
-	if err != nil {
-		return err
-	}
+	// we actually do not care about the error here; we care whether the output is empty.
+	output, _ := infoCmd.Output()
 
 	if len(output) > 0 {
-		return fmt.Errorf("publish %s failed, likely because the version already exists", pkgInfo.Name)
+		// the package already exists, and we no-op.
+		fmt.Printf("did not publish %s because version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
+		return nil
 	}
 
 	logging.V(1).Infof("The version does not exist yet, and it is safe to publish")
@@ -162,17 +162,16 @@ func publishToNPM(path string) error {
 		// to verify we're not encountering a time-of-check to time-of-use (TOC/TOU) issue.
 		infoCheckCmd := exec.Command("npm", "info", pkgNameWithVersion)
 		infoCheckCmd.Stderr = os.Stderr
-		checkOutput, checkErr := infoCheckCmd.Output()
-		if checkErr != nil {
-			return fmt.Errorf("running npm info to verify failed %w", checkErr)
-		}
+		// Ignore error. stdout will be empty if the package was not published.
+		checkOutput, _ := infoCheckCmd.Output()
+
 		if len(checkOutput) > 0 {
 			// this means the package was published after all
 			fmt.Println("success! published to npm")
 			return nil
 		}
 		// if we get here, this means the package was not published. We bail.
-		return err
+		return fmt.Errorf("publish package: %w", err)
 	}
 	fmt.Println("success! published to npm")
 	return nil

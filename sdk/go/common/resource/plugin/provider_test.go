@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewDetailedDiff(t *testing.T) {
@@ -123,7 +124,7 @@ func TestNewDetailedDiff(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			actual := NewDetailedDiffFromObjectDiff(c.diff)
+			actual := NewDetailedDiffFromObjectDiff(c.diff, false)
 			assert.Equal(t, c.expected, actual)
 		})
 	}
@@ -131,3 +132,97 @@ func TestNewDetailedDiff(t *testing.T) {
 
 // Assert that UnimplementedProvider implements Provider
 var _ = Provider((*UnimplementedProvider)(nil))
+
+// Regression test for https://github.com/pulumi/pulumi/issues/14335.
+// Ensure that NewDetailedDiffFromObjectDiff builds correct keys.
+func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		diff          *resource.ObjectDiff
+		inputDiff     bool
+		expected      map[string]PropertyDiff
+		expectedPaths map[string]resource.PropertyPath
+	}{
+		"simple add": {
+			diff: &resource.ObjectDiff{
+				Adds: resource.PropertyMap{
+					"a": resource.NewPropertyValue(1),
+				},
+			},
+			expected: map[string]PropertyDiff{
+				"a": {Kind: DiffAdd},
+			},
+			expectedPaths: map[string]resource.PropertyPath{
+				"a": {"a"},
+			},
+		},
+		"simple update": {
+			diff: &resource.ObjectDiff{
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"a": *resource.NewPropertyValue(1).Diff(resource.NewPropertyValue(2)),
+				},
+			},
+			expected: map[string]PropertyDiff{
+				"a": {Kind: DiffUpdate},
+			},
+			expectedPaths: map[string]resource.PropertyPath{
+				"a": {"a"},
+			},
+		},
+		"nested update": {
+			diff: &resource.ObjectDiff{
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"a": *resource.NewObjectProperty(resource.PropertyMap{
+						"b": resource.NewPropertyValue(1),
+					}).Diff(resource.NewObjectProperty(resource.PropertyMap{
+						"b": resource.NewPropertyValue(2),
+					})),
+				},
+			},
+			expected: map[string]PropertyDiff{
+				"a.b": {Kind: DiffUpdate},
+			},
+			expectedPaths: map[string]resource.PropertyPath{
+				"a.b": {"a", "b"},
+			},
+		},
+		"nested update with quoted keys": {
+			diff: &resource.ObjectDiff{
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"a": *resource.NewObjectProperty(resource.PropertyMap{
+						"b.c":          resource.NewPropertyValue(1),
+						`"quoted key"`: resource.NewPropertyValue(2),
+					}).Diff(resource.NewObjectProperty(resource.PropertyMap{
+						"b.c":          resource.NewPropertyValue(2),
+						`"quoted key"`: resource.NewPropertyValue(3),
+					})),
+				},
+			},
+			expected: map[string]PropertyDiff{
+				`a["\"quoted key\""]`: {Kind: DiffUpdate},
+				`a["b.c"]`:            {Kind: DiffUpdate},
+			},
+			expectedPaths: map[string]resource.PropertyPath{
+				`a["\"quoted key\""]`: {"a", `"quoted key"`},
+				`a["b.c"]`:            {"a", "b.c"},
+			},
+		},
+	}
+
+	for name, tt := range cases {
+		tt := tt
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			result := NewDetailedDiffFromObjectDiff(tt.diff, tt.inputDiff)
+			assert.Equal(t, tt.expected, result)
+
+			for k := range result {
+				path, err := resource.ParsePropertyPath(k)
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedPaths[k], path)
+			}
+		})
+	}
+}

@@ -305,7 +305,7 @@ class Output(Generic[T_co]):
             )
             return cast(Output[T_co], o_typ)
 
-        # Is a (non-empty) dict or list? Recurse into the values within them.
+        # Is a (non-empty) dict, list, or tuple? Recurse into the values within them.
         if val and isinstance(val, dict):
             # The keys themselves might be outputs, so we can't just pass `**val` to all.
 
@@ -324,7 +324,13 @@ class Output(Generic[T_co]):
             o_list: Output[list] = Output.all(*val)
             return cast(Output[T_co], o_list)
 
-        # If it's not an output, list, or dict, it must be known and not secret
+        if val and isinstance(val, tuple):
+            # We can splat a tuple into all, but we'll always get back a list...
+            o_list = Output.all(*val)
+            # ...so we need to convert back to a tuple.
+            return cast(Output[T_co], o_list.apply(tuple))
+
+        # If it's not an output, tuple, list, or dict, it must be known and not secret
         is_known_fut: asyncio.Future[bool] = asyncio.Future()
         is_secret_fut: asyncio.Future[bool] = asyncio.Future()
         is_known_fut.set_result(True)
@@ -721,7 +727,7 @@ class Output(Generic[T_co]):
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://pulumi.io/help/outputs for more details.
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
 This function may throw in a future version of Pulumi."""
 
 

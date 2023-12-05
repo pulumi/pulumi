@@ -16,6 +16,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -37,11 +38,11 @@ type QueryOptions struct {
 	tracingSpan opentracing.Span
 }
 
-func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
+func Query(ctx *Context, q QueryInfo, opts UpdateOptions) error {
 	contract.Requiref(q != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events <- NewCancelEvent() }()
 
 	tracingSpan := func(opName string, parentSpan opentracing.SpanContext) opentracing.Span {
 		// Create a root span for the operation
@@ -58,7 +59,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 
 	emitter, err := makeQueryEventEmitter(ctx.Events)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 	defer emitter.Close()
 
@@ -73,7 +74,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
 		opts.Host, diag, statusDiag, false, tracingSpan, nil)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 	defer plugctx.Close()
 
@@ -92,7 +93,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 func newQuerySource(cancel context.Context, client deploy.BackendClient, q QueryInfo,
 	opts QueryOptions,
 ) (deploy.QuerySource, error) {
-	allPlugins, defaultProviderVersions, err := installPlugins(q.GetProject(), opts.pwd, opts.main,
+	allPlugins, defaultProviderVersions, err := installPlugins(cancel, q.GetProject(), opts.pwd, opts.main,
 		nil, opts.plugctx, false /*returnInstallErrors*/)
 	if err != nil {
 		return nil, err
@@ -119,31 +120,25 @@ func newQuerySource(cancel context.Context, client deploy.BackendClient, q Query
 	}, defaultProviderVersions, nil)
 }
 
-func query(ctx *Context, q QueryInfo, opts QueryOptions) result.Result {
+func query(ctx *Context, q QueryInfo, opts QueryOptions) error {
 	// Make the current working directory the same as the program's, and restore it upon exit.
-	done, chErr := fsutil.Chdir(opts.plugctx.Pwd)
-	if chErr != nil {
-		return result.FromError(chErr)
+	done, err := fsutil.Chdir(opts.plugctx.Pwd)
+	if err != nil {
+		return err
 	}
 	defer done()
 
-	if res := runQuery(ctx, q, opts); res != nil {
-		if res.IsBail() {
-			return res
+	if err := runQuery(ctx, q, opts); err != nil {
+		if result.IsBail(err) {
+			return err
 		}
-		return result.Errorf("an error occurred while running the query: %v", res.Error())
+		return fmt.Errorf("an error occurred while running the query: %w", err)
 	}
 	return nil
 }
 
-func runQuery(cancelCtx *Context, q QueryInfo, opts QueryOptions) result.Result {
+func runQuery(cancelCtx *Context, q QueryInfo, opts QueryOptions) error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	contract.Ignore(cancelFunc)
-
-	src, err := newQuerySource(ctx, cancelCtx.BackendClient, q, opts)
-	if err != nil {
-		return result.FromError(err)
-	}
 
 	// Set up a goroutine that will signal cancellation to the plan's plugins if the caller context
 	// is cancelled.
@@ -158,7 +153,12 @@ func runQuery(cancelCtx *Context, q QueryInfo, opts QueryOptions) result.Result 
 		}
 	}()
 
-	done := make(chan result.Result)
+	src, err := newQuerySource(ctx, cancelCtx.BackendClient, q, opts)
+	if err != nil {
+		return err
+	}
+
+	done := make(chan error)
 	go func() {
 		done <- src.Wait()
 	}()
@@ -166,8 +166,8 @@ func runQuery(cancelCtx *Context, q QueryInfo, opts QueryOptions) result.Result 
 	// Block until query completes.
 	select {
 	case <-cancelCtx.Cancel.Terminated():
-		return result.WrapIfNonNil(cancelCtx.Cancel.TerminateErr())
-	case res := <-done:
-		return res
+		return cancelCtx.Cancel.TerminateErr()
+	case err := <-done:
+		return err
 	}
 }

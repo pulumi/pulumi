@@ -31,8 +31,7 @@
             "devDependencies": {
                 "typescript": "^3.7.0",
                 "@types/node": "ts3.7"
-            },
-            "pluginVersion": "3.2.1"
+            }
         },
         "go": {
             "importBasePath": "enum-reference/example",

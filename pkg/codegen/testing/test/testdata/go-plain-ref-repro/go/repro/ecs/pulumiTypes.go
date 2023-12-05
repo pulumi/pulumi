@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"go-plain-ref-repro/repro/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type TaskDefinitionContainerDefinition struct {
 	Command []string `pulumi:"command"`

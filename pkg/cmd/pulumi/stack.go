@@ -15,7 +15,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -30,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -43,8 +43,8 @@ func newStackCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "stack",
-		Short: "Manage stacks",
-		Long: "Manage stacks\n" +
+		Short: "Manage stacks and view stack state",
+		Long: "Manage stacks and view stack state\n" +
 			"\n" +
 			"A stack is a named update target, and a single project may have many of them.\n" +
 			"Each stack has a configuration and update history associated with it, stored in\n" +
@@ -134,11 +134,11 @@ func newStackCmd() *cobra.Command {
 					}
 				}
 
-				cmdutil.PrintTable(cmdutil.Table{
+				printTable(cmdutil.Table{
 					Headers: []string{"TYPE", "NAME"},
 					Rows:    rows,
 					Prefix:  "    ",
-				})
+				}, nil)
 
 				outputs, err := getStackOutputs(snap, showSecrets)
 				if err == nil {
@@ -207,7 +207,7 @@ func fprintStackOutputs(w io.Writer, outputs map[string]interface{}) error {
 		return err
 	}
 
-	outKeys := make([]string, 0, len(outputs))
+	outKeys := slice.Prealloc[string](len(outputs))
 	for v := range outputs {
 		outKeys = append(outKeys, v)
 	}
@@ -233,12 +233,12 @@ func stringifyOutput(v interface{}) string {
 		return s
 	}
 
-	b, err := json.Marshal(v)
+	o, err := makeJSONString(v, false /* single line */)
 	if err != nil {
 		return "error: could not format value"
 	}
 
-	return string(b)
+	return o
 }
 
 type treeNode struct {
@@ -294,7 +294,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 				nodes[res.Parent] = p
 			}
 			p.children = append(p.children, node)
-		case res.Type == resource.RootStackType:
+		case res.Type == resource.RootStackType && res.Parent == "":
 			root = node
 		default:
 			orphans = append(orphans, node)
@@ -322,7 +322,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 }
 
 func renderResourceRow(res *resource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
-	columns := []string{prefix + string(res.Type), string(res.URN.Name())}
+	columns := []string{prefix + string(res.Type), res.URN.Name()}
 	additionalInfo := ""
 
 	// If the ID and/or URN is requested, show it on the following line.  It would be nice to do

@@ -301,24 +301,22 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 }
 
 func enumName(enum *model.EnumType) (string, error) {
-	components := strings.Split(enum.Token, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
-	name := tokenToName(enum.Token)
-	pkg := makeValidIdentifier(components[0])
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {
 		return "", fmt.Errorf("Could not get associated enum")
 	}
-	def, err := e.(*schema.EnumType).PackageReference.Definition()
-	if err != nil {
-		return "", err
-	}
-	if name := def.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
-		pkg = name
-	}
+	pkgRef := e.(*schema.EnumType).PackageReference
+	return enumNameWithPackage(enum.Token, pkgRef)
+}
+
+func enumNameWithPackage(enumToken string, pkgRef schema.PackageReference) (string, error) {
+	components := strings.Split(enumToken, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", enumToken)
+	name := tokenToName(enumToken)
+	pkg := makeValidIdentifier(components[0])
 	if mod := components[1]; mod != "" && mod != "index" {
-		if pkg := e.(*schema.EnumType).PackageReference; pkg != nil {
-			mod = moduleName(mod, pkg)
+		if pkgRef != nil {
+			mod = moduleName(mod, pkgRef)
 		}
 		pkg += "." + mod
 	}
@@ -415,6 +413,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case "notImplemented":
 		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
+	case "singleOrNone":
+		g.Fgenf(w, "singleOrNone(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
@@ -459,7 +459,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "range":
 		g.genRange(w, expr, false)
 	case "readFile":
-		g.Fgenf(w, "fs.readFileSync(%v)", expr.Args[0])
+		g.Fgenf(w, "fs.readFileSync(%v, \"utf8\")", expr.Args[0])
 	case "readDir":
 		g.Fgenf(w, "fs.readdirSync(%v)", expr.Args[0])
 	case "secret":
@@ -582,9 +582,7 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 				break
 			}
 		}
-		var buf bytes.Buffer
-		g.GenTemplateExpression(&buf, x)
-		return buf.String(), true
+		return "", false
 	default:
 		return "", false
 	}

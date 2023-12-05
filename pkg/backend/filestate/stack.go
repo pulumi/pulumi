@@ -23,12 +23,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -80,9 +81,9 @@ func (s *localStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 
 func (s *localStack) Preview(
 	ctx context.Context,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, display.ResourceChanges, result.Result) {
-	return backend.PreviewStack(ctx, s, op)
+	return backend.PreviewStack(ctx, s, op, events)
 }
 
 func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, result.Result) {

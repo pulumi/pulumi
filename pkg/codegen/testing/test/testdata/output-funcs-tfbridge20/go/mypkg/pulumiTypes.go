@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs-tfbridge20/mypkg/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 // An access key for the storage account.
 type StorageAccountKeyResponse struct {

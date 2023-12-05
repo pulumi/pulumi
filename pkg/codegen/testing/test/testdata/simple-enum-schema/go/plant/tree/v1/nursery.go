@@ -9,6 +9,8 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"simple-enum-schema/plant/internal"
 )
 
 type Nursery struct {
@@ -25,6 +27,7 @@ func NewNursery(ctx *pulumi.Context,
 	if args.Varieties == nil {
 		return nil, errors.New("invalid value for required argument 'Varieties'")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Nursery
 	err := ctx.RegisterResource("plant:tree/v1:Nursery", name, args, &resource, opts...)
 	if err != nil {
@@ -94,6 +97,12 @@ func (i *Nursery) ToNurseryOutputWithContext(ctx context.Context) NurseryOutput 
 	return pulumi.ToOutputWithContext(ctx, i).(NurseryOutput)
 }
 
+func (i *Nursery) ToOutput(ctx context.Context) pulumix.Output[*Nursery] {
+	return pulumix.Output[*Nursery]{
+		OutputState: i.ToNurseryOutputWithContext(ctx).OutputState,
+	}
+}
+
 type NurseryOutput struct{ *pulumi.OutputState }
 
 func (NurseryOutput) ElementType() reflect.Type {
@@ -106,6 +115,12 @@ func (o NurseryOutput) ToNurseryOutput() NurseryOutput {
 
 func (o NurseryOutput) ToNurseryOutputWithContext(ctx context.Context) NurseryOutput {
 	return o
+}
+
+func (o NurseryOutput) ToOutput(ctx context.Context) pulumix.Output[*Nursery] {
+	return pulumix.Output[*Nursery]{
+		OutputState: o.OutputState,
+	}
 }
 
 func init() {

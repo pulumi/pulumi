@@ -56,7 +56,7 @@ func newPolicyLsCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				orgName = cliArgs[0]
 			} else {
-				orgName, _, err = b.CurrentUser()
+				orgName, _, _, err = b.CurrentUser()
 				if err != nil {
 					return err
 				}
@@ -109,10 +109,10 @@ func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) erro
 		columns := []string{name, versionTags}
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
-	cmdutil.PrintTable(cmdutil.Table{
+	printTable(cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
-	})
+	}, nil)
 	return nil
 }
 

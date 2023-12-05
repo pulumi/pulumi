@@ -7,8 +7,11 @@ import (
 	"context"
 	"reflect"
 
+	"embedded-crd-types/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type ENIConfig struct {
 	ApiVersion *string        `pulumi:"apiVersion"`

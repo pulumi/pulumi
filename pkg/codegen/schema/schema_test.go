@@ -18,6 +18,7 @@ package schema
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -73,6 +74,142 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	_, diags, err = BindSpec(*newSpec, loader)
 	require.NoError(t, err)
 	assert.Empty(t, diags)
+}
+
+func TestRoundtripLocalTypeRef(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/13671
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("localref-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Try and bind again
+	_, diags, err = BindSpec(*newSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+}
+
+func TestRoundtripEnum(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/13921
+	t.Parallel()
+
+	assertEnum := func(t *testing.T, pkg *Package) {
+		typ, ok := pkg.GetType("enum:index:Color")
+		assert.True(t, ok)
+		enum, ok := typ.(*EnumType)
+		assert.True(t, ok)
+		assert.Equal(t, "An enum representing a color", enum.Comment)
+		assert.ElementsMatch(t, []*Enum{
+			{Value: "red"},
+			{Value: "green"},
+			{Value: "blue"},
+		}, enum.Elements)
+	}
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("enum-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertEnum(t, pkg)
+
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Try and bind again
+	pkg, diags, err = BindSpec(*newSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertEnum(t, pkg)
+}
+
+func TestRoundtripPlainProperties(t *testing.T) {
+	t.Parallel()
+
+	assertPlainnessFromType := func(t *testing.T, pkg *Package) {
+		exampleType, ok := pkg.GetType("plain-properties:index:ExampleType")
+		assert.True(t, ok)
+		exampleObjectType, ok := exampleType.(*ObjectType)
+		assert.True(t, ok)
+
+		assert.Equal(t, 2, len(exampleObjectType.Properties))
+		var exampleProperty *Property
+		var nonPlainProperty *Property
+		for _, p := range exampleObjectType.Properties {
+			if p.Name == "exampleProperty" {
+				exampleProperty = p
+			}
+
+			if p.Name == "nonPlainProperty" {
+				nonPlainProperty = p
+			}
+		}
+
+		assert.NotNil(t, exampleProperty)
+		assert.NotNil(t, nonPlainProperty)
+
+		assert.True(t, exampleProperty.Plain)
+		assert.False(t, nonPlainProperty.Plain)
+	}
+
+	assertPlainnessFromResource := func(t *testing.T, pkg *Package) {
+		exampleResource, ok := pkg.GetResource("plain-properties:index:ExampleResource")
+		assert.True(t, ok)
+
+		check := func(properties []*Property) {
+			var exampleProperty *Property
+			var nonPlainProperty *Property
+			for _, p := range exampleResource.InputProperties {
+				if p.Name == "exampleProperty" {
+					exampleProperty = p
+				}
+
+				if p.Name == "nonPlainProperty" {
+					nonPlainProperty = p
+				}
+			}
+
+			// assert that the input property "exampleProperty" is plain
+			assert.NotNil(t, exampleProperty)
+			assert.True(t, exampleProperty.Plain)
+
+			// assert that the output property is not plain
+			assert.NotNil(t, nonPlainProperty)
+			assert.False(t, nonPlainProperty.Plain)
+		}
+
+		check(exampleResource.InputProperties)
+		check(exampleResource.Properties)
+	}
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertPlainnessFromType(t, pkg)
+	assertPlainnessFromResource(t, pkg)
+
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Try and bind again
+	pkg, diags, err = BindSpec(*newSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assertPlainnessFromType(t, pkg)
+	assertPlainnessFromResource(t, pkg)
 }
 
 func TestImportSpec(t *testing.T) {
@@ -278,9 +415,8 @@ func TestEnums(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // needs to set plugin acquisition env var
 func TestImportResourceRef(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name       string
 		schemaFile string
@@ -340,10 +476,11 @@ func TestImportResourceRef(t *testing.T) {
 			},
 		},
 	}
+	//nolint:paralleltest // needs to set plugin acquisition env var
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
@@ -954,6 +1091,378 @@ func TestPackageIdentity(t *testing.T) {
 				assert.NotEqual(t, pkgA.Identity(), pkgB.Identity())
 				assert.False(t, pkgA.Equals(pkgB))
 			}
+		})
+	}
+}
+
+func TestBindDefaultInt(t *testing.T) {
+	t.Parallel()
+	dv, diag := bindDefaultValue("fake-path", int(32), nil, IntType)
+	if diag.HasErrors() {
+		t.Fail()
+	}
+	assert.Equal(t, int32(32), dv.Value)
+
+	// Check that we error on overflow/underflow when casting int to int32.
+	if _, diag := bindDefaultValue("fake-path", int(math.MaxInt64), nil, IntType); !diag.HasErrors() {
+		assert.Fail(t, "did not catch oveflow")
+		t.Fail()
+	}
+	if _, diag := bindDefaultValue("fake-path", int(math.MinInt64), nil, IntType); !diag.HasErrors() {
+		assert.Fail(t, "did not catch underflow")
+	}
+}
+
+func TestMarshalResourceWithLanguageSettings(t *testing.T) {
+	t.Parallel()
+
+	prop := &Property{
+		Name: "prop1",
+		Language: map[string]interface{}{
+			"csharp": map[string]string{
+				"name": "CSharpProp1",
+			},
+		},
+		Type: stringType,
+	}
+	r := Resource{
+		Token: "xyz:index:resource",
+		Properties: []*Property{
+			prop,
+		},
+		Language: map[string]interface{}{
+			"csharp": map[string]string{
+				"name": "CSharpResource",
+			},
+		},
+	}
+	p := Package{
+		Name:        "xyz",
+		DisplayName: "xyz package",
+		Version: &semver.Version{
+			Major: 0,
+			Minor: 0,
+			Patch: 0,
+		},
+		Provider: &Resource{
+			IsProvider: true,
+			Token:      "provider",
+		},
+		Resources: []*Resource{
+			&r,
+		},
+	}
+	pspec, err := p.MarshalSpec()
+	assert.NoError(t, err)
+	res, ok := pspec.Resources[r.Token]
+	assert.True(t, ok)
+	assert.Contains(t, res.Language, "csharp")
+	assert.IsType(t, RawMessage{}, res.Language["csharp"])
+
+	prspec, ok := res.Properties[prop.Name]
+	assert.True(t, ok)
+	assert.Contains(t, prspec.Language, "csharp")
+	assert.IsType(t, RawMessage{}, prspec.Language["csharp"])
+}
+
+func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name   string
+		fspec  FunctionSpec
+		serial any
+		// For legacy forms, after turning around through serde FunctionSpec will be
+		// normalized and not exactly equal to the original; tests will check against the
+		// normalized form if provided.
+		normalized *FunctionSpec
+	}
+
+	ots := &ObjectTypeSpec{
+		Type: "object",
+		Properties: map[string]PropertySpec{
+			"x": {
+				TypeSpec: TypeSpec{
+					Type: "integer",
+				},
+			},
+		},
+	}
+
+	otsPlain := &ObjectTypeSpec{
+		Type: "object",
+		Properties: map[string]PropertySpec{
+			"x": {
+				TypeSpec: TypeSpec{
+					Type: "integer",
+				},
+			},
+		},
+		Plain: []string{"x"},
+	}
+
+	testCases := []testCase{
+		{
+			name: "legacy-outputs-form",
+			fspec: FunctionSpec{
+				Outputs: ots,
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+			normalized: &FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: ots,
+				},
+			},
+		},
+		{
+			name: "legacy-outputs-form-plain-array",
+			fspec: FunctionSpec{
+				Outputs: otsPlain,
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"plain": []interface{}{"x"},
+					"type":  "object",
+				},
+			},
+			normalized: &FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: otsPlain,
+				},
+			},
+		},
+		{
+			name: "return-plain-integer",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type:  "integer",
+						Plain: true,
+					},
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"plain": true,
+					"type":  "integer",
+				},
+			},
+		},
+		{
+			name: "return-integer",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type: "integer",
+					},
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"type": "integer",
+				},
+			},
+		},
+		{
+			name: "return-plain-object",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec:        ots,
+					ObjectTypeSpecIsPlain: true,
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"plain": true,
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+		},
+		{
+			name: "return-object",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: ots,
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+		},
+		{
+			name: "return-object-plain-array",
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					ObjectTypeSpec: otsPlain,
+				},
+			},
+			serial: map[string]interface{}{
+				"outputs": map[string]interface{}{
+					"plain": []interface{}{"x"},
+					"properties": map[string]interface{}{
+						"x": map[string]interface{}{
+							"type": "integer",
+						},
+					},
+					"type": "object",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		fspec := tc.fspec
+		expectSerial := tc.serial
+		expectFSpec := fspec
+		if tc.normalized != nil {
+			expectFSpec = *tc.normalized
+		}
+
+		// Test JSON serialization and turnaround.
+		t.Run(tc.name+"/json", func(t *testing.T) {
+			t.Parallel()
+			var serial any
+
+			bytes, err := json.MarshalIndent(fspec, "", "  ")
+			require.NoError(t, err)
+
+			err = json.Unmarshal(bytes, &serial)
+			require.NoError(t, err)
+			require.Equalf(t, expectSerial, serial, "Unexpected JSON serial form")
+
+			var actual FunctionSpec
+			err = json.Unmarshal(bytes, &actual)
+			require.NoError(t, err)
+			require.Equal(t, expectFSpec, actual)
+		})
+
+		// Test YAML serialization and turnaround.
+		t.Run(tc.name+"/yaml", func(t *testing.T) {
+			t.Parallel()
+			var serial any
+
+			bytes, err := yaml.Marshal(fspec)
+			require.NoError(t, err)
+
+			err = yaml.Unmarshal(bytes, &serial)
+			require.NoError(t, err)
+			require.Equalf(t, expectSerial, serial, "Unexpected YAML serial form")
+
+			var actual FunctionSpec
+			err = yaml.Unmarshal(bytes, &actual)
+			require.NoError(t, err)
+			require.Equal(t, expectFSpec, actual)
+		})
+	}
+}
+
+func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name  string
+		fn    *Function
+		fspec FunctionSpec
+	}
+
+	testCases := []testCase{
+		{
+			name: "return-type-plain",
+			fn: &Function{
+				PackageReference: packageDefRef{},
+				Token:            "token",
+				ReturnType:       IntType,
+				ReturnTypePlain:  true,
+				Language:         map[string]interface{}{},
+			},
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type:  "integer",
+						Plain: true,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name+"/marshalFunction", func(t *testing.T) {
+			t.Parallel()
+			pkg := Package{}
+			fspec, err := pkg.marshalFunction(tc.fn)
+			require.NoError(t, err)
+			require.Equal(t, tc.fspec, fspec)
+		})
+		t.Run(tc.name+"/bindFunctionDef", func(t *testing.T) {
+			t.Parallel()
+			ts := types{
+				spec: packageSpecSource{
+					&PackageSpec{
+						Functions: map[string]FunctionSpec{
+							"token": tc.fspec,
+						},
+					},
+				},
+				functionDefs: map[string]*Function{},
+			}
+			fn, diags, err := ts.bindFunctionDef("token")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors())
+			require.Equal(t, tc.fn, fn)
+		})
+	}
+}
+
+func TestInvalidProperties(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{"bad-property-1.json", "failed to bind properties for fake-provider:index:typ: property name \"urn\" is reserved"},
+		{"bad-property-2.json", "failed to bind properties for fake-provider:index:typ: property name \"id\" is reserved"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			_, err := ImportSpec(pkgSpec, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expected)
 		})
 	}
 }

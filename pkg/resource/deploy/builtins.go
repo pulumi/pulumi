@@ -8,6 +8,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -18,18 +19,20 @@ import (
 type builtinProvider struct {
 	context context.Context
 	cancel  context.CancelFunc
+	diag    diag.Sink
 
 	backendClient BackendClient
 	resources     *resourceMap
 }
 
-func newBuiltinProvider(backendClient BackendClient, resources *resourceMap) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, d diag.Sink) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
 		cancel:        cancel,
 		backendClient: backendClient,
 		resources:     resources,
+		diag:          d,
 	}
 }
 
@@ -46,8 +49,12 @@ func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
 	return []byte("{}"), nil
 }
 
-func (p *builtinProvider) GetMapping(key string) ([]byte, string, error) {
+func (p *builtinProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", nil
+}
+
+func (p *builtinProvider) GetMappings(key string) ([]string, error) {
+	return []string{}, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
@@ -58,7 +65,7 @@ func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *builtinProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -78,7 +85,12 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 		return nil, nil, fmt.Errorf("unrecognized resource type '%v'", urn.Type())
 	}
 
-	var name resource.PropertyValue
+	// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
+	// call Check first.
+	msg := "The \"pulumi:pulumi:StackReference\" resource type is deprecated. " +
+		"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
+	p.diag.Warningf(diag.Message(urn, msg))
+
 	for k := range inputs {
 		if k != "name" {
 			return nil, []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}}, nil
@@ -95,12 +107,12 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 	return inputs, nil, nil
 }
 
-func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
+func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
-	if !inputs["name"].DeepEquals(state["name"]) {
+	if !newInputs["name"].DeepEquals(oldOutputs["name"]) {
 		return plugin.DiffResult{
 			Changes:     plugin.DiffSome,
 			ReplaceKeys: []resource.PropertyKey{"name"},
@@ -133,17 +145,18 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 	return id, state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool,
+func (p *builtinProvider) Update(urn resource.URN, id resource.ID,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	timeout float64, ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	contract.Failf("unexpected update for builtin resource %v", urn)
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
-	return state, resource.StatusOK, errors.New("unexpected update for builtin resource")
+	return oldOutputs, resource.StatusOK, errors.New("unexpected update for builtin resource")
 }
 
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
-	state resource.PropertyMap, timeout float64,
+	oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
@@ -157,6 +170,12 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	contract.Requiref(id != "", "id", "must not be empty")
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
+	for k := range inputs {
+		if k != "name" {
+			return plugin.ReadResult{}, resource.StatusUnknown, fmt.Errorf("unknown property \"%v\"", k)
+		}
+	}
+
 	outputs, err := p.readStackReference(state)
 	if err != nil {
 		return plugin.ReadResult{}, resource.StatusUnknown, err
@@ -168,7 +187,7 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	}, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name string, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions,
 ) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{}, errors.New("builtin resources may not be constructed")
@@ -176,7 +195,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 
 const (
 	readStackOutputs         = "pulumi:pulumi:readStackOutputs"
-	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
+	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs" //nolint:gosec // not a credential
 	getResource              = "pulumi:pulumi:getResource"
 )
 

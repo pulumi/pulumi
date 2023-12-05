@@ -22,7 +22,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -35,7 +34,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -69,11 +70,7 @@ type provider struct {
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
 
-	// Await and provide configuration values.
-	// Use of closures here prevents unintentional unguarded access
-	// to the configuration values.
-	awaitConfig   func(context.Context) (pluginConfig, error)
-	provideConfig func(pluginConfig, error)
+	configSource *promise.CompletionSource[pluginConfig] // the source for the provider's configuration.
 }
 
 // pluginConfig holds the configuration of the provider
@@ -85,44 +82,6 @@ type pluginConfig struct {
 	acceptResources bool // true if this plugin accepts strongly-typed resource refs.
 	acceptOutputs   bool // true if this plugin accepts output values.
 	supportsPreview bool // true if this plugin supports previews for Create and Update.
-}
-
-// pluginConfigPromise is an asynchronously filled value for pluginConfig.
-type pluginConfigPromise struct {
-	done chan struct{} // closed on set
-	once sync.Once     // only one set
-	cfg  pluginConfig
-	err  error // non-nil if the operation failed
-}
-
-func newPluginConfigPromise() *pluginConfigPromise {
-	return &pluginConfigPromise{
-		done: make(chan struct{}),
-	}
-}
-
-// Await blocks until the value in the promise has resolved
-// or the given context expires.
-func (p *pluginConfigPromise) Await(ctx context.Context) (pluginConfig, error) {
-	select {
-	case <-ctx.Done():
-		return pluginConfig{}, ctx.Err()
-	case <-p.done:
-		return p.cfg, p.err
-	}
-}
-
-// Fulfill provides values to the promise.
-// A non-nil error indicates failure.
-//
-// Fulfill can be called only once.
-// Any calls after that will be ignored.
-func (p *pluginConfigPromise) Fulfill(cfg pluginConfig, err error) {
-	p.once.Do(func() {
-		defer close(p.done)
-		p.cfg = cfg
-		p.err = err
-	})
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -166,7 +125,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(
+		path, err := workspace.GetPluginPath(ctx.Diag,
 			workspace.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"),
 			version, host.GetProjectPlugins())
 		if err != nil {
@@ -195,7 +154,6 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
-	cfgPromise := newPluginConfigPromise()
 	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
@@ -203,8 +161,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
-		awaitConfig:            cfgPromise.Await,
-		provideConfig:          cfgPromise.Fulfill,
+		configSource:           &promise.CompletionSource[pluginConfig]{},
 	}
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
@@ -255,14 +212,12 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
-	cfgPromise := newPluginConfigPromise()
 	p := &provider{
 		ctx:           ctx,
 		plug:          plug,
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,
-		awaitConfig:   cfgPromise.Await,
-		provideConfig: cfgPromise.Fulfill,
+		configSource:  &promise.CompletionSource[pluginConfig]{},
 	}
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
@@ -278,14 +233,12 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool,
 ) Provider {
-	cfgPromise := newPluginConfigPromise()
 	return &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
-		awaitConfig:            cfgPromise.Await,
-		provideConfig:          cfgPromise.Fulfill,
+		configSource:           &promise.CompletionSource[pluginConfig]{},
 	}
 }
 
@@ -396,7 +349,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -442,21 +395,31 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
+	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
+		label, len(oldInputs), len(oldOutputs), len(newInputs))
+
+	mOldInputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:        fmt.Sprintf("%s.oldInputs", label),
 		KeepUnknowns: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
+	mOldOutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
+		Label:        fmt.Sprintf("%s.oldOutputs", label),
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	mNewInputs, err := MarshalProperties(newInputs, MarshalOptions{
+		Label:        fmt.Sprintf("%s.newInputs", label),
 		KeepUnknowns: true,
 	})
 	if err != nil {
@@ -465,8 +428,9 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
+		OldInputs:     mOldInputs,
+		Olds:          mOldOutputs,
+		News:          mNewInputs,
 		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
@@ -491,18 +455,31 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
-		return DiffResult{}, nil
+		// https://github.com/pulumi/pulumi/issues/14529: Old versions of kubernetes would error on this
+		// call if "kubeconfig" was set to a file. This didn't cause issues later when the same config was
+		// passed to Configure, and for many years silently "worked".
+		// https://github.com/pulumi/pulumi/pull/14436 fixed this method to start returning errors which
+		// exposed this issue with the kubernetes provider, new versions will be fixed to not error on
+		// this (https://github.com/pulumi/pulumi-kubernetes/issues/2663) but so that the CLI continues to
+		// work for old versions we have an explicit ignore for this one error here.
+		if p.pkg == "kubernetes" &&
+			strings.Contains(rpcError.Error(), "cannot unmarshal string into Go value of type struct") {
+			logging.V(8).Infof("%s ignoring error from kubernetes provider", label)
+			return DiffResult{Changes: DiffUnknown}, nil
+		}
+
+		return DiffResult{}, err
 	}
 
-	replaces := make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
+	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	stables := make([]resource.PropertyKey, 0, len(resp.GetStables()))
+	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	diffs := make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
+	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -589,6 +566,87 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 	}
 }
 
+func traverseProperty(element resource.PropertyValue, f func(resource.PropertyValue)) {
+	f(element)
+	if element.IsSecret() {
+		traverseSecret(element.SecretValue(), f)
+	} else if element.IsObject() {
+		traverseMap(element.ObjectValue(), f)
+	} else if element.IsArray() {
+		traverseArray(element.ArrayValue(), f)
+	}
+}
+
+func traverseArray(elements []resource.PropertyValue, f func(resource.PropertyValue)) {
+	for _, element := range elements {
+		traverseProperty(element, f)
+	}
+}
+
+func traverseSecret(v *resource.Secret, f func(resource.PropertyValue)) {
+	traverseProperty(v.Element, f)
+}
+
+func traverseMap(m resource.PropertyMap, f func(resource.PropertyValue)) {
+	for _, value := range m {
+		traverseProperty(value, f)
+	}
+}
+
+// restoreElidedAssetContents is used to restore contents of assets inside resource property maps after
+// we have skipped serializing contents of assets in order to avoid sending them over the wire to resource
+// providers. Mainly used in `Read` operations after we receive the live inputs from the resource provider plugin.
+// Those inputs may echo back the input assets and the engine writes them out to the state. We need to make sure that
+// we don't write out empty assets to the state, so we restore the asset contents from the original inputs.
+func restoreElidedAssetContents(original resource.PropertyMap, transformed resource.PropertyMap) {
+	isEmptyAsset := func(v *resource.Asset) bool {
+		return v.Text == "" && v.Path == "" && v.URI == ""
+	}
+
+	isEmptyArchive := func(v *resource.Archive) bool {
+		return v.Path == "" && v.URI == "" && v.Assets == nil
+	}
+
+	originalAssets := map[string]*resource.Asset{}
+	originalArchives := map[string]*resource.Archive{}
+
+	traverseMap(original, func(value resource.PropertyValue) {
+		if value.IsAsset() {
+			originalAsset := value.AssetValue()
+			originalAssets[originalAsset.Hash] = originalAsset
+		}
+
+		if value.IsArchive() {
+			originalArchive := value.ArchiveValue()
+			originalArchives[originalArchive.Hash] = originalArchive
+		}
+	})
+
+	traverseMap(transformed, func(value resource.PropertyValue) {
+		if value.IsAsset() {
+			transformedAsset := value.AssetValue()
+			originalAsset, has := originalAssets[transformedAsset.Hash]
+			if has && isEmptyAsset(transformedAsset) {
+				transformedAsset.Sig = originalAsset.Sig
+				transformedAsset.Text = originalAsset.Text
+				transformedAsset.Path = originalAsset.Path
+				transformedAsset.URI = originalAsset.URI
+			}
+		}
+
+		if value.IsArchive() {
+			transformedArchive := value.ArchiveValue()
+			originalArchive, has := originalArchives[transformedArchive.Hash]
+			if has && isEmptyArchive(transformedArchive) {
+				transformedArchive.Sig = originalArchive.Sig
+				transformedArchive.URI = originalArchive.URI
+				transformedArchive.Path = originalArchive.Path
+				transformedArchive.Assets = originalArchive.Assets
+			}
+		}
+	})
+}
+
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
@@ -603,11 +661,11 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		}
 
 		if v.ContainsUnknowns() {
-			p.provideConfig(pluginConfig{
+			p.configSource.MustFulfill(pluginConfig{
 				known:           false,
 				acceptSecrets:   false,
 				acceptResources: false,
-			}, nil)
+			})
 			return nil
 		}
 
@@ -616,7 +674,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			marshalled, err := json.Marshal(mapped)
 			if err != nil {
 				err := errors.Wrapf(err, "marshaling configuration property '%v'", k)
-				p.provideConfig(pluginConfig{}, err)
+				p.configSource.MustReject(err)
 				return err
 			}
 			mapped = string(marshalled)
@@ -635,7 +693,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	})
 	if err != nil {
 		err := errors.Wrapf(err, "marshaling provider inputs")
-		p.provideConfig(pluginConfig{}, err)
+		p.configSource.MustReject(err)
 		return err
 	}
 
@@ -643,24 +701,28 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
-			AcceptSecrets:   true,
-			AcceptResources: true,
-			Variables:       config,
-			Args:            minputs,
+			AcceptSecrets:          true,
+			AcceptResources:        true,
+			SendsOldInputs:         true,
+			SendsOldInputsToDelete: true,
+			Variables:              config,
+			Args:                   minputs,
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 			err = createConfigureError(rpcError)
+			p.configSource.MustReject(err)
+			return
 		}
 
-		p.provideConfig(pluginConfig{
+		p.configSource.MustFulfill(pluginConfig{
 			known:           true,
 			acceptSecrets:   resp.GetAcceptSecrets(),
 			acceptResources: resp.GetAcceptResources(),
 			supportsPreview: resp.GetSupportsPreview(),
 			acceptOutputs:   resp.GetAcceptOutputs(),
-		}, err)
+		})
 	}()
 
 	return nil
@@ -672,11 +734,11 @@ func (p *provider) Check(urn resource.URN,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -741,7 +803,7 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -752,20 +814,22 @@ func (p *provider) Check(urn resource.URN,
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool,
 	ignoreChanges []string,
 ) (DiffResult, error) {
 	contract.Assertf(urn != "", "Diff requires a URN")
 	contract.Assertf(id != "", "Diff requires an ID")
-	contract.Assertf(news != nil, "Diff requires new properties")
-	contract.Assertf(olds != nil, "Diff requires old properties")
+	contract.Assertf(oldInputs != nil, "Diff requires old input properties")
+	contract.Assertf(newInputs != nil, "Diff requires new input properties")
+	contract.Assertf(oldOutputs != nil, "Diff requires old output properties")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
-	logging.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
+		label, len(oldInputs), len(oldOutputs), len(newInputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -780,8 +844,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, DiffUnavailable(message)
 	}
 
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:              fmt.Sprintf("%s.olds", label),
+	mOldInputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldInputs", label),
 		ElideAssetContents: true,
 		KeepUnknowns:       allowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
@@ -790,11 +854,24 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:         fmt.Sprintf("%s.news", label),
-		KeepUnknowns:  allowUnknowns,
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+
+	mOldOutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldOutputs", label),
+		ElideAssetContents: true,
+		KeepUnknowns:       allowUnknowns,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	mNewInputs, err := MarshalProperties(newInputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.newInputs", label),
+		ElideAssetContents: true,
+		KeepUnknowns:       allowUnknowns,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -803,8 +880,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
 		Id:            string(id),
 		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
+		OldInputs:     mOldInputs,
+		Olds:          mOldOutputs,
+		News:          mNewInputs,
 		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
@@ -813,15 +891,16 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, rpcError
 	}
 
-	replaces := make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
+	// nil is semantically important to a lot of the pulumi system so we only pre-allocate if we have non-zero length.
+	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	stables := make([]resource.PropertyKey, 0, len(resp.GetStables()))
+	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	diffs := make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
+	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -853,7 +932,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
@@ -960,7 +1039,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
 	}
@@ -1060,6 +1139,10 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		annotateSecrets(newState, state)
 	}
 
+	// make sure any echoed properties restore their original asset contents if they have not changed
+	restoreElidedAssetContents(inputs, newInputs)
+	restoreElidedAssetContents(inputs, newState)
+
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResult{
 		ID:      readID,
@@ -1070,22 +1153,24 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	contract.Assertf(urn != "", "Update requires a URN")
 	contract.Assertf(id != "", "Update requires an ID")
-	contract.Assertf(news != nil, "Update requires new properties")
-	contract.Assertf(olds != nil, "Update requires old properties")
+	contract.Assertf(oldInputs != nil, "Update requires old inputs")
+	contract.Assertf(oldOutputs != nil, "Update requires old outputs")
+	contract.Assertf(newInputs != nil, "Update requires new properties")
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
-	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#oldInputs=%v,#oldOutputs=%v,#newInputs=%v)",
+		label, len(oldInputs), len(oldOutputs), len(newInputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
-		return news, resource.StatusOK, err
+		return newInputs, resource.StatusOK, err
 	}
 
 	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
@@ -1102,20 +1187,20 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
 		if !pcfg.known {
 			if p.legacyPreview {
-				return news, resource.StatusOK, nil
+				return newInputs, resource.StatusOK, nil
 			}
 			return resource.PropertyMap{}, resource.StatusOK, nil
 		}
 		if !pcfg.supportsPreview || p.disableProviderPreview {
-			return news, resource.StatusOK, nil
+			return newInputs, resource.StatusOK, nil
 		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Update cannot be called if the configuration is unknown")
 
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:              fmt.Sprintf("%s.olds", label),
+	mOldInputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldInputs", label),
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
@@ -1123,8 +1208,17 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:         fmt.Sprintf("%s.news", label),
+	mOldOutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldOutputs", label),
+		ElideAssetContents: true,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
+	})
+	if err != nil {
+		return nil, resource.StatusOK, err
+	}
+	mNewInputs, err := MarshalProperties(newInputs, MarshalOptions{
+		Label:         fmt.Sprintf("%s.newInputs", label),
 		KeepUnknowns:  preview,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
@@ -1139,11 +1233,12 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
+		Olds:          mOldOutputs,
+		News:          mNewInputs,
 		Timeout:       timeout,
 		IgnoreChanges: ignoreChanges,
 		Preview:       preview,
+		OldInputs:     mOldInputs,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)
@@ -1172,9 +1267,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !pcfg.acceptSecrets {
-		annotateSecrets(outs, news)
+		annotateSecrets(outs, newInputs)
 	}
-
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 	if resourceError == nil {
 		return outs, resourceStatus, nil
@@ -1183,23 +1277,36 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
+func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(urn != "", "Delete requires a URN")
 	contract.Assertf(id != "", "Delete requires an ID")
 
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
-	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, len(oldInputs), len(oldOutputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return resource.StatusOK, err
 	}
 
-	mprops, err := MarshalProperties(props, MarshalOptions{
+	// We should never call delete at preview time, so we should never see unknowns here
+	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
+
+	minputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
+	})
+	if err != nil {
+		return resource.StatusOK, err
+	}
+
+	moutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
@@ -1215,8 +1322,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
-		Properties: mprops,
+		Properties: moutputs,
 		Timeout:    timeout,
+		OldInputs:  minputs,
 	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcErr)
@@ -1229,7 +1337,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
-func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, parent resource.URN,
 	inputs resource.PropertyMap, options ConstructOptions,
 ) (ConstructResult, error) {
 	contract.Assertf(typ != "", "Construct requires a type")
@@ -1241,13 +1349,17 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return ConstructResult{}, err
 	}
 
-	// We should only be calling Construct if the provider is fully configured.
-	contract.Assertf(pcfg.known, "Construct cannot be called if the configuration is unknown")
+	// If the provider is not fully configured, we need to error. We can't support unknown URNs but if the
+	// provider isn't configured we can't call into it to get the URN.
+	if !pcfg.known {
+		return ConstructResult{}, fmt.Errorf(
+			"cannot construct components if the provider is configured with unknown values")
+	}
 
 	if !pcfg.acceptSecrets {
 		return ConstructResult{}, fmt.Errorf("plugins that can construct components must support secrets")
@@ -1308,7 +1420,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		Parallel:                int32(info.Parallel),
 		MonitorEndpoint:         info.MonitorAddress,
 		Type:                    string(typ),
-		Name:                    string(name),
+		Name:                    name,
 		Parent:                  string(parent),
 		Inputs:                  minputs,
 		Protect:                 options.Protect,
@@ -1374,7 +1486,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1415,7 +1527,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -1438,7 +1550,7 @@ func (p *provider) StreamInvoke(
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -1516,7 +1628,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
-	pcfg, err := p.awaitConfig(context.Background())
+	pcfg, err := p.configSource.Promise().Result(context.Background())
 	if err != nil {
 		return CallResult{}, err
 	}
@@ -1593,7 +1705,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -1630,6 +1742,7 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 		path = p.plug.Bin
 	}
 
+	logging.V(7).Infof("%s success (#version=%v) success", label, version)
 	return workspace.PluginInfo{
 		Name:    string(p.pkg),
 		Path:    path,
@@ -1803,9 +1916,13 @@ func decorateProviderSpans(span opentracing.Span, method string, req, resp inter
 }
 
 // GetMapping fetches the conversion mapping (if any) for this resource provider.
-func (p *provider) GetMapping(key string) ([]byte, string, error) {
+func (p *provider) GetMapping(key, provider string) ([]byte, string, error) {
+	label := fmt.Sprintf("%s.GetMapping", p.label())
+	logging.V(7).Infof("%s executing: key=%s, provider=%s", label, key, provider)
+
 	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
-		Key: key,
+		Key:      key,
+		Provider: provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1813,9 +1930,40 @@ func (p *provider) GetMapping(key string) ([]byte, string, error) {
 		if code == codes.Unimplemented {
 			// For backwards compatibility, just return nothing as if the provider didn't have a mapping for
 			// the given key
+			logging.V(7).Infof("%s unimplemented", label)
 			return nil, "", nil
 		}
+		logging.V(7).Infof("%s failed: %v", label, rpcError)
 		return nil, "", err
 	}
+
+	logging.V(7).Infof("%s success: data=#%d provider=%s", label, len(resp.Data), resp.Provider)
 	return resp.Data, resp.Provider, nil
+}
+
+func (p *provider) GetMappings(key string) ([]string, error) {
+	label := fmt.Sprintf("%s.GetMappings", p.label())
+	logging.V(7).Infof("%s executing: key=%s", label, key)
+
+	resp, err := p.clientRaw.GetMappings(p.requestContext(), &pulumirpc.GetMappingsRequest{
+		Key: key,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented {
+			// For backwards compatibility just return nil to indicate unimplemented.
+			logging.V(7).Infof("%s unimplemented", label)
+			return nil, nil
+		}
+		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		return nil, err
+	}
+
+	logging.V(7).Infof("%s success: providers=%v", label, resp.Providers)
+	// Ensure we don't return nil here because we use it as an "unimplemented" flag elsewhere in the system
+	if resp.Providers == nil {
+		resp.Providers = []string{}
+	}
+	return resp.Providers, nil
 }

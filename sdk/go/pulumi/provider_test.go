@@ -226,7 +226,7 @@ type NestedMapOutputArgs struct {
 
 type Nested struct {
 	Foo string `pulumi:"foo"`
-	Bar int    `pulumi:"bar"`
+	Bar int    `pulumi:"bar,optional"`
 }
 
 type NestedOutput struct {
@@ -565,7 +565,7 @@ func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool,
 
 	actualDepsSet := urnSet{}
 	for _, res := range actualDeps {
-		urn, uknown, usecret, err := res.URN().awaitURN(context.TODO())
+		urn, uknown, usecret, err := res.URN().awaitURN(context.Background())
 		assert.NoError(t, err)
 		assert.True(t, uknown)
 		assert.False(t, usecret)
@@ -1764,7 +1764,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 				tokens.PackageName(ctx.Project()),
 				"", // parent
 				tokens.Type(typ),
-				tokens.QName(name),
+				name,
 			)
 
 			snap, err := NewResourceOptions(opts)

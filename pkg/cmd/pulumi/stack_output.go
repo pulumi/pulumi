@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -214,7 +215,7 @@ func (w *bashStackOutputWriter) WriteOne(k string, v interface{}) error {
 }
 
 func (w *bashStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
-	keys := make([]string, 0, len(outputs))
+	keys := slice.Prealloc[string](len(outputs))
 	for v := range outputs {
 		keys = append(keys, v)
 	}
@@ -245,7 +246,7 @@ func (w *powershellStackOutputWriter) WriteOne(k string, v interface{}) error {
 }
 
 func (w *powershellStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
-	keys := make([]string, 0, len(outputs))
+	keys := slice.Prealloc[string](len(outputs))
 	for v := range outputs {
 		keys = append(keys, v)
 	}

@@ -8,10 +8,13 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"output-funcs/mypkg/internal"
 )
 
 // Check codegen of functions with default values.
 func FuncWithDefaultValue(ctx *pulumi.Context, args *FuncWithDefaultValueArgs, opts ...pulumi.InvokeOption) (*FuncWithDefaultValueResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FuncWithDefaultValueResult
 	err := ctx.Invoke("mypkg::funcWithDefaultValue", args.Defaults(), &rv, opts...)
 	if err != nil {
@@ -76,6 +79,12 @@ func (o FuncWithDefaultValueResultOutput) ToFuncWithDefaultValueResultOutput() F
 
 func (o FuncWithDefaultValueResultOutput) ToFuncWithDefaultValueResultOutputWithContext(ctx context.Context) FuncWithDefaultValueResultOutput {
 	return o
+}
+
+func (o FuncWithDefaultValueResultOutput) ToOutput(ctx context.Context) pulumix.Output[FuncWithDefaultValueResult] {
+	return pulumix.Output[FuncWithDefaultValueResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FuncWithDefaultValueResultOutput) R() pulumi.StringOutput {

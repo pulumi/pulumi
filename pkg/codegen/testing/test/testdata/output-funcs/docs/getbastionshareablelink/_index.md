@@ -117,8 +117,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the Bastion Host.</p>
-</dd><dt class="property-required"
+    <dd>The name of the Bastion Host.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -126,8 +125,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the resource group.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group.</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_csharp" style="color: inherit; text-decoration: inherit;">Vms</a>
@@ -135,8 +133,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
-    <dd><p>List of VM references.</p>
-</dd></dl>
+    <dd>List of VM references.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -150,8 +147,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the Bastion Host.</p>
-</dd><dt class="property-required"
+    <dd>The name of the Bastion Host.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -159,8 +155,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the resource group.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group.</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_go" style="color: inherit; text-decoration: inherit;">Vms</a>
@@ -168,8 +163,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">[]Bastion<wbr>Shareable<wbr>Link</a></span>
     </dt>
-    <dd><p>List of VM references.</p>
-</dd></dl>
+    <dd>List of VM references.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -183,8 +177,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the Bastion Host.</p>
-</dd><dt class="property-required"
+    <dd>The name of the Bastion Host.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -192,8 +185,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the resource group.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group.</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_java" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -201,8 +193,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
-    <dd><p>List of VM references.</p>
-</dd></dl>
+    <dd>List of VM references.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -216,8 +207,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the Bastion Host.</p>
-</dd><dt class="property-required"
+    <dd>The name of the Bastion Host.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -225,8 +215,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the resource group.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group.</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_nodejs" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -234,8 +223,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">Bastion<wbr>Shareable<wbr>Link[]</a></span>
     </dt>
-    <dd><p>List of VM references.</p>
-</dd></dl>
+    <dd>List of VM references.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -249,8 +237,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The name of the Bastion Host.</p>
-</dd><dt class="property-required"
+    <dd>The name of the Bastion Host.</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
@@ -258,8 +245,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The name of the resource group.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group.</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_python" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -267,8 +253,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">Sequence[Bastion<wbr>Shareable<wbr>Link]</a></span>
     </dt>
-    <dd><p>List of VM references.</p>
-</dd></dl>
+    <dd>List of VM references.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -282,8 +267,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the Bastion Host.</p>
-</dd><dt class="property-required"
+    <dd>The name of the Bastion Host.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -291,8 +275,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the resource group.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group.</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_yaml" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -300,8 +283,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>List of VM references.</p>
-</dd></dl>
+    <dd>List of VM references.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -324,8 +306,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The URL to get the next set of results.</p>
-</dd></dl>
+    <dd>The URL to get the next set of results.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -339,8 +320,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The URL to get the next set of results.</p>
-</dd></dl>
+    <dd>The URL to get the next set of results.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -354,8 +334,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The URL to get the next set of results.</p>
-</dd></dl>
+    <dd>The URL to get the next set of results.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -369,8 +348,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The URL to get the next set of results.</p>
-</dd></dl>
+    <dd>The URL to get the next set of results.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -384,8 +362,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The URL to get the next set of results.</p>
-</dd></dl>
+    <dd>The URL to get the next set of results.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -399,8 +376,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The URL to get the next set of results.</p>
-</dd></dl>
+    <dd>The URL to get the next set of results.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -424,8 +400,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reference of the virtual machine resource.</p>
-</dd></dl>
+    <dd>Reference of the virtual machine resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -439,8 +414,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reference of the virtual machine resource.</p>
-</dd></dl>
+    <dd>Reference of the virtual machine resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -454,8 +428,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Reference of the virtual machine resource.</p>
-</dd></dl>
+    <dd>Reference of the virtual machine resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -469,8 +442,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Reference of the virtual machine resource.</p>
-</dd></dl>
+    <dd>Reference of the virtual machine resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -484,8 +456,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Reference of the virtual machine resource.</p>
-</dd></dl>
+    <dd>Reference of the virtual machine resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -499,8 +470,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Reference of the virtual machine resource.</p>
-</dd></dl>
+    <dd>Reference of the virtual machine resource.</dd></dl>
 </pulumi-choosable>
 </div>
 

@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // Generates code to build and regsiter ResourceModule and
@@ -125,7 +126,7 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 		}
 	}
 
-	result := make([]resourceModuleInfo, 0, len(byMod))
+	result := slice.Prealloc[resourceModuleInfo](len(byMod))
 	for _, rmi := range byMod {
 		result = append(result, rmi)
 	}

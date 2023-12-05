@@ -144,6 +144,35 @@ func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 }
 
 //nolint:paralleltest // uses parallel programtest
+func TestAccDynamicProviderSecrets(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/secrets"),
+			Secrets: map[string]string{
+				"password": "s3cret",
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Ensure the __provider input (and corresponding output) was marked secret
+				dynRes := stackInfo.Deployment.Resources[2]
+				for _, providerVal := range []interface{}{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
+					switch v := providerVal.(type) {
+					case string:
+						assert.Fail(t, "__provider was not a secret")
+					case map[string]interface{}:
+						assert.Equal(t, resource.SecretSig, v[resource.SigKey])
+					}
+				}
+				// Ensure the resulting output had the expected value
+				code, ok := stackInfo.Outputs["out"].(string)
+				assert.True(t, ok)
+				assert.Equal(t, "200", code)
+			},
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{

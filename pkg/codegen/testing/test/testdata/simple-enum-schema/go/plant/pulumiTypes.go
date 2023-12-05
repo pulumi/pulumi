@@ -8,7 +8,11 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"simple-enum-schema/plant/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Container struct {
 	Brightness *ContainerBrightness `pulumi:"brightness"`
@@ -71,6 +75,12 @@ func (i ContainerArgs) ToContainerOutputWithContext(ctx context.Context) Contain
 	return pulumi.ToOutputWithContext(ctx, i).(ContainerOutput)
 }
 
+func (i ContainerArgs) ToOutput(ctx context.Context) pulumix.Output[Container] {
+	return pulumix.Output[Container]{
+		OutputState: i.ToContainerOutputWithContext(ctx).OutputState,
+	}
+}
+
 func (i ContainerArgs) ToContainerPtrOutput() ContainerPtrOutput {
 	return i.ToContainerPtrOutputWithContext(context.Background())
 }
@@ -112,6 +122,12 @@ func (i *containerPtrType) ToContainerPtrOutputWithContext(ctx context.Context) 
 	return pulumi.ToOutputWithContext(ctx, i).(ContainerPtrOutput)
 }
 
+func (i *containerPtrType) ToOutput(ctx context.Context) pulumix.Output[*Container] {
+	return pulumix.Output[*Container]{
+		OutputState: i.ToContainerPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ContainerOutput struct{ *pulumi.OutputState }
 
 func (ContainerOutput) ElementType() reflect.Type {
@@ -134,6 +150,12 @@ func (o ContainerOutput) ToContainerPtrOutputWithContext(ctx context.Context) Co
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Container) *Container {
 		return &v
 	}).(ContainerPtrOutput)
+}
+
+func (o ContainerOutput) ToOutput(ctx context.Context) pulumix.Output[Container] {
+	return pulumix.Output[Container]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ContainerOutput) Brightness() ContainerBrightnessPtrOutput {
@@ -164,6 +186,12 @@ func (o ContainerPtrOutput) ToContainerPtrOutput() ContainerPtrOutput {
 
 func (o ContainerPtrOutput) ToContainerPtrOutputWithContext(ctx context.Context) ContainerPtrOutput {
 	return o
+}
+
+func (o ContainerPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Container] {
+	return pulumix.Output[*Container]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ContainerPtrOutput) Elem() ContainerOutput {

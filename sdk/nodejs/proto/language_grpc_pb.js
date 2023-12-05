@@ -21,6 +21,7 @@ var pulumi_language_pb = require('./language_pb.js');
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 var pulumi_plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
+var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
@@ -174,6 +175,28 @@ function serialize_pulumirpc_InstallDependenciesResponse(arg) {
 
 function deserialize_pulumirpc_InstallDependenciesResponse(buffer_arg) {
   return pulumi_language_pb.InstallDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_PackRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.PackRequest)) {
+    throw new Error('Expected argument of type pulumirpc.PackRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PackRequest(buffer_arg) {
+  return pulumi_language_pb.PackRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_PackResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.PackResponse)) {
+    throw new Error('Expected argument of type pulumirpc.PackResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PackResponse(buffer_arg) {
+  return pulumi_language_pb.PackResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_PluginInfo(arg) {
@@ -354,6 +377,18 @@ generatePackage: {
     requestDeserialize: deserialize_pulumirpc_GeneratePackageRequest,
     responseSerialize: serialize_pulumirpc_GeneratePackageResponse,
     responseDeserialize: deserialize_pulumirpc_GeneratePackageResponse,
+  },
+  // Pack packs a package into a language specific artifact.
+pack: {
+    path: '/pulumirpc.LanguageRuntime/Pack',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.PackRequest,
+    responseType: pulumi_language_pb.PackResponse,
+    requestSerialize: serialize_pulumirpc_PackRequest,
+    requestDeserialize: deserialize_pulumirpc_PackRequest,
+    responseSerialize: serialize_pulumirpc_PackResponse,
+    responseDeserialize: deserialize_pulumirpc_PackResponse,
   },
 };
 

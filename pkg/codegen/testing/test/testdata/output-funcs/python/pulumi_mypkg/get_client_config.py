@@ -13,6 +13,7 @@ __all__ = [
     'GetClientConfigResult',
     'AwaitableGetClientConfigResult',
     'get_client_config',
+    'get_client_config_output',
 ]
 
 @pulumi.output_type
@@ -88,7 +89,15 @@ def get_client_config(opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableG
     __ret__ = pulumi.runtime.invoke('mypkg::getClientConfig', __args__, opts=opts, typ=GetClientConfigResult).value
 
     return AwaitableGetClientConfigResult(
-        client_id=__ret__.client_id,
-        object_id=__ret__.object_id,
-        subscription_id=__ret__.subscription_id,
-        tenant_id=__ret__.tenant_id)
+        client_id=pulumi.get(__ret__, 'client_id'),
+        object_id=pulumi.get(__ret__, 'object_id'),
+        subscription_id=pulumi.get(__ret__, 'subscription_id'),
+        tenant_id=pulumi.get(__ret__, 'tenant_id'))
+
+
+@_utilities.lift_output_func(get_client_config)
+def get_client_config_output(opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetClientConfigResult]:
+    """
+    Failing example taken from azure-native. Original doc: Use this function to access the current configuration of the native Azure provider.
+    """
+    ...

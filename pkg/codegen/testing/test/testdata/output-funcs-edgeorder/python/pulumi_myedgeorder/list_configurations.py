@@ -80,8 +80,8 @@ def list_configurations(configuration_filters: Optional[Sequence[pulumi.InputTyp
     __ret__ = pulumi.runtime.invoke('myedgeorder::listConfigurations', __args__, opts=opts, typ=ListConfigurationsResult).value
 
     return AwaitableListConfigurationsResult(
-        next_link=__ret__.next_link,
-        value=__ret__.value)
+        next_link=pulumi.get(__ret__, 'next_link'),
+        value=pulumi.get(__ret__, 'value'))
 
 
 @_utilities.lift_output_func(list_configurations)

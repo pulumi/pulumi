@@ -72,12 +72,12 @@ type mockMonitor struct {
 
 func (m *mockMonitor) newURN(parent, typ, name string) string {
 	parentType := tokens.Type("")
-	if parentURN := resource.URN(parent); parentURN != "" && parentURN.Type() != resource.RootStackType {
+	if parentURN := resource.URN(parent); parentURN != "" && parentURN.QualifiedType() != resource.RootStackType {
 		parentType = parentURN.QualifiedType()
 	}
 
 	return string(resource.NewURN(tokens.QName(m.stack), tokens.PackageName(m.project), parentType, tokens.Type(typ),
-		tokens.QName(name)))
+		name))
 }
 
 func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.SupportsFeatureRequest,
@@ -87,7 +87,7 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 
 	// Support for "outputValues" is deliberately disabled for the mock monitor so
 	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
-	hasSupport := id == "secrets" || id == "resourceReferences"
+	hasSupport := id != "outputValues"
 
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
@@ -206,7 +206,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.RegisterResourceRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.RegisterResourceResponse, error) {
-	if in.GetType() == string(resource.RootStackType) {
+	if in.GetType() == string(resource.RootStackType) && in.GetParent() == "" {
 		return &pulumirpc.RegisterResourceResponse{
 			Urn: m.newURN(in.GetParent(), in.GetType(), in.GetName()),
 		}, nil

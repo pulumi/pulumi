@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 // Type of product filter.
@@ -175,6 +176,12 @@ func (in *supportedFilterTypesPtr) ToSupportedFilterTypesPtrOutput() SupportedFi
 
 func (in *supportedFilterTypesPtr) ToSupportedFilterTypesPtrOutputWithContext(ctx context.Context) SupportedFilterTypesPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(SupportedFilterTypesPtrOutput)
+}
+
+func (in *supportedFilterTypesPtr) ToOutput(ctx context.Context) pulumix.Output[*SupportedFilterTypes] {
+	return pulumix.Output[*SupportedFilterTypes]{
+		OutputState: in.ToSupportedFilterTypesPtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 func init() {

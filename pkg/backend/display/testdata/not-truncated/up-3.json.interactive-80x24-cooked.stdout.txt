@@ -75,7 +75,6 @@
  <{%fg 2%}>+ <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  <{%fg 2%}>created<{%reset%}>     [K
  <{%fg 2%}>+ <{%reset%}>  └─ aws:eks:Cluster               eks-cluster             <{%fg 2%}>created<{%reset%}>     [K
 [K
-
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pulumi:pulumi:Stack (eks-dev):<{%reset%}>
     <{%reset%}>Configuration:<{%reset%}>

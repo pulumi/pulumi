@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -74,6 +73,19 @@ type generator struct {
 	// Program generation options
 	generateOptions GenerateProgramOptions
 	isComponent     bool
+	// when creating a list of items, we need to know the type of the list
+	// if is it a plain list, then `new()` should be used because we are creating List<T>
+	// however if we have InputList<T> or anything else, we use `new[]` because InputList<T> can be implicitly casted
+	// from an array
+	listInitializer string
+}
+
+func (g *generator) resetListInitializer() {
+	g.listInitializer = "new[]"
+}
+
+func (g *generator) usingDefaultListInitializer() bool {
+	return g.listInitializer == "new[]"
 }
 
 const (
@@ -127,6 +139,7 @@ func GenerateProgramWithOptions(
 		functionArgs:    functionArgs,
 		functionInvokes: map[string]*schema.Function{},
 		generateOptions: options,
+		listInitializer: "new[]",
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -152,8 +165,8 @@ func GenerateProgramWithOptions(
 		"Program.cs": index.Bytes(),
 	}
 
-	for componentDir, component := range program.CollectComponents() {
-		componentName := Title(filepath.Base(componentDir))
+	for _, component := range program.CollectComponents() {
+		componentName := component.DeclarationName()
 		componentNodes := pcl.Linearize(component.Program)
 
 		componentGenerator := &generator{
@@ -165,6 +178,7 @@ func GenerateProgramWithOptions(
 			functionInvokes: map[string]*schema.Function{},
 			generateOptions: options,
 			isComponent:     true,
+			listInitializer: "new[]",
 		}
 
 		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
@@ -230,7 +244,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -500,6 +517,31 @@ func componentOutputElementType(pclType model.Type) string {
 	}
 }
 
+func mainConfigElementType(pclType model.Type) string {
+	pclType = pcl.UnwrapOption(pclType)
+	switch pclType {
+	case model.BoolType:
+		return "bool"
+	case model.IntType:
+		return "int"
+	case model.NumberType:
+		return "double"
+	case model.StringType:
+		return "string"
+	default:
+		switch pclType := pclType.(type) {
+		case *model.ListType:
+			elementType := mainConfigElementType(pclType.ElementType)
+			return fmt.Sprintf("List<%s>", elementType)
+		case *model.MapType:
+			elementType := mainConfigElementType(pclType.ElementType)
+			return fmt.Sprintf("Dictionary<string, %s>", elementType)
+		default:
+			return dynamicType
+		}
+	}
+}
+
 func componentOutputType(pclType model.Type) string {
 	elementType := componentOutputElementType(pclType)
 	return fmt.Sprintf("Output<%s>", elementType)
@@ -519,12 +561,12 @@ func annotateObjectTypedConfig(componentName string, typeName string, objectType
 	return objectType
 }
 
-// collectObjectTypedConfigVariables returns the object types in config variables need to be emitted
-// as classes.
-func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*model.ObjectType {
+// collectComponentObjectTypedConfigVariables returns the object types in config variables need to be emitted
+// as classes in custom resource components
+func collectComponentObjectTypedConfigVariables(component *pcl.Component) map[string]*model.ObjectType {
 	objectTypes := map[string]*model.ObjectType{}
 	for _, config := range component.Program.ConfigVariables() {
-		componentName := Title(component.Name())
+		componentName := component.DeclarationName()
 		typeName := configObjectTypeName(config.Name())
 		switch configType := config.Type().(type) {
 		case *model.ObjectType:
@@ -538,6 +580,31 @@ func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*mod
 			switch elementType := configType.ElementType.(type) {
 			case *model.ObjectType:
 				objectTypes[config.Name()] = annotateObjectTypedConfig(componentName, typeName, elementType)
+			}
+		}
+	}
+
+	return objectTypes
+}
+
+// collectObjectTypedConfigVariables returns the object types in config variables need to be emitted
+// as classes in the main program
+func collectObjectTypedConfigVariables(program *pcl.Program) map[string]*model.ObjectType {
+	objectTypes := map[string]*model.ObjectType{}
+	for _, config := range program.ConfigVariables() {
+		typeName := Title(makeValidIdentifier(config.Name()))
+		switch configType := pcl.UnwrapOption(config.Type()).(type) {
+		case *model.ObjectType:
+			objectTypes[typeName] = configType
+		case *model.ListType:
+			switch elementType := configType.ElementType.(type) {
+			case *model.ObjectType:
+				objectTypes[typeName] = elementType
+			}
+		case *model.MapType:
+			switch elementType := configType.ElementType.(type) {
+			case *model.ObjectType:
+				objectTypes[typeName] = elementType
 			}
 		}
 	}
@@ -568,7 +635,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 			g.Fprintf(w, "%spublic class %sArgs : global::Pulumi.ResourceArgs\n", g.Indent, componentName)
 			g.Fprintf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
-				objectTypedConfigVars := collectObjectTypedConfigVariables(component)
+				objectTypedConfigVars := collectComponentObjectTypedConfigVariables(component)
 				variableNames := pcl.SortedStringKeys(objectTypedConfigVars)
 				// generate resource args for this component
 				for _, variableName := range variableNames {
@@ -817,6 +884,25 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 	}
 	// Close lambda call expression
 	g.Fprintf(w, "});\n\n")
+
+	// Generate types for object typed config variables
+	// those are referenced in config.GetObject<T> where T is one of these generated types
+	// they must be generated after the top-level statement call to Deployment.RunAsync
+	objectTypedConfigVariables := collectObjectTypedConfigVariables(g.program)
+	objectTypeKeys := pcl.SortedStringKeys(objectTypedConfigVariables)
+	for _, typeName := range objectTypeKeys {
+		objectType := objectTypedConfigVariables[typeName]
+		g.Fgenf(w, "public class %s\n{\n", typeName)
+		sortedProperties := pcl.SortedStringKeys(objectType.Properties)
+		for _, propertyName := range sortedProperties {
+			g.Indented(func() {
+				property := objectType.Properties[propertyName]
+				propertyType := mainConfigElementType(property)
+				g.Fgenf(w, "%spublic %s %s { get; set; }\n", g.Indent, propertyType, propertyName)
+			})
+		}
+		g.Fgenf(w, "}\n\n")
+	}
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
@@ -848,6 +934,14 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
+
+	if r.Schema != nil {
+		if val1, ok := r.Schema.Language["csharp"]; ok {
+			val2, ok := val1.(CSharpResourceInfo)
+			contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+			member = val2.Name
+		}
+	}
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -1070,7 +1164,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 }
 
 func AnnotateComponentInputs(component *pcl.Component) {
-	componentName := Title(component.Name())
+	componentName := component.DeclarationName()
 	configVars := component.Program.ConfigVariables()
 
 	for index := range component.Inputs {
@@ -1137,18 +1231,33 @@ func AnnotateComponentInputs(component *pcl.Component) {
 	}
 }
 
+func isPlainResourceProperty(r *pcl.Resource, name string) bool {
+	if r.Schema == nil {
+		return false
+	}
+
+	for _, property := range r.Schema.InputProperties {
+		if property.Name == name {
+			return property.Plain
+		}
+	}
+	return false
+}
+
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
 	csharpInputPropertyNameMap := g.extractInputPropertyNameMap(r)
 
 	// Add conversions to input properties
-	for _, input := range r.Inputs {
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-		g.diagnostics = append(g.diagnostics, diagnostics...)
-		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
-		if csharpName, ok := csharpInputPropertyNameMap[input.Name]; ok {
-			input.Name = csharpName
+	if r.Schema != nil {
+		for _, input := range r.Inputs {
+			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+			input.Value = g.lowerExpression(input.Value, destType.(model.Type))
+			if csharpName, ok := csharpInputPropertyNameMap[input.Name]; ok {
+				input.Name = csharpName
+			}
 		}
 	}
 
@@ -1177,7 +1286,12 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			g.Indented(func() {
 				for _, attr := range r.Inputs {
 					g.Fgenf(w, "%s%s =", g.Indent, propertyName(attr.Name))
+					if isPlainResourceProperty(r, attr.Name) {
+						g.listInitializer = "new()"
+					}
+
 					g.Fgenf(w, " %.v,\n", attr.Value)
+					g.resetListInitializer()
 				}
 			})
 			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, "CustomResourceOptions"))
@@ -1223,7 +1337,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
-	componentName := Title(filepath.Base(r.DirPath()))
+	componentName := r.DeclarationName()
 	qualifiedMemberName := fmt.Sprintf("Components.%s", componentName)
 
 	name := r.LogicalName()
@@ -1303,20 +1417,59 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
 }
 
+func computeConfigTypeParam(configName string, configType model.Type) string {
+	typeName := Title(makeValidIdentifier(configName))
+	configType = pcl.UnwrapOption(configType)
+	switch configType {
+	case model.StringType:
+		return "string"
+	case model.IntType:
+		return "int"
+	case model.NumberType:
+		return "double"
+	case model.BoolType:
+		return "bool"
+	case model.DynamicType:
+		return "dynamic"
+	default:
+		switch complexType := configType.(type) {
+		case *model.ObjectType:
+			return typeName
+		case *model.ListType:
+			elementType := computeConfigTypeParam(configName, complexType.ElementType)
+			return fmt.Sprintf("%s[]", elementType)
+		case *model.MapType:
+			elementType := computeConfigTypeParam(configName, complexType.ElementType)
+			return fmt.Sprintf("Dictionary<string, %s>", elementType)
+		default:
+			return "dynamic"
+		}
+	}
+}
+
 func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if !g.configCreated {
 		g.Fprintf(w, "%svar config = new Config();\n", g.Indent)
 		g.configCreated = true
 	}
 
-	getType := "Object<dynamic>"
-	switch v.Type() {
+	getType := "Object"
+	switch pcl.UnwrapOption(v.Type()) {
 	case model.StringType:
 		getType = ""
-	case model.NumberType, model.IntType:
-		getType = "Number"
+	case model.NumberType:
+		getType = "Double"
+	case model.IntType:
+		getType = "Int32"
 	case model.BoolType:
 		getType = "Boolean"
+	}
+
+	typeParam := ""
+	if getType == "Object" {
+		// compute the type parameter T for the call to config.GetObject<T>(...)
+		computedTypeParam := computeConfigTypeParam(v.Name(), v.Type())
+		typeParam = fmt.Sprintf("<%s>", computedTypeParam)
 	}
 
 	getOrRequire := "Get"
@@ -1331,20 +1484,20 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	name := makeValidIdentifier(v.Name())
-	if v.DefaultValue != nil {
+	if v.DefaultValue != nil && !model.IsOptionalType(v.Type()) {
 		typ := v.DefaultValue.Type()
 		if _, ok := typ.(*model.PromiseType); ok {
-			g.Fgenf(w, "%svar %s = Output.Create(config.%s%s(\"%s\"))",
-				g.Indent, name, getOrRequire, getType, v.LogicalName())
+			g.Fgenf(w, "%svar %s = Output.Create(config.%s%s%s(\"%s\"))",
+				g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
 		} else {
-			g.Fgenf(w, "%svar %s = config.%s%s(\"%s\")",
-				g.Indent, name, getOrRequire, getType, v.LogicalName())
+			g.Fgenf(w, "%svar %s = config.%s%s%s(\"%s\")",
+				g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
 		}
 		expr := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 		g.Fgenf(w, " ?? %.v", expr)
 	} else {
-		g.Fgenf(w, "%svar %s = config.%s%s(\"%s\")",
-			g.Indent, name, getOrRequire, getType, v.LogicalName())
+		g.Fgenf(w, "%svar %s = config.%s%s%s(\"%s\")",
+			g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
 	}
 	g.Fgenf(w, ";\n")
 }
@@ -1366,7 +1519,7 @@ func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariab
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagError,
+		Severity: hcl.DiagWarning,
 		Summary:  message,
 		Detail:   message,
 	})

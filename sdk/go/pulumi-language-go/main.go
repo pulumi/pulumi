@@ -24,7 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -35,10 +35,12 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -50,7 +52,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -170,11 +171,12 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
+		cancel() // deregister handler so we don't catch another interrupt
 		close(cancelChannel)
 	}()
 	err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
@@ -228,8 +230,13 @@ func newLanguageHost(engineAddress, cwd, tracing, binary, buildTarget string) pu
 	}
 }
 
-// modInfo is the useful portion of the output from `go list -m -json all`
+// modInfo is the useful portion of the output from
+// 'go list -m -json' and 'go mod download -json'
 // with respect to plugin acquisition.
+// The listed fields are present in both command outputs.
+//
+// If we add fields that are only present in one or the other,
+// we'll need to add a new struct type instead of re-using this.
 type modInfo struct {
 	// Path is the module import path.
 	Path string
@@ -237,10 +244,224 @@ type modInfo struct {
 	// Version of the module.
 	Version string
 
-	// Dir is the directory holding the source code of the module.
-	//
-	// This is empty in vendor mode.
+	// Dir is the directory holding the source code of the module, if any.
 	Dir string
+}
+
+// findModuleSources finds the source code roots for the given modules.
+//
+// gobin is the path to the go binary to use.
+// rootModuleDir is the path to the root directory of the program that may import the modules.
+// It must contain the go.mod file for the program.
+// modulePaths is a list of import paths for the modules to find.
+//
+// If $rootModuleDir/vendor exists, findModuleSources operates in vendor mode.
+// In vendor mode, returned paths are inside the vendor directory exclusively.
+func findModuleSources(ctx context.Context, gobin, rootModuleDir string, modulePaths []string) ([]modInfo, error) {
+	contract.Requiref(gobin != "", "gobin", "must not be empty")
+	contract.Requiref(rootModuleDir != "", "rootModuleDir", "must not be empty")
+	if len(modulePaths) == 0 {
+		return nil, nil
+	}
+
+	// To find the source code for a module, we would typically use
+	// 'go list -m -json'.
+	// Its output includes, among other things:
+	//
+	//    type Module struct {
+	//       ...
+	//       Dir string // directory holding local copy of files, if any
+	//       ...
+	//    }
+	//
+	// However, whether Dir is set or not depends on a few different factors.
+	//
+	//  - If the module is not in the local module cache,
+	//    then Dir is always empty.
+	//  - If the module is imported by the current module, then Dir is set.
+	//  - If the module is not imported,
+	//    then Dir is set if we run with -mod=mod.
+	//  - If the module is not imported and we run without -mod=mod,
+	//    then:
+	//    - If there's a vendor/ directory, then Dir is not set
+	//      because we're running in vendor mode.
+	//    - If there's no vendor/ directory, then Dir is set
+	//      if we add the module to the module cache
+	//      with `go mod download $path`.
+	//
+	// These are all corner cases that aren't fully specified,
+	// and may change between versions of Go.
+	//
+	// Therefore, the flow we use is:
+	//
+	//  - Run 'go list -m -json $path1 $path2 ...'
+	//    to make a first pass at getting module information.
+	//  - If there's a vendor/ directory,
+	//    use the module information from the vendor directory,
+	//    skipping anything that's missing.
+	//    We can't make requests to download modules in vendor mode.
+	//  - Otherwise, for modules with missing Dir fields,
+	//    run `go mod download -json $path` to download them to the module cache
+	//    and get their locations.
+
+	modules, err := goListModules(ctx, gobin, rootModuleDir, modulePaths)
+	if err != nil {
+		return nil, fmt.Errorf("go list: %w", err)
+	}
+
+	// If there's a vendor directory, then we're in vendor mode.
+	// In vendor mode, Dir won't be set for any modules.
+	// Find these modules in the vendor directory.
+	vendorDir := filepath.Join(rootModuleDir, "vendor")
+	if _, err := os.Stat(vendorDir); err == nil {
+		newModules := modules[:0] // in-place filter
+		for _, module := range modules {
+			if module.Dir == "" {
+				vendoredModule := filepath.Join(vendorDir, module.Path)
+				if _, err := os.Stat(vendoredModule); err == nil {
+					module.Dir = vendoredModule
+				}
+			}
+
+			// We can't download modules in vendor mode,
+			// so we'll skip any modules that aren't already in the vendor directory.
+			if module.Dir != "" {
+				newModules = append(newModules, module)
+			}
+		}
+		return newModules, nil
+	}
+
+	// We're not in vendor mode, so we can download modules and fill in missing directories.
+	var (
+		// Import paths of modules with no Dir field.
+		missingDirs []string
+
+		// Map from module path to index in modules.
+		moduleIndex = make(map[string]int, len(modules))
+	)
+	for i, module := range modules {
+		moduleIndex[module.Path] = i
+		if module.Dir == "" {
+			missingDirs = append(missingDirs, module.Path)
+		}
+	}
+
+	// Fill in missing module directories with `go mod download`.
+	if len(missingDirs) > 0 {
+		missingMods, err := goModDownload(ctx, gobin, rootModuleDir, missingDirs)
+		if err != nil {
+			return nil, fmt.Errorf("go mod download: %w", err)
+		}
+
+		for _, m := range missingMods {
+			if m.Dir == "" {
+				continue
+			}
+
+			// If this was a module we were missing,
+			// then we can fill in the directory now.
+			if idx, ok := moduleIndex[m.Path]; ok && modules[idx].Dir == "" {
+				modules[idx].Dir = m.Dir
+			}
+		}
+	}
+
+	// Any other modules with no Dir field can be discarded;
+	// we tried our best to find their source.
+	newModules := modules[:0] // in-place filter
+	for _, module := range modules {
+		if module.Dir != "" {
+			newModules = append(newModules, module)
+		}
+	}
+	return newModules, nil
+}
+
+// Runs 'go list -m' on the given list of modules
+// and reports information about them.
+func goListModules(ctx context.Context, gobin, dir string, modulePaths []string) ([]modInfo, error) {
+	args := slice.Prealloc[string](len(modulePaths) + 3)
+	args = append(args, "list", "-m", "-json")
+	args = append(args, modulePaths...)
+
+	span, ctx := opentracing.StartSpanFromContext(ctx,
+		fmt.Sprintf("%s list -m json", gobin),
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: gobin},
+		opentracing.Tag{Key: "args", Value: args})
+	defer span.Finish()
+
+	cmd := exec.CommandContext(ctx, gobin, args...)
+	cmd.Dir = dir
+	cmd.Stderr = os.Stderr
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("create stdout pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("start command: %w", err)
+	}
+
+	var modules []modInfo
+	dec := json.NewDecoder(stdout)
+	for dec.More() {
+		var info modInfo
+		if err := dec.Decode(&info); err != nil {
+			return nil, fmt.Errorf("decode module info: %w", err)
+		}
+		modules = append(modules, info)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("wait for command: %w", err)
+	}
+
+	return modules, nil
+}
+
+// goModDownload downloads the given modules to the module cache,
+// reporting information about them in the returned modInfo.
+func goModDownload(ctx context.Context, gobin, dir string, modulePaths []string) ([]modInfo, error) {
+	args := slice.Prealloc[string](len(modulePaths) + 3)
+	args = append(args, "mod", "download", "-json")
+	args = append(args, modulePaths...)
+
+	span, ctx := opentracing.StartSpanFromContext(ctx,
+		fmt.Sprintf("%s mod download -json", gobin),
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: gobin},
+		opentracing.Tag{Key: "args", Value: args})
+	defer span.Finish()
+
+	cmd := exec.CommandContext(ctx, gobin, args...)
+	cmd.Dir = dir
+	cmd.Stderr = os.Stderr
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("create stdout pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("start command: %w", err)
+	}
+
+	var modules []modInfo
+	dec := json.NewDecoder(stdout)
+	for dec.More() {
+		var info modInfo
+		if err := dec.Decode(&info); err != nil {
+			return nil, fmt.Errorf("decode module info: %w", err)
+		}
+		modules = append(modules, info)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("wait for command: %w", err)
+	}
+
+	return modules, nil
 }
 
 // Returns the pulumi-plugin.json if found.
@@ -257,14 +478,7 @@ type modInfo struct {
 // moduleRoot may be empty if unknown.
 func (m *modInfo) readPulumiPluginJSON(moduleRoot string) (*plugin.PulumiPluginJSON, error) {
 	dir := m.Dir
-	if dir == "" {
-		contract.Requiref(moduleRoot != "", "moduleRoot", "Pulumi program must have a root directory")
-		// m.Dir is empty in vendor mode.
-		//
-		// In this case, we use the vendor directory to find the plugin
-		// if we know the root of the module that imports this plugin.
-		dir = filepath.Join(moduleRoot, "vendor", filepath.ToSlash(m.Path))
-	}
+	contract.Assertf(dir != "", "module directory must be known")
 
 	paths := []string{
 		filepath.Join(dir, "pulumi-plugin.json"),
@@ -434,44 +648,19 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
 
-	args := make([]string, 0, len(gomod.Require)+3)
-	args = append(args, "list", "-m", "-json")
+	modulePaths := slice.Prealloc[string](len(gomod.Require))
 	for _, req := range gomod.Require {
-		args = append(args, req.Mod.Path)
+		modulePaths = append(modulePaths, req.Mod.Path)
 	}
 
-	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
-		fmt.Sprintf("%s %s", gobin, strings.Join(args, " ")),
-		opentracing.Tag{Key: "component", Value: "exec.Command"},
-		opentracing.Tag{Key: "command", Value: gobin},
-		opentracing.Tag{Key: "args", Value: args})
-
-	cmd := exec.Command(gobin, args...)
-	cmd.Dir = moduleDir
-	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	stdout, err := cmd.Output()
-	tracingSpan.Finish()
-
+	modInfos, err := findModuleSources(ctx, gobin, moduleDir, modulePaths)
 	if err != nil {
-		// Don't fail if not using Go modules.
-		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements using go modules: %s", err.Error())
+		logging.V(5).Infof("GetRequiredPlugins: Error finding module sources: %v", err)
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
 
 	plugins := []*pulumirpc.PluginDependency{}
-
-	dec := json.NewDecoder(bytes.NewReader(stdout))
-	for {
-		var m modInfo
-		if err := dec.Decode(&m); err != nil {
-			if err == io.EOF {
-				break
-			}
-			logging.V(5).Infof("GetRequiredPlugins: Error parsing list output: %s", err.Error())
-			return &pulumirpc.GetRequiredPluginsResponse{}, nil
-		}
-
+	for _, m := range modInfos {
 		plugin, err := m.getPlugin(moduleDir)
 		if err != nil {
 			logging.V(5).Infof(
@@ -757,7 +946,7 @@ func (host *goLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("load go.mod: %w", err)
 	}
 
-	result := make([]*pulumirpc.DependencyInfo, 0, len(gomod.Require))
+	result := slice.Prealloc[*pulumirpc.DependencyInfo](len(gomod.Require))
 	for _, d := range gomod.Require {
 		if !d.Indirect || req.TransitiveDependencies {
 			datum := pulumirpc.DependencyInfo{
@@ -819,34 +1008,29 @@ func (host *goLanguageHost) RunPlugin(
 func (host *goLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
 
-	parser := hclsyntax.NewParser()
-	// Load all .pp files in the directory
-	for path, contents := range req.Source {
-		err = parser.ParseFile(strings.NewReader(contents), path)
-		if err != nil {
-			return nil, err
-		}
-		diags := parser.Diagnostics
-		if diags.HasErrors() {
-			return nil, diags
-		}
+	var extraOptions []pcl.BindOption
+	if !req.Strict {
+		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
 	if err != nil {
 		return nil, err
 	}
-	if pdiags.HasErrors() || program == nil {
-		return nil, fmt.Errorf("internal error: %w", pdiags)
+
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+	if diags.HasErrors() {
+		return &pulumirpc.GenerateProjectResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
+	}
+	if program == nil {
+		return nil, fmt.Errorf("internal error: program was nil")
 	}
 
 	var project workspace.Project
@@ -854,21 +1038,20 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.Directory, project, program)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pulumirpc.GenerateProjectResponse{}, nil
+	return &pulumirpc.GenerateProjectResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func (host *goLanguageHost) GenerateProgram(
 	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
 ) (*pulumirpc.GenerateProgramResponse, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -886,24 +1069,26 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
 	if err != nil {
 		return nil, err
 	}
-	if pdiags.HasErrors() || program == nil {
-		return nil, fmt.Errorf("internal error: %w", pdiags)
+
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+	if diags.HasErrors() {
+		return &pulumirpc.GenerateProgramResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
+	}
+	if program == nil {
+		return nil, fmt.Errorf("internal error: program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)
 	if err != nil {
 		return nil, err
 	}
-
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
+	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
 		Source:      files,
@@ -918,10 +1103,7 @@ func (host *goLanguageHost) GeneratePackage(
 		return nil, errors.New("overlays are not supported for Go")
 	}
 
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -932,7 +1114,6 @@ func (host *goLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 	pkg, diags, err := schema.BindSpec(spec, loader)
 	if err != nil {
 		return nil, err
@@ -946,7 +1127,7 @@ func (host *goLanguageHost) GeneratePackage(
 	}
 
 	for filename, data := range files {
-		outPath := path.Join(req.Directory, filename)
+		outPath := filepath.Join(req.Directory, filename)
 
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {
@@ -960,4 +1141,8 @@ func (host *goLanguageHost) GeneratePackage(
 	}
 
 	return &pulumirpc.GeneratePackageResponse{}, nil
+}
+
+func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pack not implemented")
 }

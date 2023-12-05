@@ -20,6 +20,7 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
+import google.protobuf.struct_pb2
 import pulumi.codegen.hcl_pb2
 import pulumi.plugin_pb2
 import sys
@@ -214,6 +215,7 @@ class RunRequest(google.protobuf.message.Message):
     QUERYMODE_FIELD_NUMBER: builtins.int
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
+    CONFIGPROPERTYMAP_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -241,6 +243,9 @@ class RunRequest(google.protobuf.message.Message):
         """the configuration keys that have secret values."""
     organization: builtins.str
     """the organization of the stack being deployed into."""
+    @property
+    def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
+        """the configuration variables to apply before running."""
     def __init__(
         self,
         *,
@@ -256,8 +261,10 @@ class RunRequest(google.protobuf.message.Message):
         queryMode: builtins.bool = ...,
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
+        configPropertyMap: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["configPropertyMap", b"configPropertyMap"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 
@@ -403,15 +410,19 @@ class GenerateProgramRequest(google.protobuf.message.Message):
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     SOURCE_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
     @property
     def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """the PCL source of the project."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     def __init__(
         self,
         *,
         source: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        loader_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "source", b"source"]) -> None: ...
 
 global___GenerateProgramRequest = GenerateProgramRequest
 
@@ -458,7 +469,7 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
-    class SourceEntry(google.protobuf.message.Message):
+    class LocalDependenciesEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         KEY_FIELD_NUMBER: builtins.int
@@ -473,24 +484,38 @@ class GenerateProjectRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
-    DIRECTORY_FIELD_NUMBER: builtins.int
+    SOURCE_DIRECTORY_FIELD_NUMBER: builtins.int
+    TARGET_DIRECTORY_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
-    SOURCE_FIELD_NUMBER: builtins.int
-    directory: builtins.str
+    STRICT_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
+    LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    source_directory: builtins.str
+    """the directory to generate the project from."""
+    target_directory: builtins.str
     """the directory to generate the project in."""
     project: builtins.str
     """the JSON-encoded pulumi project file."""
+    strict: builtins.bool
+    """if PCL binding should be strict or not."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     @property
-    def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the PCL source of the project."""
+    def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """local dependencies to use instead of using the package system. This is a map of package name to a local
+        path of a language specific artifact to use for the SDK for that package.
+        """
     def __init__(
         self,
         *,
-        directory: builtins.str = ...,
+        source_directory: builtins.str = ...,
+        target_directory: builtins.str = ...,
         project: builtins.str = ...,
-        source: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        strict: builtins.bool = ...,
+        loader_target: builtins.str = ...,
+        local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "project", b"project", "source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 
@@ -498,9 +523,16 @@ global___GenerateProjectRequest = GenerateProjectRequest
 class GenerateProjectResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    DIAGNOSTICS_FIELD_NUMBER: builtins.int
+    @property
+    def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
+        """any diagnostics from code generation."""
     def __init__(
         self,
+        *,
+        diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics"]) -> None: ...
 
 global___GenerateProjectResponse = GenerateProjectResponse
 
@@ -526,22 +558,26 @@ class GeneratePackageRequest(google.protobuf.message.Message):
 
     DIRECTORY_FIELD_NUMBER: builtins.int
     SCHEMA_FIELD_NUMBER: builtins.int
-    EXTRAFILES_FIELD_NUMBER: builtins.int
+    EXTRA_FILES_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the directory to generate the package in."""
     schema: builtins.str
     """the JSON-encoded schema."""
     @property
-    def extraFiles(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+    def extra_files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
         """extra files to copy to the package output."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     def __init__(
         self,
         *,
         directory: builtins.str = ...,
         schema: builtins.str = ...,
-        extraFiles: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        extra_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        loader_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extraFiles", b"extraFiles", "schema", b"schema"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "schema", b"schema"]) -> None: ...
 
 global___GeneratePackageRequest = GeneratePackageRequest
 
@@ -554,3 +590,43 @@ class GeneratePackageResponse(google.protobuf.message.Message):
     ) -> None: ...
 
 global___GeneratePackageResponse = GeneratePackageResponse
+
+@typing_extensions.final
+class PackRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_DIRECTORY_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DESTINATION_DIRECTORY_FIELD_NUMBER: builtins.int
+    package_directory: builtins.str
+    """the directory of a package to pack."""
+    version: builtins.str
+    """the version to tag the artifact with."""
+    destination_directory: builtins.str
+    """the directory to write the packed artifact to."""
+    def __init__(
+        self,
+        *,
+        package_directory: builtins.str = ...,
+        version: builtins.str = ...,
+        destination_directory: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory", "version", b"version"]) -> None: ...
+
+global___PackRequest = PackRequest
+
+@typing_extensions.final
+class PackResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ARTIFACT_PATH_FIELD_NUMBER: builtins.int
+    artifact_path: builtins.str
+    """the full path of the packed artifact."""
+    def __init__(
+        self,
+        *,
+        artifact_path: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["artifact_path", b"artifact_path"]) -> None: ...
+
+global___PackResponse = PackResponse

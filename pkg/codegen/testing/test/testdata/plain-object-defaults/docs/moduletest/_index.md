@@ -248,7 +248,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_go" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type"><a href="#typ">Typ</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -367,8 +367,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -382,8 +381,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -397,8 +395,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -412,8 +409,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -427,8 +423,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -442,8 +437,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -457,7 +451,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="typ">Typ</h4>
+<h4 id="typ">
+Typ<pulumi-choosable type="language" values="python,go" class="inline">, Typ<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -639,7 +635,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="typ">Typ</h4>
+<h4 id="typ">
+Typ<pulumi-choosable type="language" values="python,go" class="inline">, Typ<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -725,7 +723,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="typ">Typ</h4>
+<h4 id="typ">
+Typ<pulumi-choosable type="language" values="python,go" class="inline">, Typ<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

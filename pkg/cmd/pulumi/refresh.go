@@ -81,7 +81,7 @@ func newRefreshCmd() *cobra.Command {
 			"This command compares the current stack's resource state with the state known to exist in\n" +
 			"the actual cloud provider. Any such changes are adopted into the current stack. Note that if\n" +
 			"the program text isn't updated accordingly, subsequent updates may still appear to be out of\n" +
-			"synch with respect to the cloud provider's source of truth.\n" +
+			"sync with respect to the cloud provider's source of truth.\n" +
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
@@ -138,7 +138,7 @@ func newRefreshCmd() *cobra.Command {
 				}
 
 				err = validateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
-					nil, "", showConfig, showReplacementSteps, showSames, false,
+					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
 					false, "", stackConfigFile)
 				if err != nil {
@@ -183,9 +183,19 @@ func newRefreshCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
 			}
+			encrypter, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+			}
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
 			if configErr != nil {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}
@@ -201,8 +211,8 @@ func newRefreshCmd() *cobra.Command {
 				if stderr == nil {
 					stderr = os.Stderr
 				}
-				if unused, result := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); result != nil {
-					return result
+				if unused, err := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); err != nil {
+					return result.FromError(err)
 				} else if len(unused) > 1 {
 					fmt.Fprintf(stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
 						"warning: the following urns did not correspond to a pending create",
@@ -222,9 +232,9 @@ func newRefreshCmd() *cobra.Command {
 
 			// We then allow the user to interactively handle remaining pending creates.
 			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
-				if result := filterMapPendingCreates(ctx, s, opts.Display,
-					yes, interactiveFixPendingCreate); result != nil {
-					return result
+				if err := filterMapPendingCreates(ctx, s, opts.Display,
+					yes, interactiveFixPendingCreate); err != nil {
+					return result.FromError(err)
 				}
 			}
 
@@ -234,9 +244,9 @@ func newRefreshCmd() *cobra.Command {
 				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
 					return nil, nil
 				}
-				result := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
-				if result != nil {
-					return result
+				err := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
+				if err != nil {
+					return result.FromError(err)
 				}
 			}
 
@@ -250,7 +260,7 @@ func newRefreshCmd() *cobra.Command {
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
-				RefreshTargets:            deploy.NewUrnTargets(targetUrns),
+				Targets:                   deploy.NewUrnTargets(targetUrns),
 				Experimental:              hasExperimentalCommands(),
 			}
 
@@ -366,7 +376,7 @@ type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
 // is deleted. Otherwise is is replaced by the returned op.
 func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
-) result.Result {
+) error {
 	return totalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
 		var pending []resource.Operation
 		for _, op := range snap.PendingOperations {
@@ -395,16 +405,16 @@ func filterMapPendingCreates(
 // returned.
 func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opts display.Options,
 	importToCreates []string,
-) ([]string, result.Result) {
+) ([]string, error) {
 	// A map from URN to ID
 	if len(importToCreates)%2 != 0 {
-		return nil, result.Errorf("each URN must be followed by an ID: found an odd number of entries")
+		return nil, errors.New("each URN must be followed by an ID: found an odd number of entries")
 	}
 	alteredOps := make(map[string]string, len(importToCreates)/2)
 	for i := 0; i < len(importToCreates); i += 2 {
 		alteredOps[importToCreates[i]] = importToCreates[i+1]
 	}
-	result := filterMapPendingCreates(ctx, s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+	err := filterMapPendingCreates(ctx, s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
 		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
 			op.Resource.ID = resource.ID(id)
 			op.Type = resource.OperationTypeImporting
@@ -417,7 +427,7 @@ func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opt
 	for k := range alteredOps {
 		unusedKeys = append(unusedKeys, k)
 	}
-	return unusedKeys, result
+	return unusedKeys, err
 }
 
 func hasPendingCreates(snap *deploy.Snapshot) bool {

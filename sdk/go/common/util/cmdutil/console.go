@@ -22,10 +22,16 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/rivo/uniseg"
 	"golang.org/x/term"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Emoji controls whether emojis will by default be printed in the output.
@@ -66,6 +72,19 @@ func InteractiveTerminal() bool {
 
 // ReadConsole reads the console with the given prompt text.
 func ReadConsole(prompt string) (string, error) {
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return readConsolePlain(os.Stdout, os.Stdin, prompt)
+	}
+
+	return readConsoleFancy(os.Stdout, os.Stdin, prompt, false /* secret */)
+}
+
+// readConsolePlain prints the given prompt (if any),
+// and reads the user's response from stdin.
+//
+// It does so without altering the terminal's state in any way,
+// and will work even if stdin is not a terminal.
+func readConsolePlain(stdout io.Writer, stdin io.Reader, prompt string) (string, error) {
 	if prompt != "" {
 		fmt.Print(prompt + ": ")
 	}
@@ -82,6 +101,25 @@ func ReadConsole(prompt string) (string, error) {
 		raw.WriteByte(b[0])
 	}
 	return RemoveTrailingNewline(raw.String()), nil
+}
+
+func readConsoleFancy(stdout io.Writer, stdin io.Reader, prompt string, secret bool) (string, error) {
+	final, err := tea.NewProgram(
+		newReadConsoleModel(prompt, secret),
+		tea.WithInput(stdin),
+		tea.WithOutput(stdout),
+	).Run()
+	if err != nil {
+		return "", err
+	}
+
+	model, ok := final.(readConsoleModel)
+	contract.Assertf(ok, "expected readConsoleModel, got %T", final)
+	if model.Canceled {
+		return "", io.EOF
+	}
+
+	return model.Value, nil
 }
 
 // IsTruthy returns true if the given string represents a CLI input interpreted as "true".
@@ -164,8 +202,8 @@ func MeasureText(text string) int {
 // normalizedRows returns the rows of a table in normalized form.
 //
 // A row is considered normalized if and only if it has no new lines in any of its fields.
-func (table *Table) normalizedRows() []TableRow {
-	rows := make([]TableRow, 0, len(table.Rows))
+func (table Table) normalizedRows() []TableRow {
+	rows := slice.Prealloc[TableRow](len(table.Rows))
 	for _, row := range table.Rows {
 		info := row.AdditionalInfo
 		buckets := make([][]string, len(row.Columns))
@@ -192,7 +230,28 @@ func (table *Table) normalizedRows() []TableRow {
 	return rows
 }
 
-func (table *Table) ToStringWithGap(columnGap string) string {
+func (table Table) ToStringWithGap(columnGap string) string {
+	return table.Render(&TableRenderOptions{ColumnGap: columnGap})
+}
+
+type TableRenderOptions struct {
+	ColumnGap   string
+	HeaderStyle []colors.Color
+	ColumnStyle []colors.Color
+	Color       colors.Colorization
+}
+
+func (table Table) Render(opts *TableRenderOptions) string {
+	if opts == nil {
+		opts = &TableRenderOptions{}
+	}
+	if opts.ColumnGap == "" {
+		opts.ColumnGap = "  "
+	}
+	if opts.Color == "" {
+		opts.Color = colors.Never
+	}
+
 	columnCount := len(table.Headers)
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of
@@ -218,12 +277,25 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 		}
 	}
 
-	result := ""
-	for _, row := range allRows {
-		result += table.Prefix
+	var result strings.Builder
+	for rowIndex, row := range allRows {
+		result.WriteString(table.Prefix)
 
 		for columnIndex, val := range row.Columns {
-			result += val
+			style := opts.HeaderStyle
+			if rowIndex != 0 {
+				style = opts.ColumnStyle
+			}
+
+			if len(style) != 0 {
+				result.WriteString(opts.Color.Colorize(style[columnIndex]))
+			}
+
+			result.WriteString(val)
+
+			if len(style) != 0 {
+				result.WriteString(opts.Color.Colorize(colors.Reset))
+			}
 
 			if columnIndex < columnCount-1 {
 				// Work out how much whitespace we need to add to this string to bring it up to the
@@ -231,22 +303,22 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 
 				maxWidth := preferredColumnWidths[columnIndex]
 				padding := maxWidth - MeasureText(val)
-				result += strings.Repeat(" ", padding)
+				result.WriteString(strings.Repeat(" ", padding))
 
 				// Now, ensure we have the requested gap between columns as well.
-				result += columnGap
+				result.WriteString(opts.ColumnGap)
 			}
 			// do not want whitespace appended to the last column.  It would cause wrapping on lines
 			// that were not actually long if some other line was very long.
 		}
 
-		result += "\n"
+		result.WriteByte('\n')
 
 		if row.AdditionalInfo != "" {
-			result += row.AdditionalInfo
+			result.WriteString(row.AdditionalInfo)
 		}
 	}
-	return result
+	return result.String()
 }
 
 func max(a, b int) int {
@@ -254,4 +326,85 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// readConsoleModel drives a bubbletea widget that reads from the console.
+type readConsoleModel struct {
+	input  textinput.Model
+	secret bool
+
+	// Canceled is set to true when the model finishes
+	// if the user canceled the operation by pressing Ctrl-C or Esc.
+	Canceled bool
+
+	// Value is the user's response to the prompt.
+	Value string
+}
+
+var _ tea.Model = readConsoleModel{}
+
+func newReadConsoleModel(prompt string, secret bool) readConsoleModel {
+	input := textinput.New()
+	input.Cursor.Style = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("205")) // 205 = hot pink cursor
+	if secret {
+		input.EchoMode = textinput.EchoPassword
+	}
+	if prompt != "" {
+		input.Prompt = prompt + ": "
+	}
+	input.Focus() // required to receive input
+
+	return readConsoleModel{
+		input:  input,
+		secret: secret,
+	}
+}
+
+// Init initializes the model.
+// We don't have any initialization to do, so we just return nil.
+func (readConsoleModel) Init() tea.Cmd { return nil }
+
+// Update handles a single tick of the bubbletea loop.
+func (m readConsoleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		// If the user pressed enter, Ctrl-C, or Esc,
+		// it's time to stop the bubbletea loop.
+		//
+		// Only Enter is considered a success.
+		switch msg.Type {
+		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+			m.Value = m.input.Value()
+			m.Canceled = msg.Type != tea.KeyEnter
+
+			m.input.Blur() // hide the cursor
+			if m.secret {
+				// If we're in secret mode, don't include
+				// the '*' characters in the final output
+				// so as not to leak the length of the input.
+				m.input.EchoMode = textinput.EchoNone
+			}
+
+			var cmds []tea.Cmd
+			if !m.Canceled {
+				// If the user accepts the input,
+				// we'll primnt the prompt to the terminal
+				// before exiting this loop.
+				cmds = append(cmds, tea.Println(m.input.View()))
+			}
+			cmds = append(cmds, tea.Quit)
+
+			return m, tea.Sequence(cmds...)
+		}
+	}
+
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
+}
+
+// View renders the prompt.
+func (m readConsoleModel) View() string {
+	return m.input.View()
 }

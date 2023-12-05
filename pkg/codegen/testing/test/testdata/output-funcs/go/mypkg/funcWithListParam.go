@@ -8,10 +8,13 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"output-funcs/mypkg/internal"
 )
 
 // Check codegen of functions with a List parameter.
 func FuncWithListParam(ctx *pulumi.Context, args *FuncWithListParamArgs, opts ...pulumi.InvokeOption) (*FuncWithListParamResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FuncWithListParamResult
 	err := ctx.Invoke("mypkg::funcWithListParam", args, &rv, opts...)
 	if err != nil {
@@ -63,6 +66,12 @@ func (o FuncWithListParamResultOutput) ToFuncWithListParamResultOutput() FuncWit
 
 func (o FuncWithListParamResultOutput) ToFuncWithListParamResultOutputWithContext(ctx context.Context) FuncWithListParamResultOutput {
 	return o
+}
+
+func (o FuncWithListParamResultOutput) ToOutput(ctx context.Context) pulumix.Output[FuncWithListParamResult] {
+	return pulumix.Output[FuncWithListParamResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FuncWithListParamResultOutput) R() pulumi.StringOutput {

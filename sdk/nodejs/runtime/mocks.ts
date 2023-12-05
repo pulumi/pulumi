@@ -15,12 +15,12 @@
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { getProject, getStack, setMockOptions } from "./settings";
 
-const provproto = require("../proto/provider_pb.js");
-const resproto = require("../proto/resource_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
+import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+import * as provproto from "../proto/provider_pb";
+import * as resproto from "../proto/resource_pb";
 
 /**
- * MockResourceArgs is a used to construct a newResource Mock
+ * MockResourceArgs is used to construct a newResource Mock.
  */
 export interface MockResourceArgs {
     /**
@@ -55,7 +55,16 @@ export interface MockResourceArgs {
 }
 
 /**
- * MockResourceArgs is used to construct call Mock
+ * MockResourceResult is the result of a newResource Mock, returning a physical identifier and the output properties
+ * for the resource being constructed.
+ */
+export type MockResourceResult = {
+    id: string | undefined;
+    state: Record<string, any>;
+};
+
+/**
+ * MockResourceArgs is used to construct call Mock.
  */
 export interface MockCallArgs {
     /**
@@ -75,7 +84,12 @@ export interface MockCallArgs {
 }
 
 /**
- * Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi engine with
+ * MockCallResult is the result of a call Mock.
+ */
+export type MockCallResult = Record<string, any>;
+
+/**
+ * Mocks allows implementations to replace operations normally implemented by the Pulumi engine with
  * their own implementations. This can be used during testing to ensure that calls to provider functions and resource constructors
  * return predictable values.
  */
@@ -85,19 +99,18 @@ export interface Mocks {
      *
      * @param args: MockCallArgs
      */
-    call(args: MockCallArgs): Record<string, any>;
-
+    call(args: MockCallArgs): MockCallResult | Promise<MockCallResult>;
     /**
      * Mocks resource construction calls. This function should return the physical identifier and the output properties
      * for the resource being constructed.
-
+     *
      * @param args: MockResourceArgs
      */
-    newResource(args: MockResourceArgs): { id: string | undefined; state: Record<string, any> };
+    newResource(args: MockResourceArgs): MockResourceResult | Promise<MockResourceResult>;
 }
 
 export class MockMonitor {
-    readonly resources = new Map<string, { urn: string; id: string | undefined; state: any }>();
+    readonly resources = new Map<string, { urn: string; id: string | null; state: any }>();
 
     constructor(readonly mocks: Mocks) {}
 
@@ -126,7 +139,7 @@ export class MockMonitor {
                 return;
             }
 
-            const result = this.mocks.call({
+            const result: MockCallResult = await this.mocks.call({
                 token: tok,
                 inputs: inputs,
                 provider: req.getProvider(),
@@ -146,7 +159,7 @@ export class MockMonitor {
                 custom = req.getCustom();
             }
 
-            const result = this.mocks.newResource({
+            const result: MockResourceResult = await this.mocks.newResource({
                 type: req.getType(),
                 name: req.getName(),
                 inputs: deserializeProperties(req.getProperties()),
@@ -158,7 +171,7 @@ export class MockMonitor {
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);
 
-            this.resources.set(urn, { urn, id: result.id, state: serializedState });
+            this.resources.set(urn, { urn, id: result.id ?? null, state: serializedState });
 
             const response = new resproto.ReadResourceResponse();
             response.setUrn(urn);
@@ -171,7 +184,7 @@ export class MockMonitor {
 
     public async registerResource(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
-            const result = this.mocks.newResource({
+            const result: MockResourceResult = await this.mocks.newResource({
                 type: req.getType(),
                 name: req.getName(),
                 inputs: deserializeProperties(req.getObject()),
@@ -183,11 +196,11 @@ export class MockMonitor {
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);
 
-            this.resources.set(urn, { urn, id: result.id, state: serializedState });
+            this.resources.set(urn, { urn, id: result.id ?? null, state: serializedState });
 
             const response = new resproto.RegisterResourceResponse();
             response.setUrn(urn);
-            response.setId(result.id);
+            response.setId(result.id || "");
             response.setObject(structproto.Struct.fromJavaScript(serializedState));
             callback(null, response);
         } catch (err) {
@@ -214,7 +227,7 @@ export class MockMonitor {
 
         // Support for "outputValues" is deliberately disabled for the mock monitor so
         // instances of `Output` don't show up in `MockResourceArgs` inputs.
-        const hasSupport = id === "secrets" || id === "resourceReferences";
+        const hasSupport = id !== "outputValues";
 
         callback(null, {
             getHassupport: () => hasSupport,
@@ -225,7 +238,7 @@ export class MockMonitor {
 /**
  * setMocks configures the Pulumi runtime to use the given mocks for testing.
  *
- * @param mocks: The mocks to use for calls to provider functions and resource consrtuction.
+ * @param mocks: The mocks to use for calls to provider functions and resource construction.
  * @param project: If provided, the name of the Pulumi project. Defaults to "project".
  * @param stack: If provided, the name of the Pulumi stack. Defaults to "stack".
  * @param preview: If provided, indicates whether or not the program is running a preview. Defaults to false.

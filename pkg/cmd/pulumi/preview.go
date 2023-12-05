@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -25,14 +26,144 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// buildImportFile takes an event stream from the engine and builds an import file from it for every create.
+func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
+	return promise.Run(func() (importFile, error) {
+		// A mapping of every URN we see to it's name, used to build later resourceSpecs
+		fullNameTable := map[resource.URN]string{}
+		// A set of all URNs we've added to the import list, used to avoid adding parents to NameTable.
+		importSet := map[resource.URN]struct{}{}
+		// All providers that we've seen so far, used to build Version and PluginDownloadURL.
+		providerInputs := map[resource.URN]resource.PropertyMap{}
+
+		imports := importFile{
+			NameTable: map[string]resource.URN{},
+		}
+
+		// This is a pretty trivial mapping of Create operations to import declarations.
+		for e := range events {
+			preEvent, ok := e.Payload().(engine.ResourcePreEventPayload)
+			if !ok {
+				continue
+			}
+
+			urn := preEvent.Metadata.URN
+			fullNameTable[urn] = urn.Name()
+
+			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
+			// any resources that use it.
+			if providers.IsProviderType(urn.Type()) {
+				providerInputs[urn] = preEvent.Metadata.Res.Inputs
+			}
+
+			// Only interested in creates
+			if preEvent.Metadata.Op != deploy.OpCreate {
+				continue
+			}
+			// No need to import the root stack even if it needs creating
+			if preEvent.Metadata.Type == resource.RootStackType {
+				continue
+			}
+
+			// We're importing this URN so track that we've seen it.
+			importSet[urn] = struct{}{}
+
+			// We can't actually import providers yet, just skip them. We'll only error if anything
+			// actually tries to use it.
+			if providers.IsProviderType(urn.Type()) {
+				continue
+			}
+
+			new := preEvent.Metadata.New
+			contract.Assertf(new != nil, "%s: expected new resource for a create to be non-nil", urn)
+
+			var parent string
+			if new.Parent != "" {
+				// If the parent is just the root stack then skip it as we don't need to import that.
+				if new.Parent.Type() != resource.RootStackType {
+					var has bool
+					parent, has = fullNameTable[new.Parent]
+					contract.Assertf(has, "expected parent %q to be in full name table", new.Parent)
+					// Don't add to the import NameTable if we're importing this in the same deployment.
+					if _, has := importSet[new.Parent]; !has {
+						imports.NameTable[parent] = new.Parent
+					}
+				}
+			}
+
+			var provider, version, pluginDownloadURL string
+			if new.Provider != "" {
+				ref, err := providers.ParseReference(new.Provider)
+				if err != nil {
+					return importFile{}, fmt.Errorf("could not parse provider reference: %v", err)
+				}
+
+				// If we're trying to create this provider in the same deployment and it's not a default provider then
+				// we need to error, the import system can't yet "import" providers.
+				if !providers.IsDefaultProvider(ref.URN()) {
+					if _, has := importSet[ref.URN()]; has {
+						return importFile{}, fmt.Errorf("cannot import resource %q with a new explicit provider %q", new.URN, ref.URN())
+					}
+
+					var has bool
+					provider, has = fullNameTable[ref.URN()]
+					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
+
+					imports.NameTable[provider] = ref.URN()
+				}
+
+				inputs, has := providerInputs[ref.URN()]
+				contract.Assertf(has, "expected provider %q to be in provider inputs table", ref)
+
+				v, err := providers.GetProviderVersion(inputs)
+				if err != nil {
+					return importFile{}, fmt.Errorf("could not get provider version for %s: %v", ref, err)
+				}
+				if v != nil {
+					version = v.String()
+				}
+
+				pluginDownloadURL, err = providers.GetProviderDownloadURL(inputs)
+				if err != nil {
+					return importFile{}, fmt.Errorf("could not get provider download url for %s: %v", ref, err)
+				}
+			}
+
+			var id resource.ID
+			// id only needs filling in for custom resources, set it to a placeholder so the user can easily
+			// search for that.
+			if new.Custom {
+				id = "<PLACEHOLDER>"
+			}
+
+			imports.Resources = append(imports.Resources, importSpec{
+				Type:              new.Type,
+				Name:              urn.Name(),
+				ID:                id,
+				Parent:            parent,
+				Provider:          provider,
+				Component:         !new.Custom,
+				Remote:            !new.Custom && new.Provider != "",
+				Version:           version,
+				PluginDownloadURL: pluginDownloadURL,
+			})
+		}
+
+		return imports, nil
+	})
+}
 
 func newPreviewCmd() *cobra.Command {
 	var debug bool
@@ -45,6 +176,7 @@ func newPreviewCmd() *cobra.Command {
 	var configPath bool
 	var client string
 	var planFilePath string
+	var importFilePath string
 	var showSecrets bool
 
 	// Flags for remote operations.
@@ -59,6 +191,7 @@ func newPreviewCmd() *cobra.Command {
 	var parallel int
 	var refresh string
 	var showConfig bool
+	var showPolicyRemediations bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
@@ -99,17 +232,18 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			displayOpts := display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				ShowReads:            showReads,
-				SuppressOutputs:      suppressOutputs,
-				IsInteractive:        cmdutil.Interactive(),
-				Type:                 displayType,
-				JSONDisplay:          jsonDisplay,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
+				Color:                  cmdutil.GetGlobalColorization(),
+				ShowConfig:             showConfig,
+				ShowPolicyRemediations: showPolicyRemediations,
+				ShowReplacementSteps:   showReplacementSteps,
+				ShowSameResources:      showSames,
+				ShowReads:              showReads,
+				SuppressOutputs:        suppressOutputs,
+				IsInteractive:          cmdutil.Interactive(),
+				Type:                   displayType,
+				JSONDisplay:            jsonDisplay,
+				EventLogPath:           eventLogPath,
+				Debug:                  debug,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -126,9 +260,9 @@ func newPreviewCmd() *cobra.Command {
 				}
 
 				err := validateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
-					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showReplacementSteps, showSames,
-					showReads, suppressOutputs, "default", &targets, replaces, targetReplaces,
-					targetDependents, planFilePath, stackConfigFile)
+					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
+					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
+					targetReplaces, targetDependents, planFilePath, stackConfigFile)
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -180,9 +314,19 @@ func newPreviewCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
 			}
+			encrypter, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+			}
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
 			if configErr != nil {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}
@@ -214,7 +358,7 @@ func newPreviewCmd() *cobra.Command {
 					DisableProviderPreview:    disableProviderPreview(),
 					DisableResourceReferences: disableResourceReferences(),
 					DisableOutputValues:       disableOutputValues(),
-					UpdateTargets:             deploy.NewUrnTargets(targetURNs),
+					Targets:                   deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
@@ -222,6 +366,15 @@ func newPreviewCmd() *cobra.Command {
 					Experimental: hasExperimentalCommands(),
 				},
 				Display: displayOpts,
+			}
+
+			// If we're building an import file we want to hook the event stream from the engine to transform
+			// create operations into import specs.
+			var importFilePromise *promise.Promise[importFile]
+			var events chan engine.Event
+			if importFilePath != "" {
+				events = make(chan engine.Event)
+				importFilePromise = buildImportFile(events)
 			}
 
 			plan, changes, res := s.Preview(ctx, backend.UpdateOperation{
@@ -233,7 +386,13 @@ func newPreviewCmd() *cobra.Command {
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             backend.CancellationScopes,
-			})
+			}, events)
+			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
+			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more
+			// events.
+			if events != nil {
+				close(events)
+			}
 
 			switch {
 			case res != nil:
@@ -259,6 +418,22 @@ func newPreviewCmd() *cobra.Command {
 							"\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview",
 							planFilePath)
 						cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
+					}
+				}
+				if importFilePromise != nil {
+					importFile, err := importFilePromise.Result(ctx)
+					if err != nil {
+						return result.FromError(err)
+					}
+
+					f, err := os.Create(importFilePath)
+					if err != nil {
+						return result.FromError(err)
+					}
+					err = writeImportFile(importFile, f)
+					err = errors.Join(err, f.Close())
+					if err != nil {
+						return result.FromError(err)
 					}
 				}
 				return nil
@@ -290,6 +465,10 @@ func newPreviewCmd() *cobra.Command {
 	if !hasExperimentalCommands() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"), `Could not mark "save-plan" as hidden`)
 	}
+	cmd.PersistentFlags().StringVar(
+		&importFilePath, "import-file", "",
+		"Save any creates seen during the preview into an import file to use with `pulumi import`")
+
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
 
@@ -339,6 +518,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
+	cmd.PersistentFlags().BoolVar(
+		&showPolicyRemediations, "show-policy-remediations", false,
+		"Show per-resource policy remediation details instead of a summary")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")

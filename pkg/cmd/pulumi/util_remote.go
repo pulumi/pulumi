@@ -66,6 +66,7 @@ func validateUnsupportedRemoteFlags(
 	policyPackConfigPaths []string,
 	refresh string,
 	showConfig bool,
+	showPolicyRemediations bool,
 	showReplacementSteps bool,
 	showSames bool,
 	showReads bool,
@@ -105,6 +106,9 @@ func validateUnsupportedRemoteFlags(
 	}
 	if showConfig {
 		return errors.New("--show-config is not supported with --remote")
+	}
+	if showPolicyRemediations {
+		return errors.New("--show-policy-remediations is not supported with --remote")
 	}
 	if showReplacementSteps {
 		return errors.New("--show-replacement-steps is not supported with --remote")

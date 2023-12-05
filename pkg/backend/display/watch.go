@@ -46,7 +46,7 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
 		// Events occurring early:
-		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
+		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent, engine.PolicyLoadEvent:
 			// Ignore it
 			continue
 		case engine.PolicyViolationEvent:
@@ -57,26 +57,26 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 			p := e.Payload().(engine.DiagEventPayload)
 			resourceName := ""
 			if p.URN != "" {
-				resourceName = string(p.URN.Name())
+				resourceName = p.URN.Name()
 			}
 			PrintfWithWatchPrefix(time.Now(), resourceName,
 				"%s", renderDiffDiagEvent(p, opts))
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+				PrintfWithWatchPrefix(time.Now(), p.Metadata.URN.Name(),
 					"%s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOutputsEvent:
 			p := e.Payload().(engine.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+				PrintfWithWatchPrefix(time.Now(), p.Metadata.URN.Name(),
 					"done %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		case engine.ResourceOperationFailed:
 			p := e.Payload().(engine.ResourceOperationFailedPayload)
 			if shouldShow(p.Metadata, opts) {
-				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
+				PrintfWithWatchPrefix(time.Now(), p.Metadata.URN.Name(),
 					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
 		default:

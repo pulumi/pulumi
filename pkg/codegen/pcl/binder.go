@@ -17,6 +17,7 @@ package pcl
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -35,20 +36,29 @@ const (
 )
 
 type ComponentProgramBinderArgs struct {
-	BinderDirPath      string
-	BinderLoader       schema.Loader
-	ComponentSource    string
-	ComponentNodeRange hcl.Range
+	AllowMissingVariables        bool
+	AllowMissingProperties       bool
+	SkipResourceTypecheck        bool
+	SkipInvokeTypecheck          bool
+	SkipRangeTypecheck           bool
+	PreferOutputVersionedInvokes bool
+	BinderDirPath                string
+	BinderLoader                 schema.Loader
+	ComponentSource              string
+	ComponentNodeRange           hcl.Range
 }
 
 type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error)
 
 type bindOptions struct {
-	allowMissingVariables  bool
-	allowMissingProperties bool
-	skipResourceTypecheck  bool
-	loader                 schema.Loader
-	packageCache           *PackageCache
+	allowMissingVariables        bool
+	allowMissingProperties       bool
+	skipResourceTypecheck        bool
+	skipInvokeTypecheck          bool
+	skipRangeTypecheck           bool
+	preferOutputVersionedInvokes bool
+	loader                       schema.Loader
+	packageCache                 *PackageCache
 	// the directory path of the PCL program being bound
 	// we use this to locate the source of the component blocks
 	// which refer to a component resource in a relative directory
@@ -57,10 +67,14 @@ type bindOptions struct {
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
+	var options []model.BindOption
 	if opts.allowMissingVariables {
-		return []model.BindOption{model.AllowMissingVariables}
+		options = append(options, model.AllowMissingVariables)
 	}
-	return nil
+	if opts.skipRangeTypecheck {
+		options = append(options, model.SkipRangeTypechecking)
+	}
+	return options
 }
 
 type binder struct {
@@ -88,6 +102,18 @@ func SkipResourceTypechecking(options *bindOptions) {
 	options.skipResourceTypecheck = true
 }
 
+func SkipRangeTypechecking(options *bindOptions) {
+	options.skipRangeTypecheck = true
+}
+
+func PreferOutputVersionedInvokes(options *bindOptions) {
+	options.preferOutputVersionedInvokes = true
+}
+
+func SkipInvokeTypechecking(options *bindOptions) {
+	options.skipInvokeTypecheck = true
+}
+
 func PluginHost(host plugin.Host) BindOption {
 	return Loader(schema.NewPluginLoader(host))
 }
@@ -113,6 +139,18 @@ func DirPath(path string) BindOption {
 func ComponentBinder(binder ComponentProgramBinder) BindOption {
 	return func(options *bindOptions) {
 		options.componentProgramBinder = binder
+	}
+}
+
+// NonStrictBindOptions returns a set of bind options that make the binder lenient about type checking.
+// Changing errors into warnings when possible
+func NonStrictBindOptions() []BindOption {
+	return []BindOption{
+		AllowMissingVariables,
+		AllowMissingProperties,
+		SkipResourceTypechecking,
+		SkipInvokeTypechecking,
+		SkipRangeTypechecking,
 	}
 }
 
@@ -156,7 +194,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		ConstantValue: cty.NullVal(cty.DynamicPseudoType),
 	})
 	// Define builtin functions.
-	for name, fn := range pulumiBuiltins {
+	for name, fn := range pulumiBuiltins(options) {
 		b.root.DefineFunction(name, fn)
 	}
 	// Define the invoke function.
@@ -190,6 +228,65 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		files:  files,
 		binder: b,
 	}, diagnostics, nil
+}
+
+// Used by language plugins to bind a PCL program in the given directory.
+func BindDirectory(
+	directory string,
+	loader schema.ReferenceLoader,
+	extraOptions ...BindOption,
+) (*Program, hcl.Diagnostics, error) {
+	parser := syntax.NewParser()
+	// Load all .pp files in the directory
+	files, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var parseDiagnostics hcl.Diagnostics
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		fileName := file.Name()
+		path := filepath.Join(directory, fileName)
+
+		if filepath.Ext(path) == ".pp" {
+			file, err := os.Open(path)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			err = parser.ParseFile(file, filepath.Base(path))
+			if err != nil {
+				return nil, nil, err
+			}
+			parseDiagnostics = append(parseDiagnostics, parser.Diagnostics...)
+		}
+	}
+
+	if parseDiagnostics.HasErrors() {
+		return nil, parseDiagnostics, nil
+	}
+
+	opts := []BindOption{
+		Loader(loader),
+		DirPath(directory),
+		ComponentBinder(ComponentProgramBinderFromFileSystem()),
+	}
+
+	opts = append(opts, extraOptions...)
+
+	program, bindDiagnostics, err := BindProgram(parser.Files, opts...)
+
+	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
+	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.
+	if bindDiagnostics != nil {
+		err = nil
+	}
+
+	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
+	return program, allDiagnostics, err
 }
 
 func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectType {
@@ -324,9 +421,10 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				source := item.Labels[1]
 
 				v := &Component{
-					name:   name,
-					syntax: item,
-					source: source,
+					name:         name,
+					syntax:       item,
+					source:       source,
+					VariableType: model.DynamicType,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)

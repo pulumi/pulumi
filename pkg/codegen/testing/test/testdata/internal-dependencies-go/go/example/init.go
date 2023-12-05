@@ -10,6 +10,7 @@ import (
 	_ "github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	_ "github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal-dependencies-go/example/internal"
 )
 
 type pkg struct {
@@ -31,7 +32,10 @@ func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pul
 }
 
 func init() {
-	version, _ := PkgVersion()
+	version, err := internal.PkgVersion()
+	if err != nil {
+		version = semver.Version{Major: 1}
+	}
 	pulumi.RegisterResourcePackage(
 		"example",
 		&pkg{version},

@@ -54,7 +54,8 @@
   "language": {
     "go": {
       "generateResourceContainerTypes": true,
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "importBasePath": "resource-args-python/example"
     },
     "nodejs": {
       "dependencies": {

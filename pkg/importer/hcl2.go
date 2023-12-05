@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -53,6 +54,23 @@ func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names N
 	}
 
 	var items []model.BodyItem
+	name := state.URN.Name()
+	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
+	// the resource block.
+	if mappedName, ok := names[state.URN]; ok {
+		items = append(items, &model.Attribute{
+			Name: "__logicalName",
+			Value: &model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: cty.StringVal(name),
+					},
+				},
+			},
+		})
+		name = mappedName
+	}
+
 	for _, p := range r.InputProperties {
 		x, err := generatePropertyValue(p, state.Inputs[resource.PropertyKey(p.Name)])
 		if err != nil {
@@ -74,11 +92,11 @@ func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names N
 		items = append(items, resourceOptions)
 	}
 
-	typ, name := state.URN.Type(), state.URN.Name()
+	typ := string(state.URN.Type())
 	return &model.Block{
-		Tokens: syntax.NewBlockTokens("resource", string(name), string(typ)),
+		Tokens: syntax.NewBlockTokens("resource", name, typ),
 		Type:   "resource",
-		Labels: []string{string(name), string(typ)},
+		Labels: []string{name, typ},
 		Body: &model.Body{
 			Items: items,
 		},
@@ -110,7 +128,7 @@ func appendResourceOption(block *model.Block, name string, value model.Expressio
 
 func makeResourceOptions(state *resource.State, names NameTable) (*model.Block, error) {
 	var resourceOptions *model.Block
-	if state.Parent != "" && state.Parent.Type() != resource.RootStackType {
+	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
 		name, ok := names[state.Parent]
 		if !ok {
 			return nil, fmt.Errorf("no name for parent %v", state.Parent)
@@ -620,7 +638,7 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 		}, nil
 	case value.IsObject():
 		obj := value.ObjectValue()
-		items := make([]model.ObjectConsItem, 0, len(obj))
+		items := slice.Prealloc[model.ObjectConsItem](len(obj))
 
 		switch arg := typ.(type) {
 		case *schema.ObjectType:

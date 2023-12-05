@@ -9,6 +9,7 @@ import (
 
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal"
 )
 
 type Workload struct {
@@ -24,6 +25,7 @@ func NewWorkload(ctx *pulumi.Context,
 		args = &WorkloadArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Workload
 	err := ctx.RegisterResource("example::Workload", name, args, &resource, opts...)
 	if err != nil {

@@ -75,7 +75,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	for componentDir, component := range program.CollectComponents() {
-		componentName := title(filepath.Base(componentDir))
+		componentFilename := strings.ReplaceAll(filepath.Base(componentDir), "-", "_")
+		componentName := component.DeclarationName()
 		componentGenerator, err := newGenerator(component.Program)
 		if err != nil {
 			return files, componentGenerator.diagnostics, err
@@ -89,7 +90,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		// generate imports for the component
 		componentGenerator.genPreamble(&componentBuffer, component.Program, componentPreambleMethods)
 		componentGenerator.genComponentDefinition(&componentBuffer, component, componentName)
-		files[filepath.Base(componentDir)+".py"] = componentBuffer.Bytes()
+		files[componentFilename+".py"] = componentBuffer.Bytes()
 	}
 	return files, g.diagnostics, nil
 }
@@ -296,7 +297,10 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 	})
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -527,9 +531,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 
 	for _, node := range program.Nodes {
 		if component, ok := node.(*pcl.Component); ok {
-			componentPath := filepath.Base(component.DirPath())
-			componentName := title(componentPath)
-			imports = append(imports, fmt.Sprintf("from .%s import %s", componentPath, componentName))
+			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
+			componentName := component.DeclarationName()
+			imports = append(imports, fmt.Sprintf("from %s import %s", componentPath, componentName))
 		}
 	}
 
@@ -741,13 +745,16 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 		g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 	}
 
-	for _, input := range r.Inputs {
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-		g.diagnostics = append(g.diagnostics, diagnostics...)
-		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
-		temps = append(temps, valueTemps...)
-		input.Value = value
+	if r.Schema != nil {
+		for _, input := range r.Inputs {
+			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+			value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
+			temps = append(temps, valueTemps...)
+			input.Value = value
+		}
 	}
+
 	g.genTemps(w, temps)
 
 	instantiate := func(resName string) {
@@ -920,7 +927,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
-	componentName := title(filepath.Base(r.DirPath()))
+	componentName := r.DeclarationName()
 	optionsBag, temps := g.lowerResourceOptions(r.Options)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())

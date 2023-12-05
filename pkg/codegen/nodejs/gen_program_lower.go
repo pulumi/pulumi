@@ -80,7 +80,8 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 	switch then := then.(type) {
 	case *model.IndexExpression:
 		t := arg.Type()
-		if !isParameterReference(parameters, then.Collection) || model.IsOptionalType(t) || isPromiseType(t) {
+		skipType := model.IsOptionalType(t) || isPromiseType(t) || isOutputType(t)
+		if !isParameterReference(parameters, then.Collection) || skipType {
 			return nil, false
 		}
 		then.Collection = arg
@@ -235,10 +236,11 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 			return x, nil
 		}
 
-		_, isPromise := call.Type().(*model.PromiseType)
-		contract.Assertf(isPromise, "invoke must return a promise")
+		if _, isPromise := call.Type().(*model.PromiseType); isPromise {
+			return newAwaitCall(call), nil
+		}
 
-		return newAwaitCall(call), nil
+		return call, nil
 	}
 	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)

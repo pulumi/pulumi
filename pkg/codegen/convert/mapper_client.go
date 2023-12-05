@@ -63,19 +63,20 @@ func (m *mapperClient) Close() error {
 	return nil
 }
 
-func (m *mapperClient) GetMapping(provider string) ([]byte, error) {
+func (m *mapperClient) GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error) {
 	label := "GetMapping"
-	logging.V(7).Infof("%s executing", label)
+	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, provider, pulumiProvider)
 
-	resp, err := m.clientRaw.GetMapping(context.TODO(), &codegenrpc.GetMappingRequest{
-		Provider: provider,
+	resp, err := m.clientRaw.GetMapping(ctx, &codegenrpc.GetMappingRequest{
+		Provider:       provider,
+		PulumiProvider: pulumiProvider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(8).Infof("%s mapper received rpc error `%s`: `%s`", label, rpcError.Code(), rpcError.Message())
+		logging.V(7).Infof("%s failed: %v", label, rpcError)
 		return nil, err
 	}
 
-	logging.V(7).Infof("%s success", label)
+	logging.V(7).Infof("%s success: data=#%d", label, len(resp.Data))
 	return resp.Data, nil
 }

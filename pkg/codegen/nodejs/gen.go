@@ -20,6 +20,7 @@ package nodejs
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -84,7 +86,7 @@ func camel(s string) string {
 		return ""
 	}
 	runes := []rune(s)
-	res := make([]rune, 0, len(runes))
+	res := slice.Prealloc[rune](len(runes))
 	for i, r := range runes {
 		if unicode.IsLower(r) {
 			res = append(res, runes[i:]...)
@@ -596,31 +598,6 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "{ ")
-
-	var parts []string
-	if alias.Name != nil {
-		parts = append(parts, fmt.Sprintf("name: \"%v\"", *alias.Name))
-	}
-	if alias.Project != nil {
-		parts = append(parts, fmt.Sprintf("project: \"%v\"", *alias.Project))
-	}
-	if alias.Type != nil {
-		parts = append(parts, fmt.Sprintf("type: \"%v\"", *alias.Type))
-	}
-
-	for i, part := range parts {
-		if i > 0 {
-			fmt.Fprintf(w, ", ")
-		}
-
-		fmt.Fprintf(w, "%s", part)
-	}
-
-	fmt.Fprintf(w, " }")
-}
-
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFileInfo, error) {
 	info := resourceFileInfo{}
 
@@ -691,7 +668,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, "        if (obj === undefined || obj === null) {\n")
 	fmt.Fprintf(w, "            return false;\n")
 	fmt.Fprintf(w, "        }\n")
-	fmt.Fprintf(w, "        return obj['__pulumiType'] === %s.__pulumiType;\n", name)
+
+	typeExpression := fmt.Sprintf("%s.__pulumiType", name)
+	if r.IsProvider {
+		// We pass __pulumiType to the ProviderResource constructor as the "type" for this provider, the
+		// ProviderResource constructor in the SDK then prefixes "pulumi:providers:" to that token and passes that
+		// down to the CustomResource constructor, which then assigns that type token to the newly constructed
+		// objects __pulumiType field. As such we also need to prefix "pulumi:providers:" when doing the equality
+		// check here.
+		typeExpression = "\"pulumi:providers:\" + " + typeExpression
+	}
+	fmt.Fprintf(w, "        return obj['__pulumiType'] === %s;\n", typeExpression)
 	fmt.Fprintf(w, "    }\n")
 	fmt.Fprintf(w, "\n")
 
@@ -893,10 +880,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	if len(r.Aliases) > 0 {
 		fmt.Fprintf(w, "        const aliasOpts = { aliases: [")
 		for i, alias := range r.Aliases {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
+			if alias.Type != nil {
+				fmt.Fprintf(w, "{ type: \"%v\" }", *alias.Type)
+				if i != len(r.Aliases)-1 {
+					fmt.Fprintf(w, ", ")
+				}
 			}
-			mod.genAlias(w, alias)
 		}
 		fmt.Fprintf(w, "] };\n")
 		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, aliasOpts);\n")
@@ -936,7 +925,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnType != nil {
 			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 				objectReturnType = objectType
-			} else {
+			} else if !fun.ReturnTypePlain {
+				// Currently the code only knows how to generate code for methods returning an
+				// ObjectType or methods returning a plain resource All other methods are simply
+				// skipped; bail here.
 				return
 			}
 		}
@@ -953,7 +945,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		argsOptional := true
 		if fun.Inputs != nil {
 			// Filter out the __self__ argument from the inputs.
-			args = make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties))
+			args = slice.Prealloc[*schema.Property](len(fun.Inputs.InputShape.Properties))
 			for _, arg := range fun.Inputs.InputShape.Properties {
 				if arg.Name == "__self__" {
 					continue
@@ -975,6 +967,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
+		} else if fun.ReturnTypePlain {
+			var innerType string
+			if objectReturnType == nil {
+				innerType = mod.typeString(fun.ReturnType, false, nil)
+			} else {
+				innerType = fmt.Sprintf("%s.%sResult", name, title(method.Name))
+			}
+			retty = fmt.Sprintf("Promise<%s>", innerType)
 		} else if liftReturn {
 			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
 		} else {
@@ -1000,7 +1000,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				ret = "return "
 			}
 		}
-		fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+
+		if fun.ReturnTypePlain {
+			fmt.Fprintf(w, "        %sutilities.callAsync(\"%s\", {\n", ret, fun.Token)
+		} else {
+			fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+		}
+
 		if fun.Inputs != nil {
 			for _, p := range fun.Inputs.InputShape.Properties {
 				// Pass the argument to the invocation.
@@ -1011,12 +1017,25 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				}
 			}
 		}
-		fmt.Fprintf(w, "        }, this);\n")
+		fmt.Fprintf(w, "        }, this")
+
+		if fun.ReturnTypePlain {
+			// Unwrap magic property "res" for methods that return a plain non-object-type.
+			if objectReturnType == nil {
+				fmt.Fprintf(w, `, {property: "res"});`)
+			} else {
+				fmt.Fprintf(w, `, {});`)
+			}
+		} else {
+			fmt.Fprintf(w, ");\n")
+		}
+
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
 		}
 		fmt.Fprintf(w, "    }\n")
 	}
+
 	for _, method := range r.Methods {
 		genMethod(method)
 	}
@@ -1047,7 +1066,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fun := method.Function
 		methodName := title(method.Name)
 		if fun.Inputs != nil {
-			args := make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties))
+			args := slice.Prealloc[*schema.Property](len(fun.Inputs.InputShape.Properties))
 			for _, arg := range fun.Inputs.InputShape.Properties {
 				if arg.Name == "__self__" {
 					continue
@@ -1067,16 +1086,23 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 
 		if fun.ReturnType != nil {
-			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+			genReturnType := func(properties []*schema.Property) error {
 				comment := fun.Inputs.Comment
 				if comment == "" {
 					comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Result", comment, objectType.Properties, false, true, 1); err != nil {
+				if err := mod.genPlainType(w, methodName+"Result", comment, properties, false, true, 1); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "\n")
+				return nil
 			}
+			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				if err := genReturnType(objectType.Properties); err != nil {
+					return err
+				}
+			}
+			// For non-object types with fun.ReturnTypePlain return type is not needed.
 		}
 		return nil
 	}
@@ -1261,7 +1287,7 @@ func (mod *modContext) genFunctionOutputVersion(
 	fun *schema.Function,
 	info functionFileInfo,
 ) (functionFileInfo, error) {
-	if !fun.NeedsOutputVersion() {
+	if fun.ReturnType == nil {
 		return info, nil
 	}
 
@@ -1271,13 +1297,15 @@ func (mod *modContext) genFunctionOutputVersion(
 	info.functionOutputVersionName = fnOutput
 	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
 
-	var argsig string
-	argsOptional := functionArgsOptional(fun)
-	optFlag := ""
-	if argsOptional {
-		optFlag = "?"
+	argsig := ""
+	if fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
+		argsOptional := functionArgsOptional(fun)
+		optFlag := ""
+		if argsOptional {
+			optFlag = "?"
+		}
+		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 	}
-	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
@@ -1286,13 +1314,25 @@ func (mod *modContext) genFunctionOutputVersion(
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
 	}
 	if !fun.MultiArgumentInputs {
-		fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+		if argsig != "" {
+			fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
     return pulumi.output(args).apply((a: any) => %s(a, opts))
 }
 `, fnOutput, argsig, returnType, originalName)
+		} else {
+			fmt.Fprintf(w, `export function %s(opts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+    return pulumi.output(%s(opts))
+}
+`, fnOutput, returnType, originalName)
+		}
 	} else {
 		fmt.Fprintf(w, "export function %s(", fnOutput)
-		for _, prop := range fun.Inputs.Properties {
+		var properties []*schema.Property
+		if fun.Inputs != nil {
+			properties = fun.Inputs.Properties
+		}
+
+		for _, prop := range properties {
 			paramDeclaration := ""
 			propertyType := &schema.InputType{ElementType: prop.Type}
 			argumentType := mod.typeString(propertyType, true /* input */, nil)
@@ -1307,12 +1347,12 @@ func (mod *modContext) genFunctionOutputVersion(
 
 		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", returnType)
 		fmt.Fprint(w, "    var args = {\n")
-		for _, p := range fun.Inputs.Properties {
+		for _, p := range properties {
 			fmt.Fprintf(w, "        \"%s\": %s,\n", p.Name, p.Name)
 		}
 		fmt.Fprint(w, "    };\n")
 		fmt.Fprintf(w, "    return pulumi.output(args).apply((resolvedArgs: any) => %s(", originalName)
-		for _, p := range fun.Inputs.Properties {
+		for _, p := range properties {
 			// Pass the argument to the invocation.
 			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
 		}
@@ -1320,7 +1360,7 @@ func (mod *modContext) genFunctionOutputVersion(
 		fmt.Fprint(w, "}\n")
 	}
 
-	if !fun.MultiArgumentInputs {
+	if !fun.MultiArgumentInputs && fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
 		fmt.Fprintf(w, "\n")
 		info.functionOutputVersionArgsInterfaceName = argTypeName
 		if err := mod.genPlainType(w,
@@ -1525,6 +1565,9 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 		for _, method := range member.Methods {
 			if method.Function.Inputs != nil {
 				for _, p := range method.Function.Inputs.Properties {
+					if p.Name == "__self__" {
+						continue
+					}
 					needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}
@@ -1534,6 +1577,10 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 					for _, p := range objectType.Properties {
 						needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 					}
+				} else if method.Function.ReturnTypePlain {
+					needsTypes = mod.getTypeImportsForResource(
+						method.Function.ReturnType, false, externalImports,
+						imports, seen, res) || needsTypes
 				}
 			}
 		}
@@ -1889,7 +1936,7 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 }
 
 func (mod *modContext) gen(fs codegen.Fs) error {
-	files := make([]fileInfo, 0, len(mod.extraSourceFiles))
+	files := slice.Prealloc[fileInfo](len(mod.extraSourceFiles))
 	for _, path := range mod.extraSourceFiles {
 		files = append(files, fileInfo{
 			fileType:         otherFileType,
@@ -2304,10 +2351,8 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	//     3) install-pulumi-plugin.js: plugin install script
 	fs.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
-	fs.Add("scripts/install-pulumi-plugin.js", []byte(genInstallScript(pkg.PluginDownloadURL)))
 	return nil
 }
 
@@ -2342,26 +2387,10 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	devDependencies["@types/node"] = MinimumNodeTypesVersion
 
 	version := "${VERSION}"
-	versionSet := pkg.Version != nil && info.RespectSchemaVersion
-	if versionSet {
+	pluginVersion := ""
+	if pkg.Version != nil && info.RespectSchemaVersion {
 		version = pkg.Version.String()
-	}
-
-	pluginVersion := info.PluginVersion
-	if versionSet && pluginVersion == "" {
 		pluginVersion = version
-	}
-
-	scriptVersion := "${VERSION}"
-	if pluginVersion != "" {
-		scriptVersion = pluginVersion
-	}
-
-	pluginName := info.PluginName
-	// Default to the pulumi package name if PluginName isn't set by the user. This is different to the npm
-	// package name, e.g. the npm package "@pulumiverse/sentry" has a pulumi package name of just "sentry".
-	if pluginName == "" {
-		pluginName = pkg.Name
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2374,14 +2403,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		Repository:  pkg.Repository,
 		License:     pkg.License,
 		Scripts: map[string]string{
-			"build":   "tsc",
-			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion),
+			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
 		Pulumi: plugin.PulumiPluginJSON{
 			Resource: true,
 			Server:   pkg.PluginDownloadURL,
-			Name:     pluginName,
+			Name:     pkg.Name,
 			Version:  pluginVersion,
 		},
 	}
@@ -2720,116 +2748,25 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	return files, nil
 }
 
+//go:embed utilities.ts
+var utilitiesFile string
+
 func (mod *modContext) genUtilitiesFile(w io.Writer) error {
-	const body = `
-export function getEnv(...vars: string[]): string | undefined {
-    for (const v of vars) {
-        const value = process.env[v];
-        if (value) {
-            return value;
-        }
-    }
-    return undefined;
-}
-
-export function getEnvBoolean(...vars: string[]): boolean | undefined {
-    const s = getEnv(...vars);
-    if (s !== undefined) {
-        // NOTE: these values are taken from https://golang.org/src/strconv/atob.go?s=351:391#L1, which is what
-        // Terraform uses internally when parsing boolean values.
-        if (["1", "t", "T", "true", "TRUE", "True"].find(v => v === s) !== undefined) {
-            return true;
-        }
-        if (["0", "f", "F", "false", "FALSE", "False"].find(v => v === s) !== undefined) {
-            return false;
-        }
-    }
-    return undefined;
-}
-
-export function getEnvNumber(...vars: string[]): number | undefined {
-    const s = getEnv(...vars);
-    if (s !== undefined) {
-        const f = parseFloat(s);
-        if (!isNaN(f)) {
-            return f;
-        }
-    }
-    return undefined;
-}
-
-export function getVersion(): string {
-    let version = require('./package.json').version;
-    // Node allows for the version to be prefixed by a "v", while semver doesn't.
-    // If there is a v, strip it off.
-    if (version.indexOf('v') === 0) {
-        version = version.slice(1);
-    }
-    return version;
-}
-
-/** @internal */
-export function resourceOptsDefaults(): any {
-    return { version: getVersion()%s };
-}
-
-/** @internal */
-export function lazyLoad(exports: any, props: string[], loadModule: any) {
-    for (let property of props) {
-        Object.defineProperty(exports, property, {
-            enumerable: true,
-            get: function() {
-                return loadModule()[property];
-            },
-        });
-    }
-}
-`
 	def, err := mod.pkg.Definition()
 	if err != nil {
 		return err
 	}
-	var pluginDownloadURL string
+	code := utilitiesFile
+
 	if url := def.PluginDownloadURL; url != "" {
-		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
+		code = strings.ReplaceAll(code, "/*pluginDownloadURL*/",
+			fmt.Sprintf(", pluginDownloadURL: %q", url))
+	} else {
+		code = strings.ReplaceAll(code, "/*pluginDownloadURL*/", "")
 	}
-	_, err = fmt.Fprintf(w, body, pluginDownloadURL)
+
+	_, err = fmt.Fprintf(w, "%s", code)
 	return err
-}
-
-func genInstallScript(pluginDownloadURL string) string {
-	const installScript = `"use strict";
-var childProcess = require("child_process");
-
-var args = process.argv.slice(2);
-
-if (args.indexOf("${VERSION}") !== -1) {
-	process.exit(0);
-}
-
-var res = childProcess.spawnSync("pulumi", ["plugin", "install"%s].concat(args), {
-    stdio: ["ignore", "inherit", "inherit"]
-});
-
-if (res.error && res.error.code === "ENOENT") {
-    console.error("\nThere was an error installing the resource provider plugin. " +
-            "It looks like ` + "`pulumi`" + ` is not installed on your system. " +
-            "Please visit https://pulumi.com/ to install the Pulumi CLI.\n" +
-            "You may try manually installing the plugin by running " +
-            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
-} else if (res.error || res.status !== 0) {
-    console.error("\nThere was an error installing the resource provider plugin. " +
-            "You may try to manually installing the plugin by running " +
-            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
-}
-
-process.exit(0);
-`
-	server := ""
-	if pluginDownloadURL != "" {
-		server = fmt.Sprintf(`, "--server", %q`, pluginDownloadURL)
-	}
-	return fmt.Sprintf(installScript, server)
 }
 
 // Used to sort ObjectType values.

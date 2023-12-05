@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-schema-gh6957/xyz/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Foo struct {
 	A *bool `pulumi:"a"`

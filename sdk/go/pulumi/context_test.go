@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -363,7 +364,7 @@ func TestMergeProviders(t *testing.T) {
 					return err
 				}
 
-				result := make([]string, 0, len(provMap))
+				result := slice.Prealloc[string](len(provMap))
 				for k, p := range provMap {
 					assert.Equal(t, k, p.getPackage(), "pkg should match map key")
 					result = append(result, strings.TrimPrefix(p.getName(), "pulumi:providers:"))
@@ -493,10 +494,10 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 			// alias specs.
 			// So if that's needed, wrap the monitor to claim it
 			// does.
-			if tt.supportsAliasSpecs {
+			if !tt.supportsAliasSpecs {
 				opts = append(opts, WrapResourceMonitorClient(
 					func(rmc pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
-						return resourceMonitorClientWithFeatures(rmc, "aliasSpecs")
+						return resourceMonitorClientWithoutFeatures(rmc, "aliasSpecs")
 					}))
 			}
 
@@ -528,23 +529,23 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 type resmonClientWithFeatures struct {
 	pulumirpc.ResourceMonitorClient
 
-	features map[string]struct{}
+	notFeatures map[string]struct{}
 }
 
-// resourceMonitorClientWithFeatures builds a ResourceMonitorClient
-// that reports the provided feature names as supported
-// in addition to those already supported by the client.
-func resourceMonitorClientWithFeatures(
+// resourceMonitorClientWithOutFeatures builds a ResourceMonitorClient
+// that reports the provided feature names as not supported
+// even if it is supported in the client
+func resourceMonitorClientWithoutFeatures(
 	cl pulumirpc.ResourceMonitorClient,
 	features ...string,
 ) pulumirpc.ResourceMonitorClient {
-	featureSet := make(map[string]struct{}, len(features))
+	notFeatureSet := make(map[string]struct{}, len(features))
 	for _, f := range features {
-		featureSet[f] = struct{}{}
+		notFeatureSet[f] = struct{}{}
 	}
 	return &resmonClientWithFeatures{
 		ResourceMonitorClient: cl,
-		features:              featureSet,
+		notFeatures:           notFeatureSet,
 	}
 }
 
@@ -553,10 +554,52 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 	req *pulumirpc.SupportsFeatureRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
-	if _, ok := c.features[req.GetId()]; ok {
+	if _, ok := c.notFeatures[req.GetId()]; ok {
 		return &pulumirpc.SupportsFeatureResponse{
-			HasSupport: ok,
+			HasSupport: false,
 		}, nil
 	}
 	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
+}
+
+func TestSourcePosition(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			var sourcePosition *pulumirpc.SourcePosition
+			switch {
+			case args.RegisterRPC != nil:
+				sourcePosition = args.RegisterRPC.SourcePosition
+			case args.ReadRPC != nil:
+				sourcePosition = args.ReadRPC.SourcePosition
+			}
+
+			require.NotNil(t, sourcePosition)
+			assert.True(t, strings.HasSuffix(sourcePosition.Uri, "context_test.go"))
+
+			return "myID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		reg := func() error {
+			var res testResource2
+			return ctx.RegisterResource("test:resource:type", "reg", &testResource2Inputs{}, &res)
+		}
+
+		read := func() error {
+			var res testResource2
+			return ctx.ReadResource("test:resource:type", "read", ID("myid"), &testResource2Inputs{}, &res)
+		}
+
+		err := reg()
+		require.NoError(t, err)
+
+		err = read()
+		require.NoError(t, err)
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
 }

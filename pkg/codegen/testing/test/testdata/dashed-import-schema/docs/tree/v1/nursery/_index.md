@@ -228,8 +228,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">List&lt;Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
     </dt>
-    <dd><p>The varieties available</p>
-</dd><dt class="property-optional"
+    <dd>The varieties available</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_csharp" style="color: inherit; text-decoration: inherit;">Sizes</a>
@@ -237,8 +236,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size&gt;</span>
     </dt>
-    <dd><p>The sizes of trees available</p>
-</dd></dl>
+    <dd>The sizes of trees available</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -252,8 +250,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">[]Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
-    <dd><p>The varieties available</p>
-</dd><dt class="property-optional"
+    <dd>The varieties available</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_go" style="color: inherit; text-decoration: inherit;">Sizes</a>
@@ -261,8 +258,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type">map[string]Tree<wbr>Size</span>
     </dt>
-    <dd><p>The sizes of trees available</p>
-</dd></dl>
+    <dd>The sizes of trees available</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -276,8 +272,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">List&lt;Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
     </dt>
-    <dd><p>The varieties available</p>
-</dd><dt class="property-optional"
+    <dd>The varieties available</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_java" style="color: inherit; text-decoration: inherit;">sizes</a>
@@ -285,8 +280,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,Tree<wbr>Size&gt;</span>
     </dt>
-    <dd><p>The sizes of trees available</p>
-</dd></dl>
+    <dd>The sizes of trees available</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -300,8 +294,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety[]</a></span>
     </dt>
-    <dd><p>The varieties available</p>
-</dd><dt class="property-optional"
+    <dd>The varieties available</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_nodejs" style="color: inherit; text-decoration: inherit;">sizes</a>
@@ -309,8 +302,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Tree<wbr>Size}</span>
     </dt>
-    <dd><p>The sizes of trees available</p>
-</dd></dl>
+    <dd>The sizes of trees available</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -324,8 +316,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Sequence[Rubber<wbr>Tree<wbr>Variety]</a></span>
     </dt>
-    <dd><p>The varieties available</p>
-</dd><dt class="property-optional"
+    <dd>The varieties available</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_python" style="color: inherit; text-decoration: inherit;">sizes</a>
@@ -333,8 +324,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Tree<wbr>Size]</span>
     </dt>
-    <dd><p>The sizes of trees available</p>
-</dd></dl>
+    <dd>The sizes of trees available</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -348,8 +338,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">List&lt;&#34;Burgundy&#34; | &#34;Ruby&#34; | &#34;Tineke&#34;&gt;</a></span>
     </dt>
-    <dd><p>The varieties available</p>
-</dd><dt class="property-optional"
+    <dd>The varieties available</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_yaml" style="color: inherit; text-decoration: inherit;">sizes</a>
@@ -357,8 +346,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;&#34;small&#34; | &#34;medium&#34; | &#34;large&#34;&gt;</span>
     </dt>
-    <dd><p>The sizes of trees available</p>
-</dd></dl>
+    <dd>The sizes of trees available</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -379,8 +367,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -394,8 +381,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -409,8 +395,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -424,8 +409,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -439,8 +423,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -454,8 +437,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -469,81 +451,67 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</h4>
+<h4 id="rubbertreevariety">
+Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" class="inline">, Rubber<wbr>Tree<wbr>Variety<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>BURGUNDY</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>RUBY</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>TINEKE</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>RUBY</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>TINEKE</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
 <dl class="tabular"><dt>"Burgundy"</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>"Ruby"</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>"Tineke"</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>"Ruby"</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>"Tineke"</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
-<h4 id="treesize">Tree<wbr>Size</h4>
+<h4 id="treesize">
+Tree<wbr>Size<pulumi-choosable type="language" values="python,go" class="inline">, Tree<wbr>Size<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

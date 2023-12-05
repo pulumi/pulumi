@@ -8,7 +8,11 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"simple-plain-schema/example/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Foo struct {
 	A bool    `pulumi:"a"`
@@ -49,6 +53,12 @@ func (i FooArgs) ToFooOutput() FooOutput {
 
 func (i FooArgs) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FooOutput)
+}
+
+func (i FooArgs) ToOutput(ctx context.Context) pulumix.Output[Foo] {
+	return pulumix.Output[Foo]{
+		OutputState: i.ToFooOutputWithContext(ctx).OutputState,
+	}
 }
 
 func (i FooArgs) ToFooPtrOutput() FooPtrOutput {
@@ -92,6 +102,12 @@ func (i *fooPtrType) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(FooPtrOutput)
 }
 
+func (i *fooPtrType) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
+	return pulumix.Output[*Foo]{
+		OutputState: i.ToFooPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 // FooArrayInput is an input type that accepts FooArray and FooArrayOutput values.
 // You can construct a concrete instance of `FooArrayInput` via:
 //
@@ -115,6 +131,12 @@ func (i FooArray) ToFooArrayOutput() FooArrayOutput {
 
 func (i FooArray) ToFooArrayOutputWithContext(ctx context.Context) FooArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FooArrayOutput)
+}
+
+func (i FooArray) ToOutput(ctx context.Context) pulumix.Output[[]Foo] {
+	return pulumix.Output[[]Foo]{
+		OutputState: i.ToFooArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // FooMapInput is an input type that accepts FooMap and FooMapOutput values.
@@ -142,6 +164,12 @@ func (i FooMap) ToFooMapOutputWithContext(ctx context.Context) FooMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FooMapOutput)
 }
 
+func (i FooMap) ToOutput(ctx context.Context) pulumix.Output[map[string]Foo] {
+	return pulumix.Output[map[string]Foo]{
+		OutputState: i.ToFooMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
@@ -164,6 +192,12 @@ func (o FooOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Foo) *Foo {
 		return &v
 	}).(FooPtrOutput)
+}
+
+func (o FooOutput) ToOutput(ctx context.Context) pulumix.Output[Foo] {
+	return pulumix.Output[Foo]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FooOutput) A() pulumi.BoolOutput {
@@ -202,6 +236,12 @@ func (o FooPtrOutput) ToFooPtrOutput() FooPtrOutput {
 
 func (o FooPtrOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 	return o
+}
+
+func (o FooPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
+	return pulumix.Output[*Foo]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FooPtrOutput) Elem() FooOutput {
@@ -282,6 +322,12 @@ func (o FooArrayOutput) ToFooArrayOutputWithContext(ctx context.Context) FooArra
 	return o
 }
 
+func (o FooArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Foo] {
+	return pulumix.Output[[]Foo]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o FooArrayOutput) Index(i pulumi.IntInput) FooOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Foo {
 		return vs[0].([]Foo)[vs[1].(int)]
@@ -300,6 +346,12 @@ func (o FooMapOutput) ToFooMapOutput() FooMapOutput {
 
 func (o FooMapOutput) ToFooMapOutputWithContext(ctx context.Context) FooMapOutput {
 	return o
+}
+
+func (o FooMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]Foo] {
+	return pulumix.Output[map[string]Foo]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FooMapOutput) MapIndex(k pulumi.StringInput) FooOutput {

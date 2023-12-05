@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global = (function() { return this || window || global || self || Function('return this')(); }).call(null);
+var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
@@ -95,7 +95,8 @@ proto.codegen.GetMappingRequest.prototype.toObject = function(opt_includeInstanc
  */
 proto.codegen.GetMappingRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    provider: jspb.Message.getFieldWithDefault(msg, 1, "")
+    provider: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    pulumiProvider: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -136,6 +137,10 @@ proto.codegen.GetMappingRequest.deserializeBinaryFromReader = function(msg, read
       var value = /** @type {string} */ (reader.readString());
       msg.setProvider(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPulumiProvider(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -172,6 +177,13 @@ proto.codegen.GetMappingRequest.serializeBinaryToWriter = function(message, writ
       f
     );
   }
+  f = message.getPulumiProvider();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -190,6 +202,24 @@ proto.codegen.GetMappingRequest.prototype.getProvider = function() {
  */
 proto.codegen.GetMappingRequest.prototype.setProvider = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string pulumi_provider = 2;
+ * @return {string}
+ */
+proto.codegen.GetMappingRequest.prototype.getPulumiProvider = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.codegen.GetMappingRequest} returns this
+ */
+proto.codegen.GetMappingRequest.prototype.setPulumiProvider = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

@@ -4,7 +4,7 @@
 {{ htmlSafe "<!-- Do not edit by hand unless you're certain you know what you are doing! -->" }}
 
 {{- if .DeprecationMessage }}
-<p class="resource-deprecated">Deprecated: {{- markdownify .DeprecationMessage -}}</p>
+<div class="resource-deprecated">Deprecated: {{ markdownify .DeprecationMessage -}}</div>
 {{- end }}
 
 {{ htmlSafe .Comment }}

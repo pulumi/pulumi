@@ -269,8 +269,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="rec_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_csharp" style="color: inherit; text-decoration: inherit;">Rec</a>
@@ -300,8 +299,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="rec_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_go" style="color: inherit; text-decoration: inherit;">Rec</a>
@@ -331,8 +329,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="rec_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_java" style="color: inherit; text-decoration: inherit;">rec</a>
@@ -362,8 +359,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="rec_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_nodejs" style="color: inherit; text-decoration: inherit;">rec</a>
@@ -393,8 +389,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="rec_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_python" style="color: inherit; text-decoration: inherit;">rec</a>
@@ -424,8 +419,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="rec_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_yaml" style="color: inherit; text-decoration: inherit;">rec</a>
@@ -455,7 +449,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="rec">Rec</h4>
+<h4 id="rec">
+Rec<pulumi-choosable type="language" values="python,go" class="inline">, Rec<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

@@ -116,12 +116,19 @@ func (c *Constant) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 
 // A Scope is used to map names to definitions during expression binding.
 //
-// A scope has two namespaces: one that is exclusive to functions and one that contains both variables and functions.
-// When binding a reference, only the latter is checked; when binding a function, only the former is checked.
+// A scope has three namespaces:
+//   - one that is exclusive to functions
+//   - one that is exclusive to output variables
+//   - and one that contains config variables, local variables and resource definitions.
+//
+// When binding a reference, we check `defs` and `outputs`. When binding a function, we check `functions`.
+// Definitions within a namespace such as `defs`, `outputs` or `functions` are expected to have a unique identifier
+// and cannot be redeclared.
 type Scope struct {
 	parent    *Scope
 	syntax    hclsyntax.Node
 	defs      map[string]Definition
+	outputs   map[string]Definition
 	functions map[string]*Function
 }
 
@@ -130,6 +137,7 @@ func NewRootScope(syntax hclsyntax.Node) *Scope {
 	return &Scope{
 		syntax:    syntax,
 		defs:      map[string]Definition{},
+		outputs:   map[string]Definition{},
 		functions: map[string]*Function{},
 	}
 }
@@ -163,9 +171,18 @@ func (s *Scope) SyntaxNode() hclsyntax.Node {
 // a definition is found or no parent scope remains.
 func (s *Scope) BindReference(name string) (Definition, bool) {
 	if s != nil {
+		// first we check inside defs which include config variables, local variables and resource definitions
 		if def, ok := s.defs[name]; ok {
 			return def, true
 		}
+
+		// then we check the namespace of the outputs.
+		// it is unlikely that an output is being referenced by something but still possible
+		// that is why we check outputs after checking defs
+		if output, ok := s.outputs[name]; ok {
+			return output, true
+		}
+
 		if s.parent != nil {
 			return s.parent.BindReference(name)
 		}
@@ -187,13 +204,35 @@ func (s *Scope) BindFunctionReference(name string) (*Function, bool) {
 	return nil, false
 }
 
+// isOutputDefinition returns whether the input definition is an output variable
+func isOutputDefinition(def Definition) bool {
+	syntax := def.SyntaxNode()
+	if syntax != nil {
+		switch syntax := syntax.(type) {
+		case *hclsyntax.Block:
+			return syntax.Type == "output"
+		}
+	}
+
+	return false
+}
+
 // Define maps the given name to the given definition. If the name is already defined in this scope, the existing
 // definition is not overwritten and Define returns false.
 func (s *Scope) Define(name string, def Definition) bool {
 	if s != nil {
-		if _, hasDef := s.defs[name]; !hasDef {
-			s.defs[name] = def
-			return true
+		if isOutputDefinition(def) {
+			// if the definition we have is an output
+			// then we only check inside the outputs namespace
+			if _, hasDef := s.outputs[name]; !hasDef {
+				s.outputs[name] = def
+				return true
+			}
+		} else {
+			if _, hasDef := s.defs[name]; !hasDef {
+				s.defs[name] = def
+				return true
+			}
 		}
 	}
 	return false
@@ -220,6 +259,7 @@ func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 				parent:    s,
 				syntax:    syntax,
 				defs:      map[string]Definition{},
+				outputs:   map[string]Definition{},
 				functions: map[string]*Function{},
 			}
 			s.defs[name] = child
@@ -235,6 +275,7 @@ func (s *Scope) Push(syntax hclsyntax.Node) *Scope {
 		parent:    s,
 		syntax:    syntax,
 		defs:      map[string]Definition{},
+		outputs:   map[string]Definition{},
 		functions: map[string]*Function{},
 	}
 }

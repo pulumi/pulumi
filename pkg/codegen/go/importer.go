@@ -69,6 +69,10 @@ type GoPackageInfo struct {
 	// space saving measure.
 	DisableInputTypeRegistrations bool `json:"disableInputTypeRegistrations,omitempty"`
 
+	// When set, the code generator will use this name for the generated internal module
+	// instead of "internal" so that functionality within the module can be used by end users.
+	InternalModuleName string `json:"internalModuleName,omitempty"`
+
 	// Feature flag to disable generating Pulumi object default functions. This is a
 	// space saving measure.
 	DisableObjectDefaults bool `json:"disableObjectDefaults,omitempty"`
@@ -87,6 +91,13 @@ type GoPackageInfo struct {
 	// InternalDependencies are blank imports that are emitted in the SDK so that `go mod tidy` does not remove the
 	// associated module dependencies from the SDK's go.mod.
 	InternalDependencies []string `json:"internalDependencies,omitempty"`
+
+	// Specifies how to handle generating a variant of the SDK that uses generics.
+	// Allowed values are the following:
+	// - "none" (default): do not generate a generics variant of the SDK
+	// - "side-by-side": generate a side-by-side generics variant of the SDK under the x subdirectory
+	// - "only-generics": generate a generics variant of the SDK only
+	Generics string `json:"generics,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

@@ -21,8 +21,8 @@ import * as settings from "../runtime/settings";
 import * as stack from "../runtime/stack";
 import * as localState from "../runtime/state";
 
-const langproto = require("../proto/language_pb.js");
-const plugproto = require("../proto/plugin_pb.js");
+import * as langproto from "../proto/language_pb";
+import * as plugproto from "../proto/plugin_pb";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
@@ -37,10 +37,6 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
     constructor(program: () => Promise<T>) {
         this.program = program;
-
-        // set a bit in runtime settings to indicate that we're running in inline mode.
-        // this allows us to detect and fail fast for side by side pulumi scenarios.
-        settings.setInline();
     }
 
     onPulumiExit(hasError: boolean) {

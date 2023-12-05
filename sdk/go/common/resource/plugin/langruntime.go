@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -56,14 +57,18 @@ type LanguageRuntime interface {
 
 	// GenerateProject generates a program project in the given directory. This will include metadata files such
 	// as Pulumi.yaml and package.json.
-	GenerateProject(directory string, project string, program map[string]string) error
+	GenerateProject(sourceDirectory, targetDirectory, project string,
+		strict bool, loaderTarget string, localDependencies map[string]string) (hcl.Diagnostics, error)
 
 	// GeneratePlugin generates an SDK package.
-	GeneratePackage(directory string, schema string, extraFiles map[string][]byte) error
+	GeneratePackage(directory string, schema string, extraFiles map[string][]byte, loaderTarget string) error
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program
 	// source code.
-	GenerateProgram(program map[string]string) (map[string][]byte, hcl.Diagnostics, error)
+	GenerateProgram(program map[string]string, loaderTarget string) (map[string][]byte, hcl.Diagnostics, error)
+
+	// Pack packs a library package into a language specific artifact in the given destination directory.
+	Pack(packageDirectory string, version semver.Version, destinationDirectory string) (string, error)
 }
 
 type DependencyInfo struct {
@@ -93,16 +98,17 @@ type ProgInfo struct {
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	MonitorAddress   string                // the RPC address to the host resource monitor.
-	Project          string                // the project name housing the program being run.
-	Stack            string                // the stack name being evaluated.
-	Pwd              string                // the program's working directory.
-	Program          string                // the path to the program to execute.
-	Args             []string              // any arguments to pass to the program.
-	Config           map[config.Key]string // the configuration variables to apply before running.
-	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
-	DryRun           bool                  // true if we are performing a dry-run (preview).
-	QueryMode        bool                  // true if we're only doing a query.
-	Parallel         int                   // the degree of parallelism for resource operations (<=1 for serial).
-	Organization     string                // the organization name housing the program being run (might be empty).
+	MonitorAddress    string                // the RPC address to the host resource monitor.
+	Project           string                // the project name housing the program being run.
+	Stack             string                // the stack name being evaluated.
+	Pwd               string                // the program's working directory.
+	Program           string                // the path to the program to execute.
+	Args              []string              // any arguments to pass to the program.
+	Config            map[config.Key]string // the configuration variables to apply before running.
+	ConfigSecretKeys  []config.Key          // the configuration keys that have secret values.
+	ConfigPropertyMap resource.PropertyMap  // the configuration as a property map.
+	DryRun            bool                  // true if we are performing a dry-run (preview).
+	QueryMode         bool                  // true if we're only doing a query.
+	Parallel          int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Organization      string                // the organization name housing the program being run (might be empty).
 }

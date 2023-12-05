@@ -15,6 +15,7 @@
 package fsutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -25,6 +26,13 @@ import (
 func WalkUp(path string, walkFn func(string) bool, visitParentFn func(string) bool) (string, error) {
 	if visitParentFn == nil {
 		visitParentFn = func(dir string) bool { return true }
+	}
+
+	// This needs to be an absolute path otherwise we will get stuck in an infinite loop of the parent
+	// directory of "." being ".".
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("abs: %w", err)
 	}
 
 	curr := pathDir(path)

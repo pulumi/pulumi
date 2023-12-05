@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import functools
-from typing import Dict, Any, Optional, Tuple, List, Set, Callable, Awaitable
-from semver import VersionInfo as Version
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
-import pytest
-
-from pulumi.runtime.settings import Settings, configure
-from pulumi.provider.server import ProviderServicer
-from pulumi.runtime import proto, rpc, rpc_manager, ResourceModule, Mocks
-from pulumi.resource import CustomResource, ResourceOptions
-from pulumi.runtime.proto.provider_pb2 import ConstructRequest
-from google.protobuf import struct_pb2
 import pulumi.output
+import pytest
+from google.protobuf import struct_pb2
+from pulumi.provider.server import ProviderServicer
+from pulumi.resource import CustomResource, ResourceOptions
+from pulumi.runtime import Mocks, ResourceModule, proto, rpc, rpc_manager
+from pulumi.runtime.proto.provider_pb2 import ConstructRequest
+from pulumi.runtime.settings import Settings, configure
+from semver import VersionInfo as Version
 
 
 def pulumi_test(coro):
@@ -35,7 +34,6 @@ def pulumi_test(coro):
         configure(Settings("project", "stack"))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
-        rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
 
         wrapped(*args, **kwargs)
 

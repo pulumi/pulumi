@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -43,7 +42,7 @@ type Source interface {
 	Info() interface{}
 
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
-	Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result)
+	Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error)
 }
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
@@ -51,7 +50,7 @@ type SourceIterator interface {
 	io.Closer
 
 	// Next returns the next event from the source.
-	Next() (SourceEvent, result.Result)
+	Next() (SourceEvent, error)
 }
 
 // SourceResourceMonitor directs resource operations from the `Source` to various resource
@@ -110,7 +109,7 @@ type ReadResourceEvent interface {
 	// ID is the requested ID of this read.
 	ID() resource.ID
 	// Name is the requested name of this read.
-	Name() tokens.QName
+	Name() string
 	// Type is type of the resource being read.
 	Type() tokens.Type
 	// Provider is a reference to the provider instance to use for this read.
@@ -125,6 +124,8 @@ type ReadResourceEvent interface {
 	Done(result *ReadResult)
 	// The names of any additional outputs that should be treated as secrets.
 	AdditionalSecretOutputs() []resource.PropertyKey
+	// The source position of the resource read
+	SourcePosition() string
 }
 
 type ReadResult struct {

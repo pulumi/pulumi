@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"embedded-crd-types/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -21,6 +22,7 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:foo", name, args, &resource, opts...)
 	if err != nil {

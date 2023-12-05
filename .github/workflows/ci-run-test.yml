@@ -70,6 +70,8 @@ env:
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   PULUMI_TEST_PYTHON_SHARED_VENV: "true"
+  # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
+  PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
   PYTHON: python
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
@@ -91,6 +93,23 @@ jobs:
     timeout-minutes: 60
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      # Create a coverage file to register a testing job was started.
+      # This artifact will be overwritten with "OK" at the end of the job.
+      - name: Write test started file
+        shell: bash
+        run: |
+          HASH=$(echo '${{ inputs.test-name }}' | git hash-object --literally --stdin | awk '{ print $1 }')
+          echo "TEST_HASH_ID=${HASH}" >> "$GITHUB_ENV"
+          echo "TEST_STATUS_FILE=status/test-${HASH}.txt" >> "$GITHUB_ENV"
+      # Consume env.TEST_STATUS_FILE to ensure it's able to be successfully used later.
+      - shell: bash
+        run: |
+          mkdir status
+          echo "incomplete" > "${{ env.TEST_STATUS_FILE }}"
+      - name: Register test started.
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{ env.TEST_STATUS_FILE }}
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
@@ -108,8 +127,11 @@ jobs:
       - name: Reduce Windows test parallelism
         if: ${{ runner.os == 'Windows' }}
         run: |
-          echo "GO_TEST_PARALLELISM=4" >> "$GITHUB_ENV"
-          echo "GO_TEST_PKG_PARALLELISM=1" >> "$GITHUB_ENV"
+          {
+            echo "GO_TEST_PARALLELISM=4"
+            echo "GO_TEST_PKG_PARALLELISM=1"
+            echo "GO_TEST_RACE=false"
+          } >> "$GITHUB_ENV"
           # For debugging:
           ps aux
       - name: "macOS use coreutils"
@@ -129,9 +151,12 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "$GITHUB_ENV"
       - name: Enable code coverage
-        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+        if: ${{ inputs.enable-coverage }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
+          # Post integration test coverage to a temporary directory.
+          # This will be merged at a later step.
+          echo "GOCOVERDIR=$(mktemp -d)" >> "$GITHUB_ENV"
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
@@ -141,7 +166,9 @@ jobs:
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           cache: true
-          cache-dependency-path: '*/go.sum'
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
       - name: Prime Go cache
         if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
         # Compile every test to ensure we populate a good cache entry.
@@ -155,7 +182,7 @@ jobs:
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
           dotnet-quality: ga
@@ -200,7 +227,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.32
+          tag: v0.0.42
           cache: enable
       - name: Install gotestsum
         uses: jaxxstorm/action-install-gh-release@v1.7.1
@@ -215,7 +242,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
-          repo: t0yv0/goteststats
+          repo: pulumi/goteststats
           tag: v0.0.7
           cache: enable
       - name: Generate artifact name
@@ -312,19 +339,31 @@ jobs:
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
-      - name: Merge Go coverage data
-        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+      - name: Merge integration test code coverage
+        if: ${{ inputs.enable-coverage }}
         run: |
-          pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
-          rm ./coverage/*.cov || true
+          # Merge coverage data from coverage-instrumented binaries
+          # if available.
+          if [ -n "$(ls -A "$GOCOVERDIR")" ]; then
+            # Cross-platform way to get milliseconds since Unix epoch.
+            TS=$(python -c 'import time; print(int(time.time() * 1000))')
+            go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration.$TS.cov"
+          fi
       - name: Upload code coverage
-        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
-        uses: codecov/codecov-action@v3
+        uses: actions/upload-artifact@v2
+        if: ${{ inputs.enable-coverage }}
         with:
-          directory: coverage
-          files: "*"
-          fail_ci_if_error: false
-          verbose: true
+          name: coverage-${{ env.TEST_HASH_ID }}
+          path: |
+            coverage/*
+            !coverage/.gitkeep
+      - name: Register test OK.
+        shell: bash
+        run: mkdir status; echo "OK" > "${{ env.TEST_STATUS_FILE }}"
+      - name: Register test successful.
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{ env.TEST_STATUS_FILE }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:

@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -31,36 +32,36 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	// Success case.
 	resmon1 := mockQueryResmon{}
-	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) result.Result {
+	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) error {
 		return nil
 	})
 
 	qs1.forkRun()
 
-	res := qs1.Wait()
-	assert.Nil(t, res)
+	err := qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
-	res = qs1.Wait()
-	assert.Nil(t, res)
+	err = qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
 	// Failure case.
 	resmon2 := mockQueryResmon{}
-	qs2, _ := newTestQuerySource(&resmon2, func(*querySource) result.Result {
-		return result.Error("failed")
+	qs2, _ := newTestQuerySource(&resmon2, func(*querySource) error {
+		return fmt.Errorf("failed")
 	})
 
 	qs2.forkRun()
 
-	res = qs2.Wait()
-	assert.False(t, res.IsBail())
-	assert.NotNil(t, res.Error())
+	err = qs2.Wait()
+	assert.False(t, result.IsBail(err))
+	assert.Error(t, err)
 	assert.False(t, resmon2.cancelled)
 
-	res = qs2.Wait()
-	assert.False(t, res.IsBail())
-	assert.NotNil(t, res.Error())
+	err = qs2.Wait()
+	assert.False(t, result.IsBail(err))
+	assert.Error(t, err)
 	assert.False(t, resmon2.cancelled)
 }
 
@@ -76,7 +77,7 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// -> test blocks on `Wait()` until querySource completes.
 	qs1Start, qs1StartAck := make(chan interface{}), make(chan interface{})
 	resmon1 := mockQueryResmon{}
-	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) result.Result {
+	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) error {
 		qs1Start <- struct{}{}
 		<-qs1StartAck
 		return nil
@@ -91,12 +92,12 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	}()
 
 	// Wait for querySource to complete.
-	res := qs1.Wait()
-	assert.Nil(t, res)
+	err := qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
-	res = qs1.Wait()
-	assert.Nil(t, res)
+	err = qs1.Wait()
+	assert.NoError(t, err)
 	assert.False(t, resmon1.cancelled)
 
 	// Cancellation case.
@@ -106,7 +107,7 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// -> test blocks on `Wait()` until querySource completes.
 	qs2Start, qs2StartAck := make(chan interface{}), make(chan interface{})
 	resmon2 := mockQueryResmon{}
-	qs2, cancelQs2 := newTestQuerySource(&resmon2, func(*querySource) result.Result {
+	qs2, cancelQs2 := newTestQuerySource(&resmon2, func(*querySource) error {
 		qs2Start <- struct{}{}
 		// Block forever.
 		<-qs2StartAck
@@ -122,12 +123,12 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	}()
 
 	// Wait for querySource to complete.
-	res = qs2.Wait()
-	assert.Nil(t, res)
+	err = qs2.Wait()
+	assert.NoError(t, err)
 	assert.True(t, resmon2.cancelled)
 
-	res = qs2.Wait()
-	assert.Nil(t, res)
+	err = qs2.Wait()
+	assert.NoError(t, err)
 	assert.True(t, resmon2.cancelled)
 }
 
@@ -136,15 +137,15 @@ func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 
 	rm := &queryResmon{}
 
-	_, err := rm.ReadResource(context.TODO(), nil)
+	_, err := rm.ReadResource(context.Background(), nil)
 	assert.Error(t, err)
 	assert.Equal(t, "Query mode does not support reading resources", err.Error())
 
-	_, err = rm.RegisterResource(context.TODO(), nil)
+	_, err = rm.RegisterResource(context.Background(), nil)
 	assert.Error(t, err)
 	assert.Equal(t, "Query mode does not support creating, updating, or deleting resources", err.Error())
 
-	_, err = rm.RegisterResourceOutputs(context.TODO(), nil)
+	_, err = rm.RegisterResourceOutputs(context.Background(), nil)
 	assert.Error(t, err)
 	assert.Equal(t, "Query mode does not support registering resource operations", err.Error())
 }
@@ -154,14 +155,14 @@ func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 //
 
 func newTestQuerySource(mon SourceResourceMonitor,
-	runLangPlugin func(*querySource) result.Result,
+	runLangPlugin func(*querySource) error,
 ) (*querySource, context.CancelFunc) {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 
 	return &querySource{
 		mon:               mon,
 		runLangPlugin:     runLangPlugin,
-		langPluginFinChan: make(chan result.Result),
+		langPluginFinChan: make(chan error),
 		cancel:            cancel,
 	}, cancelFunc
 }

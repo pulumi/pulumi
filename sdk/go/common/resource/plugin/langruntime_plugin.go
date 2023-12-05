@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -39,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
@@ -55,7 +55,7 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
 	options map[string]interface{},
 ) (LanguageRuntime, error) {
-	path, err := workspace.GetPluginPath(
+	path, err := workspace.GetPluginPath(ctx.Diag,
 		workspace.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func buildArgsForNewPlugin(host Host, root string, options map[string]interface{
 	if err != nil {
 		return nil, err
 	}
-	args := make([]string, 0, len(options))
+	args := slice.Prealloc[string](len(options))
 
 	for k, v := range options {
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
@@ -155,7 +155,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 		return nil, rpcError
 	}
 
-	results := make([]workspace.PluginSpec, 0, len(resp.GetPlugins()))
+	results := slice.Prealloc[workspace.PluginSpec](len(resp.GetPlugins()))
 	for _, info := range resp.GetPlugins() {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
@@ -165,14 +165,15 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 			}
 			version = &sv
 		}
-		if !workspace.IsPluginKind(info.GetKind()) {
-			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
+		if !workspace.IsPluginKind(info.Kind) {
+			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
-			Name:              info.GetName(),
-			Kind:              workspace.PluginKind(info.GetKind()),
+			Name:              info.Name,
+			Kind:              workspace.PluginKind(info.Kind),
 			Version:           version,
-			PluginDownloadURL: info.GetServer(),
+			PluginDownloadURL: info.Server,
+			Checksums:         info.Checksums,
 		})
 	}
 
@@ -196,19 +197,25 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	for i, k := range info.ConfigSecretKeys {
 		configSecretKeys[i] = k.String()
 	}
+	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
+		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	if err != nil {
+		return "", false, err
+	}
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress:   info.MonitorAddress,
-		Pwd:              info.Pwd,
-		Program:          info.Program,
-		Args:             info.Args,
-		Project:          info.Project,
-		Stack:            info.Stack,
-		Config:           config,
-		ConfigSecretKeys: configSecretKeys,
-		DryRun:           info.DryRun,
-		QueryMode:        info.QueryMode,
-		Parallel:         int32(info.Parallel),
-		Organization:     info.Organization,
+		MonitorAddress:    info.MonitorAddress,
+		Pwd:               info.Pwd,
+		Program:           info.Program,
+		Args:              info.Args,
+		Project:           info.Project,
+		Stack:             info.Stack,
+		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
+		ConfigPropertyMap: configPropertyMap,
+		DryRun:            info.DryRun,
+		QueryMode:         info.QueryMode,
+		Parallel:          int32(info.Parallel),
+		Organization:      info.Organization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -219,8 +226,8 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 
 	progerr := resp.GetError()
 	bail := resp.GetBail()
-	logging.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
-		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
+	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v, bail=%v",
+		h.runtime, info.Pwd, info.Program, info.DryRun, progerr, bail)
 	return progerr, bail, nil
 }
 
@@ -348,7 +355,7 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 		return nil, rpcError
 	}
 
-	results := make([]DependencyInfo, 0, len(resp.GetDependencies()))
+	results := slice.Prealloc[DependencyInfo](len(resp.GetDependencies()))
 	for _, dep := range resp.GetDependencies() {
 		var version semver.Version
 		if v := dep.Version; v != "" {
@@ -422,32 +429,43 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 }
 
 func (h *langhost) GenerateProject(
-	directory string, project string, source map[string]string,
-) error {
+	sourceDirectory, targetDirectory, project string, strict bool,
+	loaderTarget string, localDependencies map[string]string,
+) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
-	_, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
-		Directory: directory,
-		Project:   project,
-		Source:    source,
+	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
+		SourceDirectory:   sourceDirectory,
+		TargetDirectory:   targetDirectory,
+		Project:           project,
+		Strict:            strict,
+		LoaderTarget:      loaderTarget,
+		LocalDependencies: localDependencies,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GenerateProject() failed: err=%v", h.runtime, rpcError)
-		return rpcError
+		return nil, rpcError
+	}
+
+	// Translate the rpc diagnostics into hcl.Diagnostics.
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
 	}
 
 	logging.V(7).Infof("langhost[%v].GenerateProject() success", h.runtime)
-	return nil
+	return diags, nil
 }
 
 func (h *langhost) GeneratePackage(
-	directory string, schema string, extraFiles map[string][]byte,
+	directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
 ) error {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
 	_, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
-		Directory:  directory,
-		Schema:     schema,
-		ExtraFiles: extraFiles,
+		Directory:    directory,
+		Schema:       schema,
+		ExtraFiles:   extraFiles,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -459,10 +477,12 @@ func (h *langhost) GeneratePackage(
 	return nil
 }
 
-func (h *langhost) GenerateProgram(program map[string]string) (map[string][]byte, hcl.Diagnostics, error) {
+func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
 	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
-		Source: program,
+		Source:       program,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -480,54 +500,33 @@ func (h *langhost) GenerateProgram(program map[string]string) (map[string][]byte
 	return resp.Source, diags, nil
 }
 
-func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {
-	hclPosToPos := func(pos hcl.Pos) *codegenrpc.Pos {
-		return &codegenrpc.Pos{
-			Line:   int64(pos.Line),
-			Column: int64(pos.Column),
-			Byte:   int64(pos.Byte),
-		}
+func (h *langhost) Pack(
+	packageDirectory string, version semver.Version, destinationDirectory string,
+) (string, error) {
+	label := fmt.Sprintf("langhost[%v].Pack(%s, %s, %s)", h.runtime, packageDirectory, version, destinationDirectory)
+	logging.V(7).Infof("%s executing", label)
+
+	// Always send absolute paths to the plugin, as it may be running in a different working directory.
+	packageDirectory, err := filepath.Abs(packageDirectory)
+	if err != nil {
+		return "", err
+	}
+	destinationDirectory, err = filepath.Abs(destinationDirectory)
+	if err != nil {
+		return "", err
 	}
 
-	return &codegenrpc.Diagnostic{
-		Severity: codegenrpc.DiagnosticSeverity(diag.Severity),
-		Summary:  diag.Summary,
-		Detail:   diag.Detail,
-		Subject: &codegenrpc.Range{
-			Filename: diag.Subject.Filename,
-			Start:    hclPosToPos(diag.Subject.Start),
-			End:      hclPosToPos(diag.Subject.End),
-		},
-		Context: &codegenrpc.Range{
-			Filename: diag.Context.Filename,
-			Start:    hclPosToPos(diag.Context.Start),
-			End:      hclPosToPos(diag.Context.End),
-		},
-	}
-}
-
-func RPCDiagnosticToHclDiagnostic(diag *codegenrpc.Diagnostic) *hcl.Diagnostic {
-	rpcPosToPos := func(pos *codegenrpc.Pos) hcl.Pos {
-		return hcl.Pos{
-			Line:   int(pos.Line),
-			Column: int(pos.Column),
-			Byte:   int(pos.Byte),
-		}
+	req, err := h.client.Pack(h.ctx.Request(), &pulumirpc.PackRequest{
+		PackageDirectory:     packageDirectory,
+		Version:              version.String(),
+		DestinationDirectory: destinationDirectory,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return "", rpcError
 	}
 
-	return &hcl.Diagnostic{
-		Severity: hcl.DiagnosticSeverity(diag.Severity),
-		Summary:  diag.Summary,
-		Detail:   diag.Detail,
-		Subject: &hcl.Range{
-			Filename: diag.Subject.Filename,
-			Start:    rpcPosToPos(diag.Subject.Start),
-			End:      rpcPosToPos(diag.Subject.End),
-		},
-		Context: &hcl.Range{
-			Filename: diag.Context.Filename,
-			Start:    rpcPosToPos(diag.Context.Start),
-			End:      rpcPosToPos(diag.Context.End),
-		},
-	}
+	logging.V(7).Infof("%s success: artifactPath=%s", label, req.ArtifactPath)
+	return req.ArtifactPath, nil
 }

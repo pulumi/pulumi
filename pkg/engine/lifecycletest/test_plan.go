@@ -4,18 +4,19 @@ package lifecycletest
 import (
 	"context"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,43 +45,43 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 func ImportOp(imports []deploy.Import) TestOp {
 	return TestOp(func(info UpdateInfo, ctx *Context, opts UpdateOptions,
 		dryRun bool,
-	) (*deploy.Plan, display.ResourceChanges, result.Result) {
+	) (*deploy.Plan, display.ResourceChanges, error) {
 		return Import(info, ctx, opts, imports, dryRun)
 	})
 }
 
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, display.ResourceChanges, result.Result)
+type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, display.ResourceChanges, error)
 
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
-	events []Event, res result.Result) result.Result
+	events []Event, err error) error
 
-func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts UpdateOptions,
+func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	backendClient deploy.BackendClient, validate ValidateFunc,
-) (*deploy.Plan, result.Result) {
-	plan, _, res := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate)
-	return plan, res
+) (*deploy.Plan, error) {
+	plan, _, err := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate)
+	return plan, err
 }
 
-func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
+func (op TestOp) Run(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc,
-) (*deploy.Snapshot, result.Result) {
+) (*deploy.Snapshot, error) {
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
 
 func (op TestOp) RunWithContext(
 	callerCtx context.Context, project workspace.Project,
-	target deploy.Target, opts UpdateOptions, dryRun bool,
+	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc,
-) (*deploy.Snapshot, result.Result) {
-	_, snap, res := op.runWithContext(callerCtx, project, target, opts, dryRun, backendClient, validate)
-	return snap, res
+) (*deploy.Snapshot, error) {
+	_, snap, err := op.runWithContext(callerCtx, project, target, opts, dryRun, backendClient, validate)
+	return snap, err
 }
 
 func (op TestOp) runWithContext(
 	callerCtx context.Context, project workspace.Project,
-	target deploy.Target, opts UpdateOptions, dryRun bool,
+	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc,
-) (*deploy.Plan, *deploy.Snapshot, result.Result) {
+) (*deploy.Plan, *deploy.Snapshot, error) {
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
 
@@ -105,37 +106,49 @@ func (op TestOp) runWithContext(
 		BackendClient:   backendClient,
 	}
 
+	updateOpts := opts.Options()
+	defer func() {
+		if updateOpts.Host != nil {
+			contract.IgnoreClose(updateOpts.Host)
+		}
+	}()
+
 	// Begin draining events.
-	var wg sync.WaitGroup
-	var firedEvents []Event
-	wg.Add(1)
-	go func() {
+	firedEventsPromise := promise.Run(func() ([]Event, error) {
+		var firedEvents []Event
 		for e := range events {
 			firedEvents = append(firedEvents, e)
 		}
-		wg.Done()
-	}()
+		return firedEvents, nil
+	})
 
 	// Run the step and its validator.
-	plan, _, res := op(info, ctx, opts, dryRun)
+	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	wg.Wait()
 	contract.IgnoreClose(journal)
 
+	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
+	// the deployment context, not expecting it to have any effect on the test code here. See
+	// https://github.com/pulumi/pulumi/issues/14588 for what happens if you try to use callerCtx here.
+	firedEvents, err := firedEventsPromise.Result(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if validate != nil {
-		res = validate(project, target, journal.Entries(), firedEvents, res)
+		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
 	}
 	if dryRun {
-		return plan, nil, res
+		return plan, nil, opErr
 	}
 
 	snap, err := journal.Snap(target.Snapshot)
-	if res == nil && err != nil {
-		res = result.FromError(err)
-	} else if res == nil && snap != nil {
-		res = result.WrapIfNonNil(snap.VerifyIntegrity())
+	if opErr == nil && err != nil {
+		opErr = err
+	} else if opErr == nil && snap != nil {
+		opErr = snap.VerifyIntegrity()
 	}
-	return nil, snap, res
+	return nil, snap, opErr
 }
 
 type TestStep struct {
@@ -148,14 +161,30 @@ type TestStep struct {
 func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	o := t.Validate
 	t.Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		events []Event, res result.Result,
-	) result.Result {
-		r := o(project, target, entries, events, res)
+		events []Event, err error,
+	) error {
+		r := o(project, target, entries, events, err)
 		if r != nil {
 			return r
 		}
-		return f(project, target, entries, events, res)
+		return f(project, target, entries, events, err)
 	}
+}
+
+// TestUpdateOptions is UpdateOptions for a TestPlan.
+type TestUpdateOptions struct {
+	UpdateOptions
+	// a factory to produce a plugin host for an update operation.
+	HostF deploytest.PluginHostFactory
+}
+
+// Options produces UpdateOptions for an update operation.
+func (o TestUpdateOptions) Options() UpdateOptions {
+	opts := o.UpdateOptions
+	if o.HostF != nil {
+		opts.Host = o.HostF()
+	}
+	return opts
 }
 
 type TestPlan struct {
@@ -166,11 +195,11 @@ type TestPlan struct {
 	Config         config.Map
 	Decrypter      config.Decrypter
 	BackendClient  deploy.BackendClient
-	Options        UpdateOptions
+	Options        TestUpdateOptions
 	Steps          []TestStep
 }
 
-func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
+func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
 		project = "test"
@@ -179,9 +208,9 @@ func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, ru
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.Name(p.Stack)
-	if stack == "" {
-		stack = "test"
+	stack = tokens.MustParseStackName("test")
+	if p.Stack != "" {
+		stack = tokens.MustParseStackName(p.Stack)
 	}
 	return stack, project, runtime
 }
@@ -190,9 +219,9 @@ func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) res
 	stack, project, _ := p.getNames()
 	var pt tokens.Type
 	if parent != "" {
-		pt = parent.Type()
+		pt = parent.QualifiedType()
 	}
-	return resource.NewURN(stack.Q(), project, pt, typ, tokens.QName(name))
+	return resource.NewURN(stack.Q(), project, pt, typ, name)
 }
 
 func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -227,10 +256,6 @@ func (p *TestPlan) GetTarget(t testing.TB, snapshot *deploy.Snapshot) deploy.Tar
 	}
 }
 
-func assertIsErrorOrBailResult(t testing.TB, res result.Result) {
-	assert.NotNil(t, res)
-}
-
 // CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
 func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	t.Helper()
@@ -254,34 +279,34 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 		if !step.SkipPreview {
 			previewTarget := p.GetTarget(t, snap)
 			// Don't run validate on the preview step
-			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
+			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
-				assertIsErrorOrBailResult(t, res)
+				assert.Error(t, err)
 				continue
 			}
 
-			assert.Nil(t, res)
+			assert.NoError(t, err)
 		}
 
-		var res result.Result
+		var err error
 		target := p.GetTarget(t, snap)
-		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
+		snap, err = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
-			assertIsErrorOrBailResult(t, res)
+			assert.Error(t, err)
 			continue
 		}
 
-		if res != nil {
-			if res.IsBail() {
-				t.Logf("Got unexpected bail result")
+		if err != nil {
+			if result.IsBail(err) {
+				t.Logf("Got unexpected bail result: %v", err)
 				t.FailNow()
 			} else {
-				t.Logf("Got unexpected error result: %v", res.Error())
+				t.Logf("Got unexpected error result: %v", err)
 				t.FailNow()
 			}
 		}
 
-		assert.Nil(t, res)
+		assert.NoError(t, err)
 	}
 
 	return snap
@@ -294,8 +319,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result,
-			) result.Result {
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+
 				// Should see only creates or reads.
 				for _, entry := range entries {
 					op := entry.Step.Op()
@@ -304,15 +331,17 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, resCount)
-				return res
+				return err
 			},
 		},
 		// No-op refresh
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result,
-			) result.Result {
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+
 				// Should see only refresh-sames.
 				for _, entry := range entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -321,15 +350,17 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, resCount)
-				return res
+				return err
 			},
 		},
 		// No-op update
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result,
-			) result.Result {
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+
 				// Should see only sames.
 				for _, entry := range entries {
 					op := entry.Step.Op()
@@ -338,15 +369,17 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, resCount)
-				return res
+				return err
 			},
 		},
 		// No-op refresh
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result,
-			) result.Result {
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+
 				// Should see only refresh-sames.
 				for _, entry := range entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -355,15 +388,17 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, resCount)
-				return res
+				return err
 			},
 		},
 		// Destroy
 		{
 			Op: Destroy,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result,
-			) result.Result {
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+
 				// Should see only deletes.
 				for _, entry := range entries {
 					switch entry.Step.Op() {
@@ -376,20 +411,22 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, 0)
-				return res
+				return err
 			},
 		},
 		// No-op refresh
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result,
-			) result.Result {
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+
 				assert.Len(t, entries, 0)
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, 0)
-				return res
+				return err
 			},
 		},
 	}

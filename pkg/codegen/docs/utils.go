@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -39,7 +40,7 @@ func isPythonTypeNameBoundary(prev rune, next rune) bool {
 
 // wbr inserts HTML <wbr> in between case changes, e.g. "fooBar" becomes "foo<wbr>Bar".
 func wbr(s string) string {
-	runes := make([]rune, 0, len(s))
+	runes := slice.Prealloc[rune](len(s))
 	var prev rune
 	for i, r := range s {
 		if i != 0 &&

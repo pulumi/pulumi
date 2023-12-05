@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">local_enum</span><span class="p">:</span> <span class="nx">Optional[_local.MyEnum]</span> = None<span class="p">,</span>
-              <span class="nx">remote_enum</span><span class="p">:</span> <span class="nx">Optional[_accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem]</span> = None<span class="p">)</span>
+              <span class="nx">local_enum</span><span class="p">:</span> <span class="nx">Optional[local.MyEnum]</span> = None<span class="p">,</span>
+              <span class="nx">remote_enum</span><span class="p">:</span> <span class="nx">Optional[pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ComponentArgs]</a></span> = None<span class="p">,</span>
@@ -234,7 +234,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_csharp" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager/v1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager.<wbr>V1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -367,8 +367,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -382,8 +381,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -397,8 +395,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -412,8 +409,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -427,8 +423,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -442,8 +437,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -457,7 +451,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="myenum">My<wbr>Enum</h4>
+<h4 id="myenum">
+My<wbr>Enum<pulumi-choosable type="language" values="python,go" class="inline">, My<wbr>Enum<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

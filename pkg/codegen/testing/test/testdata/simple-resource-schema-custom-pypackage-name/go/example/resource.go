@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-resource-schema-custom-pypackage-name/example/internal"
 )
 
 type Resource struct {
@@ -23,6 +24,7 @@ func NewResource(ctx *pulumi.Context,
 		args = &ResourceArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {

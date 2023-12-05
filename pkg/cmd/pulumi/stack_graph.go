@@ -185,7 +185,7 @@ func (vertex *dependencyVertex) Data() interface{} {
 
 func (vertex *dependencyVertex) Label() string {
 	if shortNodeName {
-		return string(vertex.resource.URN.Name())
+		return vertex.resource.URN.Name()
 	}
 	return string(vertex.resource.URN)
 }

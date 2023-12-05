@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func asAnySlice(t *testing.T, values interface{}) []interface{} {
 	// use reflect.valueOf to iterate over items of values
 	require.Equalf(t, v.Kind(), reflect.Slice, "expected a slice, got %v", v.Type())
 
-	out := make([]interface{}, 0, v.Len())
+	out := slice.Prealloc[interface{}](v.Len())
 	for i := 0; i < v.Len(); i++ {
 		out = append(out, v.Index(i).Interface())
 	}

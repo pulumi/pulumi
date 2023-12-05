@@ -3,6 +3,8 @@ package docs
 import (
 	"fmt"
 	"sort"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 type entryType string
@@ -28,7 +30,7 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 	numFunctions := len(rootMod.functions)
 	// +1 to add the module itself as an entry.
 	size := numResources + numFunctions + 1
-	packageTree := make([]PackageTreeItem, 0, size)
+	packageTree := slice.Prealloc[PackageTreeItem](size)
 
 	conflictResolver := rootMod.docGenContext.newModuleConflictResolver()
 

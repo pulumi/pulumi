@@ -25,11 +25,11 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -93,12 +93,16 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 	var events []engine.Event
 	go func() {
-		// pull the events from the channel and store them locally
+		// Pull out relevant events we will want to display in the confirmation below.
 		for e := range eventsChannel {
+			// Don't include internal events in the confirmation stats.
+			if e.Internal() {
+				continue
+			}
 			if e.Type == engine.ResourcePreEvent ||
 				e.Type == engine.ResourceOutputsEvent ||
+				e.Type == engine.PolicyRemediationEvent ||
 				e.Type == engine.SummaryEvent {
-
 				events = append(events, e)
 			}
 		}
@@ -158,15 +162,15 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	res, plan = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
+	plan, err := confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
 	close(eventsChannel)
-	return plan, changes, res
+	return plan, changes, result.WrapIfNonNil(err)
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 	events []engine.Event, plan *deploy.Plan, opts UpdateOptions,
-) (result.Result, *deploy.Plan) {
+) (*deploy.Plan, error) {
 	for {
 		var response string
 
@@ -205,18 +209,17 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			Options: choices,
 			Default: string(no),
 		}, &response, surveyIcons); err != nil {
-			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)), nil
+			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
 		}
 
 		if response == string(no) {
-			fmt.Printf("confirmation declined, not proceeding with the %s\n", kind)
-			return result.Bail(), nil
+			return nil, result.FprintBailf(os.Stdout, "confirmation declined, not proceeding with the %s", kind)
 		}
 
 		if response == string(yes) {
 			// If we're in experimental mode always use the plan
 			if opts.Engine.Experimental {
-				return nil, plan
+				return plan, nil
 			}
 			return nil, nil
 		}
@@ -314,25 +317,50 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	displayOpts.SummaryDiff = true
 
 	outputEventsDiff := make([]string, 0)
+	remediationEventsDiff := make([]string, 0)
 	for _, e := range events {
 		if e.Type == engine.SummaryEvent {
 			continue
 		}
+
 		msg := display.RenderDiffEvent(e, seen, displayOpts)
 		if msg == "" {
 			continue
 		}
-		// display output events last
+
+		// Keep track of output and remediation events separately, since we print them after the
+		// ordinary resource diff information.
 		if e.Type == engine.ResourceOutputsEvent {
 			outputEventsDiff = append(outputEventsDiff, msg)
 			continue
+		} else if e.Type == engine.PolicyRemediationEvent {
+			remediationEventsDiff = append(remediationEventsDiff, msg)
+			continue
 		}
+
 		_, err := buff.WriteString(msg)
 		contract.IgnoreError(err)
 	}
-	for _, msg := range outputEventsDiff {
-		_, err := buff.WriteString(msg)
+
+	// Print resource outputs next.
+	if len(outputEventsDiff) > 0 {
+		_, err := buff.WriteString("\n")
 		contract.IgnoreError(err)
+		for _, msg := range outputEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	// Print policy remediations last.
+	if len(remediationEventsDiff) > 0 {
+		_, err := buff.WriteString(displayOpts.Color.Colorize(
+			fmt.Sprintf("\n%s  Policy Remediations:%s\n", colors.SpecHeadline, colors.Reset)))
+		contract.IgnoreError(err)
+		for _, msg := range remediationEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
 	}
 
 	return strings.TrimSpace(buff.String())

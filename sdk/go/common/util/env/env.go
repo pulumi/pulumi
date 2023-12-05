@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,8 +28,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Store holds a collection of key, value? pairs.
@@ -123,6 +121,7 @@ type Option func(*options)
 type options struct {
 	prerequs []BoolValue
 	noPrefix bool
+	secret   bool
 }
 
 func (o options) name(underlying string) string {
@@ -132,16 +131,21 @@ func (o options) name(underlying string) string {
 	return Prefix + underlying
 }
 
-// Indicate that a variable can only be set if `val` is truthy.
+// Needs indicates that a variable can only be set if `val` is truthy.
 func Needs(val BoolValue) Option {
 	return func(o *options) {
 		o.prerequs = append(o.prerequs, val)
 	}
 }
 
-// Indicate that a variable should not have the default prefix applied.
+// NoPrefix indicates that a variable should not have the default prefix applied.
 func NoPrefix(opts *options) {
 	opts.noPrefix = true
+}
+
+// Secret indicates that the value should not be displayed in plaintext.
+func Secret(opts *options) {
+	opts.secret = true
 }
 
 // The value of a environmental variable.
@@ -229,6 +233,9 @@ type StringValue struct{ *value }
 func (StringValue) Type() string { return "string" }
 
 func (s StringValue) formattedValue() string {
+	if s.variable.options.secret {
+		return "[secret]"
+	}
 	return fmt.Sprintf("%#v", s.Value())
 }
 
@@ -278,7 +285,7 @@ func (b BoolValue) Value() bool {
 	if !ok {
 		return false
 	}
-	return cmdutil.IsTruthy(v)
+	return v == "1" || strings.EqualFold(v, "true")
 }
 
 // An integer retrieved from the environment.

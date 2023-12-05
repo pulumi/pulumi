@@ -29,7 +29,7 @@ func TestURNRoundTripping(t *testing.T) {
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
-	name := tokens.QName("a-swell-resource")
+	name := "a-swell-resource"
 	urn := NewURN(stack, proj, parentType, typ, name)
 	assert.Equal(t, stack, urn.Stack())
 	assert.Equal(t, proj, urn.Project())
@@ -45,11 +45,42 @@ func TestURNRoundTripping2(t *testing.T) {
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("parent$type")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
-	name := tokens.QName("a-swell-resource")
+	name := "a-swell-resource"
 	urn := NewURN(stack, proj, parentType, typ, name)
 	assert.Equal(t, stack, urn.Stack())
 	assert.Equal(t, proj, urn.Project())
 	assert.Equal(t, tokens.Type("parent$type$bang:boom/fizzle:MajorResource"), urn.QualifiedType())
 	assert.Equal(t, typ, urn.Type())
 	assert.Equal(t, name, urn.Name())
+}
+
+func TestURNRoundTripping3(t *testing.T) {
+	t.Parallel()
+
+	stack := tokens.QName("stck")
+	proj := tokens.PackageName("foo/bar/baz")
+	parentType := tokens.Type("parent$type")
+	typ := tokens.Type("bang:boom/fizzle:MajorResource")
+	name := "a-swell-resource::with_awkward$names"
+	urn := NewURN(stack, proj, parentType, typ, name)
+	assert.Equal(t, stack, urn.Stack())
+	assert.Equal(t, proj, urn.Project())
+	assert.Equal(t, tokens.Type("parent$type$bang:boom/fizzle:MajorResource"), urn.QualifiedType())
+	assert.Equal(t, typ, urn.Type())
+	assert.Equal(t, name, urn.Name())
+}
+
+func TestIsValid(t *testing.T) {
+	t.Parallel()
+
+	goodUrns := []string{
+		"urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
+		"urn:pulumi:stack-name::project-name::my:customtype$aws:s3/bucket:Bucket::bob",
+		"urn:pulumi:stack::project::type::",
+		"urn:pulumi:stack::project::type::some really ::^&\n*():: crazy name",
+	}
+	for _, str := range goodUrns {
+		urn := URN(str)
+		assert.True(t, urn.IsValid(), "IsValid expected to be true: %v", urn)
+	}
 }

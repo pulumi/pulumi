@@ -8,10 +8,11 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-resource-schema/example/internal"
 )
 
 func ArgFunction(ctx *pulumi.Context, args *ArgFunctionArgs, opts ...pulumi.InvokeOption) (*ArgFunctionResult, error) {
-	opts = pkgInvokeDefaultOpts(opts)
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv ArgFunctionResult
 	err := ctx.Invoke("example::argFunction", args, &rv, opts...)
 	if err != nil {

@@ -23,6 +23,7 @@ import (
 
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -231,6 +232,11 @@ func (p *monitorProxy) ReadResource(
 func (p *monitorProxy) RegisterResource(
 	ctx context.Context, req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
+	// Add the "pulumi-runtime" header to the context so the engine can detect this request
+	// is coming from the nodejs language plugin.
+	// Setting this header is not required for other SDKs. We do it for nodejs so the engine
+	// can workaround a bug in older Node.js SDKs where alias specs weren't specified correctly.
+	ctx = metadata.AppendToOutgoingContext(ctx, "pulumi-runtime", "nodejs")
 	return p.target.RegisterResource(ctx, req)
 }
 

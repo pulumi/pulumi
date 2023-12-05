@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -88,9 +90,13 @@ type stackLSArgs struct {
 	orgFilter  string
 	projFilter string
 	tagFilter  string
+	stdout     io.Writer
 }
 
 func runStackLS(ctx context.Context, args stackLSArgs) error {
+	if args.stdout == nil {
+		args.stdout = os.Stdout
+	}
 	// Build up the stack filters. We do not support accepting empty strings as filters
 	// from command-line arguments, though the API technically supports it.
 	strPtrIfSet := func(s string) *string {
@@ -177,7 +183,7 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	})
 
 	if args.jsonOut {
-		return formatStackSummariesJSON(b, current, allStackSummaries)
+		return formatStackSummariesJSON(b, current, allStackSummaries, args.stdout)
 	}
 
 	return formatStackSummariesConsole(b, current, allStackSummaries)
@@ -201,12 +207,14 @@ type stackSummaryJSON struct {
 	Name             string `json:"name"`
 	Current          bool   `json:"current"`
 	LastUpdate       string `json:"lastUpdate,omitempty"`
-	UpdateInProgress bool   `json:"updateInProgress"`
+	UpdateInProgress *bool  `json:"updateInProgress,omitempty"`
 	ResourceCount    *int   `json:"resourceCount,omitempty"`
 	URL              string `json:"url,omitempty"`
 }
 
-func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
+func formatStackSummariesJSON(
+	b backend.Backend, currentStack string, stackSummaries []backend.StackSummary, stdout io.Writer,
+) error {
 	output := make([]stackSummaryJSON, len(stackSummaries))
 	for idx, summary := range stackSummaries {
 		summaryJSON := stackSummaryJSON{
@@ -216,9 +224,14 @@ func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSumma
 		}
 
 		if summary.LastUpdate() != nil {
-			if isUpdateInProgress(summary) {
-				summaryJSON.UpdateInProgress = true
+			if isUpdateInProgress(summary) && b.SupportsProgress() {
+				updateInProgress := true
+				summaryJSON.UpdateInProgress = &updateInProgress
 			} else {
+				if b.SupportsProgress() {
+					updateInProgress := false
+					summaryJSON.UpdateInProgress = &updateInProgress
+				}
 				summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(timeFormat)
 			}
 		}
@@ -232,7 +245,7 @@ func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSumma
 		output[idx] = summaryJSON
 	}
 
-	return printJSON(output)
+	return fprintJSON(stdout, output)
 }
 
 func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
@@ -287,10 +300,10 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 
-	cmdutil.PrintTable(cmdutil.Table{
+	printTable(cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
-	})
+	}, nil)
 
 	return nil
 }

@@ -27,16 +27,14 @@ import (
 func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	args := newPolicyArgs{
-		interactive:       false,
-		yes:               true,
 		templateNameOrURL: "aws-typescript",
 	}
 
-	err := runNewPolicyPack(context.TODO(), args)
+	err := runNewPolicyPack(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))

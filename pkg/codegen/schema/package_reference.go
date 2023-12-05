@@ -8,6 +8,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/segmentio/encoding/json"
 )
@@ -500,7 +501,7 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	config := p.config
 	provider := p.types.resourceDefs["pulumi:providers:"+p.spec.Name]
 
-	resources := make([]*Resource, 0, len(p.types.resourceDefs))
+	resources := slice.Prealloc[*Resource](len(p.types.resourceDefs))
 	resourceDefs := make(map[string]*Resource, len(p.types.resourceDefs))
 	for token, res := range p.types.resourceDefs {
 		resources, resourceDefs[token] = append(resources, res), res
@@ -509,7 +510,7 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 		return resources[i].Token < resources[j].Token
 	})
 
-	functions := make([]*Function, 0, len(p.types.functionDefs))
+	functions := slice.Prealloc[*Function](len(p.types.functionDefs))
 	functionDefs := make(map[string]*Function, len(p.types.functionDefs))
 	for token, fn := range p.types.functionDefs {
 		functions, functionDefs[token] = append(functions, fn), fn

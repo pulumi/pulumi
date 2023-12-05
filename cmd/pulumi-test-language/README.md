@@ -1,0 +1,1 @@
+pulumi-language-test runs a gRPC interface that language plugins can use to run a suite of standard tests.

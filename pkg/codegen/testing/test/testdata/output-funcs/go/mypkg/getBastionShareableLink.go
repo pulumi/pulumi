@@ -8,11 +8,14 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"output-funcs/mypkg/internal"
 )
 
 // Response for all the Bastion Shareable Link endpoints.
 // API Version: 2020-11-01.
 func GetBastionShareableLink(ctx *pulumi.Context, args *GetBastionShareableLinkArgs, opts ...pulumi.InvokeOption) (*GetBastionShareableLinkResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv GetBastionShareableLinkResult
 	err := ctx.Invoke("mypkg::getBastionShareableLink", args, &rv, opts...)
 	if err != nil {
@@ -75,6 +78,12 @@ func (o GetBastionShareableLinkResultOutput) ToGetBastionShareableLinkResultOutp
 
 func (o GetBastionShareableLinkResultOutput) ToGetBastionShareableLinkResultOutputWithContext(ctx context.Context) GetBastionShareableLinkResultOutput {
 	return o
+}
+
+func (o GetBastionShareableLinkResultOutput) ToOutput(ctx context.Context) pulumix.Output[GetBastionShareableLinkResult] {
+	return pulumix.Output[GetBastionShareableLinkResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 // The URL to get the next set of results.

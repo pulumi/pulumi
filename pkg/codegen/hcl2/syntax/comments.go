@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -481,7 +482,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 		}
 	case *hclsyntax.FunctionCallExpr:
 		args := n.Args
-		commas := make([]Token, 0, len(args))
+		commas := slice.Prealloc[Token](len(args))
 		if len(args) > 0 {
 			for _, ex := range args[:len(args)-1] {
 				commas = append(commas, m.tokens.atPos(m.nodeRange(ex).End))
@@ -596,7 +597,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 		}
 	case *hclsyntax.TupleConsExpr:
 		exprs := n.Exprs
-		commas := make([]Token, 0, len(exprs))
+		commas := slice.Prealloc[Token](len(exprs))
 		if len(exprs) > 0 {
 			for _, ex := range exprs[:len(exprs)-1] {
 				commas = append(commas, m.tokens.atPos(m.nodeRange(ex).End))

@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"naming-collisions/example/internal"
 )
 
 type ResourceInputResource struct {
@@ -23,6 +24,7 @@ func NewResourceInputResource(ctx *pulumi.Context,
 		args = &ResourceInputResourceArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ResourceInputResource
 	err := ctx.RegisterResource("example::ResourceInput", name, args, &resource, opts...)
 	if err != nil {

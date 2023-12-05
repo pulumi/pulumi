@@ -6,6 +6,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -27,7 +28,7 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 		}, deploytest.WithPath(schemaDirectoryPath))
 	}
 
-	pluginLoaders := make([]*deploytest.PluginLoader, 0, len(providers))
+	pluginLoaders := slice.Prealloc[*deploytest.PluginLoader](len(providers))
 
 	for _, v := range providers {
 		pluginLoaders = append(pluginLoaders, mockProvider(tokens.Package(v.name), v.version))
@@ -49,6 +50,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 	// schema files in the given schema directory. This is the minimal set of schemas that must be
 	// supplied.
 	return NewHostWithProviders(schemaDirectoryPath,
+		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"aws", "4.15.0"},
 		SchemaProvider{"aws", "4.26.0"},
 		SchemaProvider{"aws", "4.36.0"},
@@ -64,6 +66,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"kubernetes", "3.7.2"},
 		SchemaProvider{"eks", "0.37.1"},
 		SchemaProvider{"google-native", "0.18.2"},
+		SchemaProvider{"google-native", "0.27.0"},
 		SchemaProvider{"aws-native", "0.13.0"},
 		SchemaProvider{"docker", "3.1.0"},
 		SchemaProvider{"std", "1.0.0"},
@@ -82,5 +85,12 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"range", "1.0.0"},
 		SchemaProvider{"lambda", "0.1.0"},
 		SchemaProvider{"remoteref", "1.0.0"},
+		SchemaProvider{"splat", "1.0.0"},
+		SchemaProvider{"snowflake", "0.66.1"},
+		SchemaProvider{"using-dashes", "1.0.0"},
+		SchemaProvider{"auto-deploy", "0.0.1"},
+		SchemaProvider{"localref", "1.0.0"},
+		SchemaProvider{"enum", "1.0.0"},
+		SchemaProvider{"plain-properties", "1.0.0"},
 	)
 }

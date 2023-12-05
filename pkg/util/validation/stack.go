@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,16 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
-
-// validateStackName checks if s is a valid stack name, otherwise returns a descriptive error.
-// This should match the stack naming rules enforced by the Pulumi Service.
-func validateStackName(s string) error {
-	stackNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
-	if stackNameRE.MatchString(s) {
-		return nil
-	}
-	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
-}
 
 // validateStackTagName checks if s is a valid stack tag name, otherwise returns a descriptive error.
 // This should match the stack naming rules enforced by the Pulumi Service.
@@ -65,20 +55,4 @@ func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 	}
 
 	return nil
-}
-
-// ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
-// naming and length restrictions.
-func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
-	const maxStackName = 100 // Derived from the regex in validateStackName.
-	if len(stack) > maxStackName {
-		return fmt.Errorf("stack name too long (max length %d characters)", maxStackName)
-	}
-	if err := validateStackName(stack); err != nil {
-		return err
-	}
-
-	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
-	// values make sense, e.g. ProjectRuntimeTag is a supported runtime.
-	return ValidateStackTags(tags)
 }

@@ -51,7 +51,7 @@ def func_with_default_value(a: Optional[str] = None,
     __ret__ = pulumi.runtime.invoke('mypkg::funcWithDefaultValue', __args__, opts=opts, typ=FuncWithDefaultValueResult).value
 
     return AwaitableFuncWithDefaultValueResult(
-        r=__ret__.r)
+        r=pulumi.get(__ret__, 'r'))
 
 
 @_utilities.lift_output_func(func_with_default_value)

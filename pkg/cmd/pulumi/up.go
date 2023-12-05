@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -67,6 +68,7 @@ func newUpCmd() *cobra.Command {
 	var parallel int
 	var refresh string
 	var showConfig bool
+	var showPolicyRemediations bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
@@ -113,9 +115,19 @@ func newUpCmd() *cobra.Command {
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
 		}
+		encrypter, err := sm.Encrypter()
+		if err != nil {
+			return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+		}
 
 		stackName := s.Ref().Name().String()
-		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			stackName,
+			proj,
+			cfg.Environment,
+			cfg.Config,
+			encrypter,
+			decrypter)
 		if configErr != nil {
 			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 		}
@@ -138,13 +150,12 @@ func newUpCmd() *cobra.Command {
 			Parallel:                  parallel,
 			Debug:                     debug,
 			Refresh:                   refreshOption,
-			RefreshTargets:            deploy.NewUrnTargets(targetURNs),
 			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 			UseLegacyDiff:             useLegacyDiff(),
 			DisableProviderPreview:    disableProviderPreview(),
 			DisableResourceReferences: disableResourceReferences(),
 			DisableOutputValues:       disableOutputValues(),
-			UpdateTargets:             deploy.NewUrnTargets(targetURNs),
+			Targets:                   deploy.NewUrnTargets(targetURNs),
 			TargetDependents:          targetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
@@ -257,9 +268,9 @@ func newUpCmd() *cobra.Command {
 
 		// Prompt for the project name, if we don't already have one from an existing stack.
 		if name == "" {
-			defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
+			defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
 			name, err = promptForValue(
-				yes, "project name", defaultValue, false, workspace.ValidateProjectName, opts.Display)
+				yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -267,10 +278,10 @@ func newUpCmd() *cobra.Command {
 
 		// Prompt for the project description, if we don't already have one from an existing stack.
 		if description == "" {
-			defaultValue := workspace.ValueOrDefaultProjectDescription(
+			defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 				description, template.ProjectDescription, template.Description)
 			description, err = promptForValue(
-				yes, "project description", defaultValue, false, workspace.ValidateProjectDescription, opts.Display)
+				yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -303,7 +314,10 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(ctx, proj, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
+		if err = handleConfig(
+			ctx, promptForValue, proj, s,
+			templateNameOrURL, template, configArray,
+			yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
@@ -335,9 +349,18 @@ func newUpCmd() *cobra.Command {
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
 		}
+		encrypter, err := sm.Encrypter()
+		if err != nil {
+			return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+		}
 
 		stackName := s.Ref().String()
-		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName,
+			proj,
+			cfg.Environment,
+			cfg.Config,
+			encrypter,
+			decrypter)
 		if configErr != nil {
 			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 		}
@@ -433,18 +456,19 @@ func newUpCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				ShowReads:            showReads,
-				SuppressOutputs:      suppressOutputs,
-				TruncateOutput:       !showFullOutput,
-				IsInteractive:        interactive,
-				Type:                 displayType,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
-				JSONDisplay:          jsonDisplay,
+				Color:                  cmdutil.GetGlobalColorization(),
+				ShowConfig:             showConfig,
+				ShowPolicyRemediations: showPolicyRemediations,
+				ShowReplacementSteps:   showReplacementSteps,
+				ShowSameResources:      showSames,
+				ShowReads:              showReads,
+				SuppressOutputs:        suppressOutputs,
+				TruncateOutput:         !showFullOutput,
+				IsInteractive:          interactive,
+				Type:                   displayType,
+				EventLogPath:           eventLogPath,
+				Debug:                  debug,
+				JSONDisplay:            jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -461,8 +485,8 @@ func newUpCmd() *cobra.Command {
 				}
 
 				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
-					policyPackConfigPaths, refresh, showConfig, showReplacementSteps, showSames, showReads,
-					suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
+					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
+					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
 					targetDependents, planFilePath, stackConfigFile)
 				if err != nil {
 					return result.FromError(err)
@@ -562,6 +586,9 @@ func newUpCmd() *cobra.Command {
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
+		&showPolicyRemediations, "show-policy-remediations", false,
+		"Show per-resource policy remediation details instead of a summary")
+	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 
@@ -638,6 +665,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
 	ctx context.Context,
+	prompt promptForValueFunc,
 	project *workspace.Project,
 	s backend.Stack,
 	templateNameOrURL string,
@@ -677,7 +705,7 @@ func handleConfig(
 		}
 
 		// Prompt for config as needed.
-		c, err = promptForConfig(ctx, project, s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		c, err = promptForConfig(ctx, prompt, project, s, template.Config, commandLineConfig, stackConfig, yes, opts)
 		if err != nil {
 			return err
 		}

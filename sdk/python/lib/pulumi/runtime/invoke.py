@@ -17,17 +17,58 @@ import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 import grpc
+from google.protobuf import struct_pb2
+
+from semver import VersionInfo
 
 from .. import _types, log
 from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
-from .rpc_manager import RPC_MANAGER
-from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
+from .settings import (
+    _get_rpc_manager,
+    get_monitor,
+    grpc_error_to_exception,
+    handle_grpc_error,
+)
 from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .. import Inputs, Output, Resource
+
+
+def _requires_legacy_none_return_for_empty_struct(
+    ret_obj: struct_pb2.Struct, tok: str, version: str
+) -> bool:
+    """
+    To avoid breaking older versions of the Kubernetes Python SDK, we maintain the legacy behavior of
+    returning None instead of an empty dict for empty results if the invoke is for a version of the
+    Pulumi Kubernetes SDK that can't handle empty dicts.
+    See https://github.com/pulumi/pulumi/issues/14508.
+    """
+
+    # If re_obj is truthy or the token is not one of the known Kubernetes tokens, we don't need the legacy
+    # behavior.
+    if ret_obj or tok not in {
+        "kubernetes:yaml:decode",
+        "kubernetes:helm:template",
+        "kubernetes:kustomize:directory",
+    }:
+        return False
+
+    # If we have a version and it's less than or equal to pulumi-kubernetes 4.5.4, we need the legacy behavior;
+    # otherwise, we don't because later versions can handle the new behavior correctly.
+    if version:
+        k8s_ver = VersionInfo(4, 5, 4)
+        try:
+            ver = VersionInfo.parse(version)
+        except Exception as ex:
+            log.debug(f"Failed to parse version {version} as semver: {ex}")
+            ver = k8s_ver
+        return ver <= k8s_ver
+
+    # We don't have a version, default to the legacy behavior.
+    return True
 
 
 class InvokeResult:
@@ -116,19 +157,25 @@ def invoke(
 
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, "return")
-        if ret_obj:
-            deserialized = rpc.deserialize_properties(ret_obj)
-            # If typ is not None, call translate_output_properties to instantiate any output types.
-            return (
-                rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
-                if typ
-                else deserialized,
-                None,
-            )
-        return None, None
+
+        # To avoid breaking older versions of the Kubernetes Python SDK, return None instead
+        # of an empty dict for empty results if this invoke is for a version of the Pulumi
+        # Kubernetes SDK that can't handle empty dicts.
+        if _requires_legacy_none_return_for_empty_struct(ret_obj, tok, version):
+            log.debug(f"Returning None for empty result for invoke of {tok}")
+            return None, None
+
+        deserialized = rpc.deserialize_properties(ret_obj)
+        # If typ is not None, call translate_output_properties to instantiate any output types.
+        return (
+            rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
+            if typ
+            else deserialized,
+            None,
+        )
 
     async def do_rpc():
-        resp, exn = await RPC_MANAGER.do_rpc("invoke", do_invoke)()
+        resp, exn = await _get_rpc_manager().do_rpc("invoke", do_invoke)()
         # If there was an RPC level exception, we will raise it. Note that this will also crash the
         # process because it will have been considered "unhandled". For semantic level errors, such
         # as errors from the data source itself, we return that as part of the returned tuple instead.
@@ -282,6 +329,6 @@ def call(
             resolve_deps.set_result(set())
             raise
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("call", do_call)())
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_call)())
 
     return out

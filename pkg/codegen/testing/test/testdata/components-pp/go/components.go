@@ -10,6 +10,10 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = NewAnotherComponent(ctx, "anotherComponent", nil)
+		if err != nil {
+			return err
+		}
 		exampleComponent, err := NewExampleComponent(ctx, "exampleComponent", &ExampleComponentArgs{
 			Input: "doggo",
 			IpAddress: []int{

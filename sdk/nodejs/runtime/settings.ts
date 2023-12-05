@@ -19,10 +19,10 @@ import { ComponentResource } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { getLocalStore, getStore } from "./state";
 
-const engrpc = require("../proto/engine_grpc_pb.js");
-const engproto = require("../proto/engine_pb.js");
-const resrpc = require("../proto/resource_grpc_pb.js");
-const resproto = require("../proto/resource_pb.js");
+import * as engrpc from "../proto/engine_grpc_pb";
+import * as engproto from "../proto/engine_pb";
+import * as resrpc from "../proto/resource_grpc_pb";
+import * as resproto from "../proto/resource_pb";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
@@ -56,8 +56,8 @@ export interface Options {
     readonly syncDir?: string;
 }
 
-let monitor: any | undefined;
-let engine: any | undefined;
+let monitor: resrpc.ResourceMonitorClient | undefined;
+let engine: engrpc.EngineClient | undefined;
 
 // reset options resets nodejs runtime global state (such as rpc clients),
 // and sets nodejs runtime option env vars to the specified values.
@@ -225,8 +225,7 @@ export function hasMonitor(): boolean {
 /**
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
-export function getMonitor(): Object | undefined {
-    runSxSCheck();
+export function getMonitor(): resrpc.ResourceMonitorClient | undefined {
     const { settings } = getStore();
     const addr = options().monitorAddr;
     if (getLocalStore() === undefined) {
@@ -284,7 +283,7 @@ export function hasEngine(): boolean {
 /**
  * getEngine returns the current engine, if any, for RPC communications back to the resource engine.
  */
-export function getEngine(): Object | undefined {
+export function getEngine(): engrpc.EngineClient | undefined {
     const { settings } = getStore();
     if (getLocalStore() === undefined) {
         if (engine === undefined) {
@@ -330,7 +329,6 @@ export function serialize(): boolean {
 
  */
 function options(): Options {
-    runSxSCheck();
     const { settings } = getStore();
 
     return settings.options;
@@ -382,7 +380,7 @@ export function disconnectSync(): void {
         } catch (err) {
             // ignore.
         }
-        monitor = null;
+        monitor = undefined;
     }
     if (engine) {
         try {
@@ -390,7 +388,7 @@ export function disconnectSync(): void {
         } catch (err) {
             // ignore.
         }
-        engine = null;
+        engine = undefined;
     }
 }
 
@@ -416,7 +414,7 @@ export function rpcKeepAlive(): () => void {
  * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
  */
 export async function setRootResource(res: ComponentResource): Promise<void> {
-    const engineRef: any = getEngine();
+    const engineRef = getEngine();
     if (!engineRef) {
         return Promise.resolve();
     }
@@ -427,19 +425,22 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
     const urn = await res.urn.promise();
     req.setUrn(urn);
     return new Promise<void>((resolve, reject) => {
-        engineRef.setRootResource(req, (err: grpc.ServiceError, resp: any) => {
-            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
-            // resources, just ignore there's nothing we can do.
-            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+        engineRef.setRootResource(
+            req,
+            (err: grpc.ServiceError | null, resp: engproto.SetRootResourceResponse | undefined) => {
+                // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
+                // resources, just ignore there's nothing we can do.
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve();
+                }
+
+                if (err) {
+                    return reject(err);
+                }
+
                 return resolve();
-            }
-
-            if (err) {
-                return reject(err);
-            }
-
-            return resolve();
-        });
+            },
+        );
     });
 }
 
@@ -449,7 +450,7 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
  */
 export async function monitorSupportsFeature(feature: string): Promise<boolean> {
     const localStore = getStore();
-    const monitorRef: any = getMonitor();
+    const monitorRef = getMonitor();
     if (!monitorRef) {
         return localStore.settings.featureSupport[feature];
     }
@@ -459,19 +460,26 @@ export async function monitorSupportsFeature(feature: string): Promise<boolean> 
         req.setId(feature);
 
         const result = await new Promise<boolean>((resolve, reject) => {
-            monitorRef.supportsFeature(req, (err: grpc.ServiceError, resp: any) => {
-                // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
-                // secrets.
-                if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                    return resolve(false);
-                }
+            monitorRef.supportsFeature(
+                req,
+                (err: grpc.ServiceError | null, resp: resproto.SupportsFeatureResponse | undefined) => {
+                    // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
+                    // secrets.
+                    if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                        return resolve(false);
+                    }
 
-                if (err) {
-                    return reject(err);
-                }
+                    if (err) {
+                        return reject(err);
+                    }
 
-                return resolve(resp.getHassupport());
-            });
+                    if (resp === undefined) {
+                        return reject(new Error("No response from resource monitor"));
+                    }
+
+                    return resolve(resp.getHassupport());
+                },
+            );
         });
 
         localStore.settings.featureSupport[feature] = result;
@@ -524,40 +532,4 @@ export async function monitorSupportsDeletedWith(): Promise<boolean> {
  */
 export async function monitorSupportsAliasSpecs(): Promise<boolean> {
     return monitorSupportsFeature("aliasSpecs");
-}
-
-// sxsRandomIdentifier is a module level global that is transfered to process.env.
-// the goal is to detect side by side (sxs) pulumi/pulumi situations for inline programs
-// and fail fast. See https://github.com/pulumi/pulumi/issues/7333 for details.
-const sxsRandomIdentifier = Math.random().toString();
-
-// indicates that the current runtime context is via an inline program via automation api.
-let isInline = false;
-
-/** @internal only used by the internal inline language host implementation */
-export function setInline() {
-    isInline = true;
-}
-
-const pulumiSxSEnv = "PULUMI_NODEJS_SXS_FLAG";
-
-/**
- * runSxSCheck checks an identifier stored in the environment to detect multiple versions of pulumi.
- * if we're running in inline mode, it will throw an error to fail fast due to global state collisions that can occur.
- */
-function runSxSCheck() {
-    const envSxS = process.env[pulumiSxSEnv];
-    process.env[pulumiSxSEnv] = sxsRandomIdentifier;
-
-    if (!isInline) {
-        return;
-    }
-
-    // if we see a different identifier, another version of pulumi has been loaded and we should fail.
-    if (!!envSxS && envSxS !== sxsRandomIdentifier) {
-        throw new Error(
-            "Detected multiple versions of '@pulumi/pulumi' in use in an inline automation api program.\n" +
-                "Use the yarn 'resolutions' field to pin to a single version: https://github.com/pulumi/pulumi/issues/5449.",
-        );
-    }
 }

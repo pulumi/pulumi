@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type EnumThing int
@@ -78,6 +79,12 @@ func (o EnumThingOutput) ToEnumThingPtrOutputWithContext(ctx context.Context) En
 	}).(EnumThingPtrOutput)
 }
 
+func (o EnumThingOutput) ToOutput(ctx context.Context) pulumix.Output[EnumThing] {
+	return pulumix.Output[EnumThing]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o EnumThingOutput) ToIntOutput() pulumi.IntOutput {
 	return o.ToIntOutputWithContext(context.Background())
 }
@@ -111,6 +118,12 @@ func (o EnumThingPtrOutput) ToEnumThingPtrOutput() EnumThingPtrOutput {
 
 func (o EnumThingPtrOutput) ToEnumThingPtrOutputWithContext(ctx context.Context) EnumThingPtrOutput {
 	return o
+}
+
+func (o EnumThingPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*EnumThing] {
+	return pulumix.Output[*EnumThing]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o EnumThingPtrOutput) Elem() EnumThingOutput {
@@ -173,6 +186,12 @@ func (in *enumThingPtr) ToEnumThingPtrOutput() EnumThingPtrOutput {
 
 func (in *enumThingPtr) ToEnumThingPtrOutputWithContext(ctx context.Context) EnumThingPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(EnumThingPtrOutput)
+}
+
+func (in *enumThingPtr) ToOutput(ctx context.Context) pulumix.Output[*EnumThing] {
+	return pulumix.Output[*EnumThing]{
+		OutputState: in.ToEnumThingPtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 func init() {

@@ -28,15 +28,14 @@ import (
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	args := newPolicyArgs{
-		interactive:       true,
 		templateNameOrURL: "aws-javascript",
 	}
 
-	err := runNewPolicyPack(context.TODO(), args)
+	err := runNewPolicyPack(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
@@ -51,32 +50,29 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	const nonExistantTemplate = "this-is-not-the-template-youre-looking-for"
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
-		tempdir := t.TempDir()
+		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
 		args := newPolicyArgs{
-			interactive:       false,
-			yes:               true,
 			templateNameOrURL: nonExistantTemplate,
 		}
 
-		err := runNewPolicyPack(context.TODO(), args)
+		err := runNewPolicyPack(context.Background(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
-		tempdir := t.TempDir()
+		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
 		args := newPolicyArgs{
 			generateOnly:      true,
 			offline:           true,
 			templateNameOrURL: nonExistantTemplate,
-			yes:               true,
 		}
 
-		err := runNewPolicyPack(context.TODO(), args)
+		err := runNewPolicyPack(context.Background(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})

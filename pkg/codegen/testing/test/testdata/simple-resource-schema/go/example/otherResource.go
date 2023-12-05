@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-resource-schema/example/internal"
 )
 
 type OtherResource struct {
@@ -23,7 +24,7 @@ func NewOtherResource(ctx *pulumi.Context,
 		args = &OtherResourceArgs{}
 	}
 
-	opts = pkgResourceDefaultOpts(opts)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource OtherResource
 	err := ctx.RegisterRemoteComponentResource("example::OtherResource", name, args, &resource, opts...)
 	if err != nil {

@@ -13,18 +13,18 @@ no_edit_this_page: true
 
 <h2 id="modules">Modules</h2>
 <ul class="api">
-    <li><a href="overlay/" title="overlay"><span class="api-symbol api-symbol--module"></span>overlay</a></li>
+    <li><a href="overlay/" title="overlay">overlay</a></li>
 </ul>
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="res-overlay/" title="Overlay"><span class="api-symbol api-symbol--resource"></span>Overlay</a></li>
-    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
+    <li><a href="res-overlay/" title="Overlay">Overlay</a></li>
+    <li><a href="provider/" title="Provider">Provider</a></li>
 </ul>
 
 <h2 id="functions">Functions</h2>
 <ul class="api">
-    <li><a href="fn-overlay/" title="Overlay"><span class="api-symbol api-symbol--function"></span>Overlay</a></li>
+    <li><a href="fn-overlay/" title="Overlay">Overlay</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

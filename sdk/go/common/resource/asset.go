@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
@@ -470,6 +471,11 @@ const (
 )
 
 func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
+	if assets == nil {
+		// when provided assets are nil, create an empty archive
+		assets = make(map[string]interface{})
+	}
+
 	// Ensure all elements are either assets or archives.
 	for _, asset := range assets {
 		switch t := asset.(type) {
@@ -485,12 +491,18 @@ func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
 }
 
 func NewPathArchive(path string) (*Archive, error) {
+	if path == "" {
+		return nil, errors.New("path cannot be empty when constructing a path archive")
+	}
 	a := &Archive{Sig: ArchiveSig, Path: path}
 	err := a.EnsureHash()
 	return a, err
 }
 
 func NewURIArchive(uri string) (*Archive, error) {
+	if uri == "" {
+		return nil, errors.New("uri cannot be empty when constructing a URI archive")
+	}
 	a := &Archive{Sig: ArchiveSig, URI: uri}
 	err := a.EnsureHash()
 	return a, err
@@ -602,60 +614,71 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 		hash = h
 	}
 
-	var assets map[string]interface{}
-	if v, has := obj[ArchiveAssetsProperty]; has {
-		assets = make(map[string]interface{})
-		if v != nil {
-			m, ok := v.(map[string]interface{})
-			if !ok {
-				return &Archive{}, false, fmt.Errorf("unexpected archive contents of type %T", v)
-			}
+	if path, has := obj[ArchivePathProperty]; has {
+		pathValue, ok := path.(string)
+		if !ok {
+			return &Archive{}, false, fmt.Errorf("unexpected archive path of type %T", path)
+		}
 
-			for k, elem := range m {
-				switch t := elem.(type) {
-				case *Asset:
-					assets[k] = t
-				case *Archive:
-					assets[k] = t
-				case map[string]interface{}:
-					a, isa, err := DeserializeAsset(t)
+		if pathValue != "" {
+			pathArchive := &Archive{Sig: ArchiveSig, Path: pathValue, Hash: hash}
+			return pathArchive, true, nil
+		}
+	}
+
+	if uri, has := obj[ArchiveURIProperty]; has {
+		uriValue, ok := uri.(string)
+		if !ok {
+			return &Archive{}, false, fmt.Errorf("unexpected archive URI of type %T", uri)
+		}
+
+		if uriValue != "" {
+			uriArchive := &Archive{Sig: ArchiveSig, URI: uriValue, Hash: hash}
+			return uriArchive, true, nil
+		}
+	}
+
+	if assetsMap, has := obj[ArchiveAssetsProperty]; has {
+		m, ok := assetsMap.(map[string]interface{})
+		if !ok {
+			return &Archive{}, false, fmt.Errorf("unexpected archive contents of type %T", assetsMap)
+		}
+
+		assets := make(map[string]interface{})
+		for k, elem := range m {
+			switch t := elem.(type) {
+			case *Asset:
+				assets[k] = t
+			case *Archive:
+				assets[k] = t
+			case map[string]interface{}:
+				a, isa, err := DeserializeAsset(t)
+				if err != nil {
+					return &Archive{}, false, err
+				} else if isa {
+					assets[k] = a
+				} else {
+					arch, isarch, err := DeserializeArchive(t)
 					if err != nil {
 						return &Archive{}, false, err
-					} else if isa {
-						assets[k] = a
-					} else {
-						arch, isarch, err := DeserializeArchive(t)
-						if err != nil {
-							return &Archive{}, false, err
-						} else if !isarch {
-							return &Archive{}, false, fmt.Errorf("archive member '%v' is not an asset or archive", k)
-						}
-						assets[k] = arch
+					} else if !isarch {
+						return &Archive{}, false, fmt.Errorf("archive member '%v' is not an asset or archive", k)
 					}
-				default:
-					return &Archive{}, false, fmt.Errorf("archive member '%v' is not an asset or archive", k)
+					assets[k] = arch
 				}
+			default:
+				return &Archive{}, false, fmt.Errorf("archive member '%v' is not an asset or archive", k)
 			}
 		}
-	}
-	var path string
-	if v, has := obj[ArchivePathProperty]; has {
-		p, ok := v.(string)
-		if !ok {
-			return &Archive{}, false, fmt.Errorf("unexpected archive path of type %T", v)
-		}
-		path = p
-	}
-	var uri string
-	if v, has := obj[ArchiveURIProperty]; has {
-		u, ok := v.(string)
-		if !ok {
-			return &Archive{}, false, fmt.Errorf("unexpected archive URI of type %T", v)
-		}
-		uri = u
+
+		assetArchive := &Archive{Sig: ArchiveSig, Assets: assets, Hash: hash}
+		return assetArchive, true, nil
 	}
 
-	return &Archive{Hash: hash, Assets: assets, Path: path, URI: uri}, true, nil
+	// if we reached here, it means the archive is empty,
+	// we didn't find a non-zero path, non-zero uri nor non-nil assets
+	// we will consider this to be an empty assets archive then with zero assets
+	return &Archive{Sig: ArchiveSig, Assets: make(map[string]interface{}), Hash: hash}, true, nil
 }
 
 // HasContents indicates whether or not an archive's contents can be read.
@@ -757,7 +780,7 @@ func (a *Archive) readAssets() (ArchiveReader, error) {
 	contract.Assertf(isassets, "Expected an asset map-based archive")
 
 	// Calculate and sort the list of member names s.t. it is deterministically orderered.
-	keys := make([]string, 0, len(m))
+	keys := slice.Prealloc[string](len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}

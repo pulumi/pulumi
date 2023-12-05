@@ -15,7 +15,7 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/mapper.proto\x12\x07\x63odegen\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"%\n\x11GetMappingRequest\x12\x10\n\x08provider\x18\x01 \x01(\t\"\"\n\x12GetMappingResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x32Q\n\x06Mapper\x12G\n\nGetMapping\x12\x1a.codegen.GetMappingRequest\x1a\x1b.codegen.GetMappingResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/mapper.proto\x12\x07\x63odegen\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\">\n\x11GetMappingRequest\x12\x10\n\x08provider\x18\x01 \x01(\t\x12\x17\n\x0fpulumi_provider\x18\x02 \x01(\t\"\"\n\x12GetMappingResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x32Q\n\x06Mapper\x12G\n\nGetMapping\x12\x1a.codegen.GetMappingRequest\x1a\x1b.codegen.GetMappingResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.mapper_pb2', globals())
@@ -24,9 +24,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegen'
   _GETMAPPINGREQUEST._serialized_start=99
-  _GETMAPPINGREQUEST._serialized_end=136
-  _GETMAPPINGRESPONSE._serialized_start=138
-  _GETMAPPINGRESPONSE._serialized_end=172
-  _MAPPER._serialized_start=174
-  _MAPPER._serialized_end=255
+  _GETMAPPINGREQUEST._serialized_end=161
+  _GETMAPPINGRESPONSE._serialized_start=163
+  _GETMAPPINGRESPONSE._serialized_end=197
+  _MAPPER._serialized_start=199
+  _MAPPER._serialized_end=280
 # @@protoc_insertion_point(module_scope)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"different-enum/plant/internal"
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -25,6 +26,7 @@ func NewNursery(ctx *pulumi.Context,
 	if args.Varieties == nil {
 		return nil, errors.New("invalid value for required argument 'Varieties'")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Nursery
 	err := ctx.RegisterResource("plant:tree/v1:Nursery", name, args, &resource, opts...)
 	if err != nil {

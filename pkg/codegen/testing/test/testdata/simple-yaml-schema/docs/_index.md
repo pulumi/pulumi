@@ -13,15 +13,15 @@ no_edit_this_page: true
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="otherresource/" title="OtherResource"><span class="api-symbol api-symbol--resource"></span>OtherResource</a></li>
-    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
-    <li><a href="resource/" title="Resource"><span class="api-symbol api-symbol--resource"></span>Resource</a></li>
-    <li><a href="typeuses/" title="TypeUses"><span class="api-symbol api-symbol--resource"></span>TypeUses</a></li>
+    <li><a href="otherresource/" title="OtherResource">OtherResource</a></li>
+    <li><a href="provider/" title="Provider">Provider</a></li>
+    <li><a href="resource/" title="Resource">Resource</a></li>
+    <li><a href="typeuses/" title="TypeUses">TypeUses</a></li>
 </ul>
 
 <h2 id="functions">Functions</h2>
 <ul class="api">
-    <li><a href="argfunction/" title="ArgFunction"><span class="api-symbol api-symbol--function"></span>ArgFunction</a></li>
+    <li><a href="argfunction/" title="ArgFunction">ArgFunction</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

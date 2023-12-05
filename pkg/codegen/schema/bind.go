@@ -30,6 +30,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/segmentio/encoding/json"
@@ -53,7 +54,7 @@ func init() {
 
 func sortedKeys(m interface{}) []string {
 	rv := reflect.ValueOf(m)
-	keys := make([]string, 0, rv.Len())
+	keys := slice.Prealloc[string](rv.Len())
 	for it := rv.MapRange(); it.Next(); {
 		keys = append(keys, it.Key().String())
 	}
@@ -310,7 +311,10 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	return pkg, nil
 }
 
-func importPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
+// ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
+// PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
+// contents of a package are not needed (e.g. for referenced packages).
+func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
 	pkg := &PartialPackage{
 		spec:      &spec,
 		languages: languages,
@@ -324,13 +328,6 @@ func importPartialSpec(spec PartialPackageSpec, languages map[string]Language, l
 	}
 	pkg.types = types
 	return pkg, nil
-}
-
-// ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
-// PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
-// contents of a package are not needed (e.g. for referenced packages).
-func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language) (*PartialPackage, error) {
-	return importPartialSpec(spec, languages, nil)
 }
 
 type specSource interface {
@@ -483,7 +480,7 @@ const (
 
 // Validate an individual name token.
 func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, section, token string) hcl.Diagnostics {
-	diags := hcl.Diagnostics{}
+	var diags hcl.Diagnostics
 
 	path := memberPath(section, token)
 	parts := strings.Split(token, ":")
@@ -506,7 +503,7 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
-	diags := hcl.Diagnostics{}
+	var diags hcl.Diagnostics
 	allowedPackageNames := map[string]bool{spec.Name: true}
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedPackageNames[prefix] = true
@@ -957,26 +954,39 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 
 	switch typ = plainType(typ); typ {
 	case BoolType:
-		if _, ok := value.(bool); !ok {
+		v, ok := value.(bool)
+		if !ok {
 			return false, typeError("boolean")
 		}
+		return v, nil
 	case IntType:
+		v, ok := value.(int)
+		if !ok {
+			v, ok := value.(float64)
+			if !ok {
+				return 0, typeError("integer")
+			}
+			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
+				return 0, typeError("integer")
+			}
+			return int32(v), nil
+		}
+		if v < math.MinInt32 || v > math.MaxInt32 {
+			return 0, typeError("integer")
+		}
+		return int32(v), nil
+	case NumberType:
 		v, ok := value.(float64)
 		if !ok {
-			return 0, typeError("integer")
-		}
-		if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
-			return 0, typeError("integer")
-		}
-		value = int32(v)
-	case NumberType:
-		if _, ok := value.(float64); !ok {
 			return 0.0, typeError("number")
 		}
+		return v, nil
 	case StringType:
-		if _, ok := value.(string); !ok {
+		v, ok := value.(string)
+		if !ok {
 			return 0.0, typeError("string")
 		}
+		return v, nil
 	default:
 		if _, isInvalid := typ.(*InvalidType); isInvalid {
 			return nil, nil
@@ -984,8 +994,6 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 		return nil, hcl.Diagnostics{errorf(path, "type %v cannot have a constant value; only booleans, integers, "+
 			"numbers and strings may have constant values", typ)}
 	}
-
-	return value, nil
 }
 
 func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Type) (*DefaultValue, hcl.Diagnostics) {
@@ -1040,9 +1048,10 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
-	result := make([]*Property, 0, len(properties))
+	result := slice.Prealloc[*Property](len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
+
 		// NOTE: The correct determination for if we should bind an input is:
 		//
 		// inputShape && !spec.Plain
@@ -1220,7 +1229,7 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 	}
 
 	// Build the type list.
-	typeList := make([]Type, 0, len(t.resources))
+	typeList := slice.Prealloc[Type](len(t.resources))
 	for _, t := range t.resources {
 		typeList = append(typeList, t)
 	}
@@ -1256,13 +1265,13 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 ) ([]*Method, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	names := make([]string, 0, len(methods))
+	names := slice.Prealloc[string](len(methods))
 	for name := range methods {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
-	result := make([]*Method, 0, len(methods))
+	result := slice.Prealloc[*Method](len(methods))
 	for _, name := range names {
 		token := methods[name]
 
@@ -1350,6 +1359,14 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
 	}
 
+	// Some property names are reserved for resource outputs
+	for _, property := range properties {
+		name := property.Name
+		if name == "id" || name == "urn" {
+			return diags, fmt.Errorf("failed to bind properties for %v: property name %q is reserved", token, name)
+		}
+	}
+
 	inputProperties, _, inputDiags, err := t.bindProperties(path+"/inputProperties", spec.InputProperties,
 		path+"/requiredInputs", spec.RequiredInputs, true)
 	diags = diags.Extend(inputDiags)
@@ -1379,7 +1396,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		stateInputs = si.InputShape
 	}
 
-	aliases := make([]*Alias, 0, len(spec.Aliases))
+	aliases := slice.Prealloc[*Alias](len(spec.Aliases))
 	for _, a := range spec.Aliases {
 		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
 	}
@@ -1423,7 +1440,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
 	// values which are primitives, we'll simply remove any properties for the provider resource which are not
 	// strings, or types with an underlying type of string, before we generate the provider code.
-	stringProperties := make([]*Property, 0, len(decl.Properties))
+	stringProperties := slice.Prealloc[*Property](len(decl.Properties))
 	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
 		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
@@ -1452,7 +1469,7 @@ func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Di
 	}
 	diags = diags.Extend(provDiags)
 
-	resources := make([]*Resource, 0, len(tokens))
+	resources := slice.Prealloc[*Resource](len(tokens))
 	for _, token := range tokens {
 		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
@@ -1554,6 +1571,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	var inlineObjectAsReturnType bool
 	var returnType Type
+	var returnTypePlain bool
 	if spec.ReturnType != nil && spec.Outputs == nil {
 		// compute the return type from the spec
 		if spec.ReturnType.ObjectTypeSpec != nil {
@@ -1566,6 +1584,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 			returnType = outs
 			outputs = outs
 			inlineObjectAsReturnType = true
+			returnTypePlain = spec.ReturnType.ObjectTypeSpecIsPlain
 		} else if spec.ReturnType.TypeSpec != nil {
 			out, outDiags, err := t.bindTypeSpec(path+"/outputs", *spec.ReturnType.TypeSpec, false)
 			diags = diags.Extend(outDiags)
@@ -1573,6 +1592,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 				return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
 			}
 			returnType = out
+			returnTypePlain = spec.ReturnType.TypeSpec.Plain
 		} else {
 			// Setting `spec.ReturnType` to a value without setting either `TypeSpec` or `ObjectTypeSpec`
 			// indicates a logical bug in our marshaling code.
@@ -1599,6 +1619,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		InlineObjectAsReturnType: inlineObjectAsReturnType,
 		Outputs:                  outputs,
 		ReturnType:               returnType,
+		ReturnTypePlain:          returnTypePlain,
 		DeprecationMessage:       spec.DeprecationMessage,
 		Language:                 language,
 		IsOverlay:                spec.IsOverlay,
@@ -1611,7 +1632,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 func (t *types) finishFunctions(tokens []string) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	functions := make([]*Function, 0, len(tokens))
+	functions := slice.Prealloc[*Function](len(tokens))
 	for _, token := range tokens {
 		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)

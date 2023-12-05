@@ -125,18 +125,28 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	}
 	pkgSchema, ok := b.options.packageCache.entries[pkgInfo]
 	if !ok {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
 		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
 
-	var fn *schema.Function
-	if f, tk, ok, err := pkgSchema.LookupFunction(token); err != nil {
+	fn, tk, ok, err := pkgSchema.LookupFunction(token)
+	if err != nil {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
+
 		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
 	} else if !ok {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
+
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
-	} else {
-		fn = f
-		lit.Value = cty.StringVal(tk)
 	}
+
+	lit.Value = cty.StringVal(tk)
 
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
@@ -190,12 +200,21 @@ func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (m
 }
 
 // Heuristic to decide when to use `fnOutput` form of a function. Will
-// conservatively prefer `false`. It only decides to return `true` if
-// doing so avoids the need to introduce an `apply` form to
+// conservatively prefer `false` unless bind option choose to prefer otherwise.
+// It decides to return `true` if doing so avoids the need to introduce an `apply` form to
 // accommodate `Output` args (`Promise` args do not count).
 func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bool {
-	if !fn.NeedsOutputVersion() {
+	if fn.ReturnType == nil {
 		// No code emitted for an `fnOutput` form, impossible.
+		return false
+	}
+
+	if b.options.preferOutputVersionedInvokes {
+		return true
+	}
+
+	if fn.Inputs == nil || len(fn.Inputs.Properties) == 0 {
+		// use the output version when there are actual args to use
 		return false
 	}
 
@@ -235,8 +254,13 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 		return model.StaticFunctionSignature{}, fmt.Errorf("Function %s does not have an Output version", fn.Token)
 	}
 
-	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.ReturnType != nil`.
-	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
+	// Given `fn.NeedsOutputVersion()==true` `fn.ReturnType != nil`.
+	var argsType model.Type
+	if fn.Inputs != nil {
+		argsType = b.schemaTypeToType(fn.Inputs.InputShape)
+	} else {
+		argsType = model.NewObjectType(map[string]model.Type{})
+	}
 	returnType := b.schemaTypeToType(fn.ReturnType)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }

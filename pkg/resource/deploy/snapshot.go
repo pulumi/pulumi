@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their
@@ -72,11 +73,20 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 			}
 			aliased[alias] = state.URN
 		}
+		// If our parent has changed URN, then we need to update our URN as well.
+		if parent, has := aliased[state.Parent]; has {
+			if parent != "" && parent.QualifiedType() != resource.RootStackType {
+				aliased[state.URN] = resource.NewURN(
+					state.URN.Stack(), state.URN.Project(),
+					parent.QualifiedType(), state.URN.Type(),
+					state.URN.Name())
+			}
+		}
 	}
 
 	fixUrn := func(urn resource.URN) resource.URN {
 		if newUrn, has := aliased[urn]; has {
-			// TODO should this recur to see if newUrn is simiarly aliased?
+			// TODO should this recur to see if newUrn is similarly aliased?
 			return newUrn
 		}
 		return urn
@@ -93,10 +103,12 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 
 	fixResource := func(old *resource.State) *resource.State {
 		return newStateBuilder(old).
+			withUpdatedURN(fixUrn).
 			withUpdatedParent(fixUrn).
 			withUpdatedDependencies(fixUrn).
 			withUpdatedPropertyDependencies(fixUrn).
 			withUpdatedProvider(fixProvider).
+			withUpdatedAliases().
 			build()
 	}
 
@@ -154,6 +166,18 @@ func (snap *Snapshot) VerifyIntegrity() error {
 						}
 					}
 					return fmt.Errorf("child resource %s refers to missing parent %s", urn, par)
+				}
+
+				// Ensure that our URN is a child of the parent's URN.
+				expectedType := urn.Type()
+				if par.QualifiedType() != resource.RootStackType {
+					expectedType = par.QualifiedType() + "$" + expectedType
+				}
+
+				if urn.QualifiedType() != expectedType {
+					logging.Warningf("child resource %s has parent %s but it's URN doesn't match", urn, par)
+					// TODO: Change this to an error once we're sure users won't hit this in the wild.
+					// return fmt.Errorf("child resource %s has parent %s but it's URN doesn't match", urn, par)
 				}
 			}
 

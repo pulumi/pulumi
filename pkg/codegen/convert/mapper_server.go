@@ -19,6 +19,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -35,13 +36,16 @@ func NewMapperServer(mapper Mapper) codegenrpc.MapperServer {
 func (m *mapperServer) GetMapping(ctx context.Context,
 	req *codegenrpc.GetMappingRequest,
 ) (*codegenrpc.GetMappingResponse, error) {
-	// TODO: GetMapping should take a context because it's async, but we need to break the tfbridge build loop
-	// first.
-	data, err := m.mapper.GetMapping(req.Provider)
+	label := "GetMapping"
+	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, req.Provider, req.PulumiProvider)
+
+	data, err := m.mapper.GetMapping(ctx, req.Provider, req.PulumiProvider)
 	if err != nil {
+		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err
 	}
 
+	logging.V(7).Infof("%s success: data=#%d", label, len(data))
 	return &codegenrpc.GetMappingResponse{
 		Data: data,
 	}, nil

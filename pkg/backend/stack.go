@@ -17,13 +17,13 @@ package backend
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -43,7 +43,9 @@ type Stack interface {
 	// the stack's existing tags.
 	Tags() map[apitype.StackTagName]string
 	// Preview changes to this stack.
-	Preview(ctx context.Context, op UpdateOperation) (*deploy.Plan, display.ResourceChanges, result.Result)
+	Preview(
+		ctx context.Context, op UpdateOperation, events chan<- engine.Event,
+	) (*deploy.Plan, display.ResourceChanges, result.Result)
 	// Update this stack.
 	Update(ctx context.Context, op UpdateOperation) (display.ResourceChanges, result.Result)
 	// Import resources into this stack.
@@ -86,8 +88,9 @@ func PreviewStack(
 	ctx context.Context,
 	s Stack,
 	op UpdateOperation,
+	events chan<- engine.Event,
 ) (*deploy.Plan, display.ResourceChanges, result.Result) {
-	return s.Backend().Preview(ctx, s, op)
+	return s.Backend().Preview(ctx, s, op, events)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
@@ -151,8 +154,8 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 // GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment
 // and Pulumi.yaml file.
 func GetMergedStackTags(ctx context.Context, s Stack,
-	root string, project *workspace.Project,
-) map[apitype.StackTagName]string {
+	root string, project *workspace.Project, cfg config.Map,
+) (map[apitype.StackTagName]string, error) {
 	// Get the stack's existing tags.
 	tags := s.Tags()
 	if tags == nil {
@@ -160,7 +163,10 @@ func GetMergedStackTags(ctx context.Context, s Stack,
 	}
 
 	// Get latest environment tags for the current stack.
-	envTags := GetEnvironmentTagsForCurrentStack(root, project)
+	envTags, err := GetEnvironmentTagsForCurrentStack(root, project, cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	// Add each new environment tag to the existing tags, overwriting existing tags with the
 	// latest values.
@@ -168,12 +174,14 @@ func GetMergedStackTags(ctx context.Context, s Stack,
 		tags[k] = v
 	}
 
-	return tags
+	return tags, nil
 }
 
 // GetEnvironmentTagsForCurrentStack returns the set of tags for the "current" stack, based on the environment
 // and Pulumi.yaml file.
-func GetEnvironmentTagsForCurrentStack(root string, project *workspace.Project) map[apitype.StackTagName]string {
+func GetEnvironmentTagsForCurrentStack(root string,
+	project *workspace.Project, cfg config.Map,
+) (map[apitype.StackTagName]string, error) {
 	tags := make(map[apitype.StackTagName]string)
 
 	// Tags based on Pulumi.yaml.
@@ -185,19 +193,42 @@ func GetEnvironmentTagsForCurrentStack(root string, project *workspace.Project) 
 		}
 	}
 
+	// Grab any `pulumi:tag` config values and use those to update the stack's tags.
+	configTags, has, err := cfg.Get(config.MustMakeKey("pulumi", "tags"), false)
+	contract.AssertNoErrorf(err, "Config.Get(\"pulumi:tags\") failed unexpectedly")
+	if has {
+		configTagInterface, err := configTags.ToObject()
+		if err != nil {
+			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+		}
+		configTagObject, ok := configTagInterface.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+		}
+
+		for name, value := range configTagObject {
+			stringValue, ok := value.(string)
+			if !ok {
+				return nil, fmt.Errorf("pulumi:tags[%s] must be a string", name)
+			}
+
+			tags[name] = stringValue
+		}
+	}
+
 	// Add the git metadata to the tags, ignoring any errors that come from it.
 	if root != "" {
 		ignoredErr := addGitMetadataToStackTags(tags, root)
 		contract.IgnoreError(ignoredErr)
 	}
 
-	return tags
+	return tags, nil
 }
 
 // addGitMetadataToStackTags fetches the git repository from the directory, and attempts to detect
 // and add any relevant git metadata as stack tags.
 func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath string) error {
-	repo, err := gitutil.GetGitRepository(filepath.Dir(projPath))
+	repo, err := gitutil.GetGitRepository(projPath)
 	if repo == nil {
 		return fmt.Errorf("no git repository found from %v", projPath)
 	}

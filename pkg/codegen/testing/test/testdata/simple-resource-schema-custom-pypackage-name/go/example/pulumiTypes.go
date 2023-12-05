@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-resource-schema-custom-pypackage-name/example/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type ConfigMap struct {
 	Config *string `pulumi:"config"`

@@ -89,16 +89,17 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	name, orgs, err := b.CurrentUser()
+	name, orgs, tokenInfo, err := b.CurrentUser()
 	if err != nil {
 		return err
 	}
 
 	if cmd.jsonOut {
 		return fprintJSON(cmd.Stdout, WhoAmIJSON{
-			User:          name,
-			Organizations: orgs,
-			URL:           b.URL(),
+			User:             name,
+			Organizations:    orgs,
+			URL:              b.URL(),
+			TokenInformation: tokenInfo,
 		})
 	}
 
@@ -106,8 +107,20 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
+		if tokenInfo != nil {
+			tokenType := "unknown"
+			if tokenInfo.Team != "" {
+				tokenType = fmt.Sprintf("team: %s", tokenInfo.Team)
+			} else if tokenInfo.Organization != "" {
+				tokenType = fmt.Sprintf("organization: %s", tokenInfo.Organization)
+			}
+			fmt.Fprintf(cmd.Stdout, "Token type: %s\n", tokenType)
+			fmt.Fprintf(cmd.Stdout, "Token name: %s\n", tokenInfo.Name)
+		} else {
+			fmt.Fprintf(cmd.Stdout, "Token type: personal\n")
+		}
 	} else {
-		fmt.Fprint(cmd.Stdout, name)
+		fmt.Fprintf(cmd.Stdout, "%s\n", name)
 	}
 
 	return nil
@@ -115,7 +128,8 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 
 // WhoAmIJSON is the shape of the --json output of this command.
 type WhoAmIJSON struct {
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations,omitempty"`
-	URL           string   `json:"url"`
+	User             string                      `json:"user"`
+	Organizations    []string                    `json:"organizations,omitempty"`
+	URL              string                      `json:"url"`
+	TokenInformation *workspace.TokenInformation `json:"tokenInformation,omitempty"`
 }

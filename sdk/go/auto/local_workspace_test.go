@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	git "github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1045,8 +1046,6 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 func TestNestedStackFails(t *testing.T) {
 	t.Parallel()
 
-	// FIXME: see https://github.com/pulumi/pulumi/issues/5301
-	t.Skip("skipping test, see pulumi/pulumi#5301")
 	testCtx := context.Background()
 	sName := randomStackName()
 	parentstackName := FullyQualifiedStackName(pulumiOrg, "parent", sName)
@@ -1971,6 +1970,59 @@ func TestSupportsStackOutputs(t *testing.T) {
 	assert.Equal(t, 0, len(outputsAfterDestroy))
 }
 
+func TestShallowClone(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name string
+		repo GitRepo
+	}{
+		{
+			name: "no ref provided",
+			repo: GitRepo{},
+		},
+		{
+			name: "branch provided",
+			repo: GitRepo{Branch: "master"},
+		},
+		{
+			name: "commit provided",
+			repo: GitRepo{CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
+		},
+		{
+			name: "branch and commit provided",
+			repo: GitRepo{Branch: "master", CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			repo := GitRepo{
+				URL:         "https://github.com/pulumi/test-repo.git",
+				ProjectPath: "goproj",
+				Shallow:     true,
+				Branch:      tt.repo.Branch,
+				CommitHash:  tt.repo.CommitHash,
+			}
+			ws, err := NewLocalWorkspace(ctx, Repo(repo))
+			require.NoError(t, err)
+
+			r, err := git.PlainOpenWithOptions(ws.WorkDir(), &git.PlainOpenOptions{DetectDotGit: true})
+			require.NoError(t, err)
+
+			hashes, err := r.Storer.Shallow()
+			require.NoError(t, err)
+
+			assert.Equal(t, 1, len(hashes))
+		})
+	}
+}
+
 func TestPulumiVersion(t *testing.T) {
 	t.Parallel()
 
@@ -2088,7 +2140,7 @@ func TestMinimumVersion(t *testing.T) {
 				assert.Error(t, err)
 				assert.Regexp(t, tt.expectedError, err.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -2112,9 +2164,9 @@ func TestProjectSettingsRespected(t *testing.T) {
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	projectSettings, err := stack.workspace.ProjectSettings(ctx)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, projectSettings.Name, tokens.PackageName("correct_project"))
 	assert.Equal(t, *projectSettings.Description, "This is a description")
 }

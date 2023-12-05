@@ -3,9 +3,10 @@
     "component.go",
     "doc.go",
     "init.go",
+    "internal/pulumiUtilities.go",
+    "internal/pulumiVersion.go",
     "provider.go",
     "pulumi-plugin.json",
-    "pulumiTypes.go",
-    "pulumiUtilities.go"
+    "pulumiTypes.go"
   ]
 }

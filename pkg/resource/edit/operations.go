@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -95,7 +96,7 @@ func DeleteResource(
 
 	// If there are no resources that depend on condemnedRes, iterate through the snapshot and keep everything that's
 	// not condemnedRes.
-	newSnapshot := make([]*resource.State, 0, len(snapshot.Resources))
+	newSnapshot := slice.Prealloc[*resource.State](len(snapshot.Resources))
 	var children []*resource.State
 	for _, res := range snapshot.Resources {
 		if res == condemnedRes {
@@ -154,7 +155,7 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 
 // RenameStack changes the `stackName` component of every URN in a snapshot. In addition, it rewrites the name of
 // the root Stack resource itself. May optionally change the project/package name as well.
-func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.PackageName) error {
+func RenameStack(snap *deploy.Snapshot, newName tokens.StackName, newProject tokens.PackageName) error {
 	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	rewriteUrn := func(u resource.URN) resource.URN {
@@ -165,11 +166,11 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.P
 
 		// The pulumi:pulumi:Stack resource's name component is of the form `<project>-<stack>` so we want
 		// to rename the name portion as well.
-		if u.QualifiedType() == "pulumi:pulumi:Stack" {
-			return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), tokens.QName(project)+"-"+newName.Q())
+		if u.QualifiedType() == resource.RootStackType {
+			return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), string(tokens.QName(project)+"-"+newName.Q()))
 		}
 
-		return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), u.Name())
+		return resource.NewURN(tokens.QName(newName.String()), project, "", u.QualifiedType(), u.Name())
 	}
 
 	rewriteState := func(res *resource.State) {

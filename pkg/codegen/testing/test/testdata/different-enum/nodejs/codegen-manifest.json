@@ -4,7 +4,6 @@
     "index.ts",
     "package.json",
     "provider.ts",
-    "scripts/install-pulumi-plugin.js",
     "tree/index.ts",
     "tree/v1/index.ts",
     "tree/v1/nursery.ts",

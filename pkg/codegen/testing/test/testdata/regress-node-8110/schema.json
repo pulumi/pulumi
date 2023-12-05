@@ -55,7 +55,8 @@
       ]
     },
     "go": {
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "importBasePath": "regress-node-8110/my8110"
     }
   }
 }

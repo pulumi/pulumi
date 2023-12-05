@@ -11,6 +11,8 @@ import (
 
 // Test that the engine handles the replacement of an external resource with a
 // owned once gracefully.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestReadReplace(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",

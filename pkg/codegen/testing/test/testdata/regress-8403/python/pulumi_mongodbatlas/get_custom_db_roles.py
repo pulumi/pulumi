@@ -14,6 +14,7 @@ __all__ = [
     'GetCustomDbRolesResult',
     'AwaitableGetCustomDbRolesResult',
     'get_custom_db_roles',
+    'get_custom_db_roles_output',
 ]
 
 @pulumi.output_type
@@ -47,4 +48,12 @@ def get_custom_db_roles(opts: Optional[pulumi.InvokeOptions] = None) -> Awaitabl
     __ret__ = pulumi.runtime.invoke('mongodbatlas::getCustomDbRoles', __args__, opts=opts, typ=GetCustomDbRolesResult).value
 
     return AwaitableGetCustomDbRolesResult(
-        result=__ret__.result)
+        result=pulumi.get(__ret__, 'result'))
+
+
+@_utilities.lift_output_func(get_custom_db_roles)
+def get_custom_db_roles_output(opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetCustomDbRolesResult]:
+    """
+    Use this data source to access information about an existing resource.
+    """
+    ...

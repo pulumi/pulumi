@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"go-nested-collections/repro/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Bar struct {
 	Prop *string `pulumi:"prop"`

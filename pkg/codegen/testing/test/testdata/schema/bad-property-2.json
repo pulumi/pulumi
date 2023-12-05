@@ -1,0 +1,14 @@
+{
+  "name": "fake-provider",
+  "version": "0.0.1",
+  "resources": {
+    "fake-provider:index:typ": {
+      "properties": {
+        "id": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    }
+  }
+}

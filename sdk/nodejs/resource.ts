@@ -13,13 +13,21 @@
 // limitations under the License.
 
 import { ResourceError } from "./errors";
+import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
-import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import {
+    getResource,
+    pkgFromType,
+    readResource,
+    registerResource,
+    registerResourceOutputs,
+    SourcePosition,
+} from "./runtime/resource";
+import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
-import { unknownValue } from "./runtime/rpc";
 import * as utils from "./utils";
-import * as log from "./log";
+import * as url from "url";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -134,6 +142,12 @@ export function allAliases(
  */
 export abstract class Resource {
     /**
+     * A regexp for use with sourcePosition.
+     */
+    private static sourcePositionRegExp =
+        /Error:\s*\n\s*at new Resource \(.*\)\n\s*at new \S*Resource \(.*\)\n(\s*at new \S* \(.*\)\n)?[^(]*\((?<file>.*):(?<line>[0-9]+):(?<col>[0-9]+)\)\n/;
+
+    /**
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
@@ -243,7 +257,9 @@ export abstract class Resource {
     private readonly __providers: Record<string, ProviderResource>;
 
     /**
-     * The specified provider or provider determined from the parent for custom resources.
+     * The specified provider or provider determined from the parent for custom or remote resources.
+     * It is passed along in the `Call` gRPC request for resource method calls (when set) so that the
+     * call goes to the same provider as the resource.
      * @internal
      */
     // Note: This is deliberately not named `__provider` as that conflicts with the property
@@ -265,17 +281,70 @@ export abstract class Resource {
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     readonly __pluginDownloadURL?: string;
 
+    /**
+     * Private field containing the type ID for this object. Useful for implementing `isInstance` on
+     * classes that inherit from `Resource`.
+     * @internal
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    public readonly __pulumiType: string;
+
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
-    // getProvider fetches the provider for the given module member, if any.
-    public getProvider(moduleMember: string): ProviderResource | undefined {
-        const memComponents = moduleMember.split(":");
-        if (memComponents.length !== 3) {
+    // sourcePosition returns the source position of the user code that instantiated this resource.
+    //
+    // This is somewhat brittle in that it expects a call stack of the form:
+    // - Resource class constructor
+    // - abstract Resource subclass constructor
+    // - concrete Resource subclass constructor
+    // - user code
+    //
+    // This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
+    //
+    // For example, consider the AWS S3 Bucket resource. When user code instantiates a Bucket, the stack will look like
+    // this:
+    //
+    //     new Resource (/path/to/resource.ts:123:45)
+    //     new CustomResource (/path/to/resource.ts:678:90)
+    //     new Bucket (/path/to/bucket.ts:987:65)
+    //     <user code> (/path/to/index.ts:4:3)
+    //
+    // Because Node can only give us the stack trace as text, we parse out the source position using a regex that
+    // matches traces of this form (see stackTraceRegExp above).
+    private static sourcePosition(): SourcePosition | undefined {
+        const stackObj: any = {};
+        Error.captureStackTrace(stackObj, Resource.sourcePosition);
+
+        // Parse out the source position of the user code. If any part of the match is missing, return undefined.
+        const { file, line, col } = Resource.sourcePositionRegExp.exec(stackObj.stack)?.groups || {};
+        if (!file || !line || !col) {
             return undefined;
         }
-        const pkg = memComponents[0];
+
+        // Parse the line and column numbers. If either fails to parse, return undefined.
+        //
+        // Note: this really shouldn't happen given the regex; this is just a bit of defensive coding.
+        const lineNum = parseInt(line, 10);
+        const colNum = parseInt(col, 10);
+        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+            return undefined;
+        }
+
+        return {
+            uri: url.pathToFileURL(file).toString(),
+            line: lineNum,
+            column: colNum,
+        };
+    }
+
+    // getProvider fetches the provider for the given module member, if any.
+    public getProvider(moduleMember: string): ProviderResource | undefined {
+        const pkg = pkgFromType(moduleMember);
+        if (pkg === undefined) {
+            return undefined;
+        }
 
         return this.__providers[pkg];
     }
@@ -303,6 +372,8 @@ export abstract class Resource {
         remote: boolean = false,
         dependency: boolean = false,
     ) {
+        this.__pulumiType = t;
+
         if (dependency) {
             this.__protect = false;
             this.__providers = {};
@@ -370,16 +441,13 @@ export abstract class Resource {
             ...convertToProvidersMap(opts.provider ? [opts.provider] : {}),
         };
 
+        const pkg = pkgFromType(t);
+
         // provider is the first option that does not return none
         // 1. opts.provider
         // 2. a matching provider in opts.providers
         // 3. a matching provider inherited from opts.parent
-        if (custom && opts.provider === undefined) {
-            let pkg = undefined;
-            const memComponents = t.split(":");
-            if (memComponents.length === 3) {
-                pkg = memComponents[0];
-            }
+        if ((custom || remote) && opts.provider === undefined) {
             const parentProvider = parent?.getProvider(t);
 
             if (pkg && pkg in this.__providers) {
@@ -389,8 +457,22 @@ export abstract class Resource {
             }
         }
 
+        // Custom and remote resources have a backing provider. If this is a custom or
+        // remote resource and a provider has been specified that has the same package
+        // as the resource's package, save it in `__prov`.
+        // If the provider's package isn't the same as the resource's package, don't
+        // save it in `__prov` because the user specified `provider: someProvider` as
+        // shorthand for `providers: [someProvider]`, which is a provider intended for
+        // the component's children and not for this resource itself.
+        // `__prov` is passed along in `Call` gRPC requests for resource method calls
+        // (when set) so that the call goes to the same provider as the resource.
+        if ((custom || remote) && opts.provider) {
+            if (pkg && pkg === opts.provider.getPackage()) {
+                this.__prov = opts.provider;
+            }
+        }
+
         this.__protect = !!opts.protect;
-        this.__prov = custom ? opts.provider : undefined;
         this.__version = opts.version;
         this.__pluginDownloadURL = opts.pluginDownloadURL;
 
@@ -403,6 +485,8 @@ export abstract class Resource {
             }
         }
 
+        const sourcePosition = Resource.sourcePosition();
+
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
             getResource(this, parent, props, custom, opts.urn);
@@ -414,13 +498,24 @@ export abstract class Resource {
                     opts.parent,
                 );
             }
-            readResource(this, parent, t, name, props, opts);
+            readResource(this, parent, t, name, props, opts, sourcePosition);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
-            registerResource(this, parent, t, name, custom, remote, (urn) => new DependencyResource(urn), props, opts);
+            registerResource(
+                this,
+                parent,
+                t,
+                name,
+                custom,
+                remote,
+                (urn) => new DependencyResource(urn),
+                props,
+                opts,
+                sourcePosition,
+            );
         }
     }
 }
@@ -764,14 +859,6 @@ export abstract class CustomResource extends Resource {
     public readonly __pulumiCustomResource: boolean;
 
     /**
-     * Private field containing the type ID for this object. Useful for implementing `isInstance` on
-     * classes that inherit from `CustomResource`.
-     * @internal
-     */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __pulumiType: string;
-
-    /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
      * deployments and may be missing (undefined) during planning phases.
      */
@@ -809,7 +896,6 @@ export abstract class CustomResource extends Resource {
 
         super(t, name, true, props, opts, false, dependency);
         this.__pulumiCustomResource = true;
-        this.__pulumiType = t;
     }
 }
 

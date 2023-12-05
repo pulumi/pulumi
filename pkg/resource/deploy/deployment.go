@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -56,10 +55,8 @@ type Options struct {
 	Parallel                  int        // the degree of parallelism for resource operations (<=1 for serial).
 	Refresh                   bool       // whether or not to refresh before executing the deployment.
 	RefreshOnly               bool       // whether or not to exit after refreshing.
-	RefreshTargets            UrnTargets // The specific resources to refresh during a refresh op.
-	ReplaceTargets            UrnTargets // Specific resources to replace.
-	DestroyTargets            UrnTargets // Specific resources to destroy.
-	UpdateTargets             UrnTargets // Specific resources to update.
+	Targets                   UrnTargets // If specified, only operate on specified resources.
+	ReplaceTargets            UrnTargets // If specified, mark the specified resources for replacement.
 	TargetDependents          bool       // true if we're allowing things to proceed, even with unspecified targets
 	TrustDependencies         bool       // whether or not to trust the resource dependency graph.
 	UseLegacyDiff             bool       // whether or not to use legacy diffing behavior.
@@ -114,6 +111,19 @@ func NewUrnTargets(urnOrGlobs []string) UrnTargets {
 // Create a new set of targets from fully resolved URNs.
 func NewUrnTargetsFromUrns(urns []resource.URN) UrnTargets {
 	return UrnTargets{urns, nil}
+}
+
+// Return a copy of the UrnTargets
+func (t UrnTargets) Clone() UrnTargets {
+	newLiterals := append(make([]resource.URN, 0, len(t.literals)), t.literals...)
+	newGlobs := make(map[string]*regexp.Regexp, len(t.globs))
+	for k, v := range t.globs {
+		newGlobs[k] = v
+	}
+	return UrnTargets{
+		literals: newLiterals,
+		globs:    newGlobs,
+	}
 }
 
 // Return if the target set constrains the set of acceptable URNs.
@@ -188,6 +198,7 @@ type StepExecutorEvents interface {
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
 	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
+	OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
 }
 
 // Events is an interface that can be used to hook interesting engine events.
@@ -328,6 +339,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
 				providers.SetProviderVersion(inputs, pkgInfo.Version)
 				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
+				providers.SetProviderChecksums(inputs, pkgInfo.Checksums)
 			}
 
 			uuid, err := uuid.NewV4()
@@ -452,7 +464,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	newResources := &resourceMap{}
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(backendClient, newResources)
+	builtins := newBuiltinProvider(backendClient, newResources, ctx.Diag)
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
@@ -527,10 +539,10 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 
 // generateURN generates a resource's URN from its parent, type, and name under the scope of the deployment's stack and
 // project.
-func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
+func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name string) resource.URN {
 	// Use the resource goal state name to produce a globally unique URN.
 	parentType := tokens.Type("")
-	if parent != "" && parent.Type() != resource.RootStackType {
+	if parent != "" && parent.QualifiedType() != resource.RootStackType {
 		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
 		parentType = parent.QualifiedType()
 	}
@@ -561,7 +573,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 }
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
-func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (*Plan, result.Result) {
+func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (*Plan, error) {
 	deploymentExec := &deploymentExecutor{deployment: d}
 	return deploymentExec.Execute(ctx, opts, preview)
 }

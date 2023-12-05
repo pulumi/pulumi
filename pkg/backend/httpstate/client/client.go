@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"strconv"
@@ -37,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -48,6 +48,7 @@ type Client struct {
 	apiToken   apiAccessToken
 	apiUser    string
 	apiOrgs    []string
+	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
 	diag       diag.Sink
 	insecure   bool
 	restClient restClient
@@ -202,7 +203,7 @@ type serviceUserInfo struct {
 	Email       string `json:"email,omitempty"`
 }
 
-// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L34
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L37
 type serviceUser struct {
 	ID            string            `json:"id"`
 	GitHubLogin   string            `json:"githubLogin"`
@@ -212,32 +213,47 @@ type serviceUser struct {
 	Organizations []serviceUserInfo `json:"organizations"`
 	Identities    []string          `json:"identities"`
 	SiteAdmin     *bool             `json:"siteAdmin,omitempty"`
+	TokenInfo     *serviceTokenInfo `json:"tokenInfo,omitempty"`
+}
+
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L39-L43
+type serviceTokenInfo struct {
+	Name         string `json:"name"`
+	Organization string `json:"organization,omitempty"`
+	Team         string `json:"team,omitempty"`
 }
 
 // GetPulumiAccountName returns the user implied by the API token associated with this client.
-func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, error) {
+func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
 	if pc.apiUser == "" {
 		resp := serviceUser{}
 		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
-			return "", nil, err
+			return "", nil, nil, err
 		}
 
 		if resp.GitHubLogin == "" {
-			return "", nil, errors.New("unexpected response from server")
+			return "", nil, nil, errors.New("unexpected response from server")
 		}
 
 		pc.apiUser = resp.GitHubLogin
 		pc.apiOrgs = make([]string, len(resp.Organizations))
 		for i, org := range resp.Organizations {
 			if org.GitHubLogin == "" {
-				return "", nil, errors.New("unexpected response from server")
+				return "", nil, nil, errors.New("unexpected response from server")
 			}
 
 			pc.apiOrgs[i] = org.GitHubLogin
 		}
+		if resp.TokenInfo != nil {
+			pc.tokenInfo = &workspace.TokenInformation{
+				Name:         resp.TokenInfo.Name,
+				Organization: resp.TokenInfo.Organization,
+				Team:         resp.TokenInfo.Team,
+			}
+		}
 	}
 
-	return pc.apiUser, pc.apiOrgs, nil
+	return pc.apiUser, pc.apiOrgs, pc.tokenInfo, nil
 }
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
@@ -245,7 +261,18 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
 
-	if err := pc.restCall(ctx, "GET", "/api/cli/version", nil, nil, &versionInfo); err != nil {
+	err := pc.restCallWithOptions(
+		ctx,
+		"GET",
+		"/api/cli/version",
+		nil,          // query
+		nil,          // request
+		&versionInfo, // response
+		httpCallOptions{
+			RetryPolicy: retryNone,
+		},
+	)
+	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
 
@@ -367,18 +394,18 @@ func (pc *Client) CreateStack(
 	ctx context.Context, stackID StackIdentifier, tags map[apitype.StackTagName]string, teams []string,
 ) (apitype.Stack, error) {
 	// Validate names and tags.
-	if err := validation.ValidateStackProperties(stackID.Stack, tags); err != nil {
+	if err := validation.ValidateStackTags(tags); err != nil {
 		return apitype.Stack{}, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	stack := apitype.Stack{
-		StackName:   tokens.QName(stackID.Stack),
+		StackName:   stackID.Stack.Q(),
 		ProjectName: stackID.Project,
 		OrgName:     stackID.Owner,
 		Tags:        tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
-		StackName: stackID.Stack,
+		StackName: stackID.Stack.String(),
 		Tags:      tags,
 		Teams:     teams,
 	}
@@ -615,7 +642,7 @@ func (pc *Client) CreateUpdate(
 // RenameStack renames the provided stack to have the new identifier.
 func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentifier) error {
 	req := apitype.StackRenameRequest{
-		NewName:    newID.Stack,
+		NewName:    newID.Stack.String(),
 		NewProject: newID.Project,
 	}
 	return pc.restCall(ctx, "POST", getStackPath(currentID, "rename"), nil, &req, nil)
@@ -627,7 +654,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	tags map[apitype.StackTagName]string,
 ) (int, string, error) {
 	// Validate names and tags.
-	if err := validation.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
+	if err := validation.ValidateStackTags(tags); err != nil {
 		return 0, "", fmt.Errorf("validating stack properties: %w", err)
 	}
 
@@ -927,7 +954,7 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
 	// these POST operations.
 	if err := pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
-		updateAccessToken(updateTokenStaticSource(token)), httpCallOptions{RetryAllMethods: true}); err != nil {
+		updateAccessToken(updateTokenStaticSource(token)), httpCallOptions{RetryPolicy: retryAllMethods}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil
@@ -943,7 +970,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
@@ -963,7 +990,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
@@ -985,7 +1012,7 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // PatchUpdateCheckpointDelta patches the checkpoint for the indicated update with the given contents, just like
@@ -1003,14 +1030,14 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // CancelUpdate cancels the indicated update.
 func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.restCallWithOptions(ctx, "POST", getUpdatePath(update, "cancel"), nil, nil, nil,
-		httpCallOptions{RetryAllMethods: true})
+		httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // CompleteUpdate completes the indicated update with the given status.
@@ -1023,7 +1050,7 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "complete"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // GetUpdateEngineEvents returns the engine events for an update.
@@ -1048,8 +1075,8 @@ func (pc *Client) RecordEngineEvents(
 	ctx context.Context, update UpdateIdentifier, batch apitype.EngineEventBatch, token UpdateTokenSource,
 ) error {
 	callOpts := httpCallOptions{
-		GzipCompress:    true,
-		RetryAllMethods: true,
+		GzipCompress: true,
+		RetryPolicy:  retryAllMethods,
 	}
 	return pc.updateRESTCall(
 		ctx, "POST", getUpdatePath(update, "events/batch"),
@@ -1123,6 +1150,45 @@ func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesRes
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying capabilities failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func getSearchPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/search/resources", url.PathEscape(orgName))
+}
+
+func getNaturalLanguageSearchPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/search/resources/parse", url.PathEscape(orgName))
+}
+
+func getPulumiOrgSearchPath(baseURL string, orgName string) string {
+	return fmt.Sprintf("%s/%s/resources", baseURL, url.PathEscape(orgName))
+}
+
+// Pulumi Cloud Search Functions
+func (pc *Client) GetSearchQueryResults(
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest, baseURL string,
+) (*apitype.ResourceSearchResponse, error) {
+	var resp apitype.ResourceSearchResponse
+	err := pc.restCall(ctx, http.MethodGet, getSearchPath(orgName), queryParams, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("querying search failed: %w", err)
+	}
+	resp.URL = fmt.Sprintf("%s?query=%s", getPulumiOrgSearchPath(baseURL, orgName), url.QueryEscape(queryParams.Query))
+	return &resp, nil
+}
+
+func (pc *Client) GetNaturalLanguageQueryResults(
+	ctx context.Context, orgName string, queryString string,
+) (*apitype.PulumiQueryResponse, error) {
+	var resp apitype.PulumiQueryResponse
+	queryParamObject := apitype.PulumiQueryRequest{
+		Query: queryString,
+	}
+	err := pc.restCall(ctx, http.MethodGet, getNaturalLanguageSearchPath(orgName), queryParamObject, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("querying search failed: %w", err)
 	}
 	return &resp, nil
 }

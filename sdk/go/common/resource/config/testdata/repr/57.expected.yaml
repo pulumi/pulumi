@@ -1,0 +1,60 @@
+decrypt:
+  my:name: '["a","b","c",{"foo":{"bar":"value"}}]'
+paths:
+  my:name:
+    value:
+    - a
+    - b
+    - c
+    - foo:
+        bar: value
+    string: '["a","b","c",{"foo":{"bar":"value"}}]'
+    redacted: '["a","b","c",{"foo":{"bar":"value"}}]'
+    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAA/4r/hEwABAZzdHJpbmcMAwABYQZzdHJpbmcMAwABYgZzdHJpbmcMAwABYxdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+BBAEC/4IAAQwBEAAAOv+CNwABA2ZvbxdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+CFgABA2JhcgZzdHJpbmcMBwAFdmFsdWU=
+    secure: false
+    isObject: true
+  my:name[0]:
+    value: a
+    string: a
+    redacted: a
+    object: DhAABnN0cmluZwwDAAFh
+    secure: false
+    isObject: false
+  my:name[1]:
+    value: b
+    string: b
+    redacted: b
+    object: DhAABnN0cmluZwwDAAFi
+    secure: false
+    isObject: false
+  my:name[2]:
+    value: c
+    string: c
+    redacted: c
+    object: DhAABnN0cmluZwwDAAFj
+    secure: false
+    isObject: false
+  my:name[3]:
+    value:
+      foo:
+        bar: value
+    string: '{"foo":{"bar":"value"}}'
+    redacted: '{"foo":{"bar":"value"}}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA6/4I3AAEDZm9vF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IWAAEDYmFyBnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: true
+  my:name[3].foo:
+    value:
+      bar: value
+    string: '{"bar":"value"}'
+    redacted: '{"bar":"value"}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAZ/4IWAAEDYmFyBnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: true
+  my:name[3].foo.bar:
+    value: value
+    string: value
+    redacted: value
+    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: false

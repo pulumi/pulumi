@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -192,7 +193,8 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
 				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
 				typ := model.ResolveOutputs(expr.Type())
-				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range())
+				strict := !b.options.skipRangeTypecheck
+				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range(), strict)
 				rangeKey, rangeValue = rk, rv
 			}
 		}
@@ -273,6 +275,9 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 
 		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
 		if err != nil {
+			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
+				continue
+			}
 			return err
 		}
 		b.referencedPackages[name] = pkg.schema
@@ -479,7 +484,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		if len(schemas) == 0 {
 			return nil, false
 		}
-		schemaTypes := make([]schema.Type, 0, len(schemas))
+		schemaTypes := slice.Prealloc[schema.Type](len(schemas))
 		for t := range schemas {
 			schemaTypes = append(schemaTypes, t.(schema.Type))
 		}

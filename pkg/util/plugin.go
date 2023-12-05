@@ -26,6 +26,12 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 		return false
 	}
 
+	// Zaid's arm and bicep converters so that `pulumi convert --from arm/bicep` just works.
+	if spec.Kind == workspace.ConverterPlugin && (spec.Name == "arm" || spec.Name == "bicep") {
+		spec.PluginDownloadURL = "github://api.github.com/Zaid-Ajaj"
+		return true
+	}
+
 	pulumiversePlugins := []string{
 		"acme",
 		"aquasec",
@@ -42,7 +48,6 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 		"harbor",
 		"hcp",
 		"heroku",
-		"ibm",
 		"matchbox",
 		"mssql",
 		"ngrok",

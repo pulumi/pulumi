@@ -1,32 +1,57 @@
-comment: false
-
 coverage:
   status:
+
+    # Project tracks and reports the project-level coverage.
     project:
-      default: false
+      default:
+        informational: true
+
+      # Pulumi core
       core:
         informational: true
         paths:
-          - "pkg/*"
-          - "sdk/go/common/*"
-          - "sdk/go/auto/*"
-          - "sdk/proto/*"
+          - "pkg"
+          - "sdk/go/common"
+          - "sdk/go/auto"
+
       sdk-go:
         informational: true
         paths:
-          - "sdk/go/pulumi/*"
-          - "sdk/go/pulumi-language-go/*"
+          - "sdk/go/pulumi"
+          - "sdk/go/pulumi-language-go"
       sdk-nodejs:
         informational: true
         paths:
-          - "sdk/nodejs/*"
+          - "sdk/nodejs"
       sdk-python:
         informational: true
         paths:
-          - "sdk/python/*"
+          - "sdk/python"
+
+    # Patch tracks the coverage of the changes in a single patch.
     patch:
       default:
         informational: true
 
+ignore:
+  # Integration tests and codegen test data
+  # should not count against coverage.
+  - "tests/"
+  - "pkg/codegen/testing/test/testdata"
+
+  # Don't count protobuf-generated code against coverage.
+  - "sdk/proto"
+
+  # Ignore code generator for pulumix/applyn.go.
+  - "sdk/go/internal/gen-pux-applyn"
+
+  # More generally, none of the test data
+  # should count against coverage.
+  - "**/testdata"
+
+# Don't comment on PRs.
+comment: false
+
+# Don't post annotations to GitHub.
 github_checks:
     annotations: false

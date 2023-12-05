@@ -14,7 +14,7 @@
 
 import * as fs from "fs";
 import * as os from "os";
-import * as path from "path";
+import * as pathlib from "path";
 import * as readline from "readline";
 import * as upath from "upath";
 
@@ -26,12 +26,12 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
-import { LanguageServer, maxRPCMessageSize } from "./server";
-import { Deployment, PulumiFn, Workspace } from "./workspace";
 import { LocalWorkspace } from "./localWorkspace";
+import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
+import { Deployment, PulumiFn, Workspace } from "./workspace";
 
-const langrpc = require("../proto/language_grpc_pb.js");
+import * as langrpc from "../proto/language_grpc_pb";
 
 interface ReadlineResult {
     tail: TailFile;
@@ -164,6 +164,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
+            }
+            if (opts.refresh) {
+                args.push("--refresh");
             }
             if (opts.diff) {
                 args.push("--diff");
@@ -531,9 +534,10 @@ Event: ${line}\n${e.toString()}`);
      * Returns the config value associated with the specified key.
      *
      * @param key The key to use for the config lookup
+     * @param path The key contains a path to a property in a map or list to get
      */
-    async getConfig(key: string): Promise<ConfigValue> {
-        return this.workspace.getConfig(this.name, key);
+    async getConfig(key: string, path?: boolean): Promise<ConfigValue> {
+        return this.workspace.getConfig(this.name, key, path);
     }
     /**
      * Returns the full config map associated with the stack in the Workspace.
@@ -546,33 +550,37 @@ Event: ${line}\n${e.toString()}`);
      *
      * @param key The key to set.
      * @param value The config value to set.
+     * @param path The key contains a path to a property in a map or list to set.
      */
-    async setConfig(key: string, value: ConfigValue): Promise<void> {
-        return this.workspace.setConfig(this.name, key, value);
+    async setConfig(key: string, value: ConfigValue, path?: boolean): Promise<void> {
+        return this.workspace.setConfig(this.name, key, value, path);
     }
     /**
      * Sets all specified config values on the stack in the associated Workspace.
      *
      * @param config The map of config key-value pairs to set.
+     * @param path The keys contain a path to a property in a map or list to set.
      */
-    async setAllConfig(config: ConfigMap): Promise<void> {
-        return this.workspace.setAllConfig(this.name, config);
+    async setAllConfig(config: ConfigMap, path?: boolean): Promise<void> {
+        return this.workspace.setAllConfig(this.name, config, path);
     }
     /**
      * Removes the specified config key from the Stack in the associated Workspace.
      *
      * @param key The config key to remove.
+     * @param path The key contains a path to a property in a map or list to remove.
      */
-    async removeConfig(key: string): Promise<void> {
-        return this.workspace.removeConfig(this.name, key);
+    async removeConfig(key: string, path?: boolean): Promise<void> {
+        return this.workspace.removeConfig(this.name, key, path);
     }
     /**
      * Removes the specified config keys from the Stack in the associated Workspace.
      *
      * @param keys The config keys to remove.
+     * @param path The keys contain a path to a property in a map or list to remove.
      */
-    async removeAllConfig(keys: string[]): Promise<void> {
-        return this.workspace.removeAllConfig(this.name, keys);
+    async removeAllConfig(keys: string[], path?: boolean): Promise<void> {
+        return this.workspace.removeAllConfig(this.name, keys, path);
     }
     /**
      * Gets and sets the config map used with the last update.
@@ -867,6 +875,10 @@ export interface UpOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
+    /**
+     * Refresh the state of the stack's resources before this update.
+     */
+    refresh?: boolean;
     diff?: boolean;
     replace?: string[];
     policyPacks?: string[];
@@ -977,12 +989,12 @@ const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
         // remove the logfile
         if (fs.rm) {
             // remove with Node JS 15.X+
-            fs.rm(path.dirname(logFile), { recursive: true }, () => {
+            fs.rm(pathlib.dirname(logFile), { recursive: true }, () => {
                 return;
             });
         } else {
             // remove with Node JS 14.X
-            fs.rmdir(path.dirname(logFile), { recursive: true }, () => {
+            fs.rmdir(pathlib.dirname(logFile), { recursive: true }, () => {
                 return;
             });
         }

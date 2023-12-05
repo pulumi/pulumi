@@ -55,7 +55,7 @@ jobs:
           crate: b3sum
           version: 1.3.0
 
-      - uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # v2.8.1
+      - uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19 # v3.1.2
 
       - name: Download all artifacts
         uses: actions/download-artifact@v2
@@ -110,7 +110,7 @@ jobs:
             pushd "$dir"
             for file in ./*; do
                 echo "$file"
-                COSIGN_EXPERIMENTAL=1 cosign sign-blob \
+                COSIGN_EXPERIMENTAL=1 cosign sign-blob --yes \
                   --bundle="../sigs.tmp/${file}".sig  \
                   "${file}"
             done

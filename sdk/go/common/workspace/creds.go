@@ -24,6 +24,7 @@ import (
 
 	"github.com/rogpeppe/go-internal/lockedfile"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -111,11 +112,26 @@ func StoreAccount(key string, account Account, current bool) error {
 
 // Account holds the information associated with a Pulumi account.
 type Account struct {
-	AccessToken     string    `json:"accessToken,omitempty"`     // The access token for this account.
-	Username        string    `json:"username,omitempty"`        // The username for this account.
-	Organizations   []string  `json:"organizations,omitempty"`   // The organizations for this account.
-	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"` // The last time this token was validated.
-	Insecure        bool      `json:"insecure,omitempty"`        // Allow insecure server connections when using SSL.
+	// The access token for this account.
+	AccessToken string `json:"accessToken,omitempty"`
+	// The username for this account.
+	Username string `json:"username,omitempty"`
+	// The organizations for this account.
+	Organizations []string `json:"organizations,omitempty"`
+	// The last time this token was validated.
+	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"`
+	// Allow insecure server connections when using SSL.
+	Insecure bool `json:"insecure,omitempty"`
+	// Information about the token used to authenticate.
+	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+}
+
+// Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
+// will be set, but not both.
+type TokenInformation struct {
+	Name         string `json:"name"`                   // The name of the token.
+	Organization string `json:"organization,omitempty"` // If this was an organization token, the organization it was for.
+	Team         string `json:"team,omitempty"`         // If this was a team token, the team it was for.
 }
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
@@ -208,7 +224,7 @@ func GetStoredCredentials() (Credentials, error) {
 			"`pulumi login` to reset your credentials file: %w", err)
 	}
 
-	secrets := make([]string, 0, len(creds.AccessTokens))
+	secrets := slice.Prealloc[string](len(creds.AccessTokens))
 	for _, v := range creds.AccessTokens {
 		secrets = append(secrets, v)
 	}

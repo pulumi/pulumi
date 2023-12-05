@@ -9,6 +9,8 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"plain-and-default/foo/internal"
 )
 
 type ModuleResource struct {
@@ -51,14 +53,14 @@ func NewModuleResource(ctx *pulumi.Context,
 		plain_optional_string_ := "buzzer"
 		args.Plain_optional_string = &plain_optional_string_
 	}
-	if isZero(args.Plain_required_bool) {
+	if internal.IsZero(args.Plain_required_bool) {
 		args.Plain_required_bool = true
 	}
 	args.Plain_required_const = "val"
-	if isZero(args.Plain_required_number) {
+	if internal.IsZero(args.Plain_required_number) {
 		args.Plain_required_number = 42.0
 	}
-	if isZero(args.Plain_required_string) {
+	if internal.IsZero(args.Plain_required_string) {
 		args.Plain_required_string = "buzzer"
 	}
 	if args.Required_bool == nil {
@@ -73,6 +75,7 @@ func NewModuleResource(ctx *pulumi.Context,
 	if args.Required_string == nil {
 		args.Required_string = pulumi.String("buzzer")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ModuleResource
 	err := ctx.RegisterResource("foobar::ModuleResource", name, args, &resource, opts...)
 	if err != nil {
@@ -168,6 +171,12 @@ func (i *ModuleResource) ToModuleResourceOutputWithContext(ctx context.Context) 
 	return pulumi.ToOutputWithContext(ctx, i).(ModuleResourceOutput)
 }
 
+func (i *ModuleResource) ToOutput(ctx context.Context) pulumix.Output[*ModuleResource] {
+	return pulumix.Output[*ModuleResource]{
+		OutputState: i.ToModuleResourceOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ModuleResourceOutput struct{ *pulumi.OutputState }
 
 func (ModuleResourceOutput) ElementType() reflect.Type {
@@ -180,6 +189,12 @@ func (o ModuleResourceOutput) ToModuleResourceOutput() ModuleResourceOutput {
 
 func (o ModuleResourceOutput) ToModuleResourceOutputWithContext(ctx context.Context) ModuleResourceOutput {
 	return o
+}
+
+func (o ModuleResourceOutput) ToOutput(ctx context.Context) pulumix.Output[*ModuleResource] {
+	return pulumix.Output[*ModuleResource]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ModuleResourceOutput) Optional_bool() pulumi.BoolPtrOutput {

@@ -8,11 +8,14 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"output-funcs/mypkg/internal"
 )
 
 // The response from the ListKeys operation.
 // API Version: 2021-02-01.
 func ListStorageAccountKeys(ctx *pulumi.Context, args *ListStorageAccountKeysArgs, opts ...pulumi.InvokeOption) (*ListStorageAccountKeysResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv ListStorageAccountKeysResult
 	err := ctx.Invoke("mypkg::listStorageAccountKeys", args, &rv, opts...)
 	if err != nil {
@@ -75,6 +78,12 @@ func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutput
 
 func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutputWithContext(ctx context.Context) ListStorageAccountKeysResultOutput {
 	return o
+}
+
+func (o ListStorageAccountKeysResultOutput) ToOutput(ctx context.Context) pulumix.Output[ListStorageAccountKeysResult] {
+	return pulumix.Output[ListStorageAccountKeysResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Gets the list of storage account keys and their properties for the specified storage account.

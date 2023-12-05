@@ -71,7 +71,6 @@
  <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%reset%}><{%reset%}>           [K
  <{%reset%}>  <{%reset%}>  └─ aws:eks:Cluster               eks-cluster             <{%reset%}><{%reset%}>           [K
 [K
-
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pulumi:pulumi:Stack (eks-dev):<{%reset%}>
     <{%reset%}>Configuration:<{%reset%}>

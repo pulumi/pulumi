@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	gofmt "go/format"
+	"go/token"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/iancoleman/strcase"
@@ -43,12 +47,16 @@ type generator struct {
 	readDirTempSpiller  *readDirSpiller
 	splatSpiller        *splatSpiller
 	optionalSpiller     *optionalSpiller
+	inlineInvokeSpiller *inlineInvokeSpiller
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	tmpVarCount         int
 	configCreated       bool
 	externalCache       *Cache
+
+	// Tracks imports for a file as we generate code.
+	importer *fileImporter
 
 	// inGenTupleConExprListArgs indicates that a the generator is processing an args list within a TupleConExpression.
 	inGenTupleConExprListArgs bool
@@ -95,9 +103,11 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
+		inlineInvokeSpiller: &inlineInvokeSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		externalCache:       opts.ExternalCache,
+		importer:            newFileImporter(),
 	}
 
 	// Apply any generate options.
@@ -355,14 +365,6 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 	g.Fgenf(w, "}\n")
 }
 
-func mergeImports(src, dest programImports) programImports {
-	return programImports{
-		pulumiImports:         src.pulumiImports.Union(dest.pulumiImports),
-		stdImports:            src.stdImports.Union(dest.stdImports),
-		preambleHelperMethods: src.preambleHelperMethods.Union(dest.preambleHelperMethods),
-	}
-}
-
 func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error,
 ) {
@@ -374,7 +376,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
-	initialImports := g.collectImports(program)
+	helpers := g.collectImports(program)
 
 	var progPostamble bytes.Buffer
 	for _, n := range nodes {
@@ -385,7 +387,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		g.genNode(&progPostamble, n)
 	}
 
-	programImports := mergeImports(initialImports, g.collectImports(program))
+	helpers = helpers.Union(g.collectImports(program))
 
 	g.genPostamble(&progPostamble, nodes)
 
@@ -394,26 +396,39 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	// present in resource declarations or invokes alone. Expressions are lowered when the program is generated
 	// and this must happen first so we can access types via __convert intrinsics.
 	var index bytes.Buffer
-	g.genPreamble(&index, program, programImports)
+	g.genPreamble(&index, program, helpers)
 	g.Fprintf(&index, "func main() {\n")
 	g.Fprintf(&index, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
 	index.Write(progPostamble.Bytes())
 
+	mainProgramContent := index.Bytes()
 	// Run Go formatter on the code before saving to disk
-	formattedSource, err := gofmt.Source(index.Bytes())
-	if err != nil {
-		return nil, g.diagnostics, fmt.Errorf("invalid Go source code:\n\n%s: %w", index.String(), err)
+	formattedSource, err := gofmt.Source(mainProgramContent)
+	if err == nil {
+		// if we were able to format the code, use prefer the formatted version
+		mainProgramContent = formattedSource
+	} else {
+		// add a warning diagnostic when there is a formatting error
+		g.diagnostics = g.diagnostics.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Subject:  &hcl.Range{Filename: "main.go"},
+			Summary:  "could not format go code",
+			Detail:   err.Error(),
+		})
 	}
 
 	files := map[string][]byte{
-		"main.go": formattedSource,
+		"main.go": mainProgramContent,
 	}
 
 	for componentDir, component := range program.CollectComponents() {
-		componentName := filepath.Base(componentDir)
+		g.importer.Reset()
+
+		componentFilename := filepath.Base(componentDir)
+		componentName := component.DeclarationName()
 		componentGenerator, err := newGenerator(component.Program, opts)
 		componentGenerator.isComponent = true
-		componentImports := componentGenerator.collectImports(component.Program)
+		componentHelperse := componentGenerator.collectImports(component.Program)
 		for _, n := range component.Program.Nodes {
 			componentGenerator.collectScopeRoots(n)
 		}
@@ -421,35 +436,44 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 			return nil, nil, fmt.Errorf("could not create a new generator: %w", err)
 		}
 		var componentBuffer bytes.Buffer
-		componentGenerator.genPreamble(&componentBuffer, component.Program, componentImports)
+		componentGenerator.genPreamble(&componentBuffer, component.Program, componentHelperse)
 
 		componentGenerator.genComponentArgs(&componentBuffer, componentName, component)
 		componentGenerator.genComponentType(&componentBuffer, componentName, component)
 		componentGenerator.genComponentDefinition(&componentBuffer, componentName, component)
-		formattedComponentSource, err := gofmt.Source(componentBuffer.Bytes())
-		if err != nil {
-			return nil, g.diagnostics,
-				fmt.Errorf("invalid Go source code:\n\n%s: %w", componentBuffer.String(), err)
+		componentContent := componentBuffer.Bytes()
+		formattedComponentSource, err := gofmt.Source(componentContent)
+		if err == nil {
+			// if we were able to format the code, use prefer the formatted version
+			componentContent = formattedComponentSource
+		} else {
+			// add a warning diagnostic when there is a formatting error
+			componentGenerator.diagnostics = componentGenerator.diagnostics.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Subject:  &hcl.Range{Filename: componentFilename + ".go"},
+				Summary:  "could not format go code",
+				Detail:   err.Error(),
+			})
 		}
-		files[componentName+".go"] = formattedComponentSource
+		files[componentFilename+".go"] = componentContent
 	}
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
-		return err
+		return files, diagnostics, err
 	}
 	if diagnostics.HasErrors() {
-		return diagnostics
+		return files, diagnostics, err
 	}
 
 	// Set the runtime to "go" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("go", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
-		return err
+		return nil, diagnostics, err
 	}
 	files["Pulumi.yaml"] = projectBytes
 
@@ -457,7 +481,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	var gomod bytes.Buffer
 	gomod.WriteString("module " + project.Name.String() + "\n")
 	gomod.WriteString(`
-go 1.17
+go 1.20
 
 require (
 	github.com/pulumi/pulumi/sdk/v3 v3.30.0
@@ -466,14 +490,14 @@ require (
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
 	if err != nil {
-		return err
+		return nil, diagnostics, err
 	}
 	for _, p := range packages {
 		if p.Name == "pulumi" {
 			continue
 		}
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
-			return err
+			return nil, diagnostics, err
 		}
 
 		if p.Version != nil && p.Version.Major <= 0 {
@@ -531,14 +555,34 @@ require (
 			}
 		}
 
+		version := ""
+		if p.Version != nil {
+			version = fmt.Sprintf("v%s", p.Version.String())
+		}
 		if packageName != "" {
-			fmt.Fprintf(&gomod, "	%s v%s\n", packageName, p.Version.String())
+			fmt.Fprintf(&gomod, "	%s %s\n", packageName, version)
 		}
 	}
 
 	gomod.WriteString(")")
 
 	files["go.mod"] = gomod.Bytes()
+
+	return files, diagnostics, nil
+}
+
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error {
+	files, diagnostics, err := GenerateProjectFiles(project, program)
+	if err != nil {
+		return err
+	}
+
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
@@ -583,23 +627,19 @@ func (g *generator) collectScopeRoots(n pcl.Node) {
 }
 
 // genPreamble generates package decl, imports, and opens the main func
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, imports programImports) {
-	stdImports := imports.stdImports
-	pulumiImports := imports.pulumiImports
-	preambleHelperMethods := imports.preambleHelperMethods
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
-	for _, imp := range stdImports.SortedValues() {
-		g.Fprintf(w, "\"%s\"\n", imp)
+
+	g.importer.Import("github.com/pulumi/pulumi/sdk/v3/go/pulumi", "pulumi")
+	for idx, group := range g.importer.ImportGroups() {
+		if idx > 0 {
+			g.Fprintf(w, "\n")
+		}
+		for _, imp := range group {
+			g.Fprintf(w, "\t%s\n", imp)
+		}
 	}
-
-	g.Fprintf(w, "\n")
-	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n")
-
-	for _, imp := range pulumiImports.SortedValues() {
-		g.Fprintf(w, "%s\n", imp)
-	}
-
 	g.Fprintf(w, ")\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
@@ -608,24 +648,24 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, imports progr
 	}
 }
 
-func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type, imports codegen.StringSet) {
+func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 	var token string
 	switch t := t.(type) {
 	case *schema.InputType:
-		g.collectTypeImports(program, t.ElementType, imports)
+		g.collectTypeImports(program, t.ElementType)
 		return
 	case *schema.OptionalType:
-		g.collectTypeImports(program, t.ElementType, imports)
+		g.collectTypeImports(program, t.ElementType)
 		return
 	case *schema.ArrayType:
-		g.collectTypeImports(program, t.ElementType, imports)
+		g.collectTypeImports(program, t.ElementType)
 		return
 	case *schema.MapType:
-		g.collectTypeImports(program, t.ElementType, imports)
+		g.collectTypeImports(program, t.ElementType)
 		return
 	case *schema.UnionType:
 		for _, t := range t.ElementTypes {
-			g.collectTypeImports(program, t, imports)
+			g.collectTypeImports(program, t)
 		}
 		return
 	case *schema.ObjectType:
@@ -647,20 +687,13 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type, impo
 	if err != nil {
 		panic(err)
 	}
-	imports.Add(g.getPulumiImport(pkg, vPath, mod, name))
-}
-
-type programImports struct {
-	stdImports            codegen.StringSet
-	pulumiImports         codegen.StringSet
-	preambleHelperMethods codegen.StringSet
+	g.addPulumiImport(pkg, vPath, mod, name)
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
-func (g *generator) collectImports(program *pcl.Program) programImports {
-	stdImports := codegen.NewStringSet()
-	pulumiImports := codegen.NewStringSet()
-	preambleHelperMethods := codegen.NewStringSet()
+func (g *generator) collectImports(program *pcl.Program) (helpers codegen.StringSet) {
+	helpers = codegen.NewStringSet()
+
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
@@ -676,13 +709,17 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
-				panic(err)
+				if r.Schema != nil {
+					panic(err)
+				}
+				// for unknown resources, make a best guess
+				vPath = "/v1"
 			}
 
-			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
+			g.addPulumiImport(pkg, vPath, mod, name)
 		}
 		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
-			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config\"")
+			g.importer.Import("github.com/pulumi/pulumi/sdk/v3/go/pulumi/config", "config")
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -692,6 +729,12 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
 					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
+					if call.Type() == model.DynamicType {
+						// then this is an unknown function, create a dummy import for it
+						dummyVersionPath := "/v1"
+						g.addPulumiImport(pkg, dummyVersionPath, mod, name)
+						return call, nil
+					}
 
 					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 
@@ -699,14 +742,14 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 					if err != nil {
 						panic(err)
 					}
-					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
+					g.addPulumiImport(pkg, vPath, mod, name)
 				} else if call.Name == pcl.IntrinsicConvert {
-					g.collectConvertImports(program, call, pulumiImports)
+					g.collectConvertImports(program, call)
 				}
 
 				// Checking to see if this function call deserves its own dedicated helper method in the preamble
 				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name, g.Indent); ok {
-					preambleHelperMethods.Add(helperMethodBody)
+					helpers.Add(helperMethodBody)
 				}
 			}
 			return n, nil
@@ -715,18 +758,22 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 
 		if g.isComponent {
 			// needed for resource names
-			stdImports.Add("fmt")
+			g.importer.Import("fmt", "fmt")
 		}
 
 		diags = n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
 				for _, fnPkg := range g.genFunctionPackages(call) {
-					stdImports.Add(fnPkg)
+					// Currently, for all stdlib packages,
+					//   basename($import) == $name
+					// In the future, we may need to add a
+					// mapping from $import to $name.
+					g.importer.Import(fnPkg, path.Base(fnPkg) /* name */)
 				}
 			}
 			if t, ok := n.(*model.TemplateExpression); ok {
 				if len(t.Parts) > 1 {
-					stdImports.Add("fmt")
+					g.importer.Import("fmt", "fmt")
 				}
 			}
 			return n, nil
@@ -734,17 +781,12 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 	}
 
-	return programImports{
-		stdImports:            stdImports,
-		pulumiImports:         pulumiImports,
-		preambleHelperMethods: preambleHelperMethods,
-	}
+	return helpers
 }
 
 func (g *generator) collectConvertImports(
 	program *pcl.Program,
 	call *model.FunctionCallExpression,
-	pulumiImports codegen.StringSet,
 ) {
 	if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
 		// Sometimes code for a `__convert` call does not
@@ -766,7 +808,7 @@ func (g *generator) collectConvertImports(
 				return
 			}
 		}
-		g.collectTypeImports(program, schemaType, pulumiImports)
+		g.collectTypeImports(program, schemaType)
 	}
 }
 
@@ -792,13 +834,8 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 	return info, ok
 }
 
-func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
-	// We do this before we let the user set overrides. That way the user can still have a
-	// module named IndexToken.
-	info, _ := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
-
-	importPath := func(mod string) string {
-		importBasePath := info.ImportBasePath
+func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
+	importPath := func(mod, importBasePath string) string {
 		if importBasePath == "" {
 			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
 		}
@@ -809,13 +846,32 @@ func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
 		return importBasePath
 	}
 
+	// We do this before we let the user set overrides. That way the user can still have a
+	// module named IndexToken.
+	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
+	if !hasInfo {
+		path := importPath(mod, "")
+		// users hasn't provided any extra overrides
+		if mod == "" || mod == IndexToken {
+			mod = pkg
+		}
+
+		if strings.Contains(mod, "-") {
+			// convert the dashed package name into camelCase
+			mod = strcase.ToLowerCamel(mod)
+		}
+		g.importer.Import(path, mod)
+		return
+	}
+
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
 
-	path := importPath(mod)
+	path := importPath(mod, info.ImportBasePath)
 	if alias, ok := info.PackageImportAliases[path]; ok {
-		return fmt.Sprintf("%s %q", alias, path)
+		g.importer.Import(path, alias)
+		return
 	}
 
 	// Trim off anything after the first '/'.
@@ -823,7 +879,13 @@ func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
 	// aws:s3/bucket:Bucket).
 	mod = strings.SplitN(mod, "/", 2)[0]
 
-	return fmt.Sprintf("%#v", importPath(mod))
+	path = importPath(mod, info.ImportBasePath)
+	pkgName := mod
+	if len(pkgName) == 0 || pkgName == IndexToken {
+		// If mod is empty, then the package is the root package.
+		pkgName = pkg
+	}
+	g.importer.Import(path, pkgName)
 }
 
 // genPostamble closes the method
@@ -936,13 +998,24 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	options, temps := g.lowerResourceOptions(r.Options)
 	g.genTemps(w, temps)
 
-	// Add conversions to input properties
-	for _, input := range r.Inputs {
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-		g.diagnostics = append(g.diagnostics, diagnostics...)
-		expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
-		input.Value = expr
-		g.genTemps(w, temps)
+	if r.Schema != nil {
+		// Add conversions to input properties
+		for _, input := range r.Inputs {
+			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+			expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
+			expr, invokeTemps := g.rewriteInlineInvokes(expr)
+			for _, t := range invokeTemps {
+				temps = append(temps, t)
+			}
+			input.Value = expr
+			g.genTemps(w, temps)
+		}
+	}
+
+	if r.Schema == nil {
+		// for unknown resource the type name of the resource should be upper-case
+		typ = Title(typ)
 	}
 
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
@@ -1116,7 +1189,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		}
 	}
 
-	componentName := Title(filepath.Base(r.DirPath()))
+	componentName := r.DeclarationName()
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
@@ -1284,6 +1357,12 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "}\n")
 		case *optionalTemp:
 			g.Fgenf(w, "%s := %.v\n", t.Name, t.Value)
+		case *inlineInvokeTemp:
+			g.Fgenf(w, "%s, err := %.v\n", t.Name, t.Value)
+			g.Fgenf(w, "if err != nil {\n")
+			g.Fgenf(w, "return err\n")
+			g.Fgenf(w, "}\n")
+			g.isErrAssigned = true
 		default:
 			contract.Failf("unexpected temp type: %v", t)
 		}
@@ -1462,22 +1541,44 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	info, ok := g.getGoPackageInfo(pkg)
 	if !ok {
+		needsAliasing := strings.Contains(mod, "-")
+		if needsAliasing {
+			return strcase.ToLowerCamel(mod)
+		}
 		return mod
 	}
-	if m, ok := info.ModuleToPackage[mod]; ok {
-		mod = m
+
+	importPath := func(mod string) string {
+		importBasePath := info.ImportBasePath
+		if mod != "" && mod != IndexToken {
+			return fmt.Sprintf("%s/%s", importBasePath, mod)
+		}
+		return importBasePath
 	}
 
-	imp := fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
-	if alias, ok := info.PackageImportAliases[imp]; ok {
-		return alias
-	} else if info.ImportBasePath != "" {
-		if originalMod == "" || originalMod == IndexToken {
-			return path.Base(info.ImportBasePath)
-		}
+	if m, ok := info.ModuleToPackage[mod]; ok {
+		mod = m
+	} else {
+		mod = originalMod
 	}
-	mod = strings.Split(mod, "/")[0]
-	return mod
+
+	path := importPath(mod)
+	if alias, ok := info.PackageImportAliases[path]; ok {
+		return g.importer.Import(path, alias)
+	}
+
+	// Trim off anything after the first '/'.
+	// This handles transforming modules like s3/bucket to s3 (as found in
+	// aws:s3/bucket:Bucket).
+	mod = strings.SplitN(mod, "/", 2)[0]
+
+	path = importPath(mod)
+	pkgName := mod
+	if len(pkgName) == 0 || pkgName == IndexToken {
+		// If mod is empty, then the package is the root package.
+		pkgName = pkg
+	}
+	return g.importer.Import(path, pkgName)
 }
 
 // Go needs complete package definitions in order to properly resolve names.
@@ -1494,4 +1595,210 @@ func programPackageDefs(program *pcl.Program) ([]*schema.Package, error) {
 		defs[i] = def
 	}
 	return defs, nil
+}
+
+// fileImporter tracks imports in a single generated file.
+// It ensures that there are no conflicts between imports
+// with the same package name.
+type fileImporter struct {
+	// used holds all identifier names that have been used
+	// for imports in this file, and the imports that they refer to.
+	used map[string]string // identifier name -> import path
+
+	// For import paths where the package name is not unique,
+	// this map holds the name that was used for the import.
+	aliases map[string]string // import path -> alias
+}
+
+func newFileImporter() *fileImporter {
+	return &fileImporter{
+		used:    make(map[string]string),
+		aliases: make(map[string]string),
+	}
+}
+
+// Import imports a package with the given import path
+// and returns the name that should be used to refer to it.
+//
+// name is the name of the package at the import path.
+// This must always match the 'package' statement in the imported package.
+//
+// Note that returned name may be different from the name argument.
+// This happens when the name is already used for another import,
+// and requires an alias to avoid a conflict.
+//
+//	foo := i.Import("example.com/foo", "foo")
+//	if foo == "foo" {
+//	    fmt.Printf(`import "example.com/foo"`)
+//	} else {
+//	    fmt.Printf(`import %s "example.com/foo"`, foo)
+//	}
+//
+// Import will never return the same name for two different import paths
+// in the same file.
+//
+// For example:
+//
+//	aws1 := i.Import("example.com/foo/aws", "aws")
+//	aws2 := i.Import("example.com/bar/aws", "aws")
+//	fmt.Println(aws1 == aws2) // false
+func (fi *fileImporter) Import(importPath string, name string) (actualName string) {
+	contract.Requiref(importPath != "", "importPath", "must not be empty")
+	contract.Requiref(name != "", "name", "must not be empty (importPath: %q)", importPath)
+
+	// For readability, always add an alias if the package name
+	// does not match the base name of the import path.
+	// For example, "example.com/foo-go" with package "foo"
+	// should get:
+	//
+	//	import foo "example.com/foo-go"
+	if filepath.Base(importPath) != name {
+		defer func() { fi.aliases[importPath] = actualName }()
+	}
+
+	// Already imported using the same name.
+	if imported, ok := fi.used[name]; ok && imported == importPath {
+		return name // no alias
+	}
+
+	// Preferred name has not yet been used.
+	if _, ok := fi.used[name]; !ok {
+		fi.used[name] = importPath
+		return name
+	}
+
+	// Already imported with an alias. Use that alias.
+	if other, ok := fi.aliases[importPath]; ok {
+		return other
+	}
+
+	// The name is taken. We need a unique unused alias.
+	// If the import path has at least two "/"s,
+	// we'll try to combine the last two parts of the path
+	// into a single identifier.
+	//
+	// For example, if "github.com/pulumi/pulumi-aws/sdk/go/awsx/s3"
+	// conflicts, we'll try to use "awsxs3" instead.
+	if idx := secondLastIndex(importPath, "/"); idx != -1 {
+		// "example.com/foo/bar/baz" -> "bar/baz"
+		candidate := importPath[idx+1:]
+		if candidate, ok := toIdentifier(candidate); ok {
+			if _, ok := fi.used[candidate]; !ok {
+				fi.used[candidate] = importPath
+				fi.aliases[importPath] = candidate
+				return candidate
+			}
+		}
+	}
+
+	// If that doesn't work, we'll just append a number.
+	for i := 2; ; i++ {
+		candidate := name + strconv.Itoa(i)
+		if _, ok := fi.used[candidate]; ok {
+			continue // already used
+		}
+
+		fi.used[candidate] = importPath
+		fi.aliases[importPath] = candidate
+		return candidate
+	}
+}
+
+// Reports all imports made with Import so far as groups of import specs.
+// These can be used to generate an import block with separate import groups.
+//
+// The specs are sorted by import path.
+//
+// Usage:
+//
+//	fmt.Printf("import (\n")
+//	for _, group := range i.ImportGroups() {
+//		for _, spec := range group {
+//			fmt.Printf("    %s\n", spec)
+//		}
+//	}
+//
+// This example collapses all imports into a single group.
+// Typically, you would want to separate the groups with a blank line.
+func (fi *fileImporter) ImportGroups() [][]string {
+	importPaths := make([]string, 0, len(fi.used))
+	for _, importPath := range fi.used {
+		importPaths = append(importPaths, importPath)
+	}
+	sort.Strings(importPaths)
+
+	// We currently generate only two groups:
+	//
+	// 1. stdlib imports
+	// 2. everything else
+	//
+	// We can determine if an import is stdlib by checking if its path
+	// contains a '.'.
+	// See https://github.com/golang/go/issues/32819 for discussion,
+	// but:
+	//
+	// > Import paths without dots are reserved for the standard library
+	// > and toolchain
+	var (
+		stdlib []string
+		other  []string
+	)
+	for _, importPath := range importPaths {
+		var spec string
+		if alias, ok := fi.aliases[importPath]; ok {
+			spec = alias + " " + strconv.Quote(importPath)
+			// e.g. foo "example.com/foo"
+		} else {
+			spec = strconv.Quote(importPath)
+			// e.g. "example.com/foo"
+		}
+		if strings.Contains(importPath, ".") {
+			other = append(other, spec)
+		} else {
+			stdlib = append(stdlib, spec)
+		}
+	}
+
+	var groups [][]string
+	if len(stdlib) > 0 {
+		groups = append(groups, stdlib)
+	}
+	if len(other) > 0 {
+		groups = append(groups, other)
+	}
+	return groups
+}
+
+// Reset resets the importer to its initial state.
+func (fi *fileImporter) Reset() {
+	fi.used = make(map[string]string)
+	fi.aliases = make(map[string]string)
+}
+
+// Turns a string into an identifier by dropping all characters
+// that are not alphamumeric or underscore.
+//
+// Returns false if the string cannot be turned into an identifier.
+func toIdentifier(s string) (_ string, ok bool) {
+	var b strings.Builder
+	for _, r := range s {
+		if r == '_' || unicode.IsLetter(r) || unicode.IsNumber(r) {
+			b.WriteRune(r)
+		}
+	}
+	o := b.String()
+	return o, token.IsIdentifier(o)
+}
+
+// Returns the index of the second-to-last occurrence of needle in haystack.
+// If there is no second-to-last occurrence, returns -1.
+func secondLastIndex(haystack, needle string) int {
+	// Note that we can't just do []byte(haystack) and then iterate backwards
+	// because of unicode.
+	// Instead we'll use strings.LastIndex twice.
+	last := strings.LastIndex(haystack, needle)
+	if last == -1 {
+		return -1
+	}
+	return strings.LastIndex(haystack[:last], needle)
 }

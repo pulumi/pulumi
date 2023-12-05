@@ -75,11 +75,8 @@ jobs:
           git push origin "pkg/v${PULUMI_VERSION}"
           git push -u origin HEAD
 
-          PR_BODY=""
-          if [ "${QUEUE_MERGE}" = "true" ]; then
-            PR_BODY="bors merge"
-          fi
+          PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
 
-          gh pr create \
-            --title "Changelog and go.mod updates for v${PULUMI_VERSION}" \
-            --body "${PR_BODY}"
+          if [ "${QUEUE_MERGE}" = "true" ]; then
+            gh pr merge --auto --squash "${PR}"
+          fi

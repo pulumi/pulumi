@@ -37,6 +37,8 @@ type Analyzer interface {
 	// AnalyzeStack analyzes all resources after a successful preview or update.
 	// Is called after all resources have been processed, and all changes applied.
 	AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error)
+	// Remediate is given the opportunity to optionally transform a single resource's properties.
+	Remediate(r AnalyzerResource) ([]Remediation, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
@@ -49,7 +51,7 @@ type Analyzer interface {
 type AnalyzerResource struct {
 	URN        resource.URN
 	Type       tokens.Type
-	Name       tokens.QName
+	Name       string
 	Properties resource.PropertyMap
 	Options    AnalyzerResourceOptions
 	Provider   *AnalyzerProviderResource
@@ -78,7 +80,7 @@ type AnalyzerResourceOptions struct {
 type AnalyzerProviderResource struct {
 	URN        resource.URN
 	Type       tokens.Type
-	Name       tokens.QName
+	Name       string
 	Properties resource.PropertyMap
 }
 
@@ -93,6 +95,18 @@ type AnalyzeDiagnostic struct {
 	Tags              []string
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
+}
+
+// Remediation indicates that a resource remediation took place, and contains the resulting
+// transformed properties and associated metadata.
+type Remediation struct {
+	PolicyName        string
+	Description       string
+	PolicyPackName    string
+	PolicyPackVersion string
+	URN               resource.URN
+	Properties        resource.PropertyMap
+	Diagnostic        string
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.

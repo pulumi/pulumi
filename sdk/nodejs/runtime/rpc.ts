@@ -17,7 +17,7 @@ import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
-import { debuggablePromise, errorString } from "./debuggable";
+import { debuggablePromise, errorString, debugPromiseLeaks } from "./debuggable";
 import {
     excessiveDebugOutput,
     isDryRun,
@@ -70,6 +70,12 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 
         resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
             if (err) {
+                if (isGrpcError(err)) {
+                    if (debugPromiseLeaks) {
+                        console.error("info: skipped rejection in transferProperties");
+                    }
+                    return;
+                }
                 rejectValue(err);
                 rejectIsKnown(err);
                 rejectIsSecret(err);

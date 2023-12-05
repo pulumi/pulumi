@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // CRDTypes returns a map from each module name to a buffer containing the
@@ -23,7 +24,7 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 		return nil, err
 	}
 
-	pkgMods := make([]string, 0, len(packages))
+	pkgMods := slice.Prealloc[string](len(packages))
 	for mod := range packages {
 		pkgMods = append(pkgMods, mod)
 	}
@@ -37,20 +38,20 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 		for _, r := range pkg.resources {
 			importsAndAliases := map[string]string{}
 			pkg.getImports(r, importsAndAliases)
-			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases, false /* isUtil */)
 
-			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes); err != nil {
+			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes, false); err != nil {
 				return nil, fmt.Errorf("generating resource %s: %w", mod, err)
 			}
 		}
 
 		if len(pkg.types) > 0 {
 			for _, t := range pkg.types {
-				if err := pkg.genType(buffer, t); err != nil {
+				if err := pkg.genType(buffer, t, false); err != nil {
 					return nil, err
 				}
 			}
-			pkg.genTypeRegistrations(buffer, pkg.types)
+			pkg.genTypeRegistrations(buffer, pkg.types, false /* usingGenericTypes */)
 		}
 
 		buffers[mod] = buffer

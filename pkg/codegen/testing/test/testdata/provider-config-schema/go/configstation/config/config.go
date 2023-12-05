@@ -6,7 +6,10 @@ package config
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
+	"internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 func GetFavoritePlants(ctx *pulumi.Context) string {
 	return config.Get(ctx, "configstation:favoritePlants")
@@ -42,7 +45,7 @@ func GetSecretCode(ctx *pulumi.Context) string {
 		return v
 	}
 	var value string
-	if d := getEnvOrDefault(nil, nil, "SECRET_CODE", "MY_SUPER_SECRET_CODE"); d != nil {
+	if d := internal.GetEnvOrDefault(nil, nil, "SECRET_CODE", "MY_SUPER_SECRET_CODE"); d != nil {
 		value = d.(string)
 	}
 	return value

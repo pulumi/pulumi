@@ -17,19 +17,22 @@ package display
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
@@ -330,6 +333,9 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 			delete(diff.Updates, k)
 		} else {
 			massageStackPreviewDiff(d, inResource)
+			if !d.Object.AnyChanges() {
+				delete(diff.Updates, k)
+			}
 		}
 	}
 }
@@ -340,7 +346,7 @@ func getResourceOutputsPropertiesString(
 	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool,
 ) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
-	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
+	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
 		showSames = true
 	}
 
@@ -365,7 +371,7 @@ func getResourceOutputsPropertiesString(
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
 			step.Op == deploy.OpImportReplacement ||
-			step.URN.Type() == resource.RootStackType
+			step.URN.QualifiedType() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""
 		}
@@ -397,7 +403,7 @@ func getResourceOutputsPropertiesString(
 
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
-		if planning && step.URN.Type() == resource.RootStackType {
+		if planning && step.URN.QualifiedType() == resource.RootStackType {
 			massageStackPreviewOutputDiff(outputDiff, false)
 		}
 
@@ -807,7 +813,19 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 	} else if v.IsBool() {
 		p.write("%t", v.BoolValue())
 	} else if v.IsNumber() {
-		p.write("%v", v.NumberValue())
+		// All pulumi numbers are IEEE doubles really (even in languages where we codegen integers the wire
+		// protocol only supports doubles). But by default Go will print them in scientific notation for large
+		// enough values which is suboptimal for our purposes when the value is still an integer. (i.e.
+		// non-fractional). See https://github.com/pulumi/pulumi/issues/13016 for context.
+		number := v.NumberValue()
+		if math.Trunc(number) == number {
+			p.write("%.f", number)
+		} else {
+			// For factional values we're fine with Go printing them in scientific notation for large
+			// exponents.
+			p.write("%g", number)
+		}
+
 	} else if v.IsString() {
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
 			p.write("(%s) ", kind)
@@ -895,8 +913,8 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 	// as an add.  For any asset in both we print out of it is unchanged or not.  If so, we
 	// recurse on that data to print out how it changed.
 
-	oldNames := make([]string, 0, len(oldAssets))
-	newNames := make([]string, 0, len(newAssets))
+	oldNames := slice.Prealloc[string](len(oldAssets))
+	newNames := slice.Prealloc[string](len(newAssets))
 
 	for name := range oldAssets {
 		oldNames = append(oldNames, name)
@@ -912,7 +930,7 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 	i := 0
 	j := 0
 
-	keys := make([]resource.PropertyKey, 0, len(oldNames)+len(newNames))
+	keys := slice.Prealloc[resource.PropertyKey](len(oldNames) + len(newNames))
 	for _, name := range oldNames {
 		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
 	}
@@ -1199,11 +1217,17 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 
 func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
 	decode := func() (interface{}, string, bool) {
+		// Strip whitespace for the purposes of decoding.
+		repr = strings.TrimSpace(repr)
 		r := strings.NewReader(repr)
 
+		jsonDecoder := json.NewDecoder(r)
 		var object interface{}
-		if err := json.NewDecoder(r).Decode(&object); err == nil {
-			return object, "json", true
+		if err := jsonDecoder.Decode(&object); err == nil {
+			// Make sure _all_ the string was consumed as JSON.
+			if !jsonDecoder.More() {
+				return object, "json", true
+			}
 		}
 
 		// Only attempt to decode a YAML value if the representation is a multi-line string.
@@ -1213,12 +1237,20 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 		}
 
 		r.Reset(repr)
-		if err := yaml.NewDecoder(r).Decode(&object); err == nil {
-			translated, ok := p.translateYAMLValue(object)
-			if !ok {
-				return nil, "", false
+		yamlDecoder := yaml.NewDecoder(r)
+		if err := yamlDecoder.Decode(&object); err == nil {
+			// Make sure _all_ the string was consumed as YAML. Unlike JsonDecoder above, the YamlDecoder
+			// doesn't give an easy way to do this, so our workaround is we ask it to try and decode another
+			// value, and if it fails with io.EOF, then we know we've consumed the whole string.
+			var ignored interface{}
+			eofErr := yamlDecoder.Decode(&ignored)
+			if errors.Is(eofErr, io.EOF) {
+				translated, ok := p.translateYAMLValue(object)
+				if !ok {
+					return nil, "", false
+				}
+				return translated, "yaml", true
 			}
-			return translated, "yaml", true
 		}
 
 		return nil, "", false

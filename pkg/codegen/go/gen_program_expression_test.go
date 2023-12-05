@@ -44,7 +44,7 @@ func TestLiteralExpression(t *testing.T) {
 		{hcl2Expr: "\"foo\"", goCode: "\"foo\""},
 		{hcl2Expr: `"foo: ${bar}"`, goCode: `fmt.Sprintf("foo: %v", bar)`},
 		{hcl2Expr: `"fizz${bar}buzz"`, goCode: `fmt.Sprintf("fizz%vbuzz", bar)`},
-		{hcl2Expr: `"foo ${bar} %baz"`, goCode: `fmt.Sprintf("foo %v %vbaz", bar, "%")`},
+		{hcl2Expr: `"foo ${bar} %baz"`, goCode: `fmt.Sprintf("foo %v%v", bar, " %baz")`},
 		{hcl2Expr: strings.ReplaceAll(`"{
     \"Version\": \"2008-10-17\",
     \"Statement\": [

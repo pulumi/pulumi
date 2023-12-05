@@ -64,6 +64,7 @@ func newOrgCmd() *cobra.Command {
 
 	cmd.AddCommand(newOrgSetDefaultCmd())
 	cmd.AddCommand(newOrgGetDefaultCmd())
+	cmd.AddCommand(newSearchCmd())
 
 	return cmd
 }

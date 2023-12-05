@@ -248,7 +248,7 @@ format::
 		-path "./vendor/*" -or \
 		-path "./*/compilation_error/*" -or \
 		-path "./*/testdata/*" \
-	\) | xargs gofmt -s -w
+	\) | xargs gofumpt -w
 
 # Defines the target `%.ensure` where `%` is an executable to check for. For
 # example, the target `ensure.foo` will check that `foo` is available on the

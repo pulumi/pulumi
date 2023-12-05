@@ -171,6 +171,31 @@ describe("DependencyProviderResource", () => {
     });
 });
 
+describe("CustomResource", () => {
+    runtime.setMocks({
+        call: (_) => {
+            throw new Error("unexpected call");
+        },
+        newResource: (args) => {
+            return { id: `${args.name}_id`, state: {} };
+        },
+    });
+
+    // https://github.com/pulumi/pulumi/issues/13777
+    it("saves provider with same package as the resource in __prov", async () => {
+        const provider = new MyProvider("prov");
+        const custom = new MyCustomResource("custom", { provider: provider });
+        assert.strictEqual(custom.__prov, provider);
+    });
+
+    // https://github.com/pulumi/pulumi/issues/13777
+    it("does not save provider with different package as the resource in __prov", async () => {
+        const provider = new MyOtherProvider("prov");
+        const custom = new MyCustomResource("custom", { provider: provider });
+        assert.strictEqual(custom.__prov, undefined);
+    });
+});
+
 describe("ComponentResource", () => {
     runtime.setMocks({
         call: (_) => {
@@ -198,15 +223,52 @@ describe("ComponentResource", () => {
     });
 });
 
+describe("RemoteComponentResource", () => {
+    runtime.setMocks({
+        call: (_) => {
+            throw new Error("unexpected call");
+        },
+        newResource: (args) => {
+            return { id: `${args.name}_id`, state: {} };
+        },
+    });
+
+    // https://github.com/pulumi/pulumi/issues/13777
+    it("saves provider with same package as the resource in __prov", async () => {
+        const provider = new MyProvider("prov");
+        const comp = new MyRemoteComponentResource("comp", { provider: provider });
+        assert.strictEqual(comp.__prov, provider);
+    });
+
+    // https://github.com/pulumi/pulumi/issues/13777
+    it("does not save provider with different package as the resource in __prov", async () => {
+        const provider = new MyOtherProvider("prov");
+        const comp = new MyRemoteComponentResource("comp", { provider: provider });
+        assert.strictEqual(comp.__prov, undefined);
+    });
+});
+
 class MyProvider extends ProviderResource {
     constructor(name: string) {
         super("test", name);
     }
 }
 
+class MyOtherProvider extends ProviderResource {
+    constructor(name: string) {
+        super("other", name);
+    }
+}
+
 class MyCustomResource extends CustomResource {
     constructor(name: string, opts?: CustomResourceOptions) {
         super("test:index:MyCustomResource", name, {}, opts);
+    }
+}
+
+class MyRemoteComponentResource extends ComponentResource {
+    constructor(name: string, opts?: ComponentResourceOptions) {
+        super("test:index:MyRemoteComponentResource", name, {}, opts, true /*remote*/);
     }
 }
 

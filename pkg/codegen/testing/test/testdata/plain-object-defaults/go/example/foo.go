@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-defaults/example/internal"
 )
 
 // test new feature with resoruces
@@ -36,6 +37,7 @@ func NewFoo(ctx *pulumi.Context,
 	if args.Settings != nil {
 		args.Settings = args.Settings.ToLayeredTypePtrOutput().ApplyT(func(v *LayeredType) *LayeredType { return v.Defaults() }).(LayeredTypePtrOutput)
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {

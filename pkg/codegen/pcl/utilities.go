@@ -21,11 +21,14 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // titleCase replaces the first character in the given string with its upper-case equivalent.
@@ -87,7 +90,7 @@ func Linearize(p *Program) []Node {
 	}
 
 	// Now build a worklist out of the set of files, sorting the nodes in each file in source order as we go.
-	worklist := make([]*file, 0, len(files))
+	worklist := slice.Prealloc[*file](len(files))
 	for _, f := range files {
 		SourceOrderNodes(f.nodes)
 		worklist = append(worklist, f)
@@ -95,7 +98,7 @@ func Linearize(p *Program) []Node {
 
 	// While the worklist is not empty, add the nodes in the file with the fewest unsatisfied dependencies on nodes in
 	// other files.
-	doneNodes, nodes := codegen.Set{}, make([]Node, 0, len(p.Nodes))
+	doneNodes, nodes := codegen.Set{}, slice.Prealloc[Node](len(p.Nodes))
 	for len(worklist) > 0 {
 		// Recalculate file weights and find the file with the lowest weight.
 		var next *file
@@ -146,7 +149,7 @@ func Linearize(p *Program) []Node {
 // The resultant program should be a shallow copy of the source with only the modified resource nodes copied.
 func MapProvidersAsResources(p *Program) {
 	for _, n := range p.Nodes {
-		if r, ok := n.(*Resource); ok {
+		if r, ok := n.(*Resource); ok && r.Schema != nil {
 			pkg, mod, name, _ := r.DecomposeToken()
 			if r.Schema.IsProvider && pkg == "pulumi" && mod == "providers" {
 				// the binder emits tokens like this when the module is "index"
@@ -261,4 +264,21 @@ func UnwrapOption(exprType model.Type) model.Type {
 	default:
 		return exprType
 	}
+}
+
+// VariableAccessed returns whether the given variable name is accessed in the given expression.
+func VariableAccessed(variableName string, expr model.Expression) bool {
+	accessed := false
+	visitor := func(subExpr model.Expression) (model.Expression, hcl.Diagnostics) {
+		if traversal, ok := subExpr.(*model.ScopeTraversalExpression); ok {
+			if traversal.RootName == variableName {
+				accessed = true
+			}
+		}
+		return subExpr, nil
+	}
+
+	_, diags := model.VisitExpression(expr, model.IdentityVisitor, visitor)
+	contract.Assertf(len(diags) == 0, "expected no diagnostics from VisitExpression")
+	return accessed
 }

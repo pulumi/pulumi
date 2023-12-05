@@ -3,9 +3,10 @@
     "repro/doc.go",
     "repro/foo.go",
     "repro/init.go",
+    "repro/internal/pulumiUtilities.go",
+    "repro/internal/pulumiVersion.go",
     "repro/provider.go",
     "repro/pulumi-plugin.json",
-    "repro/pulumiTypes.go",
-    "repro/pulumiUtilities.go"
+    "repro/pulumiTypes.go"
   ]
 }

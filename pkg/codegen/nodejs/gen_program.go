@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/zclconf/go-cty/cty"
@@ -76,6 +77,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	if err != nil {
 		return nil, nil, err
 	}
+	// used to track declared variables in the main program
+	// since outputs have identifiers which can conflict with other program nodes' identifiers
+	// we switch the entry point to async which allows for declaring arbitrary output names
+	declaredNodeIdentifiers := map[string]bool{}
 	for _, n := range nodes {
 		if g.asyncMain {
 			break
@@ -85,8 +90,20 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 			if resourceRequiresAsyncMain(x) {
 				g.asyncMain = true
 			}
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
+		case *pcl.ConfigVariable:
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
+		case *pcl.LocalVariable:
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
+		case *pcl.Component:
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
 		case *pcl.OutputVariable:
 			if outputRequiresAsyncMain(x) {
+				g.asyncMain = true
+			}
+
+			outputIdentifier := makeValidIdentifier(x.Name())
+			if _, alreadyDeclared := declaredNodeIdentifiers[outputIdentifier]; alreadyDeclared {
 				g.asyncMain = true
 			}
 		}
@@ -111,17 +128,9 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 						result = &model.ObjectConsExpression{}
 					}
 					name := o.LogicalName()
-					nameVar := makeValidIdentifier(o.Name())
 					result.Items = append(result.Items, model.ObjectConsItem{
-						Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
-						Value: &model.ScopeTraversalExpression{
-							RootName:  nameVar,
-							Traversal: hcl.Traversal{hcl.TraverseRoot{Name: name}},
-							Parts: []model.Traversable{&model.Variable{
-								Name:         nameVar,
-								VariableType: o.Type(),
-							}},
-						},
+						Key:   &model.LiteralValueExpression{Value: cty.StringVal(name)},
+						Value: g.lowerExpression(o.Value, o.Type()),
 					})
 				}
 			}
@@ -140,7 +149,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	for componentDir, component := range program.CollectComponents() {
-		componentName := filepath.Base(componentDir)
+		componentFilename := filepath.Base(componentDir)
+		componentName := component.DeclarationName()
 		componentGenerator := &generator{
 			program:     component.Program,
 			isComponent: true,
@@ -150,13 +160,16 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 
 		var componentBuffer bytes.Buffer
 		componentGenerator.genComponentResourceDefinition(&componentBuffer, componentName, component)
-		files[componentName+".ts"] = componentBuffer.Bytes()
+		files[componentFilename+".ts"] = componentBuffer.Bytes()
 	}
 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -173,16 +186,42 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
-	// Build the pacakge.json
+	// The local dependencies map is a map of package name to the path to the package, the path could be
+	// absolute or a relative path but we want to ensure we emit relative paths in the package.json.
+	for k, v := range localDependencies {
+		absPath := v
+		if !filepath.IsAbs(v) {
+			absPath, err = filepath.Abs(v)
+			if err != nil {
+				return fmt.Errorf("absolute path of %s: %w", v, err)
+			}
+		}
+
+		relPath, err := filepath.Rel(directory, absPath)
+		if err != nil {
+			return fmt.Errorf("relative path of %s from %s: %w", absPath, directory, err)
+		}
+
+		localDependencies[k] = relPath
+	}
+
+	// Build the package.json
 	var packageJSON bytes.Buffer
 	fmt.Fprintf(&packageJSON, `{
-		"name": "%s",
-		"devDependencies": {
-			"@types/node": "^14"
-		},
-		"dependencies": {
-			"typescript": "^4.0.0",
-			"@pulumi/pulumi": "^3.0.0"`, project.Name.String())
+	"name": "%s",
+	"devDependencies": {
+		"@types/node": "^14"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		`, project.Name.String())
+
+	// Check if pulumi is a local dependency, else add it as a normal range dependency
+	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "%s"`, pulumiArtifact)
+	} else {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "^3.0.0"`)
+	}
 
 	// For each package add a dependency line
 	packages, err := program.CollectNestedPackageSnapshots()
@@ -208,15 +247,20 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 				packageName = nodeInfo.PackageName
 			}
 		}
-		dependencyTemplate := ",\n			\"%s\": \"%s\""
-		if p.Version != nil {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+
+		dependencyTemplate := ",\n		\"%s\": \"%s\""
+		if path, has := localDependencies[p.Name]; has {
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
 		} else {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			if p.Version != nil {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			}
 		}
 	}
 	packageJSON.WriteString(`
-		}
+	}
 }`)
 
 	files["package.json"] = packageJSON.Bytes()
@@ -228,38 +272,41 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// Add the basic tsconfig
 	var tsConfig bytes.Buffer
 	tsConfig.WriteString(`{
-		"compilerOptions": {
-			"strict": true,
-			"outDir": "bin",
-			"target": "es2016",
-			"module": "commonjs",
-			"moduleResolution": "node",
-			"sourceMap": true,
-			"experimentalDecorators": true,
-			"pretty": true,
-			"noFallthroughCasesInSwitch": true,
-			"noImplicitReturns": true,
-			"forceConsistentCasingInFileNames": true
-		},
-		"files": [
+	"compilerOptions": {
+		"strict": true,
+		"outDir": "bin",
+		"target": "es2016",
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"sourceMap": true,
+		"experimentalDecorators": true,
+		"pretty": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"files": [
 `)
 
-	fileCounter := 0
+	fileNames := make([]string, 0, len(files))
 	for file := range files {
+		fileNames = append(fileNames, file)
+	}
+	sort.Strings(fileNames)
+
+	for i, file := range fileNames {
 		if strings.HasSuffix(file, ".ts") {
-			tsConfig.WriteString("			\"" + file + "\"")
-			lastFile := fileCounter == len(files)-1
+			tsConfig.WriteString("		\"" + file + "\"")
+			lastFile := i == len(files)-1
 			if !lastFile {
 				tsConfig.WriteString(",\n")
 			} else {
 				tsConfig.WriteString("\n")
 			}
 		}
-
-		fileCounter = fileCounter + 1
 	}
 
-	tsConfig.WriteString(`		]
+	tsConfig.WriteString(`	]
 }`)
 	files["tsconfig.json"] = tsConfig.Bytes()
 
@@ -337,7 +384,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			importSet.Add(pkgName)
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
-			componentName := title(componentDir)
+			componentName := n.DeclarationName()
 			importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
 			componentImports = append(componentImports, importStatement)
 		}
@@ -358,7 +405,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	}
 
 	sortedValues := importSet.SortedValues()
-	imports := make([]string, 0, len(sortedValues))
+	imports := slice.Prealloc[string](len(sortedValues))
 	for _, pkg := range sortedValues {
 		if pkg == "@pulumi/pulumi" {
 			continue
@@ -486,7 +533,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	configVars := component.Program.ConfigVariables()
 
 	if len(configVars) > 0 {
-		g.Fgenf(w, "interface %sArgs {\n", title(componentName))
+		g.Fgenf(w, "interface %sArgs {\n", componentName)
 		g.Indented(func() {
 			for _, configVar := range configVars {
 				optional := "?"
@@ -541,7 +588,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 
 	outputs := component.Program.OutputVariables()
 
-	g.Fgenf(w, "export class %s extends pulumi.ComponentResource {\n", title(componentName))
+	g.Fgenf(w, "export class %s extends pulumi.ComponentResource {\n", componentName)
 	g.Indented(func() {
 		for _, output := range outputs {
 			var outputType string
@@ -569,7 +616,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			g.Fgenf(w, "public %s: %s;\n", output.Name(), outputType)
 		}
 
-		token := fmt.Sprintf("components:index:%s", title(componentName))
+		token := fmt.Sprintf("components:index:%s", componentName)
 
 		if len(configVars) == 0 {
 			g.Fgenf(w, "%s", g.Indent)
@@ -580,7 +627,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			})
 		} else {
 			g.Fgenf(w, "%s", g.Indent)
-			argsTypeName := title(componentName) + "Args"
+			argsTypeName := componentName + "Args"
 			g.Fgenf(w, "constructor(name: string, args: %s, opts?: pulumi.ComponentResourceOptions) {\n",
 				argsTypeName)
 			g.Indented(func() {
@@ -842,10 +889,14 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
-				g.diagnostics = append(g.diagnostics, diagnostics...)
-				g.Fgenf(w, fmtString, propertyName,
-					g.lowerExpression(attr.Value, destType.(model.Type)))
+				if r.Schema != nil {
+					destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+					g.diagnostics = append(g.diagnostics, diagnostics...)
+					g.Fgenf(w, fmtString, propertyName,
+						g.lowerExpression(attr.Value, destType.(model.Type)))
+				} else {
+					g.Fgenf(w, fmtString, propertyName, attr.Value)
+				}
 			}
 		})
 		if len(r.Inputs) > 1 {
@@ -1005,7 +1056,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
-	componentName := title(filepath.Base(component.DirPath()))
+	componentName := component.DeclarationName()
 
 	optionsBag := g.genResourceOptions(component.Options)
 
@@ -1095,16 +1146,56 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	g.genTrivia(w, component.Definition.Tokens.GetCloseBrace())
 }
 
-func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
-	// TODO(pdg): trivia
+func computeConfigTypeParam(configType model.Type) string {
+	switch pcl.UnwrapOption(configType) {
+	case model.StringType:
+		return "string"
+	case model.NumberType, model.IntType:
+		return "number"
+	case model.BoolType:
+		return "boolean"
+	case model.DynamicType:
+		return "any"
+	default:
+		switch complexType := pcl.UnwrapOption(configType).(type) {
+		case *model.ListType:
+			return fmt.Sprintf("Array<%s>", computeConfigTypeParam(complexType.ElementType))
+		case *model.MapType:
+			return fmt.Sprintf("Record<string, %s>", computeConfigTypeParam(complexType.ElementType))
+		case *model.ObjectType:
+			if len(complexType.Properties) == 0 {
+				return "any"
+			}
 
+			attributeKeys := []string{}
+			for attributeKey := range complexType.Properties {
+				attributeKeys = append(attributeKeys, attributeKey)
+			}
+			// get deterministically sorted attribute keys
+			sort.Strings(attributeKeys)
+
+			var elementTypes []string
+			for _, propertyName := range attributeKeys {
+				propertyType := complexType.Properties[propertyName]
+				elementType := fmt.Sprintf("%s?: %s", propertyName, computeConfigTypeParam(propertyType))
+				elementTypes = append(elementTypes, elementType)
+			}
+
+			return fmt.Sprintf("{%s}", strings.Join(elementTypes, ", "))
+		default:
+			return "any"
+		}
+	}
+}
+
+func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if !g.configCreated {
 		g.Fprintf(w, "%sconst config = new pulumi.Config();\n", g.Indent)
 		g.configCreated = true
 	}
 
 	getType := "Object"
-	switch v.Type() {
+	switch pcl.UnwrapOption(v.Type()) {
 	case model.StringType:
 		getType = ""
 	case model.NumberType, model.IntType:
@@ -1113,8 +1204,18 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getType = "Boolean"
 	}
 
+	typeParam := ""
+	if getType == "Object" {
+		// compute the type parameter T for the call to config.getObject<T>(...)
+		computedTypeParam := computeConfigTypeParam(v.Type())
+		if computedTypeParam != "any" {
+			// any is redundant
+			typeParam = fmt.Sprintf("<%s>", computedTypeParam)
+		}
+	}
+
 	getOrRequire := "get"
-	if v.DefaultValue == nil {
+	if v.DefaultValue == nil && !model.IsOptionalType(v.Type()) {
 		getOrRequire = "require"
 	}
 
@@ -1125,9 +1226,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	name := makeValidIdentifier(v.Name())
-	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[5]s\")",
-		g.Indent, name, getOrRequire, getType, v.LogicalName())
-	if v.DefaultValue != nil {
+	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s%[5]s(\"%[6]s\")",
+		g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
+	if v.DefaultValue != nil && !model.IsOptionalType(v.Type()) {
 		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
 	}
 	g.Fgenf(w, ";\n")
@@ -1139,12 +1240,14 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
-	// TODO(pdg): trivia
-	export := "export "
 	if g.asyncMain {
-		export = ""
+		// skip generating the output variables as export constants
+		// when we are inside an async main program because we export them as a single object
+		return
 	}
-	g.Fgenf(w, "%s%sconst %s = %.3v;\n", g.Indent, export,
+
+	// TODO(pdg): trivia
+	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent,
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 

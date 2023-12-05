@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,8 +40,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -266,7 +266,7 @@ func NewPulumiCmd() *cobra.Command {
 		"Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
 		"Enable emojis in the output")
-	cmd.PersistentFlags().BoolVar(&filestate.DisableIntegrityChecking, "disable-integrity-checking", false,
+	cmd.PersistentFlags().BoolVar(&backend.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
 		"Flow log settings to child processes (like plugins)")
@@ -297,6 +297,7 @@ func NewPulumiCmd() *cobra.Command {
 				newImportCmd(),
 				newRefreshCmd(),
 				newStateCmd(),
+				newInstallCmd(),
 			},
 		},
 		{
@@ -306,6 +307,12 @@ func NewPulumiCmd() *cobra.Command {
 				newDestroyCmd(),
 				newPreviewCmd(),
 				newCancelCmd(),
+			},
+		},
+		{
+			Name: "Environment Commands",
+			Commands: []*cobra.Command{
+				newEnvCmd(),
 			},
 		},
 		{
@@ -357,7 +364,6 @@ func NewPulumiCmd() *cobra.Command {
 				newConvertCmd(),
 				newWatchCmd(),
 				newLogsCmd(),
-				newEnvCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
@@ -368,6 +374,14 @@ func NewPulumiCmd() *cobra.Command {
 				newViewTraceCmd(),
 				newConvertTraceCmd(),
 				newReplayEventsCmd(),
+			},
+		},
+		// AI Commands relating to specifically the Pulumi AI service
+		//     and its related features
+		{
+			Name: "AI Commands",
+			Commands: []*cobra.Command{
+				newAICommand(),
 			},
 		},
 	})
@@ -396,14 +410,31 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 		return nil
 	}
 
-	latestVer, oldestAllowedVer, err := getCLIVersionInfo(ctx)
-	if err != nil {
-		logging.V(3).Infof("error fetching latest version information "+
-			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+	var skipUpdateCheck bool
+	latestVer, oldestAllowedVer, err := getCachedVersionInfo()
+	if err == nil {
+		// If we have a cached version, we already warned the user once
+		// in the last 24 hours--the cache is considered stale after that.
+		// So we don't need to warn again.
+		skipUpdateCheck = true
+	} else {
+		latestVer, oldestAllowedVer, err = getCLIVersionInfo(ctx)
+		if err != nil {
+			logging.V(3).Infof("error fetching latest version information "+
+				"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+		}
 	}
 
 	if oldestAllowedVer.GT(curVer) {
-		return diag.RawMessage("", getUpgradeMessage(latestVer, curVer))
+		msg := getUpgradeMessage(latestVer, curVer)
+		if skipUpdateCheck {
+			// If we're skipping the check,
+			// still log this to the internal logging system
+			// that users don't see by default.
+			logging.Warningf(msg)
+			return nil
+		}
+		return diag.RawMessage("", msg)
 	}
 
 	return nil
@@ -412,13 +443,8 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
 // allowed without warning. It caches data from the server for a day.
 func getCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
-	latest, oldest, err := getCachedVersionInfo()
-	if err == nil {
-		return latest, oldest, err
-	}
-
 	client := client.NewClient(httpstate.DefaultURL(), "", false, cmdutil.Diag())
-	latest, oldest, err = client.GetCLIVersionInfo(ctx)
+	latest, oldest, err := client.GetCLIVersionInfo(ctx)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}

@@ -20,8 +20,13 @@ func TestGoAliases(t *testing.T) {
 		"retype_component",
 		"rename_component",
 		"retype_parents",
+		"adopt_component_child",
+		"extract_component_child",
+		"rename_component_child",
+		"retype_component_child",
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, dir := range dirs {
 		d := filepath.Join("go", dir)
 		t.Run(d, func(t *testing.T) {
@@ -43,6 +48,7 @@ func TestGoAliases(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestRetypeRemoteComponentAndChild(t *testing.T) {
 	dir := filepath.Join("go", "retype_remote_component_and_child")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

@@ -19,7 +19,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-func getEntriesSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+func getEntriesSignature(
+	args []model.Expression,
+	options bindOptions,
+) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	keyType, valueType := model.Type(model.DynamicType), model.Type(model.DynamicType)
@@ -31,8 +34,11 @@ func getEntriesSignature(args []model.Expression) (model.StaticFunctionSignature
 	}
 
 	if len(args) == 1 {
-		keyT, valueT, diags := model.GetCollectionTypes(model.ResolveOutputs(args[0].Type()),
-			args[0].SyntaxNode().Range())
+		strictCollectionTypechecking := !options.skipRangeTypecheck
+		keyT, valueT, diags := model.GetCollectionTypes(
+			model.ResolveOutputs(args[0].Type()),
+			args[0].SyntaxNode().Range(),
+			strictCollectionTypechecking)
 		keyType, valueType, diagnostics = keyT, valueT, append(diagnostics, diags...)
 	}
 
@@ -44,305 +50,355 @@ func getEntriesSignature(args []model.Expression) (model.StaticFunctionSignature
 	return signature, diagnostics
 }
 
-var pulumiBuiltins = map[string]*model.Function{
-	"element": model.NewFunction(model.GenericFunctionSignature(
-		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
-			var diagnostics hcl.Diagnostics
+func pulumiBuiltins(options bindOptions) map[string]*model.Function {
+	return map[string]*model.Function{
+		"element": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
 
-			listType, returnType := model.Type(model.DynamicType), model.Type(model.DynamicType)
-			if len(args) > 0 {
-				switch t := model.ResolveOutputs(args[0].Type()).(type) {
-				case *model.ListType:
-					listType, returnType = args[0].Type(), t.ElementType
-				case *model.TupleType:
-					_, elementType := model.UnifyTypes(t.ElementTypes...)
-					listType, returnType = args[0].Type(), elementType
-				default:
-					rng := args[0].SyntaxNode().Range()
-					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "the first argument to 'element' must be a list or tuple",
-						Subject:  &rng,
-					}}
-				}
-			}
-			return model.StaticFunctionSignature{
-				Parameters: []model.Parameter{
-					{
-						Name: "list",
-						Type: listType,
-					},
-					{
-						Name: "index",
-						Type: model.NumberType,
-					},
-				},
-				ReturnType: returnType,
-			}, diagnostics
-		})),
-	"entries": model.NewFunction(model.GenericFunctionSignature(getEntriesSignature)),
-	"fileArchive": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: ArchiveType,
-	}),
-	"remoteArchive": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "uri",
-			Type: model.StringType,
-		}},
-		ReturnType: ArchiveType,
-	}),
-	"assetArchive": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "assets",
-			Type: model.NewMapType(AssetOrArchiveType),
-		}},
-		ReturnType: ArchiveType,
-	}),
-	"fileAsset": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: AssetType,
-	}),
-	"stringAsset": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "value",
-			Type: model.StringType,
-		}},
-		ReturnType: AssetType,
-	}),
-	"remoteAsset": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "uri",
-			Type: model.StringType,
-		}},
-		ReturnType: AssetType,
-	}),
-	"join": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{
-			{
-				Name: "separator",
-				Type: model.StringType,
-			},
-			{
-				Name: "strings",
-				Type: model.NewListType(model.StringType),
-			},
-		},
-		ReturnType: model.StringType,
-	}),
-	"length": model.NewFunction(model.GenericFunctionSignature(
-		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
-			var diagnostics hcl.Diagnostics
-
-			valueType := model.Type(model.DynamicType)
-			if len(args) > 0 {
-				valueType = args[0].Type()
-				switch valueType := model.ResolveOutputs(valueType).(type) {
-				case *model.ListType, *model.MapType, *model.ObjectType, *model.TupleType:
-					// OK
-				default:
-					if model.StringType.ConversionFrom(valueType) == model.NoConversion {
+				listType, returnType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+				if len(args) > 0 {
+					switch t := model.ResolveOutputs(args[0].Type()).(type) {
+					case *model.ListType:
+						listType, returnType = args[0].Type(), t.ElementType
+					case *model.TupleType:
+						_, elementType := model.UnifyTypes(t.ElementTypes...)
+						listType, returnType = args[0].Type(), elementType
+					default:
 						rng := args[0].SyntaxNode().Range()
 						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
 							Severity: hcl.DiagError,
-							Summary:  "the first argument to 'length' must be a list, map, object, tuple, or string",
+							Summary:  "the first argument to 'element' must be a list or tuple",
 							Subject:  &rng,
 						}}
 					}
 				}
-			}
-			return model.StaticFunctionSignature{
-				Parameters: []model.Parameter{{
-					Name: "value",
-					Type: valueType,
-				}},
-				ReturnType: model.IntType,
-			}, diagnostics
-		})),
-	"lookup": model.NewFunction(model.GenericFunctionSignature(
-		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
-			var diagnostics hcl.Diagnostics
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "list",
+							Type: listType,
+						},
+						{
+							Name: "index",
+							Type: model.NumberType,
+						},
+					},
+					ReturnType: returnType,
+				}, diagnostics
+			})),
+		"entries": model.NewFunction(model.GenericFunctionSignature(
+			func(arguments []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				return getEntriesSignature(arguments, options)
+			})),
 
-			mapType, elementType := model.Type(model.DynamicType), model.Type(model.DynamicType)
-			if len(args) > 0 {
-				switch t := model.ResolveOutputs(args[0].Type()).(type) {
-				case *model.MapType:
-					mapType, elementType = args[0].Type(), t.ElementType
-				case *model.ObjectType:
-					var unifiedType model.Type
-					for _, t := range t.Properties {
-						_, unifiedType = model.UnifyTypes(unifiedType, t)
+		"fileArchive": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "path",
+				Type: model.StringType,
+			}},
+			ReturnType: ArchiveType,
+		}),
+		"remoteArchive": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "uri",
+				Type: model.StringType,
+			}},
+			ReturnType: ArchiveType,
+		}),
+		"assetArchive": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "assets",
+				Type: model.NewMapType(AssetOrArchiveType),
+			}},
+			ReturnType: ArchiveType,
+		}),
+		"fileAsset": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "path",
+				Type: model.StringType,
+			}},
+			ReturnType: AssetType,
+		}),
+		"stringAsset": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "value",
+				Type: model.StringType,
+			}},
+			ReturnType: AssetType,
+		}),
+		"remoteAsset": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "uri",
+				Type: model.StringType,
+			}},
+			ReturnType: AssetType,
+		}),
+		"join": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "separator",
+					Type: model.StringType,
+				},
+				{
+					Name: "strings",
+					Type: model.NewListType(model.StringType),
+				},
+			},
+			ReturnType: model.StringType,
+		}),
+		"length": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				valueType := model.Type(model.DynamicType)
+				if len(args) > 0 {
+					valueType = args[0].Type()
+					elementType := UnwrapOption(model.ResolveOutputs(valueType))
+					switch valueType := elementType.(type) {
+					case *model.ListType, *model.MapType, *model.ObjectType, *model.TupleType:
+						// OK
+					default:
+						if model.StringType.ConversionFrom(valueType) == model.NoConversion {
+							rng := args[0].SyntaxNode().Range()
+							diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "the first argument to 'length' must be a list, map, object, tuple, or string",
+								Subject:  &rng,
+							}}
+						}
 					}
-					mapType, elementType = args[0].Type(), unifiedType
-				default:
-					rng := args[0].SyntaxNode().Range()
+				}
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{
+						Name: "value",
+						Type: valueType,
+					}},
+					ReturnType: model.IntType,
+				}, diagnostics
+			})),
+		"lookup": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				mapType, elementType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+				if len(args) > 0 {
+					switch t := model.ResolveOutputs(args[0].Type()).(type) {
+					case *model.MapType:
+						mapType, elementType = args[0].Type(), t.ElementType
+					case *model.ObjectType:
+						var unifiedType model.Type
+						for _, t := range t.Properties {
+							_, unifiedType = model.UnifyTypes(unifiedType, t)
+						}
+						mapType, elementType = args[0].Type(), unifiedType
+					default:
+						rng := args[0].SyntaxNode().Range()
+						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "the first argument to 'lookup' must be a map",
+							Subject:  &rng,
+						}}
+					}
+				}
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "map",
+							Type: mapType,
+						},
+						{
+							Name: "key",
+							Type: model.StringType,
+						},
+						{
+							Name: "default",
+							Type: model.NewOptionalType(elementType),
+						},
+					},
+					ReturnType: elementType,
+				}, diagnostics
+			})),
+		"mimeType": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "path",
+				Type: model.StringType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		"range": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "fromOrTo",
+					Type: model.NumberType,
+				},
+				{
+					Name: "to",
+					Type: model.NewOptionalType(model.NumberType),
+				},
+			},
+			ReturnType: model.NewListType(model.IntType),
+		}),
+		"readDir": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "path",
+				Type: model.StringType,
+			}},
+			ReturnType: model.NewListType(model.StringType),
+		}),
+		"readFile": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "path",
+				Type: model.StringType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		"filebase64": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "path",
+				Type: model.StringType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		"filebase64sha256": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "path",
+				Type: model.StringType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		"secret": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				valueType := model.Type(model.DynamicType)
+				if len(args) == 1 {
+					valueType = args[0].Type()
+				}
+
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{
+						Name: "value",
+						Type: valueType,
+					}},
+					ReturnType: model.NewOutputType(valueType),
+				}, nil
+			})),
+		"unsecret": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				valueType := model.Type(model.DynamicType)
+				if len(args) == 1 {
+					valueType = args[0].Type()
+				}
+
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{
+						Name: "value",
+						Type: valueType,
+					}},
+					ReturnType: model.NewOutputType(valueType),
+				}, nil
+			})),
+		"sha1": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "input",
+				Type: model.StringType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		"split": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "separator",
+					Type: model.StringType,
+				},
+				{
+					Name: "string",
+					Type: model.StringType,
+				},
+			},
+			ReturnType: model.NewListType(model.StringType),
+		}),
+		"toBase64": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "value",
+				Type: model.StringType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		"fromBase64": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "value",
+				Type: model.StringType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		"toJSON": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "value",
+				Type: model.DynamicType,
+			}},
+			ReturnType: model.StringType,
+		}),
+		// Returns the name of the current stack
+		"stack": model.NewFunction(model.StaticFunctionSignature{
+			ReturnType: model.StringType,
+		}),
+		// Returns the name of the current project
+		"project": model.NewFunction(model.StaticFunctionSignature{
+			ReturnType: model.StringType,
+		}),
+		// Returns the directory from which pulumi was run
+		"cwd": model.NewFunction(model.StaticFunctionSignature{
+			ReturnType: model.StringType,
+		}),
+		"notImplemented": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "errorMessage",
+				Type: model.StringType,
+			}},
+			ReturnType: model.DynamicType,
+		}),
+		// Returns either the single item in a list, none if the list is empty or errors.
+		"singleOrNone": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				valueType := model.Type(model.DynamicType)
+				if len(args) == 1 {
+					valueType = args[0].Type()
+				} else {
 					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
 						Severity: hcl.DiagError,
-						Summary:  "the first argument to 'lookup' must be a map",
-						Subject:  &rng,
+						Summary:  "'singleOrNone' only expects one argument",
 					}}
 				}
-			}
-			return model.StaticFunctionSignature{
-				Parameters: []model.Parameter{
-					{
-						Name: "map",
-						Type: mapType,
-					},
-					{
-						Name: "key",
-						Type: model.StringType,
-					},
-					{
-						Name: "default",
-						Type: model.NewOptionalType(elementType),
-					},
-				},
-				ReturnType: elementType,
-			}, diagnostics
-		})),
-	"mimeType": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"range": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{
-			{
-				Name: "fromOrTo",
-				Type: model.NumberType,
-			},
-			{
-				Name: "to",
-				Type: model.NewOptionalType(model.NumberType),
-			},
-		},
-		ReturnType: model.NewListType(model.IntType),
-	}),
-	"readDir": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: model.NewListType(model.StringType),
-	}),
-	"readFile": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"filebase64": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"filebase64sha256": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "path",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"secret": model.NewFunction(model.GenericFunctionSignature(
-		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
-			valueType := model.Type(model.DynamicType)
-			if len(args) == 1 {
-				valueType = args[0].Type()
-			}
 
-			return model.StaticFunctionSignature{
-				Parameters: []model.Parameter{{
-					Name: "value",
-					Type: valueType,
-				}},
-				ReturnType: model.NewOutputType(valueType),
-			}, nil
-		})),
-	"unsecret": model.NewFunction(model.GenericFunctionSignature(
-		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
-			valueType := model.Type(model.DynamicType)
-			if len(args) == 1 {
-				valueType = args[0].Type()
-			}
+				elementType := model.Type(model.DynamicType)
 
-			return model.StaticFunctionSignature{
-				Parameters: []model.Parameter{{
-					Name: "value",
-					Type: valueType,
-				}},
-				ReturnType: model.NewOutputType(valueType),
-			}, nil
-		})),
-	"sha1": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "input",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"split": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{
-			{
-				Name: "separator",
-				Type: model.StringType,
-			},
-			{
-				Name: "string",
-				Type: model.StringType,
-			},
-		},
-		ReturnType: model.NewListType(model.StringType),
-	}),
-	"toBase64": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "value",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"fromBase64": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "value",
-			Type: model.StringType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	"toJSON": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "value",
-			Type: model.DynamicType,
-		}},
-		ReturnType: model.StringType,
-	}),
-	// Returns the name of the current stack
-	"stack": model.NewFunction(model.StaticFunctionSignature{
-		ReturnType: model.StringType,
-	}),
-	// Returns the name of the current project
-	"project": model.NewFunction(model.StaticFunctionSignature{
-		ReturnType: model.StringType,
-	}),
-	// Returns the directory from which pulumi was run
-	"cwd": model.NewFunction(model.StaticFunctionSignature{
-		ReturnType: model.StringType,
-	}),
-	"notImplemented": model.NewFunction(model.StaticFunctionSignature{
-		Parameters: []model.Parameter{{
-			Name: "errorMessage",
-			Type: model.StringType,
-		}},
-		ReturnType: model.DynamicType,
-	}),
+				switch valueType := model.ResolveOutputs(valueType).(type) {
+				case *model.ListType:
+					elementType = valueType.ElementType
+				case *model.TupleType:
+					if len(valueType.ElementTypes) > 0 {
+						elementType = valueType.ElementTypes[0]
+					}
+				default:
+					if valueType != model.DynamicType {
+						rng := args[0].SyntaxNode().Range()
+						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "the first argument to 'singleOrNone' must be a list or tuple",
+							Subject:  &rng,
+						}}
+					}
+				}
+
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{
+						Name: "value",
+						Type: valueType,
+					}},
+					ReturnType: model.NewOptionalType(elementType),
+				}, diagnostics
+			})),
+	}
 }

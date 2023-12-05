@@ -34,6 +34,7 @@ from . import _types
 from .metadata import get_project, get_stack
 from .runtime import known_types
 from .runtime.resource import (
+    _pkg_from_type,
     get_resource,
     register_resource,
     register_resource_outputs,
@@ -139,7 +140,7 @@ class Alias:
     parent of the resource is used (`opts.parent` if provided, else the implicit stack resource
     parent).
 
-    To specify no original parent, use `Alias(parent=pulumi.rootStackResource)`.
+    To specify no original parent, use `Alias(parent=pulumi.ROOT_STACK_RESOURCE)`.
     """
 
     stack: Optional["Input[str]"]
@@ -780,11 +781,14 @@ class Resource:
         # If `props` is an input type, convert it into an untranslated dictionary.
         # Translation of the keys will happen later using the type's and resource's type/name metadata.
         # If `props` is not an input type, set `typ` to None to make translation behave as it has previously.
-        typ = type(props)
+        typ: Optional[type] = type(props)
+        assert typ is not None
         if _types.is_input_type(typ):
             props = _types.input_type_to_untranslated_dict(props)
         else:
-            typ = None  # type: ignore
+            if not isinstance(props, Mapping):
+                raise TypeError("Expected resource properties to be a mapping")
+            typ = None
 
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
         # provided properties and options assigned to this resource.
@@ -843,15 +847,11 @@ class Resource:
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
 
-        type_components = t.split(":")
-        pkg = None
-        if len(type_components) == 3:
-            [pkg, _, _] = type_components
-
+        pkg = _pkg_from_type(t)
         opts.provider, opts.providers = self._get_providers(t, pkg, opts)
 
         self._protect = bool(opts.protect)
-        self._provider = opts.provider if custom else None
+        self._provider = opts.provider if (custom or remote) else None
         if self._provider and self._provider.package != pkg:
             action = (
                 "get"
@@ -994,11 +994,10 @@ class Resource:
         :return: The :class:`ProviderResource` associated with the given module member, or None if one does not exist.
         :rtype: Optional[ProviderResource]
         """
-        components = module_member.split(":")
-        if len(components) != 3:
+        pkg = _pkg_from_type(module_member)
+        if pkg is None:
             return None
 
-        [pkg, _, _] = components
         return self._providers.get(pkg)
 
 

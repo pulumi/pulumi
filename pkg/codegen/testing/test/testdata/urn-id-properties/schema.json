@@ -1,0 +1,72 @@
+{
+  "name": "urnid",
+  "description": "Test urn and id in valid locations",
+  "version": "1.0.0",
+  "functions": {
+    "urnid:index:Test": {
+      "description": "It's fine for invokes to use urn and id",
+      "inputs": {
+        "properties": {
+          "urn": {
+            "type": "number"
+          },
+          "id": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "urn",
+          "id"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "urn": {
+            "type": "number"
+          },
+          "id": {
+              "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "urn"
+        ]
+      }
+    }
+  },
+  "types": {
+    "urnid:index:InnerType": {
+      "type": "object",
+      "description": "It's fine to use urn and id in nested objects",
+      "properties": {
+        "urn": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "resources": {
+    "urnid:index:Res": {
+      "description": "It's fine to use urn and id as input properties",
+      "properties": {
+        "output": {
+          "$ref": "#/types/urnid:index:InnerType"
+        }
+      },
+      "inputProperties": {
+        "urn": { "type": "string" },
+        "id": { "type": "string" }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "urn-id-properties/urnid"
+    }
+  }
+}

@@ -8,11 +8,14 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"output-funcs/mypkg/internal"
 )
 
 // Another failing example. A list of SSIS object metadata.
 // API Version: 2018-06-01.
 func GetIntegrationRuntimeObjectMetadatum(ctx *pulumi.Context, args *GetIntegrationRuntimeObjectMetadatumArgs, opts ...pulumi.InvokeOption) (*GetIntegrationRuntimeObjectMetadatumResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv GetIntegrationRuntimeObjectMetadatumResult
 	err := ctx.Invoke("mypkg::getIntegrationRuntimeObjectMetadatum", args, &rv, opts...)
 	if err != nil {
@@ -81,6 +84,12 @@ func (o GetIntegrationRuntimeObjectMetadatumResultOutput) ToGetIntegrationRuntim
 
 func (o GetIntegrationRuntimeObjectMetadatumResultOutput) ToGetIntegrationRuntimeObjectMetadatumResultOutputWithContext(ctx context.Context) GetIntegrationRuntimeObjectMetadatumResultOutput {
 	return o
+}
+
+func (o GetIntegrationRuntimeObjectMetadatumResultOutput) ToOutput(ctx context.Context) pulumix.Output[GetIntegrationRuntimeObjectMetadatumResult] {
+	return pulumix.Output[GetIntegrationRuntimeObjectMetadatumResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 // The link to the next page of results, if any remaining results exist.

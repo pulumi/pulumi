@@ -14,10 +14,13 @@
 
 package convert
 
+import "context"
+
 // An interface to map provider names (N.B. These aren't Pulumi provider names, but the names of "providers"
 // in the source language being converted from) to plugin specific mapping data.
 type Mapper interface {
-	// Returns plugin specific mapping data for the given provider name. Returns an empty result if no mapping
+	// Returns plugin specific mapping data for the given provider name. The "pulumiProvider" is used as a
+	// hint for which pulumi plugin will provider this mapping. Returns an empty result if no mapping
 	// information was available.
-	GetMapping(provider string) ([]byte, error)
+	GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error)
 }

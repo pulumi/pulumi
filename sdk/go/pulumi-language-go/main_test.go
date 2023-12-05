@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"os"
 	"os/exec"
@@ -24,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -302,10 +300,10 @@ func TestGetPlugin(t *testing.T) {
 			t.Parallel()
 
 			cwd := t.TempDir()
+			if c.Mod.Dir == "" {
+				c.Mod.Dir = cwd
+			}
 			if c.JSON != nil {
-				if c.Mod.Dir == "" {
-					c.Mod.Dir = cwd
-				}
 				path := filepath.Join(cwd, c.JSONPath)
 				err := os.MkdirAll(path, 0o700)
 				assert.NoErrorf(t, err, "Failed to setup test folder %s", path)
@@ -455,93 +453,4 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 			"example.com/indirect-dep/v2": "v2.1.0",
 		}, gotDeps)
 	})
-}
-
-func TestGeneratePackage(t *testing.T) {
-	t.Parallel()
-
-	root := t.TempDir()
-	host := newLanguageHost("0.0.0.0:0", root, "", "", "")
-	ctx := context.Background()
-
-	basicSchema := schema.PackageSpec{
-		Name:        "test",
-		Description: "A test package",
-		Version:     "1.0.0",
-		Resources: map[string]schema.ResourceSpec{
-			"test:index:resource": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "A test resource",
-				},
-			},
-		},
-	}
-
-	jsonSchema, err := json.Marshal(basicSchema)
-	require.NoError(t, err)
-
-	_, err = host.GeneratePackage(ctx, &pulumirpc.GeneratePackageRequest{
-		Directory: root,
-		Schema:    string(jsonSchema),
-	})
-	require.NoError(t, err)
-
-	// This is just a simple test that we wrote the doc file. This will be better covered by matrix tests
-	// soon.
-	contents, err := os.ReadFile(filepath.Join(root, "test/doc.go"))
-	require.NoError(t, err)
-
-	assert.Contains(t, string(contents), "// A test package")
-}
-
-func TestGenerateProgram(t *testing.T) {
-	t.Parallel()
-
-	root := t.TempDir()
-	host := newLanguageHost("0.0.0.0:0", root, "", "", "")
-	ctx := context.Background()
-
-	simpleProgram := `
-output "dummyOutput" {
-	value = 4
-}
-	`
-
-	resp, err := host.GenerateProgram(ctx, &pulumirpc.GenerateProgramRequest{
-		Source: map[string]string{"index.pp": simpleProgram},
-	})
-	require.NoError(t, err)
-
-	// This is just a simple test that we returned a program. This will be better covered by matrix tests
-	// soon.
-	assert.Empty(t, resp.Diagnostics)
-	assert.Contains(t, resp.Source, "main.go")
-}
-
-func TestGenerateProject(t *testing.T) {
-	t.Parallel()
-
-	root := t.TempDir()
-	host := newLanguageHost("0.0.0.0:0", root, "", "", "")
-	ctx := context.Background()
-
-	simpleProgram := `
-output "dummyOutput" {
-	value = 4
-}
-	`
-
-	_, err := host.GenerateProject(ctx, &pulumirpc.GenerateProjectRequest{
-		Source:    map[string]string{"index.pp": simpleProgram},
-		Project:   "{\"name\":\"test\"}",
-		Directory: root,
-	})
-	require.NoError(t, err)
-
-	// This is just a simple test that we wrote a program. This will be better covered by matrix tests
-	// soon.
-	contents, err := os.ReadFile(filepath.Join(root, "main.go"))
-	require.NoError(t, err)
-
-	assert.Contains(t, string(contents), "dummyOutput")
 }

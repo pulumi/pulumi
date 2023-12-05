@@ -22,61 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetValidDefaultProjectName(t *testing.T) {
-	t.Parallel()
-
-	// Valid names remain the same.
-	for _, name := range getValidProjectNamePrefixes() {
-		assert.Equal(t, name, getValidProjectName(name))
-	}
-	assert.Equal(t, "foo", getValidProjectName("foo"))
-	assert.Equal(t, "foo1", getValidProjectName("foo1"))
-	assert.Equal(t, "foo-", getValidProjectName("foo-"))
-	assert.Equal(t, "foo-bar", getValidProjectName("foo-bar"))
-	assert.Equal(t, "foo_", getValidProjectName("foo_"))
-	assert.Equal(t, "foo_bar", getValidProjectName("foo_bar"))
-	assert.Equal(t, "foo.", getValidProjectName("foo."))
-	assert.Equal(t, "foo.bar", getValidProjectName("foo.bar"))
-
-	// Invalid characters are left off.
-	assert.Equal(t, "foo", getValidProjectName("!foo"))
-	assert.Equal(t, "foo", getValidProjectName("@foo"))
-	assert.Equal(t, "foo", getValidProjectName("#foo"))
-	assert.Equal(t, "foo", getValidProjectName("$foo"))
-	assert.Equal(t, "foo", getValidProjectName("%foo"))
-	assert.Equal(t, "foo", getValidProjectName("^foo"))
-	assert.Equal(t, "foo", getValidProjectName("&foo"))
-	assert.Equal(t, "foo", getValidProjectName("*foo"))
-	assert.Equal(t, "foo", getValidProjectName("(foo"))
-	assert.Equal(t, "foo", getValidProjectName(")foo"))
-
-	// Invalid names are replaced with a fallback name.
-	assert.Equal(t, "project", getValidProjectName("!"))
-	assert.Equal(t, "project", getValidProjectName("@"))
-	assert.Equal(t, "project", getValidProjectName("#"))
-	assert.Equal(t, "project", getValidProjectName("$"))
-	assert.Equal(t, "project", getValidProjectName("%"))
-	assert.Equal(t, "project", getValidProjectName("^"))
-	assert.Equal(t, "project", getValidProjectName("&"))
-	assert.Equal(t, "project", getValidProjectName("*"))
-	assert.Equal(t, "project", getValidProjectName("("))
-	assert.Equal(t, "project", getValidProjectName(")"))
-	assert.Equal(t, "project", getValidProjectName("!@#$%^&*()"))
-}
-
-func getValidProjectNamePrefixes() []string {
-	var results []string
-	for ch := 'A'; ch <= 'Z'; ch++ {
-		results = append(results, string(ch))
-	}
-	for ch := 'a'; ch <= 'z'; ch++ {
-		results = append(results, string(ch))
-	}
-	results = append(results, "_")
-	results = append(results, ".")
-	return results
-}
-
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveNonExistingTemplate(t *testing.T) {
 	tests := []struct {
@@ -100,7 +45,7 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 			t.Parallel()
 
 			_, err := RetrieveTemplates(templateName, false, tt.templateKind)
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }
@@ -128,7 +73,7 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(tt.templateName, false, tt.templateKind)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
 			// Root should point to Pulumi templates directory
@@ -172,7 +117,7 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(tt.templateURL, false, tt.templateKind)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, true, repository.ShouldDelete)
 
 			// Root should point to a subfolder of a Temp Dir
@@ -189,11 +134,11 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 			// SubDirectory should exist and contain the template files
 			yamlPath := filepath.Join(repository.SubDirectory, tt.yamlFile)
 			_, err = os.Stat(yamlPath)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			// Clean Up
 			err = repository.Delete()
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
@@ -224,7 +169,7 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 			t.Parallel()
 
 			_, err := RetrieveTemplates(tt.templateURL, true, tt.templateKind)
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }
@@ -249,77 +194,12 @@ func TestRetrieveFileTemplate(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(".", false, tt.templateKind)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
 			// Both Root and SubDirectory just point to the (existing) specified folder
 			assert.Equal(t, ".", repository.Root)
 			assert.Equal(t, ".", repository.SubDirectory)
-		})
-	}
-}
-
-func TestProjectNames(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		testName    string
-		projectName string
-		expectError bool
-	}{
-		{
-			testName:    "Correct Project Name",
-			projectName: "SampleProject",
-			expectError: false,
-		},
-		{
-			testName:    "Project Name with unsupported punctuation",
-			projectName: "SampleProject!",
-			expectError: true,
-		},
-		{
-			testName:    "Project Name starting with the word Pulumi",
-			projectName: "PulumiProject",
-			expectError: false,
-		},
-		{
-			testName:    "Project Name greater than 100 characters",
-			projectName: "cZClTe6xrjgKzH5QS8rFEPqYK1z4bbMeMr6n89n87djq9emSAlznQXXkkCEpBBCaZAFNlCvbfqVcqoifYlfPl11hvekIDjXVIY7m1",
-			expectError: true,
-		},
-		{
-			testName:    "Project Name is Pulumi",
-			projectName: "Pulumi",
-			expectError: true,
-		},
-		{
-			testName:    "Project Name is Pulumi - mixed case",
-			projectName: "pUlumI",
-			expectError: true,
-		},
-		{
-			testName:    "Project Name is Pulumi.Test",
-			projectName: "Pulumi.Test",
-			expectError: true,
-		},
-		{
-			testName:    "Empty Project Name",
-			projectName: "",
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.testName, func(t *testing.T) {
-			t.Parallel()
-
-			err := ValidateProjectName(tt.projectName)
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.Nil(t, err)
-			}
 		})
 	}
 }

@@ -29,7 +29,6 @@ def pulumi_test(coro):
         settings.configure(settings.Settings("project", "stack"))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
-        rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
 
         wrapped(*args, **kwargs)
 
@@ -124,6 +123,24 @@ class OutputFromInputTests(unittest.TestCase):
         x = Output.from_input(o1)
         x_val = await x.future()
         self.assertEqual(x_val, o2)
+
+    @pulumi_test
+    async def test_unwrap_empty_tuple(self):
+        x = Output.from_input(())
+        x_val = await x.future()
+        self.assertEqual(x_val, ())
+
+    @pulumi_test
+    async def test_unwrap_tuple(self):
+        x = Output.from_input(("hello", Output.from_input("world")))
+        x_val = await x.future()
+        self.assertEqual(x_val, ("hello", "world"))
+
+    @pulumi_test
+    async def test_unwrap_tuple_tuple(self):
+        x = Output.from_input(("hello", ("foo", Output.from_input("bar"))))
+        x_val = await x.future()
+        self.assertEqual(x_val, ("hello", ("foo", "bar")))
 
     @pulumi.input_type
     class FooArgs:
@@ -247,7 +264,7 @@ class OutputStrTests(unittest.TestCase):
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://pulumi.io/help/outputs for more details.
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
 This function may throw in a future version of Pulumi.""")
 
 

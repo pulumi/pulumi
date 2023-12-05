@@ -13,8 +13,8 @@ Explore the resources and functions of the plant.tree/v1 module.
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="nursery/" title="Nursery"><span class="api-symbol api-symbol--resource"></span>Nursery</a></li>
-    <li><a href="rubbertree/" title="RubberTree"><span class="api-symbol api-symbol--resource"></span>RubberTree</a></li>
+    <li><a href="nursery/" title="Nursery">Nursery</a></li>
+    <li><a href="rubbertree/" title="RubberTree">RubberTree</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

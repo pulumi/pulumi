@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strconv"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"gocloud.dev/gcerrors"
@@ -62,7 +62,7 @@ type pulumiMeta struct {
 // "PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT" to "1".
 // ensurePulumiMeta uses the provided 'getenv' function
 // to read the environment variable.
-func ensurePulumiMeta(ctx context.Context, b Bucket, getenv func(string) string) (*pulumiMeta, error) {
+func ensurePulumiMeta(ctx context.Context, b Bucket, e env.Env) (*pulumiMeta, error) {
 	meta, err := readPulumiMeta(ctx, b)
 	if err != nil {
 		return nil, err
@@ -82,19 +82,17 @@ func ensurePulumiMeta(ctx context.Context, b Bucket, getenv func(string) string)
 	// - Version 1 added support for project-scoped stacks.
 	//   For entirely new buckets, we'll use version 1
 	//   to give new users access to the latest features.
-	empty, err := isPulumiDirEmpty(ctx, b)
+	refs, err := newLegacyReferenceStore(b).ListReferences(ctx)
 	if err != nil {
+		// If there's an error listing don't fail, just don't print the warnings
 		return nil, err
 	}
 
-	useLegacy := !empty
-	if empty {
+	useLegacy := len(refs) > 0
+	if !useLegacy {
 		// Allow opting into legacy mode for new states
 		// by setting the environment variable.
-		v, err := strconv.ParseBool(getenv(PulumiFilestateLegacyLayoutEnvVar))
-		if err == nil {
-			useLegacy = v
-		}
+		useLegacy = e.GetBool(env.SelfManagedStateLegacyLayout)
 	}
 
 	if useLegacy {

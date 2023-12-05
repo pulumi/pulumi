@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -79,9 +80,19 @@ func newLogsCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
+			encrypter, err := sm.Encrypter()
+			if err != nil {
+				return fmt.Errorf("getting stack encrypter: %w", err)
+			}
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
 			if configErr != nil {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
@@ -122,7 +133,7 @@ func newLogsCmd() *cobra.Command {
 
 				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.
 				if !follow && jsonOut {
-					entries := make([]logEntryJSON, 0, len(logs))
+					entries := slice.Prealloc[logEntryJSON](len(logs))
 
 					for _, logEntry := range logs {
 						if _, shownAlready := shown[logEntry]; !shownAlready {

@@ -15,9 +15,11 @@
 import asyncio
 import base64
 from concurrent import futures
+from threading import Event, Lock
 import sys
 import time
 
+import typing
 import dill
 import grpc
 from google.protobuf import empty_pb2
@@ -33,9 +35,25 @@ _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
+_PROVIDER_CACHE: typing.Dict[str, ResourceProvider] = {}
+_PROVIDER_LOCK = Lock()
+
+
 def get_provider(props) -> ResourceProvider:
-    byts = base64.b64decode(props[PROVIDER_KEY])
-    return dill.loads(byts)
+    providerStr = props[PROVIDER_KEY]
+    provider = _PROVIDER_CACHE.get(providerStr)
+    if provider is None:
+        # This is pesimistic locking, because if two different providers try to fetch at the same time they
+        # serialise. But it means we don't create two instances of the same provider. Also looking at issues
+        # like https://github.com/pulumi/pulumi/issues/14159 there may be resource contention in dill.loads,
+        # that this locking strategy will reduce.
+        with _PROVIDER_LOCK:
+            provider = _PROVIDER_CACHE.get(providerStr)
+            if provider is None:
+                byts = base64.b64decode(providerStr)
+                provider = dill.loads(byts)
+                _PROVIDER_CACHE[providerStr] = provider
+    return provider
 
 
 class DynamicResourceProviderServicer(ResourceProviderServicer):
@@ -200,8 +218,7 @@ def main():
     server.start()
     sys.stdout.buffer.write(f"{port}\n".encode())
     try:
-        while True:
-            time.sleep(_ONE_DAY_IN_SECONDS)
+        Event().wait()
     except KeyboardInterrupt:
         server.stop(0)
 

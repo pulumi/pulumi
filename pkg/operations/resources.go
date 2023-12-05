@@ -19,8 +19,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -31,6 +33,7 @@ type Resource struct {
 	Project  tokens.PackageName
 	State    *resource.State
 	Parent   *Resource
+	Provider *Resource
 	Children map[resource.URN]*Resource
 }
 
@@ -69,14 +72,21 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 		}
 	}
 
-	// Next, walk the list of resources, and wire up parents and children.  We do this in a second pass so
-	// that the creation of the tree isn't order dependent.
+	// Next, walk the list of resources, and wire up parents/providers to children.  We do this in a second
+	// pass so that the creation of the tree isn't order dependent.
 	for _, child := range resources {
 		if parurn := child.State.Parent; parurn != "" {
 			parent, ok := resources[parurn]
 			contract.Assertf(ok, "Expected to find parent node '%v' in checkpoint tree nodes", parurn)
 			child.Parent = parent
 			parent.Children[child.State.URN] = child
+		}
+		if providerref := child.State.Provider; providerref != "" {
+			ref, err := providers.ParseReference(providerref)
+			contract.AssertNoErrorf(err, "Expected to find provider node '%v' in checkpoint tree nodes", providerref)
+			provider, ok := resources[ref.URN()]
+			contract.Assertf(ok, "Expected to find provider node '%v' in checkpoint tree nodes", ref.URN())
+			child.Provider = provider
 		}
 	}
 
@@ -105,7 +115,7 @@ func (r *Resource) GetChild(typ string, name string) (*Resource, bool) {
 		if childURN.Stack() == r.Stack &&
 			childURN.Project() == r.Project &&
 			childURN.Type() == tokens.Type(typ) &&
-			childURN.Name() == tokens.QName(name) {
+			childURN.Name() == name {
 			return childResource, true
 		}
 	}
@@ -196,9 +206,9 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	// Sort
 	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
 	// Remove duplicates
-	retLogs := make([]LogEntry, 0, len(logs))
+	retLogs := slice.Prealloc[LogEntry](len(logs))
 	var lastLogTimestamp int64
-	lastLogs := make([]LogEntry, 0, len(logs))
+	lastLogs := slice.Prealloc[LogEntry](len(logs))
 	for _, log := range logs {
 		shouldContinue := false
 		if log.Timestamp == lastLogTimestamp {
@@ -235,11 +245,11 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 		// The filter matched the full URN
 		return true
 	}
-	if string(*filter) == string(urn.Type())+"::"+string(urn.Name()) {
+	if string(*filter) == string(urn.Type())+"::"+urn.Name() {
 		// The filter matched the '<type>::<name>' part of the URN
 		return true
 	}
-	if tokens.QName(*filter) == urn.Name() {
+	if string(*filter) == urn.Name() {
 		// The filter matched the '<name>' part of the URN
 		return true
 	}

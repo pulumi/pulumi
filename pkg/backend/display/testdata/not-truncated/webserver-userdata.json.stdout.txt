@@ -2,7 +2,7 @@
     aws:region: us-west-2
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:dev::aws-ts-webserver::pulumi:pulumi:Stack::aws-ts-webserver-dev]
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>    --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    publicHostName: <{%reset%}><{%reset%}>"ec2-34-211-56-110.us-west-2.compute.amazonaws.com"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    publicIp      : <{%reset%}><{%reset%}>"34.211.56.110"<{%reset%}><{%reset%}>
 <{%reset%}>    <{%reset%}>  aws:ec2/securityGroup:SecurityGroup: (same)
@@ -41,9 +41,6 @@
 <{%fg 1%}>          - echo "Hello, World!" > index.html<{%reset%}>
 <{%fg 2%}>          + echo "Hello, Pulumi!" > index.html<{%reset%}>
 <{%reset%}>            nohup python -m SimpleHTTPServer 80 &<{%reset%}>
-<{%reset%}><{%!r(MISSING)eset%!}(MISSING)>    --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
-<{%fg 3%}>  ~ publicHostName: <{%reset%}><{%fg 1%}>"ec2-34-211-56-110.us-west-2.compute.amazonaws.com"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>output<string><{%reset%}><{%fg 3%}>
-<{%reset%}><{%fg 3%}>  ~ publicIp      : <{%reset%}><{%fg 1%}>"34.211.56.110"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>output<string><{%reset%}><{%fg 3%}>
 <{%reset%}>    <{%fg 9%}>--aws:ec2/instance:Instance: (delete-replaced)
 <{%fg 9%}>        [id=i-0207dc7a2d8c5135a]
 <{%reset%}><{%fg 9%}>        [urn=urn:pulumi:dev::aws-ts-webserver::aws:ec2/instance:Instance::web-server-www]

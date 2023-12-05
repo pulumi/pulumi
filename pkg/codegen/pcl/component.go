@@ -15,6 +15,9 @@
 package pcl
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -75,6 +78,24 @@ func (c *Component) LogicalName() string {
 
 func (c *Component) DirPath() string {
 	return c.dirPath
+}
+
+// DeclarationName returns the name of the component to use in the generated program's declaration.
+// It is the name of the component's directory, with invalid characters replaced with underscores.
+func (c *Component) DeclarationName() string {
+	baseDirName := filepath.Base(c.DirPath())
+	invalidChars := []string{"-", ".", " "}
+	for _, invalidChar := range invalidChars {
+		baseDirName = strings.ReplaceAll(baseDirName, invalidChar, "_")
+	}
+
+	componentName := ""
+	componentNameParts := strings.Split(baseDirName, "_")
+	for _, part := range componentNameParts {
+		componentName += titleCase(part)
+	}
+
+	return componentName
 }
 
 func (c *Component) Type() model.Type {

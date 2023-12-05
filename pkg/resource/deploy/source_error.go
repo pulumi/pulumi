@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // NewErrorSource creates a source that panics if it is iterated. This is used by the engine to guard against unexpected
@@ -39,6 +38,6 @@ func (src *errorSource) Info() interface{}           { return nil }
 
 func (src *errorSource) Iterate(
 	ctx context.Context, opts Options, providers ProviderSource,
-) (SourceIterator, result.Result) {
+) (SourceIterator, error) {
 	panic("internal error: unexpected call to errorSource.Iterate")
 }

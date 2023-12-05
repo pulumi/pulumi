@@ -16,6 +16,8 @@ package pulumi
 
 import (
 	"sort"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 type urnSet map[URN]struct{}
@@ -45,7 +47,7 @@ func (s urnSet) union(other urnSet) {
 }
 
 func (s urnSet) values() []URN {
-	values := make([]URN, 0, len(s))
+	values := slice.Prealloc[URN](len(s))
 	for v := range s {
 		values = append(values, v)
 	}

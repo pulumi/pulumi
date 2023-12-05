@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -42,16 +43,23 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 const (
@@ -134,11 +142,12 @@ func main() {
 		engineAddress = args[0]
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
+		cancel() // deregister signal handler
 		close(cancelChannel)
 	}()
 	err = rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
@@ -415,7 +424,7 @@ func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pyt
 	}
 
 	// Only return Pulumi packages.
-	pulumiPackages := make([]pythonPackage, 0, len(packages))
+	pulumiPackages := slice.Prealloc[pythonPackage](len(packages))
 	for _, pkg := range packages {
 		if !pkg.isPulumiPackage() {
 			continue
@@ -880,7 +889,7 @@ func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (
 	if out, err = cmd.Output(); err != nil {
 		return errCouldNotGet(err)
 	}
-	version := strings.TrimPrefix(string(out), "Python ")
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	return &pulumirpc.AboutResponse{
 		Executable: pyexe,
@@ -1005,4 +1014,142 @@ func (host *pythonLanguageHost) RunPlugin(
 	}
 
 	return closer.Close()
+}
+
+func (host *pythonLanguageHost) GenerateProject(
+	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
+) (*pulumirpc.GenerateProjectResponse, error) {
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	var extraOptions []pcl.BindOption
+	if !req.Strict {
+		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
+	}
+
+	// for python, prefer output-versioned invokes
+	extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
+
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+
+		return &pulumirpc.GenerateProjectResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
+	}
+
+	var project workspace.Project
+	if err := json.Unmarshal([]byte(req.Project), &project); err != nil {
+		return nil, err
+	}
+
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+
+	return &pulumirpc.GenerateProjectResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
+}
+
+func (host *pythonLanguageHost) GenerateProgram(
+	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
+) (*pulumirpc.GenerateProgramResponse, error) {
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	parser := hclsyntax.NewParser()
+	// Load all .pp files in the directory
+	for path, contents := range req.Source {
+		err = parser.ParseFile(strings.NewReader(contents), path)
+		if err != nil {
+			return nil, err
+		}
+		diags := parser.Diagnostics
+		if diags.HasErrors() {
+			return nil, diags
+		}
+	}
+
+	program, diags, err := pcl.BindProgram(parser.Files,
+		pcl.Loader(loader),
+		pcl.PreferOutputVersionedInvokes)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+	if diags.HasErrors() {
+		return &pulumirpc.GenerateProgramResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
+	}
+	if program == nil {
+		return nil, fmt.Errorf("internal error program was nil")
+	}
+
+	files, diags, err := codegen.GenerateProgram(program)
+	if err != nil {
+		return nil, err
+	}
+	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
+
+	return &pulumirpc.GenerateProgramResponse{
+		Source:      files,
+		Diagnostics: rpcDiagnostics,
+	}, nil
+}
+
+func (host *pythonLanguageHost) GeneratePackage(
+	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
+) (*pulumirpc.GeneratePackageResponse, error) {
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	var spec schema.PackageSpec
+	err = json.Unmarshal([]byte(req.Schema), &spec)
+	if err != nil {
+		return nil, err
+	}
+
+	pkg, diags, err := schema.BindSpec(spec, loader)
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	for filename, data := range files {
+		outPath := filepath.Join(req.Directory, filename)
+
+		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
+		if err != nil {
+			return nil, fmt.Errorf("could not create output directory %s: %w", filepath.Dir(filename), err)
+		}
+
+		err = os.WriteFile(outPath, data, 0o600)
+		if err != nil {
+			return nil, fmt.Errorf("could not write output file %s: %w", filename, err)
+		}
+	}
+
+	return &pulumirpc.GeneratePackageResponse{}, nil
 }

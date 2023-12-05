@@ -20,8 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -30,16 +34,20 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
+
+type workGroup = internal.WorkGroup
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
@@ -454,7 +462,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		for k, deps := range argDeps {
 			sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 
-			urns := make([]string, 0, len(deps))
+			urns := slice.Prealloc[string](len(deps))
 			for i, d := range deps {
 				if i > 0 && urns[i-1] == string(d) {
 					continue
@@ -494,7 +502,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			}
 			if err != nil {
 				logging.V(9).Infof("Call(%s, ...): success: w/ unmarshal error: %v", tok, err)
-				output.getState().reject(err)
+				internal.RejectOutput(output, err)
 				return
 			}
 
@@ -504,9 +512,9 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			known := !outprops.ContainsUnknowns()
 			secret, err = unmarshalOutput(ctx, resource.NewObjectProperty(outprops), dest)
 			if err != nil {
-				output.getState().reject(err)
+				internal.RejectOutput(output, err)
 			} else {
-				output.getState().resolve(dest.Interface(), known, secret, deps)
+				internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
 			}
 
 			logging.V(9).Infof("Call(%s, ...): success: w/ %d outs (err=%v)", tok, len(outprops), err)
@@ -646,6 +654,10 @@ func (ctx *Context) ReadResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
+	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
+	// between the this function and user code.
+	sourcePosition := ctx.getSourcePosition(2)
+
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
@@ -680,6 +692,7 @@ func (ctx *Context) ReadResource(
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
+			SourcePosition:          sourcePosition,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -796,7 +809,7 @@ func (ctx *Context) registerResource(
 
 	options := merge(opts...)
 
-	if parent := options.Parent; parent != nil && parent.URN().getState() == nil {
+	if parent := options.Parent; parent != nil && internal.GetOutputState(parent.URN()) == nil {
 		// Guard against uninitialized parent resources to prevent
 		// panics from invalid state further down the line.
 		// Uninitialized parent resources won't have a URN.
@@ -864,6 +877,10 @@ func (ctx *Context) registerResource(
 	// Create resolvers for the resource's outputs.
 	resState := ctx.makeResourceState(t, name, resource, providers, provider,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
+
+	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
+	// frames between this function and user code.
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -938,6 +955,7 @@ func (ctx *Context) registerResource(
 				ReplaceOnChanges:        inputs.replaceOnChanges,
 				RetainOnDelete:          inputs.retainOnDelete,
 				DeletedWith:             inputs.deletedWith,
+				SourcePosition:          sourcePosition,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -965,7 +983,7 @@ func (ctx *Context) registerResource(
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption,
 ) error {
-	return ctx.RegisterResource(t, name, nil /*props*/, resource, opts...)
+	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, opts...)
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(
@@ -1085,7 +1103,7 @@ func getPackage(t string) string {
 func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
 	project, stack := ctx.Project(), ctx.Stack()
 
-	aliasURNs := make([]URNOutput, 0, len(aliases))
+	aliasURNs := slice.Prealloc[URNOutput](len(aliases))
 
 	for _, alias := range aliases {
 		urn, err := alias.collapseToURN(name, t, parent, project, stack)
@@ -1108,7 +1126,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 					return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
 				}
 				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
-					aliasedChildName := string(resource.URN(urn).Name())
+					aliasedChildName := resource.URN(urn).Name()
 					aliasedChildType := string(resource.URN(urn).Type())
 					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
 				}).ApplyT(func(urn interface{}) URN {
@@ -1183,7 +1201,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 			fieldV.Set(reflect.ValueOf(output))
 
 			if tag == "" && field.Type != mapOutputType {
-				output.getState().reject(fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
+				internal.RejectOutput(output,
+					fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
 			}
 
 			state.outputs[tag] = output
@@ -1258,9 +1277,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	if err != nil {
 		// If there was an error, we must reject everything.
 		for _, output := range state.outputs {
-			output.getState().reject(err)
+			internal.RejectOutput(output, err)
 		}
-		state.rawOutputs.getState().reject(err)
+		internal.RejectOutput(state.rawOutputs, err)
 		return
 	}
 
@@ -1290,7 +1309,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 
 	// We need to wait until after we finish mutating outprops to resolve. Resolving
 	// unlocks multithreaded access to the resolved value, making mutation a data race.
-	state.rawOutputs.getState().resolve(outprops, true, false, nil)
+	internal.ResolveOutput(state.rawOutputs, outprops, true, false, resourcesToInternal(nil))
 
 	for k, output := range state.outputs {
 		// If this is an unknown or missing value during a dry run, do nothing.
@@ -1308,9 +1327,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		dest := reflect.New(output.ElementType()).Elem()
 		secret, err := unmarshalOutput(ctx, v, dest)
 		if err != nil {
-			output.getState().reject(err)
+			internal.RejectOutput(output, err)
 		} else {
-			output.getState().resolve(dest.Interface(), known, secret, deps[k])
+			internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps[k]))
 		}
 	}
 }
@@ -1356,7 +1375,7 @@ func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) 
 			return nil
 		}
 
-		noParent, _, _, _, err := alias.NoParent.ToBoolOutput().await(ctx.Context())
+		noParent, _, _, _, err := internal.AwaitOutput(ctx.Context(), alias.NoParent.ToBoolOutput())
 		if err != nil {
 			return fmt.Errorf("alias NoParent field could not be resolved: %w", err)
 		}
@@ -1394,12 +1413,12 @@ func (ctx *Context) mapAliases(aliases []Alias,
 	name string,
 	parent Resource,
 ) ([]*pulumirpc.Alias, error) {
-	aliasSpecs := make([]*pulumirpc.Alias, 0, len(aliases))
+	aliasSpecs := slice.Prealloc[*pulumirpc.Alias](len(aliases))
 	await := func(input StringInput) (string, error) {
 		if input == nil {
 			return "", nil
 		}
-		content, known, secret, _, err := input.ToStringOutput().await(ctx.Context())
+		content, known, secret, _, err := internal.AwaitOutput(ctx.Context(), input.ToStringOutput())
 		if err != nil {
 			return "", err
 		}
@@ -1809,11 +1828,11 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 }
 
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
-	return newOutputState(&ctx.join, elementType, deps...)
+	return internal.NewOutputState(&ctx.join, elementType, resourcesToInternal(deps)...)
 }
 
 func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
-	return newOutput(&ctx.join, typ, deps...)
+	return internal.NewOutput(&ctx.join, typ, resourcesToInternal(deps)...)
 }
 
 // NewOutput creates a new output associated with this context.
@@ -1832,4 +1851,28 @@ func (ctx *Context) withKeepOrRejectUnknowns(options plugin.MarshalOptions) plug
 		options.RejectUnknowns = true
 	}
 	return options
+}
+
+// Returns the source position of the Nth stack frame, where N is skip+1.
+//
+// This is used to compute the source position of the user code that instantiated a resource. The number of frames to
+// skip is parameterized in order to account for differing call stacks for different operations.
+func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
+	var pcs [1]uintptr
+	if callers := runtime.Callers(skip+1, pcs[:]); callers != 1 {
+		return nil
+	}
+	frames := runtime.CallersFrames(pcs[:])
+	frame, _ := frames.Next()
+	if frame.File == "" || frame.Line == 0 {
+		return nil
+	}
+	elems := filepath.SplitList(frame.File)
+	for i := range elems {
+		elems[i] = url.PathEscape(elems[i])
+	}
+	return &pulumirpc.SourcePosition{
+		Uri:  "project://" + path.Join(elems...),
+		Line: int32(frame.Line),
+	}
 }

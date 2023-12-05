@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"errors"
+	"external-go-import-aliases/example/internal"
 	awsec2 "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
 	accesscontextmanager "github.com/pulumi/pulumi-google-native/sdk/go/google/accesscontextmanager/v1"
@@ -60,6 +61,7 @@ func NewComponent(ctx *pulumi.Context,
 	if args.TypeRemoteAlias == nil {
 		return nil, errors.New("invalid value for required argument 'TypeRemoteAlias'")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterResource("example::Component", name, args, &resource, opts...)
 	if err != nil {

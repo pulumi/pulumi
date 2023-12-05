@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -79,7 +80,14 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		// Now mark resources done as necessary.
 		if e.Kind == JournalEntrySuccess {
 			switch e.Step.Op() {
-			case deploy.OpSame, deploy.OpUpdate:
+			case deploy.OpSame:
+				step, ok := e.Step.(*deploy.SameStep)
+				contract.Assertf(ok, "expected *deploy.SameStep, got %T", e.Step)
+				if !step.IsSkippedCreate() {
+					resources = append(resources, e.Step.New())
+					dones[e.Step.Old()] = true
+				}
+			case deploy.OpUpdate:
 				resources = append(resources, e.Step.New())
 				dones[e.Step.Old()] = true
 			case deploy.OpCreate, deploy.OpCreateReplacement:

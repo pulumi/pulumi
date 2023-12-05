@@ -11,13 +11,12 @@ import (
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -32,7 +31,7 @@ func TestParallelRefresh(t *testing.T) {
 
 	// Create a program that registers four resources, each of which depends on the resource that immediately precedes
 	// it.
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
@@ -53,31 +52,31 @@ func TestParallelRefresh(t *testing.T) {
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Parallel: 4, Host: host},
+		Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{Parallel: 4}},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	assert.Len(t, snap.Resources, 5)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
-	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
-	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
-	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
 	p.Steps = []TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
 	assert.Len(t, snap.Resources, 5)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
-	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
-	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
-	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 }
 
 func TestExternalRefresh(t *testing.T) {
@@ -90,37 +89,37 @@ func TestExternalRefresh(t *testing.T) {
 	}
 
 	// Our program reads a resource and exits.
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "")
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "")
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
 
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
 	snap := p.Run(t, nil)
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 
 	p = &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: TestUpdateOptions{HostF: hostF},
 		Steps:   []TestStep{{Op: Refresh}},
 	}
 
 	snap = p.Run(t, snap)
 	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
-	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 }
 
@@ -164,14 +163,14 @@ func TestRefreshInitFailure(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p.Options.Host = host
+	p.Options.HostF = hostF
 
 	//
 	// Create an old snapshot with a single initialization failure.
@@ -263,14 +262,14 @@ func TestRefreshWithDelete(t *testing.T) {
 				}),
 			}
 
-			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 				assert.NoError(t, err)
 				return err
 			})
 
-			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-			p := &TestPlan{Options: UpdateOptions{Host: host, Parallel: parallelFactor}}
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			p := &TestPlan{Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{Parallel: parallelFactor}}}
 
 			p.Steps = []TestStep{{Op: Update}}
 			snap := p.Run(t, nil)
@@ -336,7 +335,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		refreshTargets = append(refreshTargets, pickURN(t, urns, names, target))
 	}
 
-	p.Options.RefreshTargets = deploy.NewUrnTargetsFromUrns(refreshTargets)
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
@@ -382,14 +381,14 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result,
-			) result.Result {
+				_ []Event, err error,
+			) error {
 				// Should see only refreshes.
 				for _, entry := range entries {
 					if len(refreshTargets) > 0 {
@@ -401,7 +400,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 				}
 
-				return res
+				return err
 			},
 		},
 	}
@@ -496,10 +495,10 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	refreshTargets := []resource.URN{}
 
 	for _, target := range targets {
-		refreshTargets = append(p.Options.RefreshTargets.Literals(), pickURN(t, urns, names, target))
+		refreshTargets = append(p.Options.Targets.Literals(), pickURN(t, urns, names, target))
 	}
 
-	p.Options.RefreshTargets = deploy.NewUrnTargetsFromUrns(refreshTargets)
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
@@ -558,13 +557,13 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
 	p.Steps = []TestStep{{
 		Op: Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			// Should see only refreshes.
 			for _, entry := range entries {
 				if len(refreshTargets) > 0 {
@@ -608,7 +607,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 					assert.Equal(t, old, new)
 				}
 			}
-			return res
+			return err
 		},
 	}}
 	snap := p.Run(t, old)
@@ -728,14 +727,16 @@ func TestCanceledRefresh(t *testing.T) {
 
 	refreshed := make(map[resource.ID]bool)
 	op := TestOp(Refresh)
-	options := UpdateOptions{
-		Parallel: 1,
-		Host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
+	options := TestUpdateOptions{
+		HostF: deploytest.NewPluginHostF(nil, nil, nil, loaders...),
+		UpdateOptions: UpdateOptions{
+			Parallel: 1,
+		},
 	}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, res result.Result,
-	) result.Result {
+		_ []Event, err error,
+	) error {
 		for _, entry := range entries {
 			assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 			resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()
@@ -770,11 +771,11 @@ func TestCanceledRefresh(t *testing.T) {
 				assert.Equal(t, old, new)
 			}
 		}
-		return res
+		return err
 	}
 
-	snap, res := op.RunWithContext(ctx, project, target, options, false, nil, validate)
-	assertIsErrorOrBailResult(t, res)
+	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
+	assert.ErrorContains(t, err, "BAIL: canceled")
 	assert.Equal(t, 1, len(refreshed))
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -841,14 +842,14 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p.Options.Host = host
+	p.Options.HostF = hostF
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
@@ -902,12 +903,12 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 		}),
 	}
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p.Options.Host = host
+	p.Options.HostF = hostF
 	p.Options.Refresh = true
 
 	old := &deploy.Snapshot{

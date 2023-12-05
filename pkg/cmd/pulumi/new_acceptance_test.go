@@ -17,8 +17,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -39,12 +41,46 @@ func chdir(t *testing.T, dir string) {
 	})
 }
 
+// TestRegress13774 checks that you can run `pulumi new` on an existing project as described in the
+// Pulumi Cloud new project instructions.
+
+//nolint:paralleltest // changes directory for process
+func TestRegress13774(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	orgName := ""
+	projectName := genUniqueName(t)
+
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		stack:             strings.Join([]string{orgName, projectName, "some-stack"}, "/"),
+		secretsProvider:   "default",
+		description:       "description", // Needs special escaping for YAML
+		templateNameOrURL: "typescript",
+		force:             true,
+	}
+
+	// Create new project.
+	err := runNew(context.Background(), args)
+	defer removeStack(t, tempdir, args.stack)
+	assert.NoError(t, err)
+
+	// Create new stack on an existing project.
+	args.stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
+	err = runNew(context.Background(), args)
+	defer removeStack(t, tempdir, args.stack)
+	assert.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
+}
+
 //nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := os.MkdirTemp("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	args := newArgs{
@@ -52,6 +88,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		description:       "foo: bar", // Needs special escaping for YAML
 		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
@@ -64,11 +101,46 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 }
 
 //nolint:paralleltest // changes directory for process
+func TestCreatingStackWithNumericName(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	// This test requires a numeric project name.
+	// Project names have to be unique or this test will fail.
+	// A test may crash and leave a project behind, so we use a timestamp to try to ensure uniqueness
+	// instead of a constant.
+	unixTsNanos := time.Now().UnixNano()
+	numericProjectName := strconv.Itoa(int(unixTsNanos))
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		name:              numericProjectName, // Should be serialized as a string.
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: "yaml",
+	}
+
+	err := runNew(context.Background(), args)
+	assert.NoError(t, err)
+
+	p := loadProject(t, tempdir)
+	assert.NotNil(t, p)
+
+	assert.Equal(t, p.Name.String(), numericProjectName)
+
+	assert.Equal(t, stackName, loadStackName(t))
+	removeStack(t, tempdir, stackName)
+}
+
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := os.MkdirTemp("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
@@ -90,8 +162,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 func TestCreatingProjectWithDefaultName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := os.MkdirTemp("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
@@ -122,8 +193,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
-	fileStateDir, _ := os.MkdirTemp("", "local-state-dir")
-	defer os.RemoveAll(fileStateDir)
+	fileStateDir := t.TempDir()
 
 	// Now override to local filesystem backend
 	backendURL := "file://" + filepath.ToSlash(fileStateDir)
@@ -131,8 +201,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	t.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
 
 	backendInstance = nil
-	tempdir, _ := os.MkdirTemp("", "test-env-local")
-	defer os.RemoveAll(tempdir)
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
@@ -191,14 +260,14 @@ func currentUser(t *testing.T) string {
 	ctx := context.Background()
 	b, err := currentBackend(ctx, nil, display.Options{})
 	assert.NoError(t, err)
-	currentUser, _, err := b.CurrentUser()
+	currentUser, _, _, err := b.CurrentUser()
 	assert.NoError(t, err)
 	return currentUser
 }
 
 func loadStackName(t *testing.T) string {
 	w, err := workspace.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return w.Settings().Stack
 }
 

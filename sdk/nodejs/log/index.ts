@@ -14,11 +14,12 @@
 
 // The log module logs messages in a way that tightly integrates with the resource engine's interface.
 
+import * as engrpc from "../proto/engine_grpc_pb";
+import * as engproto from "../proto/engine_pb";
 import * as resourceTypes from "../resource";
 import { getEngine, rpcKeepAlive } from "../runtime/settings";
-const engproto = require("../proto/engine_pb.js");
+import { getStore } from "../runtime/state";
 
-let errcnt = 0;
 let lastLog: Promise<any> = Promise.resolve();
 
 const messageLevels = {
@@ -32,14 +33,14 @@ const messageLevels = {
  * hasErrors returns true if any errors have occurred in the program.
  */
 export function hasErrors(): boolean {
-    return errcnt > 0;
+    return getStore().logErrorCount > 0;
 }
 
 /**
  * debug logs a debug-level message that is generally hidden from end-users.
  */
 export function debug(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
-    const engine: Object | undefined = getEngine();
+    const engine = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.DEBUG, msg, resource, streamId, ephemeral);
     } else {
@@ -51,7 +52,7 @@ export function debug(msg: string, resource?: resourceTypes.Resource, streamId?:
  * info logs an informational message that is generally printed to stdout during resource operations.
  */
 export function info(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
-    const engine: Object | undefined = getEngine();
+    const engine = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.INFO, msg, resource, streamId, ephemeral);
     } else {
@@ -64,7 +65,7 @@ export function info(msg: string, resource?: resourceTypes.Resource, streamId?: 
  * warn logs a warning to indicate that something went wrong, but not catastrophically so.
  */
 export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
-    const engine: Object | undefined = getEngine();
+    const engine = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.WARNING, msg, resource, streamId, ephemeral);
     } else {
@@ -77,9 +78,9 @@ export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: 
  * error logs a fatal condition. Consider raising an exception after calling error to stop the Pulumi program.
  */
 export function error(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
-    errcnt++; // remember the error so we can suppress leaks.
+    getStore().logErrorCount++; // remember the error so we can suppress leaks.
 
-    const engine: Object | undefined = getEngine();
+    const engine = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.ERROR, msg, resource, streamId, ephemeral);
     } else {
@@ -89,8 +90,8 @@ export function error(msg: string, resource?: resourceTypes.Resource, streamId?:
 }
 
 function log(
-    engine: any,
-    sev: any,
+    engine: engrpc.EngineClient,
+    sev: engproto.LogSeverity,
     msg: string,
     resource: resourceTypes.Resource | undefined,
     streamId: number | undefined,
@@ -102,7 +103,7 @@ function log(
     const urnPromise = resource ? resource.urn.promise() : Promise.resolve("");
 
     lastLog = Promise.all([lastLog, urnPromise]).then(([_, urn]) => {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             try {
                 const req = new engproto.LogRequest();
                 req.setSeverity(sev);

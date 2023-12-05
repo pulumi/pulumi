@@ -1,0 +1,10 @@
+decrypt:
+  my:test.Key: testValue
+paths:
+  my:test.Key:
+    value: ""
+    string: ""
+    redacted: ""
+    object: DRAABnN0cmluZwwCAAA=
+    secure: false
+    isObject: false

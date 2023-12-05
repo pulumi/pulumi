@@ -33,6 +33,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -57,7 +58,7 @@ var _ Analyzer = (*analyzer)(nil)
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
-	path, err := workspace.GetPluginPath(
+	path, err := workspace.GetPluginPath(ctx.Diag,
 		workspace.AnalyzerPlugin, strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
 		nil, host.GetProjectPlugins())
 	if err != nil {
@@ -100,15 +101,17 @@ func NewPolicyAnalyzer(
 	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
-	pluginPath, err := workspace.GetPluginPath(
+	pluginPath, err := workspace.GetPluginPath(ctx.Diag,
 		workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
-	if err != nil {
-		return nil, rpcerror.Convert(err)
-	} else if pluginPath == "" {
+
+	var e *workspace.MissingError
+	if errors.As(err, &e) {
 		return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
 			"plugin that runs policy plugins is missing. This might occur when the plugin "+
 			"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
 			"does not support resource policies", string(name))
+	} else if err != nil {
+		return nil, err
 	}
 
 	// Create the environment variables from the options.
@@ -183,7 +186,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
-		Name:       string(name),
+		Name:       name,
 		Properties: mprops,
 		Options:    marshalResourceOptions(r.Options),
 		Provider:   provider,
@@ -228,7 +231,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 				continue
 			}
 
-			pdeps := make([]string, 0, 1)
+			pdeps := slice.Prealloc[string](1)
 			for _, d := range pd {
 				pdeps = append(pdeps, string(d))
 			}
@@ -240,7 +243,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
 			Urn:                  string(resource.URN),
 			Type:                 string(resource.Type),
-			Name:                 string(resource.Name),
+			Name:                 resource.Name,
 			Properties:           props,
 			Options:              marshalResourceOptions(resource.Options),
 			Provider:             provider,
@@ -277,6 +280,67 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 	return diags, nil
 }
 
+// Remediate is given the opportunity to transform a single resource, and returns its new properties.
+func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
+	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
+
+	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
+	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	mprops, err := MarshalProperties(props,
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+	if err != nil {
+		return nil, err
+	}
+
+	provider, err := marshalProvider(r.Provider)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := a.client.Remediate(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+		Urn:        string(urn),
+		Type:       string(t),
+		Name:       name,
+		Properties: mprops,
+		Options:    marshalResourceOptions(r.Options),
+		Provider:   provider,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+
+		// Handle the case where we the policy pack doesn't implement a recent enough to implement Transform.
+		if rpcError.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s.Transform(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			return nil, nil
+		}
+
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return nil, rpcError
+	}
+
+	remediations := resp.GetRemediations()
+	results := make([]Remediation, len(remediations))
+	for i, r := range remediations {
+		tprops, err := UnmarshalProperties(r.GetProperties(),
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+		if err != nil {
+			return nil, err
+		}
+
+		results[i] = Remediation{
+			PolicyName:        r.GetPolicyName(),
+			Description:       r.GetDescription(),
+			PolicyPackName:    r.GetPolicyPackName(),
+			PolicyPackVersion: r.GetPolicyPackVersion(),
+			Properties:        tprops,
+			Diagnostic:        r.GetDiagnostic(),
+		}
+	}
+
+	logging.V(7).Infof("%s success: #remediations=%d", label, len(results))
+	return results, nil
+}
+
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
@@ -309,7 +373,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 			}
 			schema.Properties["enforcementLevel"] = JSONSchema{
 				"type": "string",
-				"enum": []string{"advisory", "mandatory", "disabled"},
+				"enum": []string{"advisory", "mandatory", "remediate", "disabled"},
 			}
 		}
 
@@ -482,7 +546,7 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	return &pulumirpc.AnalyzerProviderResource{
 		Urn:        string(provider.URN),
 		Type:       string(provider.Type),
-		Name:       string(provider.Name),
+		Name:       provider.Name,
 		Properties: props,
 	}, nil
 }
@@ -493,6 +557,8 @@ func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementL
 		return pulumirpc.EnforcementLevel_ADVISORY
 	case apitype.Mandatory:
 		return pulumirpc.EnforcementLevel_MANDATORY
+	case apitype.Remediate:
+		return pulumirpc.EnforcementLevel_REMEDIATE
 	case apitype.Disabled:
 		return pulumirpc.EnforcementLevel_DISABLED
 	}
@@ -627,6 +693,8 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Advisory, nil
 	case pulumirpc.EnforcementLevel_MANDATORY:
 		return apitype.Mandatory, nil
+	case pulumirpc.EnforcementLevel_REMEDIATE:
+		return apitype.Remediate, nil
 	case pulumirpc.EnforcementLevel_DISABLED:
 		return apitype.Disabled, nil
 

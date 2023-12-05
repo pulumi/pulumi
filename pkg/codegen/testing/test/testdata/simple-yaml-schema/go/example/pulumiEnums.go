@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type OutputOnlyEnumType string
@@ -287,6 +288,12 @@ func (in *rubberTreeVarietyPtr) ToRubberTreeVarietyPtrOutput() RubberTreeVariety
 
 func (in *rubberTreeVarietyPtr) ToRubberTreeVarietyPtrOutputWithContext(ctx context.Context) RubberTreeVarietyPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(RubberTreeVarietyPtrOutput)
+}
+
+func (in *rubberTreeVarietyPtr) ToOutput(ctx context.Context) pulumix.Output[*RubberTreeVariety] {
+	return pulumix.Output[*RubberTreeVariety]{
+		OutputState: in.ToRubberTreeVarietyPtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 func init() {

@@ -15,10 +15,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/spf13/cobra"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -45,13 +47,13 @@ func newStackRmCmd() *cobra.Command {
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
 				if stack != "" {
-					return result.Error("only one of --stack or argument stack name may be specified, not both")
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
 				stack = args[0]
 			}
@@ -62,33 +64,37 @@ func newStackRmCmd() *cobra.Command {
 
 			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
 			if !yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
-				fmt.Println("confirmation declined")
-				return result.Bail()
+				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
 			hasResources, err := s.Remove(ctx, force)
 			if err != nil {
 				if hasResources {
-					return result.Errorf(
+					return fmt.Errorf(
 						"'%s' still has resources; removal rejected. Possible actions:\n"+
 							"- Make sure that '%[1]s' is the stack that you want to destroy\n"+
 							"- Run `pulumi destroy` to delete the resources, then run `pulumi stack rm`\n"+
 							"- Run `pulumi stack rm --force` to override this error", s.Ref())
 				}
-				return result.FromError(err)
+				return err
 			}
 
 			if !preserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-				if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
-					if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
-						return result.FromError(err)
+				if proj, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
+					// Check that the detected project matches the stacks project, users can run `rm --stack
+					// <name>` from a different projects directory.
+					stackProject, has := s.Ref().Project()
+					if has && stackProject == tokens.Name(proj.Name) {
+						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
+							return err
+						}
 					}
 				}
 			}

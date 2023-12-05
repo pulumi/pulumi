@@ -43,13 +43,14 @@ type State struct {
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
-	Aliases                 []URN                 // TODO
+	Aliases                 []URN                 // an optional set of URNs for which this resource is an alias.
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
 	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
+	SourcePosition          string                // If set, the source location of the resource registration
 }
 
 func (s *State) GetAliasURNs() []URN {
@@ -71,6 +72,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
 	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
+	sourcePosition string,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -99,6 +101,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		DeletedWith:             deletedWith,
 		Created:                 created,
 		Modified:                modified,
+		SourcePosition:          sourcePosition,
 	}
 
 	if timeouts != nil {

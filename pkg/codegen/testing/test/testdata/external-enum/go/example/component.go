@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"external-enum/example/internal"
 	"external-enum/example/local"
 	accesscontextmanager "github.com/pulumi/pulumi-google-native/sdk/go/google/accesscontextmanager/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -26,6 +27,7 @@ func NewComponent(ctx *pulumi.Context,
 		args = &ComponentArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterResource("example:index:Component", name, args, &resource, opts...)
 	if err != nil {

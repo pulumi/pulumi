@@ -23,7 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -42,20 +42,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -63,32 +63,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// PulumiFilestateGzipEnvVar is an env var that must be truthy
-// to enable gzip compression when using the filestate backend.
-const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
-
-// TODO[pulumi/pulumi#12539]:
-// This section contains names of environment variables
-// that affect the behavior of the backend.
-//
-// These must all be registered in common/env so that they're available
-// with the 'pulumi env' command.
-// However, we don't currently use env.Value() to access their values
-// because it prevents us from overriding the definition of os.Getenv
-// in tests.
-var (
-	// PulumiFilestateNoLegacyWarningEnvVar is an env var that must be truthy
-	// to disable the warning printed by the filestate backend
-	// when it detects that the state has both, project-scoped and legacy stacks.
-	PulumiFilestateNoLegacyWarningEnvVar = env.SelfManagedStateNoLegacyWarning.Var().Name()
-
-	// PulumiFilestateLegacyLayoutEnvVar is the name of an environment variable
-	// that can be set to force the use of the legacy layout
-	// when initializing an empty bucket for filestate.
+// UpgradeOptions customizes the behavior of the upgrade operation.
+type UpgradeOptions struct {
+	// ProjectsForDetachedStacks is an optional function that is able to
+	// backfill project names for stacks that have no project specified otherwise.
 	//
-	// This opt-out is intended to be removed in a future release.
-	PulumiFilestateLegacyLayoutEnvVar = env.SelfManagedStateLegacyLayout.Var().Name()
-)
+	// It is called with a list of stack names that have no project specified.
+	// It should return a list of project names to use for each stack name
+	// in the same order.
+	// If a returned name is blank, the stack at that position will be skipped
+	// in the upgrade process.
+	//
+	// The length of 'projects' MUST match the length of 'stacks'.
+	// If it does not, the upgrade will panic.
+	//
+	// If this function is not specified,
+	// stacks without projects will be skipped during the upgrade.
+	ProjectsForDetachedStacks func(stacks []tokens.StackName) (projects []tokens.Name, err error)
+}
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -96,7 +88,7 @@ type Backend interface {
 	local() // at the moment, no local specific info, so just use a marker function.
 
 	// Upgrade to the latest state store version.
-	Upgrade(ctx context.Context) error
+	Upgrade(ctx context.Context, opts *UpgradeOptions) error
 }
 
 type localBackend struct {
@@ -115,7 +107,7 @@ type localBackend struct {
 
 	gzip bool
 
-	Getenv func(string) string // == os.Getenv
+	Env env.Env
 
 	// The current project, if any.
 	currentProject atomic.Pointer[workspace.Project]
@@ -128,7 +120,7 @@ type localBackend struct {
 }
 
 type localBackendReference struct {
-	name    tokens.Name
+	name    tokens.StackName
 	project tokens.Name
 
 	// A thread-safe way to get the current project.
@@ -146,7 +138,7 @@ type localBackendReference struct {
 func (r *localBackendReference) String() string {
 	// If project is blank this is a legacy non-project scoped stack reference, just return the name.
 	if r.project == "" {
-		return string(r.name)
+		return r.name.String()
 	}
 
 	if r.currentProject != nil {
@@ -155,7 +147,7 @@ func (r *localBackendReference) String() string {
 		// we take the current project (if present) into account.
 		// If the project names match, we can elide them.
 		if proj != nil && string(r.project) == string(proj.Name) {
-			return string(r.name)
+			return r.name.String()
 		}
 	}
 
@@ -163,7 +155,7 @@ func (r *localBackendReference) String() string {
 	return fmt.Sprintf("organization/%s/%s", r.project, r.name)
 }
 
-func (r *localBackendReference) Name() tokens.Name {
+func (r *localBackendReference) Name() tokens.StackName {
 	return r.name
 }
 
@@ -204,10 +196,10 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 }
 
 type localBackendOptions struct {
-	// Getenv specifies how to get environment variables.
+	// Env specifies how to get environment variables.
 	//
-	// Defaults to os.Getenv.
-	Getenv func(string) string
+	// Defaults to env.Global
+	Env env.Env
 }
 
 // newLocalBackend builds a filestate backend implementation
@@ -219,8 +211,8 @@ func newLocalBackend(
 	if opts == nil {
 		opts = &localBackendOptions{}
 	}
-	if opts.Getenv == nil {
-		opts.Getenv = os.Getenv
+	if opts.Env == nil {
+		opts.Env = env.Global()
 	}
 
 	if !IsFileStateBackendURL(originalURL) {
@@ -271,7 +263,7 @@ func newLocalBackend(
 		return nil, err
 	}
 
-	gzipCompression := cmdutil.IsTruthy(opts.Getenv(PulumiFilestateGzipEnvVar))
+	gzipCompression := opts.Env.GetBool(env.SelfManagedGzip)
 
 	wbucket := &wrappedBucket{bucket: bucket}
 	bucket = nil // prevent accidental use of unwrapped bucket
@@ -283,14 +275,14 @@ func newLocalBackend(
 		bucket:      wbucket,
 		lockID:      lockID.String(),
 		gzip:        gzipCompression,
-		Getenv:      opts.Getenv,
+		Env:         opts.Env,
 	}
 	backend.currentProject.Store(project)
 
 	// Read the Pulumi state metadata
 	// and ensure that it is compatible with this version of the CLI.
 	// The version in the metadata file informs which store we use.
-	meta, err := ensurePulumiMeta(ctx, wbucket, opts.Getenv)
+	meta, err := ensurePulumiMeta(ctx, wbucket, opts.Env)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +313,7 @@ func newLocalBackend(
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
-	if !projectMode || cmdutil.IsTruthy(opts.Getenv(PulumiFilestateNoLegacyWarningEnvVar)) {
+	if !projectMode || opts.Env.GetBool(env.SelfManagedStateNoLegacyWarning) {
 		return backend, nil
 	}
 	// Otherwise, warn about any old stack files.
@@ -349,13 +341,87 @@ func newLocalBackend(
 	return backend, nil
 }
 
-func (b *localBackend) Upgrade(ctx context.Context) error {
+func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
+	if opts == nil {
+		opts = &UpgradeOptions{}
+	}
+
 	// We don't use the existing b.store because
 	// this may already be a projectReferenceStore
 	// with new legacy files introduced to it accidentally.
 	olds, err := newLegacyReferenceStore(b.bucket).ListReferences(ctx)
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
+	}
+	sort.Slice(olds, func(i, j int) bool {
+		return olds[i].Name().String() < olds[j].Name().String()
+	})
+
+	// There's no limit to the number of stacks we need to upgrade.
+	// We don't want to overload the system with too many concurrent upgrades.
+	// We'll run a fixed pool of goroutines to upgrade stacks.
+	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
+	defer pool.Close()
+
+	// Projects for each stack in `olds` in the same order.
+	// projects[i] is the project name for olds[i].
+	projects := make([]tokens.Name, len(olds))
+	for idx, old := range olds {
+		idx, old := idx, old
+		pool.Enqueue(func() error {
+			project, err := b.guessProject(ctx, old)
+			if err != nil {
+				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
+			}
+
+			// No lock necessary;
+			// projects is pre-allocated.
+			projects[idx] = project
+			return nil
+		})
+	}
+
+	if err := pool.Wait(); err != nil {
+		return err
+	}
+
+	// If there are any stacks without projects
+	// and the user provided a callback to fill them,
+	// use it to fill in the missing projects.
+	if opts.ProjectsForDetachedStacks != nil {
+		var (
+			// Names of stacks in 'olds' that don't have a project
+			detached []tokens.StackName
+
+			// reverseIdx[i] is the index of detached[i]
+			// in olds and projects.
+			//
+			// In other words:
+			//
+			//   detached[i] == olds[reverseIdx[i]].Name()
+			//   projects[reverseIdx[i]] == ""
+			reverseIdx []int
+		)
+		for i, ref := range olds {
+			if projects[i] == "" {
+				detached = append(detached, ref.Name())
+				reverseIdx = append(reverseIdx, i)
+			}
+		}
+
+		if len(detached) != 0 {
+			detachedProjects, err := opts.ProjectsForDetachedStacks(detached)
+			if err != nil {
+				return err
+			}
+			contract.Assertf(len(detached) == len(detachedProjects),
+				"ProjectsForDetachedStacks returned the wrong number of projects: "+
+					"expected %d, got %d", len(detached), len(detachedProjects))
+
+			for i, project := range detachedProjects {
+				projects[reverseIdx[i]] = project
+			}
+		}
 	}
 
 	// It's important that we attempt to write the new metadata file
@@ -374,85 +440,63 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 
 	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
 
-	// There's no limit to the number of stacks we need to upgrade.
-	// We don't want to overload the system with too many concurrent upgrades.
-	// We'll run a fixed pool of goroutines to upgrade stacks.
-	// They'll work their way through the list of old stacks
-	// using nextIdx to track which stack to upgrade next.
-	var (
-		// Index into olds for goroutines to track
-		// which stack they're upgrading.
-		nextIdx atomic.Int64
-
-		// Number of stacks successfully upgraded.
-		upgraded atomic.Int64
-
-		wg sync.WaitGroup
-	)
-
-	// GOMAXPROCS defaults to the number of cores on the system,
-	// so this should be a reasonable default.
-	numWorkers := runtime.GOMAXPROCS(0)
-	if count := len(olds); count < numWorkers {
-		// Don't need more workers than work.
-		numWorkers = count
-	}
-
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for {
-				// Add returns the new value of the atomic,
-				// so we need to subtract 1 from the result.
-				idx := nextIdx.Add(1) - 1
-
-				// List of old stacks has been exhausted.
-				// We're done.
-				if idx >= int64(len(olds)) {
-					return
-				}
-
-				old := olds[idx]
-				if err := b.upgradeStack(ctx, newStore, old); err != nil {
-					b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
-				} else {
-					upgraded.Add(1)
-				}
+	var upgraded atomic.Int64 // number of stacks successfully upgraded
+	for idx, old := range olds {
+		idx, old := idx, old
+		pool.Enqueue(func() error {
+			project := projects[idx]
+			if project == "" {
+				b.d.Warningf(diag.Message("", "Skipping stack %q: no project name found"), old)
+				return nil
 			}
-		}()
+
+			if err := b.upgradeStack(ctx, newStore, project, old); err != nil {
+				b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
+			} else {
+				upgraded.Add(1)
+			}
+			return nil
+		})
 	}
-	wg.Wait()
+
+	// We log all errors above. This should never fail.
+	err = pool.Wait()
+	contract.AssertNoErrorf(err, "pool.Wait should never return an error")
+
 	b.store = newStore
 	b.d.Infoerrf(diag.Message("", "Upgraded %d stack(s) to project mode"), upgraded.Load())
 	return nil
+}
+
+// guessProject inspects the checkpoint for the given stack and attempts to
+// guess the project name for it.
+// Returns an empty string if the project name cannot be determined.
+func (b *localBackend) guessProject(ctx context.Context, old *localBackendReference) (tokens.Name, error) {
+	contract.Requiref(old.project == "", "old.project", "must be empty")
+
+	chk, err := b.getCheckpoint(ctx, old)
+	if err != nil {
+		return "", fmt.Errorf("read checkpoint: %w", err)
+	}
+
+	// Try and find the project name from _any_ resource URN
+	if chk.Latest != nil {
+		for _, res := range chk.Latest.Resources {
+			return tokens.Name(res.URN.Project()), nil
+		}
+	}
+	return "", nil
 }
 
 // upgradeStack upgrades a single stack to use the provided projectReferenceStore.
 func (b *localBackend) upgradeStack(
 	ctx context.Context,
 	newStore *projectReferenceStore,
+	project tokens.Name,
 	old *localBackendReference,
 ) error {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
-
-	chk, err := b.getCheckpoint(ctx, old)
-	if err != nil {
-		return err
-	}
-
-	// Try and find the project name from _any_ resource URN
-	var project tokens.Name
-	if chk.Latest != nil {
-		for _, res := range chk.Latest.Resources {
-			project = tokens.Name(res.URN.Project())
-			break
-		}
-	}
-	if project == "" {
-		return errors.New("no project found")
-	}
+	contract.Requiref(project != "", "project", "must not be empty")
 
 	new := newStore.newReference(project, old.Name())
 	if err := b.renameStack(ctx, old, new); err != nil {
@@ -568,6 +612,10 @@ func (b *localBackend) SupportsOrganizations() bool {
 	return false
 }
 
+func (b *localBackend) SupportsProgress() bool {
+	return false
+}
+
 func (b *localBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
 	return b.parseStackReference(stackRef)
 }
@@ -582,7 +630,7 @@ func (b *localBackend) ValidateStackName(stackRef string) error {
 	return err
 }
 
-func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
+func (b *localBackend) DoesProjectExist(ctx context.Context, _ string, projectName string) (bool, error) {
 	projStore, ok := b.store.(*projectReferenceStore)
 	if !ok {
 		// Legacy stores don't have projects
@@ -651,12 +699,6 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject.Load())
-
-	if err = validation.ValidateStackProperties(stackName.Name().String(), tags); err != nil {
-		return nil, fmt.Errorf("validating stack properties: %w", err)
-	}
-
 	_, err = b.saveStack(ctx, localStackRef, nil, nil)
 	if err != nil {
 		return nil, err
@@ -696,7 +738,7 @@ func (b *localBackend) ListStacks(
 
 	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
 	// aren't persisted in the local backend.
-	results := make([]backend.StackSummary, 0, len(stacks))
+	results := slice.Prealloc[backend.StackSummary](len(stacks))
 	for _, stackRef := range stacks {
 		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
 		stackProject, hasProject := stackRef.Project()
@@ -794,7 +836,10 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newRef.name, ""); err != nil {
+		project, has := newRef.Project()
+		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
+
+		if err = edit.RenameStack(snap, newRef.name, tokens.PackageName(project)); err != nil {
 			return err
 		}
 	}
@@ -838,14 +883,14 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
+	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
@@ -897,7 +942,7 @@ func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
+func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) error {
 	return b.query(ctx, op, nil /*events*/)
 }
 
@@ -923,7 +968,6 @@ func (b *localBackend) apply(
 		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
 	}
 
-	stackName := stackRef.FullyQualifiedName()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
@@ -942,7 +986,7 @@ func (b *localBackend) apply(
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go display.ShowEvents(
-		strings.ToLower(actionLabel), kind, stackName.Name(), op.Proj.Name, "",
+		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
@@ -965,8 +1009,8 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(ctx, localStackRef, op.SecretsManager)
-	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
+	persister := b.newSnapshotPersister(ctx, localStackRef)
+	manager := backend.NewSnapshotManager(persister, op.SecretsManager, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
 		Events:          engineEvents,
@@ -978,28 +1022,34 @@ func (b *localBackend) apply(
 	start := time.Now().Unix()
 	var plan *deploy.Plan
 	var changes sdkDisplay.ResourceChanges
-	var updateRes result.Result
+	var updateErr error
 	switch kind {
 	case apitype.PreviewUpdate:
-		plan, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
+		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.ResourceImportUpdate:
-		_, changes, updateRes = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
+		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
-		_, changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
-		_, changes, updateRes = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
+	updateRes := result.WrapIfNonNil(updateErr)
 	end := time.Now().Unix()
 
 	// Wait for the display to finish showing all the events.
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	contract.IgnoreClose(manager)
+	err = manager.Close()
+	// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
+	// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
+	if err != nil {
+		cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+	}
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
 	<-eventsDone
@@ -1084,7 +1134,7 @@ func (b *localBackend) apply(
 // query executes a query program against the resource outputs of a locally hosted stack.
 func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
 	callerEventsOpt chan<- engine.Event,
-) result.Result {
+) error {
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
@@ -1193,20 +1243,12 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	return err
 }
 
-func (b *localBackend) Logout() error {
-	return workspace.DeleteAccount(b.originalURL)
-}
-
-func (b *localBackend) LogoutAll() error {
-	return workspace.DeleteAllAccounts()
-}
-
-func (b *localBackend) CurrentUser() (string, []string, error) {
+func (b *localBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
 	user, err := user.Current()
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
-	return user.Username, nil, nil
+	return user.Username, nil, nil, nil
 }
 
 func (b *localBackend) getLocalStacks(ctx context.Context) ([]*localBackendReference, error) {

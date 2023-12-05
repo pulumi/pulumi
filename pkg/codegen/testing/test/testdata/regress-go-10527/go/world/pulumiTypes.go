@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-go-10527/world/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type World struct {
 	Name *string `pulumi:"name"`

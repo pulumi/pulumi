@@ -55,8 +55,20 @@ type PolicyEvent struct {
 	PolicyPackVersion    string `json:"policyPackVersion"`
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
 
-	// EnforcementLevel is one of "warning" or "mandatory".
+	// EnforcementLevel is one of "warning", "mandatory", "remediate", or "none".
 	EnforcementLevel string `json:"enforcementLevel"`
+}
+
+// PolicyRemediationEvent is emitted whenever there is Policy transformation.
+type PolicyRemediationEvent struct {
+	ResourceURN          string                 `json:"resourceUrn,omitempty"`
+	Color                string                 `json:"color"`
+	PolicyName           string                 `json:"policyName"`
+	PolicyPackName       string                 `json:"policyPackName"`
+	PolicyPackVersion    string                 `json:"policyPackVersion"`
+	PolicyPackVersionTag string                 `json:"policyPackVersionTag"`
+	Before               map[string]interface{} `json:"before,omitempty"`
+	After                map[string]interface{} `json:"after,omitempty"`
 }
 
 // PreludeEvent is emitted at the start of an update.
@@ -150,6 +162,8 @@ type StepEventStateMetadata struct {
 	Parent string `json:"parent"`
 	// Protect is true to "protect" this resource (protected resources cannot be deleted).
 	Protect bool `json:"protect,omitempty"`
+	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have
 	// filtered out, and large assets have been replaced by hashes as applicable.
 	Inputs map[string]interface{} `json:"inputs"`
@@ -181,6 +195,9 @@ type ResOpFailedEvent struct {
 	Steps    int               `json:"steps"`
 }
 
+// PolicyLoadEvent is emitted when a policy starts loading
+type PolicyLoadEvent struct{}
+
 // EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
@@ -197,15 +214,17 @@ type EngineEvent struct {
 	// Timestamp is a Unix timestamp (seconds) of when the event was emitted.
 	Timestamp int `json:"timestamp"`
 
-	CancelEvent      *CancelEvent       `json:"cancelEvent,omitempty"`
-	StdoutEvent      *StdoutEngineEvent `json:"stdoutEvent,omitempty"`
-	DiagnosticEvent  *DiagnosticEvent   `json:"diagnosticEvent,omitempty"`
-	PreludeEvent     *PreludeEvent      `json:"preludeEvent,omitempty"`
-	SummaryEvent     *SummaryEvent      `json:"summaryEvent,omitempty"`
-	ResourcePreEvent *ResourcePreEvent  `json:"resourcePreEvent,omitempty"`
-	ResOutputsEvent  *ResOutputsEvent   `json:"resOutputsEvent,omitempty"`
-	ResOpFailedEvent *ResOpFailedEvent  `json:"resOpFailedEvent,omitempty"`
-	PolicyEvent      *PolicyEvent       `json:"policyEvent,omitempty"`
+	CancelEvent            *CancelEvent            `json:"cancelEvent,omitempty"`
+	StdoutEvent            *StdoutEngineEvent      `json:"stdoutEvent,omitempty"`
+	DiagnosticEvent        *DiagnosticEvent        `json:"diagnosticEvent,omitempty"`
+	PreludeEvent           *PreludeEvent           `json:"preludeEvent,omitempty"`
+	SummaryEvent           *SummaryEvent           `json:"summaryEvent,omitempty"`
+	ResourcePreEvent       *ResourcePreEvent       `json:"resourcePreEvent,omitempty"`
+	ResOutputsEvent        *ResOutputsEvent        `json:"resOutputsEvent,omitempty"`
+	ResOpFailedEvent       *ResOpFailedEvent       `json:"resOpFailedEvent,omitempty"`
+	PolicyEvent            *PolicyEvent            `json:"policyEvent,omitempty"`
+	PolicyRemediationEvent *PolicyRemediationEvent `json:"policyRemediationEvent,omitempty"`
+	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.

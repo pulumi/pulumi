@@ -255,19 +255,21 @@
       "respectSchemaVersion": true
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-resource-schema/go/example",
+      "importBasePath": "simple-resource-schema/example",
       "generateExtraInputTypes": true,
       "respectSchemaVersion": true
     },
     "nodejs": {
-      "dependencies": {
-        "@pulumi/pulumi": "^3.12"
-      },
       "devDependencies": {
-        "typescript": "^3.7.0"
+        "@types/mocha": "latest",
+        "@types/node": "ts4.3",
+        "mocha": "latest",
+        "ts-node": "latest"
       },
-      "respectSchemaVersion": true,
-      "pluginVersion": "3.2.1"
+      "extraTypeScriptFiles": [
+        "tests/codegen.spec.ts"
+      ],
+      "respectSchemaVersion": true
     },
     "python": {
       "respectSchemaVersion": true

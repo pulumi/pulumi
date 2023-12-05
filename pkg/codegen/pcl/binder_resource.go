@@ -97,6 +97,10 @@ func AnnotateAttributeValue(expr model.Expression, attributeType schema.Type) mo
 }
 
 func AnnotateResourceInputs(node *Resource) {
+	if node.Schema == nil {
+		// skip annotations for resource which don't have a schema
+		return
+	}
 	resourceProperties := make(map[string]*schema.Property)
 	for _, property := range node.Schema.Properties {
 		resourceProperties[property.Name] = property
@@ -129,6 +133,17 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		return diagnostics
 	}
 
+	makeResourceDynamic := func() {
+		// make the inputs and outputs of the resource dynamic
+		node.Token = token
+		node.OutputType = model.DynamicType
+		inferredInputProperties := map[string]model.Type{}
+		for _, attr := range node.Inputs {
+			inferredInputProperties[attr.Name] = attr.Type()
+		}
+		node.InputType = model.NewObjectType(inferredInputProperties)
+	}
+
 	isProvider := false
 	if pkg == "pulumi" && module == "providers" {
 		pkg, isProvider = name, true
@@ -144,6 +159,12 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if err != nil {
 		e := unknownPackage(pkg, tokenRange)
 		e.Detail = err.Error()
+
+		if b.options.skipResourceTypecheck {
+			makeResourceDynamic()
+			return hcl.Diagnostics{asWarningDiagnostic(e)}
+		}
+
 		return hcl.Diagnostics{e}
 	}
 
@@ -152,14 +173,28 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if isProvider {
 		r, err := pkgSchema.schema.Provider()
 		if err != nil {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return diagnostics
+			}
 			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		}
 		res = r
 	} else {
 		r, tk, ok, err := pkgSchema.LookupResource(token)
 		if err != nil {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return diagnostics
+			}
+
 			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		} else if !ok {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return diagnostics
+			}
+
 			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
 		res = r
@@ -255,7 +290,7 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 
 func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostics) {
 	resourceOptions := &ResourceOptions{}
-	diagnostics := hcl.Diagnostics{}
+	var diagnostics hcl.Diagnostics
 	for _, item := range options.Body.Items {
 		switch item := item.(type) {
 		case *model.Attribute:
@@ -307,9 +342,11 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
+	// Allow for lenient traversal when we choose to skip resource type-checking.
+	node.LenientTraversal = b.options.skipResourceTypecheck
+	node.VariableType = node.OutputType
 	// If the resource has a range option, we need to know the type of the collection being ranged over. Pre-bind the
 	// range expression now, but ignore the diagnostics.
-	node.VariableType = node.OutputType
 	var rangeKey, rangeValue model.Type
 	for _, block := range node.syntax.Body.Blocks {
 		if block.Type == "options" {
@@ -335,9 +372,10 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					contract.Assertf(len(diags) == 0, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
-				case model.InputType(model.NumberType).ConversionFrom(typ) != model.NoConversion:
+				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
+					functions := pulumiBuiltins(b.options)
 					rangeArgs := []model.Expression{expr}
-					rangeSig, _ := pulumiBuiltins["range"].GetSignature(rangeArgs)
+					rangeSig, _ := functions["range"].GetSignature(rangeArgs)
 
 					rangeExpr := &model.ForExpression{
 						ValueVariable: &model.Variable{
@@ -358,7 +396,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 					node.VariableType = rangeExpr.Type()
 				default:
-					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range())
+					strictCollectionType := !b.options.skipRangeTypecheck
+					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
 
 					iterationExpr := &model.ForExpression{
@@ -366,8 +405,9 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 							Name:         "_",
 							VariableType: rangeValue,
 						},
-						Collection: expr,
-						Value:      model.VariableReference(resourceVar),
+						Collection:                   expr,
+						Value:                        model.VariableReference(resourceVar),
+						StrictCollectionTypechecking: strictCollectionType,
 					}
 					diags = iterationExpr.Typecheck(false)
 					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.

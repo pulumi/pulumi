@@ -31,12 +31,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
+
+var ErrHostIsClosed = errors.New("plugin host is shutting down")
 
 var UseGrpcPluginsByDefault = false
 
@@ -236,6 +239,8 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 	return nil, errors.New("unsupported")
 }
 
+type PluginHostFactory func() plugin.Host
+
 type pluginHost struct {
 	pluginLoaders   []*ProviderLoader
 	languageRuntime plugin.LanguageRuntime
@@ -249,6 +254,19 @@ type pluginHost struct {
 	plugins   map[interface{}]io.Closer
 	closed    bool
 	m         sync.Mutex
+}
+
+// NewPluginHostF returns a factory that produces a plugin host for an operation.
+func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeF LanguageRuntimeFactory,
+	pluginLoaders ...*ProviderLoader,
+) PluginHostFactory {
+	return func() plugin.Host {
+		var lr plugin.LanguageRuntime
+		if languageRuntimeF != nil {
+			lr = languageRuntimeF()
+		}
+		return NewPluginHost(sink, statusSink, lr, pluginLoaders...)
+	}
 }
 
 func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
@@ -345,6 +363,9 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 }
 
 func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	if host.isClosed() {
+		return nil, ErrHostIsClosed
+	}
 	plug, err := host.plugin(workspace.ResourcePlugin, string(pkg), version, nil)
 	if err != nil {
 		return nil, err
@@ -362,10 +383,16 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 func (host *pluginHost) LanguageRuntime(
 	root, pwd, runtime string, options map[string]interface{},
 ) (plugin.LanguageRuntime, error) {
+	if host.isClosed() {
+		return nil, ErrHostIsClosed
+	}
 	return host.languageRuntime, nil
 }
 
 func (host *pluginHost) SignalCancellation() error {
+	if host.isClosed() {
+		return ErrHostIsClosed
+	}
 	host.m.Lock()
 	defer host.m.Unlock()
 
@@ -379,6 +406,9 @@ func (host *pluginHost) SignalCancellation() error {
 }
 
 func (host *pluginHost) Close() error {
+	if host.isClosed() {
+		return nil // Close is idempotent
+	}
 	host.m.Lock()
 	defer host.m.Unlock()
 
@@ -415,6 +445,9 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 }
 
 func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
+	if host.isClosed() {
+		return ErrHostIsClosed
+	}
 	host.m.Lock()
 	defer host.m.Unlock()
 
@@ -423,19 +456,19 @@ func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
 }
 
 func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
-	return nil
-}
-
-func (host *pluginHost) InstallPlugin(plugin workspace.PluginSpec) error {
+	if host.isClosed() {
+		return ErrHostIsClosed
+	}
 	return nil
 }
 
 func (host *pluginHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
-	plugins := make([]workspace.PluginInfo, 0, len(host.pluginLoaders))
+	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 
 	for _, v := range host.pluginLoaders {
+		v := v
 		p := workspace.PluginInfo{
 			Kind:       v.kind,
 			Name:       v.name,
@@ -457,12 +490,12 @@ func (host *pluginHost) ResolvePlugin(
 		semverRange = version.EQ
 	}
 
-	match, err := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
-	if err == nil {
-		return &match, nil
+	match := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
+	if match == nil {
+		return nil, fmt.Errorf("could not locate a compatible plugin in deploytest, the makefile and " +
+			"& constructor of the plugin host must define the location of the schema")
 	}
-	return nil, fmt.Errorf("could not locate a compatible plugin in deploytest, the makefile and "+
-		"& constructor of the plugin host must define the location of the schema: %w", err)
+	return match, nil
 }
 
 func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
@@ -478,6 +511,9 @@ func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
 func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 	opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
+	if host.isClosed() {
+		return nil, ErrHostIsClosed
+	}
 	plug, err := host.plugin(workspace.AnalyzerPlugin, string(name), nil, opts)
 	if err != nil || plug == nil {
 		return nil, err

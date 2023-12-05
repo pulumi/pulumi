@@ -3,6 +3,8 @@
 package graph
 
 import (
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -80,10 +82,10 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	return dependents
 }
 
-// DependenciesOf returns a ResourceSet of resources upon which the given resource depends. The resource's parent is
+// DependenciesOf returns a set of resources upon which the given resource depends. The resource's parent is
 // included in the returned set.
-func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
-	set := make(ResourceSet)
+func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resource.State] {
+	set := mapset.NewSet[*resource.State]()
 
 	dependentUrns := make(map[resource.URN]bool)
 	for _, dep := range res.Dependencies {
@@ -102,7 +104,7 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 		candidate := dg.resources[i]
 		// Include all resources that are dependencies of the resource
 		if dependentUrns[candidate.URN] {
-			set[candidate] = true
+			set.Add(candidate)
 			// If the dependency is a component, all transitive children of the dependency that are before this
 			// resource in the topological sort are also implicitly dependencies. This is necessary because for remote
 			// components, the dependencies will not include the transitive set of children directly, but will include
@@ -112,14 +114,14 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 			if !candidate.Custom {
 				for _, transitiveCandidateIndex := range dg.childrenOf[candidate.URN] {
 					if transitiveCandidateIndex < cursorIndex {
-						set[dg.resources[transitiveCandidateIndex]] = true
+						set.Add(dg.resources[transitiveCandidateIndex])
 					}
 				}
 			}
 		}
 		// Include the resource's parent, as the resource depends on it's parent existing.
 		if candidate.URN == res.Parent {
-			set[candidate] = true
+			set.Add(candidate)
 		}
 	}
 
@@ -131,7 +133,7 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 // `Dependencies` list or as a provider.
 //
 // This function is linear in the number of resources in the `DependencyGraph`.
-func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) ResourceSet {
+func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) mapset.Set[*resource.State] {
 	dependentProviders := make(map[resource.URN]struct{})
 
 	urns := make(map[resource.URN]*node, len(dg.resources))
@@ -150,14 +152,14 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) ResourceS
 		}
 	}
 
-	dependencies := ResourceSet{}
+	dependencies := mapset.NewSet[*resource.State]()
 	for _, r := range urns {
 		if r.marked {
-			dependencies[r.resource] = true
+			dependencies.Add(r.resource)
 		}
 	}
 	// We don't want to include `r` as it's own dependency.
-	delete(dependencies, r)
+	dependencies.Remove(r)
 	return dependencies
 }
 

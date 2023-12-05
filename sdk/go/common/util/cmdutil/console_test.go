@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 )
@@ -149,4 +150,141 @@ func TestIsTruthy(t *testing.T) {
 			assert.Equal(t, tt.want, IsTruthy(tt.give))
 		})
 	}
+}
+
+func TestReadConsoleFancy(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc  string
+		model readConsoleModel
+
+		// Prompt expected on the command line, if any
+		// after which we begin typing.
+		expectPrompt string
+
+		// Messages to send to the model in order.
+		// Does not include Enter or Ctrl+C.
+		giveMsgs []tea.Msg
+
+		// Output visible before we hit Enter.
+		wantEcho string
+
+		// Output visible after we hit Enter.
+		wantAccepted string
+
+		// Value returned by the model.
+		wantValue string
+	}{
+		{
+			desc:         "plain",
+			model:        newReadConsoleModel("Enter a value", false /* secret */),
+			expectPrompt: "Enter a value: ",
+			giveMsgs: []tea.Msg{
+				tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("hello"),
+				},
+			},
+			wantEcho:     "Enter a value: hello",
+			wantAccepted: "Enter a value: hello ",
+			wantValue:    "hello",
+		},
+		{
+			desc:         "secret",
+			model:        newReadConsoleModel("Password", true /* secret */),
+			expectPrompt: "Password: ",
+			giveMsgs: []tea.Msg{
+				tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("hunter2"),
+				},
+			},
+			wantEcho:     "Password: *******",
+			wantAccepted: "Password: ",
+			wantValue:    "hunter2",
+		},
+		{
+			desc:  "no prompt",
+			model: newReadConsoleModel("" /* prompt */, false /* secret */),
+			giveMsgs: []tea.Msg{
+				tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("hello"),
+				},
+			},
+			wantEcho:     "> hello",
+			wantAccepted: "> hello ",
+			wantValue:    "hello",
+		},
+		{
+			desc:  "backspace",
+			model: newReadConsoleModel("" /* prompt */, false /* secret */),
+			giveMsgs: []tea.Msg{
+				tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("foobar"),
+				},
+				tea.KeyMsg{Type: tea.KeyBackspace},
+				tea.KeyMsg{Type: tea.KeyBackspace},
+				tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("az"),
+				},
+			},
+			wantEcho:     "> foobaz",
+			wantAccepted: "> foobaz ",
+			wantValue:    "foobaz",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var m tea.Model = tt.model
+			m.Init()
+
+			if tt.expectPrompt != "" {
+				assert.Contains(t, m.View(), tt.expectPrompt,
+					"initial view should contain prompt")
+			}
+
+			for _, msg := range tt.giveMsgs {
+				m, _ = m.Update(msg)
+			}
+
+			assert.Contains(t, m.View(), tt.wantEcho,
+				"prompt before pressing enter did not match")
+
+			m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+			assert.Contains(t, m.View(), tt.wantAccepted,
+				"prompt after pressing enter did not match")
+
+			final, ok := m.(readConsoleModel)
+			assert.True(t, ok, "expected readConsoleModel, got %T", m)
+
+			assert.Equal(t, tt.wantValue, final.Value, "final value should match")
+			assert.False(t, final.Canceled, "should not be canceled")
+		})
+	}
+}
+
+func TestReadConsoleFancy_cancel(t *testing.T) {
+	t.Parallel()
+
+	var m tea.Model = newReadConsoleModel("Name:", false /* secret */)
+	m.Init()
+
+	m, _ = m.Update(tea.KeyMsg{
+		Type:  tea.KeyRunes,
+		Runes: []rune("hello"),
+	})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+
+	final, ok := m.(readConsoleModel)
+	assert.True(t, ok, "expected readConsoleModel, got %T", m)
+	assert.True(t, final.Canceled, "should be canceled")
 }

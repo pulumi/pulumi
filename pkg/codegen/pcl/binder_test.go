@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -163,29 +162,13 @@ func TestWritingProgramSource(t *testing.T) {
 	assert.True(t, exampleMainExists, "main program file of example component should exist")
 }
 
-func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
-	parser := syntax.NewParser()
-	err := parser.ParseFile(strings.NewReader(text), name)
-	if err != nil {
-		t.Fatalf("could not read %v: %v", name, err)
-	}
-	if parser.Diagnostics.HasErrors() {
-		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-	}
-
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
-
-	program, diags, err := pcl.BindProgram(parser.Files, options...)
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
-	return program, diags
-}
-
 func TestConfigNodeTypedString(t *testing.T) {
 	t.Parallel()
 	source := "config cidrBlock string { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -198,7 +181,8 @@ func TestConfigNodeTypedString(t *testing.T) {
 func TestConfigNodeTypedOptionalString(t *testing.T) {
 	t.Parallel()
 	source := "config cidrBlock string { default = null }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -214,7 +198,8 @@ func TestConfigNodeTypedOptionalString(t *testing.T) {
 func TestConfigNodeTypedInt(t *testing.T) {
 	t.Parallel()
 	source := "config count int { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -227,7 +212,8 @@ func TestConfigNodeTypedInt(t *testing.T) {
 func TestConfigNodeTypedStringList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(string)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -242,7 +228,8 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 func TestConfigNodeTypedIntList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(int)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -257,7 +244,8 @@ func TestConfigNodeTypedIntList(t *testing.T) {
 func TestConfigNodeTypedStringMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(string)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -272,7 +260,8 @@ func TestConfigNodeTypedStringMap(t *testing.T) {
 func TestConfigNodeTypedIntMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(int)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -287,7 +276,8 @@ func TestConfigNodeTypedIntMap(t *testing.T) {
 func TestConfigNodeTypedAnyMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(any)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -297,4 +287,263 @@ func TestConfigNodeTypedAnyMap(t *testing.T) {
 	mapType, ok := config.Type().(*model.MapType)
 	assert.True(t, ok, "the type of config is a map type")
 	assert.Equal(t, mapType.ElementType, model.DynamicType, "the element type is a dynamic")
+}
+
+func TestOutputsCanHaveSameNameAsOtherNodes(t *testing.T) {
+	t.Parallel()
+	// here we have an output with the same name as a config variable
+	// this should bind and type-check just fine
+	source := `
+config cidrBlock string { }
+output cidrBlock {
+  value = cidrBlock
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestUsingDynamicConfigAsRange(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "endpointsServiceNames" {
+	  description = "Information about the VPC endpoints to create."
+	}
+
+	config "vpcId" "int" {
+		description = "The ID of the VPC"
+	}
+
+	resource "endpoint" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+	  options {
+		range = endpointsServiceNames
+	  }
+	  vpcId             = vpcId
+	  serviceName       = range.value.name
+	  vpcEndpointType   = range.value.type
+	  privateDnsEnabled = range.value.privateDns
+	}
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "data" "object({ lambda=object({ subnetIds=list(string) }) })" {
+	}
+    output "numberOfEndpoints" { 
+        value = length(data.lambda.subnetIds)
+    }
+`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestBindingUnknownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	source := `
+resource provider "pulumi:providers:unknown" { }
+
+resource main "unknown:index:main" {
+    first = "hello"
+    second = {
+        foo = "bar"
+    }
+}
+
+resource fromModule "unknown:eks:example" {
+   options { range = 10 }
+   associatedMain = main.id
+   anotherValue = main.unknown
+}
+
+output "mainId" {
+    value = main.id
+}
+
+output "values" {
+    value = fromModule.values.first
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestBindingUnknownResourceFromKnownSchemaWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	// here the random package is available, but it doesn't have a resource called "Unknown"
+	source := `
+resource main "random:index:unknown" {
+    first = "hello"
+    second = {
+        foo = "bar"
+    }
+}
+
+output "mainId" {
+    value = main.id
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestBindingUnknownPropertyFromKnownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	// here the resource declaration is correctly typed but the output `unknownId` references an unknown property
+	// this program binds without errors
+	source := `
+resource randomPet "random:index/randomPet:RandomPet" {
+  prefix = "doggo"
+}
+
+output "unknownId" {
+    value = randomPet.unknownProperty
+}
+
+output "knownId" {
+    value = randomPet.id
+}
+`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	for _, output := range lenientProgram.OutputVariables() {
+		outputType := model.ResolveOutputs(output.Value.Type())
+		if output.Name() == "unknownId" {
+			assert.Equal(t, model.DynamicType, outputType)
+		}
+
+		if output.Name() == "knownId" {
+			assert.Equal(t, model.StringType, outputType)
+		}
+	}
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestAssigningWrongTypeToResourcePropertyWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+
+	// here the RandomPet resource expects the prefix property to be of type string
+	// but we assigned to a boolean. It should still bind when using pcl.SkipResourceTypechecking
+	source := `
+config data "list(string)" {}
+resource randomPet "random:index/randomPet:RandomPet" {
+  prefix = data
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestAssigningUnknownPropertyFromKnownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	// here the resource declaration is assigning an unknown property "unknown" which is not part
+	// of the RandomPet inputs.
+	source := `
+resource randomPet "random:index/randomPet:RandomPet" {
+  unknown = "doggo"
+}
+
+output "mainId" {
+    value = randomPet.unknownProperty
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestTraversalOfOptionalObject(t *testing.T) {
+	t.Parallel()
+	// foo : Option<{ bar: string }>
+	// assert that foo.bar : Option<string>
+	source := `
+	config "foo" "object({ bar=string })" {
+      default = null
+      description = "Foo is an optional object because the default is null"
+	}
+
+    output "fooBar" { 
+        value = foo.bar
+    }
+`
+
+	// first assert that binding the program works
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+
+	// get the output variable
+	outputVars := program.OutputVariables()
+	assert.Equal(t, 1, len(outputVars), "There is only one output variable")
+	fooBar := outputVars[0]
+	fooBarType := fooBar.Value.Type()
+	assert.True(t, model.IsOptionalType(fooBarType))
+	unwrappedType := pcl.UnwrapOption(fooBarType)
+	assert.Equal(t, model.StringType, unwrappedType)
+}
+
+func TestBindingInvalidRangeTypeWhenSkippingRangeTypechecking(t *testing.T) {
+	t.Parallel()
+	// here the range function expects a number but we pass a boolean
+	source := `
+config "inputRange" "string" { }
+
+data = [for x in inputRange : x]
+
+resource randomPet "random:index/randomPet:RandomPet" {
+	options { range = inputRange }
+}
+`
+	// usually a string is not a valid range type
+	// but when skipping range typechecking it should still bind
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipRangeTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, diags, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Equal(t, 2, len(diags), "There are two diagnostics")
+	assert.Nil(t, strictProgram)
 }

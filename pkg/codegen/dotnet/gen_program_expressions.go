@@ -82,10 +82,11 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 			return x, nil
 		}
 
-		_, isPromise := call.Type().(*model.PromiseType)
-		contract.Assertf(isPromise, "invoke should return a promise, got %v", call.Type())
+		if _, isPromise := call.Type().(*model.PromiseType); isPromise {
+			return newAwaitCall(call), nil
+		}
 
-		return newAwaitCall(call), nil
+		return call, nil
 	}
 	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
@@ -103,6 +104,12 @@ func (g *generator) outputInvokes(x model.Expression) model.Expression {
 		// Ignore the node if it is not a call to invoke.
 		call, ok := x.(*model.FunctionCallExpression)
 		if !ok || call.Name != pcl.Invoke {
+			return x, nil
+		}
+
+		if call.Type() == model.DynamicType {
+			// ignore if the return type of the invoke is dynamic
+			// this means that we are working with an unknown invoke
 			return x, nil
 		}
 
@@ -227,7 +234,69 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
-	g.genNYI(w, "ForExpression")
+	switch expr.Collection.Type().(type) {
+	case *model.ListType, *model.TupleType:
+		if expr.KeyVariable == nil {
+			g.Fgenf(w, "%.20v", expr.Collection)
+		} else {
+			g.Fgenf(w, "%.20v.Select((value, i) => new { Key = i.ToString(), Value = pair.Value })",
+				expr.Collection)
+		}
+	case *model.MapType:
+		if expr.KeyVariable == nil {
+			g.Fgenf(w, "(%.v).Values", expr.Collection)
+		} else {
+			g.Fgenf(w, "%.20v.Select(pair => new { pair.Key, pair.Value })", expr.Collection)
+		}
+	}
+
+	switch expr.Type().(type) {
+	case *model.ListType:
+		// the result of the expression is a list
+		if expr.Condition != nil {
+			g.Fgenf(w, ".Where(%s => %.v)", expr.ValueVariable.Name, expr.Condition)
+		}
+
+		g.Fgenf(w, ".Select(%s => \n", expr.ValueVariable.Name)
+
+		g.Fgenf(w, "%s{\n", g.Indent)
+		g.Indented(func() {
+			g.Fgenf(w, "%sreturn %v;", g.Indent, expr.Value)
+		})
+		g.Fgen(w, "\n")
+		// .ToList() is added so that the expressions returns `List<T>
+		// which can be implicitly converted to InputList<T>
+		g.Fgenf(w, "%s}).ToList()", g.Indent)
+	case *model.MapType:
+		// the result of the expression is a dictionary
+		g.Fgen(w, ".ToDictionary(item => {\n")
+		g.Indented(func() {
+			if expr.KeyVariable != nil && pcl.VariableAccessed(expr.KeyVariable.Name, expr.Key) {
+				g.Fgenf(w, "%svar %s = item.Key;\n", g.Indent, expr.KeyVariable.Name)
+			}
+
+			if expr.ValueVariable != nil && pcl.VariableAccessed(expr.ValueVariable.Name, expr.Key) {
+				g.Fgenf(w, "%svar %s = item.Value;\n", g.Indent, expr.ValueVariable.Name)
+			}
+
+			g.Fgenf(w, "%sreturn %s;\n", g.Indent, expr.Key)
+		})
+
+		g.Fgenf(w, "%s}, item => {\n", g.Indent)
+		g.Indented(func() {
+			if expr.KeyVariable != nil && pcl.VariableAccessed(expr.KeyVariable.Name, expr.Value) {
+				g.Fgenf(w, "%svar %s = item.Key;\n", g.Indent, expr.KeyVariable.Name)
+			}
+
+			if expr.ValueVariable != nil && pcl.VariableAccessed(expr.ValueVariable.Name, expr.Value) {
+				g.Fgenf(w, "%svar %s = item.Value;\n", g.Indent, expr.ValueVariable.Name)
+			}
+
+			g.Fgenf(w, "%sreturn %v;\n", g.Indent, expr.Value)
+		})
+
+		g.Fgenf(w, "%s})", g.Indent)
+	}
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
@@ -266,6 +335,7 @@ var functionNamespaces = map[string][]string{
 	"toBase64":         {"System"},
 	"fromBase64":       {"System"},
 	"sha1":             {"System.Security.Cryptography", "System.Text"},
+	"singleOrNone":     {"System.Linq"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -348,6 +418,19 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 		}
 	default:
 		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
+	}
+}
+
+func (g *generator) genEntries(w io.Writer, expr *model.FunctionCallExpression) {
+	switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
+	case *model.ListType, *model.TupleType:
+		if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
+			g.genRange(w, call, true)
+			return
+		}
+		g.Fgenf(w, "%.20v.Select((v, k) => new { Key = k, Value = v })", expr.Args[0])
+	case *model.MapType, *model.ObjectType:
+		g.Fgenf(w, "%.20v.Select(pair => new { pair.Key, pair.Value })", expr.Args[0])
 	}
 }
 
@@ -441,16 +524,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.20v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
-		case *model.ListType, *model.TupleType:
-			if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
-				g.genRange(w, call, true)
-				return
-			}
-			g.Fgenf(w, "%.20v.Select((v, k) => new { Key = k, Value = v })", expr.Args[0])
-		case *model.MapType, *model.ObjectType:
-			g.Fgenf(w, "%.20v.Select(pair => new { pair.Key, pair.Value })", expr.Args[0])
-		}
+		g.genEntries(w, expr)
 	case "fileArchive":
 		g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
@@ -473,6 +547,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "ComputeFileBase64Sha256(%v)", expr.Args[0])
 	case "notImplemented":
 		g.Fgenf(w, "NotImplemented(%v)", expr.Args[0])
+	case "singleOrNone":
+		g.Fgenf(w, "Enumerable.Single(%v)", expr.Args[0])
 	case pcl.Invoke:
 		_, fullFunctionName := g.functionName(expr.Args[0])
 		functionParts := strings.Split(fullFunctionName, ".")
@@ -724,6 +800,23 @@ func resolvePropertyName(property string, overrides map[string]string) string {
 	return propertyName(property)
 }
 
+func unwrapIntrinsicConvert(expr model.Expression) model.Expression {
+	if call, ok := expr.(*model.FunctionCallExpression); ok && call.Name == pcl.IntrinsicConvert {
+		return call.Args[0]
+	}
+
+	return expr
+}
+
+func isEmptyList(expr model.Expression) bool {
+	expr = unwrapIntrinsicConvert(expr)
+	if list, ok := expr.(*model.TupleConsExpression); ok {
+		return len(list.Expressions) == 0
+	}
+
+	return false
+}
+
 func (g *generator) genObjectConsExpressionWithTypeName(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
@@ -756,7 +849,11 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 				lit := item.Key.(*model.LiteralValueExpression)
 				propertyKey := lit.Value.AsString()
 				g.Fprint(w, resolvePropertyName(propertyKey, propertyNames))
-				g.Fgenf(w, " = %.v,\n", item.Value)
+				if g.usingDefaultListInitializer() && isEmptyList(item.Value) {
+					g.Fgen(w, " = new() { },\n")
+				} else {
+					g.Fgenf(w, " = %.v,\n", item.Value)
+				}
 			}
 		})
 		g.Fgenf(w, "%s}", g.Indent)
@@ -956,14 +1053,14 @@ func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool
 func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) {
 	switch len(expr.Expressions) {
 	case 0:
-		g.Fgen(w, "new[] {}")
+		g.Fgenf(w, "%s {}", g.listInitializer)
 	default:
 		if !g.isListOfDifferentTypes(expr) {
-			// only generate this when we don't have a list of union types
-			// list of a union is mapped to InputList<object>
+			// only generate a list initializer when we don't have a list of union types
+			// because list of a union is mapped to InputList<object>
 			// which means new[] will not work because type-inference won't
-			// know the type of the array before hand
-			g.Fgen(w, "new[]")
+			// know the type of the array beforehand
+			g.Fgenf(w, "%s", g.listInitializer)
 		}
 
 		g.Fgenf(w, "\n%s{", g.Indent)

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -223,6 +223,13 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 		return nil, err
 	}
 
+	// Ensure the snapshot passes verification before returning it, to catch bugs early.
+	if !backend.DisableIntegrityChecking {
+		if err := snapshot.VerifyIntegrity(); err != nil {
+			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
+		}
+	}
+
 	return snapshot, nil
 }
 
@@ -249,7 +256,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 	}
 
 	return &deploy.Target{
-		Name:         tokens.Name(stackID.Stack),
+		Name:         stackID.Stack,
 		Organization: tokens.Name(stackID.Owner),
 		Config:       cfg,
 		Decrypter:    dec,

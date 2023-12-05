@@ -49,8 +49,7 @@
         "typescript": "^3.7.0",
         "@types/node": "ts3.7"
       },
-      "respectSchemaVersion": true,
-      "pluginVersion": "3.2.1"
+      "respectSchemaVersion": true
     },
     "python": {
       "requires": {

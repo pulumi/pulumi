@@ -20,10 +20,11 @@ import { platformIndependentEOL } from "../../constants";
 
 import * as grpc from "@grpc/grpc-js";
 
+import * as gempty from "google-protobuf/google/protobuf/empty_pb";
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
+
 const enginerpc = require("../../../proto/engine_grpc_pb.js");
 const engineproto = require("../../../proto/engine_pb.js");
-const gempty = require("google-protobuf/google/protobuf/empty_pb.js");
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const langrpc = require("../../../proto/language_grpc_pb.js");
 const langproto = require("../../../proto/language_pb.js");
 const resrpc = require("../../../proto/resource_grpc_pb.js");
@@ -56,6 +57,7 @@ interface RunCase {
         par: string,
         state: any,
         version: string,
+        sourcePosition?: runtime.SourcePosition,
     ) => {
         urn: URN | undefined;
         props: any | undefined;
@@ -77,6 +79,7 @@ interface RunCase {
         importID?: string,
         replaceOnChanges?: string[],
         providers?: any,
+        sourcePosition?: runtime.SourcePosition,
     ) => {
         urn: URN | undefined;
         id: ID | undefined;
@@ -292,7 +295,6 @@ describe("rpc", () => {
                     }
                     default:
                         assert.fail(`Unrecognized resource type ${t}`);
-                        throw new Error();
                 }
                 return {
                     urn: makeUrn(t, name),
@@ -558,7 +560,6 @@ describe("rpc", () => {
                         return;
                     default:
                         assert.fail("unexpected message: " + message);
-                        break;
                 }
             },
         },
@@ -1469,7 +1470,7 @@ describe("rpc", () => {
         },
         remote_component_providers: {
             program: path.join(base, "068.remote_component_providers"),
-            expectResourceCount: 4,
+            expectResourceCount: 8,
             registerResource: (
                 ctx: any,
                 dryrun: boolean,
@@ -1489,10 +1490,14 @@ describe("rpc", () => {
                 providers?: any,
             ) => {
                 if (name === "singular" || name === "map" || name === "array") {
-                    assert.strictEqual(provider, "");
+                    assert.strictEqual(provider, "pulumi:providers:test::myprovider::1");
                     assert.deepStrictEqual(Object.keys(providers), ["test"]);
                 }
-                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                if (name === "foo-singular" || name === "foo-map" || name === "foo-array") {
+                    assert.strictEqual(provider, "");
+                    assert.deepStrictEqual(Object.keys(providers), ["foo"]);
+                }
+                return { urn: makeUrn(t, name), id: name === "myprovider" ? "1" : undefined, props: undefined };
             },
         },
         ambiguous_entrypoints: {
@@ -1546,6 +1551,45 @@ describe("rpc", () => {
                 if (name === "second") {
                     assert.deepStrictEqual(dependencies, ["test:index:MyCustomResource::firstChild"]);
                 }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        source_position: {
+            program: path.join(base, "074.source_position"),
+            expectResourceCount: 2,
+            registerResource: (
+                ctx: any,
+                dryrun: boolean,
+                t: string,
+                name: string,
+                res: any,
+                dependencies?: string[],
+                custom?: boolean,
+                protect?: boolean,
+                parent?: string,
+                provider?: string,
+                propertyDeps?: any,
+                ignoreChanges?: string[],
+                version?: string,
+                importID?: string,
+                replaceOnChanges?: string[],
+                providers?: any,
+                sourcePosition?: runtime.SourcePosition,
+            ) => {
+                assert(sourcePosition !== undefined);
+                assert(sourcePosition.uri.endsWith("index.js"));
+
+                switch (name) {
+                    case "custom":
+                        assert.strictEqual(sourcePosition.line, 2);
+                        break;
+                    case "component":
+                        assert.strictEqual(sourcePosition.line, 2);
+                        break;
+                    default:
+                        throw new Error(`unexpected resource ${name}`);
+                }
+
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
@@ -1638,6 +1682,15 @@ describe("rpc", () => {
                                     },
                                     {},
                                 );
+                                const rpcSourcePosition = req.getSourceposition();
+                                let sourcePosition: runtime.SourcePosition | undefined;
+                                if (rpcSourcePosition) {
+                                    sourcePosition = {
+                                        uri: rpcSourcePosition.getUri(),
+                                        line: rpcSourcePosition.getLine(),
+                                        column: rpcSourcePosition.getColumn(),
+                                    };
+                                }
                                 const { urn, id, props } = opts.registerResource(
                                     ctx,
                                     dryrun,
@@ -1655,6 +1708,7 @@ describe("rpc", () => {
                                     importID,
                                     replaceOnChanges,
                                     providers,
+                                    sourcePosition,
                                 );
                                 resp.setUrn(urn);
                                 resp.setId(id);
@@ -1937,15 +1991,19 @@ async function createMockEngineAsync(
 function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess; addr: Promise<string> } {
     // A quick note about this:
     //
-    // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is responsible
-    // for setting up some state and then running the actual user program.  However, in this case, we don't
-    // have a folder structure like the above because we are seting the package as we've built it, not it installed
-    // in another application.
+    // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is
+    // responsible for setting up some state and then running the actual user program.  However, in this case,
+    // we don't have a folder structure like the above because we are setting the package as we've built it,
+    // not it installed in another application.
     //
-    // `pulumi-language-nodejs` allows us to set `PULUMI_LANGUAGE_NODEJS_RUN_PATH` in the environment, and when
-    // set, it will use that path instead of the default value. For our tests here, we set it and point at the
-    // just built version of run.
-    process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = "./bin/cmd/run";
+    // `pulumi-language-nodejs` allows us to set `PULUMI_LANGUAGE_NODEJS_RUN_PATH` in the environment, and
+    // when set, it will use that path instead of the default value. For our tests here, we set it and point
+    // at the just built version of run.
+    //
+    // We set this to an absolute path because the runtime will search for the module from the programs
+    // directory which is changed by by the pwd option.
+
+    process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = path.normalize(path.join(__dirname, "..", "..", "..", "cmd", "run"));
     const proc = childProcess.spawn("pulumi-language-nodejs", [engineAddr]);
 
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and

@@ -138,6 +138,14 @@ class ResourceProviderStub:
     """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
     response (not an error) if it doesn't have a mapping for the given key.
     """
+    GetMappings: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.GetMappingsRequest,
+        pulumi.provider_pb2.GetMappingsResponse,
+    ]
+    """GetMappings is an optional method that returns what mappings (if any) a provider supports. If a provider does not
+    implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
+    If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
+    """
 
 class ResourceProviderServicer(metaclass=abc.ABCMeta):
     """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
@@ -287,6 +295,16 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     ) -> pulumi.provider_pb2.GetMappingResponse:
         """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
         response (not an error) if it doesn't have a mapping for the given key.
+        """
+    
+    def GetMappings(
+        self,
+        request: pulumi.provider_pb2.GetMappingsRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.provider_pb2.GetMappingsResponse:
+        """GetMappings is an optional method that returns what mappings (if any) a provider supports. If a provider does not
+        implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
+        If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
         """
 
 def add_ResourceProviderServicer_to_server(servicer: ResourceProviderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

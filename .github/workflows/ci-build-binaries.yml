@@ -31,6 +31,11 @@ on:
         required: false
         description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
+      enable-coverage:
+        description: "Build coverage instrumented binaries"
+        default: false
+        required: false
+        type: boolean
 
 defaults:
   run:
@@ -71,7 +76,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
-          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ inputs.arch }}"
+          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v3
         with:
@@ -88,6 +93,10 @@ jobs:
         with:
           install-only: true
           distribution: goreleaser-pro
+          # TODO[pulumi/pulumi#13312: Change this to not pin to a version after
+          # addressing the root cause of why GoReleaser v1.19.0 fails to read
+          # the configuration.
+          version: v1.18.2
       - name: Set up bin dir
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
@@ -106,6 +115,7 @@ jobs:
         shell: bash
         env:
           GORELEASER_CURRENT_TAG: v${{ inputs.version }}
+          PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && 'coverage' || 'normal' }}
         run: |
           set -euxo pipefail
           # Spurious, this command requires piping via stdin

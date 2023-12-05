@@ -20,8 +20,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -43,7 +41,7 @@ func newLogoutCmd() *cobra.Command {
 			"a specific URL argument, formatted just as you logged in, to log out of a specific one.\n" +
 			"If no URL is provided, you will be logged out of the current backend." +
 			"\n\n" +
-			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n" +
+			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -63,39 +61,31 @@ func newLogoutCmd() *cobra.Command {
 				cloudURL = "file://~"
 			}
 
-			if cloudURL == "" {
-				// Try to read the current project
-				project, _, err := readProject()
-				if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-					return err
-				}
-
-				cloudURL, err = workspace.GetCurrentCloudURL(project)
-				if err != nil {
-					return fmt.Errorf("could not determine current cloud: %w", err)
-				}
-			}
-
-			var be backend.Backend
 			var err error
-			if filestate.IsFileStateBackendURL(cloudURL) {
-				fmt.Printf("Logged out of %s\n", cloudURL)
-				return workspace.DeleteAccount(cloudURL)
-			}
-
-			be, err = httpstate.New(cmdutil.Diag(), cloudURL, nil, workspace.GetCloudInsecure(cloudURL))
-			if err != nil {
-				return err
-			}
-
-			var logoutErr error
 			if all {
-				logoutErr = be.LogoutAll()
+				err = workspace.DeleteAllAccounts()
 			} else {
-				logoutErr = be.Logout()
+				if cloudURL == "" {
+					// Try to read the current project
+					project, _, err := readProject()
+					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+						return err
+					}
+
+					cloudURL, err = workspace.GetCurrentCloudURL(project)
+					if err != nil {
+						return fmt.Errorf("could not determine current cloud: %w", err)
+					}
+
+					// Default to the default cloud URL. This means a `pulumi logout` will delete the
+					// credentials for pulumi.com if there's no "current" user set in the credentials file.
+					cloudURL = httpstate.ValueOrDefaultURL(cloudURL)
+				}
+
+				err = workspace.DeleteAccount(cloudURL)
 			}
-			fmt.Printf("Logged out of %s\n", be.URL())
-			return logoutErr
+			fmt.Printf("Logged out of %s\n", cloudURL)
+			return err
 		}),
 	}
 

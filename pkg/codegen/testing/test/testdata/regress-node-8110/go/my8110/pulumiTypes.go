@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-node-8110/my8110/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type MyObj struct {
 	A *string `pulumi:"a"`

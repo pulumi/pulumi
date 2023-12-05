@@ -16,17 +16,20 @@ Utility functions and classes for testing the Python language host.
 """
 
 import asyncio
+import logging
+import subprocess
 import unittest
 from collections import namedtuple
 from concurrent import futures
 from inspect import signature
-import logging
-import subprocess
 from os import path
+
 import grpc
-from pulumi.runtime import proto, rpc
-from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc, engine_pb2_grpc, engine_pb2, provider_pb2
 from google.protobuf import empty_pb2, struct_pb2
+from pulumi.runtime import proto, rpc
+from pulumi.runtime.proto import (engine_pb2, engine_pb2_grpc,
+                                  language_pb2_grpc, provider_pb2,
+                                  resource_pb2_grpc)
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful
@@ -99,6 +102,8 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         version = request.version
         import_ = request.importId
         replace_on_changes = sorted(list(request.replaceOnChanges))
+        providers = request.providers
+        source_position = request.sourcePosition
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
@@ -108,6 +113,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             outs = self.langhost_test.register_resource(
                 context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider,
                 property_dependencies, delete_before_replace, ignore_changes, version, import_, replace_on_changes,
+                providers, source_position,
             )
             if outs.get("urn"):
                 urn = outs["urn"]
@@ -156,19 +162,24 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
 
 class MockEngine(proto.EngineServicer):
+
+    def __init__(self):
+        self.messages = []
+
     """
     Implementation of the proto.EngineServicer protocol for use in tests. Like the
     above class, we encapsulate all gRPC details here so that test writers only have
     to override methods on LanghostTest.
     """
     def Log(self, request, context):
+        self.messages.append(request.message)
         if request.severity == engine_pb2.ERROR:
             print(f"error: {request.message}")
         return empty_pb2.Empty()
 
 
 ResourceMonitorEndpoint = namedtuple('ResourceMonitorEndpoint',
-                                     ['monitor', 'server', 'port'])
+                                     ['engine', 'monitor', 'server', 'port'])
 LanguageHostEndpoint = namedtuple('LanguageHostEndpoint', ['process', 'port'])
 
 
@@ -196,6 +207,7 @@ class LanghostTest(unittest.TestCase):
                  expected_error=None,
                  expected_stderr_contains=None,
                  expected_bail=None,
+                 expected_log_message=None,
                  organization=None):
         """
         Runs a language host test. The basic flow of a language host test is that
@@ -235,10 +247,11 @@ class LanghostTest(unittest.TestCase):
             # Tear down the language host process we just spun up.
             langhost.process.kill()
             stdout, stderr = langhost.process.communicate()
+            monitor.server.stop(0)
             if not expected_stderr_contains and (stdout or stderr):
                 print("PREVIEW:" if dryrun else "UPDATE:")
-                print("stdout:", stdout.decode('utf-8'))
-                print("stderr:", stderr.decode('utf-8'))
+                print("stdout:", stdout)
+                print("stderr:", stderr)
 
             # If we expected an error, assert that we saw it. Otherwise assert
             # that there wasn't an error.
@@ -248,6 +261,14 @@ class LanghostTest(unittest.TestCase):
             expected_bail = expected_bail or False
             self.assertEqual(result.bail, expected_bail)
 
+            if expected_log_message:
+                for message in monitor.engine.messages:
+                    if expected_log_message in message:
+                        break
+                else:
+                    print("log messages:", monitor.engine.messages)
+                    self.fail("expected log message '" + expected_log_message + "'")
+
             if expected_stderr_contains:
                 if expected_stderr_contains not in str(stderr):
                     print("stderr:", str(stderr))
@@ -256,8 +277,6 @@ class LanghostTest(unittest.TestCase):
             if expected_resource_count is not None:
                 self.assertEqual(expected_resource_count,
                                  monitor.monitor.reg_count)
-
-            monitor.server.stop(0)
 
     def invoke(self, _ctx, token, args, provider, _version):
         """
@@ -280,7 +299,7 @@ class LanghostTest(unittest.TestCase):
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
                           _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes):
+                          _replace_on_changes, _providers, source_position):
         """
         Method corresponding to the `RegisterResource` resource monitor RPC call.
         Override for custom behavior or assertions.
@@ -321,14 +340,15 @@ class LanghostTest(unittest.TestCase):
 
         port = server.add_insecure_port(address="127.0.0.1:0")
         server.start()
-        return ResourceMonitorEndpoint(monitor, server, port)
+        return ResourceMonitorEndpoint(engine, monitor, server, port)
 
     def _create_language_host(self, port):
         exec_path = path.join(path.dirname(__file__), "..", "..", "..", "cmd", "pulumi-language-python-exec")
         proc = subprocess.Popen(
             ["pulumi-language-python", "--use-executor", exec_path, "localhost:%d" % port],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            text=True)
         # The first line of output is the port that the language host gRPC server is listening on.
         first_line = proc.stdout.readline()
         try:

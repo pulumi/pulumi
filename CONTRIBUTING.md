@@ -45,7 +45,7 @@ You'll want to install the following on your machine:
 You can get all required dependencies with brew and npm
 
 ```bash
-brew install node python@3 typescript yarn go@1.19 golangci/tap/golangci-lint gofumpt pulumi/tap/pulumictl coreutils jq
+brew install node python@3 typescript yarn go@1.21 golangci/tap/golangci-lint gofumpt pulumi/tap/pulumictl coreutils jq
 curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
@@ -84,6 +84,10 @@ Across our projects, we try to use a regular set of make targets. The ones you'l
 We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.  Additionally, before running integration tests, be sure to set the environment variable `PULUMI_TEST_ORG` to your pulumi username.
 
 The tests in this repository do not create any real cloud resources as part of testing but still uses Pulumi.com to store information about some synthetic resources the tests create. Other repositories may require additional setup before running tests. In most cases, this additional setup consists of setting a few environment variables to configure the provider for the the cloud service we are testing. Please see the `CONTRIBUTING.md` file in the relevant repository, which will explain what additional configuration is needed before running tests.
+
+### Regenerate Test Baselines
+
+Numerous tests use baselines that need to be regenerated from time to time. For instance, `pkg/backend/display/testdata` contains the corresponding CLI output for various engine event streams. To regenerate these baselines, run the corresponding test with the `PULUMI_ACCEPT=true` environment variable. For instance, `PULUMI_ACCEPT=true make test_all` from the root. Alternatively, you can generate them individually, for example, running `PULUMI_ACCEPT=true go test ./...` from the `pkg/backend/display` directory.
 
 ### Debugging
 

@@ -6,7 +6,7 @@ package v1
 import (
 	"fmt"
 
-	"dashed-import-schema/plant-provider"
+	"dashed-import-schema/plant-provider/internal"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -34,7 +34,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 }
 
 func init() {
-	version, err := plantprovider.PkgVersion()
+	version, err := internal.PkgVersion()
 	if err != nil {
 		version = semver.Version{Major: 1}
 	}

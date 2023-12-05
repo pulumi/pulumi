@@ -40,7 +40,8 @@ utilities.lazyLoad(exports, ["getBastionShareableLink","getBastionShareableLinkO
 
 export { GetClientConfigResult } from "./getClientConfig";
 export const getClientConfig: typeof import("./getClientConfig").getClientConfig = null as any;
-utilities.lazyLoad(exports, ["getClientConfig"], () => require("./getClientConfig"));
+export const getClientConfigOutput: typeof import("./getClientConfig").getClientConfigOutput = null as any;
+utilities.lazyLoad(exports, ["getClientConfig","getClientConfigOutput"], () => require("./getClientConfig"));
 
 export { GetIntegrationRuntimeObjectMetadatumArgs, GetIntegrationRuntimeObjectMetadatumResult, GetIntegrationRuntimeObjectMetadatumOutputArgs } from "./getIntegrationRuntimeObjectMetadatum";
 export const getIntegrationRuntimeObjectMetadatum: typeof import("./getIntegrationRuntimeObjectMetadatum").getIntegrationRuntimeObjectMetadatum = null as any;

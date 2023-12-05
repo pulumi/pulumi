@@ -19,9 +19,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -30,10 +33,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	"github.com/spf13/cobra"
 )
 
 func newStateCmd() *cobra.Command {
@@ -47,6 +51,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 		Args: cmdutil.NoArgs,
 	}
 
+	cmd.AddCommand(newStateEditCommand())
 	cmd.AddCommand(newStateDeleteCommand())
 	cmd.AddCommand(newStateUnprotectCommand())
 	cmd.AddCommand(newStateRenameCommand())
@@ -81,7 +86,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 
-	options := make([]string, 0, len(candidateResources))
+	options := slice.Prealloc[string](len(candidateResources))
 	optionMap := make(map[string]*resource.State)
 	for _, ambiguousResource := range candidateResources {
 		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.
@@ -114,7 +119,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 func runStateEdit(
 	ctx context.Context, stackName string, showPrompt bool,
 	urn resource.URN, operation edit.OperationFunc,
-) result.Result {
+) error {
 	return runTotalStateEdit(ctx, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
@@ -130,23 +135,23 @@ func runStateEdit(
 func runTotalStateEdit(
 	ctx context.Context, stackName string, showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
-) result.Result {
+) error {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
 	s, err := requireStack(ctx, stackName, stackOfferNew, opts)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 	return totalStateEdit(ctx, s, showPrompt, opts, operation)
 }
 
 func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
-) result.Result {
+) error {
 	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	} else if snap == nil {
 		return nil
 	}
@@ -159,8 +164,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, surveyIcons(opts.Color)); err != nil || !confirm {
-			fmt.Println("confirmation declined")
-			return result.Bail()
+			return result.FprintBailf(os.Stdout, "confirmation declined")
 		}
 	}
 
@@ -169,7 +173,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 	// before we mutated it, we'll assert that we didn't make it invalid by mutating it.
 	stackIsAlreadyHosed := snap.VerifyIntegrity() != nil
 	if err = operation(opts, snap); err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	// If the stack is already broken, don't bother verifying the integrity here.
@@ -179,17 +183,84 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrets */)
 	if err != nil {
-		return result.FromError(fmt.Errorf("serializing deployment: %w", err))
+		return fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
 	bytes, err := json.Marshal(sdep)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 	dep := apitype.UntypedDeployment{
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	}
-	return result.WrapIfNonNil(s.ImportDeployment(ctx, &dep))
+	return s.ImportDeployment(ctx, &dep)
+}
+
+// Prompt the user to select a URN from the passed in state.
+//
+// stackName is the name of the current stack.
+//
+// snap is the snapshot of the current stack.  If (*snap) is not nil, it will be set to
+// the retrieved snapshot value. This allows caching between calls.
+//
+// Prompt is displayed to the user when selecting the URN.
+func getURNFromState(
+	ctx context.Context, stackName string, snap **deploy.Snapshot, prompt string,
+) (resource.URN, error) {
+	if snap == nil {
+		// This means we won't cache the value.
+		snap = new(*deploy.Snapshot)
+	}
+	if *snap == nil {
+		opts := display.Options{
+			Color: cmdutil.GetGlobalColorization(),
+		}
+
+		s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
+		if err != nil {
+			return "", err
+		}
+		*snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+		if err != nil {
+			return "", err
+		}
+	}
+	urnList := make([]string, len((*snap).Resources))
+	for i, r := range (*snap).Resources {
+		urnList[i] = string(r.URN)
+	}
+	var urn string
+	err := survey.AskOne(&survey.Select{
+		Message: prompt,
+		Options: urnList,
+	}, &urn, survey.WithValidator(survey.Required), surveyIcons(cmdutil.GetGlobalColorization()))
+	if err != nil {
+		return "", err
+	}
+	result := resource.URN(urn)
+	contract.Assertf(result.IsValid(),
+		"Because we chose from an existing URN, it must be valid")
+	return result, nil
+}
+
+// Ask the user for a resource name.
+func getNewResourceName() (tokens.QName, error) {
+	var resourceName string
+	err := survey.AskOne(&survey.Input{
+		Message: "Choose a new resource name:",
+	}, &resourceName, surveyIcons(cmdutil.GetGlobalColorization()),
+		survey.WithValidator(func(ans interface{}) error {
+			if tokens.IsQName(ans.(string)) {
+				return nil
+			}
+			return fmt.Errorf("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
+		}))
+	if err != nil {
+		return "", err
+	}
+	contract.Assertf(tokens.IsQName(resourceName),
+		"Survey validated that resourceName %q is a QName", resourceName)
+	return tokens.QName(resourceName), nil
 }

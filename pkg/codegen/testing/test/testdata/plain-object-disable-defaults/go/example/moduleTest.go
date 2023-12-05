@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-disable-defaults/example/internal"
 	"plain-object-disable-defaults/example/mod1"
 )
 
@@ -22,6 +23,7 @@ func NewModuleTest(ctx *pulumi.Context,
 		args = &ModuleTestArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ModuleTest
 	err := ctx.RegisterResource("example:index:moduleTest", name, args, &resource, opts...)
 	if err != nil {

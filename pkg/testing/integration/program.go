@@ -23,6 +23,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"os"
 	"os/exec"
@@ -39,11 +40,11 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -67,6 +68,8 @@ const (
 )
 
 const windowsOS = "windows"
+
+var ErrTestFailed = errors.New("test failed")
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
@@ -133,6 +136,14 @@ type TestStatsReporter interface {
 	ReportCommand(stats TestCommandStats)
 }
 
+// Environment is used to create environments for use by test programs.
+type Environment struct {
+	// The name of the environment.
+	Name string
+	// The definition of the environment.
+	Definition map[string]any
+}
+
 // ConfigValue is used to provide config values to a test program.
 type ConfigValue struct {
 	// The config key to pass to `pulumi config`.
@@ -154,6 +165,10 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
+	// List of environments to create in order.
+	CreateEnvironments []Environment
+	// List of environments to use.
+	Environments []string
 	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"}).
 	Config map[string]string
 	// Map of secure config keys and values to set (e.g. {"aws:region": "us-east-2"}).
@@ -244,12 +259,6 @@ type ProgramTestOptions struct {
 	// CLI invocations that can inadvertently overwrite the trace
 	// file.
 	Tracing string
-
-	// If non-empty, specifies the value of the `--test.coverprofile` flag to pass to the Pulumi CLI. As with the
-	// Tracing field, the `{command}` template will expand to the current command name.
-	//
-	// If PULUMI_TEST_COVERAGE_PATH is set, this defaults to $PULUMI_TEST_COVERAGE_PATH/{command}-[random suffix].out
-	CoverProfile string
 
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
@@ -396,6 +405,26 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	return tokens.QName(opts.StackName)
 }
 
+// getEnvName returns the uniquified name for the given environment. The name is made unique by appending the FNV hash
+// of the associated stack's name. This ensures that the name is both unique and deterministic. The name must be
+// deterministic because it is computed by both LifeCycleInitialize and TestLifeCycleDestroy.
+func (opts *ProgramTestOptions) getEnvName(name string) string {
+	h := fnv.New32()
+	_, err := h.Write([]byte(opts.GetStackName()))
+	contract.IgnoreError(err)
+
+	suffix := hex.EncodeToString(h.Sum(nil))
+	return fmt.Sprintf("%v-%v", name, suffix)
+}
+
+func (opts *ProgramTestOptions) getEnvNameWithOwner(name string) string {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+	if opts.RequireService && owner != "" {
+		return fmt.Sprintf("%v/%v", owner, opts.getEnvName(name))
+	}
+	return opts.getEnvName(name)
+}
+
 // Returns the md5 hash of the file at the given path as a string
 func hashFile(path string) (string, error) {
 	file, err := os.Open(path)
@@ -446,6 +475,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Overrides != nil {
 		opts.Overrides = overrides.Overrides
+	}
+	if len(overrides.CreateEnvironments) != 0 {
+		opts.CreateEnvironments = append(opts.CreateEnvironments, overrides.CreateEnvironments...)
+	}
+	if len(overrides.Environments) != 0 {
+		opts.Environments = append(opts.Environments, overrides.Environments...)
 	}
 	for k, v := range overrides.Config {
 		if opts.Config == nil {
@@ -546,9 +581,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
 	}
-	if overrides.CoverProfile != "" {
-		opts.CoverProfile = overrides.CoverProfile
-	}
 	if overrides.NoParallel {
 		opts.NoParallel = overrides.NoParallel
 	}
@@ -614,6 +646,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
+	}
+	if overrides.PostPrepareProject != nil {
+		opts.PostPrepareProject = overrides.PostPrepareProject
 	}
 	if overrides.LocalProviders != nil {
 		opts.LocalProviders = append(opts.LocalProviders, overrides.LocalProviders...)
@@ -702,7 +737,8 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", filestate.DisableCheckpointBackupsEnvVar))
+	disableCheckpointBackups := env.SelfManagedDisableCheckpointBackups.Var().Name()
+	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", disableCheckpointBackups))
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
 	if !opts.NoParallel && !opts.DestroyOnCleanup {
@@ -746,16 +782,6 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	if opts.Tracing == "" {
 		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
-	}
-
-	if opts.CoverProfile == "" {
-		if cov := os.Getenv("PULUMI_TEST_COVERAGE_PATH"); cov != "" {
-			var b [4]byte
-			if _, err := cryptorand.Read(b[:]); err != nil {
-				t.Errorf("could not read random bytes: %v", err)
-			}
-			opts.CoverProfile = filepath.Join(cov, "{command}-"+hex.EncodeToString(b[:])+".cov")
-		}
 	}
 
 	if opts.UseSharedVirtualEnv == nil {
@@ -811,7 +837,9 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
-	assert.NoError(t, err)
+	if !errors.Is(err, ErrTestFailed) {
+		assert.NoError(t, err)
+	}
 }
 
 // ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
@@ -922,9 +950,6 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	if tracing := pt.opts.Tracing; tracing != "" {
 		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
 	}
-	if cov := pt.opts.CoverProfile; cov != "" {
-		cmd = append(cmd, "--test.coverprofile", strings.ReplaceAll(cov, "{command}", name))
-	}
 	return cmd, nil
 }
 
@@ -960,6 +985,17 @@ func (pt *ProgramTester) pipenvCmd(args []string) ([]string, error) {
 
 func (pt *ProgramTester) runCommand(name string, args []string, wd string) error {
 	return RunCommand(pt.t, name, args, wd, pt.opts)
+}
+
+// RunPulumiCommand runs a Pulumi command in the project directory.
+// For example:
+//
+//	pt.RunPulumiCommand("preview", "--stack", "dev")
+func (pt *ProgramTester) RunPulumiCommand(name string, args ...string) error {
+	// pt.runPulumiCommand uses 'name' for logging only.
+	// We want it to be part of the actual command.
+	args = append([]string{name}, args...)
+	return pt.runPulumiCommand(name, args, pt.projdir, false /* expectFailure */)
 }
 
 func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
@@ -1164,6 +1200,14 @@ func (pt *ProgramTester) TestLifeCyclePrepare() error {
 	return err
 }
 
+func (pt *ProgramTester) checkTestFailure() error {
+	if pt.t.Failed() {
+		pt.t.Logf("Canceling further steps due to test failure")
+		return ErrTestFailed
+	}
+	return nil
+}
+
 // TestCleanUp cleans up the temporary directory that a test used
 func (pt *ProgramTester) TestCleanUp() {
 	testFinished := pt.TestFinished
@@ -1336,6 +1380,62 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 		}
 	}
 
+	// Environments
+	for _, env := range pt.opts.CreateEnvironments {
+		name := pt.opts.getEnvNameWithOwner(env.Name)
+
+		envFile, err := func() (string, error) {
+			temp, err := os.CreateTemp(pt.t.TempDir(), fmt.Sprintf("pulumi-env-%v-*", env.Name))
+			if err != nil {
+				return "", err
+			}
+			defer contract.IgnoreClose(temp)
+
+			enc := yaml.NewEncoder(temp)
+			enc.SetIndent(2)
+			if err = enc.Encode(env.Definition); err != nil {
+				return "", err
+			}
+			return temp.Name(), nil
+		}()
+		if err != nil {
+			return err
+		}
+
+		initArgs := []string{"env", "init", name, "-f", envFile}
+		if err := pt.runPulumiCommand("pulumi-env-init", initArgs, dir, false); err != nil {
+			return err
+		}
+	}
+
+	if len(pt.opts.Environments) != 0 {
+		envs := make([]string, len(pt.opts.Environments))
+		for i, e := range pt.opts.Environments {
+			envs[i] = pt.opts.getEnvName(e)
+		}
+
+		stackFile := filepath.Join(dir, fmt.Sprintf("Pulumi.%v.yaml", stackName))
+		bytes, err := os.ReadFile(stackFile)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+
+		var stack workspace.ProjectStack
+		if err := yaml.Unmarshal(bytes, &stack); err != nil {
+			return err
+		}
+		stack.Environment = workspace.NewEnvironment(envs)
+
+		bytes, err = yaml.Marshal(stack)
+		if err != nil {
+			return err
+		}
+
+		if err = os.WriteFile(stackFile, bytes, 0o600); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1364,7 +1464,18 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		}
 
 		if !pt.opts.SkipStackRemoval {
-			return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
+			err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, env := range pt.opts.CreateEnvironments {
+			name := pt.opts.getEnvNameWithOwner(env.Name)
+			err := pt.runPulumiCommand("pulumi-env-rm", []string{"env", "rm", "--yes", name}, pt.projdir, false)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1449,6 +1560,10 @@ func (pt *ProgramTester) exportImport(dir string) error {
 		}
 		pt.t.Logf("Calling ExportStateValidator")
 		f(pt.t, bytes)
+
+		if err := pt.checkTestFailure(); err != nil {
+			return err
+		}
 	}
 
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
@@ -1712,7 +1827,7 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	var rootResource apitype.ResourceV3
 	var outputs map[string]interface{}
 	for _, res := range deployment.Resources {
-		if res.Type == resource.RootStackType {
+		if res.Type == resource.RootStackType && res.Parent == "" {
 			rootResource = res
 			outputs = res.Outputs
 		}
@@ -1735,7 +1850,8 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	pt.t.Log("Performing extra runtime validation.")
 	extraRuntimeValidation(pt.t, stackInfo)
 	pt.t.Log("Extra runtime validation complete.")
-	return nil
+
+	return pt.checkTestFailure()
 }
 
 func (pt *ProgramTester) readUpdateEventLog() ([]apitype.EngineEvent, error) {

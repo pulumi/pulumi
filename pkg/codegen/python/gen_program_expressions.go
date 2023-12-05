@@ -298,6 +298,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case "notImplemented":
 		g.Fgenf(w, "not_implemented(%v)", expr.Args[0])
+	case "singleOrNone":
+		g.Fgenf(w, "single_or_none(%v)", expr.Args[0])
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
@@ -533,7 +535,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		var key cty.Value
 		switch traverser := traverser.(type) {
 		case hcl.TraverseAttr:
-			key = cty.StringVal(traverser.Name)
+			key = cty.StringVal(PyName(traverser.Name))
 		case hcl.TraverseIndex:
 			key = traverser.Key
 		default:
@@ -542,7 +544,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 
 		switch key.Type() {
 		case cty.String:
-			keyVal := key.AsString()
+			keyVal := PyName(key.AsString())
 			contract.Assertf(isLegalIdentifier(keyVal), "illegal identifier: %q", keyVal)
 			g.Fgenf(w, ".%s", keyVal)
 		case cty.Number:

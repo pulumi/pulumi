@@ -19,13 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 const (
@@ -37,10 +36,20 @@ const (
 	stepExecutorLogLevel = 4
 )
 
-// errStepApplyFailed is a sentinel error for errors that arise when step application fails.
+// StepApplyFailed is a sentinel error for errors that arise when step application fails.
 // We (the step executor) are not responsible for reporting those errors so this sentinel ensures
 // that we don't do so.
-var errStepApplyFailed = errors.New("step application failed")
+type StepApplyFailed struct {
+	Err error
+}
+
+func (saf StepApplyFailed) Error() string {
+	return fmt.Sprintf("step application failed: %s", saf.Err)
+}
+
+func (saf StepApplyFailed) Unwrap() error {
+	return saf.Err
+}
 
 // The step executor operates in terms of "chains" and "antichains". A chain is set of steps that are totally ordered
 // when ordered by dependency; each step in a chain depends directly on the step that comes before it. An antichain
@@ -90,12 +99,18 @@ type stepExecutor struct {
 	pendingNews     sync.Map    // Resources that have been created but are pending a RegisterResourceOutputs.
 	continueOnError bool        // True if we want to continue the deployment after a step error.
 
+	// Lock protecting the running of workers. This can be used to synchronize with step executor.
+	workerLock sync.RWMutex
+
 	workers        sync.WaitGroup     // WaitGroup tracking the worker goroutines that are owned by this step executor.
 	incomingChains chan incomingChain // Incoming chains that we are to execute
 
-	ctx      context.Context    // cancellation context for the current deployment.
-	cancel   context.CancelFunc // CancelFunc that cancels the above context.
-	sawError atomic.Value       // atomic boolean indicating whether or not the step excecutor saw that there was an error.
+	ctx    context.Context    // cancellation context for the current deployment.
+	cancel context.CancelFunc // CancelFunc that cancels the above context.
+
+	// async promise indicating an error seen by the step executor, if multiple errors are seen this will only
+	// record the first.
+	sawError promise.CompletionSource[struct{}]
 }
 
 //
@@ -118,6 +133,16 @@ func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 	}
 
 	return completionToken{channel: completion}
+}
+
+// Locks the step executor from executing any more steps. This is used to synchronize with the step executor.
+func (se *stepExecutor) Lock() {
+	se.workerLock.Lock()
+}
+
+// Unlocks the step executor to allow it to execute more steps. This is used to synchronize with the step executor.
+func (se *stepExecutor) Unlock() {
+	se.workerLock.Unlock()
 }
 
 // ExecuteParallel submits an antichain for parallel execution. All of the steps within the antichain are submitted for
@@ -146,11 +171,13 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 }
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
-func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) result.Result {
+func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) error {
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
 	value, has := se.pendingNews.Load(urn)
-	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
+	if !has {
+		return fmt.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
+	}
 	reg := value.(Step)
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	se.pendingNews.Delete(urn)
@@ -171,11 +198,11 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	if se.deployment.plan != nil {
 		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
 		if !ok {
-			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
+			return fmt.Errorf("no plan for resource %v", urn)
 		}
 
 		if err := resourcePlan.checkOutputs(oldOuts, outs); err != nil {
-			return result.FromError(fmt.Errorf("resource violates plan: %w", err))
+			return fmt.Errorf("resource violates plan: %w", err)
 		}
 	}
 
@@ -185,8 +212,8 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
 			resourcePlan.Outputs = outs
 		} else {
-			return result.FromError(
-				fmt.Errorf("resource should already have a plan from when we called register resources [urn=%v]", urn))
+			return fmt.Errorf(
+				"resource should already have a plan from when we called register resources [urn=%v]", urn)
 		}
 	}
 
@@ -204,7 +231,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			outErr := fmt.Errorf("resource complete event returned an error: %w", eventerr)
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
 			se.deployment.Diag().Errorf(diagMsg)
-			se.cancelDueToError()
+			se.cancelDueToError(eventerr)
 			return nil
 		}
 	}
@@ -213,8 +240,11 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 }
 
 // Errored returns whether or not this step executor saw a step whose execution ended in failure.
-func (se *stepExecutor) Errored() bool {
-	return se.sawError.Load().(bool)
+func (se *stepExecutor) Errored() error {
+	// See if the sawError promise has been rejected yet
+	_, err, _ := se.sawError.Promise().TryResult()
+	// err will be nil if the promise has not been rejected yet
+	return err
 }
 
 // SignalCompletion signals to the stepExecutor that there are no more chains left to execute. All worker
@@ -248,14 +278,23 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 		default:
 		}
 
-		if err := se.executeStep(workerID, step); err != nil {
+		// Take the work lock before executing the step, this uses the "read" side of the lock because we're ok with as
+		// many workers as possible executing steps in parallel.
+		se.workerLock.RLock()
+		err := se.executeStep(workerID, step)
+		// Regardless of error we need to release the lock here.
+		se.workerLock.RUnlock()
+
+		if err != nil {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
-			se.cancelDueToError()
-			if err != errStepApplyFailed {
+			se.cancelDueToError(err)
+
+			var saf StepApplyFailed
+			if !errors.As(err, &saf) {
 				// Step application errors are recorded by the OnResourceStepPost callback. This is confusing,
 				// but it means that at this level we shouldn't be logging any errors that came from there.
 				//
-				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
+				// The StepApplyFailed sentinel signals that the error that failed this chain was a step apply
 				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
 				diagMsg := diag.RawMessage(step.URN(), err.Error())
 				se.deployment.Diag().Errorf(diagMsg)
@@ -265,8 +304,11 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 	}
 }
 
-func (se *stepExecutor) cancelDueToError() {
-	se.sawError.Store(true)
+func (se *stepExecutor) cancelDueToError(err error) {
+	set := se.sawError.Reject(err)
+	if !set {
+		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
+	}
 	if !se.continueOnError {
 		se.cancel()
 	}
@@ -346,6 +388,19 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			}
 		}
 
+		// If an input secret is potentially leaked as an output, preemptively mark it as secret.
+		for k, out := range newState.Outputs {
+			if !out.IsSecret() {
+				in, has := newState.Inputs[k]
+				if !has {
+					continue
+				}
+				if in.IsSecret() {
+					newState.Outputs[k] = resource.MakeSecret(out)
+				}
+			}
+		}
+
 		// If this is not a resource that is managed by Pulumi, then we can ignore it.
 		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
 			se.deployment.news.set(newState.URN, newState)
@@ -375,7 +430,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
-		return errStepApplyFailed
+		return StepApplyFailed{err}
 	}
 
 	return nil
@@ -459,8 +514,6 @@ func newStepExecutor(ctx context.Context, cancel context.CancelFunc, deployment 
 		ctx:             ctx,
 		cancel:          cancel,
 	}
-
-	exec.sawError.Store(false)
 
 	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions
 	// asynchronously.

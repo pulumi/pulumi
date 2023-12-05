@@ -1,0 +1,10 @@
+{
+	"name": "l1-empty",
+	"devDependencies": {
+		"@types/node": "^14"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "../../artifacts/pulumi-pulumi-1.0.0.tgz"
+	}
+}

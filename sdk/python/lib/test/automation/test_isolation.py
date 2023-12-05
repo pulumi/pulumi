@@ -19,10 +19,11 @@
 
 import asyncio
 import os
-import pytest
 import sys
 import typing
 import uuid
+
+import pytest
 
 import pulumi
 from pulumi import automation

@@ -17,7 +17,9 @@ package plugin
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type converterServer struct {
@@ -33,7 +35,10 @@ func NewConverterServer(converter Converter) pulumirpc.ConverterServer {
 func (c *converterServer) ConvertState(ctx context.Context,
 	req *pulumirpc.ConvertStateRequest,
 ) (*pulumirpc.ConvertStateResponse, error) {
-	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{})
+	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{
+		MapperTarget: req.MapperTarget,
+		Args:         req.Args,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +54,15 @@ func (c *converterServer) ConvertState(ctx context.Context,
 		}
 	}
 
+	// Translate the hcl.Diagnostics into rpc diagnostics.
+	diags := slice.Prealloc[*codegenrpc.Diagnostic](len(resp.Diagnostics))
+	for _, diag := range resp.Diagnostics {
+		diags = append(diags, HclDiagnosticToRPCDiagnostic(diag))
+	}
+
 	rpcResp := &pulumirpc.ConvertStateResponse{
-		Resources: resources,
+		Resources:   resources,
+		Diagnostics: diags,
 	}
 	return rpcResp, nil
 }
@@ -58,13 +70,24 @@ func (c *converterServer) ConvertState(ctx context.Context,
 func (c *converterServer) ConvertProgram(ctx context.Context,
 	req *pulumirpc.ConvertProgramRequest,
 ) (*pulumirpc.ConvertProgramResponse, error) {
-	_, err := c.converter.ConvertProgram(ctx, &ConvertProgramRequest{
+	resp, err := c.converter.ConvertProgram(ctx, &ConvertProgramRequest{
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
+		MapperTarget:    req.MapperTarget,
+		LoaderTarget:    req.LoaderTarget,
+		Args:            req.Args,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &pulumirpc.ConvertProgramResponse{}, nil
+	// Translate the hcl.Diagnostics into rpc diagnostics.
+	diags := slice.Prealloc[*codegenrpc.Diagnostic](len(resp.Diagnostics))
+	for _, diag := range resp.Diagnostics {
+		diags = append(diags, HclDiagnosticToRPCDiagnostic(diag))
+	}
+
+	return &pulumirpc.ConvertProgramResponse{
+		Diagnostics: diags,
+	}, nil
 }

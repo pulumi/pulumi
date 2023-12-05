@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/hashicorp/hcl/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -43,7 +44,7 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 	prefix := fmt.Sprintf("%v (converter)", name)
 
 	// Load the plugin's path by using the standard workspace logic.
-	path, err := workspace.GetPluginPath(workspace.ConverterPlugin, name, version, ctx.Host.GetProjectPlugins())
+	path, err := workspace.GetPluginPath(ctx.Diag, workspace.ConverterPlugin, name, version, ctx.Host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,8 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
-		MapperTarget: req.MapperAddress,
+		MapperTarget: req.MapperTarget,
+		Args:         req.Args,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -127,18 +129,29 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 		}
 	}
 
+	// Translate the rpc diagnostics into hcl.Diagnostics.
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
+	}
+
 	logging.V(7).Infof("%s success", label)
-	return &ConvertStateResponse{Resources: resources}, nil
+	return &ConvertStateResponse{
+		Resources:   resources,
+		Diagnostics: diags,
+	}, nil
 }
 
 func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramRequest) (*ConvertProgramResponse, error) {
 	label := fmt.Sprintf("%s.ConvertProgram", c.label())
 	logging.V(7).Infof("%s executing", label)
 
-	_, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
+	resp, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
-		MapperTarget:    req.MapperAddress,
+		MapperTarget:    req.MapperTarget,
+		LoaderTarget:    req.LoaderTarget,
+		Args:            req.Args,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -146,6 +159,14 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 		return nil, err
 	}
 
+	// Translate the rpc diagnostics into hcl.Diagnostics.
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
+	}
+
 	logging.V(7).Infof("%s success", label)
-	return &ConvertProgramResponse{}, nil
+	return &ConvertProgramResponse{
+		Diagnostics: diags,
+	}, nil
 }

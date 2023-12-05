@@ -28,6 +28,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -36,7 +37,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
-	"path"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"time"
@@ -49,19 +50,18 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -116,11 +116,12 @@ func main() {
 		engineAddress = args[0]
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
+		cancel() // deregister the interrupt handler
 		close(cancelChannel)
 	}()
 	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
@@ -152,7 +153,7 @@ func main() {
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
-func locateModule(ctx context.Context, mod string, nodeBin string) (string, error) {
+func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
 	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -165,6 +166,7 @@ func locateModule(ctx context.Context, mod string, nodeBin string) (string, erro
 	defer tracingSpan.Finish()
 
 	cmd := exec.Command(nodeBin, args...)
+	cmd.Dir = programDir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -240,7 +242,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
 	plugins, err := getPluginsFromDir(
-		req.GetProgram(),
+		filepath.Join(req.Pwd, req.Program),
 		pulumiPackagePathToVersionMap,
 		false, /*inNodeModules*/
 		make(map[string]struct{}))
@@ -526,25 +528,6 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	// Channel producing the final response we want to issue to our caller. Will get the result of
-	// the actual nodejs process we launch, or any results caused by errors in our server/pipes.
-	responseChannel := make(chan *pulumirpc.RunResponse)
-	defer close(responseChannel)
-
-	// Forward any rpc server or pipe errors to our output channel.
-	go func() {
-		err := <-handle.Done
-		if err != nil {
-			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
-		}
-	}()
-	go func() {
-		err := <-pipesDone
-		if err != nil {
-			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
-		}
-	}()
-
 	nodeBin, err := exec.LookPath("node")
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not find node on the $PATH: %w", err))
@@ -555,121 +538,136 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(ctx, runPath, nodeBin)
+	runPath, err = locateModule(ctx, runPath, req.Pwd, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
 	}
 
+	// Channel producing the final response we want to issue to our caller. Will get the result of
+	// the actual nodejs process we launch, or any results caused by errors in our server/pipes.
+	responseChannel := make(chan *pulumirpc.RunResponse)
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(ctx, responseChannel, req, nodeBin, runPath,
-		fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
+	go func() {
+		defer close(responseChannel)
+		responseChannel <- host.execNodejs(
+			ctx, req, nodeBin, runPath,
+			fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
+	}()
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with
 	// errors).
-	return <-responseChannel, nil
+	for {
+		select {
+		case err := <-handle.Done:
+			if err != nil {
+				return &pulumirpc.RunResponse{Error: err.Error()}, nil
+			}
+		case err := <-pipesDone:
+			if err != nil {
+				return &pulumirpc.RunResponse{Error: err.Error()}, nil
+			}
+		case response := <-responseChannel:
+			return response, nil
+		}
+	}
 }
 
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
-func (host *nodeLanguageHost) execNodejs(ctx context.Context,
-	responseChannel chan<- *pulumirpc.RunResponse, req *pulumirpc.RunRequest,
+func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.RunRequest,
 	nodeBin, runPath, address, pipesDirectory string,
-) {
+) *pulumirpc.RunResponse {
 	// Actually launch nodejs and process the result of it into an appropriate response object.
-	response := func() *pulumirpc.RunResponse {
-		args := host.constructArguments(req, runPath, address, pipesDirectory)
-		config, err := host.constructConfig(req)
-		if err != nil {
-			err = fmt.Errorf("failed to serialize configuration: %w", err)
-			return &pulumirpc.RunResponse{Error: err.Error()}
-		}
-		configSecretKeys, err := host.constructConfigSecretKeys(req)
-		if err != nil {
-			err = fmt.Errorf("failed to serialize configuration secret keys: %w", err)
-			return &pulumirpc.RunResponse{Error: err.Error()}
-		}
+	args := host.constructArguments(req, runPath, address, pipesDirectory)
+	config, err := host.constructConfig(req)
+	if err != nil {
+		err = fmt.Errorf("failed to serialize configuration: %w", err)
+		return &pulumirpc.RunResponse{Error: err.Error()}
+	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		err = fmt.Errorf("failed to serialize configuration secret keys: %w", err)
+		return &pulumirpc.RunResponse{Error: err.Error()}
+	}
 
-		env := os.Environ()
-		env = append(env, pulumiConfigVar+"="+config)
-		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
+	env := os.Environ()
+	env = append(env, pulumiConfigVar+"="+config)
+	env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
-		if host.typescript {
-			env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
-		}
-		if host.tsconfigpath != "" {
-			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
-		}
+	if host.typescript {
+		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+	}
+	if host.tsconfigpath != "" {
+		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
+	}
 
-		nodeargs, err := shlex.Split(host.nodeargs)
-		if err != nil {
-			return &pulumirpc.RunResponse{Error: err.Error()}
-		}
-		nodeargs = append(nodeargs, args...)
+	nodeargs, err := shlex.Split(host.nodeargs)
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}
+	}
+	nodeargs = append(nodeargs, args...)
 
-		if logging.V(5) {
-			commandStr := strings.Join(nodeargs, " ")
-			logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
-		}
+	if logging.V(5) {
+		commandStr := strings.Join(nodeargs, " ")
+		logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
+	}
 
-		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-		var errResult string
-		// #nosec G204
-		cmd := exec.Command(nodeBin, nodeargs...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = env
+	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+	var errResult string
+	// #nosec G204
+	cmd := exec.Command(nodeBin, nodeargs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = env
 
-		tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
-			"execNodejs",
-			opentracing.Tag{Key: "component", Value: "exec.Command"},
-			opentracing.Tag{Key: "command", Value: nodeBin},
-			opentracing.Tag{Key: "args", Value: nodeargs})
-		defer tracingSpan.Finish()
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+		"execNodejs",
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: nodeBin},
+		opentracing.Tag{Key: "args", Value: nodeargs})
+	defer tracingSpan.Finish()
 
-		if err := cmd.Run(); err != nil {
-			// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
-			// process writes using console.out and console.err synchronously, but it does not process writes using
-			// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
-			// writes on those file descriptors at the time that the Node process exits.
-			//
-			// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
-			// error messages in the engine.
-			contract.IgnoreError(os.Stdout.Sync())
-			contract.IgnoreError(os.Stderr.Sync())
-			if exiterr, ok := err.(*exec.ExitError); ok {
-				// If the program ran, but exited with a non-zero error code.  This will happen often,
-				// since user errors will trigger this.  So, the error message should look as nice as
-				// possible.
-				switch code := exiterr.ExitCode(); code {
-				case 0:
-					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
-					err = fmt.Errorf("Program exited unexpectedly: %w", exiterr)
-				case nodeJSProcessExitedAfterShowingUserActionableMessage:
-					// Check if we got special exit code that means "we already gave the user an
-					// actionable message". In that case, we can simply bail out and terminate `pulumi`
-					// without showing any more messages.
-					return &pulumirpc.RunResponse{Error: "", Bail: true}
-				default:
-					err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
-				}
-			} else {
-				// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-				// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-				err = fmt.Errorf("Problem executing program (could not run language executor): %w", err)
+	if err := cmd.Run(); err != nil {
+		// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
+		// process writes using console.out and console.err synchronously, but it does not process writes using
+		// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
+		// writes on those file descriptors at the time that the Node process exits.
+		//
+		// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
+		// error messages in the engine.
+		contract.IgnoreError(os.Stdout.Sync())
+		contract.IgnoreError(os.Stderr.Sync())
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// If the program ran, but exited with a non-zero error code.  This will happen often,
+			// since user errors will trigger this.  So, the error message should look as nice as
+			// possible.
+			switch code := exiterr.ExitCode(); code {
+			case 0:
+				// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
+				err = fmt.Errorf("Program exited unexpectedly: %w", exiterr)
+			case nodeJSProcessExitedAfterShowingUserActionableMessage:
+				// Check if we got special exit code that means "we already gave the user an
+				// actionable message". In that case, we can simply bail out and terminate `pulumi`
+				// without showing any more messages.
+				return &pulumirpc.RunResponse{Error: "", Bail: true}
+			default:
+				err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
 			}
-
-			errResult = err.Error()
+		} else {
+			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+			err = fmt.Errorf("Problem executing program (could not run language executor): %w", err)
 		}
 
-		return &pulumirpc.RunResponse{Error: errResult}
-	}()
+		errResult = err.Error()
+	}
 
 	// notify our caller of the response we got from the nodejs process.  Note: this is done
 	// unilaterally. this is how we signal to nodeLanguageHost.Run that we are done and it can
 	// return to its caller.
-	responseChannel <- response
+	return &pulumirpc.RunResponse{Error: errResult}
 }
 
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
@@ -1019,39 +1017,29 @@ func (host *nodeLanguageHost) RunPlugin(
 func (host *nodeLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	cwd, err := os.Getwd()
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
 
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	var extraOptions []pcl.BindOption
+	if !req.Strict {
+		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
+	}
+
+	// for nodejs, prefer output-versioned invokes
+	extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
+
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
 	if err != nil {
 		return nil, err
 	}
+	if diags.HasErrors() {
+		rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 
-	parser := hclsyntax.NewParser()
-	// Load all .pp files in the directory
-	for path, contents := range req.Source {
-		err = parser.ParseFile(strings.NewReader(contents), path)
-		if err != nil {
-			return nil, err
-		}
-		diags := parser.Diagnostics
-		if diags.HasErrors() {
-			return nil, diags
-		}
-	}
-
-	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
-	if err != nil {
-		return nil, err
-	}
-	if pdiags.HasErrors() || program == nil {
-		return nil, fmt.Errorf("internal error: %w", pdiags)
+		return &pulumirpc.GenerateProjectResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
 
 	var project workspace.Project
@@ -1059,26 +1047,22 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.Directory, project, program)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pulumirpc.GenerateProjectResponse{}, nil
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+
+	return &pulumirpc.GenerateProjectResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func (host *nodeLanguageHost) GenerateProgram(
 	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
 ) (*pulumirpc.GenerateProgramResponse, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -1096,24 +1080,28 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, diags, err := pcl.BindProgram(parser.Files,
+		pcl.Loader(loader),
+		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err
 	}
-	if pdiags.HasErrors() || program == nil {
-		return nil, fmt.Errorf("internal error: %w", pdiags)
+
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+	if diags.HasErrors() {
+		return &pulumirpc.GenerateProgramResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
+	}
+	if program == nil {
+		return nil, fmt.Errorf("internal error program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)
 	if err != nil {
 		return nil, err
 	}
-
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
+	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
 		Source:      files,
@@ -1124,15 +1112,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 func (host *nodeLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -1143,7 +1123,6 @@ func (host *nodeLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 	pkg, diags, err := schema.BindSpec(spec, loader)
 	if err != nil {
 		return nil, err
@@ -1157,7 +1136,7 @@ func (host *nodeLanguageHost) GeneratePackage(
 	}
 
 	for filename, data := range files {
-		outPath := path.Join(req.Directory, filename)
+		outPath := filepath.Join(req.Directory, filename)
 
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {
@@ -1171,4 +1150,167 @@ func (host *nodeLanguageHost) GeneratePackage(
 	}
 
 	return &pulumirpc.GeneratePackageResponse{}, nil
+}
+
+func readPackageJSON(packageJSONPath string) (map[string]interface{}, error) {
+	packageJSONData, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		return nil, fmt.Errorf("read package.json: %w", err)
+	}
+	var packageJSON map[string]interface{}
+	err = json.Unmarshal(packageJSONData, &packageJSON)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal package.json: %w", err)
+	}
+	return packageJSON, nil
+}
+
+func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	// Verify npm exists and is set up: npm, user login
+	npm, err := executable.FindExecutable("npm")
+	if err != nil {
+		return nil, fmt.Errorf("find npm: %w", err)
+	}
+
+	// Annoyingly the engine will call Pack for the core SDK which is not setup in at all the same way as the
+	// generated sdks, so we have to detect that and do a big branch to pack it totally differently.
+	packageJSON, err := readPackageJSON(filepath.Join(req.PackageDirectory, "package.json"))
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: We're just going to write to stderr for now, but we should probably have a way to return this
+	// directly to the engine hosting us. That's a bit awkward because we need the subprocesses to write to
+	// this as well, and the host side of this pipe might be a tty and if it is we want the subprocesses to
+	// think they're connected to a tty as well. We've solved this problem before in two slightly different
+	// ways for InstallDependencies and RunPlugin, it would be good to come up with a clean way to do this for
+	// all these cases.
+	writeString := func(s string) error {
+		_, err = os.Stderr.Write([]byte(s))
+		return err
+	}
+
+	if packageJSON["name"] == "@pulumi/pulumi" {
+		// This is pretty much a copy of the makefiles build_package. Short term we should see about changing
+		// the makefile to just build the nodejs plugin first and then simply invoke "pulumi package
+		// pack-sdk". Long term we should try and unify the style of the code sdk with that of generated sdks
+		// so we don't need this special case.
+
+		yarn, err := executable.FindExecutable("yarn")
+		if err != nil {
+			return nil, fmt.Errorf("find yarn: %w", err)
+		}
+
+		err = writeString("$ yarn install --frozen-lockfile\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
+		yarnInstallCmd.Dir = req.PackageDirectory
+		yarnInstallCmd.Stdout = os.Stdout
+		yarnInstallCmd.Stderr = os.Stderr
+		err = yarnInstallCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("yarn install: %w", err)
+		}
+
+		err = writeString("$ yarn run tsc\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		yarnTscCmd := exec.Command(yarn, "run", "tsc")
+		yarnTscCmd.Dir = req.PackageDirectory
+		yarnTscCmd.Stdout = os.Stdout
+		yarnTscCmd.Stderr = os.Stderr
+		err = yarnTscCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("yarn run tsc: %w", err)
+		}
+
+		// "tsc" doesn't copy in the "proto" directory of .js files.
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "proto"),
+			filepath.Join(req.PackageDirectory, "proto"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy proto: %w", err)
+		}
+
+	} else {
+		// Before we can build the package we need to install it's dependencies.
+		err = writeString("$ npm install\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		npmInstallCmd := exec.Command(npm, "install")
+		npmInstallCmd.Dir = req.PackageDirectory
+		npmInstallCmd.Stdout = os.Stdout
+		npmInstallCmd.Stderr = os.Stderr
+		err = npmInstallCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("npm install: %w", err)
+		}
+
+		// Pulumi SDKs always define a build command that will run tsc writing to a bin directory.
+		// So we can run that, then edit the package.json in that directory, and then pack it.
+		err = writeString("$ npm run build\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		npmBuildCmd := exec.Command(npm, "run", "build")
+		npmBuildCmd.Dir = req.PackageDirectory
+		npmBuildCmd.Stdout = os.Stdout
+		npmBuildCmd.Stderr = os.Stderr
+		err = npmBuildCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("npm run build: %w", err)
+		}
+
+		// "build" in SDKs isn't setup to copy the package.json to ./bin/
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "package.json"),
+			filepath.Join(req.PackageDirectory, "package.json"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy package.json: %w", err)
+		}
+	}
+
+	// Mutate the package.json to replace version with the version we've been given.
+	packageJSONPath := filepath.Join(req.PackageDirectory, "bin", "package.json")
+	packageJSON, err = readPackageJSON(packageJSONPath)
+	if err != nil {
+		return nil, err
+	}
+	packageJSON["version"] = req.Version
+	packageJSONData, err := json.Marshal(packageJSON)
+	if err != nil {
+		return nil, fmt.Errorf("marshal package.json: %w", err)
+	}
+	err = os.WriteFile(packageJSONPath, packageJSONData, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("write package.json: %w", err)
+	}
+
+	err = writeString("$ npm pack\n")
+	if err != nil {
+		return nil, fmt.Errorf("write to output: %w", err)
+	}
+	var stdoutBuffer bytes.Buffer
+	npmPackCmd := exec.Command(npm,
+		"pack",
+		filepath.Join(req.PackageDirectory, "bin"),
+		"--pack-destination", req.DestinationDirectory)
+	npmPackCmd.Stdout = &stdoutBuffer
+	npmPackCmd.Stderr = os.Stderr
+	err = npmPackCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("npm pack: %w", err)
+	}
+
+	artifactName := strings.TrimSpace(stdoutBuffer.String())
+
+	return &pulumirpc.PackResponse{
+		ArtifactPath: filepath.Join(req.DestinationDirectory, artifactName),
+	}, nil
 }

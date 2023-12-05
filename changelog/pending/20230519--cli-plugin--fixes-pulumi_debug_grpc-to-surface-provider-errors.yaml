@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/plugin
-  description: Fixes PULUMI_DEBUG_GRPC to surface provider errors

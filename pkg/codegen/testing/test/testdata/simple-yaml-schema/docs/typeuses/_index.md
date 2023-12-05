@@ -228,7 +228,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -236,7 +236,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -244,7 +244,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#object">Object</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -304,7 +304,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -312,7 +312,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_java" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -320,7 +320,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#object">Object</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -342,7 +342,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -350,7 +350,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_nodejs" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -358,7 +358,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#object">Object</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -465,8 +465,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="alpha_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#alpha_csharp" style="color: inherit; text-decoration: inherit;">Alpha</a>
@@ -512,8 +511,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="alpha_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#alpha_go" style="color: inherit; text-decoration: inherit;">Alpha</a>
@@ -559,8 +557,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="alpha_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#alpha_java" style="color: inherit; text-decoration: inherit;">alpha</a>
@@ -606,8 +603,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="alpha_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#alpha_nodejs" style="color: inherit; text-decoration: inherit;">alpha</a>
@@ -653,8 +649,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="alpha_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#alpha_python" style="color: inherit; text-decoration: inherit;">alpha</a>
@@ -700,8 +695,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="alpha_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#alpha_yaml" style="color: inherit; text-decoration: inherit;">alpha</a>
@@ -747,7 +741,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="configmap">Config<wbr>Map</h4>
+<h4 id="configmap">
+Config<wbr>Map<pulumi-choosable type="language" values="python,go" class="inline">, Config<wbr>Map<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -833,7 +829,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="object">Object</h4>
+<h4 id="object">
+Object<pulumi-choosable type="language" values="python,go" class="inline">, Object<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -869,8 +867,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">List&lt;Immutable<wbr>Array&lt;Some<wbr>Other<wbr>Object&gt;&gt;</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_csharp" style="color: inherit; text-decoration: inherit;">Still<wbr>Others</a>
@@ -878,8 +875,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;Some<wbr>Other<wbr>Object&gt;&gt;</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -917,8 +913,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">[][]Some<wbr>Other<wbr>Object</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_go" style="color: inherit; text-decoration: inherit;">Still<wbr>Others</a>
@@ -926,8 +921,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">map[string][]Some<wbr>Other<wbr>Object</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -965,8 +959,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">List&lt;List&lt;Some<wbr>Other<wbr>Object&gt;&gt;</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_java" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
@@ -974,8 +967,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,List&lt;Some<wbr>Other<wbr>Object&gt;&gt;</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1013,8 +1005,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object[][]</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_nodejs" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
@@ -1022,8 +1013,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Some<wbr>Other<wbr>Object[]}</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1061,8 +1051,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">Sequence[Sequence[Some<wbr>Other<wbr>Object]]</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="still_others_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#still_others_python" style="color: inherit; text-decoration: inherit;">still_<wbr>others</a>
@@ -1070,8 +1059,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Sequence[Some<wbr>Other<wbr>Object]]</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1109,8 +1097,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">List&lt;List&lt;Property Map&gt;&gt;</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_yaml" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
@@ -1118,12 +1105,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;List&lt;Property Map&gt;&gt;</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
-<h4 id="objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs</h4>
+<h4 id="objectwithnodeoptionalinputs">
+Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<pulumi-choosable type="language" values="python,go" class="inline">, Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1257,7 +1245,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="outputonlyenumtype">Output<wbr>Only<wbr>Enum<wbr>Type</h4>
+<h4 id="outputonlyenumtype">
+Output<wbr>Only<wbr>Enum<wbr>Type<pulumi-choosable type="language" values="python,go" class="inline">, Output<wbr>Only<wbr>Enum<wbr>Type<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1307,7 +1297,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type</h4>
+<h4 id="outputonlyobjecttype">
+Output<wbr>Only<wbr>Object<wbr>Type<pulumi-choosable type="language" values="python,go" class="inline">, Output<wbr>Only<wbr>Object<wbr>Type<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1393,81 +1385,67 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</h4>
+<h4 id="rubbertreevariety">
+Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" class="inline">, Rubber<wbr>Tree<wbr>Variety<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>BURGUNDY</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>RUBY</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>TINEKE</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>RUBY</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>TINEKE</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
 <dl class="tabular"><dt>"Burgundy"</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>"Ruby"</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>"Tineke"</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>"Ruby"</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>"Tineke"</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
-<h4 id="someotherobject">Some<wbr>Other<wbr>Object</h4>
+<h4 id="someotherobject">
+Some<wbr>Other<wbr>Object<pulumi-choosable type="language" values="python,go" class="inline">, Some<wbr>Other<wbr>Object<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -22,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
 	"github.com/spf13/cobra"
 )
@@ -34,30 +34,45 @@ func newStateDeleteCommand() *cobra.Command {
 	var targetDepenedents bool
 
 	cmd := &cobra.Command{
-		Use:   "delete <resource URN>",
+		Use:   "delete [resource URN]",
 		Short: "Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
 
 This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified
-by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it).
+by its Pulumi URN. If the URN is omitted, this command will prompt for it.
 
-Resources can't be deleted if there exist other resources that depend on it or are parented to it. Protected resources
-will not be deleted unless it is specifically requested using the --force flag.
+Resources can't be deleted if other resources depend on it or are parented to it. Protected resources
+will not be deleted unless specifically requested using the --force flag.
 
 Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
 
-Example:
-pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'
+To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
-		Args: cmdutil.ExactArgs(1),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
+		Args:    cmdutil.MaximumNArgs(1),
+
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
-			urn := resource.URN(args[0])
+			var urn resource.URN
+			if len(args) == 0 {
+				if !cmdutil.Interactive() {
+					return missingNonInteractiveArg("resource URN")
+				}
+
+				var err error
+				urn, err = getURNFromState(ctx, stack, nil,
+					"Select the resource to delete")
+				if err != nil {
+					return err
+				}
+			} else {
+				urn = resource.URN(args[0])
+			}
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			res := runStateEdit(ctx, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+			err := runStateEdit(ctx, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 				var handleProtected func(*resource.State) error
 				if force {
 					handleProtected = func(res *resource.State) error {
@@ -68,8 +83,8 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 				}
 				return edit.DeleteResource(snap, res, handleProtected, targetDepenedents)
 			})
-			if res != nil {
-				switch e := res.Error().(type) {
+			if err != nil {
+				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:
 					message := string(e.Condemned.URN) + " can't be safely deleted because the following resources depend on it:\n"
 					for _, dependentResource := range e.Dependencies {
@@ -78,13 +93,13 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 					}
 
 					message += "\nDelete those resources first or pass --target-dependents."
-					return result.Error(message)
+					return errors.New(message)
 				case edit.ResourceProtectedError:
-					return result.Errorf(
+					return fmt.Errorf(
 						"%s can't be safely deleted because it is protected. "+
 							"Re-run this command with --force to force deletion", string(e.Condemned.URN))
 				default:
-					return res
+					return err
 				}
 			}
 			fmt.Println("Resource deleted")

@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -107,7 +108,7 @@ func newProjectReferenceStore(bucket Bucket, currentProject func() *workspace.Pr
 
 // newReference builds a new localBackendReference with the provided arguments.
 // This DOES NOT modify the underlying storage.
-func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBackendReference {
+func (p *projectReferenceStore) newReference(project tokens.Name, name tokens.StackName) *localBackendReference {
 	return &localBackendReference{
 		name:           name,
 		project:        project,
@@ -118,17 +119,18 @@ func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBa
 
 func (p *projectReferenceStore) StackBasePath(ref *localBackendReference) string {
 	contract.Requiref(ref.project != "", "ref.project", "must not be empty")
-	return filepath.Join(StacksDir, fsutil.NamePath(ref.project), fsutil.NamePath(ref.name))
+	// No need for NamePath for the StackName because it's already constrained to characters that are valid for filenames.
+	return filepath.Join(StacksDir, fsutil.NamePath(ref.project), ref.name.String())
 }
 
 func (p *projectReferenceStore) HistoryDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
-	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
+	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.project), stack.name.String())
 }
 
 func (p *projectReferenceStore) BackupDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
-	return filepath.Join(BackupsDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
+	return filepath.Join(BackupsDir, fsutil.NamePath(stack.project), stack.name.String())
 }
 
 func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
@@ -179,23 +181,18 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 		project = currentProject.Name.String()
 	}
 
-	if len(project) > 100 {
-		return nil, errors.New("project names are limited to 100 characters")
+	if project != "" {
+		if err := tokens.ValidateProjectName(project); err != nil {
+			return nil, err
+		}
 	}
 
-	if project != "" && !tokens.IsName(project) {
-		return nil, fmt.Errorf(
-			"project names may only contain alphanumerics, hyphens, underscores, and periods: %s",
-			project)
+	parsedName, err := tokens.ParseStackName(name)
+	if err != nil {
+		return nil, err
 	}
 
-	if !tokens.IsName(name) || len(name) > 100 {
-		return nil, fmt.Errorf(
-			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %s",
-			name)
-	}
-
-	return p.newReference(tokens.Name(project), tokens.Name(name)), nil
+	return p.newReference(tokens.Name(project), parsedName), nil
 }
 
 func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) error {
@@ -213,7 +210,7 @@ func (p *projectReferenceStore) ListProjects(ctx context.Context) ([]tokens.Name
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
 
-	projects := make([]tokens.Name, 0, len(files))
+	projects := slice.Prealloc[tokens.Name](len(files))
 	for _, file := range files {
 		if !file.IsDir {
 			continue // ignore files
@@ -304,7 +301,13 @@ func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*localBac
 
 		// Read in this stack's information.
 		name := objName[:len(objName)-len(ext)]
-		stacks = append(stacks, p.newReference(tokens.Name(projName), tokens.Name(name)))
+		parsedName, err := tokens.ParseStackName(name)
+		if err != nil {
+			// This looked like a stack file, but it wasn't a valid stack name so skip it.
+			continue
+		}
+
+		stacks = append(stacks, p.newReference(tokens.Name(projName), parsedName))
 	}
 	return stacks, nil
 }
@@ -329,7 +332,7 @@ func newLegacyReferenceStore(b Bucket) *legacyReferenceStore {
 
 // newReference builds a new localBackendReference with the provided arguments.
 // This DOES NOT modify the underlying storage.
-func (p *legacyReferenceStore) newReference(name tokens.Name) *localBackendReference {
+func (p *legacyReferenceStore) newReference(name tokens.StackName) *localBackendReference {
 	return &localBackendReference{
 		name:  name,
 		store: p,
@@ -338,26 +341,25 @@ func (p *legacyReferenceStore) newReference(name tokens.Name) *localBackendRefer
 
 func (p *legacyReferenceStore) StackBasePath(ref *localBackendReference) string {
 	contract.Requiref(ref.project == "", "ref.project", "must be empty")
-	return filepath.Join(StacksDir, fsutil.NamePath(ref.name))
+	return filepath.Join(StacksDir, ref.name.String())
 }
 
 func (p *legacyReferenceStore) HistoryDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project == "", "ref.project", "must be empty")
-	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.name))
+	return filepath.Join(HistoriesDir, stack.name.String())
 }
 
 func (p *legacyReferenceStore) BackupDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project == "", "ref.project", "must be empty")
-	return filepath.Join(BackupsDir, fsutil.NamePath(stack.name))
+	return filepath.Join(BackupsDir, stack.name.String())
 }
 
 func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
-	if !tokens.IsName(stackRef) || len(stackRef) > 100 {
-		return nil, fmt.Errorf(
-			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %q",
-			stackRef)
+	parsedName, err := tokens.ParseStackName(stackRef)
+	if err != nil {
+		return nil, err
 	}
-	return p.newReference(tokens.Name(stackRef)), nil
+	return p.newReference(parsedName), nil
 }
 
 func (p *legacyReferenceStore) ValidateReference(ref *localBackendReference) error {
@@ -372,7 +374,7 @@ func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*localBack
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
-	stacks := make([]*localBackendReference, 0, len(files))
+	stacks := slice.Prealloc[*localBackendReference](len(files))
 
 	for _, file := range files {
 		if file.IsDir {
@@ -394,7 +396,13 @@ func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*localBack
 
 		// Read in this stack's information.
 		name := objName[:len(objName)-len(ext)]
-		stacks = append(stacks, p.newReference(tokens.Name(name)))
+		parsedName, err := tokens.ParseStackName(name)
+		if err != nil {
+			// This looked like a stack file, but it wasn't a valid stack name so skip it.
+			continue
+		}
+
+		stacks = append(stacks, p.newReference(parsedName))
 	}
 
 	return stacks, nil
