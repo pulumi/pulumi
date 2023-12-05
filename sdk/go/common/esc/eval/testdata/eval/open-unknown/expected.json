@@ -584,7 +584,11 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "dependent": "[unknown]",
+        "error": "[unknown]"
+    },
+    "evalJSONRevealed": {
         "dependent": "[unknown]",
         "error": "[unknown]"
     }

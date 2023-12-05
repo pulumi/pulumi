@@ -342,7 +342,7 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	return v, e.diags
 }
 
-// evaluateImports evalutes an environment's imports.
+// evaluateImports evaluates an environment's imports.
 func (e *evalContext) evaluateImports() {
 	mine := &imported{evaluating: true}
 	defer func() { mine.evaluating = false }()
@@ -919,7 +919,7 @@ func (e *evalContext) evaluateBuiltinFromJSON(x *expr, repr *fromJSONExpr) *valu
 			return v
 		}
 
-		ev, err := esc.FromJSON(jv)
+		ev, err := esc.FromJSON(jv, v.secret)
 		if err != nil {
 			e.errorf(repr.syntax(), "internal error: decoding JSON value: %v", err)
 			v.unknown = true

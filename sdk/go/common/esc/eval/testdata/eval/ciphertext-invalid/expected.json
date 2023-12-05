@@ -268,7 +268,10 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
         "password": "[secret]"
+    },
+    "evalJSONRevealed": {
+        "password": "[unknown]"
     }
 }

@@ -5857,7 +5857,7 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
         "base64OutputSecret": "[secret]",
         "base64OutputUnknown": "YmFy",
         "cloudflare": {
@@ -5899,5 +5899,48 @@
         "stringOutputSecret": "[secret]",
         "stringOutputUnknown": "\"oneStep\"=\"\\\"twoStep\\\"=\\\"\\\\\\\"threeStep\\\\\\\"=\\\\\\\"\\\\\\\\\\\\\\\"fourStep\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"foo\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"bar\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\"\\\\\\\"\\\"\"",
         "top-level-secret": "[secret]"
+    },
+    "evalJSONRevealed": {
+        "base64OutputSecret": "YXBpS2V5U2VjcmV0",
+        "base64OutputUnknown": "YmFy",
+        "cloudflare": {
+            "account": {
+                "id": "accountIdSecret",
+                "name": "account-name"
+            },
+            "apiKey": "apiKeySecret",
+            "apiToken": "apiTokenSecret",
+            "username": "bot@pulumi.com",
+            "zoneId": "zone-id-123"
+        },
+        "comboSecretAndUnknown": {
+            "cloudflareApi": "apiKeySecret",
+            "provider": "bar"
+        },
+        "deeplyNestedProvider": {
+            "oneStep": {
+                "twoStep": {
+                    "threeStep": {
+                        "fourStep": {
+                            "foo": "bar"
+                        }
+                    }
+                }
+            }
+        },
+        "environmentVariables": {
+            "CLOUDFLARE_API_TOKEN": "apiTokenSecret"
+        },
+        "jsonOutputCombo": "{\"cloudflareApi\":\"apiKeySecret\",\"provider\":\"bar\"}",
+        "jsonOutputSecret": "{\"account\":{\"id\":\"accountIdSecret\",\"name\":\"account-name\"},\"apiKey\":\"apiKeySecret\",\"apiToken\":\"apiTokenSecret\",\"username\":\"bot@pulumi.com\",\"zoneId\":\"zone-id-123\"}",
+        "jsonOutputUnknown": "{\"oneStep\":{\"twoStep\":{\"threeStep\":{\"fourStep\":{\"foo\":\"bar\"}}}}}",
+        "pulumiConfig": {
+            "accountId": "accountIdSecret",
+            "refTopLevelSecret": "top-secret"
+        },
+        "stringOutputCombo": "\"cloudflareApi\"=\"apiKeySecret\",\"provider\"=\"bar\"",
+        "stringOutputSecret": "\"account\"=\"\\\"id\\\"=\\\"accountIdSecret\\\",\\\"name\\\"=\\\"account-name\\\"\",\"apiKey\"=\"apiKeySecret\",\"apiToken\"=\"apiTokenSecret\",\"username\"=\"bot@pulumi.com\",\"zoneId\"=\"zone-id-123\"",
+        "stringOutputUnknown": "\"oneStep\"=\"\\\"twoStep\\\"=\\\"\\\\\\\"threeStep\\\\\\\"=\\\\\\\"\\\\\\\\\\\\\\\"fourStep\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"foo\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"=\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"bar\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\"\\\\\\\"\\\"\"",
+        "top-level-secret": "top-secret"
     }
 }

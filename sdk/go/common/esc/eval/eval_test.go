@@ -181,13 +181,14 @@ func normalize[T any](t *testing.T, v T) T {
 
 func TestEval(t *testing.T) {
 	type expectedData struct {
-		LoadDiags  syntax.Diagnostics `json:"loadDiags,omitempty"`
-		CheckDiags syntax.Diagnostics `json:"checkDiags,omitempty"`
-		Check      *esc.Environment   `json:"check,omitempty"`
-		CheckJSON  any                `json:"checkJson,omitempty"`
-		EvalDiags  syntax.Diagnostics `json:"evalDiags,omitempty"`
-		Eval       *esc.Environment   `json:"eval,omitempty"`
-		EvalJSON   any                `json:"evalJson,omitempty"`
+		LoadDiags        syntax.Diagnostics `json:"loadDiags,omitempty"`
+		CheckDiags       syntax.Diagnostics `json:"checkDiags,omitempty"`
+		Check            *esc.Environment   `json:"check,omitempty"`
+		CheckJSON        any                `json:"checkJson,omitempty"`
+		EvalDiags        syntax.Diagnostics `json:"evalDiags,omitempty"`
+		Eval             *esc.Environment   `json:"eval,omitempty"`
+		EvalJSONRedacted any                `json:"evalJsonRedacted,omitempty"`
+		EvalJSONRevealed any                `json:"evalJSONRevealed,omitempty"`
 	}
 
 	path := filepath.Join("testdata", "eval")
@@ -213,24 +214,27 @@ func TestEval(t *testing.T) {
 				sortEnvironmentDiagnostics(evalDiags)
 
 				var checkJSON any
-				var evalJSON any
+				var evalJSONRedacted any
+				var evalJSONRevealed any
 				if check != nil {
 					check = normalize(t, check)
 					checkJSON = esc.NewValue(check.Properties).ToJSON(true)
 				}
 				if actual != nil {
 					actual = normalize(t, actual)
-					evalJSON = esc.NewValue(actual.Properties).ToJSON(true)
+					evalJSONRedacted = esc.NewValue(actual.Properties).ToJSON(true)
+					evalJSONRevealed = esc.NewValue(actual.Properties).ToJSON(false)
 				}
 
 				bytes, err := json.MarshalIndent(expectedData{
-					LoadDiags:  loadDiags,
-					CheckDiags: checkDiags,
-					EvalDiags:  evalDiags,
-					Check:      check,
-					Eval:       actual,
-					EvalJSON:   evalJSON,
-					CheckJSON:  checkJSON,
+					LoadDiags:        loadDiags,
+					CheckDiags:       checkDiags,
+					EvalDiags:        evalDiags,
+					Check:            check,
+					Eval:             actual,
+					EvalJSONRedacted: evalJSONRedacted,
+					EvalJSONRevealed: evalJSONRevealed,
+					CheckJSON:        checkJSON,
 				}, "", "    ")
 				bytes = append(bytes, '\n')
 				require.NoError(t, err)
@@ -268,8 +272,10 @@ func TestEval(t *testing.T) {
 
 			// work around a comparison issue when comparing nil slices/maps against zero-length slices/maps
 			if actual != nil {
-				evalJSON := esc.NewValue(actual.Properties).ToJSON(true)
-				assert.Equal(t, expected.EvalJSON, evalJSON)
+				evalJSONRedacted := esc.NewValue(actual.Properties).ToJSON(true)
+				assert.Equal(t, expected.EvalJSONRedacted, evalJSONRedacted)
+				evalJSONRevealed := esc.NewValue(actual.Properties).ToJSON(false)
+				assert.Equal(t, expected.EvalJSONRevealed, evalJSONRevealed)
 			}
 
 			if check != nil {

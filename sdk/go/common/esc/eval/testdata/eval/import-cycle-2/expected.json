@@ -60,5 +60,6 @@
             "type": "object"
         }
     },
-    "evalJson": {}
+    "evalJsonRedacted": {},
+    "evalJSONRevealed": {}
 }

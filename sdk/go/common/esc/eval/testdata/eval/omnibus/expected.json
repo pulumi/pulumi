@@ -3541,7 +3541,7 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
         "access": "qux",
         "fromBase64": "hello,world",
         "fromJSON": {
@@ -3577,6 +3577,50 @@
             "foo": "bar"
         },
         "secret": "[secret]",
+        "strings": [
+            "hello",
+            "world"
+        ],
+        "toBase64": "aGVsbG8sd29ybGQ=",
+        "toJSON": "{\"a\":null,\"b\":true,\"baz\":\"qux\",\"c\":42,\"d\":[\"hello\"],\"foo\":\"bar\"}",
+        "toString": "\"a\"=\"\",\"b\"=\"true\",\"baz\"=\"qux\",\"c\"=\"42\",\"d\"=\"\\\"hello\\\"\""
+    },
+    "evalJSONRevealed": {
+        "access": "qux",
+        "fromBase64": "hello,world",
+        "fromJSON": {
+            "a": null,
+            "b": true,
+            "baz": "qux",
+            "c": 42,
+            "d": [
+                "hello"
+            ],
+            "foo": "bar"
+        },
+        "interp": "hello, \"a\"=\"\",\"b\"=\"true\",\"baz\"=\"qux\",\"c\"=\"42\",\"d\"=\"\\\"hello\\\"\"",
+        "join": "hello,world",
+        "open": {
+            "a": null,
+            "b": true,
+            "baz": "qux",
+            "c": 42,
+            "d": [
+                "hello"
+            ],
+            "foo": "bar"
+        },
+        "open2": {
+            "a": null,
+            "b": true,
+            "baz": "qux",
+            "c": 42,
+            "d": [
+                "hello"
+            ],
+            "foo": "bar"
+        },
+        "secret": "hunter2",
         "strings": [
             "hello",
             "world"

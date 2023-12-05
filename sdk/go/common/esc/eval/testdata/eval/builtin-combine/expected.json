@@ -1852,7 +1852,7 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
         "builtins": [
             "[secret]",
             "[secret]",
@@ -1863,5 +1863,17 @@
             "foo": "bar"
         },
         "password": "[secret]"
+    },
+    "evalJSONRevealed": {
+        "builtins": [
+            "hunter2,bar",
+            "aHVudGVyMiBiYXI=",
+            "\"hunter2 bar\"",
+            "hunter2 bar"
+        ],
+        "open": {
+            "foo": "bar"
+        },
+        "password": "hunter2"
     }
 }

@@ -441,7 +441,13 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "foo": "bar",
+        "qux": {
+            "foo": "bar"
+        }
+    },
+    "evalJSONRevealed": {
         "foo": "bar",
         "qux": {
             "foo": "bar"

@@ -334,7 +334,12 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "foo": {
+            "bar": "baz"
+        }
+    },
+    "evalJSONRevealed": {
         "foo": {
             "bar": "baz"
         }

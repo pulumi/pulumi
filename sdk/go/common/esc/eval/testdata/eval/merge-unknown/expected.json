@@ -1146,7 +1146,15 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "open": {
+            "baz": {
+                "qux": "zed"
+            },
+            "foo": "bar"
+        }
+    },
+    "evalJSONRevealed": {
         "open": {
             "baz": {
                 "qux": "zed"

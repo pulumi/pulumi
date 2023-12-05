@@ -2115,7 +2115,19 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "builtins": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
+        "number": 42
+    },
+    "evalJSONRevealed": {
         "builtins": [
             "[unknown]",
             "[unknown]",

@@ -112,28 +112,40 @@ func (v *Value) UnmarshalJSON(data []byte) error {
 
 // FromJSON converts a plain-old-JSON value (i.e. a value of type nil, bool, json.Number, string, []any, or
 // map[string]any) into a Value.
-func FromJSON(v any) (Value, error) {
-	return fromJSON("", v)
+func FromJSON(v any, secret bool) (Value, error) {
+	return fromJSON("", v, secret)
 }
 
-func fromJSON(path string, v any) (Value, error) {
+func fromJSON(path string, v any, secret bool) (Value, error) {
 	switch v := v.(type) {
 	case nil:
 		return Value{}, nil
 	case bool:
+		if secret {
+			return NewSecret(v), nil
+		}
 		return NewValue(v), nil
 	case json.Number:
+		if secret {
+			return NewSecret(v), nil
+		}
 		return NewValue(v), nil
 	case string:
+		if secret {
+			return NewSecret(v), nil
+		}
 		return NewValue(v), nil
 	case []any:
 		vs := make([]Value, len(v))
 		for i, v := range v {
-			vv, err := fromJSON(fmt.Sprintf("[%v]", i), v)
+			vv, err := fromJSON(fmt.Sprintf("[%v]", i), v, secret)
 			if err != nil {
 				return Value{}, err
 			}
 			vs[i] = vv
+		}
+		if secret {
+			return NewSecret(vs), nil
 		}
 		return NewValue(vs), nil
 	case map[string]any:
@@ -141,11 +153,14 @@ func fromJSON(path string, v any) (Value, error) {
 		sort.Strings(keys)
 		vs := make(map[string]Value, len(keys))
 		for _, k := range keys {
-			vv, err := fromJSON(util.JoinKey(path, k), v[k])
+			vv, err := fromJSON(util.JoinKey(path, k), v[k], secret)
 			if err != nil {
 				return Value{}, err
 			}
 			vs[k] = vv
+		}
+		if secret {
+			return NewSecret(vs), nil
 		}
 		return NewValue(vs), nil
 	default:

@@ -2141,7 +2141,36 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "referent": {
+            "foo": "bar",
+            "list": "a",
+            "object": "value",
+            "test": {
+                "baz": "qux",
+                "foo": "bar",
+                "list": [
+                    "a",
+                    "list"
+                ],
+                "object": {
+                    "key": "value"
+                }
+            }
+        },
+        "test": {
+            "baz": "qux",
+            "foo": "bar",
+            "list": [
+                "a",
+                "list"
+            ],
+            "object": {
+                "key": "value"
+            }
+        }
+    },
+    "evalJSONRevealed": {
         "referent": {
             "foo": "bar",
             "list": "a",

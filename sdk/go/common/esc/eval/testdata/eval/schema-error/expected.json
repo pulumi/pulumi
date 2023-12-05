@@ -13060,7 +13060,82 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "sink": "[unknown]",
+        "source": {
+            "always": {},
+            "anyOf": "hello",
+            "array": [
+                2,
+                "items",
+                {
+                    "some": "object"
+                },
+                [
+                    "array"
+                ]
+            ],
+            "boolean": true,
+            "const-array": [
+                "hello",
+                42
+            ],
+            "const-object": {
+                "hello": "world"
+            },
+            "dependentReq": {
+                "bar": 42,
+                "foo": "bar"
+            },
+            "double": [
+                "hello",
+                42
+            ],
+            "enum": "foo",
+            "exclusiveMaximum": 0,
+            "exclusiveMinimum": 2,
+            "false": false,
+            "hello": "hello",
+            "map": {
+                "blue": 42,
+                "hello": "world"
+            },
+            "maxLength": "a",
+            "maxProperties": {
+                "foo": "bar"
+            },
+            "maximum": 1,
+            "minLength": "a",
+            "minProperties": {
+                "foo": "bar"
+            },
+            "minimum": 1,
+            "multiple": 4,
+            "null": null,
+            "number": 42,
+            "oneOf": 42,
+            "pattern": "foo42",
+            "pi": 3.14,
+            "record": {
+                "foo": "bar"
+            },
+            "ref": {
+                "baz": "qux"
+            },
+            "string": "esc",
+            "triple": [
+                "hello",
+                42,
+                true
+            ],
+            "true": true,
+            "tuple": [
+                "hello",
+                "world"
+            ]
+        }
+    },
+    "evalJSONRevealed": {
         "sink": "[unknown]",
         "source": {
             "always": {},

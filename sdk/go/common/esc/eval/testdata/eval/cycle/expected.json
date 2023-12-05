@@ -960,7 +960,18 @@
             ]
         }
     },
-    "evalJson": {
+    "evalJsonRedacted": {
+        "a": {
+            "p": "[unknown]"
+        },
+        "b": {
+            "p": "[unknown]"
+        },
+        "c": {
+            "p": "[unknown]"
+        }
+    },
+    "evalJSONRevealed": {
         "a": {
             "p": "[unknown]"
         },
