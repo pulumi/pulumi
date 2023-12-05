@@ -191,6 +191,8 @@ message GeneratePackageRequest {
 }
 
 message GeneratePackageResponse {
+    // any diagnostics from code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
 }
 
 message PackRequest {

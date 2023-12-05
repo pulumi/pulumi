@@ -459,9 +459,9 @@ func (h *langhost) GenerateProject(
 
 func (h *langhost) GeneratePackage(
 	directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
-) error {
+) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
-	_, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
+	resp, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
 		Directory:    directory,
 		Schema:       schema,
 		ExtraFiles:   extraFiles,
@@ -470,11 +470,18 @@ func (h *langhost) GeneratePackage(
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GeneratePackage() failed: err=%v", h.runtime, rpcError)
-		return rpcError
+		return nil, rpcError
 	}
 
 	logging.V(7).Infof("langhost[%v].GeneratePackage() success", h.runtime)
-	return nil
+
+	// Translate the rpc diagnostics into hcl.Diagnostics.
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
+	}
+
+	return diags, nil
 }
 
 func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string,
