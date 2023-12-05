@@ -362,3 +362,51 @@ func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
 	// If we had an AWS plugin and mapping this would be "aws:ec2/instance:Instance"
 	assert.Contains(t, string(output), "\"aws:index:instance\"")
 }
+
+// Small integration test for preview --import-file
+func TestPreviewImportFile(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	e.ImportDirectory("testdata/import_node")
+
+	// Make sure random is installed
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.12.0")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "preview", "--import-file", "import.json")
+
+	expectedResources := []interface{}{
+		map[string]interface{}{
+			"id":      "<PLACEHOLDER>",
+			"name":    "username",
+			"type":    "random:index/randomPet:RandomPet",
+			"version": "4.12.0",
+		},
+		map[string]interface{}{
+			"name":      "component",
+			"type":      "pkg:index:MyComponent",
+			"component": true,
+		},
+		map[string]interface{}{
+			"id":      "<PLACEHOLDER>",
+			"name":    "username",
+			"type":    "random:index/randomPet:RandomPet",
+			"version": "4.12.0",
+			"parent":  "component",
+		},
+	}
+
+	importBytes, err := os.ReadFile(filepath.Join(e.CWD, "import.json"))
+	require.NoError(t, err)
+	var actual map[string]interface{}
+	err = json.Unmarshal(importBytes, &actual)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, expectedResources, actual["resources"])
+	_, has := actual["nameTable"]
+	assert.False(t, has, "nameTable should not be present in import file")
+}

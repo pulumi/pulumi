@@ -157,7 +157,7 @@ type importSpec struct {
 }
 
 type importFile struct {
-	NameTable map[string]resource.URN `json:"nameTable"`
+	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
 	Resources []importSpec            `json:"resources"`
 }
 
@@ -175,7 +175,15 @@ func readImportFile(p string) (importFile, error) {
 	return result, nil
 }
 
-func writeImportFile(v importFile) (string, error) {
+func writeImportFile(v importFile, f io.Writer) error {
+	enc := json.NewEncoder(f)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "    ")
+	err := enc.Encode(v)
+	return err
+}
+
+func writeImportFileToTemp(v importFile) (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("working directory: %w", err)
@@ -187,9 +195,7 @@ func writeImportFile(v importFile) (string, error) {
 	path := f.Name()
 	defer contract.IgnoreClose(f)
 
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "    ")
-	err = enc.Encode(v)
+	err = writeImportFile(v, f)
 	if err != nil {
 		return "", errors.Join(err, f.Close(), os.Remove(path))
 	}
@@ -605,7 +611,12 @@ func newImportCmd() *cobra.Command {
 			"Each resource may specify which input properties to import with;\n" +
 			"\n" +
 			"If a resource does not specify any properties the default behaviour is to\n" +
-			"import using all required properties.\n",
+			"import using all required properties.\n" +
+			"\n" +
+			"You can use `pulumi preview` with the `--import-file` option to emit an import file\n" +
+			"for all resources that need creating from the preview. This will fill in all the name,\n" +
+			"type, parent and provider information for you and just require you to fill in resource\n" +
+			"IDs and any properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 
@@ -948,7 +959,7 @@ func newImportCmd() *cobra.Command {
 				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
 				// directory so if there's any issues users can manually edit the file and try again with --file
 				if from != "" {
-					path, err := writeImportFile(importFile)
+					path, err := writeImportFileToTemp(importFile)
 					if err != nil {
 						return result.FromError(err)
 					}
