@@ -46,7 +46,7 @@ elif '-cover' in args:
 
 if covprofile is not None:
     coverpkg = ','.join(cover_packages)
-    args += [f'-coverprofile={covprofile}', f'-coverpkg={coverpkg}']
+    args += ['-json', f'-coverprofile={covprofile}', f'-coverpkg={coverpkg}']
 
 if integration_test_subset:
     print(f"Using test subset: {integration_test_subset}")
@@ -88,9 +88,13 @@ if shutil.which('gotestsum') is not None:
     if not test_results_dir.is_dir():
         os.mkdir(str(test_results_dir))
 
-    json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
-    args = ['gotestsum', '--jsonfile', json_file, '--rerun-fails=1', '--rerun-fails-run-root-test', '--packages', pkgs, '--'] + \
-        opts
+    script = str(root.joinpath("scripts", "test-with-coverage.sh"))
+    json_file = str(test_results_dir.joinpath(f'${test_run}.json'))
+    args = ["gotestsum", '--jsonfile', json_file,
+            '--rerun-fails=1', '--rerun-fails-run-root-test',
+            '--packages', pkgs,
+            "--raw-command", '--', "bash", script] + \
+        args
 else:
     args = ['go', 'test'] + args
 
