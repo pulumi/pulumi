@@ -423,10 +423,6 @@ func useSpecifiedDir(dir string) (string, error) {
 	return cwd, nil
 }
 
-type AIPulumiUserInfo struct {
-	UserId string `json:"userId"`
-}
-
 type AIPromptRequestBody struct {
 	Language       string `json:"language"`
 	Instructions   string `json:"instructions"`
@@ -478,7 +474,8 @@ func runAINew(
 	}
 	var continuePrompt string
 	var connectionID string
-	for continuePrompt, conversationURL, connectionID, err = runAINewPromptStep(
+	var conversationID string
+	for continuePrompt, conversationURL, conversationID, connectionID, err = runAINewPromptStep(
 		opts,
 		language,
 		prompt,
@@ -487,7 +484,8 @@ func runAINew(
 		"",
 		"",
 		"",
-	); continuePrompt == RefineSelection; continuePrompt, conversationURL, connectionID, err = runAINewPromptStep(
+		"",
+	); continuePrompt == RefineSelection; continuePrompt, conversationURL, conversationID, connectionID, err = runAINewPromptStep(
 		opts,
 		language,
 		prompt,
@@ -496,6 +494,7 @@ func runAINew(
 		continuePrompt,
 		connectionID,
 		conversationURL,
+		conversationID,
 	) {
 		if err != nil {
 			return "", err
@@ -504,43 +503,39 @@ func runAINew(
 	return conversationURL, err
 }
 
-func sendPromptToPulumiAI(promptMessage string, conversationID string, connectionID string, userName string, language string) (string, string, error) {
+func sendPromptToPulumiAI(promptMessage string, conversationID string, connectionID string, userName string, language string) (string, string, string, error) {
 	pulumiAIURL := env.AIServiceEndpoint.Value()
 	if pulumiAIURL == "" {
 		pulumiAIURL = "https://www.pulumi.com/ai"
 	}
 	parsedURL, err := url.Parse(pulumiAIURL)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	requestPath := parsedURL.JoinPath("api", "chat")
 	requestBody := AIPromptRequestBody{
 		Language:       language,
 		Instructions:   promptMessage,
-		Model:          "gpt-4-turbo",
+		Model:          "gpt-4",
 		ResponseMode:   "code",
 		ConversationID: conversationID,
 		ConnectionID:   connectionID,
 	}
 	marshalledBody, err := json.Marshal(requestBody)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	userData := AIPulumiUserInfo{UserId: userName}
-	marshalledUserData, err := json.Marshal(userData)
-	if err != nil {
-		return "", "", err
-	}
-	userDataCookie := http.Cookie{Name: "pulumi_web_user_info", Value: string(marshalledUserData)}
+	userDataCookie := http.Cookie{Name: "pulumi_command_line_user_name", Value: userName}
+	fmt.Println("cookie", userDataCookie)
 	request, err := http.NewRequest("POST", requestPath.String(), bytes.NewReader(marshalledBody))
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	request.AddCookie(&userDataCookie)
 	fmt.Println("Sending prompt to Pulumi AI...")
 	res, err := http.DefaultClient.Do(request)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	defer res.Body.Close()
 	reader := bufio.NewReader(res.Body)
@@ -548,17 +543,19 @@ func sendPromptToPulumiAI(promptMessage string, conversationID string, connectio
 	for {
 		chunk, err := reader.ReadByte()
 		if err != nil && err.Error() != "EOF" {
-			return "", "", err
+			return "", "", "", err
 		}
 		fmt.Print(string(chunk))
 		if err != nil && err.Error() == "EOF" {
+			// Add a newline to ensure we don't overwrite the last line of the Pulumi AI response
+			fmt.Println()
 			break
 		}
 	}
 	conversationID = res.Header.Get("x-conversation-id")
 	connectionID = res.Header.Get("x-connection-id")
 	conversationURL := parsedURL.JoinPath("api", "project", url.PathEscape(fmt.Sprintf("%s.zip", conversationID))).String()
-	return conversationURL, connectionID, nil
+	return conversationURL, connectionID, conversationID, nil
 }
 
 func runAINewPromptStep(
@@ -570,25 +567,21 @@ func runAINewPromptStep(
 	currentContinueSelection string,
 	connectionID string,
 	conversationURL string,
-) (continueSelection string, conversationURLReturn string, connectionIDReturn string, err error) {
+	conversationID string,
+) (continueSelection string, conversationURLReturn string, conversationIDReturn string, connectionIDReturn string, err error) {
 	var promptMessage string
 	if prompt == "" || currentContinueSelection != "" {
 		if err := survey.AskOne(&survey.Input{
 			Message: "Please input your prompt here:\n",
 		}, &promptMessage, surveyIcons(opts.Color)); err != nil {
-			return "", "", "", err
+			return "", "", "", "", err
 		}
 	} else {
 		promptMessage = prompt
 	}
-	parsedURL, err := url.Parse(conversationURL)
+	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(promptMessage, conversationID, connectionID, userName, language)
 	if err != nil {
-		return "", "", "", err
-	}
-	conversationID := strings.Split(parsedURL.EscapedPath(), "/")[len(strings.Split(parsedURL.EscapedPath(), "/"))-1]
-	conversationURLReturn, connectionIDReturn, err = sendPromptToPulumiAI(promptMessage, conversationID, connectionID, userName, language)
-	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 	continuePromptOptions := []string{
 		RefineSelection,
@@ -608,15 +601,15 @@ func runAINewPromptStep(
 				return continuePromptOptionsDescriptions[opt]
 			},
 		}, &continueSelection, surveyIcons(opts.Color)); err != nil {
-			return "", "", "", err
+			return "", "", "", "", err
 		}
 		if continueSelection == NoSelection {
-			return "", "", "", errors.New("aborting prompt")
+			return "", "", "", "", errors.New("aborting prompt")
 		}
 	} else {
 		continueSelection = YesSelection
 	}
-	return continueSelection, conversationURLReturn, connectionIDReturn, nil
+	return continueSelection, conversationURLReturn, conversationIDReturn, connectionIDReturn, nil
 }
 
 // newNewCmd creates a New command with default dependencies.
