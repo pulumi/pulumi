@@ -15,7 +15,7 @@ type Platform interface {
 	Search(query string) ([]Resource, error)
 	RunDeployment(args DeploymentArgs)
 	GetServiceTemplate(name string) ServiceTemplate
-	ListStacks() []Stack
+	ListStacks(args ListStackArgs) []Stack
 }
 
 type CloudPlatform struct{}
@@ -40,7 +40,11 @@ func (c *CloudPlatform) GetServiceTemplate(name string) ServiceTemplate {
 	return &CloudServiceTemplate{}
 }
 
-func (c *CloudPlatform) ListStacks() []Stack {
+type ListStackArgs struct {
+	tags []string
+}
+
+func (c *CloudPlatform) ListStacks(args ListStackArgs) []Stack {
 	return []Stack{}
 }
 
@@ -68,6 +72,7 @@ type DeploymentArgs struct {
 	RefreshConfig   bool
 	ExpectNoChanges bool
 	OnFailure       *NotificationArgs
+	DeleteStack     bool
 }
 
 type NotificationArgs struct {

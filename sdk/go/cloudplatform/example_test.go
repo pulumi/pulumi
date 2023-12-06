@@ -1,6 +1,9 @@
 package cloudplatform
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 func ExampleAutomationJob() {
 	org := "acme"
@@ -116,7 +119,7 @@ func ExampleDriftDetectionImplementation() {
 		panic(err)
 	}
 
-	stacks := p.ListStacks()
+	stacks := p.ListStacks(ListStackArgs{})
 	for _, stack := range stacks {
 		if stack.SupportsDeployments() || stack.HasEnvironment() {
 			stack.RunDeployment(DeploymentArgs{
@@ -149,5 +152,53 @@ func ExampleDriftJob() {
 		Mode:       "cron",
 		// run every day at 8am
 		Schedule: "0 8 * * *",
+	})
+}
+
+func ExampleTTL() {
+	org := "acme"
+	p, err := NewCloudPlatform(org)
+	if err != nil {
+		panic(err)
+	}
+
+	stacks := p.ListStacks(ListStackArgs{
+		tags: []string{
+			"key eq TTL",
+			fmt.Sprintf("value lt %s", time.Now().UTC()),
+		},
+	})
+	for _, stack := range stacks {
+		if stack.SupportsDeployments() || stack.HasEnvironment() {
+			stack.RunDeployment(DeploymentArgs{
+				// we don't need source code for refresh/destroy
+				AcquireSource: false,
+				Operation:     "destroy",
+				// run pulumi stack rm as final step
+				DeleteStack: true,
+				OnFailure: &NotificationArgs{
+					Type:    "email",
+					Route:   "platform-ops@acme.com",
+					Message: fmt.Sprintf("TTL destroy failed for stack %s", stack.Name()),
+				},
+			})
+		}
+	}
+}
+
+func ExampleTTLJob() {
+	org := "acme"
+	p, err := NewCloudPlatform(org)
+	if err != nil {
+		panic(err)
+	}
+
+	p.CreateAutomationJob("ttl-reaper", AutomationJobArgs{
+		Repo:       "github.com/pulumi/automation-api-examples",
+		Dir:        "go/ttl",
+		Entrypoint: "go run main.go",
+		Mode:       "cron",
+		// run hourly
+		Schedule: "0 * * * *",
 	})
 }
