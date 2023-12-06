@@ -56,6 +56,9 @@ import (
 
 const (
 	brokenTemplateDescription = "(This template is currently broken)"
+	NoSelection               = "no"
+	YesSelection              = "yes"
+	RefineSelection           = "refine"
 )
 
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
@@ -474,20 +477,25 @@ func runAINew(
 		}
 	}
 	var continuePrompt string
-	for continuePrompt, conversationURL, _, err = runAINewPromptStep(
+	var connectionID string
+	for continuePrompt, conversationURL, connectionID, err = runAINewPromptStep(
 		opts,
 		language,
 		prompt,
 		yes,
 		name,
 		"",
-	); continuePrompt == "continue"; continuePrompt, conversationURL, _, err = runAINewPromptStep(
+		"",
+		"",
+	); continuePrompt == RefineSelection; continuePrompt, conversationURL, connectionID, err = runAINewPromptStep(
 		opts,
 		language,
 		prompt,
 		yes,
 		name,
 		continuePrompt,
+		connectionID,
+		conversationURL,
 	) {
 		if err != nil {
 			return "", err
@@ -560,7 +568,9 @@ func runAINewPromptStep(
 	yes bool,
 	userName string,
 	currentContinueSelection string,
-) (continueSelection string, conversationURL string, connectionID string, err error) {
+	connectionID string,
+	conversationURL string,
+) (continueSelection string, conversationURLReturn string, connectionIDReturn string, err error) {
 	var promptMessage string
 	if prompt == "" || currentContinueSelection != "" {
 		if err := survey.AskOne(&survey.Input{
@@ -576,23 +586,23 @@ func runAINewPromptStep(
 		return "", "", "", err
 	}
 	conversationID := strings.Split(parsedURL.EscapedPath(), "/")[len(strings.Split(parsedURL.EscapedPath(), "/"))-1]
-	conversationURL, connectionID, err = sendPromptToPulumiAI(promptMessage, conversationID, connectionID, userName, language)
+	conversationURLReturn, connectionIDReturn, err = sendPromptToPulumiAI(promptMessage, conversationID, connectionID, userName, language)
 	if err != nil {
 		return "", "", "", err
 	}
 	continuePromptOptions := []string{
-		"continue",
-		"done",
-		"abort",
+		RefineSelection,
+		YesSelection,
+		NoSelection,
 	}
 	continuePromptOptionsDescriptions := map[string]string{
-		"continue": "Continue to the next prompt",
-		"done":     "Finish the prompt and create the project",
-		"abort":    "Abort the prompt and exit",
+		RefineSelection: "Write a prompt to further refine this program",
+		YesSelection:    "Use this program to create the project",
+		NoSelection:     "Abort the prompt and exit",
 	}
 	if !yes {
 		if err := survey.AskOne(&survey.Select{
-			Message: "What would you like to do?",
+			Message: "Use this program as a template?",
 			Options: continuePromptOptions,
 			Description: func(opt string, _ int) string {
 				return continuePromptOptionsDescriptions[opt]
@@ -600,13 +610,13 @@ func runAINewPromptStep(
 		}, &continueSelection, surveyIcons(opts.Color)); err != nil {
 			return "", "", "", err
 		}
-		if continueSelection == "abort" {
+		if continueSelection == NoSelection {
 			return "", "", "", errors.New("aborting prompt")
 		}
 	} else {
-		continueSelection = "done"
+		continueSelection = YesSelection
 	}
-	return continueSelection, conversationURL, connectionID, nil
+	return continueSelection, conversationURLReturn, connectionIDReturn, nil
 }
 
 // newNewCmd creates a New command with default dependencies.
