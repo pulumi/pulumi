@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -287,15 +288,15 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
-	deployment     *Deployment           // the current deployment.
-	old            *resource.State       // the state of the existing resource.
-	replacing      bool                  // true if part of a replacement.
-	otherDeletions map[resource.URN]bool // other resources that are planned to delete
+	deployment     *Deployment     // the current deployment.
+	old            *resource.State // the state of the existing resource.
+	replacing      bool            // true if part of a replacement.
+	otherDeletions *sync.Map       // other resources that are planned to delete
 }
 
 var _ Step = (*DeleteStep)(nil)
 
-func NewDeleteStep(deployment *Deployment, otherDeletions map[resource.URN]bool, old *resource.State) Step {
+func NewDeleteStep(deployment *Deployment, otherDeletions *sync.Map, old *resource.State) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
 	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
@@ -311,7 +312,7 @@ func NewDeleteStep(deployment *Deployment, otherDeletions map[resource.URN]bool,
 
 func NewDeleteReplacementStep(
 	deployment *Deployment,
-	otherDeletions map[resource.URN]bool,
+	otherDeletions *sync.Map,
 	old *resource.State,
 	pendingReplace bool,
 ) Step {
@@ -368,15 +369,15 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
-func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
+func isDeletedWith(with resource.URN, otherDeletions *sync.Map) bool {
 	if with == "" {
 		return false
 	}
-	r, ok := otherDeletions[with]
+	r, ok := otherDeletions.Load(with)
 	if !ok {
 		return false
 	}
-	return r
+	return r.(bool)
 }
 
 type deleteProtectedError struct {

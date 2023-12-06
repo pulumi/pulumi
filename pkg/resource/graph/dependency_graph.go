@@ -3,6 +3,8 @@
 package graph
 
 import (
+	"sync"
+
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -25,19 +27,24 @@ type DependencyGraph struct {
 //
 // includeChildren adds children as another type of (transitive) dependency.
 func (dg *DependencyGraph) DependingOn(res *resource.State,
-	ignore map[resource.URN]bool, includeChildren bool,
+	ignore *sync.Map, includeChildren bool,
 ) []*resource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
 	// topological order.
 	var dependents []*resource.State
 	dependentSet := make(map[resource.URN]bool)
 
+	if ignore == nil {
+		ignore = &sync.Map{}
+	}
+
 	cursorIndex, ok := dg.index[res]
 	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	dependentSet[res.URN] = true
 
 	isDependent := func(candidate *resource.State) bool {
-		if ignore[candidate.URN] {
+		ignoreURN, ok := ignore.Load(candidate.URN)
+		if ok && ignoreURN.(bool) {
 			return false
 		}
 		if includeChildren && dependentSet[candidate.Parent] {

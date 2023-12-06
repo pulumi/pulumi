@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -618,7 +619,7 @@ func TestDeletion(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, &sync.Map{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -644,7 +645,7 @@ func TestFailedDelete(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, &sync.Map{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -817,7 +818,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, &sync.Map{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -849,7 +850,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, &sync.Map{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()

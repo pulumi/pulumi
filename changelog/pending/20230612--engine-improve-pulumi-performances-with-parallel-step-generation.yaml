@@ -1,0 +1,4 @@
+changes:
+  - type: feat
+    scope: engine
+    description: Improve pulumi performances with parallel step generation.

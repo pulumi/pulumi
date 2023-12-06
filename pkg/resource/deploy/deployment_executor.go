@@ -18,7 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -40,6 +42,51 @@ type deploymentExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this deployment
 }
 
+// SafeError thread-safe error object
+type SafeError struct {
+	mu    sync.Mutex
+	value error
+}
+
+func (se *SafeError) Set(err error) {
+	se.mu.Lock()
+	defer se.mu.Unlock()
+	se.value = err
+}
+
+func (se *SafeError) Get() error {
+	se.mu.Lock()
+	defer se.mu.Unlock()
+	return se.value
+}
+
+// NewSemWaitGroup returns a new SemWaitGroup
+func NewSemWaitGroup(size int) *SemWaitGroup {
+	return &SemWaitGroup{
+		sem: make(chan bool, size),
+	}
+}
+
+// SemWaitGroup is a wait group with a semaphore
+type SemWaitGroup struct {
+	sem chan bool
+	wg  sync.WaitGroup
+}
+
+func (s *SemWaitGroup) Add(x int) {
+	s.wg.Add(x)
+	s.sem <- true
+}
+
+func (s *SemWaitGroup) Done() {
+	<-s.sem
+	s.wg.Done()
+}
+
+func (s *SemWaitGroup) Wait() {
+	s.wg.Wait()
+}
+
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.  The target must either have existed in the stack
 // prior to running the operation, or it must be the urn for a resource that was created.
@@ -49,15 +96,17 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 	}
 
 	olds := ex.deployment.olds
-	var news map[resource.URN]bool
+	var news *sync.Map
 	if ex.stepGen != nil {
 		news = ex.stepGen.urns
 	}
 
 	hasUnknownTarget := false
 	for _, target := range targets.Literals() {
+
+		newTarget, newTargetExists := news.Load(target)
 		hasOld := olds != nil && olds[target] != nil
-		hasNew := news != nil && news[target]
+		hasNew := news != nil && (newTargetExists && newTarget.(bool))
 		if !hasOld && !hasNew {
 			hasUnknownTarget = true
 
@@ -211,6 +260,14 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+		var safeError SafeError
+		// Set up a wait group for this deployment with DegreeOfParallelism number of goroutines.
+		// if DegreeOfParallelism is less than the number of CPUs, then use the parallelism.
+		concurrentRoutines := runtime.NumCPU()
+		if opts.DegreeOfParallelism() < concurrentRoutines {
+			concurrentRoutines = opts.DegreeOfParallelism()
+		}
+		wg := NewSemWaitGroup(concurrentRoutines)
 		for {
 			select {
 			case event := <-incomingEvents:
@@ -228,6 +285,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				}
 
 				if event.Event == nil {
+					wg.Wait()
+					if safeError.Get() != nil {
+						cancel()
+						return false, result.BailError(safeError.Get())
+					}
+
 					// Check targets before performDeletes mutates the initial Snapshot.
 					targetErr := ex.checkTargets(opts.Targets)
 
@@ -246,16 +309,24 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 					}
 					return false, nil
 				}
-
-				if err := ex.handleSingleEvent(event.Event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+				wg.Add(1)
+				go func(event nextEvent) {
+					defer wg.Done()
+					if err := ex.handleSingleEvent(event.Event); err != nil {
+						if !result.IsBail(err) {
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+						}
+						safeError.Set(err)
 					}
-					cancel()
-					return false, result.BailError(err)
-				}
+				}(event)
+
 			case <-ctx.Done():
+				wg.Wait()
+				if safeError.Get() != nil {
+					cancel()
+					return false, result.BailError(safeError.Get())
+				}
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
