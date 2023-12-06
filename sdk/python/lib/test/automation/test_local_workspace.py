@@ -220,6 +220,29 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(Stack.create_or_select(stack_name, ws).name, stack_name)
         ws.remove_stack(stack_name)
 
+    def test_config_env_functions(self):
+        project_name = "python_env_test"
+        project_settings = ProjectSettings(name=project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        # Ensure an env that doesn't exist errors
+        self.assertRaises(CommandError, stack.add_environments, "non-existent-env")
+
+        # Ideally here we would be able to check that the envs were added/removed, but the CLI doesn't
+        # currently support listing envs from a stack configuration. We can at least check that the
+        # commands don't error.
+
+        # Ensure envs that do exist can be added
+        stack.add_environments("automation-api-test-env", "automation-api-test-env-2")
+
+        # Ensure envs can be removed
+        stack.remove_environment("automation-api-test-env-2")
+        stack.remove_environment("automation-api-test-env")
+
+        ws.remove_stack(stack_name)
+
     def test_config_functions(self):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")
