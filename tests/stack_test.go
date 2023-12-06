@@ -95,16 +95,18 @@ func TestStackCommands(t *testing.T) {
 		stacks, current := integration.GetStacks(e)
 		if current == nil {
 			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		} else {
+			assert.Equal(t, "lothric", *current)
 		}
-		assert.Equal(t, "lothric", *current)
 
 		// Select works
 		e.RunCommand("pulumi", "stack", "select", "blighttown")
 		stacks, current = integration.GetStacks(e)
 		if current == nil {
 			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		} else {
+			assert.Equal(t, "blighttown", *current)
 		}
-		assert.Equal(t, "blighttown", *current)
 
 		// Error
 		out, err := e.RunCommandExpectError("pulumi", "stack", "select", "anor-londo")
@@ -130,17 +132,19 @@ func TestStackCommands(t *testing.T) {
 		stacks, current := integration.GetStacks(e)
 		if current == nil {
 			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		} else {
+			assert.Equal(t, "second", *current)
 		}
-		assert.Equal(t, "second", *current)
 
 		// Specifying `--no-select` prevents selection.
 		e.RunCommand("pulumi", "stack", "init", "third", "--no-select")
 		stacks, current = integration.GetStacks(e)
 		if current == nil {
 			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		} else {
+			// "second" should still be selected.
+			assert.Equal(t, "second", *current)
 		}
-		// "second" should still be selected.
-		assert.Equal(t, "second", *current)
 
 		assert.Equal(t, 3, len(stacks))
 		assert.Contains(t, stacks, "first")
@@ -167,8 +171,9 @@ func TestStackCommands(t *testing.T) {
 		stacks, current := integration.GetStacks(e)
 		if current == nil {
 			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		} else {
+			assert.Equal(t, "two", *current)
 		}
-		assert.Equal(t, "two", *current)
 
 		e.RunCommand("pulumi", "stack", "unselect")
 		_, updatedCurrentStack := integration.GetStacks(e)
