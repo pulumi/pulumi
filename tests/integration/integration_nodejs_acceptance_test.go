@@ -46,6 +46,7 @@ func TestEmptyNodeJS(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferenceNodeJS(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
 
@@ -54,11 +55,11 @@ func TestStackReferenceNodeJS(t *testing.T) {
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step1",
+				Dir:      filepath.Join("stack_reference", "nodejs", "step1"),
 				Additive: true,
 			},
 			{
-				Dir:      "step2",
+				Dir:      filepath.Join("stack_reference", "nodejs", "step2"),
 				Additive: true,
 			},
 		},

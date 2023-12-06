@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto
+  description: Don't swallow error if EditDir is not found in ProgramTest.
