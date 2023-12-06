@@ -15,6 +15,7 @@ type Platform interface {
 	Search(query string) ([]Resource, error)
 	RunDeployment(args DeploymentArgs)
 	GetServiceTemplate(name string) ServiceTemplate
+	ListStacks() []Stack
 }
 
 type CloudPlatform struct{}
@@ -39,9 +40,15 @@ func (c *CloudPlatform) GetServiceTemplate(name string) ServiceTemplate {
 	return &CloudServiceTemplate{}
 }
 
+func (c *CloudPlatform) ListStacks() []Stack {
+	return []Stack{}
+}
+
 type Stack interface {
 	SupportsDeployments() bool
+	HasEnvironment() bool
 	RunDeployment(args DeploymentArgs)
+	Name() string
 }
 
 type CloudStack struct{}
@@ -56,6 +63,17 @@ type DeploymentArgs struct {
 	Dir       string
 	EnvVars   []string
 	Targets   []string
+	// AquireSource specifies whether or not the deployment should clone source code. Defaults to true.
+	AcquireSource   bool
+	RefreshConfig   bool
+	ExpectNoChanges bool
+	OnFailure       *NotificationArgs
+}
+
+type NotificationArgs struct {
+	Type    string
+	Route   string
+	Message string
 }
 
 func (cs *CloudStack) SupportsDeployments() bool {
@@ -63,6 +81,15 @@ func (cs *CloudStack) SupportsDeployments() bool {
 }
 
 func (cs *CloudStack) RunDeployment(args DeploymentArgs) {
+}
+
+// returns true if the stack uses ESC to manage cloud creds
+func (cs *CloudStack) HasEnvironment() bool {
+	return true
+}
+
+func (cs *CloudStack) Name() string {
+	return ""
 }
 
 type Resource interface {

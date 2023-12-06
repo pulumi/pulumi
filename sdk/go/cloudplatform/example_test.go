@@ -108,3 +108,46 @@ func ExampleServiceCreationFromTemplate() {
 		},
 	})
 }
+
+func ExampleDriftDetectionImplementation() {
+	org := "acme"
+	p, err := NewCloudPlatform(org)
+	if err != nil {
+		panic(err)
+	}
+
+	stacks := p.ListStacks()
+	for _, stack := range stacks {
+		if stack.SupportsDeployments() || stack.HasEnvironment() {
+			stack.RunDeployment(DeploymentArgs{
+				// we don't need source code for refresh/destroy
+				AcquireSource:   false,
+				Operation:       "refresh",
+				ExpectNoChanges: true,
+				OnFailure: &NotificationArgs{
+					Type:    "slack", // could be "email" or "policy-violation"
+					Route:   "#drift-alerts",
+					Message: fmt.Sprintf("drift check failed for stack %s", stack.Name()),
+				},
+			})
+		}
+	}
+}
+
+func ExampleDriftJob() {
+	org := "acme"
+	p, err := NewCloudPlatform(org)
+	if err != nil {
+		panic(err)
+	}
+
+	// run any automation API program in Pulumi Cloud
+	p.CreateAutomationJob("drift-checker", AutomationJobArgs{
+		Repo:       "github.com/pulumi/automation-api-examples",
+		Dir:        "go/drift",
+		Entrypoint: "go run main.go",
+		Mode:       "cron",
+		// run every day at 8am
+		Schedule: "0 8 * * *",
+	})
+}
