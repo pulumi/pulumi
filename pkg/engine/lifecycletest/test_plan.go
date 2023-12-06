@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -430,4 +433,54 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			},
 		},
 	}
+}
+
+type testBuilder struct {
+	t       *testing.T
+	loaders []*deploytest.ProviderLoader
+	snap    *deploy.Snapshot
+}
+
+func newTestBuilder(t *testing.T, snap *deploy.Snapshot) *testBuilder {
+	return &testBuilder{
+		t:       t,
+		snap:    snap,
+		loaders: slice.Prealloc[*deploytest.ProviderLoader](1),
+	}
+}
+
+func (b *testBuilder) WithProvider(name string, version string, prov *deploytest.Provider) *testBuilder {
+	loader := deploytest.NewProviderLoader("pkgA", semver.MustParse(version), func() (plugin.Provider, error) {
+		return prov, nil
+	})
+	b.loaders = append(b.loaders, loader)
+	return b
+}
+
+type Result struct {
+	snap *deploy.Snapshot
+	err  error
+}
+
+func (b *testBuilder) RunUpdate(program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error) *Result {
+	programF := deploytest.NewLanguageRuntimeF(program)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, b.loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run an update for initial state.
+	var err error
+	snap, err := TestOp(Update).Run(
+		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil)
+	return &Result{
+		snap: snap,
+		err:  err,
+	}
+}
+
+// Then() is used to convey dependence between program runs via program structure.
+func (res *Result) Then(do func(snap *deploy.Snapshot, err error)) {
+	do(res.snap, res.err)
 }
