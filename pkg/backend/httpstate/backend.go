@@ -411,7 +411,7 @@ func (m defaultLoginManager) Login(
 	fmt.Printf(opts.Color.Colorize(line1) + "\n")
 	maxlen := line1len
 
-	line2 := fmt.Sprintf("Run `%s --help` for alternative login options.", command)
+	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
 	line2len := len(line2)
 	fmt.Printf(opts.Color.Colorize(line2) + "\n")
 	if line2len > maxlen {
