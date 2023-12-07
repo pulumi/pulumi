@@ -9,6 +9,7 @@ replace github.com/pulumi/pulumi/pkg/v3 => ../../pkg
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/deckarep/golang-set/v2 v2.5.0
+	github.com/hexops/gotextdiff v1.0.3
 	github.com/pulumi/pulumi/pkg/v3 v3.81.0
 	github.com/pulumi/pulumi/sdk/v3 v3.95.0
 	github.com/segmentio/encoding v0.3.6
