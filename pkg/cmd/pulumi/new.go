@@ -526,7 +526,6 @@ func sendPromptToPulumiAI(promptMessage string, conversationID string, connectio
 		return "", "", "", err
 	}
 	userDataCookie := http.Cookie{Name: "pulumi_command_line_user_name", Value: userName}
-	fmt.Println("User name found: ", userName)
 	request, err := http.NewRequest("POST", requestPath.String(), bytes.NewReader(marshalledBody))
 	if err != nil {
 		return "", "", "", err
