@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/nodejs
+  description: Include @types/google-protobuf as a dependency
