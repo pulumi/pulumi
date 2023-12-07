@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Add TypeScript definitions for the grpc and protobuf generated code.

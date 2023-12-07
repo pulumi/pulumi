@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: Fix compiling plain element type with plain maps

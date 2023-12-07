@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: Fix generating input collection types for enums when used from an array of map of enums

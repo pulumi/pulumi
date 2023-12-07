@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen
-  description: Return all bind diagnostics in sdk-gen rather than just the first.

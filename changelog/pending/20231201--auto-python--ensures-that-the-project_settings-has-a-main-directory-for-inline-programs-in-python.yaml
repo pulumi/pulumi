@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/python
-  description: Ensures that the project_settings has a main directory for inline programs in python

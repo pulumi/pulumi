@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Warn if SDKs are trying to use old RegisterResource style StackReferences.
