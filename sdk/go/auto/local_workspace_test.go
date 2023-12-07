@@ -55,7 +55,7 @@ var pulumiOrg = getTestOrg()
 const (
 	pName         = "testproj"
 	agent         = "pulumi/pulumi/test"
-	pulumiTestOrg = "pulumi-test"
+	pulumiTestOrg = "moolumi"
 )
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
@@ -1344,6 +1344,9 @@ func TestConfigFlagLike(t *testing.T) {
 	assert.Equalf(t, "-value", cm["testproj:secret-key"].Value, "wrong secret-key")
 	assert.Equalf(t, false, cm["testproj:key"].Secret, "key should not be secret")
 	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
+
+	err = s.Workspace().RemoveStack(ctx, stackName)
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func TestConfigWithOptions(t *testing.T) {
@@ -1362,6 +1365,12 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, stackName)
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
 	// test backward compatibility
 	err = s.SetConfigWithOptions(ctx, "key1", ConfigValue{"value1", false}, nil)
 	if err != nil {
@@ -1539,6 +1548,11 @@ func TestConfigAllWithOptions(t *testing.T) {
 		t.FailNow()
 	}
 
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, stackName)
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
 	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
 		"key1": ConfigValue{
 			Value:  "value1",
@@ -1641,6 +1655,11 @@ func TestNestedConfig(t *testing.T) {
 		t.FailNow()
 	}
 
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, stackName)
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
 	// Also retrieve the stack settings directly from the yaml file and
 	// make sure the config agrees with the config loaded by Pulumi.
 	stackSettings, err := s.Workspace().StackSettings(ctx, stackName)
@@ -1687,9 +1706,6 @@ func TestNestedConfig(t *testing.T) {
 	}
 	assert.False(t, list.Secret)
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
-
-	err = s.Workspace().RemoveStack(ctx, stackName)
-	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func TestEnvFunctions(t *testing.T) {
@@ -1704,6 +1720,11 @@ func TestEnvFunctions(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, stackName)
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
 
 	// Errors when trying to add a non-existent env
 	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env"))
@@ -1725,9 +1746,6 @@ func TestEnvFunctions(t *testing.T) {
 		t.Errorf("removing environment failed, err: %v", err)
 		t.FailNow()
 	}
-
-	err = s.Workspace().RemoveStack(ctx, stackName)
-	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func TestTagFunctions(t *testing.T) {
