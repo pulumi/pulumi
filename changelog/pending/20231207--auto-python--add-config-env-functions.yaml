@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Adds add_environments and remove_environment functions to Stack and LocalWorkspace classes for python Automation API.
