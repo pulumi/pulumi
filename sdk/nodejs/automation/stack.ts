@@ -531,6 +531,24 @@ Event: ${line}\n${e.toString()}`);
         };
     }
     /**
+     * Adds environments to the end of a stack's import list. Imported environments are merged in order
+     * per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param environments The names of the environments to add to the stack's configuration
+     */
+    async addEnvironments(...environments: string[]): Promise<void> {
+        await this.workspace.addEnvironments(this.name, ...environments);
+    }
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param environment The name of the environment to remove from the stack's configuration
+     */
+    async removeEnvironment(environment: string): Promise<void> {
+        await this.workspace.addEnvironments(this.name, environment);
+    }
+    /**
      * Returns the config value associated with the specified key.
      *
      * @param key The key to use for the config lookup
