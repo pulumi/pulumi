@@ -139,6 +139,35 @@ describe("LocalWorkspace", () => {
             await workspace.removeStack(stackName);
         });
     });
+    it(`Environment functions`, async () => {
+        const projectName = "node_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+
+        let caught = 0;
+
+        // Adding non-existent env should fail.
+        try {
+            await stack.addEnvironments("non-existent-env");
+        } catch (error) {
+            caught++;
+        }
+        assert.strictEqual(caught, 1, "expected adding a non-existent env to throw");
+
+        // Adding existing env should succeed.
+        await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
+
+        // Removing existing env should succeed.
+        await stack.removeEnvironment("automation-api-test-env");
+        await stack.removeEnvironment("automation-api-test-env-2");
+
+        await ws.removeStack(stackName);
+    });
     it(`Config`, async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
@@ -303,6 +332,7 @@ describe("LocalWorkspace", () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
+        const ws = stack.workspace;
 
         const allConfig = await stack.getAllConfig();
         const outerVal = allConfig["nested_config:outer"];
@@ -320,6 +350,8 @@ describe("LocalWorkspace", () => {
         const list = await stack.getConfig("myList");
         assert.strictEqual(list.secret, false);
         assert.strictEqual(list.value, '["one","two","three"]');
+
+        await ws.removeStack(stackName);
     });
     it(`can list stacks and currently selected stack`, async () => {
         const projectName = `node_list_test${getTestSuffix()}`;
