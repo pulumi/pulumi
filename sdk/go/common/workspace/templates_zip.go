@@ -93,7 +93,10 @@ func shouldRetry(err error, resp *http.Response) bool {
 
 func drainBody(resp *http.Response) {
 	if resp.Body != nil {
-		io.Copy(io.Discard, resp.Body)
+		_, err := io.Copy(io.Discard, resp.Body)
+		if err != nil {
+			return
+		}
 		resp.Body.Close()
 	}
 }
