@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `--import-file` to `pulumi preview` to generate a placeholder import file for every resource that needs to Create.

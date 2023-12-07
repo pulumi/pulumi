@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.96.0 (2023-12-07)
+
+
+### Features
+
+- [cli] Add `--import-file` to `pulumi preview` to generate a placeholder import file for every resource that needs to Create.
+  [#14548](https://github.com/pulumi/pulumi/pull/14548)
+
+- [sdk/nodejs] Add TypeScript definitions for the grpc and protobuf generated code.
+  [#14415](https://github.com/pulumi/pulumi/pull/14415)
+
+
+### Bug Fixes
+
+- [auto] Don't swallow error if EditDir is not found in ProgramTest.
+  [#14695](https://github.com/pulumi/pulumi/pull/14695)
+
+- [cli/display] Fix a panic in diff display when parsing YAML strings
+  [#14710](https://github.com/pulumi/pulumi/pull/14710)
+
+- [auto/python] Ensures that the project_settings has a main directory for inline programs in python
+  [#14709](https://github.com/pulumi/pulumi/pull/14709)
+
+- [engine] Error if a resource's parent is a skipped create.
+  [#14672](https://github.com/pulumi/pulumi/pull/14672)
+
+- [engine] Warn if SDKs are trying to use old RegisterResource style StackReferences.
+  [#14678](https://github.com/pulumi/pulumi/pull/14678)
+
+- [engine] Send resource inputs as inputs and state for Reads.
+  [#14683](https://github.com/pulumi/pulumi/pull/14683)
+
+- [engine] Engine now prefers stable plugin versions to pre-releases when no explict version is given.
+  [#14700](https://github.com/pulumi/pulumi/pull/14700)
+
+- [engine] Fix handling of delete failures for targeted destroys
+  [#14735](https://github.com/pulumi/pulumi/pull/14735)
+
+- [sdkgen] Return all bind diagnostics in sdk-gen rather than just the first.
+  [#14661](https://github.com/pulumi/pulumi/pull/14661)
+
+- [sdkgen/go] Fix compiling plain element type with plain maps
+  [#14704](https://github.com/pulumi/pulumi/pull/14704)
+
+- [sdkgen/go] Fix generating input collection types for enums when used from an array of map of enums
+  [#14744](https://github.com/pulumi/pulumi/pull/14744)
+
+- [backend/service] Service backend now validates snapshots are valid on load, same as the self managed backend. This can be disabled with --disable-integrity-checking.
+  [#14046](https://github.com/pulumi/pulumi/pull/14046)
+
 ## 3.95.0 (2023-12-01)
 
 
