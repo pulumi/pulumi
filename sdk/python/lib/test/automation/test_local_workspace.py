@@ -69,8 +69,6 @@ version_tests = [
 ]
 test_min_version = VersionInfo.parse("2.21.1")
 
-TEST_ORG = "moolumi"
-
 
 def get_test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
@@ -455,9 +453,9 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_nested_config(self):
-        if get_test_org() != TEST_ORG:
+        if get_test_org() != "pulumi-test":
             return
-        stack_name = fully_qualified_stack_name(TEST_ORG, "nested_config", "dev")
+        stack_name = fully_qualified_stack_name("pulumi-test", "nested_config", "dev")
         project_dir = get_test_path("data", "nested_config")
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
 
