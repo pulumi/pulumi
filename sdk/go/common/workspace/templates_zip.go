@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-const RetryCount = 4
+const RetryCount = 6
 
 // Sanitize archive file pathing from "G305: Zip Slip vulnerability"
 func sanitizeArchivePath(d, t string) (v string, err error) {
