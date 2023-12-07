@@ -1687,6 +1687,47 @@ func TestNestedConfig(t *testing.T) {
 	}
 	assert.False(t, list.Secret)
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
+
+	err = s.Workspace().RemoveStack(ctx, stackName)
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
+func TestEnvFunctions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, randomStackName())
+
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	// Errors when trying to add a non-existent env
+	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env"))
+
+	// No error when adding an existing env
+	err = s.AddEnvironments(ctx, "automation-api-test-env", "automation-api-test-env-2")
+	if err != nil {
+		t.Errorf("adding environments failed, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.RemoveEnvironment(ctx, "automation-api-test-env")
+	if err != nil {
+		t.Errorf("removing environment failed, err: %v", err)
+		t.FailNow()
+	}
+	err = s.RemoveEnvironment(ctx, "automation-api-test-env-2")
+	if err != nil {
+		t.Errorf("removing environment failed, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.Workspace().RemoveStack(ctx, stackName)
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func TestTagFunctions(t *testing.T) {
