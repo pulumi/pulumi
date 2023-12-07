@@ -8,6 +8,7 @@
         "@pulumi/pulumi": "^3.42.0"
     },
     "devDependencies": {
+        "@types/google-protobuf": "^3.15.12",
         "@types/mocha": "latest",
         "@types/node": "ts4.3",
         "mocha": "latest",

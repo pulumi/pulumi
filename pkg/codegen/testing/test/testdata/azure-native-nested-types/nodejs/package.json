@@ -18,6 +18,7 @@
         "@pulumi/pulumi": "^3.0.0"
     },
     "devDependencies": {
+        "@types/google-protobuf": "^3.15.12",
         "@types/node": "^14",
         "typescript": "^4.3.5"
     },
