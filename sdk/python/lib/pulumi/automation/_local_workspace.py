@@ -216,14 +216,14 @@ class LocalWorkspace(Workspace):
         # Not used by LocalWorkspace
         return
 
-    def add_environments(self, *environment_names: str) -> None:
+    def add_environments(self, stack_name: str, *environment_names: str) -> None:
         args = ["config", "env", "add"]
         args.extend(environment_names)
-        args.append("--yes")
+        args.extend(["--yes", "--stack", stack_name])
         self._run_pulumi_cmd_sync(args)
 
-    def remove_environment(self, environment_name: str) -> None:
-        args = ["config", "env", "rm", environment_name, "--yes"]
+    def remove_environment(self, stack_name: str, environment_name: str) -> None:
+        args = ["config", "env", "rm", environment_name, "--yes", "--stack", stack_name]
         self._run_pulumi_cmd_sync(args)
 
     def get_config(

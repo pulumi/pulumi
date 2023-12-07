@@ -588,13 +588,13 @@ class Stack:
 
         :param environment_names: The names of the environments to add.
         """
-        self.workspace.add_environments(*environment_names)
+        return self.workspace.add_environments(self.name, *environment_names)
 
     def remove_environment(self, environment_name: str) -> None:
         """
         Removes an environment from a stack's import list.
         """
-        self.workspace.remove_environment(environment_name)
+        return self.workspace.remove_environment(self.name, environment_name)
 
     def get_config(self, key: str, *, path: bool = False) -> ConfigValue:
         """

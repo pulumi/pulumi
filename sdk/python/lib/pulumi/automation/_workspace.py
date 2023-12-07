@@ -207,20 +207,22 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def add_environments(self, *environment_names: str) -> None:
+    def add_environments(self, stack_name: str, *environment_names: str) -> None:
         """
         Adds environments to the end of a stack's import list. Imported environments are merged in order
         per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
         environment.
 
+
         :param environment_names: The names of the environment to add.
         """
 
     @abstractmethod
-    def remove_environment(self, environment_name: str) -> None:
+    def remove_environment(self, stack_name: str, environment_name: str) -> None:
         """
         Removes the specified environment from the stack configuration.
 
+        :param stack_name: The name of the stack.
         :param environment_name: The name of the environment to remove.
         """
 
