@@ -205,3 +205,4 @@ get_schemas: \
 .PHONY: changelog
 changelog:
 	go run github.com/aaronfriel/go-change@v0.1.2 create
+# Added an extra line to create a new commit to run tests.
