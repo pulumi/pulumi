@@ -82,10 +82,11 @@ type newArgs struct {
 	listTemplates     bool
 	aiPrompt          string
 	aiLanguage        string
+	templateMode      bool
 }
 
 func shouldPromptForAIOrTemplate(args newArgs) bool {
-	return args.aiPrompt == "" && args.aiLanguage == ""
+	return args.aiPrompt == "" && args.aiLanguage == "" && !args.templateMode
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -162,7 +163,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		if shouldPromptForAIOrTemplate(args) {
 			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
 		} else {
-			aiOrTemplate = "ai"
+			aiOrTemplate = "template"
 		}
 		if err != nil {
 			return err
@@ -790,6 +791,10 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&args.aiLanguage, "language", "", "Language to use for Pulumi AI "+
 			"(possible choices: TypeScript, JavaScript, Python, Go, C#)",
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.templateMode, "template-mode", "t", false,
+		"Run in template mode, which will skip prompting for AI or Template functionality",
 	)
 
 	return cmd

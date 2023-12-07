@@ -439,6 +439,7 @@ func TestInvalidTemplateName(t *testing.T) {
 			yes:               true,
 			secretsProvider:   "default",
 			templateNameOrURL: "",
+			templateMode:      true,
 		}
 
 		err := runNew(context.Background(), args)
