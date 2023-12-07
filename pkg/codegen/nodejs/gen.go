@@ -46,10 +46,9 @@ import (
 
 // The minimum version of @pulumi/pulumi compatible with the generated SDK.
 const (
-	MinimumValidSDKVersion      string = "^3.42.0"
-	MinimumTypescriptVersion    string = "^4.3.5"
-	MinimumNodeTypesVersion     string = "^14"
-	MinimumProtobufTypesVersion string = "^3.15.12"
+	MinimumValidSDKVersion   string = "^3.42.0"
+	MinimumTypescriptVersion string = "^4.3.5"
+	MinimumNodeTypesVersion  string = "^14"
 )
 
 type typeDetails struct {
@@ -2386,7 +2385,6 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		devDependencies["typescript"] = MinimumTypescriptVersion
 	}
 	devDependencies["@types/node"] = MinimumNodeTypesVersion
-	devDependencies["@types/google-protobuf"] = MinimumProtobufTypesVersion
 
 	version := "${VERSION}"
 	pluginVersion := ""
