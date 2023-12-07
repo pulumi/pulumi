@@ -516,7 +516,7 @@ func sendPromptToPulumiAI(promptMessage string, conversationID string, connectio
 	requestBody := AIPromptRequestBody{
 		Language:       language,
 		Instructions:   promptMessage,
-		Model:          "gpt-4",
+		Model:          "gpt-4-turbo",
 		ResponseMode:   "code",
 		ConversationID: conversationID,
 		ConnectionID:   connectionID,
@@ -526,7 +526,7 @@ func sendPromptToPulumiAI(promptMessage string, conversationID string, connectio
 		return "", "", "", err
 	}
 	userDataCookie := http.Cookie{Name: "pulumi_command_line_user_name", Value: userName}
-	fmt.Println("cookie", userDataCookie)
+	fmt.Println("User name found: ", userName)
 	request, err := http.NewRequest("POST", requestPath.String(), bytes.NewReader(marshalledBody))
 	if err != nil {
 		return "", "", "", err
@@ -582,6 +582,13 @@ func runAINewPromptStep(
 	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(promptMessage, conversationID, connectionID, userName, language)
 	if err != nil {
 		return "", "", "", "", err
+	}
+	if connectionID != "" && connectionID != connectionIDReturn {
+		connectionIDReturn = connectionID
+		fmt.Println("Connection ID changed, please restart the prompt")
+	}
+	if conversationID != "" && conversationID != conversationIDReturn {
+		return "", "", "", "", fmt.Errorf("conversation id %s changed to %s", conversationID, conversationIDReturn)
 	}
 	continuePromptOptions := []string{
 		RefineSelection,
