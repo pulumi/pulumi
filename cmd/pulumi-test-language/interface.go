@@ -265,10 +265,14 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 		}
 
 		if !bytes.Equal(actualContents, expectedContents) {
-			edits := myers.ComputeEdits(span.URIFromPath("expected"), string(expectedContents), string(actualContents))
-			diff := fmt.Sprint(gotextdiff.ToUnified("expected", "actual", string(expectedContents), edits))
+			edits := myers.ComputeEdits(
+				span.URIFromPath("expected"), string(expectedContents), string(actualContents),
+			)
+			diff := gotextdiff.ToUnified("expected", "actual", string(expectedContents), edits)
 
-			validations = append(validations, fmt.Sprintf("expected file %s does not match actual file:\n\n%s", relativePath, diff))
+			validations = append(validations, fmt.Sprintf(
+				"expected file %s does not match actual file:\n\n%s", relativePath, diff),
+			)
 		}
 
 		return nil
