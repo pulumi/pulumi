@@ -38,11 +38,10 @@ from pulumi.automation import (
     Stack,
     StackSettings,
     StackAlreadyExistsError,
-    fully_qualified_stack_name,
 )
 from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
 
-from .test_utils import get_test_org, get_test_suffix, stack_namer
+from .test_utils import get_test_suffix, stack_namer
 
 extensions = ["json", "yaml", "yml"]
 
@@ -68,7 +67,6 @@ version_tests = [
     ("invalid", None, True),
 ]
 test_min_version = VersionInfo.parse("2.21.1")
-
 
 def get_test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
@@ -453,7 +451,7 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_nested_config(self):
-        stack_name = fully_qualified_stack_name("pulumi-test", "nested_config", "dev")
+        stack_name = stack_namer("nested_config")
         project_dir = get_test_path("data", "nested_config")
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
 
@@ -849,6 +847,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.set_all_config(stack_config)
 
             events: List[str] = []
+
             def find_diagnostic_events(event: EngineEvent):
                 if event.diagnostic_event and event.diagnostic_event.severity == "warning":
                     events.append(event.diagnostic_event.message)
@@ -930,18 +929,23 @@ def pulumi_program():
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
 
+
 @pytest.mark.parametrize("key,default", [("string", None), ("bar", "baz"), ("doesnt-exist", None)])
 def test_config_get_with_defaults(key, default, mock_config, config_settings):
     assert mock_config.get(key, default) == config_settings.get(f"test-config:{key}", default)
 
+
 def test_config_get_int(mock_config, config_settings):
     assert mock_config.get_int("int") == int(config_settings.get("test-config:int"))
+
 
 def test_config_get_bool(mock_config):
     assert mock_config.get_bool("bool") is False
 
+
 def test_config_get_object(mock_config, config_settings):
     assert mock_config.get_object("object") == json.loads(config_settings.get("test-config:object"))
+
 
 def test_config_get_float(mock_config, config_settings):
     assert mock_config.get_float("float") == float(config_settings.get("test-config:float"))
