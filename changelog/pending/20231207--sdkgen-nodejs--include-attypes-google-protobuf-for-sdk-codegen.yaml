@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: sdkgen/nodejs
-  description: Include @types/google-protobuf for SDK codegen
+  description: Include @types/google-protobuf as a dependency
