@@ -14,7 +14,7 @@
 
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
-//
+
 //nolint:lll, goconst
 package nodejs
 
