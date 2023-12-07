@@ -8,7 +8,6 @@
         "@pulumi/pulumi": "^3.42.0"
     },
     "devDependencies": {
-        "@types/google-protobuf": "^3.15.12",
         "@types/node": "ts4.3",
         "ts-node": "latest",
         "typescript": "^4.3.5"
