@@ -485,7 +485,11 @@ func runAINew(
 		"",
 		"",
 		"",
-	); continuePrompt == RefineSelection; continuePrompt, conversationURL, conversationID, connectionID, err = runAINewPromptStep(
+	); continuePrompt == RefineSelection; continuePrompt,
+		conversationURL,
+		conversationID,
+		connectionID,
+		err = runAINewPromptStep(
 		opts,
 		language,
 		prompt,
@@ -503,7 +507,13 @@ func runAINew(
 	return conversationURL, err
 }
 
-func sendPromptToPulumiAI(promptMessage string, conversationID string, connectionID string, userName string, language string) (string, string, string, error) {
+func sendPromptToPulumiAI(
+	promptMessage string,
+	conversationID string,
+	connectionID string,
+	userName string,
+	language string,
+) (string, string, string, error) {
 	pulumiAIURL := env.AIServiceEndpoint.Value()
 	if pulumiAIURL == "" {
 		pulumiAIURL = "https://www.pulumi.com/ai"
@@ -567,7 +577,12 @@ func runAINewPromptStep(
 	connectionID string,
 	conversationURL string,
 	conversationID string,
-) (continueSelection string, conversationURLReturn string, conversationIDReturn string, connectionIDReturn string, err error) {
+) (continueSelection string,
+	conversationURLReturn string,
+	conversationIDReturn string,
+	connectionIDReturn string,
+	err error,
+) {
 	var promptMessage string
 	if prompt == "" || currentContinueSelection != "" {
 		if err := survey.AskOne(&survey.Input{
@@ -578,7 +593,13 @@ func runAINewPromptStep(
 	} else {
 		promptMessage = prompt
 	}
-	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(promptMessage, conversationID, connectionID, userName, language)
+	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(
+		promptMessage,
+		conversationID,
+		connectionID,
+		userName,
+		language,
+	)
 	if err != nil {
 		return "", "", "", "", err
 	}
