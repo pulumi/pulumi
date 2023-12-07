@@ -17,8 +17,9 @@ from random import random
 
 from pulumi.automation import fully_qualified_stack_name
 
+
 def get_test_org():
-    test_org = "pulumi-test"
+    test_org = "moolumi"
     env_var = os.getenv("PULUMI_TEST_ORG")
     if env_var is not None:
         test_org = env_var

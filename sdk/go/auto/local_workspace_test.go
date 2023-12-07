@@ -55,7 +55,7 @@ var pulumiOrg = getTestOrg()
 const (
 	pName         = "testproj"
 	agent         = "pulumi/pulumi/test"
-	pulumiTestOrg = "pulumi-test"
+	pulumiTestOrg = "moolumi"
 )
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
