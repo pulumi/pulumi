@@ -66,7 +66,6 @@ jobs:
       needs: ["cleanup"]
       timeout-minutes: 240
       runs-on: ubuntu-latest
-      if: false # TODO(https://github.com/pulumi/action-test-provider-downstream/issues/20)
       env:
         GOVERSION: ">=1.19.0" # from awsx: decoupled from version sets, track latest for codegen
         NODEVERSION: "14.x"
