@@ -1,8 +1,7 @@
 {
 	"name": "l2-resource-simple",
 	"devDependencies": {
-		"@types/node": "^14",
-		"@types/google-protobuf": "^3.15.12"
+		"@types/node": "^14"
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",
