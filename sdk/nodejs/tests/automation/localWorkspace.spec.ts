@@ -325,33 +325,31 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     });
+    // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
+    // config from the file. This means we can't remove the stack at the end of the test.
+    // We should also not include secrets in this config, because the secret encryption is only valid within
+    // the context of a stack and org, and running this test in different orgs will fail if there are secrets.
     it(`nested_config`, async () => {
-        if (getTestOrg() !== "pulumi-test") {
-            return;
-        }
         const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
-        const ws = stack.workspace;
 
         const allConfig = await stack.getAllConfig();
         const outerVal = allConfig["nested_config:outer"];
-        assert.strictEqual(outerVal.secret, true);
-        assert.strictEqual(outerVal.value, '{"inner":"my_secret","other":"something_else"}');
+        assert.strictEqual(outerVal.secret, false);
+        assert.strictEqual(outerVal.value, '{"inner":"my_value","other":"something_else"}');
 
         const listVal = allConfig["nested_config:myList"];
         assert.strictEqual(listVal.secret, false);
         assert.strictEqual(listVal.value, '["one","two","three"]');
 
         const outer = await stack.getConfig("outer");
-        assert.strictEqual(outer.secret, true);
-        assert.strictEqual(outer.value, '{"inner":"my_secret","other":"something_else"}');
+        assert.strictEqual(outer.secret, false);
+        assert.strictEqual(outer.value, '{"inner":"my_value","other":"something_else"}');
 
         const list = await stack.getConfig("myList");
         assert.strictEqual(list.secret, false);
         assert.strictEqual(list.value, '["one","two","three"]');
-
-        await ws.removeStack(stackName);
     });
     it(`can list stacks and currently selected stack`, async () => {
         const projectName = `node_list_test${getTestSuffix()}`;
