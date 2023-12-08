@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.96.2 (2023-12-08)
+
+
+### Features
+
+- [cli] The CLI now uses the yaml converter plugin rather than yaml convert logic linked in.
+  [#14437](https://github.com/pulumi/pulumi/pull/14437)
+
+
+### Bug Fixes
+
+- [cli/display] Fixes displaying `warning: GOCOVERDIR not set, no coverage data emitted`
+  [#14804](https://github.com/pulumi/pulumi/pull/14804)
+
+- [engine] Don't validate URNs, this was causing issues with unexpected data from filestate backends.
+  [#14741](https://github.com/pulumi/pulumi/pull/14741)
+
 ## 3.96.1 (2023-12-07)
 
 
