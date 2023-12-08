@@ -451,9 +451,11 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_nested_config(self):
+        project_name = "nested_config"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer("nested_config")
-        project_dir = get_test_path("data", "nested_config")
-        stack = create_or_select_stack(stack_name, work_dir=project_dir)
+        stack = Stack.create(stack_name, ws)
 
         all_config = stack.get_all_config()
         outer_val = all_config["nested_config:outer"]
