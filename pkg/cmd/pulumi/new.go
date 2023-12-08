@@ -85,8 +85,8 @@ type newArgs struct {
 	templateMode      bool
 }
 
-func shouldPromptForAIOrTemplate(args newArgs) bool {
-	return args.aiPrompt == "" && args.aiLanguage == "" && !args.templateMode
+func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool {
+	return args.aiPrompt == "" && args.aiLanguage == "" && !args.templateMode && userBackend.Name() == "pulumi.com"
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -159,8 +159,23 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	if args.templateNameOrURL == "" {
+		// Try to read the current project
+		project, _, err := readProject()
+		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+			return err
+		}
+
+		b, err := currentBackend(ctx, project, opts)
+		if err != nil {
+			return err
+		}
+
+		name, _, _, err := b.CurrentUser()
+		if err != nil {
+			return err
+		}
 		var aiOrTemplate string
-		if shouldPromptForAIOrTemplate(args) {
+		if shouldPromptForAIOrTemplate(args, b) {
 			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
 		} else {
 			aiOrTemplate = "template"
@@ -169,7 +184,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		if aiOrTemplate == "ai" {
-			conversationURL, err := runAINew(ctx, args, opts, args.aiPrompt, args.aiLanguage, args.yes)
+			conversationURL, err := runAINew(ctx, args, opts, args.aiPrompt, args.aiLanguage, args.yes, name)
 			if err != nil {
 				return err
 			}
@@ -442,22 +457,8 @@ func runAINew(
 	prompt string,
 	language string,
 	yes bool,
+	userName string,
 ) (conversationURL string, err error) {
-	// Try to read the current project
-	project, _, err := readProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return "", err
-	}
-
-	b, err := currentBackend(ctx, project, opts)
-	if err != nil {
-		return "", err
-	}
-
-	name, _, _, err := b.CurrentUser()
-	if err != nil {
-		return "", err
-	}
 	languageOptions := []string{
 		"TypeScript",
 		"JavaScript",
@@ -481,7 +482,7 @@ func runAINew(
 		language,
 		prompt,
 		yes,
-		name,
+		userName,
 		"",
 		"",
 		"",
@@ -495,7 +496,7 @@ func runAINew(
 		language,
 		prompt,
 		yes,
-		name,
+		userName,
 		continuePrompt,
 		connectionID,
 		conversationURL,
