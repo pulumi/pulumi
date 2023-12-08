@@ -391,3 +391,24 @@ jobs:
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
+  build-release-binaries:
+    # This overwrites the previously built testing binaries with versions without coverage.
+    name: Rebuild binaries
+    needs: [matrix, unit-test, integration-test, acceptance-test]
+    if: ${{ inputs.enable-coverage }}
+    strategy:
+      # To avoid tying up macOS runners:
+      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
+      fail-fast: ${{ contains(needs.matrix.outputs.build-targets, 'macos') }}
+      matrix:
+        target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: ${{ matrix.target.os }}
+      arch: ${{ matrix.target.arch }}
+      build-platform: ${{ matrix.target.build-platform }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
+      enable-coverage: false
+    secrets: inherit
