@@ -38,10 +38,11 @@ from pulumi.automation import (
     Stack,
     StackSettings,
     StackAlreadyExistsError,
+    fully_qualified_stack_name,
 )
 from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
 
-from .test_utils import get_test_suffix, stack_namer
+from .test_utils import get_test_org, get_test_suffix, stack_namer
 
 extensions = ["json", "yaml", "yml"]
 
@@ -450,31 +451,32 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(all_config["python_test:secret-key"].value, "-value")
         ws.remove_stack(stack_name)
 
+    # This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
+    # config from the file. This means we can't remove the stack at the end of the test.
+    # We should also not include secrets in this config, because the secret encryption is only valid within
+    # the context of a stack and org, and running this test in different orgs will fail if there are secrets.
     def test_nested_config(self):
         project_name = "nested_config"
-        project_settings = ProjectSettings(project_name, runtime="python")
-        ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer("nested_config")
-        stack = Stack.create(stack_name, ws)
+        stack_name = fully_qualified_stack_name(get_test_org(), project_name, "dev")
+        project_dir = get_test_path("data", project_name)
+        stack = create_or_select_stack(stack_name, work_dir=project_dir)
 
         all_config = stack.get_all_config()
         outer_val = all_config["nested_config:outer"]
-        self.assertTrue(outer_val.secret)
-        self.assertEqual(outer_val.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}")
+        self.assertFalse(outer_val.secret)
+        self.assertEqual(outer_val.value, "{\"inner\":\"my_value\",\"other\":\"something_else\"}")
 
         list_val = all_config["nested_config:myList"]
         self.assertFalse(list_val.secret)
         self.assertEqual(list_val.value, "[\"one\",\"two\",\"three\"]")
 
         outer = stack.get_config("outer")
-        self.assertTrue(outer.secret)
-        self.assertEqual(outer_val.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}")
+        self.assertFalse(outer.secret)
+        self.assertEqual(outer_val.value, "{\"inner\":\"my_value\",\"other\":\"something_else\"}")
 
         arr = stack.get_config("myList")
         self.assertFalse(arr.secret)
         self.assertEqual(arr.value, "[\"one\",\"two\",\"three\"]")
-
-        stack.workspace.remove_stack(stack_name)
 
     def test_tag_methods(self):
         project_name = "python_test"
