@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 
@@ -106,6 +107,7 @@ type pluginMapper struct {
 	plugins         []mapperPluginSpec
 	entries         map[string][]byte
 	installProvider func(tokens.Package) *semver.Version
+	lock            sync.Mutex
 }
 
 func NewPluginMapper(ws Workspace,
@@ -287,6 +289,13 @@ func (l *pluginMapper) getMappingsForPlugin(pluginSpec *mapperPluginSpec, provid
 }
 
 func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error) {
+	// See https://github.com/pulumi/pulumi/issues/14718 for why we need this lock. It may be possible to be
+	// smarter about this and only lock when mutating, or at least splitting to a read/write lock, but this is
+	// a quick fix to unblock providers. If you do attempt this then write tests to ensure this doesn't
+	// regress #14718.
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
 	// If we already have an entry for this provider, use it
 	if entry, has := l.entries[provider]; has {
 		return entry, nil
