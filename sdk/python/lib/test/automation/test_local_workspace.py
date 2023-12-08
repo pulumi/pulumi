@@ -220,6 +220,8 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_config_env_functions(self):
+        if get_test_org() != "moolumi":
+            self.skipTest("Skipping test because the required environments are in the moolumi org.")
         project_name = "python_env_test"
         project_settings = ProjectSettings(name=project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
@@ -236,9 +238,21 @@ class TestLocalWorkspace(unittest.TestCase):
         # Ensure envs that do exist can be added
         stack.add_environments("automation-api-test-env", "automation-api-test-env-2")
 
+        # Check that we can access config from each env.
+        config = stack.get_all_config()
+        self.assertEqual(config[f"{project_name}:new_key"].value, "test_value")
+        self.assertEqual(config[f"{project_name}:also"].value, "business")
+
         # Ensure envs can be removed
         stack.remove_environment("automation-api-test-env-2")
+
+        # Check that we can still access config from the remaining env,
+        # and that the config from the removed env is no longer present.
+        self.assertEqual(stack.get_config("new_key"), "test_value")
+        self.assertRaises(CommandError, stack.get_config, "also")
+
         stack.remove_environment("automation-api-test-env")
+        self.assertRaises(CommandError, stack.get_config, "new_key")
 
         ws.remove_stack(stack_name)
 
