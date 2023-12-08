@@ -81,6 +81,16 @@ jobs:
           mkdir -p ./artifacts
           mv ./artifacts.tmp/artifacts-*/* ./artifacts
 
+      - name: Ensure coverage not enabled on release
+        working-directory: artifacts
+        run: |
+          if ./pulumi version 2>&1 | grep coverage; then
+            echo 'Aborting! Pulumi binary built with coverage data.'
+            exit 1
+          else
+            echo 'Pulumi binary OK!'
+          fi
+
       - name: Create sums.tmp
         run: mkdir -p ./sums.tmp ./sigs.tmp
 
