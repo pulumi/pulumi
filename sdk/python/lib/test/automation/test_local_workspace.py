@@ -248,7 +248,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         # Check that we can still access config from the remaining env,
         # and that the config from the removed env is no longer present.
-        self.assertEqual(stack.get_config("new_key"), "test_value")
+        self.assertEqual(stack.get_config("new_key").value, "test_value")
         self.assertRaises(CommandError, stack.get_config, "also")
 
         stack.remove_environment("automation-api-test-env")
