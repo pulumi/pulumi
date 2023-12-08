@@ -34,6 +34,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mockBackendInstance sets the backendInstance for the test and cleans it up after.
+func mockBackendInstance(t *testing.T, b backend.Backend) {
+	t.Cleanup(func() {
+		backendInstance = nil
+	})
+	backendInstance = b
+}
+
 //nolint:paralleltest // changes directory for process
 func TestFailInInteractiveWithoutYes(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
@@ -203,18 +211,18 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-	}
+	})
 
 	args := newArgs{
 		interactive:       false,
@@ -230,18 +238,18 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "project with this name already exists")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-	}
+	})
 
 	args := newArgs{
 		interactive:       true,
@@ -255,18 +263,18 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "Try again")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
@@ -286,18 +294,18 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
@@ -354,18 +362,18 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	removeStack(t, tempdir, stackName)
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
@@ -383,18 +391,18 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "project names may only contain")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	err := runNew(context.Background(), newArgs{

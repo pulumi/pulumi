@@ -200,7 +200,6 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "how now brown cow")
 	t.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
 
-	backendInstance = nil
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
