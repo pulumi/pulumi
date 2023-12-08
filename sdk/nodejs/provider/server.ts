@@ -218,7 +218,9 @@ class Server implements grpc.UntypedServiceImplementation {
                 const result: any = await this.provider.read(id, req.getUrn(), props);
                 resp.setId(result.id);
                 resp.setProperties(structproto.Struct.fromJavaScript(result.props));
-                resp.setInputs(structproto.Struct.fromJavaScript(result.inputs));
+                resp.setInputs(
+                    result.inputs === undefined ? undefined : structproto.Struct.fromJavaScript(result.inputs),
+                );
             } else {
                 // In the event of a missing read, simply return back the input state.
                 resp.setId(id);
