@@ -452,8 +452,8 @@ export class LocalWorkspace implements Workspace {
      * @param stackName The stack to operate on
      * @param environments The names of the environments to add to the stack's configuration
      */
-    async addEnvironments(stackName: string,...environments: string[]): Promise<void> {
-        await this.runPulumiCmd(["config", "env",  ...environments, "--stack", stackName, "--yes"]);
+    async addEnvironments(stackName: string, ...environments: string[]): Promise<void> {
+        await this.runPulumiCmd(["config", "env", ...environments, "--stack", stackName, "--yes"]);
     }
     /**
      * Removes an environment from a stack's import list.

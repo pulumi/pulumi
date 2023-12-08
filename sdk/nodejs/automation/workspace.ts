@@ -99,7 +99,7 @@ export interface Workspace {
      * @param stackName The stack to operate on
      * @param environments The names of the environments to add to the stack's configuration
      */
-    addEnvironments(stackName: string,...environments: string[]): Promise<void>;
+    addEnvironments(stackName: string, ...environments: string[]): Promise<void>;
     /**
      * Removes an environment from a stack's import list.
      *
