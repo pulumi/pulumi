@@ -123,12 +123,11 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
-	}
-	t.Cleanup(func() { backendInstance = nil })
+	})
 
 	tmpDir := t.TempDir()
 	chdir(t, tmpDir)
@@ -223,12 +222,11 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
-	}
-	t.Cleanup(func() { backendInstance = nil })
+	})
 
 	tmpDir := t.TempDir()
 	chdir(t, tmpDir)
