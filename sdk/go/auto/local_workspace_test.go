@@ -1638,6 +1638,10 @@ func TestConfigAllWithOptions(t *testing.T) {
 		"{\"subKey3\":\"value5\"}", cfg["testproj:key3"].Value, "key subKey3 has been removed")
 }
 
+// This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
+// config from the file. This means we can't remove the stack at the end of the test.
+// We should also not include secrets in this config, because the secret encryption is only valid within
+// the context of a stack and org, and running this test in different orgs will fail if there are secrets.
 func TestNestedConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1651,19 +1655,14 @@ func TestNestedConfig(t *testing.T) {
 		t.FailNow()
 	}
 
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, stackName)
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
-
 	// Also retrieve the stack settings directly from the yaml file and
 	// make sure the config agrees with the config loaded by Pulumi.
-	//stackSettings, err := s.Workspace().StackSettings(ctx, stackName)
-	//require.NoError(t, err)
-	//confKeys := map[string]bool{}
-	//for k := range stackSettings.Config {
-	//	confKeys[k.String()] = true
-	//}
+	stackSettings, err := s.Workspace().StackSettings(ctx, stackName)
+	require.NoError(t, err)
+	confKeys := map[string]bool{}
+	for k := range stackSettings.Config {
+		confKeys[k.String()] = true
+	}
 
 	allConfig, err := s.GetAllConfig(ctx)
 	if err != nil {
@@ -1674,13 +1673,13 @@ func TestNestedConfig(t *testing.T) {
 	for k := range allConfig {
 		allConfKeys[k] = true
 	}
-	//assert.Equal(t, confKeys, allConfKeys)
-	//assert.NotEmpty(t, confKeys)
+	assert.Equal(t, confKeys, allConfKeys)
+	assert.NotEmpty(t, confKeys)
 
 	outerVal, ok := allConfig["nested_config:outer"]
 	assert.True(t, ok)
-	assert.True(t, outerVal.Secret)
-	assert.JSONEq(t, "{\"inner\":\"my_secret\", \"other\": \"something_else\"}", outerVal.Value)
+	assert.False(t, outerVal.Secret)
+	assert.JSONEq(t, "{\"inner\":\"my_value\", \"other\": \"something_else\"}", outerVal.Value)
 
 	listVal, ok := allConfig["nested_config:myList"]
 	assert.True(t, ok)
@@ -1692,8 +1691,8 @@ func TestNestedConfig(t *testing.T) {
 		t.Errorf("failed to get config, err: %v", err)
 		t.FailNow()
 	}
-	assert.True(t, outer.Secret)
-	assert.JSONEq(t, "{\"inner\":\"my_secret\", \"other\": \"something_else\"}", outer.Value)
+	assert.False(t, outer.Secret)
+	assert.JSONEq(t, "{\"inner\":\"my_value\", \"other\": \"something_else\"}", outer.Value)
 
 	list, err := s.GetConfig(ctx, "myList")
 	if err != nil {
