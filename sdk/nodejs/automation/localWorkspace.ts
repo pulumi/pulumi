@@ -453,6 +453,17 @@ export class LocalWorkspace implements Workspace {
      * @param environments The names of the environments to add to the stack's configuration
      */
     async addEnvironments(stackName: string, ...environments: string[]): Promise<void> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if (ver.compare("3.95.0") < 0) {
+            throw new Error(`addEnvironments requires Pulumi version >= 3.95.0`);
+        }
+
         await this.runPulumiCmd(["config", "env", "add", ...environments, "--stack", stackName, "--yes"]);
     }
     /**
@@ -462,6 +473,17 @@ export class LocalWorkspace implements Workspace {
      * @param environment The name of the environment to remove from the stack's configuration
      */
     async removeEnvironment(stackName: string, environment: string): Promise<void> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if (ver.compare("3.95.0") < 0) {
+            throw new Error(`removeEnvironments requires Pulumi version >= 3.95.0`);
+        }
+
         await this.runPulumiCmd(["config", "env", "rm", environment, "--stack", stackName, "--yes"]);
     }
     /**
