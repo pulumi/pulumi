@@ -1314,9 +1314,6 @@ func TestImportExportStack(t *testing.T) {
 func TestConfigFlagLike(t *testing.T) {
 	t.Parallel()
 
-	if getTestOrg() != pulumiTestOrg {
-		return
-	}
 	ctx := context.Background()
 	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -1352,9 +1349,6 @@ func TestConfigFlagLike(t *testing.T) {
 func TestConfigWithOptions(t *testing.T) {
 	t.Parallel()
 
-	if getTestOrg() != pulumiTestOrg {
-		return
-	}
 	ctx := context.Background()
 	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -1534,9 +1528,6 @@ func TestConfigWithOptions(t *testing.T) {
 func TestConfigAllWithOptions(t *testing.T) {
 	t.Parallel()
 
-	if getTestOrg() != pulumiTestOrg {
-		return
-	}
 	ctx := context.Background()
 	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -1704,12 +1695,16 @@ func TestNestedConfig(t *testing.T) {
 }
 
 func TestEnvFunctions(t *testing.T) {
+	if getTestOrg() != pulumiTestOrg {
+		// Skipping test because the required environments are in the moolumi org.
+		return
+	}
 	t.Parallel()
 
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, randomStackName())
 
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "test", pName)
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1731,16 +1726,32 @@ func TestEnvFunctions(t *testing.T) {
 		t.FailNow()
 	}
 
+	// Check that we can access config from the envs
+	cfg, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Errorf("getting config failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "test_value", cfg["testproj:new_key"].Value)
+	assert.Equal(t, "business", cfg["testproj:also"].Value)
+
 	err = s.RemoveEnvironment(ctx, "automation-api-test-env")
 	if err != nil {
 		t.Errorf("removing environment failed, err: %v", err)
 		t.FailNow()
 	}
+	_, err = s.GetConfig(ctx, "new_key")
+	assert.Error(t, err)
+	v, err := s.GetConfig(ctx, "also")
+	assert.Equal(t, "business", v.Value)
+
 	err = s.RemoveEnvironment(ctx, "automation-api-test-env-2")
 	if err != nil {
 		t.Errorf("removing environment failed, err: %v", err)
 		t.FailNow()
 	}
+	_, err = s.GetConfig(ctx, "also")
+	assert.Error(t, err)
 }
 
 func TestTagFunctions(t *testing.T) {
