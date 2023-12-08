@@ -140,7 +140,11 @@ describe("LocalWorkspace", () => {
         });
     });
     it(`Environment functions`, async () => {
-        const projectName = "node_test";
+        // Skipping test because the required environments are in the moolumi org.
+        if (getTestOrg() !== "moolumi") {
+            return;
+        }
+        const projectName = "node_env_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
@@ -159,12 +163,31 @@ describe("LocalWorkspace", () => {
         }
         assert.strictEqual(caught, 1, "expected adding a non-existent env to throw");
 
-        // Adding existing env should succeed.
+        // Adding existing envs should succeed.
         await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
+
+        const config = await stack.getAllConfig();
+        assert.strictEqual(config["node_env_test:new_key"].value, "test_value");
+        assert.strictEqual(config["node_env_test:also"].value, "business");
 
         // Removing existing env should succeed.
         await stack.removeEnvironment("automation-api-test-env");
+        const alsoConfig = await stack.getConfig("also");
+        assert.strictEqual(alsoConfig.value, "business");
+        try {
+            await stack.addEnvironments("new_key");
+        } catch (error) {
+            caught++;
+        }
+        assert.strictEqual(caught, 2, "expected accessing key from removed env to throw");
+
         await stack.removeEnvironment("automation-api-test-env-2");
+        try {
+            await stack.addEnvironments("also");
+        } catch (error) {
+            caught++;
+        }
+        assert.strictEqual(caught, 3, "expected accessing key from removed env to throw");
 
         await ws.removeStack(stackName);
     });
