@@ -179,8 +179,7 @@ func TestCompilationErrorGo(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsCompilationError(err))
+	assert.True(t, IsCompilationError(err), "%v is not a compilation error", err)
 
 	// -- pulumi destroy --
 
@@ -209,8 +208,7 @@ func TestSelectStack404Error(t *testing.T) {
 
 	// attempt to select stack that has not been created.
 	_, err = SelectStack(ctx, stackName, w)
-	assert.Error(t, err)
-	assert.True(t, IsSelectStack404Error(err))
+	assert.True(t, IsSelectStack404Error(err), "%v is not a 404 error", err)
 }
 
 func TestCreateStack409Error(t *testing.T) {
@@ -244,8 +242,7 @@ func TestCreateStack409Error(t *testing.T) {
 
 	// attempt to create a dupe stack.
 	_, err = NewStack(ctx, stackName, w)
-	assert.Error(t, err)
-	assert.True(t, IsCreateStack409Error(err))
+	assert.True(t, IsCreateStack409Error(err), "%v is not a 409 error", err)
 }
 
 func TestCompilationErrorDotnet(t *testing.T) {
@@ -270,8 +267,7 @@ func TestCompilationErrorDotnet(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsCompilationError(err))
+	assert.True(t, IsCompilationError(err), "%v is not a compilation error", err)
 
 	// -- pulumi destroy --
 
@@ -313,8 +309,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsCompilationError(err))
+	assert.True(t, IsCompilationError(err), "%v is not a compilation error", err)
 
 	// -- pulumi destroy --
 
@@ -349,8 +344,7 @@ func TestRuntimeErrorGo(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsRuntimeError(err))
+	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
 
 	// -- pulumi destroy --
 
@@ -384,10 +378,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	if !assert.True(t, IsRuntimeError(err)) {
-		t.Logf("%v is not a runtime error", err)
-	}
+	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
 
 	// -- pulumi destroy --
 
@@ -446,8 +437,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsRuntimeError(err), "%+v", err)
+	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
 	assert.Contains(t, fmt.Sprintf("%v", err), "IndexError: list index out of range")
 
 	// -- pulumi destroy --
@@ -490,8 +480,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsRuntimeError(err))
+	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
 
 	// -- pulumi destroy --
 
@@ -533,8 +522,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsRuntimeError(err))
+	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
 
 	// -- pulumi destroy --
 
@@ -567,8 +555,7 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 	}()
 
 	_, err = s.Up(ctx)
-	assert.Error(t, err)
-	assert.True(t, IsRuntimeError(err))
+	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
 
 	// -- pulumi destroy --
 

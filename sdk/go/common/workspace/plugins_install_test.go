@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build nodejs || python || all
-
 package workspace
 
 import (
@@ -110,8 +108,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	assert.False(t, info.IsDir())
 
 	_, err = os.Stat(filepath.Join(dir, plugin.Dir()+".partial"))
-	assert.Error(t, err)
-	assert.True(t, os.IsNotExist(err))
+	assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 
 	assert.True(t, HasPlugin(plugin))
 
@@ -149,7 +146,6 @@ func testDeletePlugin(t *testing.T, plugin PluginInfo) {
 
 	for _, path := range paths {
 		_, err := os.Stat(path)
-		assert.Error(t, err)
 		assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 	}
 }
@@ -291,8 +287,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	// Verify leftover files were removed.
 	for _, path := range []string{tempDir1, tempDir2, tempDir3, partialPath} {
 		_, err := os.Stat(path)
-		assert.Error(t, err)
-		assert.True(t, os.IsNotExist(err))
+		assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 	}
 
 	testDeletePlugin(t, pluginInfo)

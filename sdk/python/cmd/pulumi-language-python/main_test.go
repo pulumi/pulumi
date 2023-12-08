@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
-		err      error
+		err      string
 	}{
 		{
 			input:    "0.1",
@@ -48,7 +47,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "",
-			err:   fmt.Errorf("cannot parse empty string"),
+			err:   "cannot parse empty string",
 		},
 		{
 			input:    "4.3.2.1",
@@ -56,7 +55,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: " 1 . 2 . 3 ",
-			err:   fmt.Errorf(`' 1 . 2 . 3 ' still unparsed`),
+			err:   `' 1 . 2 . 3 ' still unparsed`,
 		},
 		{
 			input:    "2.1a123456789",
@@ -76,7 +75,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "1.2.3dev7890",
-			err:   fmt.Errorf("'dev7890' still unparsed"),
+			err:   "'dev7890' still unparsed",
 		},
 		{
 			input:    "1.2.3.dev456",
@@ -84,7 +83,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "1.",
-			err:   fmt.Errorf("'.' still unparsed"),
+			err:   "'.' still unparsed",
 		},
 		{
 			input:    "3.2.post32",
@@ -96,7 +95,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "10!3.2.1",
-			err:   fmt.Errorf("epochs are not supported"),
+			err:   "epochs are not supported",
 		},
 		{
 			input:    "3.2.post1.dev0",
@@ -109,9 +108,8 @@ func TestDeterminePluginVersion(t *testing.T) {
 			t.Parallel()
 
 			result, err := determinePluginVersion(tt.input)
-			if tt.err != nil {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.err.Error())
+			if tt.err != "" {
+				assert.EqualError(t, err, tt.err)
 				return
 			}
 			assert.NoError(t, err)

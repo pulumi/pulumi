@@ -678,7 +678,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
 		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
 		false, nil)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
 	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
@@ -695,5 +695,5 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
 		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
 		false, nil)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "some other error")
 }

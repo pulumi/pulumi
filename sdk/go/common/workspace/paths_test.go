@@ -87,10 +87,9 @@ func TestProjectStackPath(t *testing.T) {
 		"WithBoth",
 		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacksA\nstackConfigDir: stacksB\n",
 		func(t *testing.T, projectDir, path string, err error) {
-			assert.Error(t, err)
 			errorMsg := "Should not use both config and stackConfigDir to define the stack directory. " +
 				"Use only stackConfigDir instead."
-			assert.Contains(t, err.Error(), errorMsg)
+			assert.EqualError(t, err, errorMsg)
 		},
 	}}
 

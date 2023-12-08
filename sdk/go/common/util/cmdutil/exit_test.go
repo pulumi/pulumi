@@ -43,10 +43,9 @@ func TestRunFunc_Bail(t *testing.T) {
 	cmd.Stderr = output
 
 	err = cmd.Run()
-	require.Error(t, err)
-	if exitErr := new(exec.ExitError); assert.ErrorAs(t, err, &exitErr) {
-		assert.NotZero(t, exitErr.ExitCode())
-	}
+	exitErr := new(exec.ExitError)
+	require.ErrorAs(t, err, &exitErr)
+	assert.NotZero(t, exitErr.ExitCode())
 
 	assert.Empty(t, buff.String())
 }

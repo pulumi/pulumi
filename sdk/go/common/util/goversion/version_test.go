@@ -1,11 +1,9 @@
 package goversion
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_checkMinimumGoVersion(t *testing.T) {
@@ -14,7 +12,7 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 	tests := []struct {
 		name            string
 		goVersionOutput string
-		err             error
+		err             string
 	}{
 		{
 			name:            "ExactVersion",
@@ -31,17 +29,17 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		{
 			name:            "OlderGoVersion",
 			goVersionOutput: "go version go1.13.8 linux/amd64",
-			err:             errors.New("go version must be 1.14.0 or higher (1.13.8 detected)"),
+			err:             "go version must be 1.14.0 or higher (1.13.8 detected)",
 		},
 		{
 			name:            "MalformedVersion",
 			goVersionOutput: "go version xyz",
-			err:             errors.New("parsing go version: Malformed version: xyz"),
+			err:             "parsing go version: Malformed version: xyz",
 		},
 		{
 			name:            "GarbageVersionOutput",
 			goVersionOutput: "gobble gobble",
-			err:             errors.New("unexpected format for go version output: \"gobble gobble\""),
+			err:             "unexpected format for go version output: \"gobble gobble\"",
 		},
 	}
 	for _, tt := range tests {
@@ -50,12 +48,11 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 			t.Parallel()
 
 			err := checkMinimumGoVersion(tt.goVersionOutput)
-			if err != nil {
-				require.Error(t, err)
-				assert.EqualError(t, err, tt.err.Error())
-				return
+			if tt.err != "" {
+				assert.EqualError(t, err, tt.err)
+			} else {
+				assert.NoError(t, err)
 			}
-			require.NoError(t, err)
 		})
 	}
 }
