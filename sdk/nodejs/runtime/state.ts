@@ -31,6 +31,8 @@ const nodeEnvKeys = {
     // this value is not set by the CLI and is controlled via a user set env var unlike the values above
     cacheDynamicProviders: "PULUMI_NODEJS_CACHE_DYNAMIC_PROVIDERS",
     organization: "PULUMI_NODEJS_ORGANIZATION",
+    // this value is not set by the CLI and is controlled via a user set env var unlike the values above
+    throwOutputToString: "PULUMI_NODEJS_THROW_OUTPUT_TOSTRING",
 };
 
 const pulumiEnvKeys = {
@@ -54,6 +56,7 @@ export interface WriteableOptions {
     cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
     organization?: string; // the name of the current organization (if available).
     maximumProcessListeners: number; // the number of process listeners which can be registered before writing a warning.
+    throwOutputToString?: boolean; // true to throw exceptions when attempting to convert outputs to strings.
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
      */
@@ -89,6 +92,7 @@ export class LocalStore implements Store {
             syncDir: process.env[nodeEnvKeys.syncDir],
             cacheDynamicProviders: process.env[nodeEnvKeys.cacheDynamicProviders] !== "false",
             legacyApply: process.env[pulumiEnvKeys.legacyApply] === "true",
+            throwOutputToString: process.env[nodeEnvKeys.throwOutputToString] === "true",
             maximumProcessListeners: 30,
         },
         rpcDone: Promise.resolve(),

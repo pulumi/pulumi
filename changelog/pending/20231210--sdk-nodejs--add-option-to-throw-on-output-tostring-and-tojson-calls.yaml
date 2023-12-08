@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Add option to throw on output toString and toJSON calls

@@ -27,7 +27,9 @@ import * as resproto from "../proto/resource_pb";
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
-const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
+const grpcChannelOptions = {
+    "grpc.max_receive_message_length": maxRPCMessageSize,
+};
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
@@ -49,6 +51,7 @@ export interface Options {
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
     readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
     readonly organization?: string; // the name of the current organization.
+    readonly throwOutputToString?: boolean; // true to throw exceptions when attempting to convert outputs to strings.
 
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
@@ -532,4 +535,11 @@ export async function monitorSupportsDeletedWith(): Promise<boolean> {
  */
 export async function monitorSupportsAliasSpecs(): Promise<boolean> {
     return monitorSupportsFeature("aliasSpecs");
+}
+
+/**
+ * Returns true if we throw exceptions when attempting to convert outputs to strings.
+ */
+export function throwOutputToString(): boolean {
+    return options().throwOutputToString ?? false;
 }

@@ -204,6 +204,9 @@ To get the value of an Output<T> as an Output<string> consider either:
 
 See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
+            if (settings.throwOutputToString()) {
+                throw new Error(message);
+            }
             return message;
         };
 
@@ -216,6 +219,9 @@ To get the value of an Output as a JSON value or JSON string consider either:
 
 See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
+            if (settings.throwOutputToString()) {
+                throw new Error(message);
+            }
             return message;
         };
 
@@ -999,7 +1005,9 @@ export type Lifted<T> =
           {};
 
 // The set of property names in T that are *not* functions.
-type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
+type NonFunctionPropertyNames<T> = {
+    [K in keyof T]: T[K] extends Function ? never : K;
+}[keyof T];
 
 // Lift up all the non-function properties.  If it was optional before, keep it optional after.
 // If it's require before, keep it required afterwards.
