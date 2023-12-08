@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.96.1 (2023-12-07)
+
+
+### Bug Fixes
+
+- [sdkgen/nodejs] Include @types/google-protobuf as a dependency
+
 ## 3.96.0 (2023-12-07)
 
 
