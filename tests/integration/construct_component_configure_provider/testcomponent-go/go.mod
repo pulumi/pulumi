@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0
 	github.com/pulumi/pulumi/pkg/v3 v3.78.2-0.20231010213836-fd8c4dd81928
-	github.com/pulumi/pulumi/sdk/v3 v3.96.1
+	github.com/pulumi/pulumi/sdk/v3 v3.96.2
 )
 
 replace (
