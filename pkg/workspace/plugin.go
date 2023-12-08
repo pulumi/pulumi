@@ -59,6 +59,7 @@ func (err *InstallPluginError) Unwrap() error {
 
 func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, msg string)) (*semver.Version, error) {
 	util.SetKnownPluginDownloadURL(&pluginSpec)
+	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginSpec.GetLatestVersion()
