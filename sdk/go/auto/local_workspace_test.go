@@ -87,11 +87,11 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 
 	defer func() {
 		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-		assert.Nil(t, err, "failed to unset EnvVar.")
+		assert.NoError(t, err, "failed to unset EnvVar.")
 
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	passwordVal := "Password1234!"
@@ -167,7 +167,7 @@ func TestRemoveWithForce(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.Nil(t, err, "failed to set environment values")
+	assert.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
 	assert.NotNil(t, envvars, "failed to get environment values after setting many")
 
@@ -199,7 +199,7 @@ func TestRemoveWithForce(t *testing.T) {
 	const permalinkSearchStr = "https://app.pulumi.com"
 	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
-	assert.Nil(t, err, "failed to get permalink.")
+	assert.NoError(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
 
 	if err = s.Workspace().RemoveStack(ctx, stackName, optremove.Force()); err != nil {
@@ -239,7 +239,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -254,7 +254,7 @@ func TestNewStackLocalSource(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.Nil(t, err, "failed to set environment values")
+	assert.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
 	assert.NotNil(t, envvars, "failed to get environment values after setting many")
 
@@ -286,7 +286,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	const permalinkSearchStr = "https://app.pulumi.com"
 	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
-	assert.Nil(t, err, "failed to get permalink.")
+	assert.NoError(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
 
 	// -- pulumi preview --
@@ -352,7 +352,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -367,7 +367,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.Nil(t, err, "failed to set environment values")
+	assert.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
 	assert.NotNil(t, envvars, "failed to get environment values after setting many")
 
@@ -471,7 +471,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -565,7 +565,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -674,7 +674,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -783,7 +783,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -878,7 +878,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -978,7 +978,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 			t.Cleanup(func() {
 				// -- pulumi stack rm --
 				err = s.Workspace().RemoveStack(ctx, s.Name())
-				assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+				assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 			})
 
 			err = s.SetAllConfig(ctx, cfg)
@@ -1073,10 +1073,10 @@ func TestNestedStackFails(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(testCtx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 
 		err = nestedStack.Workspace().RemoveStack(testCtx, nestedStack.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	result, err := s.Up(testCtx)
@@ -1131,7 +1131,7 @@ func TestErrorProgressStreams(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err := s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// -- pulumi up --
@@ -1198,7 +1198,7 @@ func TestProgressStreams(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -1269,7 +1269,7 @@ func TestImportExportStack(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -1343,7 +1343,7 @@ func TestConfigFlagLike(t *testing.T) {
 	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
 
 	err = s.Workspace().RemoveStack(ctx, stackName)
-	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func TestConfigWithOptions(t *testing.T) {
@@ -1362,7 +1362,7 @@ func TestConfigWithOptions(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// test backward compatibility
@@ -1541,7 +1541,7 @@ func TestConfigAllWithOptions(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
@@ -1696,8 +1696,7 @@ func TestNestedConfig(t *testing.T) {
 
 func TestEnvFunctions(t *testing.T) {
 	if getTestOrg() != pulumiTestOrg {
-		// Skipping test because the required environments are in the moolumi org.
-		return
+		t.Skip("Skipping test because the required environments are in the moolumi org.")
 	}
 	t.Parallel()
 
@@ -1713,7 +1712,7 @@ func TestEnvFunctions(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// Errors when trying to add a non-existent env
@@ -1801,7 +1800,7 @@ func TestTagFunctions(t *testing.T) {
 	assert.NotContains(t, tags, "foo", "failed to remove tag")
 
 	err = s.Workspace().RemoveStack(ctx, stackName)
-	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -1830,7 +1829,7 @@ func TestStructuredOutput(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -1845,7 +1844,7 @@ func TestStructuredOutput(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.Nil(t, err, "failed to set environment values")
+	assert.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
 	assert.NotNil(t, envvars, "failed to get environment values after setting many")
 
@@ -1964,7 +1963,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -2226,7 +2225,7 @@ func TestProjectSettingsRespected(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = stack.Workspace().RemoveStack(ctx, stack.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	assert.NoError(t, err)
@@ -2263,7 +2262,7 @@ func TestSaveStackSettings(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// first load settings for created stack
@@ -2580,7 +2579,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -2833,7 +2832,7 @@ func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(b, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(b, err, "failed to remove stack. Resources have leaked.")
 	}()
 }
 
@@ -2900,7 +2899,7 @@ func BenchmarkBulkSetConfigPlain(b *testing.B) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(b, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(b, err, "failed to remove stack. Resources have leaked.")
 	}()
 }
 
@@ -2967,7 +2966,7 @@ func BenchmarkBulkSetConfigSecret(b *testing.B) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(b, err, "failed to remove stack. Resources have leaked.")
+		assert.NoError(b, err, "failed to remove stack. Resources have leaked.")
 	}()
 }
 
