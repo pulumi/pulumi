@@ -139,9 +139,10 @@ describe("LocalWorkspace", () => {
             await workspace.removeStack(stackName);
         });
     });
-    it(`Environment functions`, async () => {
+    it(`Environment functions`, async function () {
         // Skipping test because the required environments are in the moolumi org.
         if (getTestOrg() !== "moolumi") {
+            this.skip();
             return;
         }
         const projectName = "node_env_test";
@@ -153,15 +154,11 @@ describe("LocalWorkspace", () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
 
-        let caught = 0;
-
         // Adding non-existent env should fail.
-        try {
-            await stack.addEnvironments("non-existent-env");
-        } catch (error) {
-            caught++;
-        }
-        assert.strictEqual(caught, 1, "expected adding a non-existent env to throw");
+        await assert.rejects(
+            stack.addEnvironments("non-existent-env"),
+            "stack.addEnvironments('non-existent-env') did not reject",
+        );
 
         // Adding existing envs should succeed.
         await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
@@ -174,20 +171,10 @@ describe("LocalWorkspace", () => {
         await stack.removeEnvironment("automation-api-test-env");
         const alsoConfig = await stack.getConfig("also");
         assert.strictEqual(alsoConfig.value, "business");
-        try {
-            await stack.addEnvironments("new_key");
-        } catch (error) {
-            caught++;
-        }
-        assert.strictEqual(caught, 2, "expected accessing key from removed env to throw");
+        await assert.rejects(stack.getConfig("new_key"), "stack.getConfig('new_key') did not reject");
 
         await stack.removeEnvironment("automation-api-test-env-2");
-        try {
-            await stack.addEnvironments("also");
-        } catch (error) {
-            caught++;
-        }
-        assert.strictEqual(caught, 3, "expected accessing key from removed env to throw");
+        await assert.rejects(stack.getConfig("also"), "stack.getConfig('also') did not reject");
 
         await ws.removeStack(stackName);
     });
