@@ -546,7 +546,7 @@ Event: ${line}\n${e.toString()}`);
      * @param environment The name of the environment to remove from the stack's configuration
      */
     async removeEnvironment(environment: string): Promise<void> {
-        await this.workspace.addEnvironments(this.name, environment);
+        await this.workspace.removeEnvironment(this.name, environment);
     }
     /**
      * Returns the config value associated with the specified key.
