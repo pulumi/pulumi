@@ -174,7 +174,7 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 	if project == "" {
 		currentProject := p.currentProject()
 		if currentProject == nil {
-			return nil, fmt.Errorf("if you're using the --stack flag, " +
+			return nil, errors.New("if you're using the --stack flag, " +
 				"pass the fully qualified name (organization/project/stack)")
 		}
 
@@ -197,7 +197,7 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 
 func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) error {
 	if ref.project == "" {
-		return fmt.Errorf("bad stack reference, project was not set")
+		return errors.New("bad stack reference, project was not set")
 	}
 	return nil
 }
@@ -364,7 +364,7 @@ func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendRef
 
 func (p *legacyReferenceStore) ValidateReference(ref *localBackendReference) error {
 	if ref.project != "" {
-		return fmt.Errorf("bad stack reference, project was set")
+		return errors.New("bad stack reference, project was set")
 	}
 	return nil
 }

@@ -51,11 +51,11 @@ const (
 var (
 	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too old to understand.
-	ErrDeploymentSchemaVersionTooOld = fmt.Errorf("this stack's deployment is too old")
+	ErrDeploymentSchemaVersionTooOld = errors.New("this stack's deployment is too old")
 
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
-	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
+	ErrDeploymentSchemaVersionTooNew = errors.New("this stack's deployment version is too new")
 )
 
 var (
@@ -510,7 +510,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 	}
 
 	if res.URN == "" {
-		return nil, fmt.Errorf("resource missing required 'urn' field")
+		return nil, errors.New("resource missing required 'urn' field")
 	}
 
 	if res.Type == "" {

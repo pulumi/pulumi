@@ -145,7 +145,7 @@ func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
 // directory.
 func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 	if runtime.GOOS == windows {
-		name = fmt.Sprintf("%s.exe", name)
+		name = name + ".exe"
 	}
 	cmdPath := filepath.Join(virtualEnvDir, virtualEnvBinDirName(), name)
 	return exec.Command(cmdPath, arg...)
@@ -155,7 +155,7 @@ func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 func IsVirtualEnv(dir string) bool {
 	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
 	if runtime.GOOS == windows {
-		pyBin = fmt.Sprintf("%s.exe", pyBin)
+		pyBin = pyBin + ".exe"
 	}
 	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
 		return true
@@ -213,7 +213,7 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 		}
 	}
 	if !hasPath {
-		path := fmt.Sprintf("PATH=%s", virtualEnvBin)
+		path := "PATH=" + virtualEnvBin
 		result = append(result, path)
 	}
 	return result

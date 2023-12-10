@@ -134,7 +134,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else if !opts.IsInteractive {
-		return fmt.Errorf("a template must be provided when running in non-interactive mode")
+		return errors.New("a template must be provided when running in non-interactive mode")
 	} else {
 		if template, err = choosePolicyPackTemplate(templates, opts); err != nil {
 			return err
@@ -271,7 +271,7 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 	usageCommandPreambles := []string{
 		"run the Policy Pack against a Pulumi program, in the directory of the Pulumi program run",
 	}
-	usageCommands := []string{fmt.Sprintf("pulumi up --policy-pack %s", root)}
+	usageCommands := []string{"pulumi up --policy-pack " + root}
 
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") || strings.EqualFold(proj.Runtime.Name(), "python") {
 		usageCommandPreambles = append(usageCommandPreambles, "publish the Policy Pack, run")

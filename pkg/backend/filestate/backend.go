@@ -562,7 +562,7 @@ func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Proj
 func (b *localBackend) getReference(ref backend.StackReference) (*localBackendReference, error) {
 	stackRef, ok := ref.(*localBackendReference)
 	if !ok {
-		return nil, fmt.Errorf("bad stack reference type")
+		return nil, errors.New("bad stack reference type")
 	}
 	return stackRef, stackRef.Validate()
 }
@@ -589,19 +589,19 @@ func (b *localBackend) SetCurrentProject(project *workspace.Project) {
 func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	d diag.Sink,
 ) (backend.PolicyPack, error) {
-	return nil, fmt.Errorf("File state backend does not support resource policy")
+	return nil, errors.New("File state backend does not support resource policy")
 }
 
 func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
 	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error,
 ) {
-	return apitype.ListPolicyGroupsResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
+	return apitype.ListPolicyGroupsResponse{}, nil, errors.New("File state backend does not support resource policy")
 }
 
 func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
 	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
-	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
+	return apitype.ListPolicyPacksResponse{}, nil, errors.New("File state backend does not support resource policy")
 }
 
 func (b *localBackend) SupportsTags() bool {

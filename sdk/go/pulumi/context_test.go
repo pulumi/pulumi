@@ -16,7 +16,7 @@ package pulumi
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -349,7 +349,7 @@ func TestMergeProviders(t *testing.T) {
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		i, tt := i, tt
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 
 			err := RunErr(func(ctx *Context) error {

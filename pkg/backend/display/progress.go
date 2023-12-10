@@ -653,7 +653,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 			for _, remediationEvent := range info.RemediationEvents {
 				// Print the individual policy event.
 				remediationLine := renderDiffPolicyRemediationEvent(
-					remediationEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
+					remediationEvent, subItemIndent+"- ", false, display.opts)
 				remediationLine = strings.TrimSuffix(remediationLine, "\n")
 				if remediationLine != "" {
 					display.println(remediationLine)
@@ -695,7 +695,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 		for _, policyEvent := range info.ViolationEvents {
 			// Print the individual policy event.
 			policyLine := renderDiffPolicyViolationEvent(
-				policyEvent, fmt.Sprintf("%s- ", subItemIndent), subItemIndent+"  ", display.opts)
+				policyEvent, subItemIndent+"- ", subItemIndent+"  ", display.opts)
 			policyLine = strings.TrimSuffix(policyLine, "\n")
 			display.println(policyLine)
 		}

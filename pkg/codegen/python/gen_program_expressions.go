@@ -316,7 +316,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
-			name = fmt.Sprintf("%s_output", name)
+			name = name + "_output"
 		}
 
 		if len(expr.Args) == 1 {

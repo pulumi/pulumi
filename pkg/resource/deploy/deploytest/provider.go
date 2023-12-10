@@ -16,7 +16,7 @@ package deploytest
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
@@ -221,7 +221,7 @@ func (prov *Provider) StreamInvoke(
 	tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error,
 ) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,

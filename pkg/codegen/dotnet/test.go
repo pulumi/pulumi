@@ -1,7 +1,6 @@
 package dotnet
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -120,7 +119,7 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 		case "random":
 			result[i] = dep{"Pulumi.Random", test.RandomSchema}
 		default:
-			result[i] = dep{fmt.Sprintf("Pulumi.%s", Title(d)), ""}
+			result[i] = dep{"Pulumi." + Title(d), ""}
 		}
 	}
 	return result

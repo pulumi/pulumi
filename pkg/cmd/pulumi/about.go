@@ -147,7 +147,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 
 			lang, err := pluginContext.Host.LanguageRuntime(projinfo.Root, pwd, proj.Runtime.Name(), proj.Runtime.Options())
 			if err != nil {
-				addError(err, fmt.Sprintf("Failed to load language plugin %s", proj.Runtime.Name()))
+				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
 				aboutResponse, err := lang.About()
 				if err != nil {
@@ -336,10 +336,10 @@ func (b backendAbout) String() string {
 	if b.TokenInformation != nil {
 		var tokenType string
 		if b.TokenInformation.Team != "" {
-			tokenType = fmt.Sprintf("team: %s", b.TokenInformation.Team)
+			tokenType = "team: " + b.TokenInformation.Team
 		} else {
 			contract.Assertf(b.TokenInformation.Organization != "", "token must have an organization or team")
-			tokenType = fmt.Sprintf("organization: %s", b.TokenInformation.Organization)
+			tokenType = "organization: " + b.TokenInformation.Organization
 		}
 		rows = append(rows, []string{"Token type", tokenType})
 		rows = append(rows, []string{"Token type", b.TokenInformation.Name})
@@ -569,7 +569,7 @@ func (runtime projectRuntimeAbout) String() string {
 	}
 	paramString := ""
 	if len(params) > 0 {
-		paramString = fmt.Sprintf(": %s", strings.Join(params, " "))
+		paramString = ": " + strings.Join(params, " ")
 	}
 	return fmt.Sprintf("This project is written in %s%s\n",
 		runtime.Language, paramString)

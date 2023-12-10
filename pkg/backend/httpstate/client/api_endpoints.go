@@ -15,7 +15,6 @@
 package client
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -62,7 +61,7 @@ func getEndpointName(method, path string) string {
 		return "unknown"
 	}
 
-	return fmt.Sprintf("api/%s", match.Route.GetName())
+	return "api/" + match.Route.GetName()
 }
 
 // routes is the canonical muxer we use to determine friendly names for Pulumi APIs.

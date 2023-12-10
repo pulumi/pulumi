@@ -105,6 +105,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -229,16 +230,16 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, "--diff")
 	}
 	for _, rURN := range preOpts.Replace {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace=%s", rURN))
+		sharedArgs = append(sharedArgs, "--replace="+rURN)
 	}
 	for _, tURN := range preOpts.Target {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
+		sharedArgs = append(sharedArgs, "--target="+tURN)
 	}
 	for _, pack := range preOpts.PolicyPacks {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack=%s", pack))
+		sharedArgs = append(sharedArgs, "--policy-pack="+pack)
 	}
 	for _, packConfig := range preOpts.PolicyPackConfigs {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack-config=%s", packConfig))
+		sharedArgs = append(sharedArgs, "--policy-pack-config="+packConfig)
 	}
 	if preOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
@@ -247,13 +248,13 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
 	}
 	if preOpts.UserAgent != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
+		sharedArgs = append(sharedArgs, "--exec-agent="+preOpts.UserAgent)
 	}
 	if preOpts.Color != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", preOpts.Color))
+		sharedArgs = append(sharedArgs, "--color="+preOpts.Color)
 	}
 	if preOpts.Plan != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--save-plan=%s", preOpts.Plan))
+		sharedArgs = append(sharedArgs, "--save-plan="+preOpts.Plan)
 	}
 
 	// Apply the remote args, if needed.
@@ -270,7 +271,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
 	}
 
-	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
+	args = append(args, "--exec-kind="+kind)
 	args = append(args, sharedArgs...)
 
 	var summaryEvents []apitype.SummaryEvent
@@ -351,16 +352,16 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, "--diff")
 	}
 	for _, rURN := range upOpts.Replace {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace=%s", rURN))
+		sharedArgs = append(sharedArgs, "--replace="+rURN)
 	}
 	for _, tURN := range upOpts.Target {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
+		sharedArgs = append(sharedArgs, "--target="+tURN)
 	}
 	for _, pack := range upOpts.PolicyPacks {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack=%s", pack))
+		sharedArgs = append(sharedArgs, "--policy-pack="+pack)
 	}
 	for _, packConfig := range upOpts.PolicyPackConfigs {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack-config=%s", packConfig))
+		sharedArgs = append(sharedArgs, "--policy-pack-config="+packConfig)
 	}
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
@@ -369,13 +370,13 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
 	}
 	if upOpts.UserAgent != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
+		sharedArgs = append(sharedArgs, "--exec-agent="+upOpts.UserAgent)
 	}
 	if upOpts.Color != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", upOpts.Color))
+		sharedArgs = append(sharedArgs, "--color="+upOpts.Color)
 	}
 	if upOpts.Plan != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
+		sharedArgs = append(sharedArgs, "--plan="+upOpts.Plan)
 	}
 
 	// Apply the remote args, if needed.
@@ -391,7 +392,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
 	}
-	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
+	args = append(args, "--exec-kind="+kind)
 
 	if len(upOpts.EventStreams) > 0 {
 		eventChannels := upOpts.EventStreams
@@ -462,22 +463,22 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, "--expect-no-changes")
 	}
 	for _, tURN := range refreshOpts.Target {
-		args = append(args, fmt.Sprintf("--target=%s", tURN))
+		args = append(args, "--target="+tURN)
 	}
 	if refreshOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
 	}
 	if refreshOpts.UserAgent != "" {
-		args = append(args, fmt.Sprintf("--exec-agent=%s", refreshOpts.UserAgent))
+		args = append(args, "--exec-agent="+refreshOpts.UserAgent)
 	}
 	if refreshOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%s", refreshOpts.Color))
+		args = append(args, "--color="+refreshOpts.Color)
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
 		execKind = constant.ExecKindAutoInline
 	}
-	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
+	args = append(args, "--exec-kind="+execKind)
 
 	if len(refreshOpts.EventStreams) > 0 {
 		eventChannels := refreshOpts.EventStreams
@@ -547,7 +548,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
 	for _, tURN := range destroyOpts.Target {
-		args = append(args, fmt.Sprintf("--target=%s", tURN))
+		args = append(args, "--target="+tURN)
 	}
 	if destroyOpts.TargetDependents {
 		args = append(args, "--target-dependents")
@@ -556,16 +557,16 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
 	}
 	if destroyOpts.UserAgent != "" {
-		args = append(args, fmt.Sprintf("--exec-agent=%s", destroyOpts.UserAgent))
+		args = append(args, "--exec-agent="+destroyOpts.UserAgent)
 	}
 	if destroyOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%s", destroyOpts.Color))
+		args = append(args, "--color="+destroyOpts.Color)
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
 		execKind = constant.ExecKindAutoInline
 	}
-	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
+	args = append(args, "--exec-kind="+execKind)
 
 	if len(destroyOpts.EventStreams) > 0 {
 		eventChannels := destroyOpts.EventStreams
@@ -645,7 +646,7 @@ func (s *Stack) History(ctx context.Context,
 		if page < 1 {
 			page = 1
 		}
-		args = append(args, "--page-size", fmt.Sprintf("%d", pageSize), "--page", fmt.Sprintf("%d", page))
+		args = append(args, "--page-size", strconv.Itoa(pageSize), "--page", strconv.Itoa(page))
 	}
 
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(
@@ -1013,30 +1014,30 @@ func (s *Stack) remoteArgs() []string {
 			args = append(args, repo.URL)
 		}
 		if repo.Branch != "" {
-			args = append(args, fmt.Sprintf("--remote-git-branch=%s", repo.Branch))
+			args = append(args, "--remote-git-branch="+repo.Branch)
 		}
 		if repo.CommitHash != "" {
-			args = append(args, fmt.Sprintf("--remote-git-commit=%s", repo.CommitHash))
+			args = append(args, "--remote-git-commit="+repo.CommitHash)
 		}
 		if repo.ProjectPath != "" {
-			args = append(args, fmt.Sprintf("--remote-git-repo-dir=%s", repo.ProjectPath))
+			args = append(args, "--remote-git-repo-dir="+repo.ProjectPath)
 		}
 		if repo.Auth != nil {
 			if repo.Auth.PersonalAccessToken != "" {
-				args = append(args, fmt.Sprintf("--remote-git-auth-access-token=%s", repo.Auth.PersonalAccessToken))
+				args = append(args, "--remote-git-auth-access-token="+repo.Auth.PersonalAccessToken)
 			}
 			if repo.Auth.SSHPrivateKey != "" {
-				args = append(args, fmt.Sprintf("--remote-git-auth-ssh-private-key=%s", repo.Auth.SSHPrivateKey))
+				args = append(args, "--remote-git-auth-ssh-private-key="+repo.Auth.SSHPrivateKey)
 			}
 			if repo.Auth.SSHPrivateKeyPath != "" {
 				args = append(args,
-					fmt.Sprintf("--remote-git-auth-ssh-private-key-path=%s", repo.Auth.SSHPrivateKeyPath))
+					"--remote-git-auth-ssh-private-key-path="+repo.Auth.SSHPrivateKeyPath)
 			}
 			if repo.Auth.Password != "" {
-				args = append(args, fmt.Sprintf("--remote-git-auth-password=%s", repo.Auth.Password))
+				args = append(args, "--remote-git-auth-password="+repo.Auth.Password)
 			}
 			if repo.Auth.Username != "" {
-				args = append(args, fmt.Sprintf("--remote-git-auth-username=%s", repo.Auth.Username))
+				args = append(args, "--remote-git-auth-username="+repo.Auth.Username)
 			}
 		}
 	}
@@ -1050,7 +1051,7 @@ func (s *Stack) remoteArgs() []string {
 	}
 
 	for _, command := range preRunCommands {
-		args = append(args, fmt.Sprintf("--remote-pre-run-command=%s", command))
+		args = append(args, "--remote-pre-run-command="+command)
 	}
 
 	if skipInstallDependencies {

@@ -35,6 +35,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -771,8 +772,8 @@ func (host *pythonLanguageHost) constructArguments(req *pulumirpc.RunRequest) []
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.GetPwd())
-	maybeAppendArg("dry_run", fmt.Sprintf("%v", req.GetDryRun()))
-	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
+	maybeAppendArg("dry_run", strconv.FormatBool(req.GetDryRun()))
+	maybeAppendArg("parallel", strconv.Itoa(int(req.GetParallel())))
 	maybeAppendArg("tracing", host.tracing)
 	maybeAppendArg("organization", req.GetOrganization())
 

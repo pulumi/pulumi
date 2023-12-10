@@ -766,7 +766,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 			cd = fmt.Sprintf("\"%s\"", cd)
 		}
 
-		cd = fmt.Sprintf("cd %s", cd)
+		cd = "cd " + cd
 		commands = append(commands, cd)
 	}
 

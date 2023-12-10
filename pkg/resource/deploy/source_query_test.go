@@ -16,7 +16,7 @@ package deploy
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -49,7 +49,7 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 	// Failure case.
 	resmon2 := mockQueryResmon{}
 	qs2, _ := newTestQuerySource(&resmon2, func(*querySource) error {
-		return fmt.Errorf("failed")
+		return errors.New("failed")
 	})
 
 	qs2.forkRun()

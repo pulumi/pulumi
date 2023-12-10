@@ -790,7 +790,7 @@ func (mod *modContext) genUtilitiesImport() string {
 
 func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string {
 	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
-		return fmt.Sprintf("import %s", pyPack(t.PackageReference.Name()))
+		return "import " + pyPack(t.PackageReference.Name())
 	}
 
 	tok := t.Token
@@ -821,7 +821,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 
 func (mod *modContext) importEnumType(e *schema.EnumType) string {
 	if !codegen.PkgEquals(e.PackageReference, mod.pkg) {
-		return fmt.Sprintf("import %s", pyPack(e.PackageReference.Name()))
+		return "import " + pyPack(e.PackageReference.Name())
 	}
 
 	modName := mod.tokenToModule(e.Token)
@@ -841,7 +841,7 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 
 func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	if r.Resource != nil && !codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
-		return fmt.Sprintf("import %s", pyPack(r.Resource.PackageReference.Name()))
+		return "import " + pyPack(r.Resource.PackageReference.Name())
 	}
 
 	tok := r.Token
@@ -850,7 +850,7 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 
 	// If it's a provider resource, import the top-level package.
 	if parts[0] == "pulumi" && parts[1] == "providers" {
-		return fmt.Sprintf("import pulumi_%s", parts[2])
+		return "import pulumi_" + parts[2]
 	}
 
 	modName := mod.tokenToResource(tok)
@@ -1180,7 +1180,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	name := resourceName(res)
 
-	resourceArgsName := fmt.Sprintf("%sArgs", name)
+	resourceArgsName := name + "Args"
 	// Some providers (e.g. Kubernetes) have types with the same name as resources (e.g. StorageClass in Kubernetes).
 	// We've already shipped the input type (e.g. StorageClassArgs) in the same module as the resource, so we can't use
 	// the same name for the resource's args class. When an input type exists that would conflict with the name of the
@@ -1703,7 +1703,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		if retTypeNameQualified != "" {
 			// Pass along the private output_type we generated, so any nested output classes are instantiated by
 			// the call.
-			typ = fmt.Sprintf(", typ=%s", retTypeNameQualified)
+			typ = ", typ=" + retTypeNameQualified
 		}
 
 		if fun.ReturnTypePlain {
@@ -1814,7 +1814,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if returnType != nil {
 		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 		// the call to invoke.
-		typ = fmt.Sprintf(", typ=%s", baseName)
+		typ = ", typ=" + baseName
 	}
 	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, typ)
 	fmt.Fprintf(w, "\n")
@@ -1932,7 +1932,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	}
 
 	originalName := PyName(tokenToName(fun.Token))
-	outputSuffixedName := fmt.Sprintf("%s_output", originalName)
+	outputSuffixedName := originalName + "_output"
 
 	var args []*schema.Property
 	if fun.Inputs != nil {
@@ -2698,7 +2698,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// determine whether to use the default Python package name
 	pyPkgName := info.PackageName
 	if pyPkgName == "" {
-		pyPkgName = fmt.Sprintf("pulumi_%s", strings.ReplaceAll(pkg.Name, "-", "_"))
+		pyPkgName = "pulumi_" + strings.ReplaceAll(pkg.Name, "-", "_")
 	}
 
 	// group resources, types, and functions into modules

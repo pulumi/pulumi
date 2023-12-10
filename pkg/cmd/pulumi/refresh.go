@@ -201,8 +201,7 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			if skipPendingCreates && clearPendingCreates {
-				return result.FromError(fmt.Errorf(
-					"cannot set both --skip-pending-creates and --clear-pending-creates"))
+				return result.FromError(errors.New("cannot set both --skip-pending-creates and --clear-pending-creates"))
 			}
 
 			// First we handle explicit create->imports we were given
@@ -381,7 +380,7 @@ func filterMapPendingCreates(
 		var pending []resource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
-				return fmt.Errorf("found operation without resource")
+				return errors.New("found operation without resource")
 			}
 			if op.Type != resource.OperationTypeCreating {
 				pending = append(pending, op)

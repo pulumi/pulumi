@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -663,7 +664,7 @@ func TestKubernetesDiffError(t *testing.T) {
 
 	diffErr := status.Errorf(codes.Unknown, "failed to parse kubeconfig: %s",
 		fmt.Errorf("couldn't get version/kind; json parse error: %w",
-			fmt.Errorf("json: cannot unmarshal string into Go value of type struct "+
+			errors.New("json: cannot unmarshal string into Go value of type struct "+
 				"{ APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }")))
 
 	client := &stubClient{

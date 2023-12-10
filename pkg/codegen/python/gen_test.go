@@ -17,6 +17,7 @@ package python
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -164,7 +165,7 @@ func buildVirtualEnv(ctx context.Context) error {
 	}
 
 	if !gotSdk {
-		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+		return errors.New("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
 	}
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -103,7 +104,7 @@ func ExpectDiagMessage(t *testing.T, messagePattern string) ValidateFunc {
 				return fmt.Errorf("Unexpected diag message: %s", payload.Message)
 			}
 		}
-		return fmt.Errorf("Expected a diagnostic message, got none")
+		return errors.New("Expected a diagnostic message, got none")
 	}
 	return validate
 }
@@ -365,11 +366,11 @@ type brokenDecrypter struct {
 }
 
 func (b brokenDecrypter) DecryptValue(_ context.Context, _ string) (string, error) {
-	return "", fmt.Errorf(b.ErrorMessage)
+	return "", errors.New(b.ErrorMessage)
 }
 
 func (b brokenDecrypter) BulkDecrypt(_ context.Context, _ []string) (map[string]string, error) {
-	return nil, fmt.Errorf(b.ErrorMessage)
+	return nil, errors.New(b.ErrorMessage)
 }
 
 // Tests that the engine presents a reasonable error message when a decrypter fails to decrypt a config value.
@@ -872,7 +873,7 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 				return fmt.Errorf("Unexpected warning diag message: %s", payload.Message)
 			}
 		}
-		return fmt.Errorf("Expected a diagnostic message, got none")
+		return errors.New("Expected a diagnostic message, got none")
 	}
 
 	new, _ := op.Run(project, target, options, false, nil, validate)
@@ -3721,7 +3722,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 				}
 			}
 		}
-		return fmt.Errorf("Expected a diagnostic message, got none")
+		return errors.New("Expected a diagnostic message, got none")
 	}
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NoError(t, err)
@@ -3825,10 +3826,10 @@ func TestPendingDeleteOrder(t *testing.T) {
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if strings.Contains(string(urn), "typB") && failCreationOfTypB {
-						return "", nil, resource.StatusOK, fmt.Errorf("Could not create typB")
+						return "", nil, resource.StatusOK, errors.New("Could not create typB")
 					}
 
-					id := resource.ID(fmt.Sprintf("%d", len(cloudState)))
+					id := resource.ID(strconv.Itoa(len(cloudState)))
 					if !preview {
 						cloudState[id] = news
 					}
@@ -3972,7 +3973,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := resource.ID("")
 					if !preview {
-						id = resource.ID(fmt.Sprintf("%d", cloudID))
+						id = resource.ID(strconv.Itoa(cloudID))
 						cloudID = cloudID + 1
 						cloudState[id] = news
 					}
@@ -3991,7 +3992,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					}
 
 					if strings.Contains(string(urn), "typB") && failDeletionOfTypB {
-						return resource.StatusOK, fmt.Errorf("Could not delete typB")
+						return resource.StatusOK, errors.New("Could not delete typB")
 					}
 
 					delete(cloudState, id)
