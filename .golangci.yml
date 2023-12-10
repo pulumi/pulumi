@@ -50,6 +50,10 @@ linters-settings:
         deny:
           - pkg: "github.com/golang/protobuf"
             desc: Use google.golang.org/protobuf instead
+      no_errors:
+        deny:
+          - pkg: "github.com/pkg/errors"
+            desc: Should be replaced by standard lib errors package
   importas:
     alias:
     - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go

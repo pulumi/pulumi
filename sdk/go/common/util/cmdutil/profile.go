@@ -21,26 +21,24 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func InitProfiling(prefix string, memProfileRate int) error {
 	cpu, err := os.Create(fmt.Sprintf("%s.%v.cpu", prefix, os.Getpid()))
 	if err != nil {
-		return errors.Wrap(err, "could not start CPU profile")
+		return fmt.Errorf("could not start CPU profile: %w", err)
 	}
 	if err = pprof.StartCPUProfile(cpu); err != nil {
-		return errors.Wrap(err, "could not start CPU profile")
+		return fmt.Errorf("could not start CPU profile: %w", err)
 	}
 
 	exec, err := os.Create(fmt.Sprintf("%s.%v.trace", prefix, os.Getpid()))
 	if err != nil {
-		return errors.Wrap(err, "could not start execution trace")
+		return fmt.Errorf("could not start execution trace: %w", err)
 	}
 	if err = trace.Start(exec); err != nil {
-		return errors.Wrap(err, "could not start execution trace")
+		return fmt.Errorf("could not start execution trace: %w", err)
 	}
 
 	if memProfileRate > 0 {
@@ -56,13 +54,13 @@ func CloseProfiling(prefix string) error {
 
 	mem, err := os.Create(fmt.Sprintf("%s.%v.mem", prefix, os.Getpid()))
 	if err != nil {
-		return errors.Wrap(err, "could not create memory profile")
+		return fmt.Errorf("could not create memory profile: %w", err)
 	}
 	defer contract.IgnoreClose(mem)
 
 	runtime.GC() // get up-to-date statistics
 	if err = pprof.Lookup("allocs").WriteTo(mem, 0); err != nil {
-		return errors.Wrap(err, "could not write memory profile")
+		return fmt.Errorf("could not write memory profile: %w", err)
 	}
 
 	return nil

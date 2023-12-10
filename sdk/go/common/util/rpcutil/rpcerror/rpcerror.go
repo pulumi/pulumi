@@ -31,7 +31,7 @@ package rpcerror
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors" //nolint:depguard // this might still be needed for handling stack trace errors
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
@@ -204,7 +204,7 @@ func serializeErrorCause(err error) *pulumirpc.ErrorCause {
 	// The pkg/errors documentation actually encourages this pattern (!) so
 	// that's what we're doing here to get at the error's stack trace.
 	type stackTracer interface {
-		StackTrace() errors.StackTrace
+		StackTrace() pkgerrors.StackTrace
 	}
 
 	message := err.Error()
