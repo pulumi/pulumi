@@ -121,7 +121,7 @@ func normPypiVersion(v semver.Version) semver.Version {
 // pypiVersion translates semver 2.0 into pypi's versioning scheme:
 // Details can be found here: https://www.python.org/dev/peps/pep-0440/#version-scheme
 // [N!]N(.N)*[{a|b|rc}N][.postN][.devN]
-func pypiVersion(v semver.Version) string {
+func PypiVersion(v semver.Version) string {
 	v = normPypiVersion(v)
 
 	localList := slice.Prealloc[string](len(pypiReleaseTranslations))

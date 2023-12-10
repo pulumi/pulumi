@@ -101,7 +101,7 @@ func TestMakePyPiVersion(t *testing.T) {
 			t.Parallel()
 
 			v := semver.MustParse(tt.input)
-			actual := pypiVersion(v)
+			actual := PypiVersion(v)
 			if tt.expected != actual {
 				t.Errorf("expected %q != actual %q", tt.expected, actual)
 			}

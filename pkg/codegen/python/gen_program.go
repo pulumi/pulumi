@@ -317,9 +317,32 @@ func GenerateProject(
 	}
 	files["Pulumi.yaml"] = projectBytes
 
+	// The local dependencies map is a map of package name to the path to the package, the path could be
+	// absolute or a relative path but we want to ensure we emit relative paths in the requirments.txt.
+	for k, v := range localDependencies {
+		absPath := v
+		if !filepath.IsAbs(v) {
+			absPath, err = filepath.Abs(v)
+			if err != nil {
+				return fmt.Errorf("absolute path of %s: %w", v, err)
+			}
+		}
+
+		relPath, err := filepath.Rel(directory, absPath)
+		if err != nil {
+			return fmt.Errorf("relative path of %s from %s: %w", absPath, directory, err)
+		}
+
+		localDependencies[k] = relPath
+	}
+
 	// Build a requirements.txt based on the packages used by program
 	var requirementsTxt bytes.Buffer
-	requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+	if path, ok := localDependencies["pulumi"]; ok {
+		fmt.Fprintf(&requirementsTxt, "%s\n", path)
+	} else {
+		requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+	}
 
 	// For each package add a PackageReference line
 	// find references from the main/entry program and programs of components
@@ -331,21 +354,26 @@ func GenerateProject(
 		if p.Name == "pulumi" {
 			continue
 		}
-		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
-			return err
-		}
 
-		packageName := "pulumi-" + p.Name
-		if langInfo, found := p.Language["python"]; found {
-			pyInfo, ok := langInfo.(PackageInfo)
-			if ok && pyInfo.PackageName != "" {
-				packageName = pyInfo.PackageName
-			}
-		}
-		if p.Version != nil {
-			fmt.Fprintf(&requirementsTxt, "%s==%s\n", packageName, p.Version.String())
+		if path, ok := localDependencies[p.Name]; ok {
+			fmt.Fprintf(&requirementsTxt, "%s\n", path)
 		} else {
-			fmt.Fprintf(&requirementsTxt, "%s\n", packageName)
+			if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+				return err
+			}
+
+			packageName := "pulumi-" + p.Name
+			if langInfo, found := p.Language["python"]; found {
+				pyInfo, ok := langInfo.(PackageInfo)
+				if ok && pyInfo.PackageName != "" {
+					packageName = pyInfo.PackageName
+				}
+			}
+			if p.Version != nil {
+				fmt.Fprintf(&requirementsTxt, "%s==%s\n", packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&requirementsTxt, "%s\n", packageName)
+			}
 		}
 	}
 
