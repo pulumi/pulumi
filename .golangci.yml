@@ -28,6 +28,7 @@ linters:
     - unconvert
     - unused
     - paralleltest
+    - depguard
 
 linters-settings:
   nakedret:
@@ -48,6 +49,12 @@ linters-settings:
       - sortslice
       # Detect write to struct/arrays by-value that aren't read again.
       - unusedwrite
+  depguard:
+    rules:
+      no_errors:
+        deny:
+          - pkg: "github.com/pkg/errors"
+            desc: Should be replaced by standard lib errors package
 
 issues:
   exclude-rules:

@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,7 +27,6 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -90,7 +90,7 @@ func NewPolicyAnalyzer(
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
+		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
 	}
 
 	// For historical reasons, the Node.js plugin name is just "policy".
@@ -139,14 +139,15 @@ func NewPolicyAnalyzer(
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
-		if errors.Cause(err) == errRunPolicyModuleNotFound {
+
+		if errors.Is(err, errRunPolicyModuleNotFound) {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
 				"try running npm install or yarn install in %q", policyPackPath)
 		}
-		if errors.Cause(err) == errPluginNotFound {
+		if errors.Is(err, errPluginNotFound) {
 			return nil, fmt.Errorf("policy pack not found at %q", name)
 		}
-		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
+		return nil, fmt.Errorf("policy pack %q failed to start: %w", string(name), err)
 	}
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
@@ -202,7 +203,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 
 	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
-		return nil, errors.Wrap(err, "converting analysis results")
+		return nil, fmt.Errorf("converting analysis results: %w", err)
 	}
 	return diags, nil
 }
@@ -216,7 +217,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		props, err := MarshalProperties(resource.Properties,
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
-			return nil, errors.Wrap(err, "marshalling properties")
+			return nil, fmt.Errorf("marshalling properties: %w", err)
 		}
 
 		provider, err := marshalProvider(resource.Provider)
@@ -275,7 +276,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 
 	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
-		return nil, errors.Wrap(err, "converting analysis results")
+		return nil, fmt.Errorf("converting analysis results: %w", err)
 	}
 	return diags, nil
 }
@@ -460,7 +461,7 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 
 	for k, v := range policyConfig {
 		if !v.EnforcementLevel.IsValid() {
-			return errors.Errorf("invalid enforcement level %q", v.EnforcementLevel)
+			return fmt.Errorf("invalid enforcement level %q", v.EnforcementLevel)
 		}
 		c[k] = &pulumirpc.PolicyConfig{
 			EnforcementLevel: marshalEnforcementLevel(v.EnforcementLevel),
@@ -540,7 +541,7 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	props, err := MarshalProperties(provider.Properties,
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
-		return nil, errors.Wrap(err, "marshalling properties")
+		return nil, fmt.Errorf("marshalling properties: %w", err)
 	}
 
 	return &pulumirpc.AnalyzerProviderResource{

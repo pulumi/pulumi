@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,7 +30,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -673,7 +673,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		if _, isString := mapped.(string); !isString {
 			marshalled, err := json.Marshal(mapped)
 			if err != nil {
-				err := errors.Wrapf(err, "marshaling configuration property '%v'", k)
+				err := fmt.Errorf("marshaling configuration property '%v': %w", k, err)
 				p.configSource.MustReject(err)
 				return err
 			}
@@ -692,7 +692,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		KeepResources: true,
 	})
 	if err != nil {
-		err := errors.Wrapf(err, "marshaling provider inputs")
+		err := fmt.Errorf("marshaling provider inputs: %w", err)
 		p.configSource.MustReject(err)
 		return err
 	}
@@ -998,7 +998,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 	if id == "" && !preview {
 		return "", nil, resource.StatusUnknown,
-			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
+			fmt.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{

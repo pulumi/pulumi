@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -463,7 +463,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 			if kinds&AnalyzerPlugins != 0 {
 				if _, err := host.Analyzer(tokens.QName(plugin.Name)); err != nil {
 					result = multierror.Append(result,
-						errors.Wrapf(err, "failed to load analyzer plugin %s", plugin.Name))
+						fmt.Errorf("failed to load analyzer plugin %s: %w", plugin.Name, err))
 				}
 			}
 		case workspace.LanguagePlugin:
@@ -475,14 +475,14 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 				// got hold of.
 				if _, err := host.LanguageRuntime(host.ctx.Root, host.ctx.Pwd, plugin.Name, nil); err != nil {
 					result = multierror.Append(result,
-						errors.Wrapf(err, "failed to load language plugin %s", plugin.Name))
+						fmt.Errorf("failed to load language plugin %s: %w", plugin.Name, err))
 				}
 			}
 		case workspace.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
 				if _, err := host.Provider(tokens.Package(plugin.Name), plugin.Version); err != nil {
 					result = multierror.Append(result,
-						errors.Wrapf(err, "failed to load resource plugin %s", plugin.Name))
+						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}
 			}
 		default:
@@ -509,8 +509,8 @@ func (host *defaultHost) SignalCancellation() error {
 		var result error
 		for _, plug := range host.resourcePlugins {
 			if err := plug.Plugin.SignalCancellation(); err != nil {
-				result = multierror.Append(result, errors.Wrapf(err,
-					"Error signaling cancellation to resource provider '%s'", plug.Info.Name))
+				result = multierror.Append(result, fmt.Errorf(
+					"Error signaling cancellation to resource provider '%s': %w", plug.Info.Name, err))
 			}
 		}
 		return nil, result
@@ -594,7 +594,7 @@ func GetRequiredPlugins(host Host, root string, info ProgInfo, kinds Flags) ([]w
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 		lang, err := host.LanguageRuntime(root, info.Pwd, info.Proj.Runtime.Name(), info.Proj.Runtime.Options())
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
+			return nil, fmt.Errorf("failed to load language plugin %s: %w", info.Proj.Runtime.Name(), err)
 		}
 		plugins = append(plugins, workspace.PluginSpec{
 			Name: info.Proj.Runtime.Name(),
@@ -608,7 +608,7 @@ func GetRequiredPlugins(host Host, root string, info ProgInfo, kinds Flags) ([]w
 			//     later than we do (right now, we do it up front, but at that point we don't know the version).
 			deps, err := lang.GetRequiredPlugins(info)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to discover plugin requirements")
+				return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
 			}
 			plugins = append(plugins, deps...)
 		}

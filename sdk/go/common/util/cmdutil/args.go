@@ -15,8 +15,9 @@
 package cmdutil
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
@@ -60,11 +61,11 @@ func ExactArgs(n int) cobra.PositionalArgs {
 func SpecificArgs(argNames []string) cobra.PositionalArgs {
 	return ArgsFunc(func(cmd *cobra.Command, args []string) error {
 		if len(args) > len(argNames) {
-			return errors.Errorf("too many arguments: got %d, expected %d", len(args), len(argNames))
+			return fmt.Errorf("too many arguments: got %d, expected %d", len(args), len(argNames))
 		} else if len(args) < len(argNames) {
 			var result error
 			for i := len(args); i < len(argNames); i++ {
-				result = multierror.Append(result, errors.Errorf("missing required argument: %s", argNames[i]))
+				result = multierror.Append(result, fmt.Errorf("missing required argument: %s", argNames[i]))
 			}
 			return result
 		}

@@ -15,9 +15,10 @@
 package rpcerror
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -56,8 +57,8 @@ func TestWrap(t *testing.T) {
 	t.Parallel()
 
 	first := errors.New("first error")
-	second := errors.Wrap(first, "second error")
-	third := errors.Wrap(second, "third error")
+	second := fmt.Errorf("second error: %w", first)
+	third := fmt.Errorf("third error: %w", second)
 	err := Wrap(codes.Aborted, third, "fourth error")
 
 	rpcErr, ok := FromError(err)
