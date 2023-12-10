@@ -730,7 +730,7 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 }
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, directory string) error {
+func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, runtime.Name(), runtime.Options())
@@ -738,7 +738,7 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(directory); err != nil {
+	if err = lang.InstallDependencies(ctx.Pwd, main); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}

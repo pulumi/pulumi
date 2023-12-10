@@ -80,7 +80,7 @@ func newInstallCmd() *cobra.Command {
 				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
 			}
 
-			if err = lang.InstallDependencies(root); err != nil {
+			if err = lang.InstallDependencies(pwd, main); err != nil {
 				return fmt.Errorf("installing dependencies: %w", err)
 			}
 

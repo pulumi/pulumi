@@ -464,13 +464,13 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			return err
 		}
 		defer ctx.Close()
 
-		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+		if err := installDependencies(ctx, &proj.Runtime, main); err != nil {
 			return err
 		}
 	}

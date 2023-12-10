@@ -324,14 +324,14 @@ func newUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			return result.FromError(fmt.Errorf("building project context: %w", err))
 		}
 
 		defer pctx.Close()
 
-		if err = installDependencies(pctx, &proj.Runtime, pwd); err != nil {
+		if err = installDependencies(pctx, &proj.Runtime, main); err != nil {
 			return result.FromError(err)
 		}
 

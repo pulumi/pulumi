@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -48,6 +49,8 @@ type langhost struct {
 	runtime string
 	plug    *plugin
 	client  pulumirpc.LanguageRuntimeClient
+	root    string
+	options map[string]interface{}
 }
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
@@ -78,6 +81,8 @@ func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
 	return &langhost{
 		ctx:     ctx,
 		runtime: runtime,
+		root:    root,
+		options: options,
 		plug:    plug,
 		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
 	}, nil
@@ -136,10 +141,22 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 	proj := string(info.Proj.Name)
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
+
+	opts, err := structpb.NewStruct(h.options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal options: %w", err)
+	}
+
 	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
 		Project: proj,
 		Pwd:     info.Pwd,
 		Program: info.Program,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    h.root,
+			ProgramDirectory: info.Pwd,
+			EntryPoint:       info.Program,
+			Options:          opts,
+		},
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -202,6 +219,12 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	if err != nil {
 		return "", false, err
 	}
+
+	opts, err := structpb.NewStruct(h.options)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to marshal options: %w", err)
+	}
+
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
 		MonitorAddress:    info.MonitorAddress,
 		Pwd:               info.Pwd,
@@ -216,6 +239,12 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		QueryMode:         info.QueryMode,
 		Parallel:          int32(info.Parallel),
 		Organization:      info.Organization,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    h.root,
+			ProgramDirectory: info.Pwd,
+			EntryPoint:       info.Program,
+			Options:          opts,
+		},
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -269,17 +298,29 @@ func (h *langhost) Close() error {
 	return nil
 }
 
-func (h *langhost) InstallDependencies(directory string) error {
-	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) executing",
-		h.runtime, directory)
+func (h *langhost) InstallDependencies(pwd, main string) error {
+	logging.V(7).Infof("langhost[%v].InstallDependencies(pwd=%s, main=%s) executing",
+		h.runtime, pwd, main)
+
+	opts, err := structpb.NewStruct(h.options)
+	if err != nil {
+		return fmt.Errorf("failed to marshal options: %w", err)
+	}
+
 	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
-		Directory:  directory,
+		Directory:  pwd,
 		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    h.root,
+			ProgramDirectory: pwd,
+			EntryPoint:       main,
+			Options:          opts,
+		},
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
-			h.runtime, directory, rpcError)
+		logging.V(7).Infof("langhost[%v].InstallDependencies(pwd=%s, main=%s) failed: err=%v",
+			h.runtime, pwd, main, rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
 		// method.  In such cases, we will silently error (with the above log left behind).
@@ -297,8 +338,8 @@ func (h *langhost) InstallDependencies(directory string) error {
 				break
 			}
 			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
-				h.runtime, directory, rpcError)
+			logging.V(7).Infof("langhost[%v].InstallDependencies(pwd=%s, main=%s) failed: err=%v",
+				h.runtime, pwd, main, rpcError)
 			return rpcError
 		}
 
@@ -311,8 +352,8 @@ func (h *langhost) InstallDependencies(directory string) error {
 		}
 	}
 
-	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) success",
-		h.runtime, directory)
+	logging.V(7).Infof("langhost[%v].InstallDependencies(pwd=%s, main=%s) success",
+		h.runtime, pwd, main)
 	return nil
 }
 
@@ -341,12 +382,23 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 	prefix := fmt.Sprintf("langhost[%v].GetProgramDependencies(proj=%s,pwd=%s,program=%s,transitiveDependencies=%t)",
 		h.runtime, proj, info.Pwd, info.Program, transitiveDependencies)
 
+	opts, err := structpb.NewStruct(h.options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal options: %w", err)
+	}
+
 	logging.V(7).Infof("%s executing", prefix)
 	resp, err := h.client.GetProgramDependencies(h.ctx.Request(), &pulumirpc.GetProgramDependenciesRequest{
 		Project:                proj,
 		Pwd:                    info.Pwd,
 		Program:                info.Program,
 		TransitiveDependencies: transitiveDependencies,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    h.root,
+			ProgramDirectory: info.Pwd,
+			EntryPoint:       info.Program,
+			Options:          opts,
+		},
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -378,6 +430,11 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 	logging.V(7).Infof("langhost[%v].RunPlugin(pwd=%s,program=%s) executing",
 		h.runtime, info.Pwd, info.Program)
 
+	opts, err := structpb.NewStruct(h.options)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to marshal options: %w", err)
+	}
+
 	ctx, kill := context.WithCancel(h.ctx.Request())
 
 	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
@@ -385,6 +442,12 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		Program: info.Program,
 		Args:    info.Args,
 		Env:     info.Env,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    h.root,
+			ProgramDirectory: info.Program,
+			EntryPoint:       ".",
+			Options:          opts,
+		},
 	})
 	if err != nil {
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering
