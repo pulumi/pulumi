@@ -144,6 +144,9 @@ func NewRetryableClient() *http.Client {
 }
 
 func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, error) {
+	if templateURL.Scheme == "" {
+		return "", fmt.Errorf("invalid template URL: %s", templateURL.String())
+	}
 	client := NewRetryableClient()
 	packageRequest, err := http.NewRequest(http.MethodGet, templateURL.String(), bytes.NewReader([]byte{}))
 	if err != nil {
