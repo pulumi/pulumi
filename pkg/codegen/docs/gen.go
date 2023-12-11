@@ -176,9 +176,6 @@ type docGenContext struct {
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
 	langModuleNameLookup map[string]string
-
-	// Maps a *modContext, *schema.Resource, or *schema.Function to the link that was assigned to it.
-	moduleConflictLinkMap map[interface{}]string
 }
 
 // modules is a map of a module name and information
@@ -218,11 +215,10 @@ func newDocGenContext() *docGenContext {
 	}
 
 	return &docGenContext{
-		supportedLanguages:    supportedLanguages,
-		snippetLanguages:      []string{"csharp", "go", "python", "typescript", "yaml", "java"},
-		langModuleNameLookup:  map[string]string{},
-		docHelpers:            docHelpers,
-		moduleConflictLinkMap: map[interface{}]string{},
+		supportedLanguages:   supportedLanguages,
+		snippetLanguages:     []string{"csharp", "go", "python", "typescript", "yaml", "java"},
+		langModuleNameLookup: map[string]string{},
+		docHelpers:           docHelpers,
 	}
 }
 
@@ -1774,61 +1770,10 @@ func (mod *modContext) getModuleFileName() string {
 	return mod.mod
 }
 
-// moduleConflictResolver holds module-level information for resolving naming conflicts.
-// It shares information with the top-level docGenContext
-// to ensure the same name is used across modules that reference each other.
-type moduleConflictResolver struct {
-	dctx *docGenContext
-	seen map[string]struct{}
-}
-
-func (dctx *docGenContext) newModuleConflictResolver() moduleConflictResolver {
-	return moduleConflictResolver{
-		dctx: dctx,
-		seen: map[string]struct{}{},
-	}
-}
-
-// getSafeName returns a documentation name for an item
-// that is unique within the module.
-//
-// if the item has already been resolved by any module,
-// the previously-resolved name is returned.
-func (r *moduleConflictResolver) getSafeName(name string, item interface{}) string {
-	if safeName, ok := r.dctx.moduleConflictLinkMap[item]; ok {
-		return safeName
-	}
-
-	var prefixes []string
-	switch item.(type) {
-	case *schema.Resource:
-		prefixes = []string{"", "res-"}
-	case *schema.Function:
-		prefixes = []string{"", "fn-"}
-	case *modContext:
-		prefixes = []string{"", "mod-"}
-	default:
-		prefixes = []string{""}
-	}
-	for _, prefix := range prefixes {
-		candidate := prefix + name
-		if _, exists := r.seen[candidate]; exists {
-			continue
-		}
-		r.seen[candidate] = struct{}{}
-		r.dctx.moduleConflictLinkMap[item] = candidate
-		return candidate
-	}
-
-	glog.Error("skipping unresolvable duplicate file name: ", name)
-	return ""
-}
-
 func (mod *modContext) gen(fs codegen.Fs) error {
 	glog.V(4).Infoln("genIndex for", mod.mod)
 
 	modName := mod.getModuleFileName()
-	conflictResolver := mod.docGenContext.newModuleConflictResolver()
 
 	def, err := mod.pkg.Definition()
 	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
@@ -1860,12 +1805,8 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
 		displayName := modFilenameToDisplayName(modName)
-		safeName := conflictResolver.getSafeName(displayName, mod)
-		if safeName == "" {
-			continue // unresolved conflict
-		}
 		modules = append(modules, indexEntry{
-			Link:        getModuleLink(safeName),
+			Link:        getModuleLink(modName),
 			DisplayName: displayName,
 		})
 	}
@@ -1875,12 +1816,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	resources := slice.Prealloc[indexEntry](len(mod.resources))
 	for _, r := range mod.resources {
 		title := resourceName(r)
-		link := getResourceLink(title)
-		link = conflictResolver.getSafeName(link, r)
-		if link == "" {
-			continue // unresolved conflict
-		}
-
+		link := "res-" + getResourceLink(title)
 		data := mod.genResource(r)
 		if err := addFileTemplated(link, "resource.tmpl", data); err != nil {
 			return err
@@ -1897,12 +1833,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	functions := slice.Prealloc[indexEntry](len(mod.functions))
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
-		link := getFunctionLink(name)
-		link = conflictResolver.getSafeName(link, f)
-		if link == "" {
-			continue // unresolved conflict
-		}
-
+		link := "fn-" + getFunctionLink(name)
 		data := mod.genFunction(f)
 		if err := addFileTemplated(link, "function.tmpl", data); err != nil {
 			return err
@@ -2026,12 +1957,10 @@ func (dctx *docGenContext) getMod(
 		}
 
 		if modName != "" && codegen.PkgEquals(tokenPkg, pkg) {
-			parentName := path.Dir(modName)
 			// If the parent name is blank, it means this is the package-level.
-			if parentName == "." || parentName == "" {
+			parentName := ":" + modName + ":"
+			if p := path.Dir(modName); p == "." || p == "" {
 				parentName = ":index:"
-			} else {
-				parentName = ":" + parentName + ":"
 			}
 			parent := dctx.getMod(pkg, parentName, tokenPkg, modules, tool, add)
 			if add {
