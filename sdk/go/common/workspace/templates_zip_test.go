@@ -150,6 +150,18 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed to write nested file to zip archive: %s", err)
 		}
+
+		if req.URL.Path != "/no-pulumi-yaml/foo.zip" {
+			fileHandle, err := writer.Create("Pulumi.yaml")
+			if err != nil {
+				t.Errorf("Failed to create Pulumi.yaml file in zip archive: %s", err)
+			}
+			pulumiProj := "name: foo\nruntime: nodejs"
+			_, err = fileHandle.Write([]byte(pulumiProj))
+			if err != nil {
+				t.Errorf("Failed to write to zip file: %s", err)
+			}
+		}
 		writer.Close()
 		rw.Header().Set("Content-Type", "application/zip")
 		rw.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", fileName))
@@ -168,6 +180,11 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 			testName:    "valid_zip_url",
 			templateURL: fmt.Sprintf("%s/foo.zip", server.URL),
 			shouldFail:  false,
+		},
+		{
+			testName:    "invalid_zip_template",
+			templateURL: fmt.Sprintf("%s/no-pulumi-yaml/foo.zip", server.URL),
+			shouldFail:  true,
 		},
 	}
 	for _, tt := range tests {
