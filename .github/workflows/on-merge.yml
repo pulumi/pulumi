@@ -82,5 +82,8 @@ jobs:
       - name: Release failed
         if: ${{ needs.prepare-release.result != 'success' }}
         run: exit 1
+      - name: Dev release failed
+        if: ${{ needs.dev-release.result != 'success' }}
+        run: exit 1
       - name: CI succeeded
         run: exit 0
