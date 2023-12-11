@@ -51,7 +51,6 @@ func TestEmptyPython(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferencePython(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
 
