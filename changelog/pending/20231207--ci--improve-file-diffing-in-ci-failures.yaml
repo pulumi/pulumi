@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: ci
-  description: Improve file diffing in CI failures
