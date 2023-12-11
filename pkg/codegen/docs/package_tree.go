@@ -32,8 +32,6 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 	size := numResources + numFunctions + 1
 	packageTree := slice.Prealloc[PackageTreeItem](size)
 
-	conflictResolver := rootMod.docGenContext.newModuleConflictResolver()
-
 	for _, m := range rootMod.children {
 		modName := m.getModuleFileName()
 		displayName := modFilenameToDisplayName(modName)
@@ -43,14 +41,10 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 			return nil, fmt.Errorf("generating children for module %s (mod token: %s): %w", displayName, m.mod, err)
 		}
 
-		safeName := conflictResolver.getSafeName(displayName, m)
-		if safeName == "" {
-			continue // unresolved conflict
-		}
 		ti := PackageTreeItem{
 			Name:     displayName,
 			Type:     entryTypeModule,
-			Link:     getModuleLink(safeName),
+			Link:     getModuleLink(m.mod),
 			Children: children,
 		}
 
@@ -62,14 +56,10 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 
 	for _, r := range rootMod.resources {
 		name := resourceName(r)
-		safeName := conflictResolver.getSafeName(name, r)
-		if safeName == "" {
-			continue // unresolved conflict
-		}
 		ti := PackageTreeItem{
 			Name:     name,
 			Type:     entryTypeResource,
-			Link:     getResourceLink(safeName),
+			Link:     getResourceLink("res-" + name),
 			Children: nil,
 		}
 
@@ -87,14 +77,10 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 
 	for _, f := range rootMod.functions {
 		name := tokenToName(f.Token)
-		safeName := conflictResolver.getSafeName(name, f)
-		if safeName == "" {
-			continue // unresolved conflict
-		}
 		ti := PackageTreeItem{
 			Name:     name,
 			Type:     entryTypeFunction,
-			Link:     getFunctionLink(safeName),
+			Link:     getFunctionLink("fn-" + name),
 			Children: nil,
 		}
 
