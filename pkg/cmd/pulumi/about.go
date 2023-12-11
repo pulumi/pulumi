@@ -161,7 +161,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 					}
 				}
 
-				progInfo := plugin.ProgInfo{Proj: proj, Pwd: pwd, Program: program}
+				progInfo := plugin.ProgInfo{Root: projinfo.Root, Proj: proj, Pwd: pwd, Program: program}
 				deps, err := lang.GetProgramDependencies(progInfo, transitiveDependencies)
 				if err != nil {
 					addError(err, "Failed to get information about the Pulumi program's dependencies")
@@ -589,6 +589,7 @@ func getProjectPluginsSilently(
 	os.Stdout = w
 
 	return plugin.GetRequiredPlugins(ctx.Host, ctx.Root, plugin.ProgInfo{
+		Root:    ctx.Root,
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,

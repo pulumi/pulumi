@@ -239,6 +239,7 @@ func installPlugins(ctx context.Context,
 	// In order to get a complete view of the set of plugins that we need for an update or query, we must
 	// consult both sources and merge their results into a list of plugins.
 	languagePlugins, err := gatherPluginsFromProgram(plugctx, plugin.ProgInfo{
+		Root:    plugctx.Root,
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,

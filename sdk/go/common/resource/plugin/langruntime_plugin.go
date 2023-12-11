@@ -49,7 +49,6 @@ type langhost struct {
 	runtime string
 	plug    *plugin
 	client  pulumirpc.LanguageRuntimeClient
-	root    string
 	options map[string]interface{}
 }
 
@@ -81,7 +80,6 @@ func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
 	return &langhost{
 		ctx:     ctx,
 		runtime: runtime,
-		root:    root,
 		options: options,
 		plug:    plug,
 		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
@@ -152,7 +150,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 		Pwd:     info.Pwd,
 		Program: info.Program,
 		Info: &pulumirpc.ProgramInfo{
-			RootDirectory:    h.root,
+			RootDirectory:    info.Root,
 			ProgramDirectory: info.Pwd,
 			EntryPoint:       info.Program,
 			Options:          opts,
@@ -240,7 +238,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		Parallel:          int32(info.Parallel),
 		Organization:      info.Organization,
 		Info: &pulumirpc.ProgramInfo{
-			RootDirectory:    h.root,
+			RootDirectory:    info.Root,
 			ProgramDirectory: info.Pwd,
 			EntryPoint:       info.Program,
 			Options:          opts,
@@ -298,9 +296,9 @@ func (h *langhost) Close() error {
 	return nil
 }
 
-func (h *langhost) InstallDependencies(pwd, main string) error {
-	logging.V(7).Infof("langhost[%v].InstallDependencies(pwd=%s, main=%s) executing",
-		h.runtime, pwd, main)
+func (h *langhost) InstallDependencies(root, pwd, main string) error {
+	logging.V(7).Infof("langhost[%v].InstallDependencies(root=%s, pwd=%s, main=%s) executing",
+		h.runtime, root, pwd, main)
 
 	opts, err := structpb.NewStruct(h.options)
 	if err != nil {
@@ -311,7 +309,7 @@ func (h *langhost) InstallDependencies(pwd, main string) error {
 		Directory:  pwd,
 		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
 		Info: &pulumirpc.ProgramInfo{
-			RootDirectory:    h.root,
+			RootDirectory:    root,
 			ProgramDirectory: pwd,
 			EntryPoint:       main,
 			Options:          opts,
@@ -394,7 +392,7 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 		Program:                info.Program,
 		TransitiveDependencies: transitiveDependencies,
 		Info: &pulumirpc.ProgramInfo{
-			RootDirectory:    h.root,
+			RootDirectory:    info.Root,
 			ProgramDirectory: info.Pwd,
 			EntryPoint:       info.Program,
 			Options:          opts,
@@ -443,7 +441,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		Args:    info.Args,
 		Env:     info.Env,
 		Info: &pulumirpc.ProgramInfo{
-			RootDirectory:    h.root,
+			RootDirectory:    info.Root,
 			ProgramDirectory: info.Program,
 			EntryPoint:       ".",
 			Options:          opts,

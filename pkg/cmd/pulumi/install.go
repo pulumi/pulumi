@@ -80,12 +80,13 @@ func newInstallCmd() *cobra.Command {
 				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
 			}
 
-			if err = lang.InstallDependencies(pwd, main); err != nil {
+			if err = lang.InstallDependencies(root, pwd, main); err != nil {
 				return fmt.Errorf("installing dependencies: %w", err)
 			}
 
 			// Compute the set of plugins the current project needs.
 			installs, err := lang.GetRequiredPlugins(plugin.ProgInfo{
+				Root:    pctx.Root,
 				Proj:    proj,
 				Pwd:     pwd,
 				Program: main,

@@ -351,6 +351,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 		}
 
 		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+			Root:    ctx.Root,
 			Pwd:     pwd,
 			Program: pluginDir,
 			Args:    pluginArgs,

@@ -44,7 +44,7 @@ type LanguageRuntime interface {
 	GetPluginInfo() (workspace.PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(pwd, main string) error
+	InstallDependencies(root, pwd, main string) error
 
 	// About returns information about the language runtime.
 	About() (AboutInfo, error)
@@ -85,6 +85,7 @@ type AboutInfo struct {
 }
 
 type RunPluginInfo struct {
+	Root    string
 	Pwd     string
 	Program string
 	Args    []string
@@ -94,12 +95,14 @@ type RunPluginInfo struct {
 // ProgInfo contains minimal information about the program to be run.
 type ProgInfo struct {
 	Proj    *workspace.Project // the program project/package.
+	Root    string             // the programs root directory, i.e. where the Pulumi.yaml file is.
 	Pwd     string             // the program's working directory.
 	Program string             // the path to the program to execute.
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
+	Root              string                // the programs root directory, i.e. where the Pulumi.yaml file is.
 	MonitorAddress    string                // the RPC address to the host resource monitor.
 	Project           string                // the project name housing the program being run.
 	Stack             string                // the stack name being evaluated.
