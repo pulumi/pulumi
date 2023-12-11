@@ -85,6 +85,13 @@ type newArgs struct {
 	templateMode      bool
 }
 
+func deriveAIOrTemplate(args newArgs) string {
+	if args.aiPrompt != "" || args.aiLanguage != "" {
+		return "ai"
+	}
+	return "template"
+}
+
 func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool {
 	return args.aiPrompt == "" && args.aiLanguage == "" && !args.templateMode && userBackend.Name() == "pulumi.com"
 }
@@ -178,13 +185,18 @@ func runNew(ctx context.Context, args newArgs) error {
 		if shouldPromptForAIOrTemplate(args, b) {
 			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
 		} else {
-			aiOrTemplate = "template"
+			aiOrTemplate = deriveAIOrTemplate(args)
 		}
 		if err != nil {
 			return err
 		}
 		if aiOrTemplate == "ai" {
-			conversationURL, err := runAINew(ctx, args, opts, args.aiPrompt, args.aiLanguage, args.yes, name)
+			if b.Name() != "pulumi.com" {
+				// Currently, we don't actually hit this - users are prompted to log in
+				// for pulumi new regardless, but if that behavior changes, we can catch it here.
+				return errors.New("please log in to Pulumi Cloud to use Pulumi AI")
+			}
+			conversationURL, err := runAINew(ctx, args, opts, name)
 			if err != nil {
 				return err
 			}
@@ -454,9 +466,6 @@ func runAINew(
 	ctx context.Context,
 	args newArgs,
 	opts display.Options,
-	prompt string,
-	language string,
-	yes bool,
 	userName string,
 ) (conversationURL string, err error) {
 	languageOptions := []string{
@@ -466,11 +475,11 @@ func runAINew(
 		"Go",
 		"C#",
 	}
-	if language == "" {
+	if args.aiLanguage == "" {
 		if err = survey.AskOne(&survey.Select{
 			Message: "Please select a language for your project:",
 			Options: languageOptions,
-		}, &language, surveyIcons(opts.Color)); err != nil {
+		}, &args.aiLanguage, surveyIcons(opts.Color)); err != nil {
 			return "", err
 		}
 	}
@@ -479,9 +488,9 @@ func runAINew(
 	var conversationID string
 	for continuePrompt, conversationURL, conversationID, connectionID, err = runAINewPromptStep(
 		opts,
-		language,
-		prompt,
-		yes,
+		args.aiLanguage,
+		args.aiPrompt,
+		args.yes,
 		userName,
 		"",
 		"",
@@ -493,9 +502,9 @@ func runAINew(
 		connectionID,
 		err = runAINewPromptStep(
 		opts,
-		language,
-		prompt,
-		yes,
+		args.aiLanguage,
+		args.aiPrompt,
+		args.yes,
 		userName,
 		continuePrompt,
 		connectionID,
