@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: docs
+  description: Fix docs generator panic with nested modules and invalid package tree
