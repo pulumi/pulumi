@@ -44,6 +44,10 @@ type Workspace interface {
 	// PostCommandCallback is a hook executed after every command. Called with the stack name.
 	// An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml).
 	PostCommandCallback(context.Context, string) error
+	// AddEnvironments adds the specified environments to the provided stack's configuration.
+	AddEnvironments(context.Context, string, ...string) error
+	// RemoveEnvironment removes the specified environment from the provided stack's configuration.
+	RemoveEnvironment(context.Context, string, string) error
 	// GetConfig returns the value associated with the specified stack name and key,
 	// scoped to the current workspace.
 	GetConfig(context.Context, string, string) (ConfigValue, error)

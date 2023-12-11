@@ -131,6 +131,38 @@ func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, stackName stri
 	return nil
 }
 
+// AddEnvironments adds environments to the end of a stack's import list. Imported environments are merged in order
+// per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+// environment.
+func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, envs ...string) error {
+	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+	if l.pulumiVersion.LT(semver.Version{Major: 3, Minor: 95}) {
+		return fmt.Errorf("AddEnvironments requires Pulumi CLI version >= 3.95.0")
+	}
+	args := []string{"config", "env", "add"}
+	args = append(args, envs...)
+	args = append(args, "--yes", "--stack", stackName)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("unable to add environments: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
+// RemoveEnvironment removes an environment from a stack's configuration.
+func (l *LocalWorkspace) RemoveEnvironment(ctx context.Context, stackName string, env string) error {
+	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+	if l.pulumiVersion.LT(semver.Version{Major: 3, Minor: 95}) {
+		return fmt.Errorf("RemoveEnvironments requires Pulumi CLI version >= 3.95.0")
+	}
+	args := []string{"config", "env", "rm", env, "--yes", "--stack", stackName}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("unable to remove environment: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 // GetConfig returns the value associated with the specified stack name and key,
 // scoped to the current workspace. LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetConfig(ctx context.Context, stackName string, key string) (ConfigValue, error) {

@@ -667,6 +667,18 @@ func (s *Stack) History(ctx context.Context,
 	return history, nil
 }
 
+// AddEnvironments adds environments to the end of a stack's import list. Imported environments are merged in order
+// per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+// environment.
+func (s *Stack) AddEnvironments(ctx context.Context, envs ...string) error {
+	return s.Workspace().AddEnvironments(ctx, s.Name(), envs...)
+}
+
+// RemoveEnvironment removes an environment from a stack's configuration.
+func (s *Stack) RemoveEnvironment(ctx context.Context, env string) error {
+	return s.Workspace().RemoveEnvironment(ctx, s.Name(), env)
+}
+
 // GetConfig returns the config value associated with the specified key.
 func (s *Stack) GetConfig(ctx context.Context, key string) (ConfigValue, error) {
 	return s.Workspace().GetConfig(ctx, s.Name(), key)
