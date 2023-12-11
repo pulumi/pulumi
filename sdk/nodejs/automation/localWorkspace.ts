@@ -445,6 +445,48 @@ export class LocalWorkspace implements Workspace {
         await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
     }
     /**
+     * Adds environments to the end of a stack's import list. Imported environments are merged in order
+     * per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param stackName The stack to operate on
+     * @param environments The names of the environments to add to the stack's configuration
+     */
+    async addEnvironments(stackName: string, ...environments: string[]): Promise<void> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if (ver.compare("3.95.0") < 0) {
+            throw new Error(`addEnvironments requires Pulumi version >= 3.95.0`);
+        }
+
+        await this.runPulumiCmd(["config", "env", "add", ...environments, "--stack", stackName, "--yes"]);
+    }
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param stackName The stack to operate on
+     * @param environment The name of the environment to remove from the stack's configuration
+     */
+    async removeEnvironment(stackName: string, environment: string): Promise<void> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if (ver.compare("3.95.0") < 0) {
+            throw new Error(`removeEnvironments requires Pulumi version >= 3.95.0`);
+        }
+
+        await this.runPulumiCmd(["config", "env", "rm", environment, "--stack", stackName, "--yes"]);
+    }
+    /**
      * Returns the value associated with the specified stack name and key,
      * scoped to the current workspace. LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
      *
