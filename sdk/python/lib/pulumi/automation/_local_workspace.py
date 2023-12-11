@@ -216,6 +216,48 @@ class LocalWorkspace(Workspace):
         # Not used by LocalWorkspace
         return
 
+    def add_environments(self, stack_name: str, *environment_names: str) -> None:
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+        ver = VersionInfo(3)
+        if self.__pulumi_version is not None:
+            ver = VersionInfo.parse(self.__pulumi_version)
+
+        # 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if ver >= VersionInfo(3, 95):
+            args = ["config", "env", "add"]
+            args.extend(environment_names)
+            args.extend(["--yes", "--stack", stack_name])
+            self._run_pulumi_cmd_sync(args)
+        else:
+            raise InvalidVersionError(
+                "The installed version of the CLI does not support this operation. Please "
+                "upgrade to at least version 3.95.0."
+            )
+
+    def remove_environment(self, stack_name: str, environment_name: str) -> None:
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+        ver = VersionInfo(3)
+        if self.__pulumi_version is not None:
+            ver = VersionInfo.parse(self.__pulumi_version)
+
+        # 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if ver >= VersionInfo(3, 95):
+            args = [
+                "config",
+                "env",
+                "rm",
+                environment_name,
+                "--yes",
+                "--stack",
+                stack_name,
+            ]
+            self._run_pulumi_cmd_sync(args)
+        else:
+            raise InvalidVersionError(
+                "The installed version of the CLI does not support this operation. Please "
+                "upgrade to at least version 3.95.0."
+            )
+
     def get_config(
         self, stack_name: str, key: str, *, path: bool = False
     ) -> ConfigValue:
