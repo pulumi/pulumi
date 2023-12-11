@@ -426,6 +426,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "urn-id-properties",
 		Description: "Testing urn and id properties in valid locations",
 	},
+	{
+		Directory:   "unions-inline",
+		Description: "Testing the use of unions/oneOf in the schema inline with the property definition.",
+	},
 }
 
 var genSDKOnly bool
