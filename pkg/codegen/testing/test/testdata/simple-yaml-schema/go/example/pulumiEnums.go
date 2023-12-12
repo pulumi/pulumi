@@ -252,10 +252,12 @@ func (o RubberTreeVarietyPtrOutput) ToStringPtrOutputWithContext(ctx context.Con
 	}).(pulumi.StringPtrOutput)
 }
 
-// RubberTreeVarietyInput is an input type that accepts RubberTreeVarietyArgs and RubberTreeVarietyOutput values.
-// You can construct a concrete instance of `RubberTreeVarietyInput` via:
+// RubberTreeVarietyInput is an input type that accepts values of the RubberTreeVariety enum
+// A concrete instance of `RubberTreeVarietyInput` can be one of the following:
 //
-//	RubberTreeVarietyArgs{...}
+//	RubberTreeVarietyBurgundy
+//	RubberTreeVarietyRuby
+//	RubberTreeVarietyTineke
 type RubberTreeVarietyInput interface {
 	pulumi.Input
 

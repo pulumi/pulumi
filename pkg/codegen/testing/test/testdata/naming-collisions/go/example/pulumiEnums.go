@@ -137,10 +137,11 @@ func (o ExampleEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) 
 	}).(pulumi.StringPtrOutput)
 }
 
-// ExampleEnumInput is an input type that accepts ExampleEnumArgs and ExampleEnumOutput values.
-// You can construct a concrete instance of `ExampleEnumInput` via:
+// ExampleEnumInput is an input type that accepts values of the ExampleEnum enum
+// A concrete instance of `ExampleEnumInput` can be one of the following:
 //
-//	ExampleEnumArgs{...}
+//	ExampleEnumOne
+//	ExampleEnumTwo
 type ExampleEnumInput interface {
 	pulumi.Input
 
@@ -307,10 +308,11 @@ func (o ExampleEnumInputEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.
 	}).(pulumi.StringPtrOutput)
 }
 
-// ExampleEnumInputEnumInput is an input type that accepts ExampleEnumInputEnumArgs and ExampleEnumInputEnumOutput values.
-// You can construct a concrete instance of `ExampleEnumInputEnumInput` via:
+// ExampleEnumInputEnumInput is an input type that accepts values of the ExampleEnumInputEnum enum
+// A concrete instance of `ExampleEnumInputEnumInput` can be one of the following:
 //
-//	ExampleEnumInputEnumArgs{...}
+//	ExampleEnumInputEnumOne
+//	ExampleEnumInputEnumTwo
 type ExampleEnumInputEnumInput interface {
 	pulumi.Input
 
@@ -477,10 +479,11 @@ func (o ResourceTypeEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Cont
 	}).(pulumi.StringPtrOutput)
 }
 
-// ResourceTypeEnumInput is an input type that accepts ResourceTypeEnumArgs and ResourceTypeEnumOutput values.
-// You can construct a concrete instance of `ResourceTypeEnumInput` via:
+// ResourceTypeEnumInput is an input type that accepts values of the ResourceTypeEnum enum
+// A concrete instance of `ResourceTypeEnumInput` can be one of the following:
 //
-//	ResourceTypeEnumArgs{...}
+//	ResourceTypeEnumHaha
+//	ResourceTypeEnumBusiness
 type ResourceTypeEnumInput interface {
 	pulumi.Input
 

@@ -137,10 +137,11 @@ func (o MyEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulum
 	}).(pulumi.StringPtrOutput)
 }
 
-// MyEnumInput is an input type that accepts MyEnumArgs and MyEnumOutput values.
-// You can construct a concrete instance of `MyEnumInput` via:
+// MyEnumInput is an input type that accepts values of the MyEnum enum
+// A concrete instance of `MyEnumInput` can be one of the following:
 //
-//	MyEnumArgs{...}
+//	MyEnumOne
+//	MyEnumTwo
 type MyEnumInput interface {
 	pulumi.Input
 
