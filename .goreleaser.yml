@@ -54,7 +54,7 @@ archives:
     - src: bin/{{ .Os }}-{{ .Arch }}/*
       dst: '.'
       strip_parent: true
-  name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
