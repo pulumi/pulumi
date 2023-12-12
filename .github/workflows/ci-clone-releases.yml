@@ -4,6 +4,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Run action
         uses: andrewthetechie/gha-clone-releases@v1
