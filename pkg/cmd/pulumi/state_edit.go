@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -136,7 +137,7 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 		return err
 	}
 	if snap == nil {
-		return fmt.Errorf("old snapshot expected to be non-nil")
+		return errors.New("old snapshot expected to be non-nil")
 	}
 
 	sf := &jsonSnapshotEncoder{
@@ -195,7 +196,7 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 			}
 			continue
 		default:
-			return fmt.Errorf("confirmation cancelled, not proceeding with the state edit")
+			return errors.New("confirmation cancelled, not proceeding with the state edit")
 		}
 	}
 }
@@ -231,7 +232,7 @@ func (cmd *stateEditCmd) validateAndPrintState(f *snapshotBuffer) (*deploy.Snaps
 func openInEditor(filename string) error {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
-		return fmt.Errorf("no EDITOR environment variable set")
+		return errors.New("no EDITOR environment variable set")
 	}
 	return openInEditorInternal(editor, filename)
 }

@@ -59,12 +59,12 @@ import (
 func parseResourceSpec(spec string) (string, resource.URN, error) {
 	equals := strings.Index(spec, "=")
 	if equals == -1 {
-		return "", "", fmt.Errorf("spec must be of the form name=URN")
+		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
 	name, urn := spec[:equals], resource.URN(spec[equals+1:])
 	if name == "" || urn == "" {
-		return "", "", fmt.Errorf("spec must be of the form name=URN")
+		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
 	if !urn.IsValid() {

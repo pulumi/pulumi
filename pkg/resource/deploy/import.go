@@ -17,6 +17,7 @@ package deploy
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -215,7 +216,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		if imp.Type.Package() == "" {
-			return nil, false, fmt.Errorf("incorrect package type specified")
+			return nil, false, errors.New("incorrect package type specified")
 		}
 		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
@@ -244,7 +245,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	})
 	for idx, req := range defaultProviderRequests {
 		if req.Package() == "" {
-			return nil, false, fmt.Errorf("incorrect package type specified")
+			return nil, false, errors.New("incorrect package type specified")
 		}
 
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()

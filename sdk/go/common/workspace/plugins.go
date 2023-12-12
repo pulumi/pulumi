@@ -250,7 +250,7 @@ func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource,
 func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
-		authorization = fmt.Sprintf("Bearer %s", source.token)
+		authorization = "Bearer " + source.token
 	}
 
 	req, err := buildHTTPRequest(url, authorization)
@@ -384,7 +384,7 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
-		authorization = fmt.Sprintf("token %s", source.token)
+		authorization = "token " + source.token
 	}
 
 	req, err := buildHTTPRequest(url, authorization)
@@ -766,7 +766,7 @@ func (spec PluginSpec) LockFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.lock", dir), nil
+	return dir + ".lock", nil
 }
 
 // PartialFilePath returns the full path to the plugin's partial file used during installation
@@ -776,7 +776,7 @@ func (spec PluginSpec) PartialFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.partial", dir), nil
+	return dir + ".partial", nil
 }
 
 func (spec PluginSpec) String() string {
@@ -824,8 +824,8 @@ func (info *PluginInfo) Delete() error {
 	}
 	// Attempt to delete any leftover .partial or .lock files.
 	// Don't fail the operation if we can't delete these.
-	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.partial", dir)))
-	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.lock", dir)))
+	contract.IgnoreError(os.Remove(dir + ".partial"))
+	contract.IgnoreError(os.Remove(dir + ".lock"))
 	return nil
 }
 
@@ -1051,7 +1051,7 @@ func (spec PluginSpec) installLock() (unlock func(), err error) {
 	if err != nil {
 		return nil, err
 	}
-	lockFilePath := fmt.Sprintf("%s.lock", finalDir)
+	lockFilePath := finalDir + ".lock"
 
 	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o700); err != nil {
 		return nil, fmt.Errorf("creating plugin root: %w", err)
@@ -1639,7 +1639,7 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 				Version: &version,
 				Path:    path,
 			}
-			if _, err := os.Stat(fmt.Sprintf("%s.partial", path)); err == nil {
+			if _, err := os.Stat(path + ".partial"); err == nil {
 				// Skip it if the partial file exists, meaning the plugin is not fully installed.
 				continue
 			} else if !os.IsNotExist(err) {

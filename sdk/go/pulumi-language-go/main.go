@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -849,8 +850,8 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	maybeAppendEnv(pulumi.EnvStack, req.GetStack())
 	maybeAppendEnv(pulumi.EnvConfig, config)
 	maybeAppendEnv(pulumi.EnvConfigSecretKeys, configSecretKeys)
-	maybeAppendEnv(pulumi.EnvDryRun, fmt.Sprintf("%v", req.GetDryRun()))
-	maybeAppendEnv(pulumi.EnvParallel, fmt.Sprint(req.GetParallel()))
+	maybeAppendEnv(pulumi.EnvDryRun, strconv.FormatBool(req.GetDryRun()))
+	maybeAppendEnv(pulumi.EnvParallel, strconv.Itoa(int(req.GetParallel())))
 	maybeAppendEnv(pulumi.EnvMonitor, req.GetMonitorAddress())
 	maybeAppendEnv(pulumi.EnvEngine, host.engineAddress)
 

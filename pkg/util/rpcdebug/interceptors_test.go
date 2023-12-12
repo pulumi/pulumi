@@ -16,7 +16,7 @@ package rpcdebug
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -43,7 +43,7 @@ func TestClientInterceptorCatchesErrors(t *testing.T) {
 
 	ctx := context.Background()
 
-	giveErr := fmt.Errorf("oops")
+	giveErr := errors.New("oops")
 
 	var inner grpc.UnaryInvoker = func(
 		ctx context.Context,

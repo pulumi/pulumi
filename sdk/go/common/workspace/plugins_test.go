@@ -485,7 +485,7 @@ func TestPluginDownload(t *testing.T) {
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -504,7 +504,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -533,7 +533,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/tags/v4.32.0" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -552,7 +552,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			assert.Equal(t, "https://api.git.org/repos/ourorg/mock/releases/assets/123456", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -676,7 +676,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t,
 				"https://gitlab.com/api/v4/projects/278964/releases/v1.23.4/downloads/"+
 					"pulumi-resource-mock-gitlab-v1.23.4-windows-arm64.tar.gz", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("Bearer %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "Bearer "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -752,7 +752,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mock-private/releases/latest" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -778,7 +778,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/latest" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -804,7 +804,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://gitlab.com/api/v4/projects/278964/releases/permalink/latest" {
-				assert.Equal(t, fmt.Sprintf("Bearer %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "Bearer "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 
 				// Minimal JSON from the releases API to get the test to pass

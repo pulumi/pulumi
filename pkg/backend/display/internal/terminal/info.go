@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -26,7 +27,7 @@ type termInfo interface {
 type noTermInfo int // canary used when no terminfo.
 
 func (ti noTermInfo) Parse(attr string, params ...interface{}) (string, error) {
-	return "", fmt.Errorf("noTermInfo")
+	return "", errors.New("noTermInfo")
 }
 
 type info struct {

@@ -2,7 +2,6 @@ package filestate
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -79,7 +78,7 @@ func TestWrappedBucket(t *testing.T) {
 
 		// Write some data.
 		for _, filename := range filenames {
-			key := fmt.Sprintf(`.pulumi\bucket-test\%s`, filename)
+			key := ".pulumi\\bucket-test\\" + filename
 			err := wrappedBucket.WriteAll(ctx, key, randomData, &blob.WriterOptions{})
 			mustNotHaveError(t, "WriteAll", err)
 		}

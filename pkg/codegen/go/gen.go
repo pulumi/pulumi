@@ -318,7 +318,7 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 
 	// Is it a provider resource?
 	if components[0] == "pulumi" && components[1] == "providers" {
-		return fmt.Sprintf("%s.Provider", components[2])
+		return components[2] + ".Provider"
 	}
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
@@ -473,13 +473,13 @@ func (pkg *pkgContext) genericInputTypeImpl(t schema.Type) string {
 		return pkg.resolveEnumType(t)
 	case *schema.ArrayType:
 		elementType := pkg.genericInputTypeImpl(t.ElementType)
-		return fmt.Sprintf("[]%s", elementType)
+		return "[]" + elementType
 	case *schema.MapType:
 		elementType := pkg.genericInputTypeImpl(t.ElementType)
-		return fmt.Sprintf("map[string]%s", elementType)
+		return "map[string]" + elementType
 	case *schema.ObjectType:
 		elementType := pkg.resolveObjectType(t)
-		return fmt.Sprintf("*%s", elementType)
+		return "*" + elementType
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the input instead
@@ -979,10 +979,10 @@ func (pkg *pkgContext) genericElementType(schemaType schema.Type) (string, bool)
 			return pkg.genericElementType(schemaType.UnderlyingType)
 		case *schema.ArrayType:
 			elementType, _ := pkg.genericElementType(schemaType.ElementType)
-			return fmt.Sprintf("[]%s", elementType), false
+			return "[]" + elementType, false
 		case *schema.MapType:
 			elementType, _ := pkg.genericElementType(schemaType.ElementType)
-			return fmt.Sprintf("map[string]%s", elementType), false
+			return "map[string]" + elementType, false
 		case *schema.UnionType:
 			for _, e := range schemaType.ElementTypes {
 				if enumType, ok := e.(*schema.EnumType); ok {
@@ -1138,7 +1138,7 @@ func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage
 		if lines > 0 {
 			fmt.Fprintf(w, "//\n")
 		}
-		printComment(w, fmt.Sprintf("Deprecated: %s", deprecationMessage), indent)
+		printComment(w, "Deprecated: "+deprecationMessage, indent)
 	}
 }
 
@@ -2039,15 +2039,15 @@ func (pkg *pkgContext) setDefaultValue(
 	parser, typ := "nil", "string"
 	switch codegen.UnwrapType(t).(type) {
 	case *schema.ArrayType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvStringArray", pkg.internalModuleName), "pulumi.StringArray"
+		parser, typ = pkg.internalModuleName+".ParseEnvStringArray", "pulumi.StringArray"
 	}
 	switch t {
 	case schema.BoolType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvBool", pkg.internalModuleName), "bool"
+		parser, typ = pkg.internalModuleName+".ParseEnvBool", "bool"
 	case schema.IntType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvInt", pkg.internalModuleName), "int"
+		parser, typ = pkg.internalModuleName+".ParseEnvInt", "int"
 	case schema.NumberType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvFloat", pkg.internalModuleName), "float64"
+		parser, typ = pkg.internalModuleName+".ParseEnvFloat", "float64"
 	}
 
 	if val == "" {
@@ -2885,12 +2885,12 @@ func (pkg *pkgContext) functionName(f *schema.Function) string {
 
 func (pkg *pkgContext) functionArgsTypeName(f *schema.Function) string {
 	name := pkg.functionName(f)
-	return fmt.Sprintf("%sArgs", name)
+	return name + "Args"
 }
 
 func (pkg *pkgContext) functionResultTypeName(f *schema.Function) string {
 	name := pkg.functionName(f)
-	return fmt.Sprintf("%sResult", name)
+	return name + "Result"
 }
 
 func genericTypeNeedsExplicitCasting(outputType string) bool {
@@ -2905,7 +2905,7 @@ func (pkg *pkgContext) genFunctionOutputGenericVersion(w io.Writer, f *schema.Fu
 	originalName := pkg.functionName(f)
 	name := originalName + "Output"
 	originalResultTypeName := pkg.functionResultTypeName(f)
-	resultTypeName := fmt.Sprintf("%sOutput", originalResultTypeName)
+	resultTypeName := originalResultTypeName + "Output"
 
 	code := ""
 
@@ -4173,7 +4173,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		}
 
 		if !canGenerate {
-			panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping resource: %s", rawResourceName(r)))
+			panic("unable to generate Go SDK, schema has unresolvable overlapping resource: " + rawResourceName(r))
 		}
 
 		names := getNames(suffix)
@@ -4253,7 +4253,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			}
 
 			if !canGenerate {
-				panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping type: %s", name))
+				panic("unable to generate Go SDK, schema has unresolvable overlapping type: " + name)
 			}
 
 			names := getNames(name, suffix)
@@ -4298,7 +4298,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			}
 
 			if !canGenerate {
-				panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping type: %s", name))
+				panic("unable to generate Go SDK, schema has unresolvable overlapping type: " + name)
 			}
 
 			names := getNames(name, suffix)
@@ -4585,7 +4585,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			versionFilePath := fmt.Sprintf("%s/pulumiVersion.go", pkg.internalModuleName)
+			versionFilePath := pkg.internalModuleName + "/pulumiVersion.go"
 			setFile(path.Join(mod, versionFilePath), versionBuf.String())
 			if emitOnlyGenericVariant {
 				setGenericVariantFile(path.Join(mod, versionFilePath), versionBuf.String())
@@ -4811,7 +4811,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			utilFilePath := fmt.Sprintf("%s/pulumiUtilities.go", pkg.internalModuleName)
+			utilFilePath := pkg.internalModuleName + "/pulumiUtilities.go"
 			setFile(path.Join(mod, utilFilePath), buffer.String())
 			if emitOnlyGenericVariant {
 				setGenericVariantFile(path.Join(mod, utilFilePath), buffer.String())

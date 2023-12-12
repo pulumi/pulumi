@@ -213,7 +213,7 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 // folder if present.
 func CopyExtraFiles(t *testing.T, dir, lang string) {
 	codeDir := filepath.Join(dir, lang)
-	extrasDir := filepath.Join(dir, fmt.Sprintf("%s-extras", lang))
+	extrasDir := filepath.Join(dir, lang+"-extras")
 	gotExtras, err := PathExists(extrasDir)
 
 	if !gotExtras {

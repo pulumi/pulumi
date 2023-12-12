@@ -214,13 +214,13 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		g.Fgen(w, "\n")
 	}
 
-	componentToken := fmt.Sprintf("components:index:%s", componentName)
+	componentToken := "components:index:" + componentName
 	g.Fgenf(w, "class %s(pulumi.ComponentResource):\n", componentName)
 	g.Indented(func() {
 		if hasAnyInputVariables {
 			g.Fgenf(w, "%sdef __init__(self, name: str, args: %s, opts:Optional[pulumi.ResourceOptions] = None):\n",
 				g.Indent,
-				fmt.Sprintf("%sArgs", componentName))
+				componentName+"Args")
 
 			g.Fgenf(w, "%s%ssuper().__init__(\"%s\", name, args, opts)\n",
 				g.Indent,
@@ -519,7 +519,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		if control.ImportAs {
 			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(control.Pkg)))
 		} else {
-			imports = append(imports, fmt.Sprintf("import %s", pkg))
+			imports = append(imports, "import "+pkg)
 		}
 	}
 
@@ -792,7 +792,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			} else {
 				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
 			}
-			localFuncName := fmt.Sprintf("create_%s", PyName(r.LogicalName()))
+			localFuncName := "create_" + PyName(r.LogicalName())
 
 			// Generate a local definition which actually creates the resources
 			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
@@ -1092,7 +1092,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  message,

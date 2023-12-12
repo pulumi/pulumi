@@ -304,7 +304,7 @@ func marshalInputImpl(v interface{},
 		switch v := v.(type) {
 		case *asset:
 			if v.invalid {
-				return resource.PropertyValue{}, nil, fmt.Errorf("invalid asset")
+				return resource.PropertyValue{}, nil, errors.New("invalid asset")
 			}
 			return resource.NewAssetProperty(&resource.Asset{
 				Path: v.Path(),
@@ -313,7 +313,7 @@ func marshalInputImpl(v interface{},
 			}), deps, nil
 		case *archive:
 			if v.invalid {
-				return resource.PropertyValue{}, nil, fmt.Errorf("invalid archive")
+				return resource.PropertyValue{}, nil, errors.New("invalid archive")
 			}
 
 			var assets map[string]interface{}
@@ -721,7 +721,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 
 		keyType, elemType := dest.Type().Key(), dest.Type().Elem()
 		if keyType.Kind() != reflect.String {
-			return false, fmt.Errorf("map keys must be assignable from type string")
+			return false, errors.New("map keys must be assignable from type string")
 		}
 
 		result := reflect.MakeMap(dest.Type())

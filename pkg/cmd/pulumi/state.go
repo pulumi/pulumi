@@ -255,7 +255,7 @@ func getNewResourceName() (tokens.QName, error) {
 			if tokens.IsQName(ans.(string)) {
 				return nil
 			}
-			return fmt.Errorf("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
+			return errors.New("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
 		}))
 	if err != nil {
 		return "", err

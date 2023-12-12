@@ -195,10 +195,10 @@ func componentInputType(pclType model.Type) string {
 	switch pclType := pclType.(type) {
 	case *model.ListType:
 		elementType := componentInputElementType(pclType.ElementType)
-		return fmt.Sprintf("[]%s", elementType)
+		return "[]" + elementType
 	case *model.MapType:
 		elementType := componentInputElementType(pclType.ElementType)
-		return fmt.Sprintf("map[string]%s", elementType)
+		return "map[string]" + elementType
 	default:
 		return componentInputElementType(pclType)
 	}
@@ -244,14 +244,14 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 				switch configType.ElementType.(type) {
 				case *model.ObjectType:
 					objectTypeName := configObjectTypeName(config.Name())
-					inputType = fmt.Sprintf("[]*%s", objectTypeName)
+					inputType = "[]*" + objectTypeName
 				}
 			case *model.MapType:
 				// for map(T) where T is an object type, generate Dictionary<string, T>
 				switch configType.ElementType.(type) {
 				case *model.ObjectType:
 					objectTypeName := configObjectTypeName(config.Name())
-					inputType = fmt.Sprintf("map[string]*%s", objectTypeName)
+					inputType = "map[string]*" + objectTypeName
 				}
 			}
 			g.Fgenf(w, "%s %s\n", fieldName, inputType)
@@ -293,7 +293,7 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 
 	g.Indented(func() {
 		g.Fgenf(w, "%svar componentResource %s\n", g.Indent, componentTypeName)
-		token := fmt.Sprintf("components:index:%s", componentTypeName)
+		token := "components:index:" + componentTypeName
 		g.Fgenf(w, "%serr := ctx.RegisterComponentResource(\"%s\", ", g.Indent, token)
 		g.Fgenf(w, "name, &componentResource, opts...)\n")
 		g.Fgenf(w, "%sif err != nil {\n", g.Indent)
@@ -557,7 +557,7 @@ require (
 
 		version := ""
 		if p.Version != nil {
-			version = fmt.Sprintf("v%s", p.Version.String())
+			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
 			fmt.Fprintf(&gomod, "	%s %s\n", packageName, version)
@@ -1314,7 +1314,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.FalseResult)
 			g.Fgenf(w, "}\n")
 		case *spillTemp:
-			bytesVar := fmt.Sprintf("tmp%s", strings.ToUpper(t.Variable.Name))
+			bytesVar := "tmp" + strings.ToUpper(t.Variable.Name)
 			g.Fgenf(w, "%s, err := json.Marshal(", bytesVar)
 			args := t.Value.(*model.FunctionCallExpression).Args[0]
 			g.Fgenf(w, "%.v)\n", args)
@@ -1337,10 +1337,10 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 				g.Fgenf(w, "return err\n")
 			}
 			g.Fgenf(w, "}\n")
-			namesVar := fmt.Sprintf("fileNames%s", tmpSuffix)
+			namesVar := "fileNames" + tmpSuffix
 			g.Fgenf(w, "%s := make([]string, len(%s))\n", namesVar, t.Name)
-			iVar := fmt.Sprintf("key%s", tmpSuffix)
-			valVar := fmt.Sprintf("val%s", tmpSuffix)
+			iVar := "key" + tmpSuffix
+			valVar := "val" + tmpSuffix
 			g.Fgenf(w, "for %s, %s := range %s {\n", iVar, valVar, t.Name)
 			g.Fgenf(w, "%s[%s] = %s.Name()\n", namesVar, iVar, valVar)
 			g.Fgenf(w, "}\n")

@@ -101,7 +101,7 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	}
 	if !cmd.disableAutoSubmit {
 		if len(args) == 0 {
-			return fmt.Errorf("prompt must be provided when auto-submit is enabled")
+			return errors.New("prompt must be provided when auto-submit is enabled")
 		}
 		query.Set("autoSubmit", "true")
 	}

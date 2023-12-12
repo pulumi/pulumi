@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/blang/semver"
@@ -50,7 +50,7 @@ func TestBundledDev(t *testing.T) {
 			getLatestVersionCalled = true
 			assert.Equal(t, "nodejs", ps.Name)
 			assert.Equal(t, workspace.LanguagePlugin, ps.Kind)
-			return nil, fmt.Errorf("404 HTTP error fetching plugin")
+			return nil, errors.New("404 HTTP error fetching plugin")
 		},
 	}
 

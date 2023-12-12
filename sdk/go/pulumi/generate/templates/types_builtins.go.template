@@ -19,7 +19,7 @@ package pulumi
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -104,7 +104,7 @@ func (in {{.InputType}}) To{{.Name}}PtrOutputWithContext(ctx context.Context) {{
 type {{.Name}}Output struct { *OutputState }
 
 func ({{.Name}}Output) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o {{.Name}}Output) ToOutput(ctx context.Context) pulumix.Output[{{.ElementType}}] {

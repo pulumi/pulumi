@@ -2,7 +2,6 @@ package test
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,8 +51,8 @@ func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 	// Obey SkipCompileCheck to skip compile and test targets.
 	if tt.SkipCompileCheck != nil &&
 		tt.SkipCompileCheck.Has(language) &&
-		(test == fmt.Sprintf("%s/compile", language) ||
-			test == fmt.Sprintf("%s/test", language)) {
+		(test == language+"/compile" ||
+			test == language+"/test") {
 		return true
 	}
 

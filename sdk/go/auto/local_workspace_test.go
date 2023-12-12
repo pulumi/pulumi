@@ -19,12 +19,12 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -958,7 +958,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		// Verify that shared context doesn't affect result
 		ctx := context.Background()
-		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 			sName := randomStackName()
 			stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)

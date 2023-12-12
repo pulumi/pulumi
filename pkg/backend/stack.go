@@ -16,6 +16,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -199,11 +200,11 @@ func GetEnvironmentTagsForCurrentStack(root string,
 	if has {
 		configTagInterface, err := configTags.ToObject()
 		if err != nil {
-			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+			return nil, errors.New("pulumi:tags must be an object of strings")
 		}
 		configTagObject, ok := configTagInterface.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+			return nil, errors.New("pulumi:tags must be an object of strings")
 		}
 
 		for name, value := range configTagObject {

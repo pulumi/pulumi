@@ -17,7 +17,6 @@ package auto
 
 import (
 	"context"
-	"fmt"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -438,7 +437,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
-	assert.Contains(t, fmt.Sprintf("%v", err), "IndexError: list index out of range")
+	assert.ErrorContains(t, err, "IndexError: list index out of range")
 
 	// -- pulumi destroy --
 

@@ -1341,7 +1341,7 @@ const pulumiHomeEnv = "PULUMI_HOME"
 
 func readProjectSettingsFromDir(ctx context.Context, workDir string) (*workspace.Project, error) {
 	for _, ext := range settingsExtensions {
-		projectPath := filepath.Join(workDir, fmt.Sprintf("Pulumi%s", ext))
+		projectPath := filepath.Join(workDir, "Pulumi"+ext)
 		if _, err := os.Stat(projectPath); err == nil {
 			proj, err := workspace.LoadProject(projectPath)
 			if err != nil {

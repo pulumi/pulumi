@@ -590,7 +590,7 @@ func (r *Registry) StreamInvoke(
 	tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error,
 ) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("the provider registry does not implement streaming invokes")
+	return nil, errors.New("the provider registry does not implement streaming invokes")
 }
 
 func (r *Registry) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,

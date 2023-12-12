@@ -143,7 +143,7 @@ func newLoginCmd() *cobra.Command {
 			if filestate.IsFileStateBackendURL(cloudURL) {
 				be, err = filestate.Login(ctx, cmdutil.Diag(), cloudURL, project)
 				if defaultOrg != "" {
-					return fmt.Errorf("unable to set default org for this type of backend")
+					return errors.New("unable to set default org for this type of backend")
 				}
 			} else {
 				be, err = loginToCloud(ctx, cloudURL, project, insecure, displayOptions)

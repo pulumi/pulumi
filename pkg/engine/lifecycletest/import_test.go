@@ -2,7 +2,6 @@ package lifecycletest
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -938,7 +937,7 @@ func TestImportIntoParent(t *testing.T) {
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", news, resource.StatusUnknown, fmt.Errorf("not implemented")
+					return "", news, resource.StatusUnknown, errors.New("not implemented")
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap,
@@ -997,7 +996,7 @@ func TestImportComponent(t *testing.T) {
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+					return "", nil, resource.StatusUnknown, errors.New("not implemented")
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap,
@@ -1071,7 +1070,7 @@ func TestImportRemoteComponent(t *testing.T) {
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+					return "", nil, resource.StatusUnknown, errors.New("not implemented")
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap,

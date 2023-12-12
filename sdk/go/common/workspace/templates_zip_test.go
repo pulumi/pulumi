@@ -130,7 +130,7 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 		writer := zip.NewWriter(buf)
 		data := []byte("foo")
 		fileDirPathParts := strings.Split(fileDirName, "/")
-		_, err := writer.Create(fmt.Sprintf("%s/", strings.Join(fileDirPathParts[:len(fileDirPathParts)-1], "/")))
+		_, err := writer.Create(strings.Join(fileDirPathParts[:len(fileDirPathParts)-1], "/") + "/")
 		if err != nil {
 			t.Errorf("Failed to create directory in zip archive: %s", err)
 		}
@@ -166,7 +166,7 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 	}{
 		{
 			testName:    "valid_zip_url",
-			templateURL: fmt.Sprintf("%s/foo.zip", server.URL),
+			templateURL: server.URL + "/foo.zip",
 		},
 		{
 			testName:    "invalid_zip_url",

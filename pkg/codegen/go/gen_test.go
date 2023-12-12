@@ -143,7 +143,7 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 		t.Logf("Found an existing go.mod, leaving as is")
 	} else {
 		test.RunCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
-		replacement := fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", sdk)
+		replacement := "github.com/pulumi/pulumi/sdk/v3=" + sdk
 		test.RunCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
 	}
 
@@ -155,7 +155,7 @@ func testGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	test.RunCommand(t, "go-test", codeDir, goExe, "test", fmt.Sprintf("%s/...", inferModuleName(codeDir)))
+	test.RunCommand(t, "go-test", codeDir, goExe, "test", inferModuleName(codeDir)+"/...")
 }
 
 func TestGenerateTypeNames(t *testing.T) {

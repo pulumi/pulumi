@@ -221,7 +221,7 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 			return diagnostics, fmt.Errorf("failed to bind program: %w", err)
 		} else if program == nil {
 			// We've already printed the diagnostics above
-			return diagnostics, fmt.Errorf("failed to bind program")
+			return diagnostics, errors.New("failed to bind program")
 		}
 		return diagnostics, generator(targetDirectory, *proj, program)
 	}
@@ -405,7 +405,7 @@ func runConvert(
 		if resp.Diagnostics.HasErrors() {
 			// If we've got error diagnostics then program generation failed, we've printed the error above so
 			// just return a plain message here.
-			return fmt.Errorf("conversion failed")
+			return errors.New("conversion failed")
 		}
 	}
 
@@ -439,7 +439,7 @@ func runConvert(
 			return fmt.Errorf("could not generate output program: %w", err)
 		}
 
-		return fmt.Errorf("could not generate output program")
+		return errors.New("could not generate output program")
 	}
 
 	if err != nil {

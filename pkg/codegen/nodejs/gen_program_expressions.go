@@ -2,6 +2,7 @@ package nodejs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -303,7 +304,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 func enumName(enum *model.EnumType) (string, error) {
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {
-		return "", fmt.Errorf("Could not get associated enum")
+		return "", errors.New("Could not get associated enum")
 	}
 	pkgRef := e.(*schema.EnumType).PackageReference
 	return enumNameWithPackage(enum.Token, pkgRef)
@@ -424,7 +425,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
 		if isOut {
-			name = fmt.Sprintf("%sOutput", name)
+			name = name + "Output"
 		}
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
@@ -679,7 +680,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 		if _, isConfig := configVars[expr.RootName]; isConfig {
 			if _, configReference := expr.Parts[0].(*pcl.ConfigVariable); configReference {
-				rootName = fmt.Sprintf("args.%s", expr.RootName)
+				rootName = "args." + expr.RootName
 			}
 		}
 	}

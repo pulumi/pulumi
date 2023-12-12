@@ -127,7 +127,7 @@ func pascal(s string) string {
 // externalModuleName Formats the name of package to comply with an external
 // module.
 func externalModuleName(s string) string {
-	return fmt.Sprintf("pulumi%s", pascal(s))
+	return "pulumi" + pascal(s)
 }
 
 type modContext struct {
@@ -248,7 +248,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 			pkgName = externalModuleName(pkgName)
 		}
 
-		return fmt.Sprintf("%s.Provider", pkgName)
+		return pkgName + ".Provider"
 	}
 
 	pkg := mod.pkg
@@ -669,7 +669,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, "            return false;\n")
 	fmt.Fprintf(w, "        }\n")
 
-	typeExpression := fmt.Sprintf("%s.__pulumiType", name)
+	typeExpression := name + ".__pulumiType"
 	if r.IsProvider {
 		// We pass __pulumiType to the ProviderResource constructor as the "type" for this provider, the
 		// ProviderResource constructor in the SDK then prefixes "pulumi:providers:" to that token and passes that
@@ -767,7 +767,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argValue := applyDefaults(fmt.Sprintf("args.%s", prop.Name))
+			argValue := applyDefaults("args." + prop.Name)
 			if prop.Secret {
 				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
 			} else {
@@ -1223,7 +1223,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
-			body := fmt.Sprintf("args.%s", p.Name)
+			body := "args." + p.Name
 			if fun.MultiArgumentInputs {
 				body = p.Name
 			}
@@ -1292,10 +1292,10 @@ func (mod *modContext) genFunctionOutputVersion(
 	}
 
 	originalName := tokenToFunctionName(fun.Token)
-	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	fnOutput := originalName + "Output"
 	returnType := mod.functionReturnType(fun)
 	info.functionOutputVersionName = fnOutput
-	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
+	argTypeName := title(fnOutput) + "Args"
 
 	argsig := ""
 	if fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
@@ -2153,7 +2153,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			if path.Base(rel) == "." {
 				rel = path.Dir(rel)
 			}
-			importPath := fmt.Sprintf(`./%s`, strings.TrimSuffix(rel, ".ts"))
+			importPath := "./" + strings.TrimSuffix(rel, ".ts")
 			ll.genReexport(w, exp, importPath)
 		}
 	}
@@ -2177,7 +2177,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			if mod.mod == "" {
 				filePath = ""
 			} else {
-				filePath = fmt.Sprintf("/%s", mod.mod)
+				filePath = "/" + mod.mod
 			}
 			fmt.Fprintf(w, "export * from \"%s/types/enums%s\";\n", rel, filePath)
 		}
@@ -2375,7 +2375,7 @@ type npmPackage struct {
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	packageName := info.PackageName
 	if packageName == "" {
-		packageName = fmt.Sprintf("@pulumi/%s", pkg.Name)
+		packageName = "@pulumi/" + pkg.Name
 	}
 
 	devDependencies := map[string]string{}

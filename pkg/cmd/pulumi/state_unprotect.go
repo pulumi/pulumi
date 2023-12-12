@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -83,7 +84,7 @@ func unprotectAllResources(ctx context.Context, stackName string, showPrompt boo
 	err := runTotalStateEdit(ctx, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 		// Protects against Panic when a user tries to unprotect non-existing resources
 		if snap == nil {
-			return fmt.Errorf("no resources found to unprotect")
+			return errors.New("no resources found to unprotect")
 		}
 
 		for _, res := range snap.Resources {

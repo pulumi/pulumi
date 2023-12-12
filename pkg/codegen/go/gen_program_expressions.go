@@ -2,6 +2,7 @@ package gen
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -376,7 +377,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error) {
 	schemaType, ok := pcl.GetSchemaForType(t)
 	if !ok {
-		return "", fmt.Errorf("No schema.Type type found for the given model.Type")
+		return "", errors.New("No schema.Type type found for the given model.Type")
 	}
 
 	objType, ok := schemaType.(*schema.ObjectType)
@@ -397,7 +398,7 @@ func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error
 		ty = pkg.tokenToType(objType.Token)
 	}
 
-	return fmt.Sprintf("%sOutputArgs", strings.TrimSuffix(ty, "Args")), nil
+	return strings.TrimSuffix(ty, "Args") + "OutputArgs", nil
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -859,7 +860,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 				elmType = valType
 			}
 			if allSameType && elmType != "" {
-				return fmt.Sprintf("%sMap", elmType)
+				return elmType + "Map"
 			}
 			return "pulumi.Map"
 		}
@@ -872,16 +873,16 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			}
 			return fmt.Sprintf("pulumi.%sMap", Title(valType))
 		}
-		return fmt.Sprintf("map[string]%s", valType)
+		return "map[string]" + valType
 	case *model.ListType:
 		argTypeName := g.argumentTypeName(nil, destType.ElementType, isInput)
 		if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
 			if argTypeName == "pulumi.Any" {
 				return "pulumi.Array"
 			}
-			return fmt.Sprintf("%sArray", argTypeName)
+			return argTypeName + "Array"
 		}
-		return fmt.Sprintf("[]%s", argTypeName)
+		return "[]" + argTypeName
 	case *model.TupleType:
 		// attempt to collapse tuple types. intentionally does not use model.UnifyTypes
 		// correct go code requires all types to match, or use of interface{}
@@ -907,9 +908,9 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 				if argTypeName == "pulumi.Any" {
 					return "pulumi.Array"
 				}
-				return fmt.Sprintf("%sArray", argTypeName)
+				return argTypeName + "Array"
 			}
-			return fmt.Sprintf("[]%s", argTypeName)
+			return "[]" + argTypeName
 		}
 
 		if isInput {
@@ -1042,7 +1043,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagWarning,
 		Summary:  message,

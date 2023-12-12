@@ -15,6 +15,7 @@
 package tokens
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -58,10 +59,10 @@ func ParseStackName(s string) (StackName, error) {
 	}
 
 	if s == "" {
-		return StackName{}, fmt.Errorf("a stack name may not be empty")
+		return StackName{}, errors.New("a stack name may not be empty")
 	}
 	if len(s) > 100 {
-		return StackName{}, fmt.Errorf("a stack name cannot exceed 100 characters")
+		return StackName{}, errors.New("a stack name cannot exceed 100 characters")
 	}
 
 	failure := -1

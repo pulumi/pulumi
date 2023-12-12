@@ -218,7 +218,7 @@ func ValidatePolicyPackConfig(schemaMap map[string]apitype.PolicyConfigSchema,
 			for i, e := range result.Errors() {
 				resultErrs[i] = e.Description()
 			}
-			msg := fmt.Sprintf("policy pack configuration is invalid: %s", strings.Join(resultErrs, ", "))
+			msg := "policy pack configuration is invalid: " + strings.Join(resultErrs, ", ")
 			return errors.New(msg)
 		}
 	}

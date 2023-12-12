@@ -407,7 +407,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = qualifier
 		}
 		if typ == "Inputs" && mod.fullyQualifiedInputs {
-			typ = fmt.Sprintf("%s.Inputs", mod.namespaceName)
+			typ = mod.namespaceName + ".Inputs"
 		}
 		if typ != "" {
 			typ += "."
@@ -668,7 +668,7 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, generateInput
 
 	var suffix string
 	if pt.baseClass != "" {
-		suffix = fmt.Sprintf(" : global::Pulumi.%s", pt.baseClass)
+		suffix = " : global::Pulumi." + pt.baseClass
 	}
 
 	fmt.Fprintf(w, "%spublic %sclass %s%s\n", indent, sealed, pt.name, suffix)
@@ -1002,7 +1002,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if !r.IsProvider && !r.IsComponent {
 		stateParam, stateRef := "", "null"
 		if r.StateInputs != nil {
-			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state"
+			stateParam, stateRef = className+"State? state = null, ", "state"
 		}
 
 		fmt.Fprintf(w, "\n")
@@ -1102,7 +1102,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		stateParam, stateRef := "", ""
 		if r.StateInputs != nil {
-			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state, "
+			stateParam, stateRef = className+"State? state = null, ", "state, "
 			fmt.Fprintf(w, "        /// <param name=\"state\">Any extra arguments used during the lookup.</param>\n")
 		}
 
@@ -1140,7 +1140,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				fieldName := mod.propertyName(objectReturnType.Properties[0])
 				lift = fmt.Sprintf(".Apply(v => v.%s)", fieldName)
 			} else {
-				returnType = fmt.Sprintf("global::Pulumi.Output%s", typeParameter)
+				returnType = "global::Pulumi.Output" + typeParameter
 			}
 		}
 
@@ -1355,7 +1355,7 @@ func (mod *modContext) functionReturnType(fun *schema.Function) string {
 		if _, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
 			// for object return types, assume a Result type is generated in the same class as it's function
 			// and reference it from here directly
-			return fmt.Sprintf("%sResult", className)
+			return className + "Result"
 		}
 
 		// otherwise, the object type is a reference to an output type
@@ -1528,7 +1528,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 func functionOutputVersionArgsTypeName(fun *schema.Function) string {
 	className := tokenToFunctionName(fun.Token)
-	return fmt.Sprintf("%sInvokeArgs", className)
+	return className + "InvokeArgs"
 }
 
 // Generates `${fn}Output(..)` version lifted to work on

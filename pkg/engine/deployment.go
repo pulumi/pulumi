@@ -383,7 +383,7 @@ func checkTargets(targetUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
 		return nil
 	}
 	if snap == nil {
-		return fmt.Errorf("targets specified, but snapshot was nil")
+		return errors.New("targets specified, but snapshot was nil")
 	}
 	urns := map[resource.URN]struct{}{}
 	for _, res := range snap.Resources {
