@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -191,12 +193,63 @@ func readSchemaFile(file string) *schema.Package {
 	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
-	pkg, err := schema.ImportSpec(pkgSpec, map[string]schema.Language{"go": Importer})
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
 	if err != nil {
 		panic(err)
 	}
 
+	if diags.HasErrors() {
+		panic(diags.Error())
+	}
+
 	return pkg
+}
+
+func readYamlSchemaFile(file string) *schema.Package {
+	// Read in, decode, and import the schema.
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	if err != nil {
+		panic(err)
+	}
+	var pkgSpec schema.PackageSpec
+	if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
+		panic(err)
+	}
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	if err != nil {
+		panic(err)
+	}
+
+	if diags.HasErrors() {
+		panic(diags.Error())
+	}
+
+	return pkg
+}
+
+func TestLanguageResources(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range test.PulumiPulumiSDKTests {
+		test := test
+		t.Run(test.Directory, func(t *testing.T) {
+			t.Parallel()
+			var pkg *schema.Package
+			if test.Directory == "simple-yaml-schema" || test.Directory == "cyclic-types" {
+				pkg = readYamlSchemaFile(filepath.Join(test.Directory, "schema.yaml"))
+			} else {
+				pkg = readSchemaFile(filepath.Join(test.Directory, "schema.json"))
+			}
+
+			resources, err := LanguageResources("test", pkg)
+			for token, resource := range resources {
+				assert.Equal(t, tokenToName(token), resource.Name)
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
 // We test the naming/module structure of generated packages.
