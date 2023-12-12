@@ -163,7 +163,7 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 		}
 		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
 		if !conn.WaitForStateChange(timeout, s) {
-			return nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections: %w", prefix, bin, err)
+			return nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
 		}
 	}
 
