@@ -31,7 +31,13 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 	// Trivial querySource returns immediately with `Wait()`, even with multiple invocations.
 
 	// Success case.
-	resmon1 := mockQueryResmon{}
+	var called1 bool
+	resmon1 := mockResmon{
+		CancelF: func() error {
+			called1 = true
+			return nil
+		},
+	}
 	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) error {
 		return nil
 	})
@@ -40,14 +46,20 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 
 	err := qs1.Wait()
 	assert.NoError(t, err)
-	assert.False(t, resmon1.cancelled)
+	assert.False(t, called1)
 
+	// Can be called twice.
 	err = qs1.Wait()
 	assert.NoError(t, err)
-	assert.False(t, resmon1.cancelled)
 
 	// Failure case.
-	resmon2 := mockQueryResmon{}
+	var called2 bool
+	resmon2 := mockResmon{
+		CancelF: func() error {
+			called2 = true
+			return nil
+		},
+	}
 	qs2, _ := newTestQuerySource(&resmon2, func(*querySource) error {
 		return errors.New("failed")
 	})
@@ -57,12 +69,13 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 	err = qs2.Wait()
 	assert.False(t, result.IsBail(err))
 	assert.Error(t, err)
-	assert.False(t, resmon2.cancelled)
+	assert.False(t, called2)
 
+	// Can be called twice.
 	err = qs2.Wait()
 	assert.False(t, result.IsBail(err))
 	assert.Error(t, err)
-	assert.False(t, resmon2.cancelled)
+	assert.False(t, called2)
 }
 
 func TestQuerySource_Async_Wait(t *testing.T) {
@@ -75,8 +88,14 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	//    test blocks until querySource signals execution has started
 	// -> querySource blocks until test acknowledges querySource's signal
 	// -> test blocks on `Wait()` until querySource completes.
+	var called1 bool
+	resmon1 := mockResmon{
+		CancelF: func() error {
+			called1 = true
+			return nil
+		},
+	}
 	qs1Start, qs1StartAck := make(chan interface{}), make(chan interface{})
-	resmon1 := mockQueryResmon{}
 	qs1, _ := newTestQuerySource(&resmon1, func(*querySource) error {
 		qs1Start <- struct{}{}
 		<-qs1StartAck
@@ -94,19 +113,25 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// Wait for querySource to complete.
 	err := qs1.Wait()
 	assert.NoError(t, err)
-	assert.False(t, resmon1.cancelled)
+	assert.False(t, called1)
 
 	err = qs1.Wait()
 	assert.NoError(t, err)
-	assert.False(t, resmon1.cancelled)
+	assert.False(t, called1)
 
+	var called2 bool
+	resmon2 := mockResmon{
+		CancelF: func() error {
+			called2 = true
+			return nil
+		},
+	}
 	// Cancellation case.
 	//
 	//    test blocks until querySource signals execution has started
 	// -> querySource blocks until test acknowledges querySource's signal
 	// -> test blocks on `Wait()` until querySource completes.
 	qs2Start, qs2StartAck := make(chan interface{}), make(chan interface{})
-	resmon2 := mockQueryResmon{}
 	qs2, cancelQs2 := newTestQuerySource(&resmon2, func(*querySource) error {
 		qs2Start <- struct{}{}
 		// Block forever.
@@ -125,11 +150,11 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 	// Wait for querySource to complete.
 	err = qs2.Wait()
 	assert.NoError(t, err)
-	assert.True(t, resmon2.cancelled)
+	assert.True(t, called2)
 
 	err = qs2.Wait()
 	assert.NoError(t, err)
-	assert.True(t, resmon2.cancelled)
+	assert.True(t, called2)
 }
 
 func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
@@ -171,47 +196,84 @@ func newTestQuerySource(mon SourceResourceMonitor,
 // Mock resource monitor.
 //
 
-type mockQueryResmon struct {
-	cancelled bool
+type mockResmon struct {
+	AddressF func() string
+
+	CancelF func() error
+
+	InvokeF func(ctx context.Context,
+		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+
+	CallF func(ctx context.Context,
+		req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
+
+	ReadResourceF func(ctx context.Context,
+		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
+
+	RegisterResourceF func(ctx context.Context,
+		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
+
+	RegisterResourceOutputsF func(ctx context.Context,
+		req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error)
 }
 
-var _ SourceResourceMonitor = (*mockQueryResmon)(nil)
+var _ SourceResourceMonitor = (*mockResmon)(nil)
 
-func (rm *mockQueryResmon) Address() string {
+func (rm *mockResmon) Address() string {
+	if rm.AddressF != nil {
+		return rm.AddressF()
+	}
 	panic("not implemented")
 }
 
-func (rm *mockQueryResmon) Cancel() error {
-	rm.cancelled = true
-	return nil
+func (rm *mockResmon) Cancel() error {
+	if rm.CancelF != nil {
+		return rm.CancelF()
+	}
+	panic("not implemented")
 }
 
-func (rm *mockQueryResmon) Invoke(ctx context.Context,
+func (rm *mockResmon) Invoke(ctx context.Context,
 	req *pulumirpc.ResourceInvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
+	if rm.InvokeF != nil {
+		return rm.InvokeF(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (rm *mockQueryResmon) Call(ctx context.Context,
+func (rm *mockResmon) Call(ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {
+	if rm.CallF != nil {
+		return rm.CallF(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (rm *mockQueryResmon) ReadResource(ctx context.Context,
+func (rm *mockResmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest,
 ) (*pulumirpc.ReadResourceResponse, error) {
+	if rm.ReadResourceF != nil {
+		return rm.ReadResourceF(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (rm *mockQueryResmon) RegisterResource(ctx context.Context,
+func (rm *mockResmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
+	if rm.RegisterResourceF != nil {
+		return rm.RegisterResourceF(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (rm *mockQueryResmon) RegisterResourceOutputs(ctx context.Context,
+func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
 ) (*pbempty.Empty, error) {
+	if rm.RegisterResourceOutputsF != nil {
+		return rm.RegisterResourceOutputsF(ctx, req)
+	}
 	panic("not implemented")
 }

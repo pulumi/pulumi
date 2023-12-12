@@ -577,7 +577,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-		Options: sourceEvalServeOptions(src.plugctx, tracingSpan),
+		Options: sourceEvalServeOptions(src.plugctx, tracingSpan, env.DebugGRPC.Value()),
 	})
 	if err != nil {
 		return nil, err
@@ -610,12 +610,12 @@ func (rm *resmon) Cancel() error {
 	return <-rm.done
 }
 
-func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span) []grpc.ServerOption {
+func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, logFile string) []grpc.ServerOption {
 	serveOpts := rpcutil.OpenTracingServerInterceptorOptions(
 		tracingSpan,
 		otgrpc.SpanDecorator(decorateResourceSpans),
 	)
-	if logFile := env.DebugGRPC.Value(); logFile != "" {
+	if logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
 			LogFile: logFile,
 			Mutex:   ctx.DebugTraceMutex,
