@@ -82,11 +82,17 @@ jobs:
           mv ./artifacts.tmp/artifacts-*/* ./artifacts
 
       - name: Ensure coverage not enabled on release
-        working-directory: artifacts
         run: |
-          if ./pulumi version 2>&1 | grep coverage; then
+          # Extract pulumi binary to bintest rather than pollute artifacts directory.
+          mkdir './bintest' && tar -xvf ./artifacts/pulumi-*-linux-x64.tar.gz -C './bintest/.'
+
+          # Ensure pulumi binary exists.
+          stat './bintest/pulumi/pulumi' || exit 1
+
+          # Check binary not built with coverage.
+          if ./bintest/pulumi/pulumi version 2>&1 | grep coverage; then
             echo 'Aborting! Pulumi binary built with coverage data.'
-            exit 1
+            exit 2
           else
             echo 'Pulumi binary OK!'
           fi
