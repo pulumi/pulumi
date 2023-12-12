@@ -141,10 +141,15 @@ func (o AnnotationStoreSchemaValueTypePtrOutput) ToStringPtrOutputWithContext(ct
 	}).(pulumi.StringPtrOutput)
 }
 
-// AnnotationStoreSchemaValueTypeInput is an input type that accepts AnnotationStoreSchemaValueTypeArgs and AnnotationStoreSchemaValueTypeOutput values.
-// You can construct a concrete instance of `AnnotationStoreSchemaValueTypeInput` via:
+// AnnotationStoreSchemaValueTypeInput is an input type that accepts values of the AnnotationStoreSchemaValueType enum
+// A concrete instance of `AnnotationStoreSchemaValueTypeInput` can be one of the following:
 //
-//	AnnotationStoreSchemaValueTypeArgs{...}
+//	AnnotationStoreSchemaValueTypeLong
+//	AnnotationStoreSchemaValueTypeInt
+//	AnnotationStoreSchemaValueTypeString
+//	AnnotationStoreSchemaValueTypeFloat
+//	AnnotationStoreSchemaValueTypeDouble
+//	AnnotationStoreSchemaValueTypeBoolean
 type AnnotationStoreSchemaValueTypeInput interface {
 	pulumi.Input
 

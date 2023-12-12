@@ -1151,6 +1151,32 @@ func (pkg *pkgContext) genInputInterface(w io.Writer, name string) {
 	fmt.Fprintf(w, "}\n\n")
 }
 
+func (pkg *pkgContext) genEnumInputInterface(w io.Writer, name string, enumType *schema.EnumType) {
+	enumCases := []string{}
+	for _, enumCase := range enumType.Elements {
+		if enumCase.DeprecationMessage != "" {
+			// skip deprecated enum cases
+			continue
+		}
+		enumCases = append(enumCases, fmt.Sprintf("\t\t%s", enumCase.Name))
+	}
+
+	enumUsage := strings.Join([]string{
+		fmt.Sprintf("%sInput is an input type that accepts values of the %s enum", name, name),
+		fmt.Sprintf("A concrete instance of `%sInput` can be one of the following:", name),
+		"",
+		strings.Join(enumCases, "\n"),
+		" ",
+	}, "\n")
+
+	printComment(w, enumUsage, false)
+	fmt.Fprintf(w, "type %sInput interface {\n", name)
+	fmt.Fprintf(w, "\tpulumi.Input\n\n")
+	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
+	fmt.Fprintf(w, "\tTo%sOutputWithContext(context.Context) %sOutput\n", Title(name), name)
+	fmt.Fprintf(w, "}\n\n")
+}
+
 func (pkg *pkgContext) getUsageForNestedType(name, baseTypeName string) string {
 	const defaultExampleFormat = "%sArgs{...}"
 	example := fmt.Sprintf(defaultExampleFormat, baseTypeName)
@@ -1532,7 +1558,7 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementArgsType, el
 }
 
 func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *schema.EnumType, elementGoType string) {
-	pkg.genInputInterface(w, name)
+	pkg.genEnumInputInterface(w, name, enumType)
 
 	typeName := cgstrings.Camel(name)
 	fmt.Fprintf(w, "var %sPtrType = reflect.TypeOf((**%s)(nil)).Elem()\n", typeName, name)
