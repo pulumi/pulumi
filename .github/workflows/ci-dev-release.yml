@@ -68,7 +68,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: ["linux", "darwin"]
+        os: ["linux", "darwin", "windows"]
         arch: ["amd64", "arm64"]
         build-platform: ["ubuntu-latest"]
     uses: ./.github/workflows/ci-build-binaries.yml
