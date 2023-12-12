@@ -1,0 +1,12 @@
+name: Clone
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run action
+        uses: andrewthetechie/gha-clone-releases@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          src_repo: pulumi/pulumi
