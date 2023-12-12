@@ -204,6 +204,13 @@ func (s *Stack) Workspace() Workspace {
 	return s.workspace
 }
 
+// ChangeSecretsProvider edits the secrets provider for the stack.
+func (s *Stack) ChangeSecretsProvider(
+	ctx context.Context, newSecretsProvider string, opts *ChangeSecretsProviderOptions,
+) error {
+	return s.workspace.ChangeStackSecretsProvider(ctx, s.stackName, newSecretsProvider, opts)
+}
+
 // Preview preforms a dry-run update to a stack, returning pending changes.
 // https://www.pulumi.com/docs/cli/commands/pulumi_preview/
 func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (PreviewResult, error) {
@@ -978,6 +985,7 @@ func (s *Stack) runPulumiCmdSync(
 	stdout, stderr, errCode, err := runPulumiCommandSync(
 		ctx,
 		s.Workspace().WorkDir(),
+		nil,
 		additionalOutput,
 		additionalErrorOutput,
 		env,
