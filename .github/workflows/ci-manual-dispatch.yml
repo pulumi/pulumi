@@ -1,0 +1,22 @@
+
+name: Command Dispatch for PR events
+on:
+  workflow_dispatch:
+
+
+jobs:
+  command-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch command
+        uses: peter-evans/slash-command-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          reaction-token: ${{ secrets.GITHUB_TOKEN }}
+          permission: write
+          issue-type: pull-request
+          repository: raelix-gitops/pulumi
+          commands: |
+            run-acceptance-tests
+            run-docs-gen
+            run-codegen
