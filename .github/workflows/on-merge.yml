@@ -67,7 +67,6 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
-      project: ${{ github.repository }}
     secrets: inherit
 
   ci-ok:

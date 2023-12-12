@@ -1,6 +1,8 @@
 name: Create dev release
 
 permissions:
+  contents: read
+
   # To sign artifacts.
   id-token: write
 
@@ -14,10 +16,6 @@ on:
       ref:
         required: true
         description: "GitHub ref to use"
-        type: string
-      version-set:
-        required: false
-        description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
 
 jobs:
