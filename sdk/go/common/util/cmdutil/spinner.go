@@ -53,7 +53,7 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 	return &dotSpinner{
 		color:  color,
 		prefix: prefix,
-	}, time.NewTicker(time.Second / timesPerSecond)
+	}, time.NewTicker(time.Second * 20)
 }
 
 // Spinner represents a very simple progress reporter.
