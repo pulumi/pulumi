@@ -4,6 +4,10 @@ import { ExampleComponent } from "./exampleComponent";
 import { SimpleComponent } from "./simpleComponent";
 
 const simpleComponent = new SimpleComponent("simpleComponent");
+const multipleSimpleComponents: SimpleComponent[] = [];
+for (const range = {value: 0}; range.value < 10; range.value++) {
+    multipleSimpleComponents.push(new SimpleComponent(`multipleSimpleComponents-${range.value}`));
+}
 const anotherComponent = new AnotherComponent("anotherComponent");
 const exampleComponent = new ExampleComponent("exampleComponent", {
     input: "doggo",

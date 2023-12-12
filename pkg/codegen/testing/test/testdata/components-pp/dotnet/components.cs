@@ -6,6 +6,12 @@ return await Deployment.RunAsync(() =>
 {
     var simpleComponent = new Components.SimpleComponent("simpleComponent");
 
+    var multipleSimpleComponents = new List<Components.SimpleComponent>();
+    for (var rangeIndex = 0; rangeIndex < 10; rangeIndex++)
+    {
+        var range = new { Value = rangeIndex };
+        multipleSimpleComponents.Add(new Components.SimpleComponent($"multipleSimpleComponents-{range.Value}"));
+    }
     var anotherComponent = new Components.AnotherComponent("anotherComponent");
 
     var exampleComponent = new Components.ExampleComponent("exampleComponent", new()

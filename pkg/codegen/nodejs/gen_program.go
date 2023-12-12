@@ -365,6 +365,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	var componentImports []string
 
 	npmToPuPkgName := make(map[string]string)
+	seenComponentImports := map[string]bool{}
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
@@ -385,8 +386,12 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
-			importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
-			componentImports = append(componentImports, importStatement)
+			dirAndName := componentDir + "-" + componentName
+			if _, ok := seenComponentImports[dirAndName]; !ok {
+				importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
+				componentImports = append(componentImports, importStatement)
+				seenComponentImports[dirAndName] = true
+			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {

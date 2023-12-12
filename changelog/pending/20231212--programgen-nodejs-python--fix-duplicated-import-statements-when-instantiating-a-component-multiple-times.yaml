@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs,python
+  description: Fix duplicated import statements when instantiating a component multiple times

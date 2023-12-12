@@ -1,5 +1,11 @@
 component simpleComponent "./simpleComponent" {}
 
+component multipleSimpleComponents "./simpleComponent" {
+    options {
+        range = 10
+    }
+}
+
 component anotherComponent "./another-component" {}
 
 component exampleComponent "./exampleComponent" {
