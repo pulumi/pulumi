@@ -51,7 +51,7 @@ const (
 	pulumiAILanguageYAML       pulumiAILanguage = "YAML"
 )
 
-var pulumiAILanguageMap map[string]pulumiAILanguage = map[string]pulumiAILanguage{
+var pulumiAILanguageMap = map[string]pulumiAILanguage{
 	"typescript": pulumiAILanguageTypeScript,
 	"javascript": pulumiAILanguageJavaScript,
 	"python":     pulumiAILanguagePython,
@@ -68,7 +68,7 @@ func (e *pulumiAILanguage) String() string {
 func (e *pulumiAILanguage) Set(v string) error {
 	switch strings.ToLower(v) {
 	case "typescript", "javascript", "python", "go", "c#", "java", "yaml":
-		*e = pulumiAILanguage(pulumiAILanguageMap[strings.ToLower(v)])
+		*e = pulumiAILanguageMap[strings.ToLower(v)]
 		return nil
 	default:
 		return errors.New(`must be one of "TypeScript", "JavaScript", "Python", "Go", "C#", "Java", "YAML"`)
@@ -114,7 +114,11 @@ func deriveAIOrTemplate(args newArgs) string {
 }
 
 func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool {
-	return args.aiPrompt == "" && args.aiLanguage == "" && args.aiModel == "" && !args.templateMode && userBackend.Name() == "pulumi.com"
+	return args.aiPrompt == "" &&
+		args.aiLanguage == "" &&
+		args.aiModel == "" &&
+		!args.templateMode &&
+		userBackend.Name() == "pulumi.com"
 }
 
 type aiPromptRequestBody struct {
@@ -159,7 +163,10 @@ func runAINew(
 		}, &rawLanguageSelect, surveyIcons(opts.Color)); err != nil {
 			return "", err
 		}
-		args.aiLanguage.Set(rawLanguageSelect)
+		err = args.aiLanguage.Set(rawLanguageSelect)
+		if err != nil {
+			return "", err
+		}
 	}
 	var continuePrompt string
 	var connectionID string
