@@ -1924,26 +1924,26 @@ function mockRun(
         runReq.setInfo(info);
 
         runReq.setDryrun(dryrun);
-        // Sometimes it takes a little bit until the engine is ready to accept connections.  We'll
-        // retry a few times to make sure we don't fail spuriously.
-        for (let i = 0; i < 20; i++) {
-            let retry = false;
-            langHostClient.run(runReq, (err: Error, res: any) => {
-                if (err) {
-                    if (err.message.indexOf("UNAVAILABLE") !== 0) {
-                        retry = true;
-                    } else {
-                        reject(err);
-                    }
-                } else {
-                    // The response has a single field, the error, if any, that occurred (blank means success).
-                    resolve([res.getError(), res.getBail()]);
-                }
-            });
-            if (!retry) {
-                break;
+        langHostClient.run(runReq, (err: Error, res: any) => {
+            if (err && err.message.indexOf("UNAVAILABLE") !== 0) {
+                // Sometimes it takes a little bit until the engine is ready to accept connections.  We'll
+                // retry after a short delay.
+                setTimeout(() => {
+                    langHostClient.run(runReq, (err: Error, res: any) => {
+                        if (err) {
+                            reject(err)
+                        } else {
+                            resolve([res.getError(), res.getBail()]);
+                        }
+                    })
+                }, 200);
+            } else if (err) {
+                reject(err);
+            } else {
+                // The response has a single field, the error, if any, that occurred (blank means success).
+                resolve([res.getError(), res.getBail()]);
             }
-        }
+        });
     });
 }
 
