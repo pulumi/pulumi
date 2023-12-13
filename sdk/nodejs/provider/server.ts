@@ -22,6 +22,7 @@ import * as resource from "../resource";
 import * as config from "../runtime/config";
 import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
+import { getStore } from "../runtime/state";
 import { parseArgs } from "./internals";
 
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
@@ -308,7 +309,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
 
@@ -399,7 +400,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
 
@@ -489,7 +490,7 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-function configureRuntime(req: any, engineAddr: string | undefined) {
+async function configureRuntime(req: any, engineAddr: string | undefined) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
     if (engineAddr === undefined) {
@@ -505,6 +506,17 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
         req.getDryrun(),
         req.getOrganization(),
     );
+
+    // resetOptions doesn't reset the saved features
+    const monitorRef = settings.getMonitor();
+    if (monitorRef !== undefined) {
+        const store = getStore();
+        store.supportsSecrets = await settings.monitorSupportsFeature(monitorRef, "secrets");
+        store.supportsResourceReferences = await settings.monitorSupportsFeature(monitorRef, "resourceReferences");
+        store.supportsOutputValues = await settings.monitorSupportsFeature(monitorRef, "outputValues");
+        store.supportsDeletedWith = await settings.monitorSupportsFeature(monitorRef, "deletedWith");
+        store.supportsAliasSpecs = await settings.monitorSupportsFeature(monitorRef, "aliasSpecs");
+    }
 
     const pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();

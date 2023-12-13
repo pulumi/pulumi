@@ -36,7 +36,7 @@ import {
 } from "../resource";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { invoke } from "./invoke";
-import { monitorSupportsDeletedWith } from "./settings";
+import { getStore } from "./state";
 
 import { isGrpcError } from "../errors";
 import {
@@ -56,7 +56,6 @@ import {
     getStack,
     isDryRun,
     isLegacyApplyEnabled,
-    monitorSupportsAliasSpecs,
     rpcKeepAlive,
     serialize,
     terminateRpcs,
@@ -482,7 +481,7 @@ export function registerResource(
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
 
-            if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
+            if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                 throw new Error(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.",
                 );
@@ -811,7 +810,7 @@ export async function prepareResource(
             propertyToDirectDependencyURNs.set(propertyName, urns);
         }
 
-        const monitorSupportsStructuredAliases = await monitorSupportsAliasSpecs();
+        const monitorSupportsStructuredAliases = getStore().supportsAliasSpecs;
         let computedAliases;
         if (!monitorSupportsStructuredAliases && parent) {
             computedAliases = allAliases(opts.aliases || [], name!, type!, parent, parent.__name!);
