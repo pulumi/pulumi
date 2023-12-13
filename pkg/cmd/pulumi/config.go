@@ -161,7 +161,11 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 					destinationProjectStack)
 			}
 
-			requiresSaving, err := copyEntireConfigMap(currentStack, currentProjectStack, destinationStack, destinationProjectStack)
+			requiresSaving, err := copyEntireConfigMap(
+				currentStack,
+				currentProjectStack,
+				destinationStack,
+				destinationProjectStack)
 			if err != nil {
 				return err
 			}
