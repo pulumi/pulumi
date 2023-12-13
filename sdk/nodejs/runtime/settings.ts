@@ -51,7 +51,6 @@ export interface Options {
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
     readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
     readonly organization?: string; // the name of the current organization.
-    readonly throwOutputToString?: boolean; // true to throw exceptions when attempting to convert outputs to strings.
 
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
@@ -535,11 +534,4 @@ export async function monitorSupportsDeletedWith(): Promise<boolean> {
  */
 export async function monitorSupportsAliasSpecs(): Promise<boolean> {
     return monitorSupportsFeature("aliasSpecs");
-}
-
-/**
- * Returns true if we throw exceptions when attempting to convert outputs to strings.
- */
-export function throwOutputToString(): boolean {
-    return options().throwOutputToString ?? false;
 }

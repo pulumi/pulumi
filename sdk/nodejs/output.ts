@@ -203,7 +203,7 @@ To get the value of an Output<T> as an Output<string> consider either:
 2: pulumi.interpolate \`prefix\${v}suffix\`
 
 See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
-            if (settings.throwOutputToString()) {
+            if (utils.errorOutputString) {
                 throw new Error(message);
             }
             message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
@@ -218,7 +218,7 @@ To get the value of an Output as a JSON value or JSON string consider either:
     2: o.apply(v => JSON.stringify(v))
 
 See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
-            if (settings.throwOutputToString()) {
+            if (utils.errorOutputString) {
                 throw new Error(message);
             }
             message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
