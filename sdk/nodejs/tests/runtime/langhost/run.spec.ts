@@ -1929,13 +1929,13 @@ function mockRun(
                 // Sometimes it takes a little bit until the engine is ready to accept connections.  We'll
                 // retry after a short delay.
                 setTimeout(() => {
-                    langHostClient.run(runReq, (err: Error, res: any) => {
-                        if (err) {
-                            reject(err)
+                    langHostClient.run(runReq, (e: Error, r: any) => {
+                        if (e) {
+                            reject(e);
                         } else {
-                            resolve([res.getError(), res.getBail()]);
+                            resolve([r.getError(), r.getBail()]);
                         }
-                    })
+                    });
                 }, 200);
             } else if (err) {
                 reject(err);
