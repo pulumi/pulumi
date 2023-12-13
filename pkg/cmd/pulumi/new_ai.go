@@ -344,13 +344,13 @@ func chooseWithAIOrTemplate(opts display.Options) (string, error) {
 	}
 
 	optionsDescriptionMap := map[string]string{
-		"ai":       "Create a new Pulumi project using Pulumi AI",
 		"template": "Create a new Pulumi project using a template",
+		"ai":       "Create a new Pulumi project using Pulumi AI",
 	}
 
 	var ai string
 	if err := survey.AskOne(&survey.Select{
-		Message: "Would you like to create a new project with Pulumi AI?",
+		Message: "Would you like to create a project from a template or using a Pulumi AI prompt?",
 		Options: options,
 		Description: func(opt string, _ int) string {
 			return optionsDescriptionMap[opt]
