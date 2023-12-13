@@ -72,7 +72,7 @@ type newArgs struct {
 	yes               bool
 	listTemplates     bool
 	aiPrompt          string
-	aiLanguage        string
+	aiLanguage        pulumiAILanguage
 	aiModel           pulumiAIModel
 	templateMode      bool
 }
@@ -578,8 +578,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&args.aiPrompt, "ai", "", "Prompt to use for Pulumi AI",
 	)
-	cmd.PersistentFlags().StringVar(
-		&args.aiLanguage, "language", "", "Language to use for Pulumi AI "+
+	cmd.PersistentFlags().Var(
+		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
 			"(possible choices: TypeScript, JavaScript, Python, Go, C#)",
 	)
 	cmd.PersistentFlags().BoolVarP(

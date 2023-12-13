@@ -38,6 +38,36 @@ const (
 	refineSelection = "refine"
 )
 
+type pulumiAILanguage string
+
+const (
+	pulumiAILanguageTypeScript pulumiAILanguage = "TypeScript"
+	pulumiAILanguageJavaScript pulumiAILanguage = "JavaScript"
+	pulumiAILanguagePython     pulumiAILanguage = "Python"
+	pulumiAILanguageGo         pulumiAILanguage = "Go"
+	pulumiAILanguageCSharp     pulumiAILanguage = "C#"
+	pulumiAILanguageJava       pulumiAILanguage = "Java"
+	pulumiAILanguageYAML       pulumiAILanguage = "YAML"
+)
+
+func (e *pulumiAILanguage) String() string {
+	return string(*e)
+}
+
+func (e *pulumiAILanguage) Set(v string) error {
+	switch v {
+	case "TypeScript", "JavaScript", "Python", "Go", "C#", "Java", "YAML":
+		*e = pulumiAILanguage(v)
+		return nil
+	default:
+		return errors.New(`must be one of "TypeScript", "JavaScript", "Python", "Go", "C#", "Java", "YAML"`)
+	}
+}
+
+func (e *pulumiAILanguage) Type() string {
+	return "pulumiAILanguage"
+}
+
 type pulumiAIModel string
 
 const (
@@ -77,20 +107,20 @@ func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool
 }
 
 type aiPromptRequestBody struct {
-	Language       string `json:"language"`
-	Instructions   string `json:"instructions"`
-	ResponseMode   string `json:"responseMode"`
-	ConversationID string `json:"conversationId"`
-	ConnectionID   string `json:"connectionId"`
+	Language       pulumiAILanguage `json:"language"`
+	Instructions   string           `json:"instructions"`
+	ResponseMode   string           `json:"responseMode"`
+	ConversationID string           `json:"conversationId"`
+	ConnectionID   string           `json:"connectionId"`
 }
 
 type aiPromptWithModelRequestBody struct {
-	Language       string        `json:"language"`
-	Instructions   string        `json:"instructions"`
-	Model          pulumiAIModel `json:"model"`
-	ResponseMode   string        `json:"responseMode"`
-	ConversationID string        `json:"conversationId"`
-	ConnectionID   string        `json:"connectionId"`
+	Language       pulumiAILanguage `json:"language"`
+	Instructions   string           `json:"instructions"`
+	Model          pulumiAIModel    `json:"model"`
+	ResponseMode   string           `json:"responseMode"`
+	ConversationID string           `json:"conversationId"`
+	ConnectionID   string           `json:"connectionId"`
 }
 
 // Iteratively prompt the user for input, sending their input as a prompt tp Pulumi AI
@@ -160,7 +190,7 @@ func sendPromptToPulumiAI(
 	conversationID string,
 	connectionID string,
 	userName string,
-	language string,
+	language pulumiAILanguage,
 	model pulumiAIModel,
 ) (string, string, string, error) {
 	pulumiAIURL := env.AIServiceEndpoint.Value()
@@ -229,7 +259,7 @@ func sendPromptToPulumiAI(
 
 func runAINewPromptStep(
 	opts display.Options,
-	language string,
+	language pulumiAILanguage,
 	model pulumiAIModel,
 	prompt string,
 	yes bool,
