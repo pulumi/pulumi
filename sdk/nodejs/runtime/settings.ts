@@ -27,9 +27,7 @@ import * as resproto from "../proto/resource_pb";
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
-const grpcChannelOptions = {
-    "grpc.max_receive_message_length": maxRPCMessageSize,
-};
+const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
