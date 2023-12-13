@@ -493,7 +493,12 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new git@github.com:<user>/<private-repo>`\n" +
 			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
 			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
-			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n",
+			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n" +
+			"To create a project using Pulumi AI, either select `ai` from the first selection, or provide any of the following:\n" +
+			"* `pulumi new --ai \"<prompt>\"`\n" +
+			"* `pulumi new --language <language>`\n" +
+			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
+			"Any missing but required information will be prompted for.\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()

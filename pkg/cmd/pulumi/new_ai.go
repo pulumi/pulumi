@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -50,14 +51,24 @@ const (
 	pulumiAILanguageYAML       pulumiAILanguage = "YAML"
 )
 
+var pulumiAILanguageMap map[string]pulumiAILanguage = map[string]pulumiAILanguage{
+	"typescript": pulumiAILanguageTypeScript,
+	"javascript": pulumiAILanguageJavaScript,
+	"python":     pulumiAILanguagePython,
+	"go":         pulumiAILanguageGo,
+	"c#":         pulumiAILanguageCSharp,
+	"java":       pulumiAILanguageJava,
+	"yaml":       pulumiAILanguageYAML,
+}
+
 func (e *pulumiAILanguage) String() string {
 	return string(*e)
 }
 
 func (e *pulumiAILanguage) Set(v string) error {
-	switch v {
-	case "TypeScript", "JavaScript", "Python", "Go", "C#", "Java", "YAML":
-		*e = pulumiAILanguage(v)
+	switch strings.ToLower(v) {
+	case "typescript", "javascript", "python", "go", "c#", "java", "yaml":
+		*e = pulumiAILanguage(pulumiAILanguageMap[strings.ToLower(v)])
 		return nil
 	default:
 		return errors.New(`must be one of "TypeScript", "JavaScript", "Python", "Go", "C#", "Java", "YAML"`)
