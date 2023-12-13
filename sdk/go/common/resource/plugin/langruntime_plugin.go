@@ -120,7 +120,7 @@ func buildArgsForNewPlugin(host Host, root string, options map[string]interface{
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
 
-	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
+	args = append(args, "-root="+filepath.Clean(root))
 
 	// NOTE: positional argument for the server addresss must come last
 	args = append(args, host.ServerAddr())

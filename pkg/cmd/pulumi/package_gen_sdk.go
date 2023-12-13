@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -165,7 +166,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			if diags.HasErrors() {
 				// If we've got error diagnostics then package generation failed, we've printed the error above so
 				// just return a plain message here.
-				return fmt.Errorf("generation failed")
+				return errors.New("generation failed")
 			}
 
 			return nil

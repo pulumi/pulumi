@@ -47,6 +47,7 @@
         "@types/semver": "^5.5.0",
         "@types/sinon": "^10.0.13",
         "@types/split2": "^2.1.6",
+        "@types/uuid": "^9.0.7",
         "@typescript-eslint/eslint-plugin": "^4.29.0",
         "@typescript-eslint/parser": "^4.29.0",
         "eslint": "^7.32.0",

@@ -2,7 +2,6 @@ package nodejs
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -85,7 +84,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 	result := make(map[string]string, len(deps))
 	for _, d := range deps.SortedValues() {
-		pkgName := fmt.Sprintf("@pulumi/%s", d)
+		pkgName := "@pulumi/" + d
 		set := func(pkgVersion string) {
 			result[pkgName] = "^" + pkgVersion
 		}

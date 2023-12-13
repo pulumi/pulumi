@@ -167,8 +167,8 @@ func testRemoteStackGitSource(
 	// initialize
 	s, err := fn(ctx, stackName, repo,
 		RemotePreRunCommands(
-			fmt.Sprintf("pulumi config set bar abc --stack %s", stackName),
-			fmt.Sprintf("pulumi config set --secret buzz secret --stack %s", stackName)),
+			"pulumi config set bar abc --stack "+stackName,
+			"pulumi config set --secret buzz secret --stack "+stackName),
 		RemoteSkipInstallDependencies(true))
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)

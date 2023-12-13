@@ -43,7 +43,7 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 	version := pulumiSDKVersion
 	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		if info.PulumiSDKVersion == 1 {
-			return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#%s", typeName)
+			return "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#" + typeName
 		}
 		if info.PulumiSDKVersion != 0 {
 			version = fmt.Sprintf("v%d", info.PulumiSDKVersion)

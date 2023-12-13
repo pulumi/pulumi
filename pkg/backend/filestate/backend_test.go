@@ -562,7 +562,7 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 
 	// • Create a mock local backend
 	tmpDir := t.TempDir()
-	dirURI := fmt.Sprintf("file://%s", filepath.ToSlash(tmpDir))
+	dirURI := "file://" + filepath.ToSlash(tmpDir)
 	local, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
 	assert.NoError(t, err)
 	ctx := context.Background()

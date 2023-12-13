@@ -243,10 +243,10 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 	if !e.NoPassphrase {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_CONFIG_PASSPHRASE=%s", passphrase))
+		cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE="+passphrase)
 	}
 	if e.Backend != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_BACKEND_URL=%s", e.Backend))
+		cmd.Env = append(cmd.Env, "PULUMI_BACKEND_URL="+e.Backend)
 	}
 	// According to https://pkg.go.dev/os/exec#Cmd.Env:
 	//     If Env contains duplicate environment keys, only the last

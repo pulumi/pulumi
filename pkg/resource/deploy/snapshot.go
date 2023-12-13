@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -129,7 +130,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 	if snap != nil {
 		// Ensure the magic cookie checks out.
 		if snap.Manifest.Magic != snap.Manifest.NewMagic() {
-			return fmt.Errorf("magic cookie mismatch; possible tampering/corruption detected")
+			return errors.New("magic cookie mismatch; possible tampering/corruption detected")
 		}
 
 		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't

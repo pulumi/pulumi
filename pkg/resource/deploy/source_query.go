@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -517,14 +518,14 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 func (rm *queryResmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest,
 ) (*pulumirpc.ReadResourceResponse, error) {
-	return nil, fmt.Errorf("Query mode does not support reading resources")
+	return nil, errors.New("Query mode does not support reading resources")
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *queryResmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
-	return nil, fmt.Errorf("Query mode does not support creating, updating, or deleting resources")
+	return nil, errors.New("Query mode does not support creating, updating, or deleting resources")
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial
@@ -532,7 +533,7 @@ func (rm *queryResmon) RegisterResource(ctx context.Context,
 func (rm *queryResmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
 ) (*pbempty.Empty, error) {
-	return nil, fmt.Errorf("Query mode does not support registering resource operations")
+	return nil, errors.New("Query mode does not support registering resource operations")
 }
 
 // SupportsFeature the query resmon is able to have secrets passed to it, which may be arguments to invoke calls.

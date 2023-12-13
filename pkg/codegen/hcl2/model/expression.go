@@ -1295,7 +1295,7 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 		bf := value.AsBigFloat()
 		i, acc := bf.Int64()
 		if acc == big.Exact {
-			return fmt.Sprintf("%v", i)
+			return strconv.FormatInt(i, 10)
 		}
 		d, _ := bf.Float64()
 		return fmt.Sprintf("%g", d)

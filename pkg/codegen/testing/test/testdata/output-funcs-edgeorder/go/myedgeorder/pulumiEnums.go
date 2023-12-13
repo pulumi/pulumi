@@ -140,10 +140,11 @@ func (o SupportedFilterTypesPtrOutput) ToStringPtrOutputWithContext(ctx context.
 	}).(pulumi.StringPtrOutput)
 }
 
-// SupportedFilterTypesInput is an input type that accepts SupportedFilterTypesArgs and SupportedFilterTypesOutput values.
-// You can construct a concrete instance of `SupportedFilterTypesInput` via:
+// SupportedFilterTypesInput is an input type that accepts values of the SupportedFilterTypes enum
+// A concrete instance of `SupportedFilterTypesInput` can be one of the following:
 //
-//	SupportedFilterTypesArgs{...}
+//	SupportedFilterTypesShipToCountries
+//	SupportedFilterTypesDoubleEncryptionStatus
 type SupportedFilterTypesInput interface {
 	pulumi.Input
 

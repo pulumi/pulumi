@@ -17,7 +17,6 @@ package schema
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"net/url"
 	"os"
@@ -50,7 +49,7 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 			panic(err)
 		}
 	} else {
-		panic(fmt.Sprintf("unknown schema file extension while parsing %s", file))
+		panic("unknown schema file extension while parsing " + file)
 	}
 
 	return pkgSpec

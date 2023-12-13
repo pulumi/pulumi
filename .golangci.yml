@@ -28,6 +28,7 @@ linters:
     - unconvert
     - unused
     - paralleltest
+    - perfsprint
 
 linters-settings:
   nakedret:

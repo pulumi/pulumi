@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -71,7 +72,7 @@ func (dds *deploymentDiffState) ShouldDiff(new deployment) bool {
 
 func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment) (deploymentDiff, error) {
 	if !dds.CanDiff() {
-		return deploymentDiff{}, fmt.Errorf("Diff() cannot be called before Saved()")
+		return deploymentDiff{}, errors.New("Diff() cannot be called before Saved()")
 	}
 
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "Diff")

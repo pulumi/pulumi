@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -48,7 +49,7 @@ type LogOptions struct {
 // Each LogFile should have a unique instance of DebugInterceptor for proper locking.
 func NewDebugInterceptor(opts DebugInterceptorOptions) (*DebugInterceptor, error) {
 	if opts.LogFile == "" {
-		return nil, fmt.Errorf("logFile cannot be empty")
+		return nil, errors.New("logFile cannot be empty")
 	}
 	i := &DebugInterceptor{logFile: opts.LogFile}
 

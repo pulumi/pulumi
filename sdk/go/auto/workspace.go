@@ -44,6 +44,10 @@ type Workspace interface {
 	// PostCommandCallback is a hook executed after every command. Called with the stack name.
 	// An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml).
 	PostCommandCallback(context.Context, string) error
+	// AddEnvironments adds the specified environments to the provided stack's configuration.
+	AddEnvironments(context.Context, string, ...string) error
+	// RemoveEnvironment removes the specified environment from the provided stack's configuration.
+	RemoveEnvironment(context.Context, string, string) error
 	// GetConfig returns the value associated with the specified stack name and key,
 	// scoped to the current workspace.
 	GetConfig(context.Context, string, string) (ConfigValue, error)
@@ -106,6 +110,10 @@ type Workspace interface {
 	// WhoAmIDetails returns detailed information about the currently
 	// logged-in Pulumi identity.
 	WhoAmIDetails(ctx context.Context) (WhoAmIResult, error)
+	// ChangeStackSecretsProvider edits the secrets provider for the given stack.
+	ChangeStackSecretsProvider(
+		ctx context.Context, stackName, newSecretsProvider string, opts *ChangeSecretsProviderOptions,
+	) error
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
@@ -172,4 +180,9 @@ type WhoAmIResult struct {
 	User          string   `json:"user"`
 	Organizations []string `json:"organizations,omitempty"`
 	URL           string   `json:"url"`
+}
+
+type ChangeSecretsProviderOptions struct {
+	// NewPassphrase is the new passphrase when changing to a `passphrase` provider
+	NewPassphrase *string
 }

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -63,7 +64,7 @@ func newPluginRmCmd() *cobra.Command {
 				}
 				kind = workspace.PluginKind(args[0])
 			} else if !all {
-				return fmt.Errorf("please pass --all if you'd like to remove all plugins")
+				return errors.New("please pass --all if you'd like to remove all plugins")
 			}
 			if len(args) > 1 {
 				name = args[1]

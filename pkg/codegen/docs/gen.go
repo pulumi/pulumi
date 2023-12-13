@@ -844,7 +844,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: " = null",
 			Type: propertyType{
 				Name: optsType,
-				Link: docLangHelper.GetDocLinkForPulumiType(def, fmt.Sprintf("Pulumi.%s", optsType)),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "Pulumi."+optsType),
 			},
 			Comment: ctorOptsArgComment,
 		},
@@ -935,11 +935,11 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		// Determine whether we need to use the alternate args class name (e.g. `<Resource>InitArgs` instead of
 		// `<Resource>Args`) due to an input type with the same name as the resource in the same module.
 		resName := resourceName(r)
-		resArgsName := fmt.Sprintf("%sArgs", resName)
+		resArgsName := resName + "Args"
 		for _, inputType := range mod.inputTypes {
 			inputTypeName := strings.Title(tokenToName(inputType.Token))
 			if resName == inputTypeName {
-				resArgsName = fmt.Sprintf("%sInitArgs", resName)
+				resArgsName = resName + "InitArgs"
 			}
 		}
 
@@ -1935,7 +1935,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
 	// top level page when generating title tags.
 	if len(modules) > 0 {
-		modTitleTag = fmt.Sprintf("%s Package", getPackageDisplayName(modTitle))
+		modTitleTag = getPackageDisplayName(modTitle) + " Package"
 	} else {
 		modTitleTag = fmt.Sprintf("%s.%s", mod.pkg.Name(), modTitle)
 		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.",

@@ -17,6 +17,7 @@ package deploy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -453,7 +454,7 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 	if value, ok := pConfig["disable-default-providers"]; ok {
 		array := []interface{}{}
 		if !value.IsString() {
-			return true, fmt.Errorf("Unexpected encoding of pulumi:disable-default-providers")
+			return true, errors.New("Unexpected encoding of pulumi:disable-default-providers")
 		}
 		if value.StringValue() == "" {
 			// If the list is provided but empty, we don't encode a empty json
@@ -1104,7 +1105,7 @@ func (s *sourcePositions) parseSourcePosition(raw *pulumirpc.SourcePosition) (st
 
 	file := filepath.FromSlash(posURL.Path)
 	if !filepath.IsAbs(file) {
-		return "", fmt.Errorf("source positions must include absolute paths")
+		return "", errors.New("source positions must include absolute paths")
 	}
 	rel, err := filepath.Rel(s.projectRoot, file)
 	if err != nil {

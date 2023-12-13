@@ -16,6 +16,7 @@ package deploy
 
 import (
 	cryptorand "crypto/rand"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -1008,7 +1009,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				if sg.deployment.preview {
 					sg.deployment.ctx.Diag.Warningf(diag.StreamMessage(urn, message, 0))
 				} else {
-					return nil, fmt.Errorf(message)
+					return nil, errors.New(message)
 				}
 			}
 

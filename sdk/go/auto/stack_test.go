@@ -16,7 +16,6 @@ package auto
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -37,7 +36,7 @@ func TestGetPermalink(t *testing.T) {
 		want   string
 		err    error
 	}{
-		"successful parsing": {testee: fmt.Sprintf("%s\n", testPermalink), want: "https://gotest"},
+		"successful parsing": {testee: testPermalink + "\n", want: "https://gotest"},
 		"failed parsing":     {testee: testPermalink, err: ErrParsePermalinkFailed},
 	}
 

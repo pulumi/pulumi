@@ -18,7 +18,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -267,11 +266,11 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	// Leftover temp dirs.
-	tempDir1, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir1, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
-	tempDir2, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir2, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
-	tempDir3, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir3, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
 
 	// Leftover partial file.

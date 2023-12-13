@@ -939,7 +939,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 		if _, isConfig := configVars[expr.RootName]; isConfig {
 			if _, configReference := expr.Parts[0].(*pcl.ConfigVariable); configReference {
-				rootName = fmt.Sprintf("args.%s", Title(expr.RootName))
+				rootName = "args." + Title(expr.RootName)
 			}
 		}
 	}

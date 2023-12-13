@@ -748,7 +748,7 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 	firstChar := string([]rune(pair)[0])
 	if firstChar == "\"" || firstChar == "'" {
 		pair = strings.TrimPrefix(pair, firstChar)
-		splitArg = strings.SplitN(pair, fmt.Sprintf("%s=", firstChar), 2)
+		splitArg = strings.SplitN(pair, firstChar+"=", 2)
 	}
 
 	if len(splitArg) < 2 {

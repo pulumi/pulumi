@@ -123,7 +123,7 @@ jobs:
           # shellcheck disable=SC2002
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
-            | goreleaser release -f - -p 5 --skip-validate --rm-dist --snapshot
+            | goreleaser release -f - -p 5 --skip-validate --clean --snapshot
       - uses: actions/upload-artifact@v2
         with:
           name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}

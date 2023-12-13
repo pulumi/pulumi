@@ -18,6 +18,7 @@ package pulumi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -253,7 +254,7 @@ type AnyOutput struct{ *OutputState }
 var _ pulumix.Input[any] = AnyOutput{}
 
 func (AnyOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("outputs can not be marshaled to JSON")
+	return nil, errors.New("outputs can not be marshaled to JSON")
 }
 
 func (AnyOutput) ElementType() reflect.Type {
@@ -329,7 +330,7 @@ type ResourceOutput struct{ *OutputState }
 var _ pulumix.Input[Resource] = ResourceOutput{}
 
 func (ResourceOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 // ElementType returns the element type of this Output (Resource).
@@ -412,7 +413,7 @@ type ResourceArrayOutput struct{ *OutputState }
 var _ pulumix.Input[[]Resource] = ResourceArrayOutput{}
 
 func (ResourceArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 // ElementType returns the element type of this Output ([]Resource).

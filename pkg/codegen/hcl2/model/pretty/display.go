@@ -388,7 +388,7 @@ func (o *Object) String() string {
 
 func (o *Object) hash(seen map[Formatter]bool) string {
 	if seen[o] {
-		return fmt.Sprintf("%d", len(seen))
+		return strconv.Itoa(len(seen))
 	}
 	defer func() { seen[o] = false }()
 	seen[o] = true
@@ -522,7 +522,7 @@ func (l *List) String() string {
 
 func (l *List) hash(seen map[Formatter]bool) string {
 	if seen[l] {
-		return fmt.Sprintf("%d", len(seen))
+		return strconv.Itoa(len(seen))
 	}
 	defer func() { seen[l] = false }()
 	seen[l] = true

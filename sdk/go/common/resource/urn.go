@@ -15,6 +15,7 @@
 package resource
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -57,7 +58,7 @@ const (
 // ParseURN attempts to parse a string into a URN returning an error if it's not valid.
 func ParseURN(s string) (URN, error) {
 	if s == "" {
-		return "", fmt.Errorf("missing required URN")
+		return "", errors.New("missing required URN")
 	}
 
 	urn := URN(s)

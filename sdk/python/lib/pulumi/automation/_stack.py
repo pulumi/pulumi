@@ -580,6 +580,22 @@ class Stack:
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
         )
 
+    def add_environments(self, *environment_names: str) -> None:
+        """
+        Adds environments to the end of a stack's import list. Imported environments are merged in order
+        per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+        environment.
+
+        :param environment_names: The names of the environments to add.
+        """
+        return self.workspace.add_environments(self.name, *environment_names)
+
+    def remove_environment(self, environment_name: str) -> None:
+        """
+        Removes an environment from a stack's import list.
+        """
+        return self.workspace.remove_environment(self.name, environment_name)
+
     def get_config(self, key: str, *, path: bool = False) -> ConfigValue:
         """
         Returns the config value associated with the specified key.

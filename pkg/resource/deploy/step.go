@@ -259,7 +259,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		if !preview && id == "" {
-			return resourceStatus, nil, fmt.Errorf("provider did not return an ID from Create")
+			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 		}
 
 		// Copy any of the default and output properties on the live object state.
@@ -849,7 +849,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			// 2. Make sure the initialization errors are persisted in the state, so that the next
 			//    `pulumi up` will surface them to the user.
 			err = nil
-			msg := fmt.Sprintf("Refreshed resource is in an unhealthy state:\n* %s", strings.Join(initErrors, "\n* "))
+			msg := "Refreshed resource is in an unhealthy state:\n* " + strings.Join(initErrors, "\n* ")
 			s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}

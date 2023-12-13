@@ -15,6 +15,7 @@
 package importer
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -602,7 +603,7 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 
 	switch {
 	case value.IsArchive():
-		return nil, fmt.Errorf("NYI: archives")
+		return nil, errors.New("NYI: archives")
 	case value.IsArray():
 		elementType := schema.AnyType
 		if typ, ok := typ.(*schema.ArrayType); ok {
@@ -623,13 +624,13 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 			Expressions: exprs,
 		}, nil
 	case value.IsAsset():
-		return nil, fmt.Errorf("NYI: assets")
+		return nil, errors.New("NYI: assets")
 	case value.IsBool():
 		return &model.LiteralValueExpression{
 			Value: cty.BoolVal(value.BoolValue()),
 		}, nil
 	case value.IsComputed() || value.IsOutput():
-		return nil, fmt.Errorf("cannot define computed values")
+		return nil, errors.New("cannot define computed values")
 	case value.IsNull():
 		return model.VariableReference(Null), nil
 	case value.IsNumber():

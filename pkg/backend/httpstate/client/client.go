@@ -738,7 +738,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	// is in use, which does not provide  a version tag.
 	var versionMsg string
 	if analyzerInfo.Version != "" {
-		versionMsg = fmt.Sprintf(" - version %s", analyzerInfo.Version)
+		versionMsg = " - version " + analyzerInfo.Version
 	}
 	fmt.Printf("Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, orgName)
 
@@ -930,7 +930,7 @@ func (pc *Client) GetUpdateEvents(ctx context.Context, update UpdateIdentifier,
 ) (apitype.UpdateResults, error) {
 	path := getUpdatePath(update)
 	if continuationToken != nil {
-		path += fmt.Sprintf("?continuationToken=%s", *continuationToken)
+		path += "?continuationToken=" + *continuationToken
 	}
 
 	var results apitype.UpdateResults
@@ -1059,7 +1059,7 @@ func (pc *Client) GetUpdateEngineEvents(ctx context.Context, update UpdateIdenti
 ) (apitype.GetUpdateEventsResponse, error) {
 	path := getUpdatePath(update, "events")
 	if continuationToken != nil {
-		path += fmt.Sprintf("?continuationToken=%s", *continuationToken)
+		path += "?continuationToken=" + *continuationToken
 	}
 
 	var resp apitype.GetUpdateEventsResponse
@@ -1115,7 +1115,7 @@ func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
 func (pc *Client) GetDeploymentLogs(ctx context.Context, stack StackIdentifier, id,
 	token string,
 ) (*apitype.DeploymentLogs, error) {
-	path := getDeploymentPath(stack, id, fmt.Sprintf("logs?continuationToken=%s", token))
+	path := getDeploymentPath(stack, id, "logs?continuationToken="+token)
 	var resp apitype.DeploymentLogs
 	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
 	if err != nil {

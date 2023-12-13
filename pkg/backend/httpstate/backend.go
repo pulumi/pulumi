@@ -355,7 +355,7 @@ func (m defaultLoginManager) Current(
 	if err != nil {
 		return nil, err
 	} else if !valid {
-		return nil, fmt.Errorf("invalid access token")
+		return nil, errors.New("invalid access token")
 	}
 
 	// Save them.
@@ -411,7 +411,7 @@ func (m defaultLoginManager) Login(
 	fmt.Printf(opts.Color.Colorize(line1) + "\n")
 	maxlen := line1len
 
-	line2 := fmt.Sprintf("Run `%s --help` for alternative login options.", command)
+	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
 	line2len := len(line2)
 	fmt.Printf(opts.Color.Colorize(line2) + "\n")
 	if line2len > maxlen {
@@ -430,7 +430,7 @@ func (m defaultLoginManager) Login(
 			}
 		}
 	} else {
-		line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
+		line3 := "Enter your access token from " + accountLink
 		line3len := len(line3)
 		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
 		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
@@ -465,7 +465,7 @@ func (m defaultLoginManager) Login(
 	if err != nil {
 		return nil, err
 	} else if !valid {
-		return nil, fmt.Errorf("invalid access token")
+		return nil, errors.New("invalid access token")
 	}
 
 	// Save them.
@@ -690,7 +690,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 
 	if qualifiedName.Project == "" {
 		if b.currentProject == nil {
-			return nil, fmt.Errorf("If you're using the --stack flag, " +
+			return nil, errors.New("If you're using the --stack flag, " +
 				"pass the fully qualified name (org/project/stack)")
 		}
 
@@ -1868,7 +1868,7 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 	// When using the cloud backend, require that stack references are fully qualified so they
 	// look like "<org>/<project>/<stack>"
 	if strings.Count(name, "/") != 2 {
-		return nil, fmt.Errorf("a stack reference's name should be of the form " +
+		return nil, errors.New("a stack reference's name should be of the form " +
 			"'<organization>/<project>/<stack>'. See https://pulumi.io/help/stack-reference for more information.")
 	}
 

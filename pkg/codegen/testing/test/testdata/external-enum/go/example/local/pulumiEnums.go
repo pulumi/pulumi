@@ -137,10 +137,11 @@ func (o MyEnumPtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pulu
 	}).(pulumi.Float64PtrOutput)
 }
 
-// MyEnumInput is an input type that accepts MyEnumArgs and MyEnumOutput values.
-// You can construct a concrete instance of `MyEnumInput` via:
+// MyEnumInput is an input type that accepts values of the MyEnum enum
+// A concrete instance of `MyEnumInput` can be one of the following:
 //
-//	MyEnumArgs{...}
+//	MyEnumPi
+//	MyEnumSmall
 type MyEnumInput interface {
 	pulumi.Input
 

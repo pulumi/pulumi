@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -268,7 +269,7 @@ func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
 	removeInfoColumnIfUnneeded(rows)
 
 	for i, row := range rows {
-		r.renderRow(display, fmt.Sprintf("%v", i), row, maxColumnLengths)
+		r.renderRow(display, strconv.Itoa(i), row, maxColumnLengths)
 	}
 
 	systemID := len(rows)
@@ -285,18 +286,18 @@ func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
 		if !printedHeader {
 			printedHeader = true
 			r.colorizeAndWriteProgress(makeActionProgress(
-				fmt.Sprintf("%v", systemID), " "))
+				strconv.Itoa(systemID), " "))
 			systemID++
 
 			r.colorizeAndWriteProgress(makeActionProgress(
-				fmt.Sprintf("%v", systemID),
+				strconv.Itoa(systemID),
 				colors.Yellow+"System Messages"+colors.Reset))
 			systemID++
 		}
 
 		for _, line := range lines {
 			r.colorizeAndWriteProgress(makeActionProgress(
-				fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line)))
+				strconv.Itoa(systemID), "  "+line))
 			systemID++
 		}
 	}

@@ -15,7 +15,6 @@
 package model
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
@@ -50,7 +49,7 @@ func (t *ConstType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Form
 	case cty.String:
 		return pretty.FromString(strconv.Quote(t.Value.AsString()))
 	case cty.Bool:
-		return pretty.FromString(fmt.Sprintf("%v", t.Value.True()))
+		return pretty.FromString(strconv.FormatBool(t.Value.True()))
 	case cty.Number:
 		return pretty.FromStringer(t.Value.AsBigFloat())
 	}

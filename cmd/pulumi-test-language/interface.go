@@ -28,6 +28,9 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/blang/semver"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
@@ -262,8 +265,14 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 		}
 
 		if !bytes.Equal(actualContents, expectedContents) {
-			// TODO(https://github.com/pulumi/pulumi/issues/13943): Find a way to show better diffs here
-			validations = append(validations, fmt.Sprintf("expected file %s does not match actual file", relativePath))
+			edits := myers.ComputeEdits(
+				span.URIFromPath("expected"), string(expectedContents), string(actualContents),
+			)
+			diff := gotextdiff.ToUnified("expected", "actual", string(expectedContents), edits)
+
+			validations = append(validations, fmt.Sprintf(
+				"expected file %s does not match actual file:\n\n%s", relativePath, diff),
+			)
 		}
 
 		return nil

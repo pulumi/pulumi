@@ -39,6 +39,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -729,8 +730,8 @@ func (host *nodeLanguageHost) constructArguments(
 		args = append(args, "--dry-run")
 	}
 
-	maybeAppendArg("query-mode", fmt.Sprint(req.GetQueryMode()))
-	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
+	maybeAppendArg("query-mode", strconv.FormatBool(req.GetQueryMode()))
+	maybeAppendArg("parallel", strconv.Itoa(int(req.GetParallel())))
 	maybeAppendArg("tracing", host.tracing)
 
 	// The engine should always pass a name for entry point, even if its just "." for the program directory.
