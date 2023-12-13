@@ -188,8 +188,9 @@ func optsForConstructGo(
 	}
 }
 
+//nolint:paralleltest // Mutates environment variables.
 func TestConstructComponentConfigureProviderGo(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows")

@@ -180,7 +180,7 @@ jobs:
             --partition-module pkg 1 \
             --partition-module sdk 1 \
             --partition-module tests 1 \
-            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 2
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
           echo "::endgroup::"
 
