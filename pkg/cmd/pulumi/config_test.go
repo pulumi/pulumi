@@ -237,6 +237,116 @@ func TestOpenStackEnv(t *testing.T) {
 	assert.Equal(t, env, openEnv.Properties)
 }
 
+func TestCopyConfig(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+		"environmentVariables": esc.NewValue(map[string]esc.Value{
+			"TEST_VAR": esc.NewSecret("hunter2"),
+		}),
+		"files": esc.NewValue(map[string]esc.Value{
+			"TEST_FILE": esc.NewSecret("sensitive"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yaml []byte,
+			duration time.Duration,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "test-org", org)
+			assert.Equal(t, []byte(`{"imports":["test"]}`), yaml)
+			assert.Equal(t, 2*time.Hour, duration)
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+
+	mockSecretsManager := &secrets.MockSecretsManager{
+		EncrypterF: func() (config.Encrypter, error) {
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			return encrypter, nil
+		},
+		DecrypterF: func() (config.Decrypter, error) {
+			decrypter := &secrets.MockDecrypter{
+				DecryptValueF: func() string {
+					return "plaintext"
+				},
+				BulkDecryptF: func() map[string]string {
+					return map[string]string{
+						"idontknow": "whatiamdoing",
+					}
+				},
+			}
+
+			return decrypter, nil
+		},
+	}
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "org/project/name",
+				NameV:               tokens.MustParseStackName("name"),
+				ProjectV:            "project",
+				FullyQualifiedNameV: tokens.QName("org/project/name"),
+			}
+		},
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+		DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+			return mockSecretsManager, nil
+		},
+	}
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	require.NoError(t, err)
+	assert.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+
+	t.Run("TestCopyConfigIncludesEnvironments", func(t *testing.T) {
+		destinationStack := &backend.MockStack{
+			RefF: func() backend.StackReference {
+				return &backend.MockStackReference{
+					StringV:             "org/project/name",
+					NameV:               tokens.MustParseStackName("name"),
+					ProjectV:            "project",
+					FullyQualifiedNameV: tokens.QName("org/project/name"),
+				}
+			},
+			OrgNameF: func() string { return "test-org" },
+			BackendF: func() backend.Backend { return be },
+			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+				return mockSecretsManager, nil
+			},
+		}
+
+		var destinationProjectStack workspace.ProjectStack
+		err := yaml.Unmarshal([]byte("environment:\n  - test2"), &destinationProjectStack)
+		require.NoError(t, err)
+
+		_, err = copyEntireConfigMap(stack, &projectStack, destinationStack, &destinationProjectStack)
+		require.NoError(t, err)
+
+		// Assert that the "test" env from the source stack
+		// has been copied in addition to the "test2" env
+		// of the destination stack.
+		envImports := destinationProjectStack.Environment.Imports()
+		assert.Contains(t, envImports, "test")
+		assert.Contains(t, envImports, "test2")
+	})
+}
+
 func TestOpenStackEnvDiags(t *testing.T) {
 	t.Parallel()
 
