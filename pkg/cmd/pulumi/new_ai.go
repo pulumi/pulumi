@@ -151,13 +151,15 @@ func runAINew(
 		"Java",
 		"YAML",
 	}
+	var rawLanguageSelect string
 	if args.aiLanguage == "" {
 		if err = survey.AskOne(&survey.Select{
 			Message: "Please select a language for your project:",
 			Options: languageOptions,
-		}, &args.aiLanguage, surveyIcons(opts.Color)); err != nil {
+		}, &rawLanguageSelect, surveyIcons(opts.Color)); err != nil {
 			return "", err
 		}
+		args.aiLanguage.Set(rawLanguageSelect)
 	}
 	var continuePrompt string
 	var connectionID string
