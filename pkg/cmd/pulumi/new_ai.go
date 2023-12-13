@@ -350,8 +350,8 @@ func chooseWithAIOrTemplate(opts display.Options) (string, error) {
 	surveycore.DisableColor = true
 
 	options := []string{
-		"ai",
 		"template",
+		"ai",
 	}
 
 	optionsDescriptionMap := map[string]string{
