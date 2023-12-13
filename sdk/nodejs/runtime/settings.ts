@@ -61,7 +61,7 @@ let engine: engrpc.EngineClient | undefined;
 
 // reset options resets nodejs runtime global state (such as rpc clients),
 // and sets nodejs runtime option env vars to the specified values.
-export function resetOptions(
+export async function resetOptions(
     project: string,
     stack: string,
     parallel: number,
@@ -70,24 +70,59 @@ export function resetOptions(
     preview: boolean,
     organization: string,
 ) {
-    const { settings } = getStore();
+    const store = getStore();
 
-    monitor = undefined;
-    engine = undefined;
-    settings.monitor = undefined;
-    settings.engine = undefined;
-    settings.rpcDone = Promise.resolve();
-    settings.featureSupport = {};
+    if (monitorAddr !== "") {
+        monitor = new resrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure(), grpcChannelOptions);
+    }
+    if (engineAddr !== "") {
+        engine = new engrpc.EngineClient(engineAddr, grpc.credentials.createInsecure(), grpcChannelOptions);
+    }
+    store.settings.monitor = monitor;
+    store.settings.engine = engine;
+    store.settings.rpcDone = Promise.resolve();
 
     // reset node specific environment variables in the process
-    settings.options.project = project;
-    settings.options.stack = stack;
-    settings.options.dryRun = preview;
-    settings.options.queryMode = isQueryMode();
-    settings.options.parallel = parallel;
-    settings.options.monitorAddr = monitorAddr;
-    settings.options.engineAddr = engineAddr;
-    settings.options.organization = organization;
+    store.settings.options.project = project;
+    store.settings.options.stack = stack;
+    store.settings.options.dryRun = preview;
+    store.settings.options.queryMode = isQueryMode();
+    store.settings.options.parallel = parallel;
+    store.settings.options.monitorAddr = monitorAddr;
+    store.settings.options.engineAddr = engineAddr;
+    store.settings.options.organization = organization;
+
+    store.leakCandidates = new Set<Promise<any>>();
+    store.logErrorCount = 0;
+    store.stackResource = undefined;
+    store.supportsSecrets = false;
+    store.supportsResourceReferences = false;
+    store.supportsOutputValues = false;
+    store.supportsDeletedWith = false;
+    store.supportsAliasSpecs = false;
+}
+
+// reset options resets nodejs runtime global state (such as rpc clients),
+// and sets nodejs runtime option env vars to the specified values.
+export async function resetOptionsAsync(
+    project: string,
+    stack: string,
+    parallel: number,
+    engineAddr: string,
+    monitorAddr: string,
+    preview: boolean,
+    organization: string,
+) {
+    resetOptions(project, stack, parallel, engineAddr, monitorAddr, preview, organization);
+
+    if (monitor !== undefined) {
+        const store = getStore();
+        store.supportsSecrets = await monitorSupportsFeature(monitor, "secrets");
+        store.supportsResourceReferences = await monitorSupportsFeature(monitor, "resourceReferences");
+        store.supportsOutputValues = await monitorSupportsFeature(monitor, "outputValues");
+        store.supportsDeletedWith = await monitorSupportsFeature(monitor, "deletedWith");
+        store.supportsAliasSpecs = await monitorSupportsFeature(monitor, "aliasSpecs");
+    }
 }
 
 export function setMockOptions(
@@ -126,10 +161,41 @@ export function isDryRun(): boolean {
     return options().dryRun === true;
 }
 
-/** @internal Used only for testing purposes */
-export function _setFeatureSupport(key: string, val: boolean) {
-    const { featureSupport } = getStore().settings;
-    featureSupport[key] = val;
+/**
+ * monitorSupportsFeature returns a promise that when resolved tells you if the resource monitor we are connected
+ * to is able to support a particular feature.
+ */
+export async function monitorSupportsFeature(
+    monitorClient: resrpc.IResourceMonitorClient,
+    feature: string,
+): Promise<boolean> {
+    const req = new resproto.SupportsFeatureRequest();
+    req.setId(feature);
+
+    const result = await new Promise<boolean>((resolve, reject) => {
+        monitorClient.supportsFeature(
+            req,
+            (err: grpc.ServiceError | null, resp: resproto.SupportsFeatureResponse | undefined) => {
+                // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
+                // any features.
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve(false);
+                }
+
+                if (err) {
+                    return reject(err);
+                }
+
+                if (resp === undefined) {
+                    return reject(new Error("No response from resource monitor"));
+                }
+
+                return resolve(resp.getHassupport());
+            },
+        );
+    });
+
+    return result;
 }
 
 /** @internal Used only for testing purposes. */
@@ -227,28 +293,9 @@ export function hasMonitor(): boolean {
  */
 export function getMonitor(): resrpc.ResourceMonitorClient | undefined {
     const { settings } = getStore();
-    const addr = options().monitorAddr;
     if (getLocalStore() === undefined) {
-        if (monitor === undefined) {
-            if (addr) {
-                // Lazily initialize the RPC connection to the monitor.
-                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
-                settings.options.monitorAddr = addr;
-            }
-        }
         return monitor;
     } else {
-        if (settings.monitor === undefined) {
-            if (addr) {
-                // Lazily initialize the RPC connection to the monitor.
-                settings.monitor = new resrpc.ResourceMonitorClient(
-                    addr,
-                    grpc.credentials.createInsecure(),
-                    grpcChannelOptions,
-                );
-                settings.options.monitorAddr = addr;
-            }
-        }
         return settings.monitor;
     }
 }
@@ -286,22 +333,8 @@ export function hasEngine(): boolean {
 export function getEngine(): engrpc.EngineClient | undefined {
     const { settings } = getStore();
     if (getLocalStore() === undefined) {
-        if (engine === undefined) {
-            const addr = options().engineAddr;
-            if (addr) {
-                // Lazily initialize the RPC connection to the engine.
-                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
-            }
-        }
         return engine;
     } else {
-        if (settings.engine === undefined) {
-            const addr = options().engineAddr;
-            if (addr) {
-                // Lazily initialize the RPC connection to the engine.
-                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
-            }
-        }
         return settings.engine;
     }
 }
@@ -442,94 +475,4 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
             },
         );
     });
-}
-
-/**
- * monitorSupportsFeature returns a promise that when resolved tells you if the resource monitor we are connected
- * to is able to support a particular feature.
- */
-export async function monitorSupportsFeature(feature: string): Promise<boolean> {
-    const localStore = getStore();
-    const monitorRef = getMonitor();
-    if (!monitorRef) {
-        return localStore.settings.featureSupport[feature];
-    }
-
-    if (localStore.settings.featureSupport[feature] === undefined) {
-        const req = new resproto.SupportsFeatureRequest();
-        req.setId(feature);
-
-        const result = await new Promise<boolean>((resolve, reject) => {
-            monitorRef.supportsFeature(
-                req,
-                (err: grpc.ServiceError | null, resp: resproto.SupportsFeatureResponse | undefined) => {
-                    // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
-                    // secrets.
-                    if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                        return resolve(false);
-                    }
-
-                    if (err) {
-                        return reject(err);
-                    }
-
-                    if (resp === undefined) {
-                        return reject(new Error("No response from resource monitor"));
-                    }
-
-                    return resolve(resp.getHassupport());
-                },
-            );
-        });
-
-        localStore.settings.featureSupport[feature] = result;
-    }
-
-    return localStore.settings.featureSupport[feature];
-}
-
-/**
- * monitorSupportsSecrets returns a promise that when resolved tells you if the resource monitor we are connected
- * to is able to support secrets across its RPC interface. When it does, we marshal outputs marked with the secret
- * bit in a special way.
- */
-export function monitorSupportsSecrets(): Promise<boolean> {
-    return monitorSupportsFeature("secrets");
-}
-
-/**
- * monitorSupportsResourceReferences returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support resource references across its RPC interface. When it does, we marshal resources
- * in a special way.
- */
-export async function monitorSupportsResourceReferences(): Promise<boolean> {
-    return monitorSupportsFeature("resourceReferences");
-}
-
-/**
- * monitorSupportsOutputValues returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support output values across its RPC interface. When it does, we marshal outputs
- * in a special way.
- */
-export async function monitorSupportsOutputValues(): Promise<boolean> {
-    return monitorSupportsFeature("outputValues");
-}
-
-/**
- * monitorSupportsDeletedWith returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support the deletedWith resource option across its RPC interface.
- */
-export async function monitorSupportsDeletedWith(): Promise<boolean> {
-    return monitorSupportsFeature("deletedWith");
-}
-
-/**
- * monitorSupportsAliasSpecs returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support alias specs across its RPC interface. When it does, we marshal aliases
- * in a special way.
- *
- * @internal
- */
-export async function monitorSupportsAliasSpecs(): Promise<boolean> {
-    return monitorSupportsFeature("aliasSpecs");
 }

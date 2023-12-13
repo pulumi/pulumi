@@ -67,12 +67,45 @@ export interface Store {
         monitor?: resrpc.ResourceMonitorClient;
         engine?: engrpc.EngineClient;
         rpcDone: Promise<any>;
-        featureSupport: Record<string, boolean>;
     };
     config: Record<string, string>;
     stackResource?: Stack;
     leakCandidates: Set<Promise<any>>;
     logErrorCount: number;
+
+    /**
+     * monitorSupportsSecrets returns a promise that when resolved tells you if the resource monitor we are connected
+     * to is able to support secrets across its RPC interface. When it does, we marshal outputs marked with the secret
+     * bit in a special way.
+     */
+    supportsSecrets: boolean;
+
+    /**
+     * monitorSupportsResourceReferences returns a promise that when resolved tells you if the resource monitor we are
+     * connected to is able to support resource references across its RPC interface. When it does, we marshal resources
+     * in a special way.
+     */
+    supportsResourceReferences: boolean;
+
+    /**
+     * monitorSupportsOutputValues returns a promise that when resolved tells you if the resource monitor we are
+     * connected to is able to support output values across its RPC interface. When it does, we marshal outputs
+     * in a special way.
+     */
+    supportsOutputValues: boolean;
+
+    /**
+     * monitorSupportsDeletedWith returns a promise that when resolved tells you if the resource monitor we are
+     * connected to is able to support the deletedWith resource option across its RPC interface.
+     */
+    supportsDeletedWith: boolean;
+
+    /**
+     * monitorSupportsAliasSpecs returns a promise that when resolved tells you if the resource monitor we are
+     * connected to is able to support alias specs across its RPC interface. When it does, we marshal aliases
+     * in a special way.
+     */
+    supportsAliasSpecs: boolean;
 }
 
 /** @internal */
@@ -92,7 +125,6 @@ export class LocalStore implements Store {
             maximumProcessListeners: 30,
         },
         rpcDone: Promise.resolve(),
-        featureSupport: {},
     };
     config = {
         [config.configEnvKey]: process.env[config.configEnvKey] || "",
@@ -106,6 +138,12 @@ export class LocalStore implements Store {
     leakCandidates = new Set<Promise<any>>();
 
     logErrorCount = 0;
+
+    supportsSecrets = false;
+    supportsResourceReferences = false;
+    supportsOutputValues = false;
+    supportsDeletedWith = false;
+    supportsAliasSpecs = false;
 }
 
 /** Get the root stack resource for the current stack deployment

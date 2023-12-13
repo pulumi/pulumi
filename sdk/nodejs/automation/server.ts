@@ -68,7 +68,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 const args = req.getArgsList();
                 const engineAddr = args && args.length > 0 ? args[0] : "";
 
-                settings.resetOptions(
+                await settings.resetOptionsAsync(
                     req.getProject(),
                     req.getStack(),
                     req.getParallel(),

@@ -489,14 +489,14 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-function configureRuntime(req: any, engineAddr: string | undefined) {
+async function configureRuntime(req: any, engineAddr: string | undefined) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
     if (engineAddr === undefined) {
         throw new Error("fatal: Missing <engine> address");
     }
 
-    settings.resetOptions(
+    await settings.resetOptionsAsync(
         req.getProject(),
         req.getStack(),
         req.getParallel(),
