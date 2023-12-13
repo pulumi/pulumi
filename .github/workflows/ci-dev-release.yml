@@ -123,6 +123,7 @@ jobs:
         run: |
           find artifacts
       - name: Rename artifacts
+        shell: bash
         run: |
           (
             cd artifacts
@@ -132,11 +133,7 @@ jobs:
             dev_version="${{ needs.gather-info.outputs.describe }}"
             dev_version="${dev_version:1}"
             for file in *; do
-              echo "$file"
-              echo "${file//$version(-SNAPSHOT|)/$dev_version}"
-              echo "$version"
-              echo "$dev_version"
-              mv "$file" "${file//$version(-SNAPSHOT|)/$dev_version}"
+              mv "$file" "${file//$version/$dev_version}"
             done
           )
       - name: Find artifacts
