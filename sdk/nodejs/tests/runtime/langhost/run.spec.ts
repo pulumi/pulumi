@@ -1925,7 +1925,19 @@ function mockRun(
 
         runReq.setDryrun(dryrun);
         langHostClient.run(runReq, (err: Error, res: any) => {
-            if (err) {
+            if (err && err.message.indexOf("UNAVAILABLE") !== 0) {
+                // Sometimes it takes a little bit until the engine is ready to accept connections.  We'll
+                // retry after a short delay.
+                setTimeout(() => {
+                    langHostClient.run(runReq, (e: Error, r: any) => {
+                        if (e) {
+                            reject(e);
+                        } else {
+                            resolve([r.getError(), r.getBail()]);
+                        }
+                    });
+                }, 200);
+            } else if (err) {
                 reject(err);
             } else {
                 // The response has a single field, the error, if any, that occurred (blank means success).
