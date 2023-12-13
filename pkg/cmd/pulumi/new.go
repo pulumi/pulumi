@@ -173,8 +173,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 		if aiOrTemplate == "ai" {
 			if b.Name() != "pulumi.com" {
-				// Currently, we don't actually hit this - users are prompted to log in
-				// for pulumi new regardless, but if that behavior changes, we can catch it here.
 				return errors.New("please log in to Pulumi Cloud to use Pulumi AI")
 			}
 			conversationURL, err := runAINew(ctx, args, opts, name)
