@@ -56,6 +56,9 @@ var DisableResourceReferences = env.Bool("DISABLE_RESOURCE_REFERENCES", "")
 
 var DisableOutputValues = env.Bool("DISABLE_OUTPUT_VALUES", "")
 
+var ErrorOutputString = env.Bool("ERROR_OUTPUT_STRING", "Throw an error instead "+
+	"of returning a string on attempting to convert an Output to a string")
+
 var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 	"Discover additional plugins by examining $PATH.")
 
