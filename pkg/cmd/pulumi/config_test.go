@@ -314,12 +314,11 @@ func TestCopyConfig(t *testing.T) {
 		_, err = copyEntireConfigMap(sourceStack, &sourceProjectStack, destinationStack, &destinationProjectStack)
 		require.NoError(t, err)
 
-		// Assert that the "test" env from the source stack
-		// has been copied in addition to the "test2" env
-		// of the destination stack.
+		// Assert that only the source stack's environment
+		// remains in the destination stack.
 		envImports := destinationProjectStack.Environment.Imports()
 		assert.Contains(t, envImports, "test")
-		assert.Contains(t, envImports, "test2")
+		assert.NotContains(t, envImports, "test2")
 	})
 }
 

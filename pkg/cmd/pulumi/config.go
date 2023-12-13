@@ -278,15 +278,7 @@ func copyEntireConfigMap(currentStack backend.Stack,
 	}
 
 	if currentEnvironments != nil && len(currentEnvironments.Imports()) > 0 {
-		if destinationProjectStack.Environment != nil {
-			imports := currentEnvironments.Imports()
-			for _, env := range imports {
-				destinationProjectStack.Environment.Append(env)
-			}
-		} else {
-			destinationProjectStack.Environment = currentEnvironments
-		}
-
+		destinationProjectStack.Environment = currentEnvironments
 		requiresSaving = true
 	}
 
