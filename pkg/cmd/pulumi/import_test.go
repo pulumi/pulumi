@@ -5,11 +5,18 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/pgavlin/fx"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
+
+func mapSlice[T, U any](ts []T, fn func(t T) U) []U {
+	return fx.ToSlice(fx.Map(fx.IterSlice(ts), fn))
+}
 
 func TestParseImportFile_errors(t *testing.T) {
 	t.Parallel()
@@ -248,20 +255,44 @@ func TestParseImportFileSameName(t *testing.T) {
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
-	resourceNames := map[string]struct{}{}
-	for _, imp := range imports {
-		_, exists := resourceNames[imp.Name]
-		assert.False(t, exists, "name %s should not have been seen already", imp.Name)
-		resourceNames[imp.Name] = struct{}{}
-	}
 
-	// Check expected names are present.
-	for _, name := range []string{"thing", "thing_1"} {
-		_, exists := resourceNames[name]
-		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
+	// Check that resource names are what we expect.
+	importNames := mapSlice(imports, func(i deploy.Import) string { return i.Name })
+	assert.Equal(t, []string{"thing", "thing_1"}, importNames)
+
+	// Check that the mapping is what we expect.
+	assert.Equal(t, []string{"thing_1"}, maps.Values(names))
+}
+
+func TestParseImportFileSameNameDifferentType(t *testing.T) {
+	t.Parallel()
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name:    "thing",
+				ID:      "thing",
+				Type:    "foo:bar:bar",
+				Version: "0.0.0",
+			},
+			{
+				Name:    "thing",
+				ID:      "thing",
+				Type:    "foo:bar:baz",
+				Version: "0.0.0",
+			},
+		},
 	}
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	assert.NoError(t, err)
+
+	// Check that resource names are what we expect.
+	importNames := mapSlice(imports, func(i deploy.Import) string { return i.Name })
+	assert.Equal(t, []string{"thing", "thing"}, importNames)
+
+	// Check that the mapping is what we expect.
+	assert.Equal(t, []string{"thing_1"}, maps.Values(names))
 }
 
 func TestParseImportFileRenameNoClash(t *testing.T) {
@@ -288,21 +319,14 @@ func TestParseImportFileRenameNoClash(t *testing.T) {
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
-	resourceNames := map[string]struct{}{}
-	// Check resource names are unique.
-	for _, imp := range imports {
-		_, exists := resourceNames[imp.Name]
-		assert.False(t, exists, "name %s should not have been seen already", imp.Name)
-		resourceNames[imp.Name] = struct{}{}
-	}
+	// Check that resource names are what we expect.
+	importNames := mapSlice(imports, func(i deploy.Import) string { return i.Name })
+	assert.Equal(t, []string{"thing", "thing_2", "thing_1"}, importNames)
 
-	// Check expected names are present.
-	for _, name := range []string{"thing", "thing_1", "thing_2"} {
-		_, exists := resourceNames[name]
-		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
-	}
+	// Check that the mapping is what we expect.
+	assert.Equal(t, maps.Values(names), []string{"thing_2"})
 }
 
 // Test that if we're using the name for another resource in the import file for a parent that we don't need
@@ -331,17 +355,13 @@ func TestParseImportFileAutoURN(t *testing.T) {
 			},
 		},
 	}
-	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
 
 	// Check the parent URN was auto filled in.
 	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::foo:bar:a$foo:bar:a::otherThing"), imports[0].Parent)
 	assert.Equal(t, resource.URN(""), imports[1].Parent)
 	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::foo:bar:a::thing"), imports[2].Parent)
-
-	// Check the nameTable was filled in.
-	assert.Equal(t, "otherThing", nt[imports[0].Parent])
-	assert.Equal(t, "thing", nt[imports[2].Parent])
 }
 
 // Small test to ensure that importFile is marshalled to JSON sensibly, mostly checking that optional fields
