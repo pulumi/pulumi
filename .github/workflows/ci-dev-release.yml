@@ -117,7 +117,7 @@ jobs:
           mkdir -p ./artifacts
           mv ./artifacts.tmp/artifacts-signatures/pulumi-*.sig ./artifacts
           mv ./artifacts.tmp/artifacts-signatures/pulumi-*.txt ./artifacts
-          mv ./artifacts.tmp/artifacts-cli/pulumi-*.tar.gz ./artifacts
+          mv ./artifacts.tmp/artifacts-cli-*/pulumi-*.tar.gz ./artifacts
 
       - name: Find artifacts
         run: |
@@ -126,12 +126,16 @@ jobs:
         run: |
           (
             cd artifacts
-            # The checksum files are named pulumi-x.x.x-checksum.txt, without a `v` prefix, unlike the
-            # tar.gz's.  Trim the `v` prefix from the version and the describe output, so we can rename
-            # everything at once.
-            version="${${{ inputs.version }}:1}"
-            dev_version="${${{ needs.gather-info.outputs.describe }}:1}"
+            version="${{ inputs.version }}"
+            # The describe output includes a 'v' in front of the version number, 'inputs.version'
+            # does not.  Trim the 'v' to have consistent version numbering.
+            dev_version="${{ needs.gather-info.outputs.describe }}"
+            dev_version="${dev_version:1}"
             for file in *; do
+              echo "$file"
+              echo "${file//$version(-SNAPSHOT|)/$dev_version}"
+              echo "$version"
+              echo "$dev_version"
               mv "$file" "${file//$version(-SNAPSHOT|)/$dev_version}"
             done
           )

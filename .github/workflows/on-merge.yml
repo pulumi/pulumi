@@ -59,7 +59,7 @@ jobs:
 
   dev-release:
     name: dev-release
-    needs: [info, ci]
+    needs: [info, ci, prepare-release]
     uses: ./.github/workflows/ci-dev-release.yml
     permissions:
       contents: write
