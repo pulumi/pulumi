@@ -253,8 +253,10 @@ func sendPromptToPulumiAI(
 	}
 	conversationID = res.Header.Get("x-conversation-id")
 	connectionID = res.Header.Get("x-connection-id")
-	conversationURL := parsedURL.JoinPath("api", "project", url.PathEscape(fmt.Sprintf("%s.zip", conversationID))).String()
-	return conversationURL, connectionID, conversationID, nil
+	projectURL := parsedURL.JoinPath("api", "project", url.PathEscape(fmt.Sprintf("%s.zip", conversationID))).String()
+	conversationURL := parsedURL.JoinPath("conversations", conversationID).String()
+	fmt.Println("View this conversation at:", conversationURL)
+	return projectURL, connectionID, conversationID, nil
 }
 
 func runAINewPromptStep(
@@ -277,7 +279,7 @@ func runAINewPromptStep(
 	var promptMessage string
 	if prompt == "" || currentContinueSelection != "" {
 		if err := survey.AskOne(&survey.Input{
-			Message: "Please input your prompt here:\n",
+			Message: "Please input your prompt here (\"a static website on AWS behind a CDN\"):\n",
 		}, &promptMessage, surveyIcons(opts.Color)); err != nil {
 			return "", "", "", "", err
 		}
