@@ -308,7 +308,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
 
@@ -399,7 +399,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
 
@@ -489,7 +489,7 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-function configureRuntime(req: any, engineAddr: string | undefined) {
+async function configureRuntime(req: any, engineAddr: string | undefined) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
     if (engineAddr === undefined) {
@@ -505,6 +505,9 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
         req.getDryrun(),
         req.getOrganization(),
     );
+
+    // resetOptions doesn't reset the saved features
+    await settings.awaitFeatureSupport();
 
     const pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();

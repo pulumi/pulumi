@@ -17,15 +17,10 @@ import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
-import { debuggablePromise, errorString, debugPromiseLeaks } from "./debuggable";
-import {
-    excessiveDebugOutput,
-    isDryRun,
-    monitorSupportsOutputValues,
-    monitorSupportsResourceReferences,
-    monitorSupportsSecrets,
-} from "./settings";
+import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./resource";
+import { excessiveDebugOutput, isDryRun } from "./settings";
+import { getStore } from "./state";
 
 import * as semver from "semver";
 
@@ -401,7 +396,7 @@ export async function serializeProperty(
             dependentResources.add(resource);
         }
 
-        if (opts?.keepOutputValues && (await monitorSupportsOutputValues())) {
+        if (opts?.keepOutputValues && getStore().supportsOutputValues) {
             const urnDeps = new Set<Resource>();
             for (const resource of propResources) {
                 await serializeProperty(`${ctx} dependency`, resource.urn, urnDeps, {
@@ -434,7 +429,7 @@ export async function serializeProperty(
         if (!isKnown) {
             return unknownValue;
         }
-        if (isSecret && (await monitorSupportsSecrets())) {
+        if (isSecret && getStore().supportsSecrets) {
             return {
                 [specialSigKey]: specialSecretSig,
                 // coerce 'undefined' to 'null' as required by the protobuf system.
@@ -458,7 +453,7 @@ export async function serializeProperty(
             keepOutputValues: false,
         });
 
-        if (await monitorSupportsResourceReferences()) {
+        if (getStore().supportsResourceReferences) {
             // If we are keeping resources, emit a stronly typed wrapper over the URN
             const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
                 keepOutputValues: false,
@@ -492,7 +487,7 @@ export async function serializeProperty(
             log.debug(`Serialize property [${ctx}]: component resource urn`);
         }
 
-        if (await monitorSupportsResourceReferences()) {
+        if (getStore().supportsResourceReferences) {
             // If we are keeping resources, emit a strongly typed wrapper over the URN
             const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
                 keepOutputValues: false,
