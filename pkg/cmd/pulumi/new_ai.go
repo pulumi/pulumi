@@ -107,6 +107,8 @@ func runAINew(
 		"Python",
 		"Go",
 		"C#",
+		"Java",
+		"YAML",
 	}
 	if args.aiLanguage == "" {
 		if err = survey.AskOne(&survey.Select{
