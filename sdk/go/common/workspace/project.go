@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/eval"
 	"io"
 	"math"
 	"os"
@@ -28,8 +30,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
-	"github.com/pulumi/esc/ast"
-	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -624,13 +624,13 @@ func (e *Environment) Imports() []string {
 	if err != nil || len(diags) != 0 || def == nil {
 		return nil
 	}
-	names := fx.ToSet(fx.Map(fx.IterSlice(def.Imports.GetElements()), func(imp *ast.ImportDecl) string {
+	names := fx.ToSlice(fx.Map(fx.IterSlice(def.Imports.GetElements()), func(imp *ast.ImportDecl) string {
 		return imp.Environment.GetValue()
 	}))
 	if len(def.Values.GetEntries()) != 0 {
-		names.Add("yaml")
+		names = append(names, "yaml")
 	}
-	return fx.ToSlice(fx.IterSet(names))
+	return names
 }
 
 func (e *Environment) Append(envs ...string) *Environment {
@@ -642,12 +642,12 @@ func (e *Environment) Append(envs ...string) *Environment {
 		// The environment definition is inline JSON. Append the named environments to the import list,
 		// creating the list if necessary.
 		var m map[string]any
-		if err := json.Unmarshal([]byte(e.message), &m); err == nil {
+		if err := json.Unmarshal(e.message, &m); err == nil {
 			imports, _ := m["imports"].([]any)
 			anys := fx.ToSlice(fx.Map(fx.IterSlice(envs), func(e string) any { return e }))
 			m["imports"] = append(imports, anys...)
 			if new, err := json.Marshal(m); err == nil {
-				e.message = json.RawMessage(new)
+				e.message = new
 			}
 		}
 		return e
@@ -710,7 +710,7 @@ func (e *Environment) Remove(env string) *Environment {
 		// The environment definition is inline JSON. Find the last occurrence of the named environment in the import
 		// list and remove it.
 		var m map[string]any
-		if err := json.Unmarshal([]byte(e.message), &m); err == nil {
+		if err := json.Unmarshal(e.message, &m); err == nil {
 			if imports, ok := m["imports"].([]any); ok {
 				for i := len(imports) - 1; i >= 0; i-- {
 					match := false
@@ -723,7 +723,7 @@ func (e *Environment) Remove(env string) *Environment {
 					if match {
 						m["imports"] = append(imports[:i], imports[i+1:]...)
 						if new, err := json.Marshal(m); err == nil {
-							e.message = json.RawMessage(new)
+							e.message = new
 						}
 						return e
 					}

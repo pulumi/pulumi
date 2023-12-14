@@ -153,4 +153,79 @@ thirdEnv
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 	})
+
+	t.Run("with imports", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		env := &esc.Environment{
+			Properties: map[string]esc.Value{
+				"pulumiConfig": esc.NewValue(map[string]esc.Value{
+					"aws:region":   esc.NewValue("us-west-2"),
+					"app:password": esc.NewSecret("hunter2"),
+				}),
+			},
+		}
+
+		const stackYAML = `environment:
+    - env
+    - otherEnv
+    - thirdEnv
+`
+
+		stdin := strings.NewReader("")
+		var stdout bytes.Buffer
+		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
+		ls := &configEnvLsCmd{parent: parent, jsonOut: false}
+		err := ls.run(nil, nil)
+		require.NoError(t, err)
+
+		const expectedOut = `ENVIRONMENTS
+env
+otherEnv
+thirdEnv
+`
+
+		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+	})
+
+	t.Run("repeated imports", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		env := &esc.Environment{
+			Properties: map[string]esc.Value{
+				"pulumiConfig": esc.NewValue(map[string]esc.Value{
+					"aws:region":   esc.NewValue("us-west-2"),
+					"app:password": esc.NewSecret("hunter2"),
+				}),
+			},
+		}
+
+		const stackYAML = `environment:
+    - env
+    - otherEnv
+    - env
+    - thirdEnv
+`
+
+		stdin := strings.NewReader("")
+		var stdout bytes.Buffer
+		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
+		ls := &configEnvLsCmd{parent: parent, jsonOut: true}
+		err := ls.run(nil, nil)
+		require.NoError(t, err)
+
+		const expectedOut = `[
+  "env",
+  "otherEnv",
+  "env",
+  "thirdEnv"
+]
+`
+
+		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+	})
 }
