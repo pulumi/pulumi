@@ -135,7 +135,8 @@ func (cmd *configEnvCmd) listStackEnvironments(jsonOut bool) error {
 				Rows:    rows,
 			}, nil)
 		} else {
-			fprintf(cmd.stdout, "This stack configuration has no environments listed. Try adding one with `pulumi config env add [envName]`.\n")
+			fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
+				"Try adding one with `pulumi config env add [envName]`.\n")
 		}
 
 	}

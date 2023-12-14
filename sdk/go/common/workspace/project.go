@@ -19,14 +19,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pulumi/esc/ast"
-	"github.com/pulumi/esc/eval"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/eval"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"

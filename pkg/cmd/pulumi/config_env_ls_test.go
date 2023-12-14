@@ -51,7 +51,8 @@ runtime: yaml`
 		err := ls.run(nil, nil)
 		require.NoError(t, err)
 
-		const expectedOut = "This stack configuration has no environments listed. Try adding one with `pulumi config env add [envName]`.\n"
+		const expectedOut = "This stack configuration has no environments listed. " +
+			"Try adding one with `pulumi config env add [envName]`.\n"
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 	})
