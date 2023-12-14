@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Adds AddEnvironments and RemoveEnvironment functions to Stack and LocalWorkspace types for Go Automation API.
