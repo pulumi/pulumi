@@ -47,14 +47,21 @@ func (p *randomResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest)
 	}
 
 	d := olds.Diff(news)
+	var replaces []string
 	changes := rpc.DiffResponse_DIFF_NONE
 	if d.Changed("length") {
 		changes = rpc.DiffResponse_DIFF_SOME
+		replaces = append(replaces, "length")
+	}
+
+	if d.Changed("prefix") {
+		changes = rpc.DiffResponse_DIFF_SOME
+		replaces = append(replaces, "prefix")
 	}
 
 	return &rpc.DiffResponse{
 		Changes:  changes,
-		Replaces: []string{"length"},
+		Replaces: replaces,
 	}, nil
 }
 
@@ -68,10 +75,18 @@ func (p *randomResourceProvider) Create(ctx context.Context, req *rpc.CreateRequ
 	}
 
 	if !inputs["length"].IsNumber() {
-		return nil, fmt.Errorf("Expected input property 'length' of type 'number' but got '%s", inputs["length"].TypeString())
+		return nil, fmt.Errorf("expected input property 'length' of type 'number' but got '%s", inputs["length"].TypeString())
 	}
 
 	n := int(inputs["length"].NumberValue())
+
+	var prefix string
+	if p, has := inputs["prefix"]; has {
+		if !p.IsString() {
+			return nil, fmt.Errorf("expected input property 'prefix' of type 'string' but got '%s", p.TypeString())
+		}
+		prefix = p.StringValue()
+	}
 
 	// Actually "create" the random number
 	result, err := makeRandom(n)
@@ -79,13 +94,14 @@ func (p *randomResourceProvider) Create(ctx context.Context, req *rpc.CreateRequ
 		return nil, err
 	}
 
-	outputs := map[string]interface{}{
+	outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"length": n,
-		"result": result,
-	}
+		"result": prefix + result,
+	})
+	outputs["result"] = resource.MakeSecret(outputs["result"])
 
 	outputProperties, err := plugin.MarshalProperties(
-		resource.NewPropertyMapFromMap(outputs),
+		outputs,
 		plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
 	)
 	if err != nil {
