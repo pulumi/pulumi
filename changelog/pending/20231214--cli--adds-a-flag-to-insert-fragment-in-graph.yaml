@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Adds a flag that allows inserting a fragment into the dot file when generating a graph. This can be used for styling the graph elements, setting properties etc.

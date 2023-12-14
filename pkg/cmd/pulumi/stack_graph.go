@@ -44,6 +44,10 @@ var parentEdgeColor string
 // Whether or not to return resource name as the node label for each node of the graph.
 var shortNodeName bool
 
+// A DOT fragment that will be inserted at the top of the digraph element. This
+// can be used for styling the graph elements, setting graph properties etc.")
+var dotFragment string
+
 func newStackGraphCmd() *cobra.Command {
 	var stackName string
 
@@ -77,6 +81,8 @@ func newStackGraphCmd() *cobra.Command {
 			}
 
 			dg := makeDependencyGraph(snap)
+			dg.setDotFragment(dotFragment)
+
 			file, err := os.Create(args[0])
 			if err != nil {
 				return err
@@ -104,6 +110,9 @@ func newStackGraphCmd() *cobra.Command {
 		"Sets the color of parent edges in the graph")
 	cmd.PersistentFlags().BoolVar(&shortNodeName, "short-node-name", false,
 		"Sets the resource name as the node label for each node of the graph")
+	cmd.PersistentFlags().StringVar(&dotFragment, "dot-fragment", "",
+		"An optional DOT fragment that will be inserted at the top of the digraph element. "+
+			"This can be used for styling the graph elements, setting graph properties etc.")
 	return cmd
 }
 
@@ -204,7 +213,8 @@ func (vertex *dependencyVertex) Outs() []graph.Edge {
 // A dependencyGraph is a thin wrapper around a map of URNs to vertices in
 // the graph. It is constructed directly from a snapshot.
 type dependencyGraph struct {
-	vertices map[resource.URN]*dependencyVertex
+	vertices    map[resource.URN]*dependencyVertex
+	dotFragment string
 }
 
 // Roots are edges that point to the root set of our graph. In our case,
@@ -223,11 +233,20 @@ func (dg *dependencyGraph) Roots() []graph.Edge {
 	return rootEdges
 }
 
+func (dg *dependencyGraph) DotFragment() string {
+	return dg.dotFragment
+}
+
+func (dg *dependencyGraph) setDotFragment(dotFragment string) {
+	dg.dotFragment = dotFragment
+}
+
 // Makes a dependency graph from a deployment snapshot, allocating a vertex
 // for every resource in the graph.
 func makeDependencyGraph(snapshot *deploy.Snapshot) *dependencyGraph {
 	dg := &dependencyGraph{
-		vertices: make(map[resource.URN]*dependencyVertex),
+		vertices:    make(map[resource.URN]*dependencyVertex),
+		dotFragment: "",
 	}
 
 	for _, resource := range snapshot.Resources {

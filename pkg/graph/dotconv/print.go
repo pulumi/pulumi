@@ -40,6 +40,20 @@ func Print(g graph.Graph, w io.Writer) error {
 		return err
 	}
 
+	// If the caller provided a fragment then insert it here.
+	dotFragment := g.DotFragment()
+	if dotFragment != "" {
+		if _, err := b.WriteString(dotFragment); err != nil {
+			return err
+		}
+
+		// Ensure that the fragment is followed by newline, this reduces
+		// problems if the fragment doesn't end with a semicolon
+		if _, err := b.WriteString("\n"); err != nil {
+			return err
+		}
+	}
+
 	// Initialize the frontier with unvisited graph vertices.
 	queued := make(map[graph.Vertex]bool)
 	frontier := slice.Prealloc[graph.Vertex](len(g.Roots()))
