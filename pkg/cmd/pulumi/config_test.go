@@ -311,7 +311,8 @@ func TestCopyConfig(t *testing.T) {
 		err := yaml.Unmarshal([]byte("environment:\n  - test2"), &destinationProjectStack)
 		require.NoError(t, err)
 
-		requiresSaving, err := copyEntireConfigMap(sourceStack, &sourceProjectStack, destinationStack, &destinationProjectStack)
+		requiresSaving, err := copyEntireConfigMap(
+			sourceStack, &sourceProjectStack, destinationStack, &destinationProjectStack)
 		require.NoError(t, err)
 		assert.True(t, requiresSaving, "expected config file changes requiring saving")
 
