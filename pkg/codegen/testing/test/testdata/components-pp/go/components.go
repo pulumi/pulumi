@@ -10,6 +10,16 @@ func main() {
 		if err != nil {
 			return err
 		}
+		var multipleSimpleComponents []*SimpleComponent
+		for index := 0; index < 10; index++ {
+			key0 := index
+			_ := index
+			__res, err := NewSimpleComponent(ctx, fmt.Sprintf("multipleSimpleComponents-%v", key0), nil)
+			if err != nil {
+				return err
+			}
+			multipleSimpleComponents = append(multipleSimpleComponents, __res)
+		}
 		_, err = NewAnotherComponent(ctx, "anotherComponent", nil)
 		if err != nil {
 			return err
