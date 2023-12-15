@@ -29,7 +29,7 @@ const maxRPCMessageSize: number = 1024 * 1024 * 400;
 type CallbackFunction = (args: structproto.Value[]) => structproto.Value[];
 
 export interface ICallbackServer {
-    registerTransformation(callback: ResourceTransformation): callproto.Callback;
+    registerTransformation(callback: ResourceTransformation): Promise<callproto.Callback>;
     registerStackTransformation(callback: ResourceTransformation): void;
 }
 
@@ -37,6 +37,7 @@ export class CallbackServer implements ICallbackServer {
     private readonly _callbacks = new Map<string, CallbackFunction>();
     private readonly _monitor: resrpc.IResourceMonitorClient;
     private readonly _server: grpc.Server;
+    private readonly _target: Promise<string>;
 
     constructor(monitor: resrpc.IResourceMonitorClient) {
         this._monitor = monitor;
@@ -49,6 +50,18 @@ export class CallbackServer implements ICallbackServer {
             invoke: this.invoke.bind(this),
         };
         this._server.addService(callrpc.CallbacksService, implementation);
+
+        this._target = new Promise<string>((resolve, reject) => {
+            this._server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, port) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                this._server.start();
+                resolve(`127.0.0.1:${port}`);
+            });
+        });
     }
 
     private async invoke(
@@ -71,7 +84,7 @@ export class CallbackServer implements ICallbackServer {
         callback(null, resp);
     }
 
-    registerTransformation(transform: ResourceTransformation): callproto.Callback {
+    async registerTransformation(transform: ResourceTransformation): Promise<callproto.Callback> {
         const cb = (args: structproto.Value[]): structproto.Value[] => {
             return [];
         };
@@ -79,19 +92,24 @@ export class CallbackServer implements ICallbackServer {
         this._callbacks.set(uuid, cb);
         const req = new Callback();
         req.setToken(uuid);
+        req.setTarget(await this._target);
         return req;
     }
 
     registerStackTransformation(transform: ResourceTransformation): void {
-        const req = this.registerTransformation(transform);
-        this._monitor.registerStackTransformation(req, (err, _) => {
-            if (err !== null) {
-                log.error(`failed to register stack transformation: ${err.message}`)
-                return;
-            }
-            // Remove this from the list of callbacks given we didn't manage to actually register it.
-            this._callbacks.delete(req.getToken());
-        });
+        this.registerTransformation(transform).then(
+            (req) => {
+                this._monitor.registerStackTransformation(req, (err, _) => {
+                    if (err !== null) {
+                        log.error(`failed to register stack transformation: ${err.message}`);
+                        return;
+                    }
+                    // Remove this from the list of callbacks given we didn't manage to actually register it.
+                    this._callbacks.delete(req.getToken());
+                });
+            },
+            (err) => log.error(`failed to register stack transformation: ${err}`),
+        );
     }
 }
 

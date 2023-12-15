@@ -65,6 +65,7 @@ import {
 import * as gempty from "google-protobuf/google/protobuf/empty_pb";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as aliasproto from "../proto/alias_pb";
+import { Callback } from "../proto/callback_pb";
 import * as provproto from "../proto/provider_pb";
 import * as resproto from "../proto/resource_pb";
 import * as sourceproto from "../proto/source_pb";
@@ -444,7 +445,7 @@ export function registerResource(
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
 
-            const callbacks = [];
+            const callbacks: Callback[] = [];
             if (getStore().supportsTransforms) {
                 const callbackServer = getCallbacks();
                 for (const transform of opts.transformations || []) {
@@ -452,7 +453,7 @@ export function registerResource(
                         throw new Error("Callback server not initialized");
                     }
 
-                    callbacks.push(callbackServer.registerTransformation(transform));
+                    callbacks.push(await callbackServer.registerTransformation(transform));
                 }
             }
 

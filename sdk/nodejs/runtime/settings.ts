@@ -97,6 +97,7 @@ export function resetOptions(
     store.supportsDeletedWith = false;
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
+    store.callbacks = undefined;
 }
 
 export function setMockOptions(
