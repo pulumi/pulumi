@@ -87,9 +87,7 @@ func runAINew(
 		ctx,
 		backend,
 		opts,
-		args.aiLanguage,
-		args.aiPrompt,
-		args.yes,
+		args,
 		"",
 		"",
 		"",
@@ -102,9 +100,7 @@ func runAINew(
 		ctx,
 		backend,
 		opts,
-		args.aiLanguage,
-		args.aiPrompt,
-		args.yes,
+		args,
 		continuePrompt,
 		connectionID,
 		conversationURL,
@@ -172,9 +168,7 @@ func runAINewPromptStep(
 	ctx context.Context,
 	backend httpstate.Backend,
 	opts display.Options,
-	language httpstate.PulumiAILanguage,
-	prompt string,
-	yes bool,
+	args newArgs,
 	currentContinueSelection string,
 	connectionID string,
 	conversationURL string,
@@ -186,14 +180,14 @@ func runAINewPromptStep(
 	err error,
 ) {
 	var promptMessage string
-	if prompt == "" || currentContinueSelection != "" {
+	if args.aiPrompt == "" || currentContinueSelection != "" {
 		if err := survey.AskOne(&survey.Input{
 			Message: "Please input your prompt here (\"a static website on AWS behind a CDN\"):\n",
 		}, &promptMessage, surveyIcons(opts.Color)); err != nil {
 			return "", "", "", "", err
 		}
 	} else {
-		promptMessage = prompt
+		promptMessage = args.aiPrompt
 	}
 	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(
 		ctx,
@@ -201,7 +195,7 @@ func runAINewPromptStep(
 		promptMessage,
 		conversationID,
 		connectionID,
-		language,
+		args.aiLanguage,
 	)
 	if err != nil {
 		return "", "", "", "", err
@@ -223,7 +217,7 @@ func runAINewPromptStep(
 		yesSelection:    "Use this program to create the project",
 		noSelection:     "Abort the prompt and exit",
 	}
-	if !yes {
+	if !args.yes {
 		if err := survey.AskOne(&survey.Select{
 			Message: "Use this program as a template?",
 			Options: continuePromptOptions,
