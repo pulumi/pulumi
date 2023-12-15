@@ -15,6 +15,7 @@
 import * as grpc from "@grpc/grpc-js";
 import { randomUUID } from "crypto";
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+import * as log from "../log";
 import * as callrpc from "../proto/callback_grpc_pb";
 import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
@@ -36,7 +37,6 @@ export class CallbackServer implements ICallbackServer {
     private readonly _callbacks = new Map<string, CallbackFunction>();
     private readonly _monitor: resrpc.IResourceMonitorClient;
     private readonly _server: grpc.Server;
-    private readonly _errors: grpc.ServiceError[] = [];
 
     constructor(monitor: resrpc.IResourceMonitorClient) {
         this._monitor = monitor;
@@ -86,7 +86,7 @@ export class CallbackServer implements ICallbackServer {
         const req = this.registerTransformation(transform);
         this._monitor.registerStackTransformation(req, (err, _) => {
             if (err !== null) {
-                this._errors.push(err);
+                log.error(`failed to register stack transformation: ${err.message}`)
                 return;
             }
             // Remove this from the list of callbacks given we didn't manage to actually register it.
