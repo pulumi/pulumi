@@ -30,7 +30,7 @@ import (
 )
 
 // Print prints a resource graph.
-func Print(g graph.Graph, w io.Writer) error {
+func Print(g graph.Graph, w io.Writer, dotFragment string) error {
 	// Allocate a new writer.  In general, we will ignore write errors throughout this function, for simplicity, opting
 	// instead to return the result of flushing the buffer at the end, which is generally latching.
 	b := bufio.NewWriter(w)
@@ -41,7 +41,6 @@ func Print(g graph.Graph, w io.Writer) error {
 	}
 
 	// If the caller provided a fragment then insert it here.
-	dotFragment := g.DotFragment()
 	if dotFragment != "" {
 		if _, err := b.WriteString(dotFragment); err != nil {
 			return err

@@ -27,8 +27,7 @@ package graph
 // Graph is an instance of a resource digraph.  Each is associated with a single program input, along
 // with a set of optional arguments used to evaluate it, along with the output DAG with node types and properties.
 type Graph interface {
-	Roots() []Edge       // the root edges.
-	DotFragment() string // a fragment to be inserted at the top of the digraph context
+	Roots() []Edge // the root edges.
 }
 
 // Vertex is a single vertex within an overall resource graph.

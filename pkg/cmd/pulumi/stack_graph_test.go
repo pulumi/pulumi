@@ -28,6 +28,7 @@ import (
 // Tests the output of 'pulumi stack graph'
 // under different conditions.
 func TestStackGraphCmd_smokeTest(t *testing.T) {
+	t.Parallel()
 	snap := deploy.Snapshot{
 		Resources: []*resource.State{
 			{
@@ -36,11 +37,11 @@ func TestStackGraphCmd_smokeTest(t *testing.T) {
 		},
 	}
 
-	shortNodeName = false
-	dg := makeDependencyGraph(&snap)
+	opts := graphCommandOptions{}
+	dg := makeDependencyGraph(&snap, &opts)
 
 	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf))
+	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
 	dotOutput := outputBuf.String()
 
@@ -51,6 +52,7 @@ func TestStackGraphCmd_smokeTest(t *testing.T) {
 }
 
 func TestStackGraphCmd_dotFragmentIsInserted(t *testing.T) {
+	t.Parallel()
 	snap := deploy.Snapshot{
 		Resources: []*resource.State{
 			{
@@ -59,12 +61,13 @@ func TestStackGraphCmd_dotFragmentIsInserted(t *testing.T) {
 		},
 	}
 
-	shortNodeName = false
-	dg := makeDependencyGraph(&snap)
-	dg.setDotFragment("[node shape=rect]\n[edge penwidth=2]")
+	opts := graphCommandOptions{
+		dotFragment: "[node shape=rect]\n[edge penwidth=2]",
+	}
+	dg := makeDependencyGraph(&snap, &opts)
 
 	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf))
+	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
 	dotOutput := outputBuf.String()
 
@@ -77,6 +80,7 @@ func TestStackGraphCmd_dotFragmentIsInserted(t *testing.T) {
 }
 
 func TestStackGraphCmd_parentAndChild(t *testing.T) {
+	t.Parallel()
 	expectedMaxNode := 2
 	provider := resource.URN("urn:pulumi:dev::pets::random::provider")
 	parent := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::parent")
@@ -103,11 +107,11 @@ func TestStackGraphCmd_parentAndChild(t *testing.T) {
 		},
 	}
 
-	shortNodeName = false
-	dg := makeDependencyGraph(&snap)
+	opts := graphCommandOptions{}
+	dg := makeDependencyGraph(&snap, &opts)
 
 	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf))
+	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
 	dotOutput := outputBuf.String()
 
@@ -122,6 +126,7 @@ func TestStackGraphCmd_parentAndChild(t *testing.T) {
 }
 
 func TestStackGraphCmd_shortNodeName(t *testing.T) {
+	t.Parallel()
 	expectedLabels := []string{
 		"provider", "parent", "child",
 	}
@@ -151,12 +156,13 @@ func TestStackGraphCmd_shortNodeName(t *testing.T) {
 		},
 	}
 
-	shortNodeName = true
-
-	dg := makeDependencyGraph(&snap)
+	opts := graphCommandOptions{
+		shortNodeName: true,
+	}
+	dg := makeDependencyGraph(&snap, &opts)
 
 	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf))
+	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
 	dotOutput := outputBuf.String()
 
