@@ -67,8 +67,9 @@ export class CallbackServer implements ICallbackServer {
     }
 
     registerStackTransformation(callback: ResourceTransformation): void {
-        throw new Error("Method not implemented.");
-
+        const cb = (args: structproto.Value[]) : structproto.Value[] => {
+            return [];
+        }
     }
 
     private registerCallback(callback: CallbackFunction): void {
