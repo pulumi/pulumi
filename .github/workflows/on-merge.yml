@@ -108,5 +108,8 @@ jobs:
       - name: Dev release failed
         if: ${{ needs.dev-release.result != 'success' }}
         run: exit 1
+      - name: Update dev version failed
+        if: ${{ needs.update-dev-version.result != 'success' }}
+        run: exit 1
       - name: CI succeeded
         run: exit 0
