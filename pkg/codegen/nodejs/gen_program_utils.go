@@ -9,8 +9,8 @@ import "fmt"
 func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) {
 	switch functionName {
 	case "filebase64sha256":
-		return `function computeFilebase64sha256(path string) string {
-	const fileData = Buffer.from(fs.readFileSync(path), 'binary')
+		return `function computeFilebase64sha256(path: string): string {
+	const fileData = Buffer.from(fs.readFileSync(path, 'binary'))
 	return crypto.createHash('sha256').update(fileData).digest('hex')
 }`, true
 	case "notImplemented":
@@ -26,6 +26,10 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %s    }
 %s    return elements[0];
 %s}`, indent, indent, indent, indent, indent, indent), true
+	case "mimeType":
+		return fmt.Sprintf(`%sfunction mimeType(path: string): string {
+%s    throw new Error("mimeType not implemented, use the mime or mime-types package instead");
+%s}`, indent, indent, indent), true
 	default:
 		return "", false
 	}
