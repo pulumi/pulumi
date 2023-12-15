@@ -33,6 +33,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -72,8 +73,7 @@ type newArgs struct {
 	yes               bool
 	listTemplates     bool
 	aiPrompt          string
-	aiLanguage        pulumiAILanguage
-	aiModel           pulumiAIModel
+	aiLanguage        httpstate.PulumiAILanguage
 	templateMode      bool
 }
 
@@ -158,10 +158,6 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 
-		name, _, _, err := b.CurrentUser()
-		if err != nil {
-			return err
-		}
 		var aiOrTemplate string
 		if shouldPromptForAIOrTemplate(args, b) {
 			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
@@ -172,10 +168,11 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		if aiOrTemplate == "ai" {
-			if b.Name() != "pulumi.com" {
+			checkedBackend, ok := b.(httpstate.Backend)
+			if !ok {
 				return errors.New("please log in to Pulumi Cloud to use Pulumi AI")
 			}
-			conversationURL, err := runAINew(ctx, args, opts, name)
+			conversationURL, err := runAINew(ctx, args, opts, checkedBackend)
 			if err != nil {
 				return err
 			}
@@ -591,9 +588,6 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.templateMode, "template-mode", "t", false,
 		"Run in template mode, which will skip prompting for AI or Template functionality",
-	)
-	cmd.PersistentFlags().Var(
-		&args.aiModel, "ai-model", "Model to use for Pulumi AI ",
 	)
 
 	return cmd

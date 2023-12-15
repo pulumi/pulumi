@@ -16,20 +16,17 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
-	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 )
 
@@ -39,103 +36,19 @@ const (
 	refineSelection = "refine"
 )
 
-type pulumiAILanguage string
-
-const (
-	pulumiAILanguageTypeScript pulumiAILanguage = "TypeScript"
-	pulumiAILanguageJavaScript pulumiAILanguage = "JavaScript"
-	pulumiAILanguagePython     pulumiAILanguage = "Python"
-	pulumiAILanguageGo         pulumiAILanguage = "Go"
-	pulumiAILanguageCSharp     pulumiAILanguage = "C#"
-	pulumiAILanguageJava       pulumiAILanguage = "Java"
-	pulumiAILanguageYAML       pulumiAILanguage = "YAML"
-)
-
-var pulumiAILanguageMap = map[string]pulumiAILanguage{
-	"typescript": pulumiAILanguageTypeScript,
-	"javascript": pulumiAILanguageJavaScript,
-	"python":     pulumiAILanguagePython,
-	"go":         pulumiAILanguageGo,
-	"c#":         pulumiAILanguageCSharp,
-	"java":       pulumiAILanguageJava,
-	"yaml":       pulumiAILanguageYAML,
-}
-
-func (e *pulumiAILanguage) String() string {
-	return string(*e)
-}
-
-func (e *pulumiAILanguage) Set(v string) error {
-	switch strings.ToLower(v) {
-	case "typescript", "javascript", "python", "go", "c#", "java", "yaml":
-		*e = pulumiAILanguageMap[strings.ToLower(v)]
-		return nil
-	default:
-		return errors.New(`must be one of "TypeScript", "JavaScript", "Python", "Go", "C#", "Java", "YAML"`)
-	}
-}
-
-func (e *pulumiAILanguage) Type() string {
-	return "pulumiAILanguage"
-}
-
-type pulumiAIModel string
-
-const (
-	pulumiAINoModel        pulumiAIModel = ""
-	pulumiAIModelGPT3      pulumiAIModel = "gpt-3.5-turbo"
-	pulumiAIModelGPT4      pulumiAIModel = "gpt-4"
-	pulumiAIModelGPT4Turbo pulumiAIModel = "gpt-4-turbo"
-)
-
-func (e *pulumiAIModel) String() string {
-	return string(*e)
-}
-
-func (e *pulumiAIModel) Set(v string) error {
-	switch v {
-	case "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "":
-		*e = pulumiAIModel(v)
-		return nil
-	default:
-		return errors.New(`must be one of "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"`)
-	}
-}
-
-func (e *pulumiAIModel) Type() string {
-	return "pulumiAIModel"
-}
-
 func deriveAIOrTemplate(args newArgs) string {
-	if args.aiPrompt != "" || args.aiLanguage != "" || args.aiModel != "" {
+	if args.aiPrompt != "" || args.aiLanguage != "" {
 		return "ai"
 	}
 	return "template"
 }
 
 func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool {
+	_, isHTTPBackend := userBackend.(httpstate.Backend)
 	return args.aiPrompt == "" &&
 		args.aiLanguage == "" &&
-		args.aiModel == "" &&
 		!args.templateMode &&
-		userBackend.Name() == "pulumi.com"
-}
-
-type aiPromptRequestBody struct {
-	Language       pulumiAILanguage `json:"language"`
-	Instructions   string           `json:"instructions"`
-	ResponseMode   string           `json:"responseMode"`
-	ConversationID string           `json:"conversationId"`
-	ConnectionID   string           `json:"connectionId"`
-}
-
-type aiPromptWithModelRequestBody struct {
-	Language       pulumiAILanguage `json:"language"`
-	Instructions   string           `json:"instructions"`
-	Model          pulumiAIModel    `json:"model"`
-	ResponseMode   string           `json:"responseMode"`
-	ConversationID string           `json:"conversationId"`
-	ConnectionID   string           `json:"connectionId"`
+		isHTTPBackend
 }
 
 // Iteratively prompt the user for input, sending their input as a prompt tp Pulumi AI
@@ -144,7 +57,7 @@ func runAINew(
 	ctx context.Context,
 	args newArgs,
 	opts display.Options,
-	userName string,
+	backend httpstate.Backend,
 ) (conversationURL string, err error) {
 	languageOptions := []string{
 		"TypeScript",
@@ -172,12 +85,12 @@ func runAINew(
 	var connectionID string
 	var conversationID string
 	for continuePrompt, conversationURL, conversationID, connectionID, err = runAINewPromptStep(
+		ctx,
+		backend,
 		opts,
 		args.aiLanguage,
-		args.aiModel,
 		args.aiPrompt,
 		args.yes,
-		userName,
 		"",
 		"",
 		"",
@@ -187,12 +100,12 @@ func runAINew(
 		conversationID,
 		connectionID,
 		err = runAINewPromptStep(
+		ctx,
+		backend,
 		opts,
 		args.aiLanguage,
-		args.aiModel,
 		args.aiPrompt,
 		args.yes,
-		userName,
 		continuePrompt,
 		connectionID,
 		conversationURL,
@@ -206,12 +119,12 @@ func runAINew(
 }
 
 func sendPromptToPulumiAI(
+	ctx context.Context,
+	backend httpstate.Backend,
 	promptMessage string,
 	conversationID string,
 	connectionID string,
-	userName string,
-	language pulumiAILanguage,
-	model pulumiAIModel,
+	language httpstate.PulumiAILanguage,
 ) (string, string, string, error) {
 	pulumiAIURL := env.AIServiceEndpoint.Value()
 	if pulumiAIURL == "" {
@@ -221,38 +134,15 @@ func sendPromptToPulumiAI(
 	if err != nil {
 		return "", "", "", err
 	}
-	requestPath := parsedURL.JoinPath("api", "chat")
-	var requestBody interface{}
-	if model != pulumiAINoModel {
-		requestBody = aiPromptWithModelRequestBody{
-			Language:       language,
-			Instructions:   promptMessage,
-			Model:          model,
-			ResponseMode:   "code",
-			ConversationID: conversationID,
-			ConnectionID:   connectionID,
-		}
-	} else {
-		requestBody = aiPromptRequestBody{
-			Language:       language,
-			Instructions:   promptMessage,
-			ResponseMode:   "code",
-			ConversationID: conversationID,
-			ConnectionID:   connectionID,
-		}
+	requestBody := httpstate.AIPromptRequestBody{
+		Language:       language,
+		Instructions:   promptMessage,
+		ResponseMode:   "code",
+		ConversationID: conversationID,
+		ConnectionID:   connectionID,
 	}
-	marshalledBody, err := json.Marshal(requestBody)
-	if err != nil {
-		return "", "", "", err
-	}
-	userDataCookie := http.Cookie{Name: "pulumi_command_line_user_name", Value: userName}
-	request, err := http.NewRequest("POST", requestPath.String(), bytes.NewReader(marshalledBody))
-	if err != nil {
-		return "", "", "", err
-	}
-	request.AddCookie(&userDataCookie)
 	fmt.Println("Sending prompt to Pulumi AI...")
-	res, err := http.DefaultClient.Do(request)
+	res, err := backend.PromptAI(ctx, requestBody)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -280,12 +170,12 @@ func sendPromptToPulumiAI(
 }
 
 func runAINewPromptStep(
+	ctx context.Context,
+	backend httpstate.Backend,
 	opts display.Options,
-	language pulumiAILanguage,
-	model pulumiAIModel,
+	language httpstate.PulumiAILanguage,
 	prompt string,
 	yes bool,
-	userName string,
 	currentContinueSelection string,
 	connectionID string,
 	conversationURL string,
@@ -307,12 +197,12 @@ func runAINewPromptStep(
 		promptMessage = prompt
 	}
 	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(
+		ctx,
+		backend,
 		promptMessage,
 		conversationID,
 		connectionID,
-		userName,
 		language,
-		model,
 	)
 	if err != nil {
 		return "", "", "", "", err
