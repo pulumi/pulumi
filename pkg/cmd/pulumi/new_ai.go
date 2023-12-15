@@ -22,7 +22,6 @@ import (
 	"net/url"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	surveycore "github.com/AlecAivazis/survey/v2/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -245,9 +244,6 @@ func runAINewPromptStep(
 
 // Prompt the user to decide whether they'd like to enter an interactive AI prompt or use a template.
 func chooseWithAIOrTemplate(opts display.Options) (string, error) {
-	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
-	surveycore.DisableColor = true
-
 	options := []string{
 		"template",
 		"ai",
