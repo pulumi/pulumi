@@ -516,7 +516,7 @@ async function configureRuntime(req: any, engineAddr: string | undefined) {
         store.supportsOutputValues = await settings.monitorSupportsFeature(monitorRef, "outputValues");
         store.supportsDeletedWith = await settings.monitorSupportsFeature(monitorRef, "deletedWith");
         store.supportsAliasSpecs = await settings.monitorSupportsFeature(monitorRef, "aliasSpecs");
-        store.supportsTransforms = await settings.monitorSupportsFeature(monitorRef, "transforms");
+        store.supportsTransforms = await settings.monitorSupportsFeature(monitorRef, "transformations");
     }
 
     const pulumiConfig: { [key: string]: string } = {};

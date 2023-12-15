@@ -483,7 +483,7 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
         store.supportsOutputValues = await monitorSupportsFeature(monitorRef, "outputValues");
         store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
         store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
-        store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
+        store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transformations");
     }
 
     const engineRef = getEngine();
