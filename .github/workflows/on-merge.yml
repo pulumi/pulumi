@@ -90,6 +90,8 @@ jobs:
         id: ghd
         uses: proudust/gh-describe@v1
       - name: Dispatch event to docs repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
           pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version=${{ steps.ghd.outputs.describe }}
 
