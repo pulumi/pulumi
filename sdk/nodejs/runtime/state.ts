@@ -108,6 +108,13 @@ export interface Store {
      * in a special way.
      */
     supportsAliasSpecs: boolean;
+
+    /**
+     * supportsTransforms returns a promise that when resolved tells you if the resource monitor we are
+     * connected to is able to support remote transforms across its RPC interface. When it does, we marshal
+     * transforms to the monitor instead of running them locally.
+     */
+    supportsTransforms: boolean;
 }
 
 /** @internal */
@@ -147,6 +154,7 @@ export class LocalStore implements Store {
     supportsOutputValues = false;
     supportsDeletedWith = false;
     supportsAliasSpecs = false;
+    supportsTransforms = false;
 }
 
 /** Get the root stack resource for the current stack deployment

@@ -261,4 +261,6 @@ export async function setMocks(
     store.supportsOutputValues = false;
     store.supportsDeletedWith = true;
     store.supportsAliasSpecs = true;
+    // TODO: Enable transforms in the mock monitor.
+    store.supportsTransforms = false;
 }
