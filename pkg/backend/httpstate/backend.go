@@ -116,33 +116,6 @@ type AIPromptRequestBody struct {
 	ConnectionID   string           `json:"connectionId"`
 }
 
-type PulumiAIModel string
-
-const (
-	PulumiAINoModel        PulumiAIModel = ""
-	PulumiAIModelGPT3      PulumiAIModel = "gpt-3.5-turbo"
-	PulumiAIModelGPT4      PulumiAIModel = "gpt-4"
-	PulumiAIModelGPT4Turbo PulumiAIModel = "gpt-4-turbo"
-)
-
-func (e *PulumiAIModel) String() string {
-	return string(*e)
-}
-
-func (e *PulumiAIModel) Set(v string) error {
-	switch v {
-	case "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "":
-		*e = PulumiAIModel(v)
-		return nil
-	default:
-		return errors.New(`must be one of "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"`)
-	}
-}
-
-func (e *PulumiAIModel) Type() string {
-	return "pulumiAIModel"
-}
-
 // Name validation rules enforced by the Pulumi Service.
 var stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
 
