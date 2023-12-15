@@ -87,3 +87,26 @@ jobs:
         run: exit 1
       - name: CI succeeded
         run: exit 0
+
+  update-dev-version:
+    name: update-dev-version
+    needs: [ci-ok]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+      - name: Install Pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.46
+          cache: enable
+      - name: Git describe
+        id: ghd
+        uses: proudust/gh-describe@v1
+      - name: Dispatch event to docs repo
+        run: |
+          pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version=${{ steps.ghd.outputs.describe }}
