@@ -14,6 +14,7 @@
 
 import * as grpc from "@grpc/grpc-js";
 import { randomUUID } from "crypto";
+import * as structproto from "google-protobuf/google/protobuf/struct_pb";
 import * as callrpc from "../proto/callback_grpc_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
@@ -23,18 +24,11 @@ import { ResourceTransformation } from "../resource";
 /** @internal */
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
-type CallbackFunction = (args: any) => any;
+type CallbackFunction = (args: structproto.Value[]) => structproto.Value[];
 
 export interface ICallbackServer {
     registerStackTransformation(callback: ResourceTransformation): void;
 }
-
-class GrpcCallbackServer implements callrpc.ICallbacksServer{
-    [name: string]: grpc.UntypedHandleCall;
-    invoke: grpc.handleUnaryCall<CallbackInvokeRequest, CallbackInvokeResponse>;
-
-}
-
 
 export class CallbackServer implements ICallbackServer {
      private readonly _callbacks = new Map<string, CallbackFunction>();
@@ -48,7 +42,28 @@ export class CallbackServer implements ICallbackServer {
         this._server = new grpc.Server({
             "grpc.max_receive_message_length": maxRPCMessageSize,
         });
-        this._server.addService(callrpc.CallbacksService, this);
+
+        const implementation : callrpc.ICallbacksServer = {
+            invoke: this.invoke.bind(this),
+        }
+        this._server.addService(callrpc.CallbacksService, implementation)
+    }
+
+    private async invoke(call: grpc.ServerUnaryCall<CallbackInvokeRequest, CallbackInvokeResponse>, callback: grpc.sendUnaryData<CallbackInvokeResponse>) {
+        const req = call.request
+
+        const cb = this._callbacks.get(req.getToken());
+        if (cb === undefined) {
+            const err = new grpc.StatusBuilder()
+            err.withCode(grpc.status.INVALID_ARGUMENT);
+            err.withDetails("callback not found");
+            callback(err.build());
+            return
+        }
+
+        const resp = new CallbackInvokeResponse();
+        resp.setReturnsList(cb(req.getArgumentsList()));
+        callback(null, resp);
     }
 
     registerStackTransformation(callback: ResourceTransformation): void {
