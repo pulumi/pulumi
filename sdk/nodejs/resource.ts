@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as url from "url";
 import { ResourceError } from "./errors";
 import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
@@ -25,9 +26,8 @@ import {
 } from "./runtime/resource";
 import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
-import { getStackResource } from "./runtime/state";
+import { getStackResource, getStore } from "./runtime/state";
 import * as utils from "./utils";
-import * as url from "url";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -391,24 +391,27 @@ export abstract class Resource {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
 
-        // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
-        // options assigned to this resource.
         const parent = opts.parent || getStackResource();
-        this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
-        for (const transformation of this.__transformations) {
-            const tres = transformation({ resource: this, type: t, name, props, opts });
-            if (tres) {
-                if (tres.opts.parent !== opts.parent) {
-                    // This is currently not allowed because the parent tree is needed to establish what
-                    // transformation to apply in the first place, and to compute inheritance of other
-                    // resource options in the Resource constructor before transformations are run (so
-                    // modifying it here would only even partially take affect).  It's theoretically
-                    // possible this restriction could be lifted in the future, but for now just
-                    // disallow re-parenting resources in transformations to be safe.
-                    throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
+
+        if (!getStore().supportsTransforms) {
+            // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
+            // options assigned to this resource.
+            this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
+            for (const transformation of this.__transformations) {
+                const tres = transformation({ resource: this, type: t, name, props, opts });
+                if (tres) {
+                    if (tres.opts.parent !== opts.parent) {
+                        // This is currently not allowed because the parent tree is needed to establish what
+                        // transformation to apply in the first place, and to compute inheritance of other
+                        // resource options in the Resource constructor before transformations are run (so
+                        // modifying it here would only even partially take affect).  It's theoretically
+                        // possible this restriction could be lifted in the future, but for now just
+                        // disallow re-parenting resources in transformations to be safe.
+                        throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
+                    }
+                    props = tres.props;
+                    opts = tres.opts;
                 }
-                props = tres.props;
-                opts = tres.opts;
             }
         }
 

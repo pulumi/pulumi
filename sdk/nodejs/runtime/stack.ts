@@ -17,8 +17,8 @@ import { warn } from "../log";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
-import { isDryRun, isQueryMode, setRootResource } from "./settings";
-import { setStackResource, getStackResource as stateGetStackResource } from "./state";
+import { getCallbacks, isDryRun, isQueryMode, setRootResource } from "./settings";
+import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -212,11 +212,19 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
  * Add a transformation to all future resources constructed in this Pulumi stack.
  */
 export function registerStackTransformation(t: ResourceTransformation) {
-    const stackResource = getStackResource();
-    if (!stackResource) {
-        throw new Error("The root stack resource was referenced before it was initialized.");
+    if (getStore().supportsTransforms) {
+        const callbacks = getCallbacks();
+        if (!callbacks) {
+            throw new Error("No callback server registered.");
+        }
+        callbacks.registerStackTransformation(t);
+    } else {
+        const stackResource = getStackResource();
+        if (!stackResource) {
+            throw new Error("The root stack resource was referenced before it was initialized.");
+        }
+        stackResource.__transformations = [...(stackResource.__transformations || []), t];
     }
-    stackResource.__transformations = [...(stackResource.__transformations || []), t];
 }
 
 export function getStackResource(): Stack | undefined {

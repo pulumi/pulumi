@@ -16,6 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
 import * as path from "path";
 import { ComponentResource } from "../resource";
+import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
 import { getLocalStore, getStore } from "./state";
 
@@ -290,6 +291,26 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
         }
         return settings.monitor;
     }
+}
+
+/**
+ * getCallbacks returns the current callbacks for RPC communications.
+ */
+export function getCallbacks(): ICallbackServer | undefined {
+    const store  = getStore();
+    const callbacks = store.callbacks;
+    if (callbacks !== undefined) {
+        return callbacks;
+    }
+
+    const monitor = getMonitor();
+    if (monitor === undefined) {
+        return undefined;
+    }
+
+    const callbackServer = new CallbackServer(monitor);
+    store.callbacks = callbackServer;
+    return callbackServer;
 }
 
 /** @internal */
