@@ -407,7 +407,9 @@ export abstract class Resource {
                         // modifying it here would only even partially take affect).  It's theoretically
                         // possible this restriction could be lifted in the future, but for now just
                         // disallow re-parenting resources in transformations to be safe.
-                        throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
+                        throw new Error(
+                            "Transformations cannot currently be used to change the `parent` of a resource.",
+                        );
                     }
                     props = tres.props;
                     opts = tres.opts;

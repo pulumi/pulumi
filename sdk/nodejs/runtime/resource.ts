@@ -52,6 +52,7 @@ import {
 } from "./rpc";
 import {
     excessiveDebugOutput,
+    getCallbacks,
     getMonitor,
     getStack,
     isDryRun,
@@ -443,6 +444,18 @@ export function registerResource(
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
 
+            const callbacks = [];
+            if (getStore().supportsTransforms) {
+                const callbackServer = getCallbacks();
+                for (const transform of opts.transformations || []) {
+                    if (callbackServer === undefined) {
+                        throw new Error("Callback server not initialized");
+                    }
+
+                    callbacks.push(callbackServer.registerTransformation(transform));
+                }
+            }
+
             const req = new resproto.RegisterResourceRequest();
             req.setType(t);
             req.setName(name);
@@ -480,6 +493,7 @@ export function registerResource(
             req.setDeletedwith(resop.deletedWithURN || "");
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
+            req.setTransformationsList(callbacks);
 
             if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                 throw new Error(

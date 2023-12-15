@@ -297,18 +297,18 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
  * getCallbacks returns the current callbacks for RPC communications.
  */
 export function getCallbacks(): ICallbackServer | undefined {
-    const store  = getStore();
+    const store = getStore();
     const callbacks = store.callbacks;
     if (callbacks !== undefined) {
         return callbacks;
     }
 
-    const monitor = getMonitor();
-    if (monitor === undefined) {
+    const monitorRef = getMonitor();
+    if (monitorRef === undefined) {
         return undefined;
     }
 
-    const callbackServer = new CallbackServer(monitor);
+    const callbackServer = new CallbackServer(monitorRef);
     store.callbacks = callbackServer;
     return callbackServer;
 }

@@ -16,6 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 import { randomUUID } from "crypto";
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
 import * as callrpc from "../proto/callback_grpc_pb";
+import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import { ResourceTransformation } from "../resource";
@@ -27,14 +28,15 @@ const maxRPCMessageSize: number = 1024 * 1024 * 400;
 type CallbackFunction = (args: structproto.Value[]) => structproto.Value[];
 
 export interface ICallbackServer {
+    registerTransformation(callback: ResourceTransformation): callproto.Callback;
     registerStackTransformation(callback: ResourceTransformation): void;
 }
 
 export class CallbackServer implements ICallbackServer {
-     private readonly _callbacks = new Map<string, CallbackFunction>();
-     private readonly _monitor: resrpc.IResourceMonitorClient;
-     private readonly _server: grpc.Server;
-     private readonly _errors: grpc.ServiceError[] = [];
+    private readonly _callbacks = new Map<string, CallbackFunction>();
+    private readonly _monitor: resrpc.IResourceMonitorClient;
+    private readonly _server: grpc.Server;
+    private readonly _errors: grpc.ServiceError[] = [];
 
     constructor(monitor: resrpc.IResourceMonitorClient) {
         this._monitor = monitor;
@@ -43,22 +45,25 @@ export class CallbackServer implements ICallbackServer {
             "grpc.max_receive_message_length": maxRPCMessageSize,
         });
 
-        const implementation : callrpc.ICallbacksServer = {
+        const implementation: callrpc.ICallbacksServer = {
             invoke: this.invoke.bind(this),
-        }
-        this._server.addService(callrpc.CallbacksService, implementation)
+        };
+        this._server.addService(callrpc.CallbacksService, implementation);
     }
 
-    private async invoke(call: grpc.ServerUnaryCall<CallbackInvokeRequest, CallbackInvokeResponse>, callback: grpc.sendUnaryData<CallbackInvokeResponse>) {
-        const req = call.request
+    private async invoke(
+        call: grpc.ServerUnaryCall<CallbackInvokeRequest, CallbackInvokeResponse>,
+        callback: grpc.sendUnaryData<CallbackInvokeResponse>,
+    ) {
+        const req = call.request;
 
         const cb = this._callbacks.get(req.getToken());
         if (cb === undefined) {
-            const err = new grpc.StatusBuilder()
+            const err = new grpc.StatusBuilder();
             err.withCode(grpc.status.INVALID_ARGUMENT);
             err.withDetails("callback not found");
             callback(err.build());
-            return
+            return;
         }
 
         const resp = new CallbackInvokeResponse();
@@ -66,38 +71,44 @@ export class CallbackServer implements ICallbackServer {
         callback(null, resp);
     }
 
-    registerStackTransformation(callback: ResourceTransformation): void {
-        const cb = (args: structproto.Value[]) : structproto.Value[] => {
+    registerTransformation(transform: ResourceTransformation): callproto.Callback {
+        const cb = (args: structproto.Value[]): structproto.Value[] => {
             return [];
-        }
+        };
+        const uuid = randomUUID();
+        this._callbacks.set(uuid, cb);
+        const req = new Callback();
+        req.setToken(uuid);
+        return req;
     }
 
-    private registerCallback(callback: CallbackFunction): void {
-        const uuid = randomUUID();
-        this._callbacks.set(uuid, callback);
-        const req = new Callback();
-        this._monitor.registerStackTransformation(req, (err, res) => {
+    registerStackTransformation(transform: ResourceTransformation): void {
+        const req = this.registerTransformation(transform);
+        this._monitor.registerStackTransformation(req, (err, _) => {
             if (err !== null) {
                 this._errors.push(err);
+                return;
             }
-        })
+            // Remove this from the list of callbacks given we didn't manage to actually register it.
+            this._callbacks.delete(req.getToken());
+        });
     }
 }
 
 //
- // start() : Promise<void> {
+// start() : Promise<void> {
 
- //     const port: number = await new Promise<number>((resolve, reject) => {
- //         server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
- //             if (err) {
- //                 reject(err);
- //             } else {
- //                 resolve(p);
- //             }
- //         });
- //     });
- //     server.start();
- // }
+//     const port: number = await new Promise<number>((resolve, reject) => {
+//         server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+//             if (err) {
+//                 reject(err);
+//             } else {
+//                 resolve(p);
+//             }
+//         });
+//     });
+//     server.start();
+// }
 //export async function createCallbackService(monitor: resrpc.IResourceMonitorClient): Promise<CallbackServer> {
 //    const server = new grpc.Server({
 //        "grpc.max_receive_message_length": maxRPCMessageSize,

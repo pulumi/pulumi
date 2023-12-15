@@ -120,7 +120,7 @@ export interface Store {
     /**
      * callback service running for this deployment. This registers callbacks and forwards them to the engine.
      */
-    callbacks? : ICallbackServer;
+    callbacks?: ICallbackServer;
 }
 
 /** @internal */
