@@ -3,7 +3,7 @@ using System.Linq;
 using Pulumi;
 
 	
-static object NotImplemented(string errorMessage) 
+object NotImplemented(string errorMessage) 
 {
     throw new System.NotImplementedException(errorMessage);
 }
