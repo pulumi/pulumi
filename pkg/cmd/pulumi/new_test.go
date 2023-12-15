@@ -234,8 +234,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project with this name already exists")
+	assert.ErrorContains(t, err, "project with this name already exists")
 }
 
 //nolint:paralleltest // changes directory for process, mocks backendInstance
@@ -259,8 +258,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Try again")
+	assert.ErrorContains(t, err, "Try again")
 }
 
 //nolint:paralleltest // changes directory for process, mocks backendInstance
@@ -387,8 +385,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project names may only contain")
+	assert.ErrorContains(t, err, "project names may only contain")
 }
 
 //nolint:paralleltest // changes directory for process, mocks backendInstance
@@ -412,8 +409,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project names may only contain")
+	assert.ErrorContains(t, err, "project names may only contain")
 
 	err = runNew(context.Background(), newArgs{
 		generateOnly:      true,
@@ -422,8 +418,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project names may not be empty")
+	assert.ErrorContains(t, err, "project names may not be empty")
 }
 
 //nolint:paralleltest // changes directory for process
@@ -442,9 +437,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(context.Background(), args)
-		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "no template selected")
+		assert.ErrorContains(t, err, "no template selected")
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
@@ -462,9 +455,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(context.Background(), args)
-		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "not found")
+		assert.ErrorContains(t, err, "not found")
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
@@ -483,9 +474,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(context.Background(), args)
-		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "not found")
+		assert.ErrorContains(t, err, "not found")
 	})
 }
 

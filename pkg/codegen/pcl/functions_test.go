@@ -15,7 +15,7 @@ func TestSingleOrNoneErrorsWithoutArguments(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
 	assert.Nil(t, program, "The program doesn't bind")
-	assert.Contains(t, err.Error(), "'singleOrNone' only expects one argument")
+	assert.ErrorContains(t, err, "'singleOrNone' only expects one argument")
 }
 
 func TestSingleOrNoneErrorsWithManyArguments(t *testing.T) {
@@ -24,7 +24,7 @@ func TestSingleOrNoneErrorsWithManyArguments(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
 	assert.Nil(t, program, "The program doesn't bind")
-	assert.Contains(t, err.Error(), "'singleOrNone' only expects one argument")
+	assert.ErrorContains(t, err, "'singleOrNone' only expects one argument")
 }
 
 func TestSingleOrNoneErrorsWhenFirstArgumentIsNotListOrTuple(t *testing.T) {
@@ -33,7 +33,7 @@ func TestSingleOrNoneErrorsWhenFirstArgumentIsNotListOrTuple(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
 	assert.Nil(t, program, "The program doesn't bind")
-	assert.Contains(t, err.Error(), "the first argument to 'singleOrNone' must be a list or tuple")
+	assert.ErrorContains(t, err, "the first argument to 'singleOrNone' must be a list or tuple")
 }
 
 func TestSingleOrNoneBindsCorrectlyWhenFirstArgumentIsList(t *testing.T) {

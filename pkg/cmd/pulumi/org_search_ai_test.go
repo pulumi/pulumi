@@ -120,7 +120,5 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), []string{})
-	require.Error(t, err)
-
-	assert.Contains(t, err.Error(), "user is an individual account, not an organization")
+	assert.ErrorContains(t, err, "user is an individual account, not an organization")
 }
