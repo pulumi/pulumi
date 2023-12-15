@@ -529,11 +529,16 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		imports = append(imports, "from pulumi import Input")
 	}
 
+	seenComponentImports := map[string]bool{}
 	for _, node := range program.Nodes {
 		if component, ok := node.(*pcl.Component); ok {
 			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
 			componentName := component.DeclarationName()
-			imports = append(imports, fmt.Sprintf("from %s import %s", componentPath, componentName))
+			pathAndName := componentPath + "-" + componentName
+			if _, ok := seenComponentImports[pathAndName]; !ok {
+				imports = append(imports, fmt.Sprintf("from %s import %s", componentPath, componentName))
+				seenComponentImports[pathAndName] = true
+			}
 		}
 	}
 

@@ -90,7 +90,7 @@ export function error(msg: string, resource?: resourceTypes.Resource, streamId?:
 }
 
 function log(
-    engine: engrpc.EngineClient,
+    engine: engrpc.IEngineClient,
     sev: engproto.LogSeverity,
     msg: string,
     resource: resourceTypes.Resource | undefined,

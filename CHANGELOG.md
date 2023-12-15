@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.97.0 (2023-12-14)
+
+
+### Features
+
+- [auto/go] Add `ChangeSecretsProvider` to workspace and stack APIs.
+  [#14039](https://github.com/pulumi/pulumi/pull/14039)
+
+- [auto/go] Adds AddEnvironments and RemoveEnvironment functions to Stack and LocalWorkspace types for Go Automation API.
+  [#14785](https://github.com/pulumi/pulumi/pull/14785)
+
+- [auto/nodejs] Adds addEnvironments and removeEnvironment functions to Stack and LocalWorkspace classes for Nodejs Automation API.
+  [#14788](https://github.com/pulumi/pulumi/pull/14788)
+
+- [auto/python] Adds add_environments and remove_environment functions to Stack and LocalWorkspace classes for python Automation API.
+  [#14776](https://github.com/pulumi/pulumi/pull/14776)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix a bug in nodejs providers returning empty inputs on read.
+  [#14803](https://github.com/pulumi/pulumi/pull/14803)
+
+- [sdkgen/go] Fix generated usage documentation for enum input types
+  [#14739](https://github.com/pulumi/pulumi/pull/14739)
+
 ## 3.96.2 (2023-12-08)
 
 
