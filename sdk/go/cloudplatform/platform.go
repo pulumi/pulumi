@@ -29,7 +29,7 @@ func (c *CloudPlatform) CreateAutomationJob(name string, args AutomationJobArgs)
 	// TODO
 }
 
-func (c *CloudPlatform) RunDeployment(args DeploymentArgs)
+func (c *CloudPlatform) RunDeployment(args DeploymentArgs) {}
 
 func (c *CloudPlatform) Search(query string) ([]Resource, error) {
 	// hit the pulumi cloud resource search API

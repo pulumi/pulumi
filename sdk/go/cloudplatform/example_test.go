@@ -31,6 +31,47 @@ func ExampleAutomationJob() {
 	})
 }
 
+func ExampleAutomationJobYAML() {
+	// TODO is there a verison of automation jobs that accepts YAML?
+	// Can you create an automation job, and then expose some sort of schema or template
+	// to customize an instance of it?
+	/*
+		p.RegisterAutomationJob("drift-checker", AutomationJobArgs{
+			Repo: "github.com/pulumi/automation-api-examples",
+			Dir:  "nodejs/drift-checker",
+			PreRunCommands: []string{
+				"npm install",
+			},
+			Entrypoint: "npm start",
+			// automaticaly provide credentials for stripe and AWS via ESC
+			Environemnt: []string{
+				"aws-dev",
+				"stripe-dev",
+			},
+			Mode: "cron",
+			// run every day at 8am
+			Schedule: "inputs.schedule",
+			Schema: {
+				schedule: "string",
+				remediate: "boolean",
+				notificationChannel: "string",
+				notificationMode" "string",
+			}
+		})
+
+		p.NewAutomationJob(`
+			name: my-drift-checker
+			kind: drift-checker
+			inputs:
+				schedule: "0 8 * * *"
+				remediate: true
+				notificationMode: "slack"
+				notificationChannel: "#drift-alerts"
+		`)
+
+	*/
+}
+
 func ExampleCostManagement() {
 	org := "acme"
 	p, err := NewCloudPlatform(org)
@@ -85,7 +126,7 @@ func ExampleSearchPlusPolicyViolations() {
 	for _, resource := range res {
 		securityLevel := "HIGH"
 		note := "NodeJS LTS now at v20, resource at v12 and needs security updates"
-		revalidationQuery := fmt.Sprintf(".runtime:nodejs12 ID:%s", resource.ID)
+		revalidationQuery := fmt.Sprintf(".runtime:nodejs12 ID:%s", resource.ID())
 		resource.ReportPolicyViolation(securityLevel, note, revalidationQuery)
 	}
 }
@@ -201,4 +242,16 @@ func ExampleTTLJob() {
 		// run hourly
 		Schedule: "0 * * * *",
 	})
+}
+
+func ExampleSynkScanning() {
+
+}
+
+func ExampleWorkflow() {
+
+}
+
+func ExampleSMSApproval() {
+
 }
