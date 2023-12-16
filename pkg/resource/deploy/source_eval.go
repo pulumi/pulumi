@@ -532,6 +532,9 @@ type resmon struct {
 	done                      <-chan error                       // a channel that resolves when the server completes.
 	disableResourceReferences bool                               // true if resource references are disabled.
 	disableOutputValues       bool                               // true if output values are disabled.
+
+	proxies sync.WaitGroup      // wait group for component proxies
+	rpcOpts []grpc.ServerOption // options to pass when starting a gRPC server
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -568,6 +571,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		cancel:                    cancel,
 		disableResourceReferences: opts.DisableResourceReferences,
 		disableOutputValues:       opts.DisableOutputValues,
+		rpcOpts:                   sourceEvalServeOptions(src.plugctx, tracingSpan),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -577,7 +581,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-		Options: sourceEvalServeOptions(src.plugctx, tracingSpan),
+		Options: resmon.rpcOpts,
 	})
 	if err != nil {
 		return nil, err
@@ -599,6 +603,78 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 	return resmon, nil
 }
 
+// A componentProxy sits between multi-language components and the primary resource monitor. It is responsible for
+// patching the source position of the resources registered by a component.
+type componentProxy struct {
+	*resmon
+
+	name           tokens.QName
+	typ            tokens.Type
+	parent         resource.URN
+	sourcePosition *pulumirpc.SourcePosition
+
+	monitorAddress string
+}
+
+func (p *componentProxy) constructInfo() plugin.ConstructInfo {
+	info := p.resmon.constructInfo
+	info.MonitorAddress = p.monitorAddress
+	return info
+}
+
+func (p *componentProxy) RegisterResource(ctx context.Context,
+	req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	// Patch the request's source position.
+	if !req.GetCustom() &&
+		req.GetName() == string(p.name) && req.GetType() == string(p.typ) && req.GetParent() == string(p.parent) {
+		// If this is the proxy's root component, use the original source position at which the MLC was constructed.
+		req.SourcePosition = p.sourcePosition
+	} else {
+		// Otherwise, clear the source position. Eventually, we will want to report a component-relative source
+		// position, but that requires getting the installation directory for the component.
+		req.SourcePosition = nil
+	}
+	return p.resmon.RegisterResource(ctx, req)
+}
+
+func (rm *resmon) newComponentProxy(
+	name tokens.QName,
+	typ tokens.Type,
+	parent resource.URN,
+	sourcePosition *pulumirpc.SourcePosition,
+) (*componentProxy, error) {
+	p := &componentProxy{
+		resmon:         rm,
+		name:           name,
+		typ:            typ,
+		parent:         parent,
+		sourcePosition: sourcePosition,
+	}
+
+	// Fire up a gRPC server and start listening for incomings.
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: rm.cancel,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterResourceMonitorServer(srv, p)
+			return nil
+		},
+		Options: rm.rpcOpts,
+	})
+	if err != nil {
+		return nil, err
+	}
+	p.monitorAddress = fmt.Sprintf("127.0.0.1:%d", handle.Port)
+
+	rm.proxies.Add(1)
+	go func() {
+		<-handle.Done
+		rm.proxies.Done()
+	}()
+
+	return p, nil
+}
+
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
 	return rm.constructInfo.MonitorAddress
@@ -607,6 +683,7 @@ func (rm *resmon) Address() string {
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
 func (rm *resmon) Cancel() error {
 	close(rm.cancel)
+	rm.proxies.Wait()
 	return <-rm.done
 }
 
@@ -1403,6 +1480,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, fmt.Errorf("unknown provider '%v'", providerRef)
 		}
 
+		// Start a proxy for the component.
+		proxy, err := rm.newComponentProxy(name, t, parent, req.GetSourcePosition())
+		if err != nil {
+			return nil, fmt.Errorf("creating proxy for component: %w", err)
+		}
+
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
 			// We don't actually need to send a list of aliases to construct anymore because the engine does
@@ -1429,7 +1512,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			options.DeleteBeforeReplace = *deleteBeforeReplace
 		}
 
-		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
+		constructResult, err := provider.Construct(proxy.constructInfo(), t, name, parent, props, options)
 		if err != nil {
 			return nil, err
 		}
