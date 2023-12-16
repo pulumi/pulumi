@@ -43,19 +43,14 @@ func ExampleAutomationJobYAML() {
 				"npm install",
 			},
 			Entrypoint: "npm start",
-			// automaticaly provide credentials for stripe and AWS via ESC
-			Environemnt: []string{
-				"aws-dev",
-				"stripe-dev",
-			},
 			Mode: "cron",
-			// run every day at 8am
 			Schedule: "inputs.schedule",
 			Schema: {
 				schedule: "string",
 				remediate: "boolean",
 				notificationChannel: "string",
-				notificationMode" "string",
+				notificationMode: "string",
+				environment: "[]string",
 			}
 		})
 
