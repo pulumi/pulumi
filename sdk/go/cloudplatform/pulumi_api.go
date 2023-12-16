@@ -9,12 +9,14 @@ import (
 	"path"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type PulumiAPI interface {
 	CreateStack(ctx context.Context, org, project, stack string) error
 	GetStack(ctx context.Context, org, project, stack string) error
+	DeleteStack(ctx context.Context, org, project, stack string) error
 	GetDeploymentSettings(ctx context.Context, org, project, stack string) error
 	PatchDeploymentSettings(ctx context.Context, org, project, stack string) error
 	CreateDeployment(ctx context.Context, org, project, stack string) error
@@ -85,12 +87,69 @@ func NewPulumiAPI(args *PulumiAPIArgs) (PulumiAPI, error) {
 
 func (p *PulumiAPIClient) CreateStack(ctx context.Context, org, project, stack string) error {
 
-	return nil
+	resp, err := p.client.R().
+		SetContext(ctx).
+		SetHeader("Authorization", "token "+p.pulumiAccessToken).
+		SetHeader("Accept", "application/json").
+		SetHeader("Accept", "application/vnd.pulumi+8").
+		SetDoNotParseResponse(true).
+		SetBody(apitype.CreateStackRequest{StackName: stack}).
+		Post(p.apiURL + path.Join("/stacks", org, project))
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		return nil
+	default:
+		return fmt.Errorf("%v: %s", resp.StatusCode(), string(resp.Body()))
+	}
 }
 
 func (p *PulumiAPIClient) GetStack(ctx context.Context, org, project, stack string) error {
 
-	return nil
+	resp, err := p.client.R().
+		SetContext(ctx).
+		SetHeader("Authorization", "token "+p.pulumiAccessToken).
+		SetHeader("Accept", "application/json").
+		SetHeader("Accept", "application/vnd.pulumi+8").
+		SetDoNotParseResponse(true).
+		Get(p.apiURL + path.Join("/stacks", org, project, stack))
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		return nil
+	default:
+		return fmt.Errorf("%v: %s", resp.StatusCode(), string(resp.Body()))
+	}
+}
+
+func (p *PulumiAPIClient) DeleteStack(ctx context.Context, org, project, stack string) error {
+
+	resp, err := p.client.R().
+		SetContext(ctx).
+		SetHeader("Authorization", "token "+p.pulumiAccessToken).
+		SetHeader("Accept", "application/json").
+		SetHeader("Accept", "application/vnd.pulumi+8").
+		SetDoNotParseResponse(true).
+		Delete(p.apiURL + path.Join("/stacks", org, project, stack))
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK, http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("%v: %s", resp.StatusCode(), string(resp.Body()))
+	}
 }
 
 func (p *PulumiAPIClient) GetDeploymentSettings(ctx context.Context, org, project, stack string) error {
