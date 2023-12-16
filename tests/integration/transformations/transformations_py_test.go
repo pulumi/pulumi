@@ -22,8 +22,11 @@ func TestPythonTransformations(t *testing.T) {
 				Dependencies: []string{
 					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 				},
+				LocalProviders: []integration.LocalDependency{
+					{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+				},
 				Quick:                  true,
-				ExtraRuntimeValidation: Validator("python"),
+				ExtraRuntimeValidation: Validator,
 			})
 		})
 	}
