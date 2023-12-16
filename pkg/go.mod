@@ -95,6 +95,7 @@ require (
 	go.pennock.tech/tabular v1.1.3
 	golang.org/x/mod v0.14.0
 	golang.org/x/term v0.14.0
+	golang.org/x/text v0.14.0
 	google.golang.org/protobuf v1.31.0
 )
 
@@ -259,7 +260,6 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect

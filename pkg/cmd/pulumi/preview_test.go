@@ -388,3 +388,134 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+
 			"with a new explicit provider \"urn:pulumi:stack::project::pulumi:providers:pkg::prov\"")
 }
+
+// TestBuildImportFile_DuplicateNames test that if we try to import resources with the same name we add a
+// suffix to their names to make them unique.
+func TestBuildImportFile_DuplicateNames(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(events)
+
+	// Pretend the root stack already exists
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	// Set the default provider (if any)
+	provider := addDefaultProvider(t, "pkg:i:t", events)
+
+	// And then create one resource of one type
+	stateA := makeStateMetadata(t, "res", "pkg:index:typA", true, stateOptions{})
+	stateA.Provider = provider
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, stateA),
+	})
+
+	// And then create another resource of a different type but the same name
+	stateB := makeStateMetadata(t, "res", "pkg:index:typB", true, stateOptions{})
+	stateB.Provider = provider
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, stateB),
+	})
+
+	// Finally, close the events channel to signal that we're done
+	close(events)
+
+	importFile, err := importFilePromise.Result(context.Background())
+	require.NoError(t, err)
+
+	// There should be nothing in the name table
+	require.Len(t, importFile.NameTable, 0)
+
+	// And there should be the two expected resource in the resources table
+	require.Len(t, importFile.Resources, 2)
+	expected := importSpec{
+		ID:      "<PLACEHOLDER>",
+		Type:    "pkg:index:typA",
+		Name:    "res",
+		Version: "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[0])
+	expected = importSpec{
+		ID:          "<PLACEHOLDER>",
+		Type:        "pkg:index:typB",
+		Name:        "resTypB",
+		LogicalName: "res",
+		Version:     "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[1])
+}
+
+// TestBuildImportFile_NameConflict tests that if we try to import resources with the same name we add a
+// suffix but ensure it doesn't conflict with any other resources original names.
+func TestBuildImportFile_NameConflict(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(events)
+
+	// Pretend the root stack already exists
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	// Set the default provider (if any)
+	provider := addDefaultProvider(t, "pkg:i:t", events)
+
+	// And then create one resource of one type
+	stateA := makeStateMetadata(t, "res", "pkg:index:typA", true, stateOptions{})
+	stateA.Provider = provider
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, stateA),
+	})
+
+	// And then create another resource of a different type but the same name
+	stateB := makeStateMetadata(t, "res", "pkg:index:typB", true, stateOptions{})
+	stateB.Provider = provider
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, stateB),
+	})
+
+	// And then create another resource that would conflict with the default name we'd have picked for the
+	// second resource.
+	stateC := makeStateMetadata(t, "resTypB", "pkg:index:typB", true, stateOptions{})
+	stateC.Provider = provider
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, stateC),
+	})
+
+	// Finally, close the events channel to signal that we're done
+	close(events)
+
+	importFile, err := importFilePromise.Result(context.Background())
+	require.NoError(t, err)
+
+	// There should be nothing in the name table
+	require.Len(t, importFile.NameTable, 0)
+
+	// And there should be the two expected resource in the resources table
+	require.Len(t, importFile.Resources, 3)
+	expected := importSpec{
+		ID:      "<PLACEHOLDER>",
+		Type:    "pkg:index:typA",
+		Name:    "res",
+		Version: "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[0])
+	expected = importSpec{
+		ID:          "<PLACEHOLDER>",
+		Type:        "pkg:index:typB",
+		Name:        "resTypB2",
+		LogicalName: "res",
+		Version:     "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[1])
+	expected = importSpec{
+		ID:      "<PLACEHOLDER>",
+		Type:    "pkg:index:typB",
+		Name:    "resTypB",
+		Version: "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[2])
+}

@@ -87,7 +87,7 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			ID:                resource.ID(res.ID),
 			Version:           res.Version,
 			PluginDownloadURL: res.PluginDownloadURL,
-			// TODO(https://github.com/pulumi/pulumi/issues/14532): Add Component and Remote to ResourceImport
+			// TODO(https://github.com/pulumi/pulumi/issues/14532): Add Component, Remote, and LogicalName to ResourceImport
 		}
 	}
 
@@ -154,6 +154,9 @@ type importSpec struct {
 	Properties        []string    `json:"properties,omitempty"`
 	Component         bool        `json:"component,omitempty"`
 	Remote            bool        `json:"remote,omitempty"`
+
+	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
+	LogicalName string `json:"logicalName,omitempty"`
 }
 
 type importFile struct {
@@ -208,37 +211,12 @@ func parseImportFile(
 	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
 	// it's ambiguous (it's true).
 	takenNames := map[string]bool{}
-	// Prefill takenNames with all the resource names so we can do quick uniqness checks below
+	// takenURNs simply tracks that a URN is used, it's not possible for a URN to be ambiguous. We fill this
+	// later because it requires parents to be resolved.
+	takenURNs := map[resource.URN]struct{}{}
+	// Prefill takenNames with all the resource names so we can do quick uniqueness checks below
 	for _, spec := range f.Resources {
 		takenNames[spec.Name] = false
-	}
-	// A remapping by index from the resource list to it's final unique name.
-	nameMapping := make([]string, 0, len(f.Resources))
-	for i, spec := range f.Resources {
-		// Check if any earlier resource has this name, if so mark it as ambiguous
-		for j, other := range f.Resources {
-			if i > j && spec.Name == other.Name {
-				takenNames[spec.Name] = true
-			}
-		}
-
-		if !takenNames[spec.Name] {
-			// This name isn't ambiguous so we can use it as is
-			nameMapping = append(nameMapping, spec.Name)
-		} else {
-			// This names already used so we need to make it unique
-			newName := spec.Name
-			for suffix := 1; ; suffix++ {
-				if _, exists := takenNames[newName]; !exists {
-					break
-				}
-				newName = fmt.Sprintf("%s_%d", spec.Name, suffix)
-			}
-			// At this point newName is unique and can't clash with other names, but need to ensure nothing
-			// else tries to now use it.
-			takenNames[newName] = false
-			nameMapping = append(nameMapping, newName)
-		}
 	}
 
 	// TODO: When Go 1.21 is released, switch to errors.Join.
@@ -275,23 +253,70 @@ func parseImportFile(
 		return sb.String()
 	}
 
+	for i, spec := range f.Resources {
+		// We default LogicalName and Name to each other if either is missing.
+		if spec.LogicalName == "" {
+			f.Resources[i].LogicalName = spec.Name
+		}
+		if spec.Name == "" {
+			f.Resources[i].Name = spec.LogicalName
+		}
+	}
+
+	// Sanity check some basic constraints that names and types etc are filled in.
+	for i, spec := range f.Resources {
+		if spec.Type == "" {
+			pusherrf("%v has no type", describeResource(i, spec))
+		}
+		if spec.Name == "" {
+			pusherrf("%v has no name", describeResource(i, spec))
+		}
+		if !spec.Component && spec.ID == "" {
+			pusherrf("%v has no ID", describeResource(i, spec))
+		} else if spec.Component && spec.ID != "" {
+			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
+		}
+		if spec.Remote && !spec.Component {
+			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
+		}
+
+		// Check if any earlier resource has this name, if so mark it as ambiguous this is only an error if
+		// something tries to use it (checked later on).
+		for j, other := range f.Resources {
+			if i > j && spec.Name == other.Name {
+				takenNames[spec.Name] = true
+			}
+		}
+	}
+
+	// If we've got errors already just exit
+	if errs != nil {
+		return nil, nil, errs
+	}
+
 	// A mapping from name to URN, prefilled with emptys and what was in the name table so we can do existence checks
 	// for expected names.
 	urnMapping := make(map[string]resource.URN)
+	// The opposite of urnMapping, a mapping from URN to name.
+	names := importer.NameTable{}
 	for name, urn := range f.NameTable {
+		names[urn] = name
 		urnMapping[name] = urn
+		// We can add these URNs to the taken set, it's not an error to add them twice at this point.
+		takenURNs[urn] = struct{}{}
 	}
 	for _, spec := range f.Resources {
 		urnMapping[spec.Name] = ""
 	}
 
-	// We need to keep going till all the URNs are filled in or we have an error.
+	// We need to keep going till all the resources are resolved.
+	dones := make([]bool, len(f.Resources))
 	done := func() bool {
 		if errs != nil {
 			return true
 		}
-		for _, urn := range urnMapping {
-			if urn == "" {
+		for _, done := range dones {
+			if !done {
 				return false
 			}
 		}
@@ -301,7 +326,7 @@ func parseImportFile(
 	for !done() {
 		for i, spec := range f.Resources {
 			// If we've already done this URN no need to do it again
-			if urnMapping[spec.Name] != "" {
+			if dones[i] {
 				continue
 			}
 
@@ -339,8 +364,18 @@ func parseImportFile(
 				}
 			}
 
-			actualName := nameMapping[i]
-			urnMapping[spec.Name] = resource.NewURN(stack.Q(), proj, parentType, spec.Type, actualName)
+			urn := resource.NewURN(stack.Q(), proj, parentType, spec.Type, spec.LogicalName)
+			// Check if this URN is unique and if not add an error
+			if _, ok := takenURNs[urn]; ok {
+				pusherrf("%v has an ambiguous URN, set name (or logical name) to be unique", describeResource(i, spec))
+			}
+			urnMapping[spec.Name] = urn
+			takenURNs[urn] = struct{}{}
+			// This might clash with earlier entries in the name table (unique urn, but duplicate name) that's
+			// fine and the code generators should deal with it.
+			names[urn] = spec.Name
+			// Mark this resource as done
+			dones[i] = true
 		}
 	}
 
@@ -351,24 +386,9 @@ func parseImportFile(
 
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
-		if spec.Type == "" {
-			pusherrf("%v has no type", describeResource(i, spec))
-		}
-		if spec.Name == "" {
-			pusherrf("%v has no name", describeResource(i, spec))
-		}
-		if !spec.Component && spec.ID == "" {
-			pusherrf("%v has no ID", describeResource(i, spec))
-		} else if spec.Component && spec.ID != "" {
-			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
-		}
-		if spec.Remote && !spec.Component {
-			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
-		}
-
 		imp := deploy.Import{
 			Type:              spec.Type,
-			Name:              nameMapping[i],
+			Name:              spec.LogicalName,
 			ID:                spec.ID,
 			Protect:           protectResources,
 			Properties:        spec.Properties,
@@ -410,12 +430,6 @@ func parseImportFile(
 		}
 
 		imports[i] = imp
-	}
-
-	// Build the name table.
-	names := importer.NameTable{}
-	for name, urn := range urnMapping {
-		names[urn] = name
 	}
 
 	return imports, names, errs
