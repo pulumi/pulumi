@@ -484,7 +484,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 go 1.20
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.97.0
 `)
 
 	// For each package add a PackageReference line
