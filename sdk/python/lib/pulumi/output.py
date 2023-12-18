@@ -14,6 +14,7 @@
 import asyncio
 import contextlib
 import json
+import os
 from functools import reduce
 from inspect import isawaitable
 from typing import (
@@ -722,13 +723,16 @@ class Output(Generic[T_co]):
         return os.apply(loads)
 
     def __str__(self) -> str:
-        return """Calling __str__ on an Output[T] is not supported.
+        msg = """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-This function may throw in a future version of Pulumi."""
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+        if os.getenv("PULUMI_ERROR_OUTPUT_STRING", "").lower() in ["1", "true"]:
+            raise TypeError(msg)
+        msg += "\nThis function may throw in a future version of Pulumi."
+        return msg
 
 
 class Unknown:
