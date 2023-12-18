@@ -431,6 +431,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing urn and id properties in valid locations",
 	},
 	{
+		Directory:   "regress-py-12980",
+		Description: "Import resources across modules",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
 		Directory:   "unions-inline",
 		Description: "Testing the use of unions/oneOf in the schema inline with the property definition.",
 	},
