@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/nodejs
-  description: Add option to throw on output toString and toJSON calls
+  description: Add an environment variable (`PULUMI_ERROR_OUTPUT_STRING`) to throw when an output tries to convert to a string.
