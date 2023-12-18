@@ -27,6 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -727,6 +729,7 @@ func NewSnapshotManager(
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
+	stackConfig config.Map,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
@@ -744,7 +747,18 @@ func NewSnapshotManager(
 	serviceLoop := manager.defaultServiceLoop
 
 	if env.SkipCheckpoints.Value() {
+		// If the environment variable PULUMI_SKIP_CHECKPOINTS is true (and experiments are enabled),
+		// then use the unsafe service loop (which doesn't save checkpoints)
 		serviceLoop = manager.unsafeServiceLoop
+	} else if value, ok := stackConfig[config.MustMakeKey("pulumi", "disable-checkpoints")]; ok {
+		disableCheckpointsValue, err := value.Value(config.NopDecrypter)
+		contract.AssertNoErrorf(err, "error fetching config value for pulumi:disable-checkpoints")
+
+		if cmdutil.IsTruthy(disableCheckpointsValue) {
+			// If the configuration value pulumi:disable-checkpoints is
+			// explicitly true, then use the unsafe service loop
+			serviceLoop = manager.unsafeServiceLoop
+		}
 	}
 
 	go serviceLoop(mutationRequests, done)

@@ -1257,7 +1257,11 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	snapshotManager := backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+	snapshotManager := backend.NewSnapshotManager(
+		persister,
+		op.SecretsManager,
+		u.GetTarget().Snapshot,
+		op.StackConfiguration.Config)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.

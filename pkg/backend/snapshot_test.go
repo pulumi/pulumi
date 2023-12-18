@@ -53,13 +53,19 @@ func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
 }
 
 func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
+	return MockSetupWithConfig(t, baseSnap, config.Map{})
+}
+
+func MockSetupWithConfig(t *testing.T, baseSnap *deploy.Snapshot, stackConfig config.Map) (
+	*SnapshotManager, *MockStackPersister,
+) {
 	err := baseSnap.VerifyIntegrity()
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap), sp
+	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, stackConfig), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -260,9 +266,22 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestWriteCheckpointOnceUnsafe(t *testing.T) {
-	t.Setenv(env.Experimental.Var().Name(), "1")
-	t.Setenv(env.SkipCheckpoints.Var().Name(), "1")
+	t.Run("Using env.SkipCheckpoints", func(t *testing.T) {
+		t.Setenv(env.Experimental.Var().Name(), "1")
+		t.Setenv(env.SkipCheckpoints.Var().Name(), "1")
 
+		validateSkipCheckpointsIsApplied(t, config.Map{})
+	})
+
+	t.Run("Using config pulumi:disable-checkpoints", func(t *testing.T) {
+		stackConfig := config.Map{
+			config.MustMakeKey("pulumi", "disable-checkpoints"): config.NewValue("true"),
+		}
+		validateSkipCheckpointsIsApplied(t, stackConfig)
+	})
+}
+
+func validateSkipCheckpointsIsApplied(t *testing.T, stackConfig config.Map) {
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgUnsafe::provider")
 	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgUnsafe", "id"
 
@@ -275,7 +294,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, snap)
+	manager, sp := MockSetupWithConfig(t, snap, stackConfig)
 
 	// Generate a same for the provider.
 	provUpdated := NewResource(provider.URN)
