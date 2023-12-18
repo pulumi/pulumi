@@ -405,7 +405,7 @@ func TestBrokenDecrypter(t *testing.T) {
 				assert.Error(t, err)
 				decryptErr := err.(DecryptError)
 				assert.Equal(t, key, decryptErr.Key)
-				assert.Contains(t, decryptErr.Err.Error(), msg)
+				assert.ErrorContains(t, decryptErr.Err, msg)
 				return err
 			},
 		}},
@@ -4590,8 +4590,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 				Aliases: []resource.Alias{{URN: "very-bad urn"}},
 			},
 			assertFn: func(err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid alias URN: invalid URN \"very-bad urn\"")
+				assert.ErrorContains(t, err, "invalid alias URN: invalid URN \"very-bad urn\"")
 			},
 		},
 		{
@@ -4600,8 +4599,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 				Aliases: []resource.Alias{{Parent: "very-bad urn"}},
 			},
 			assertFn: func(err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid parent alias URN: invalid URN \"very-bad urn\"")
+				assert.ErrorContains(t, err, "invalid parent alias URN: invalid URN \"very-bad urn\"")
 			},
 		},
 		{
@@ -4610,8 +4608,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 				Parent: "very-bad urn",
 			},
 			assertFn: func(err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid parent URN: invalid URN \"very-bad urn\"")
+				assert.ErrorContains(t, err, "invalid parent URN: invalid URN \"very-bad urn\"")
 			},
 		},
 		{
@@ -4620,8 +4617,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 				DeletedWith: "very-bad urn",
 			},
 			assertFn: func(err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid DeletedWith URN: invalid URN \"very-bad urn\"")
+				assert.ErrorContains(t, err, "invalid DeletedWith URN: invalid URN \"very-bad urn\"")
 			},
 		},
 		{
@@ -4630,8 +4626,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 				Dependencies: []resource.URN{"very-bad urn"},
 			},
 			assertFn: func(err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid dependency URN: invalid URN \"very-bad urn\"")
+				assert.ErrorContains(t, err, "invalid dependency URN: invalid URN \"very-bad urn\"")
 			},
 		},
 	}

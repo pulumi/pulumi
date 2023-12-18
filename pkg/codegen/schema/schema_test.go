@@ -383,8 +383,7 @@ func TestInvalidTypes(t *testing.T) {
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
 			_, err := ImportSpec(pkgSpec, nil)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), tt.expected)
+			assert.ErrorContains(t, err, tt.expected)
 		})
 	}
 }
@@ -724,8 +723,7 @@ func TestMethods(t *testing.T) {
 
 			pkg, err := ImportSpec(pkgSpec, nil)
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
 				if err != nil {
 					t.Error(err)
@@ -1460,8 +1458,7 @@ func TestInvalidProperties(t *testing.T) {
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
 			_, err := ImportSpec(pkgSpec, nil)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), tt.expected)
+			assert.ErrorContains(t, err, tt.expected)
 		})
 	}
 }

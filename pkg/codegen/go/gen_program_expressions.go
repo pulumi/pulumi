@@ -1234,8 +1234,8 @@ var functionPackages = map[string][]string{
 	"toBase64":         {"encoding/base64"},
 	"fromBase64":       {"encoding/base64"},
 	"toJSON":           {"encoding/json"},
-	"sha1":             {"fmt", "crypto/sha1"},
-	"filebase64sha256": {"fmt", "crypto/sha256", "os"},
+	"sha1":             {"crypto/sha1", "encoding/hex"},
+	"filebase64sha256": {"crypto/sha256", "os"},
 	"cwd":              {"os"},
 	"singleOrNone":     {"fmt"},
 }

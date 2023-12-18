@@ -70,18 +70,18 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 				return pulumi.String(string(data))
 			}`, true
 	case "filebase64":
-		return `func filebase64OrPanic(path string) pulumi.StringPtrInput {
+		return `func filebase64OrPanic(path string) string {
 					if fileData, err := os.ReadFile(path); err == nil {
-						return pulumi.String(base64.StdEncoding.EncodeToString(fileData[:]))
+						return base64.StdEncoding.EncodeToString(fileData[:])
 					} else {
 						panic(err.Error())
 					}
 				}`, true
 	case "filebase64sha256":
-		return `func filebase64sha256OrPanic(path string) pulumi.StringPtrInput {
+		return `func filebase64sha256OrPanic(path string) string {
 					if fileData, err := os.ReadFile(path); err == nil {
 						hashedData := sha256.Sum256([]byte(fileData))
-						return pulumi.String(base64.StdEncoding.EncodeToString(hashedData[:]))
+						return base64.StdEncoding.EncodeToString(hashedData[:])
 					} else {
 						panic(err.Error())
 					}
