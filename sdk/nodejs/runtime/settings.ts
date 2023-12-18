@@ -73,8 +73,11 @@ export function resetOptions(
 ) {
     const store = getStore();
 
-    store.settings.monitor = monitor;
-    store.settings.engine = engine;
+    monitor = undefined;
+    engine = undefined;
+
+    store.settings.monitor = undefined;
+    store.settings.engine = undefined;
     store.settings.rpcDone = Promise.resolve();
     store.settings.featureSupport = {};
 
@@ -139,11 +142,10 @@ export function isDryRun(): boolean {
 /**
  * monitorSupportsFeature returns a promise that when resolved tells you if the resource monitor we are connected
  * to is able to support a particular feature.
+ *
+ * @internal
  */
-export async function monitorSupportsFeature(
-    monitorClient: resrpc.IResourceMonitorClient,
-    feature: string,
-): Promise<boolean> {
+async function monitorSupportsFeature(monitorClient: resrpc.IResourceMonitorClient, feature: string): Promise<boolean> {
     const req = new resproto.SupportsFeatureRequest();
     req.setId(feature);
 
@@ -171,6 +173,24 @@ export async function monitorSupportsFeature(
     });
 
     return result;
+}
+
+/**
+ * Queries the resource monitor for its capabilities and sets the appropriate flags in the store.
+ *
+ * @internal
+ **/
+export async function awaitFeatureSupport(): Promise<void> {
+    const monitorRef = getMonitor();
+    if (monitorRef !== undefined) {
+        const store = getStore();
+        store.supportsSecrets = await monitorSupportsFeature(monitorRef, "secrets");
+        store.supportsResourceReferences = await monitorSupportsFeature(monitorRef, "resourceReferences");
+        store.supportsOutputValues = await monitorSupportsFeature(monitorRef, "outputValues");
+        store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
+        store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
+        store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transformations");
+    }
 }
 
 /** @internal Used only for testing purposes. */
@@ -476,16 +496,7 @@ export function rpcKeepAlive(): () => void {
  */
 export async function setRootResource(res: ComponentResource): Promise<void> {
     // This is the first async point of program startup where we can query the resource monitor for its capabilities.
-    const monitorRef = getMonitor();
-    if (monitorRef !== undefined) {
-        const store = getStore();
-        store.supportsSecrets = await monitorSupportsFeature(monitorRef, "secrets");
-        store.supportsResourceReferences = await monitorSupportsFeature(monitorRef, "resourceReferences");
-        store.supportsOutputValues = await monitorSupportsFeature(monitorRef, "outputValues");
-        store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
-        store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
-        store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transformations");
-    }
+    await awaitFeatureSupport();
 
     const engineRef = getEngine();
     if (!engineRef) {

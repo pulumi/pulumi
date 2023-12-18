@@ -22,7 +22,6 @@ import * as resource from "../resource";
 import * as config from "../runtime/config";
 import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
-import { getStore } from "../runtime/state";
 import { parseArgs } from "./internals";
 
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
@@ -508,16 +507,7 @@ async function configureRuntime(req: any, engineAddr: string | undefined) {
     );
 
     // resetOptions doesn't reset the saved features
-    const monitorRef = settings.getMonitor();
-    if (monitorRef !== undefined) {
-        const store = getStore();
-        store.supportsSecrets = await settings.monitorSupportsFeature(monitorRef, "secrets");
-        store.supportsResourceReferences = await settings.monitorSupportsFeature(monitorRef, "resourceReferences");
-        store.supportsOutputValues = await settings.monitorSupportsFeature(monitorRef, "outputValues");
-        store.supportsDeletedWith = await settings.monitorSupportsFeature(monitorRef, "deletedWith");
-        store.supportsAliasSpecs = await settings.monitorSupportsFeature(monitorRef, "aliasSpecs");
-        store.supportsTransforms = await settings.monitorSupportsFeature(monitorRef, "transformations");
-    }
+    await settings.awaitFeatureSupport();
 
     const pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();
