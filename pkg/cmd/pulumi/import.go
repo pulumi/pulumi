@@ -900,7 +900,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				stackName,
 				proj,
 				cfg.Environment,

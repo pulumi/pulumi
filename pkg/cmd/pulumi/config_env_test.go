@@ -150,30 +150,31 @@ func mapEvalDiags(diags syntax.Diagnostics) apitype.EnvironmentDiagnostics {
 	}
 
 	api := make(apitype.EnvironmentDiagnostics, len(diags))
-	for i, d := range diags {
-		var rng *esc.Range
-		if d.Subject != nil {
-			begin := esc.Pos{
-				Line:   d.Subject.Start.Line,
-				Column: d.Subject.Start.Column,
-				Byte:   d.Subject.Start.Byte,
-			}
-			end := esc.Pos{
-				Line:   d.Subject.End.Line,
-				Column: d.Subject.End.Column,
-				Byte:   d.Subject.End.Byte,
-			}
-			rng = &esc.Range{
-				Environment: d.Subject.Filename,
-				Begin:       begin,
-				End:         end,
-			}
-		}
-		api[i] = apitype.EnvironmentDiagnostic{
-			Range:   rng,
-			Summary: d.Summary,
-		}
-	}
+	// TODO JVP
+	// for i, d := range diags {
+	// 	var rng *esc.Range
+	// 	if d.Subject != nil {
+	// 		begin := esc.Pos{
+	// 			Line:   d.Subject.Start.Line,
+	// 			Column: d.Subject.Start.Column,
+	// 			Byte:   d.Subject.Start.Byte,
+	// 		}
+	// 		end := esc.Pos{
+	// 			Line:   d.Subject.End.Line,
+	// 			Column: d.Subject.End.Column,
+	// 			Byte:   d.Subject.End.Byte,
+	// 		}
+	// 		rng = &esc.Range{
+	// 			Environment: d.Subject.Filename,
+	// 			Begin:       begin,
+	// 			End:         end,
+	// 		}
+	// 	}
+	// 	api[i] = apitype.EnvironmentDiagnostic{
+	// 		Range:   rng,
+	// 		Summary: d.Summary,
+	// 	}
+	// }
 
 	return api
 }

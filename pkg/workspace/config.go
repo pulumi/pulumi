@@ -1,3 +1,17 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package workspace
 
 import (
@@ -10,6 +24,7 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func formatMissingKeys(missingKeys []string) string {
@@ -56,7 +71,7 @@ type (
 func validateStackConfigValue(
 	stackName string,
 	projectConfigKey string,
-	projectConfigType ProjectConfigType,
+	projectConfigType workspace.ProjectConfigType,
 	stackValue config.Value,
 	dec config.Decrypter,
 ) error {
@@ -87,8 +102,8 @@ func validateStackConfigValue(
 		}
 	}
 
-	if !ValidateConfigValue(*projectConfigType.Type, projectConfigType.Items, content) {
-		typeName := InferFullTypeName(*projectConfigType.Type, projectConfigType.Items)
+	if !workspace.ValidateConfigValue(*projectConfigType.Type, projectConfigType.Items, content) {
+		typeName := workspace.InferFullTypeName(*projectConfigType.Type, projectConfigType.Items)
 		validationError := fmt.Errorf(
 			"Stack '%v' with configuration key '%v' must be of type '%v'",
 			stackName,
@@ -112,12 +127,21 @@ func parseConfigKey(projectName, key string) (config.Key, error) {
 	return config.MustMakeKey(projectName, key), nil
 }
 
+func isPrimitiveValue(value interface{}) bool {
+	switch value.(type) {
+	case string, int, bool:
+		return true
+	default:
+		return false
+	}
+}
+
 func createConfigValue(rawValue interface{}) (config.Value, error) {
 	if isPrimitiveValue(rawValue) {
 		configValueContent := fmt.Sprintf("%v", rawValue)
 		return config.NewValue(configValueContent), nil
 	}
-	value, err := SimplifyMarshalledValue(rawValue)
+	value, err := workspace.SimplifyMarshalledValue(rawValue)
 	if err != nil {
 		return config.Value{}, err
 	}
@@ -174,7 +198,7 @@ func envConfigValue(v esc.Value) config.Plaintext {
 
 func mergeConfig(
 	stackName string,
-	project *Project,
+	project *workspace.Project,
 	stackEnv esc.Value,
 	stackConfig config.Map,
 	encrypter config.Encrypter,
@@ -291,7 +315,7 @@ func mergeConfig(
 
 func ValidateStackConfigAndApplyProjectConfig(
 	stackName string,
-	project *Project,
+	project *workspace.Project,
 	stackEnv esc.Value,
 	stackConfig config.Map,
 	encrypter config.Encrypter,
@@ -306,7 +330,7 @@ func ValidateStackConfigAndApplyProjectConfig(
 // using PassphraseDecrypter, we don't want to always prompt for the values when not necessary
 func ApplyProjectConfig(
 	stackName string,
-	project *Project,
+	project *workspace.Project,
 	stackEnv esc.Value,
 	stackConfig config.Map,
 	encrypter config.Encrypter,

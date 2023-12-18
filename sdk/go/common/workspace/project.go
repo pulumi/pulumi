@@ -28,8 +28,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
-	"github.com/pulumi/esc/ast"
-	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -617,20 +615,6 @@ func (e *Environment) Definition() []byte {
 	default:
 		return nil
 	}
-}
-
-func (e *Environment) Imports() []string {
-	def, diags, err := eval.LoadYAMLBytes("yaml", e.Definition())
-	if err != nil || len(diags) != 0 || def == nil {
-		return nil
-	}
-	names := fx.ToSet(fx.Map(fx.IterSlice(def.Imports.GetElements()), func(imp *ast.ImportDecl) string {
-		return imp.Environment.GetValue()
-	}))
-	if len(def.Values.GetEntries()) != 0 {
-		names.Add("yaml")
-	}
-	return fx.ToSlice(fx.IterSet(names))
 }
 
 func (e *Environment) Append(envs ...string) *Environment {

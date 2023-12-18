@@ -78,13 +78,14 @@ func (defaultESCWorkspace) GetAccount(key string) (workspace.Account, error) {
 
 func printESCDiagnostics(out io.Writer, diags []apitype.EnvironmentDiagnostic) {
 	for _, d := range diags {
-		if d.Range != nil {
-			fmt.Fprintf(out, "%v:", d.Range.Environment)
-			if d.Range.Begin.Line != 0 {
-				fmt.Fprintf(out, "%v:%v:", d.Range.Begin.Line, d.Range.Begin.Column)
-			}
-			fmt.Fprintf(out, " ")
-		}
+		// TODO JVP
+		// if d.Range != nil {
+		// 	fmt.Fprintf(out, "%v:", d.Range.Environment)
+		// 	if d.Range.Begin.Line != 0 {
+		// 		fmt.Fprintf(out, "%v:%v:", d.Range.Begin.Line, d.Range.Begin.Column)
+		// 	}
+		// 	fmt.Fprintf(out, " ")
+		// }
 		fmt.Fprintf(out, "%v\n", d.Summary)
 	}
 }

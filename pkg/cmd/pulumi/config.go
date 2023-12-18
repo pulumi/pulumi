@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -870,7 +871,7 @@ func listConfig(
 
 	// when listing configuration values
 	// also show values coming from the project and environment
-	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
+	err = pkgWorkspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
 	if err != nil {
 		return err
 	}
@@ -1031,7 +1032,7 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 	}
 
 	// when asking for a configuration value, include values from the project and environment
-	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
+	err = pkgWorkspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
 	if err != nil {
 		return err
 	}

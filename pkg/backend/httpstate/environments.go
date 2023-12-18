@@ -33,7 +33,8 @@ func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDi
 	apiDiags := make(apitype.EnvironmentDiagnostics, len(diags))
 	for i, d := range diags {
 		apiDiags[i] = apitype.EnvironmentDiagnostic{
-			Range:   d.Range,
+			// TODO JVP
+			// Range:   d.Range,
 			Summary: d.Summary,
 			Detail:  d.Detail,
 		}
