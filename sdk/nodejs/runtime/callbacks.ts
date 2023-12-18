@@ -80,8 +80,20 @@ export class CallbackServer implements ICallbackServer {
         }
 
         const resp = new CallbackInvokeResponse();
-        resp.setReturnsList(cb(req.getArgumentsList()));
-        callback(null, resp);
+        try {
+            resp.setReturnsList(cb(req.getArgumentsList()));
+            callback(null, resp);
+        } catch (e) {
+            const err = new grpc.StatusBuilder();
+            err.withCode(grpc.status.UNKNOWN);
+            if (e instanceof Error) {
+                err.withDetails(e.message);
+            } else {
+                err.withDetails(JSON.stringify(e));
+            }
+            callback(err.build());
+            return;
+        }
     }
 
     async registerTransformation(transform: ResourceTransformation): Promise<callproto.Callback> {
