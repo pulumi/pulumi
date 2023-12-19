@@ -1014,7 +1014,8 @@ func (b *localBackend) apply(
 		persister,
 		op.SecretsManager,
 		update.GetTarget().Snapshot,
-		op.StackConfiguration.Config)
+		op.StackConfiguration.Config,
+		&backend.MonotonicTimeMonitor{})
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
 		Events:          engineEvents,

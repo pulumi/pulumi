@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -24,12 +25,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 type MockRegisterResourceEvent struct {
@@ -59,13 +62,22 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 func MockSetupWithConfig(t *testing.T, baseSnap *deploy.Snapshot, stackConfig config.Map) (
 	*SnapshotManager, *MockStackPersister,
 ) {
+	return MockSetupWithConfigAndTimeMonitor(t, baseSnap, stackConfig, &MonotonicTimeMonitor{})
+}
+
+func MockSetupWithConfigAndTimeMonitor(t *testing.T,
+	baseSnap *deploy.Snapshot,
+	stackConfig config.Map,
+	timeMonitor TimeMonitor) (
+	*SnapshotManager, *MockStackPersister,
+) {
 	err := baseSnap.VerifyIntegrity()
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, stackConfig), sp
+	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, stackConfig, timeMonitor), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -626,6 +638,86 @@ func TestVexingDeployment(t *testing.T) {
 	assert.Equal(t, e.URN, res[5].URN)
 	assert.Len(t, res[5].Dependencies, 1)
 	assert.Equal(t, c.URN, res[5].Dependencies[0])
+}
+
+type slowMonitor struct {
+	duration   time.Duration
+	percentage int
+	count      int
+}
+
+func (sm *slowMonitor) Start() {
+	sm.count = 0
+}
+func (sm *slowMonitor) Stop()       {}
+func (sm *slowMonitor) StartChild() {}
+func (sm *slowMonitor) StopChild()  {}
+func (sm *slowMonitor) GetTimes() (time.Duration, time.Duration, int) {
+	return sm.duration, time.Duration(sm.percentage) * sm.duration / 100, sm.count
+}
+
+//nolint:paralleltest // mutates global state
+func TestSlowSnapshots(t *testing.T) {
+	testCases := []struct {
+		percentage int
+		shouldWarn bool
+	}{
+		{percentage: 0, shouldWarn: false},
+		{percentage: 1, shouldWarn: false},
+		{percentage: 25, shouldWarn: false},
+		{percentage: 49, shouldWarn: false},
+		{percentage: 51, shouldWarn: true},
+		{percentage: 75, shouldWarn: true},
+		{percentage: 99, shouldWarn: true},
+		{percentage: 100, shouldWarn: true},
+	}
+
+	for _, testCase := range testCases {
+		testSink := testutil.NewTestDiagSink(".")
+		oldSink := cmdutil.ReplaceDiag(testSink)
+		defer cmdutil.ReplaceDiag(oldSink)
+
+		resourceA := NewResource("a")
+		snap := NewSnapshot([]*resource.State{
+			resourceA,
+		})
+
+		manager, sp := MockSetupWithConfigAndTimeMonitor(t, snap, config.Map{}, &slowMonitor{
+			duration:   time.Minute * 10,
+			percentage: testCase.percentage,
+		})
+		step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+		mutation, err := manager.BeginMutation(step)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+
+		err = mutation.End(step, true)
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+
+		// the end mutation should mark the resource as "done".
+		// snap should then not put resourceA in the merged snapshot, since it has been deleted.
+		lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
+		assert.Len(t, lastSnap.Resources, 0)
+
+		assert.NoError(t, manager.Close())
+		found := false
+		for _, msg := range testSink.WarningMsgs() {
+			if strings.Contains(msg, "Saving checkpoints took") &&
+				strings.Contains(msg, "pulumi:disable-checkpoints") {
+				found = true
+				break
+			}
+		}
+
+		if testCase.shouldWarn {
+			assert.Truef(t, found, "Expecting a warning message when percentage is %d%%", testCase.percentage)
+		} else {
+			assert.Falsef(t, found, "Expecting no message when percentage is %d%%", testCase.percentage)
+		}
+	}
 }
 
 func TestDeletion(t *testing.T) {

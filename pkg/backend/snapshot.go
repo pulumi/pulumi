@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -79,6 +80,51 @@ var _ engine.SnapshotManager = (*SnapshotManager)(nil)
 type mutationRequest struct {
 	mutator func() bool
 	result  chan<- error
+}
+
+type TimeMonitor interface {
+	Start()
+	Stop()
+	StartChild()
+	StopChild()
+	GetTimes() (time.Duration, time.Duration, int)
+}
+
+type MonotonicTimeMonitor struct {
+	running    bool
+	start      time.Time
+	total      time.Duration
+	childTotal time.Duration
+	childStart time.Time
+	childCount int
+}
+
+func (tm *MonotonicTimeMonitor) Start() {
+	contract.Assertf(!tm.running, "Starting a monitor that is already running is not permitted.")
+	tm.running = true
+	tm.start = time.Now()
+	tm.total = 0
+	tm.childTotal = 0
+	tm.childCount = 0
+}
+
+func (tm *MonotonicTimeMonitor) Stop() {
+	contract.Assertf(tm.running, "Stopping a monitor that is not running is not permitted.")
+	tm.total = time.Since(tm.start)
+	tm.running = false
+}
+
+func (tm *MonotonicTimeMonitor) StartChild() {
+	tm.childStart = time.Now()
+}
+
+func (tm *MonotonicTimeMonitor) StopChild() {
+	tm.childCount++
+	tm.childTotal += time.Since(tm.childStart)
+}
+
+func (tm *MonotonicTimeMonitor) GetTimes() (total, partial time.Duration, count int) {
+	return tm.total, tm.childTotal, tm.childCount
 }
 
 func (sm *SnapshotManager) Close() error {
@@ -672,9 +718,10 @@ func (sm *SnapshotManager) saveSnapshot() error {
 }
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
-func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error, tm TimeMonitor) {
 	// True if we have elided writes since the last actual write.
 	hasElidedWrites := false
+	tm.Start()
 
 	// Service each mutation request in turn.
 serviceLoop:
@@ -683,6 +730,9 @@ serviceLoop:
 		case request := <-mutationRequests:
 			var err error
 			if request.mutator() {
+				tm.StartChild()
+				defer tm.StopChild()
+
 				err = sm.saveSnapshot()
 				hasElidedWrites = false
 			} else {
@@ -692,6 +742,25 @@ serviceLoop:
 		case <-sm.cancel:
 			break serviceLoop
 		}
+	}
+
+	tm.Stop()
+
+	totalDuration, childDuration, childCount := tm.GetTimes()
+	snapshotPercent := 100 * childDuration / totalDuration
+	logging.V(9).Infof("Saving %d checkpoints took %d%% of the total time (%s of %s)",
+		childCount,
+		snapshotPercent,
+		childDuration.String(),
+		totalDuration.String())
+
+	// TODO (proberts) Determine the correct percentage at which to warn
+	if totalDuration > (30*time.Second) && snapshotPercent >= 50 {
+		cmdutil.Diag().Warningf(diag.Message("", "Saving checkpoints took %d%% "+
+			"of the total time. You can mitigate this by setting the config option "+
+			"\"pulumi:disable-checkpoints\" to \"true\". See "+
+			"<<TODO(proberts):permalink>> for  more information."),
+			snapshotPercent)
 	}
 
 	// If we still have elided writes once the channel has closed, flush the snapshot.
@@ -706,7 +775,7 @@ serviceLoop:
 // unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
-func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error, _ TimeMonitor) {
 	for {
 		select {
 		case request := <-mutationRequests:
@@ -730,6 +799,7 @@ func NewSnapshotManager(
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
 	stackConfig config.Map,
+	timeMonitor TimeMonitor,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
@@ -761,7 +831,7 @@ func NewSnapshotManager(
 		}
 	}
 
-	go serviceLoop(mutationRequests, done)
+	go serviceLoop(mutationRequests, done, timeMonitor)
 
 	return manager
 }
