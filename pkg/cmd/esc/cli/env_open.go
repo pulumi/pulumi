@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
@@ -51,7 +52,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 			}
 
 			switch format {
-			case "detailed", "json", "string":
+			case "detailed", "json", "yaml", "string":
 				// OK
 			case "dotenv", "shell":
 				if len(path) != 0 {
@@ -78,7 +79,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 		"the lifetime of the opened environment in the form HhMm (e.g. 2h, 1h30m, 15m)")
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "json",
-		"the output format to use. May be 'dotenv', 'json', 'detailed', or 'shell'")
+		"the output format to use. May be 'dotenv', 'json', 'yaml', 'detailed', or 'shell'")
 
 	return cmd
 }
@@ -109,6 +110,11 @@ func (env *envCommand) renderValue(
 		body := val.ToJSON(!showSecrets)
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+		return enc.Encode(body)
+	case "yaml":
+		body := val.ToJSON(!showSecrets)
+		enc := yaml.NewEncoder(out)
+		enc.SetIndent(3)
 		return enc.Encode(body)
 	case "detailed":
 		enc := json.NewEncoder(out)
