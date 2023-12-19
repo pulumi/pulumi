@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet,go,nodejs,python
-  description: Fix generated utility functions for filebase64, filebase64sha256, sha1 and mimeType
