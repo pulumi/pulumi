@@ -30,6 +30,7 @@ import * as tsutils from "../../tsutils";
 import * as tracing from "./tracing";
 
 import * as mod from ".";
+import { getStore } from "../../runtime/state";
 
 // Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
 // Follow this issue for progress on when we can remove this:
@@ -482,6 +483,13 @@ ${defaultMessage}`,
 
             throw e;
         } finally {
+            // If a callback server was ever started shut it down now.
+            const store = getStore();
+            const callbacks = store.callbacks;
+            if (callbacks !== undefined) {
+                callbacks.shutdown();
+            }
+
             runProgramSpan.end();
         }
     };

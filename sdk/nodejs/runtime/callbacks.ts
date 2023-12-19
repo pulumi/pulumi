@@ -31,6 +31,7 @@ type CallbackFunction = (args: structproto.Value[]) => structproto.Value[];
 export interface ICallbackServer {
     registerTransformation(callback: ResourceTransformation): Promise<callproto.Callback>;
     registerStackTransformation(callback: ResourceTransformation): void;
+    shutdown(): void;
 }
 
 export class CallbackServer implements ICallbackServer {
@@ -62,6 +63,10 @@ export class CallbackServer implements ICallbackServer {
                 resolve(`127.0.0.1:${port}`);
             });
         });
+    }
+
+    shutdown(): void {
+        this._server.forceShutdown();
     }
 
     private async invoke(
