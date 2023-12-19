@@ -24,6 +24,7 @@ import {
     runtime,
     secret,
 } from "../../index";
+import * as state from "../../runtime/state";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
@@ -206,7 +207,7 @@ describe("runtime", () => {
 
             for (const test of generateTests()) {
                 it(`marshals ${test.name} correctly`, async () => {
-                    runtime._setFeatureSupport("outputValues", true);
+                    state.getStore().supportsOutputValues = true;
 
                     const inputs = { value: test.input };
                     const expected = { value: test.expected };
@@ -255,7 +256,7 @@ describe("runtime", () => {
             };
 
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            runtime._setFeatureSupport("secrets", true);
+            state.getStore().supportsSecrets = true;
             let transfer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
             let result = runtime.deserializeProperties(transfer);
             assert.ok(runtime.isRpcSecret(result.secret1));
@@ -264,7 +265,7 @@ describe("runtime", () => {
             assert.strictEqual(runtime.unwrapRpcSecret(result.secret2), null);
 
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            runtime._setFeatureSupport("secrets", false);
+            state.getStore().supportsSecrets = false;
             transfer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
             result = runtime.deserializeProperties(transfer);
             assert.ok(!runtime.isRpcSecret(result.secret1));
@@ -288,7 +289,7 @@ describe("runtime", () => {
                 custom: custom,
             };
 
-            runtime._setFeatureSupport("resourceReferences", true);
+            state.getStore().supportsResourceReferences = true;
 
             let serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
@@ -303,7 +304,7 @@ describe("runtime", () => {
                 },
             });
 
-            runtime._setFeatureSupport("resourceReferences", false);
+            state.getStore().supportsResourceReferences = false;
             serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
                 component: componentURN,
@@ -326,7 +327,7 @@ describe("runtime", () => {
                 custom: custom,
             };
 
-            runtime._setFeatureSupport("resourceReferences", true);
+            state.getStore().supportsResourceReferences = true;
 
             let serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
@@ -341,7 +342,7 @@ describe("runtime", () => {
                 },
             });
 
-            runtime._setFeatureSupport("resourceReferences", false);
+            state.getStore().supportsResourceReferences = false;
             serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
                 component: componentURN,
@@ -416,7 +417,7 @@ describe("runtime", () => {
         });
         it("deserializes resource references properly during preview", async () => {
             runtime.setMocks(new TestMocks());
-            runtime._setFeatureSupport("resourceReferences", true);
+            state.getStore().supportsResourceReferences = true;
             runtime.registerResourceModule("test", "index", new TestResourceModule());
 
             const component = new TestComponentResource("test");
