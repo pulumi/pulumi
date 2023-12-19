@@ -1155,7 +1155,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 		}
 		sprops := resp.Returns[0].GetStructValue()
 		if sprops == nil && resp.Returns[0].Kind != nil {
-			return nil, fmt.Errorf("expected struct value, got %t", resp.Returns[0].Kind)
+			return nil, fmt.Errorf("expected struct value, got %v", resp.Returns[0])
 		}
 		if sprops == nil {
 			return nil, nil

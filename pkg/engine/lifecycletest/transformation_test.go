@@ -146,3 +146,48 @@ func TestRemoteTransformations(t *testing.T) {
 		"frob": resource.MakeSecret(resource.NewStringProperty("frob")),
 	}, res.Inputs)
 }
+
+// Test that the engine errors if a transformation function returns a bad structure.
+func TestRemoteTransformationsBadType(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		callback1, err := callbacks.Allocate(func(args []resource.PropertyValue) ([]resource.PropertyValue, error) {
+			return []resource.PropertyValue{
+				resource.NewNumberProperty(42),
+			}, nil
+		})
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackTransformation(callback1)
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewNumberProperty(1),
+			},
+		})
+		assert.ErrorContains(t, err, "expected struct value, got number_value:42")
+		return err
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "expected struct value, got number_value:42")
+	assert.Len(t, snap.Resources, 0)
+}
