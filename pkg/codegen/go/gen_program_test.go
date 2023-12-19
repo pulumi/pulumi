@@ -57,8 +57,6 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 				{
 					Directory:   "aws-resource-options-4.26",
 					Description: "Resource Options",
-					// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
-					SkipCompile: codegen.NewStringSet("go"),
 				},
 				{
 					Directory:   "aws-resource-options-5.16.2",
@@ -521,7 +519,7 @@ func parseAndBindProgram(t *testing.T,
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
 	t.Parallel()
 
-	source := `	
+	source := `
 resource main "auto-deploy:index:AutoDeployer" {
     project = "example"
 }`
