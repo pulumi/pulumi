@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.98.0 (2023-12-19)
+
+
+### Features
+
+- [cli/import] Import can now distinguish between logical names and source names.
+  [#14745](https://github.com/pulumi/pulumi/pull/14745)
+
+
+### Bug Fixes
+
+- [programgen/{dotnet,go,nodejs,python}] Fix generated utility functions for filebase64, filebase64sha256, sha1 and mimeType
+  [#14857](https://github.com/pulumi/pulumi/pull/14857)
+
+- [programgen/{nodejs,python}] Fix duplicated import statements when instantiating a component multiple times
+  [#14829](https://github.com/pulumi/pulumi/pull/14829)
+
+
+### Miscellaneous
+
+- [cli] Update esc to v0.6.1
+  [#14939](https://github.com/pulumi/pulumi/pull/14939)
+
 ## 3.97.0 (2023-12-14)
 
 
