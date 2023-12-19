@@ -30,8 +30,14 @@ jobs:
       - name: Git describe
         id: ghd
         uses: proudust/gh-describe@v1
+      - name: strip prefix
+        id: strip-prefix
+        run: |
+          version="${{ steps.ghd.outputs.describe }}"
+          version="${version#v}"
+          ./.github/scripts/set-output dev-version "$version"
     outputs:
-      describe: "${{ steps.ghd.outputs.describe }}"
+      dev-version: "${{ steps.strip-prefix.outputs.dev-version }}"
       version: ${{ inputs.version }}
 
   matrix:
@@ -73,7 +79,7 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
-      dev-version: ${{ needs.gather-info.outputs.describe }}
+      dev-version: ${{ needs.gather-info.outputs.dev-version }}
       os: ${{ matrix.os }}
       arch: ${{ matrix.arch }}
       build-platform: ${{ matrix.build-platform }}
@@ -128,10 +134,7 @@ jobs:
           (
             cd artifacts
             version="${{ inputs.version }}"
-            # The describe output includes a 'v' in front of the version number, 'inputs.version'
-            # does not.  Trim the 'v' to have consistent version numbering.
-            dev_version="${{ needs.gather-info.outputs.describe }}"
-            dev_version="${dev_version:1}"
+            dev_version="${{ needs.gather-info.outputs.dev-version }}"
             for file in *; do
               mv "$file" "${file//$version/$dev_version}"
             done
