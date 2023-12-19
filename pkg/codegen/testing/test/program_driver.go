@@ -151,6 +151,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "azure-sa",
 		Description: "Azure SA",
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "kubernetes-operator",
@@ -273,6 +275,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "regress-11176",
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
 		Skip:        allProgLanguages.Except("go"),
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "throw-not-implemented",

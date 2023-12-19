@@ -109,6 +109,9 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "plain-schema-gh6957",
 		Description: "Repro for #6957",
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("go/test"),
 	},
 	{
 		Directory:   "resource-args-python-case-insensitive",
@@ -303,7 +306,9 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		// Google Native has its own import aliases, so those should be respected, unless there are local aliases.
 		// AWS Classic doesn't have any import aliases, so none should be used, unless there are local aliases.
 		Description: "Ensure external import aliases are honored, and any local import aliases override them",
-		Skip:        allLanguages.Except("go/any"),
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		// Skip:        allLanguages.Except("go/any"),
+		Skip: allLanguages,
 	},
 	{
 		Directory:   "external-python-same-module-name",
