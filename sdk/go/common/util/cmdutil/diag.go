@@ -96,3 +96,11 @@ func InitDiag(opts diag.FormatOptions) {
 	contract.Assertf(snk == nil, "Cannot initialize diagnostics sink more than once")
 	snk = diag.DefaultSink(os.Stdout, os.Stderr, opts)
 }
+
+func ReplaceDiag(replacement diag.Sink) diag.Sink {
+	snkMutex.Lock()
+	defer snkMutex.Unlock()
+	prev := snk
+	snk = replacement
+	return prev
+}

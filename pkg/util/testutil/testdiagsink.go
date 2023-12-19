@@ -41,6 +41,7 @@ func NewTestDiagSink(pwd string) *TestDiagSink {
 
 func (d *TestDiagSink) DebugMsgs() []string   { return d.messages[diag.Debug] }
 func (d *TestDiagSink) InfoMsgs() []string    { return d.messages[diag.Info] }
+func (d *TestDiagSink) InfoerrMsgs() []string { return d.messages[diag.Infoerr] }
 func (d *TestDiagSink) ErrorMsgs() []string   { return d.messages[diag.Error] }
 func (d *TestDiagSink) WarningMsgs() []string { return d.messages[diag.Warning] }
 
@@ -54,6 +55,10 @@ func (d *TestDiagSink) Debugf(dia *diag.Diag, args ...interface{}) {
 
 func (d *TestDiagSink) Infof(dia *diag.Diag, args ...interface{}) {
 	d.messages[diag.Info] = append(d.messages[diag.Info], d.combine(diag.Info, dia, args...))
+}
+
+func (d *TestDiagSink) Infoerrf(dia *diag.Diag, args ...interface{}) {
+	d.messages[diag.Infoerr] = append(d.messages[diag.Infoerr], d.combine(diag.Info, dia, args...))
 }
 
 func (d *TestDiagSink) Errorf(dia *diag.Diag, args ...interface{}) {
