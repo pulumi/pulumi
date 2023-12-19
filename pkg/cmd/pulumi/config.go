@@ -161,7 +161,25 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 					destinationProjectStack)
 			}
 
-			return copyEntireConfigMap(currentStack, currentProjectStack, destinationStack, destinationProjectStack)
+			requiresSaving, err := copyEntireConfigMap(
+				currentStack,
+				currentProjectStack,
+				destinationStack,
+				destinationProjectStack)
+			if err != nil {
+				return err
+			}
+
+			// The use of `requiresSaving` here ensures that there was actually some config
+			// that needed saved, otherwise it's an unnecessary save call
+			if requiresSaving {
+				err := saveProjectStack(destinationStack, destinationProjectStack)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
 		}),
 	}
 
@@ -224,13 +242,15 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 func copyEntireConfigMap(currentStack backend.Stack,
 	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
 	destinationProjectStack *workspace.ProjectStack,
-) error {
+) (bool, error) {
 	var decrypter config.Decrypter
 	currentConfig := currentProjectStack.Config
+	currentEnvironments := currentProjectStack.Environment
+
 	if currentConfig.HasSecureValue() {
 		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
 		if decerr != nil {
-			return decerr
+			return false, decerr
 		}
 		contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
 		decrypter = dec
@@ -240,33 +260,29 @@ func copyEntireConfigMap(currentStack backend.Stack,
 
 	encrypter, _, cerr := getStackEncrypter(destinationStack, destinationProjectStack)
 	if cerr != nil {
-		return cerr
+		return false, cerr
 	}
 
 	newProjectConfig, err := currentConfig.Copy(decrypter, encrypter)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	var requiresSaving bool
 	for key, val := range newProjectConfig {
 		err = destinationProjectStack.Config.Set(key, val, false)
 		if err != nil {
-			return err
+			return false, err
 		}
 		requiresSaving = true
 	}
 
-	// The use of `requiresSaving` here ensures that there was actually some config
-	// that needed saved, otherwise it's an unnecessary save call
-	if requiresSaving {
-		err := saveProjectStack(destinationStack, destinationProjectStack)
-		if err != nil {
-			return err
-		}
+	if currentEnvironments != nil && len(currentEnvironments.Imports()) > 0 {
+		destinationProjectStack.Environment = currentEnvironments
+		requiresSaving = true
 	}
 
-	return nil
+	return requiresSaving, nil
 }
 
 func newConfigGetCmd(stack *string) *cobra.Command {

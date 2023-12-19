@@ -191,20 +191,8 @@ func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestOpenStackEnv(t *testing.T) {
-	t.Parallel()
-
-	env := map[string]esc.Value{
-		"pulumiConfig": esc.NewValue(map[string]esc.Value{
-			"test:string": esc.NewValue("esc"),
-		}),
-		"environmentVariables": esc.NewValue(map[string]esc.Value{
-			"TEST_VAR": esc.NewSecret("hunter2"),
-		}),
-		"files": esc.NewValue(map[string]esc.Value{
-			"TEST_FILE": esc.NewSecret("sensitive"),
-		}),
-	}
+func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockStack {
+	t.Helper()
 
 	be := &backend.MockEnvironmentsBackend{
 		MockBackend: backend.MockBackend{
@@ -227,6 +215,26 @@ func TestOpenStackEnv(t *testing.T) {
 		BackendF: func() backend.Backend { return be },
 	}
 
+	return stack
+}
+
+func TestOpenStackEnv(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+		"environmentVariables": esc.NewValue(map[string]esc.Value{
+			"TEST_VAR": esc.NewSecret("hunter2"),
+		}),
+		"files": esc.NewValue(map[string]esc.Value{
+			"TEST_FILE": esc.NewSecret("sensitive"),
+		}),
+	}
+
+	stack := getMockStackWithEnv(t, env)
+
 	var projectStack workspace.ProjectStack
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
@@ -235,6 +243,85 @@ func TestOpenStackEnv(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestCopyConfig(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+		"environmentVariables": esc.NewValue(map[string]esc.Value{
+			"TEST_VAR": esc.NewSecret("hunter2"),
+		}),
+		"files": esc.NewValue(map[string]esc.Value{
+			"TEST_FILE": esc.NewSecret("sensitive"),
+		}),
+	}
+
+	mockSecretsManager := &secrets.MockSecretsManager{
+		EncrypterF: func() (config.Encrypter, error) {
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			return encrypter, nil
+		},
+		DecrypterF: func() (config.Decrypter, error) {
+			decrypter := &secrets.MockDecrypter{
+				DecryptValueF: func() string {
+					return "plaintext"
+				},
+				BulkDecryptF: func() map[string]string {
+					return map[string]string{
+						"idontknow": "whatiamdoing",
+					}
+				},
+			}
+
+			return decrypter, nil
+		},
+	}
+
+	getMockStack := func(name string) *backend.MockStack {
+		stack := getMockStackWithEnv(t, env)
+		stack.RefF = func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "org/project/" + name,
+				NameV:               tokens.MustParseStackName(name),
+				ProjectV:            "project",
+				FullyQualifiedNameV: tokens.QName("org/project/" + name),
+			}
+		}
+		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
+			return mockSecretsManager, nil
+		}
+
+		return stack
+	}
+
+	sourceStack := getMockStack("mystack")
+
+	var sourceProjectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - test"), &sourceProjectStack)
+	require.NoError(t, err)
+
+	t.Run("TestCopyConfigIncludesEnvironments", func(t *testing.T) {
+		destinationStack := getMockStack("mystack2")
+
+		var destinationProjectStack workspace.ProjectStack
+		err := yaml.Unmarshal([]byte("environment:\n  - test2"), &destinationProjectStack)
+		require.NoError(t, err)
+
+		requiresSaving, err := copyEntireConfigMap(
+			sourceStack, &sourceProjectStack, destinationStack, &destinationProjectStack)
+		require.NoError(t, err)
+		assert.True(t, requiresSaving, "expected config file changes requiring saving")
+
+		// Assert that only the source stack's environment
+		// remains in the destination stack.
+		envImports := destinationProjectStack.Environment.Imports()
+		assert.Contains(t, envImports, "test")
+		assert.NotContains(t, envImports, "test2")
+	})
 }
 
 func TestOpenStackEnvDiags(t *testing.T) {
