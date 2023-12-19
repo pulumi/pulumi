@@ -51,6 +51,7 @@ import {
     transferProperties,
 } from "./rpc";
 import {
+    awaitStackRegistrations,
     excessiveDebugOutput,
     getCallbacks,
     getMonitor,
@@ -59,7 +60,7 @@ import {
     isLegacyApplyEnabled,
     rpcKeepAlive,
     serialize,
-    terminateRpcs,
+    terminateRpcs
 } from "./settings";
 
 import * as gempty from "google-protobuf/google/protobuf/empty_pb";
@@ -444,6 +445,8 @@ export function registerResource(
                 `RegisterResource RPC prepared: t=${t}, name=${name}` +
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
+
+            await awaitStackRegistrations()
 
             const callbacks: Callback[] = [];
             if (getStore().supportsTransforms) {

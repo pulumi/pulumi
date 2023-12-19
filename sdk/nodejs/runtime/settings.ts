@@ -315,6 +315,18 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
 }
 
 /**
+ * Waits for any pending stack transforms to register.
+ */
+export async function awaitStackRegistrations() : Promise<void> {
+    const store = getStore();
+    const callbacks = store.callbacks;
+    if (callbacks === undefined) {
+        return;
+    }
+    return await callbacks.awaitStackRegistrations();
+}
+
+/**
  * getCallbacks returns the current callbacks for RPC communications.
  */
 export function getCallbacks(): ICallbackServer | undefined {

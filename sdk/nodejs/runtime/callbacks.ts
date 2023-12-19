@@ -32,6 +32,8 @@ export interface ICallbackServer {
     registerTransformation(callback: ResourceTransformation): Promise<callproto.Callback>;
     registerStackTransformation(callback: ResourceTransformation): void;
     shutdown(): void;
+    // Wait for any pendind registerStackTransformation calls to complete.
+    awaitStackRegistrations(): Promise<void>;
 }
 
 export class CallbackServer implements ICallbackServer {
@@ -39,6 +41,8 @@ export class CallbackServer implements ICallbackServer {
     private readonly _monitor: resrpc.IResourceMonitorClient;
     private readonly _server: grpc.Server;
     private readonly _target: Promise<string>;
+    private _pendingRegistrations: number = 0;
+    private _awaitQueue: ((reason?: any) => void)[] = [];
 
     constructor(monitor: resrpc.IResourceMonitorClient) {
         this._monitor = monitor;
@@ -61,6 +65,21 @@ export class CallbackServer implements ICallbackServer {
 
                 this._server.start();
                 resolve(`127.0.0.1:${port}`);
+            });
+        });
+    }
+
+    awaitStackRegistrations(): Promise<void> {
+        if (this._pendingRegistrations === 0) {
+            return Promise.resolve();
+        }
+        return new Promise<void>((resolve, reject) => {
+            this._awaitQueue.push((reason?: any) => {
+                if (reason !== undefined) {
+                    reject(reason);
+                } else {
+                    resolve();
+                }
             });
         });
     }
@@ -114,19 +133,32 @@ export class CallbackServer implements ICallbackServer {
     }
 
     registerStackTransformation(transform: ResourceTransformation): void {
-        this.registerTransformation(transform).then(
-            (req) => {
-                this._monitor.registerStackTransformation(req, (err, _) => {
-                    if (err !== null) {
-                        log.error(`failed to register stack transformation: ${err.message}`);
-                        return;
+        this._pendingRegistrations++;
+
+        this.registerTransformation(transform)
+            .then(
+                (req) => {
+                    this._monitor.registerStackTransformation(req, (err, _) => {
+                        if (err !== null) {
+                            log.error(`failed to register stack transformation: ${err.message}`);
+                            return;
+                        }
+                        // Remove this from the list of callbacks given we didn't manage to actually register it.
+                        this._callbacks.delete(req.getToken());
+                    });
+                },
+                (err) => log.error(`failed to register stack transformation: ${err}`),
+            )
+            .finally(() => {
+                this._pendingRegistrations--;
+                if (this._pendingRegistrations === 0) {
+                    const queue = this._awaitQueue;
+                    this._awaitQueue = [];
+                    for (const waiter of queue) {
+                        waiter();
                     }
-                    // Remove this from the list of callbacks given we didn't manage to actually register it.
-                    this._callbacks.delete(req.getToken());
-                });
-            },
-            (err) => log.error(`failed to register stack transformation: ${err}`),
-        );
+                }
+            });
     }
 }
 
