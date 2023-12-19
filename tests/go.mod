@@ -14,7 +14,7 @@ require (
 	github.com/grapl-security/pulumi-hcp/sdk v0.1.14
 	github.com/hexops/autogold v1.3.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/pulumi/pkg/v3 v3.91.0
+	github.com/pulumi/pulumi/pkg/v3 v3.97.0
 	github.com/pulumi/pulumi/sdk/v3 v3.97.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.57.1
@@ -158,7 +158,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/esc v0.6.1-0.20231111193429-44b746a5b3b5 // indirect
+	github.com/pulumi/esc v0.6.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
