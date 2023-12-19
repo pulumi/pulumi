@@ -387,7 +387,7 @@ export class LocalWorkspace implements Workspace {
             }
         }
         const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${foundExt}`);
-        const serializeSettings = settings as any;
+        const serializeSettings = { ...settings } as any;
         let contents;
 
         // Transform the keys to the serialized representation that we expect.
