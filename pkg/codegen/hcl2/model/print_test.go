@@ -45,3 +45,15 @@ func TestPrintNoTokens(t *testing.T) {
 }`
 	assert.Equal(t, expected, fmt.Sprintf("%v", b))
 }
+
+func TestPrettyPrintingNoneType(t *testing.T) {
+	t.Parallel()
+	pretty := NoneType.Pretty().String()
+	assert.Equal(t, "none", pretty)
+}
+
+func TestPrettyPrintingDynamicType(t *testing.T) {
+	t.Parallel()
+	pretty := DynamicType.Pretty().String()
+	assert.Equal(t, "dynamic", pretty)
+}

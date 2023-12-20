@@ -1,4 +1,4 @@
 changes:
 - type: chore
   scope: cli
-  description: Update esc to v0.6.1
+  description: Update esc to v0.6.2

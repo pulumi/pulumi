@@ -17,12 +17,15 @@ package deploy
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/blang/semver"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
@@ -36,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type testRegEvent struct {
@@ -1289,4 +1293,669 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
+}
+
+type streamInvokeMock struct {
+	SendF    func(res *pulumirpc.InvokeResponse) error
+	SendMsgF func(m interface{}) error
+	RecvMsgF func(m interface{}) error
+}
+
+func (s *streamInvokeMock) Send(res *pulumirpc.InvokeResponse) error {
+	if s.SendF != nil {
+		return s.SendF(res)
+	}
+	panic("unimplemented")
+}
+
+func (s *streamInvokeMock) SendMsg(m interface{}) error {
+	if s.SendF != nil {
+		return s.SendMsgF(m)
+	}
+	panic("unimplemented")
+}
+
+func (s *streamInvokeMock) RecvMsg(m interface{}) error {
+	if s.RecvMsgF != nil {
+		return s.RecvMsgF(m)
+	}
+	panic("unimplemented")
+}
+func (s *streamInvokeMock) SetHeader(metadata.MD) error  { panic("unimplemented") }
+func (s *streamInvokeMock) SendHeader(metadata.MD) error { panic("unimplemented") }
+func (s *streamInvokeMock) SetTrailer(metadata.MD)       { panic("unimplemented") }
+func (s *streamInvokeMock) Context() context.Context     { panic("unimplemented") }
+
+var _ pulumirpc.ResourceMonitor_StreamInvokeServer = (*streamInvokeMock)(nil)
+
+type providerSourceMock struct {
+	Provider plugin.Provider
+}
+
+func (ps *providerSourceMock) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
+	return ps.Provider, ps.Provider != nil
+}
+
+var _ ProviderSource = (*providerSourceMock)(nil)
+
+func TestStreamInvoke(t *testing.T) {
+	t.Parallel()
+	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, nil)(),
+			nil, "", nil, false, nil)
+		require.NoError(t, err)
+
+		providerRegChan := make(chan *registerResourceEvent, 1)
+		var called bool
+
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				Proj:   &workspace.Project{Name: "proj"},
+				Target: &Target{},
+			},
+			plugctx: plugctx,
+		}, &providerSourceMock{
+			Provider: &deploytest.Provider{
+				StreamInvokeF: func(
+					tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
+				) ([]plugin.CheckFailure, error) {
+					called = true
+					require.NoError(t, onNext(resource.PropertyMap{}))
+					return nil, nil
+				},
+			},
+		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:dev::11103::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+
+		err = mon.StreamInvoke(&pulumirpc.ResourceInvokeRequest{
+			Tok: "pkgA:index:func",
+		}, &streamInvokeMock{
+			SendF:    func(res *pulumirpc.InvokeResponse) error { return nil },
+			RecvMsgF: func(m interface{}) error { return nil },
+		})
+		// Ensure the channel is read from.
+		wg.Wait()
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+	t.Run("unknown provider", func(t *testing.T) {
+		t.Parallel()
+
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			return nil
+		})
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, programF)(),
+			nil, "", nil, false, nil)
+		assert.NoError(t, err)
+
+		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, plugctx.Diag)
+		reg := providers.NewRegistry(plugctx.Host, false, builtins)
+		providerRegChan := make(chan *registerResourceEvent, 100)
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				Proj:   &workspace.Project{Name: "proj"},
+				Target: &Target{},
+			},
+			plugctx: plugctx,
+		}, reg, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:dev::11103::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+
+		err = mon.StreamInvoke(&pulumirpc.ResourceInvokeRequest{
+			Tok: "pkgA:index:func",
+		}, &streamInvokeMock{
+			SendF:    func(res *pulumirpc.InvokeResponse) error { return nil },
+			RecvMsgF: func(m interface{}) error { return nil },
+		})
+		// Ensure the channel is read from.
+		wg.Wait()
+		assert.ErrorContains(t, err, "unknown provider")
+	})
+}
+
+func TestStreamInvokeQuery(t *testing.T) {
+	t.Parallel()
+	t.Run("check failure", func(t *testing.T) {
+		t.Parallel()
+
+		var called bool
+		loaders := []*deploytest.ProviderLoader{
+			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+				return &deploytest.Provider{
+					StreamInvokeF: func(
+						tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
+					) ([]plugin.CheckFailure, error) {
+						called = true
+						require.NoError(t, onNext(resource.PropertyMap{}))
+						return []plugin.CheckFailure{
+							{
+								Property: resource.PropertyKey("fake-key"),
+								Reason:   "I said so",
+							},
+						}, nil
+					},
+				}, nil
+			}),
+		}
+
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			return nil
+		})
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, programF, loaders...)(),
+			nil, "", nil, false, nil)
+		assert.NoError(t, err)
+
+		cancel := context.Background()
+
+		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, plugctx.Diag)
+
+		reg := providers.NewRegistry(plugctx.Host, false, builtins)
+
+		providerRegErrChan := make(chan error)
+
+		mon, err := newQueryResourceMonitor(builtins, nil, nil, reg, plugctx,
+			providerRegErrChan, opentracing.SpanFromContext(cancel), &EvalRunInfo{
+				Proj: &workspace.Project{Name: "test"},
+			})
+		require.NoError(t, err)
+
+		var failures []*pulumirpc.CheckFailure
+		err = mon.StreamInvoke(&pulumirpc.ResourceInvokeRequest{
+			Tok: "pkgA:index:func",
+		}, &streamInvokeMock{
+			SendF: func(res *pulumirpc.InvokeResponse) error {
+				failures = res.GetFailures()
+				return nil
+			},
+			RecvMsgF: func(m interface{}) error { return nil },
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []*pulumirpc.CheckFailure{
+			{
+				Property: "fake-key",
+				Reason:   "I said so",
+			},
+		}, failures)
+		assert.True(t, called)
+	})
+	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
+		var called bool
+		loaders := []*deploytest.ProviderLoader{
+			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+				return &deploytest.Provider{
+					StreamInvokeF: func(
+						tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
+					) ([]plugin.CheckFailure, error) {
+						called = true
+						require.NoError(t, onNext(resource.PropertyMap{}))
+						return nil, nil
+					},
+				}, nil
+			}),
+		}
+
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			return nil
+		})
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, programF, loaders...)(),
+			nil, "", nil, false, nil)
+		assert.NoError(t, err)
+
+		cancel := context.Background()
+
+		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, plugctx.Diag)
+
+		reg := providers.NewRegistry(plugctx.Host, false, builtins)
+		providerRegErrChan := make(chan error)
+		mon, err := newQueryResourceMonitor(builtins, nil, nil, reg, plugctx,
+			providerRegErrChan, opentracing.SpanFromContext(cancel), &EvalRunInfo{
+				Proj: &workspace.Project{Name: "test"},
+			})
+		require.NoError(t, err)
+
+		err = mon.StreamInvoke(&pulumirpc.ResourceInvokeRequest{
+			Tok: "pkgA:index:func",
+		}, &streamInvokeMock{
+			SendF:    func(res *pulumirpc.InvokeResponse) error { return nil },
+			RecvMsgF: func(m interface{}) error { return nil },
+		})
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+}
+
+type decrypterMock struct {
+	DecryptValueF func(
+		ctx context.Context, ciphertext string) (string, error)
+	BulkDecryptF func(
+		ctx context.Context, ciphertexts []string) (map[string]string, error)
+}
+
+var _ config.Decrypter = (*decrypterMock)(nil)
+
+func (d *decrypterMock) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	if d.DecryptValueF != nil {
+		return d.DecryptValueF(ctx, ciphertext)
+	}
+	panic("unimplemented")
+}
+
+func (d *decrypterMock) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	if d.BulkDecryptF != nil {
+		return d.BulkDecryptF(ctx, ciphertexts)
+	}
+	panic("unimplemented")
+}
+
+func TestEvalSource(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Stack", func(t *testing.T) {
+		t.Parallel()
+		src := &evalSource{
+			runinfo: &EvalRunInfo{
+				Target: &Target{
+					Name: tokens.MustParseStackName("target-name"),
+				},
+			},
+		}
+		assert.Equal(t, tokens.MustParseStackName("target-name"), src.Stack())
+	})
+	t.Run("Info", func(t *testing.T) {
+		t.Parallel()
+		runinfo := &EvalRunInfo{
+			Target: &Target{
+				Name: tokens.MustParseStackName("target-name"),
+			},
+		}
+		src := &evalSource{
+			runinfo: runinfo,
+		}
+		assert.Equal(t, runinfo, src.Info())
+	})
+	t.Run("Iterate", func(t *testing.T) {
+		t.Parallel()
+		t.Run("config decrypt value error", func(t *testing.T) {
+			t.Parallel()
+			var decrypterCalled bool
+			src := &evalSource{
+				plugctx: &plugin.Context{
+					Diag: &deploytest.NoopSink{},
+				},
+
+				runinfo: &EvalRunInfo{
+					Proj: &workspace.Project{Name: "proj"},
+					Target: &Target{
+						Name: tokens.MustParseStackName("target-name"),
+						Config: config.Map{
+							config.MustMakeKey("test", "secret"): config.NewSecureValue("secret"),
+						},
+						Decrypter: &decrypterMock{
+							DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
+								decrypterCalled = true
+								return "", fmt.Errorf("expected fail")
+							},
+						},
+					},
+				},
+			}
+			_, err := src.Iterate(context.Background(), Options{}, &providerSourceMock{})
+			assert.ErrorContains(t, err, "failed to decrypt config")
+			assert.True(t, decrypterCalled)
+		})
+	})
+}
+
+func TestResmonCancel(t *testing.T) {
+	t.Parallel()
+	done := make(chan error)
+	rm := &resmon{
+		cancel: make(chan bool, 10),
+		done:   done,
+	}
+	err := fmt.Errorf("my error")
+
+	go func() {
+		// This ensures that cancel doesn't hang.
+		done <- err
+	}()
+
+	assert.Equal(t, err, rm.Cancel())
+}
+
+func TestSourceEvalServeOptions(t *testing.T) {
+	t.Parallel()
+	assert.Len(t,
+		sourceEvalServeOptions(nil, opentracing.SpanFromContext(context.Background()), "" /* logFile */),
+		2,
+	)
+
+	assert.Len(t,
+		sourceEvalServeOptions(&plugin.Context{
+			DebugTraceMutex: &sync.Mutex{},
+		}, opentracing.SpanFromContext(context.Background()), "logFile.log"),
+		4,
+	)
+}
+
+func TestEvalSourceIterator(t *testing.T) {
+	t.Parallel()
+	t.Run("Close", func(t *testing.T) {
+		t.Parallel()
+		var called bool
+		iter := &evalSourceIterator{
+			mon: &mockResmon{
+				CancelF: func() error {
+					called = true
+					return nil
+				},
+			},
+		}
+		iter.Close()
+		assert.True(t, called)
+	})
+	t.Run("ResourceMonitor", func(t *testing.T) {
+		t.Parallel()
+		var called bool
+		mon := &mockResmon{
+			CancelF: func() error { called = true; return nil },
+		}
+		iter := &evalSourceIterator{
+			mon: mon,
+		}
+		iter.Close()
+		assert.Equal(t, mon, iter.ResourceMonitor())
+		assert.True(t, called)
+	})
+	t.Run("Next", func(t *testing.T) {
+		t.Parallel()
+		t.Run("iter.done", func(t *testing.T) {
+			t.Parallel()
+			iter := &evalSourceIterator{
+				done: true,
+			}
+			evt, err := iter.Next()
+			assert.Nil(t, evt)
+			assert.NoError(t, err)
+		})
+	})
+}
+
+func TestParseSourcePosition(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name        string
+		input       *pulumirpc.SourcePosition
+		expected    string
+		errContains string
+	}{
+		{
+			name:        "NilInput",
+			input:       nil,
+			expected:    "",
+			errContains: "",
+		},
+		{
+			name:        "InvalidLine",
+			input:       &pulumirpc.SourcePosition{Line: 0},
+			expected:    "",
+			errContains: "invalid line number 0",
+		},
+		{
+			name:        "InvalidColumn",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: -1},
+			expected:    "",
+			errContains: "invalid column number -1",
+		},
+		{
+			name:        "InvalidURI",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: 1, Uri: ":invalid-uri:"},
+			expected:    "",
+			errContains: `parse ":invalid-uri:": missing protocol scheme`,
+		},
+		{
+			name:        "UnrecognizedScheme",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: 1, Uri: "http://example.com/file.txt"},
+			expected:    "",
+			errContains: "unrecognized scheme \"http\"",
+		},
+		{
+			name:        "NonAbsolutePath",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: 1, Uri: "file:relative/path/file.txt"},
+			expected:    "",
+			errContains: "source positions must include absolute paths",
+		},
+	}
+
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s := &sourcePositions{
+				projectRoot: "/absolute/path/",
+			}
+			result, err := s.parseSourcePosition(tt.input)
+
+			assert.Equal(t, tt.expected, result)
+			if tt.errContains != "" {
+				assert.ErrorContains(t, err, tt.errContains, result)
+				assert.Equal(t, tt.expected, result)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+type configSourceMock struct {
+	GetPackageConfigF func(pkg tokens.Package) (resource.PropertyMap, error)
+}
+
+var _ plugin.ConfigSource = (*configSourceMock)(nil)
+
+func (c *configSourceMock) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
+	if c.GetPackageConfigF != nil {
+		return c.GetPackageConfigF(pkg)
+	}
+	panic("unimplemented")
+}
+
+func TestDefaultProviders(t *testing.T) {
+	t.Parallel()
+	t.Run("newRegisterDefaultProviderEvent", func(t *testing.T) {
+		t.Parallel()
+		t.Run("error in GetPackageConfig()", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := fmt.Errorf("expected error")
+			d := &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, expectedErr
+					},
+				},
+			}
+			_, _, err := d.newRegisterDefaultProviderEvent(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, expectedErr)
+		})
+	})
+	t.Run("handleRequest", func(t *testing.T) {
+		t.Parallel()
+		t.Run("error in shouldDenyRequest", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := fmt.Errorf("expected error")
+			d := &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, expectedErr
+					},
+				},
+			}
+			_, err := d.handleRequest(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, expectedErr)
+		})
+	})
+	t.Run("shouldDenyRequest", func(t *testing.T) {
+		t.Parallel()
+		t.Run("GetPackageConfigErr", func(t *testing.T) {
+			t.Parallel()
+
+			expectedErr := fmt.Errorf("expected error")
+			d := &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, expectedErr
+					},
+				},
+			}
+			_, err := d.shouldDenyRequest(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("disable-default-providers", func(t *testing.T) {
+			t.Parallel()
+			t.Run("invalid value", func(t *testing.T) {
+				t.Parallel()
+				d := &defaultProviders{
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return resource.PropertyMap{
+								"disable-default-providers": resource.NewNumberProperty(100),
+							}, nil
+						},
+					},
+				}
+				_, err := d.shouldDenyRequest(providers.ProviderRequest{})
+				assert.ErrorContains(t, err, "Unexpected encoding of pulumi:disable-default-providers")
+			})
+			t.Run("empty value", func(t *testing.T) {
+				t.Parallel()
+				d := &defaultProviders{
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return resource.PropertyMap{
+								"disable-default-providers": resource.NewStringProperty(""),
+							}, nil
+						},
+					},
+				}
+				res, err := d.shouldDenyRequest(providers.ProviderRequest{})
+				assert.NoError(t, err)
+				assert.False(t, res)
+			})
+			t.Run("invalid list", func(t *testing.T) {
+				t.Run("bad json", func(t *testing.T) {
+					t.Parallel()
+					d := &defaultProviders{
+						config: &configSourceMock{
+							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+								return resource.PropertyMap{
+									"disable-default-providers": resource.NewStringProperty("[[["),
+								}, nil
+							},
+						},
+					}
+					res, err := d.shouldDenyRequest(providers.ProviderRequest{})
+					assert.ErrorContains(t, err, "Failed to parse [[[")
+					assert.True(t, res)
+				})
+				t.Run("mixed list values", func(t *testing.T) {
+					t.Parallel()
+					d := &defaultProviders{
+						config: &configSourceMock{
+							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+								return resource.PropertyMap{
+									"disable-default-providers": resource.NewStringProperty(`["foo", 2, 3]`),
+								}, nil
+							},
+						},
+					}
+					res, err := d.shouldDenyRequest(providers.ProviderRequest{})
+					assert.ErrorContains(t, err, "must be a string")
+					assert.True(t, res)
+				})
+			})
+		})
+	})
+	t.Run("Cancel", func(t *testing.T) {
+		t.Parallel()
+		t.Run("serve", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool, 1)
+			cancel <- true
+			d := &defaultProviders{
+				cancel: cancel,
+			}
+			d.serve()
+		})
+		t.Run("getDefaultProviderRef", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool, 1)
+			cancel <- true
+			d := &defaultProviders{
+				cancel: cancel,
+			}
+			_, err := d.getDefaultProviderRef(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, context.Canceled)
+		})
+	})
+}
+
+func TestGetProviderReference(t *testing.T) {
+	t.Parallel()
+	t.Run("bad-reference", func(t *testing.T) {
+		t.Parallel()
+		_, err := getProviderReference(nil, providers.ProviderRequest{}, "bad-reference")
+		assert.ErrorContains(t, err, "could not parse provider reference")
+	})
+
+	t.Run("provider-reference-error", func(t *testing.T) {
+		t.Parallel()
+		cancel := make(chan bool, 1)
+		cancel <- true
+		_, err := getProviderReference(&defaultProviders{
+			cancel: cancel,
+		}, providers.ProviderRequest{}, "")
+		assert.ErrorIs(t, err, context.Canceled)
+	})
 }

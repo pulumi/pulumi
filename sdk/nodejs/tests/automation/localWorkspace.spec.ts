@@ -50,6 +50,8 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(settings.secretsProvider, "abc");
             assert.strictEqual(settings.config!["plain"], "plain");
             assert.strictEqual(settings.config!["secure"].secure, "secret");
+            await ws.saveStackSettings("dev", settings);
+            assert.strictEqual(settings.secretsProvider, "abc");
         }
     });
 

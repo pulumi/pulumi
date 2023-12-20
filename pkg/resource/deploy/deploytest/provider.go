@@ -16,7 +16,7 @@ package deploytest
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
@@ -62,6 +62,8 @@ type Provider struct {
 
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	StreamInvokeF func(tok tokens.ModuleMember, args resource.PropertyMap,
+		onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error)
 
 	CallF func(monitor *ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 		options plugin.CallOptions) (plugin.CallResult, error)
@@ -221,7 +223,10 @@ func (prov *Provider) StreamInvoke(
 	tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error,
 ) ([]plugin.CheckFailure, error) {
-	return nil, errors.New("not implemented")
+	if prov.StreamInvokeF == nil {
+		return []plugin.CheckFailure{}, fmt.Errorf("StreamInvoke unimplemented")
+	}
+	return prov.StreamInvokeF(tok, args, onNext)
 }
 
 func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,

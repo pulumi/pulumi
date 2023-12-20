@@ -93,7 +93,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
-          pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version=${{ steps.ghd.outputs.describe }}
+          version="${{ steps.ghd.outputs.describe }}"
+          # the git describe output includes a 'v' prefix, but we
+          # don't expect that in the latest-dev-version file.  Strip
+          # it here.
+          version="${version#v}"
+          pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version="$version"
 
   ci-ok:
     name: ci-ok

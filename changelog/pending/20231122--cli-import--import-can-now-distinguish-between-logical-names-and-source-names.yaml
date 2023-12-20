@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/import
-  description: Import can now distinguish between logical names and source names.
