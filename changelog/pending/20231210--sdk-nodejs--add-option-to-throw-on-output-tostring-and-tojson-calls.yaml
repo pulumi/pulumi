@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Add an environment variable (`PULUMI_ERROR_OUTPUT_STRING`) to throw when an output tries to convert to a string.
