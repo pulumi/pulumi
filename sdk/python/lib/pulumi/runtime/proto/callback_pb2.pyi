@@ -16,11 +16,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import builtins
-import collections.abc
 import google.protobuf.descriptor
-import google.protobuf.internal.containers
 import google.protobuf.message
-import google.protobuf.struct_pb2
 import sys
 
 if sys.version_info >= (3, 8):
@@ -55,19 +52,18 @@ class CallbackInvokeRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     TOKEN_FIELD_NUMBER: builtins.int
-    ARGUMENTS_FIELD_NUMBER: builtins.int
+    REQUEST_FIELD_NUMBER: builtins.int
     token: builtins.str
     """the token for the callback."""
-    @property
-    def arguments(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[google.protobuf.struct_pb2.Value]:
-        """the property value arguments to pass to the callback function."""
+    request: builtins.bytes
+    """the serialized protobuf message of the arguments for this callback."""
     def __init__(
         self,
         *,
         token: builtins.str = ...,
-        arguments: collections.abc.Iterable[google.protobuf.struct_pb2.Value] | None = ...,
+        request: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["arguments", b"arguments", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["request", b"request", "token", b"token"]) -> None: ...
 
 global___CallbackInvokeRequest = CallbackInvokeRequest
 
@@ -75,15 +71,14 @@ global___CallbackInvokeRequest = CallbackInvokeRequest
 class CallbackInvokeResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    RETURNS_FIELD_NUMBER: builtins.int
-    @property
-    def returns(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[google.protobuf.struct_pb2.Value]:
-        """The return values from the callback function."""
+    RESPONSE_FIELD_NUMBER: builtins.int
+    response: builtins.bytes
+    """the serialized protobuf message of the response for this callback."""
     def __init__(
         self,
         *,
-        returns: collections.abc.Iterable[google.protobuf.struct_pb2.Value] | None = ...,
+        response: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["returns", b"returns"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["response", b"response"]) -> None: ...
 
 global___CallbackInvokeResponse = CallbackInvokeResponse

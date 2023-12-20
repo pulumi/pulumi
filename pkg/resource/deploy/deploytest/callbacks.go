@@ -19,17 +19,15 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/proto"
 )
 
 func NewCallbacksServer() (*CallbackServer, error) {
 	callbackServer := &CallbackServer{
-		callbacks: make(map[string]func(args []resource.PropertyValue) ([]resource.PropertyValue, error)),
+		callbacks: make(map[string]func(args []byte) (proto.Message, error)),
 		stop:      make(chan bool),
 	}
 
@@ -54,7 +52,7 @@ type CallbackServer struct {
 
 	stop      chan bool
 	handle    rpcutil.ServeHandle
-	callbacks map[string]func(args []resource.PropertyValue) ([]resource.PropertyValue, error)
+	callbacks map[string]func(req []byte) (proto.Message, error)
 }
 
 func (s *CallbackServer) Close() error {
@@ -63,8 +61,8 @@ func (s *CallbackServer) Close() error {
 }
 
 func (s *CallbackServer) Allocate(
-	callback func(args []resource.PropertyValue,
-	) ([]resource.PropertyValue, error),
+	callback func(args []byte,
+	) (proto.Message, error),
 ) (*pulumirpc.Callback, error) {
 	token := uuid.NewString()
 	s.callbacks[token] = callback
@@ -82,41 +80,17 @@ func (s *CallbackServer) Invoke(
 		return nil, nil
 	}
 
-	args := make([]resource.PropertyValue, len(req.Arguments))
-	for i, arg := range req.Arguments {
-		v, err := plugin.UnmarshalPropertyValue("Arguments", arg, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		args[i] = *v
-	}
-
-	result, err := callback(args)
+	response, err := callback(req.Request)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &pulumirpc.CallbackInvokeResponse{
-		Returns: make([]*structpb.Value, len(result)),
+	responseBytes, err := proto.Marshal(response)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling response: %w", err)
 	}
 
-	for i, ret := range result {
-		v, err := plugin.MarshalPropertyValue("Returns", ret, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		resp.Returns[i] = v
-	}
-
-	return resp, nil
+	return &pulumirpc.CallbackInvokeResponse{
+		Response: responseBytes,
+	}, nil
 }

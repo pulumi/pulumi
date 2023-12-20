@@ -25,8 +25,8 @@ func TestNodejsTransformations(t *testing.T) {
 				},
 				Quick:                  true,
 				ExtraRuntimeValidation: Validator,
-				DebugLogLevel:          10,
-				Verbose:                true,
+				//	DebugLogLevel:          10,
+				// Verbose:                true,
 			})
 		})
 	}

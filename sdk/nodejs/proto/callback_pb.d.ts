@@ -33,10 +33,10 @@ export namespace Callback {
 export class CallbackInvokeRequest extends jspb.Message { 
     getToken(): string;
     setToken(value: string): CallbackInvokeRequest;
-    clearArgumentsList(): void;
-    getArgumentsList(): Array<google_protobuf_struct_pb.Value>;
-    setArgumentsList(value: Array<google_protobuf_struct_pb.Value>): CallbackInvokeRequest;
-    addArguments(value?: google_protobuf_struct_pb.Value, index?: number): google_protobuf_struct_pb.Value;
+    getRequest(): Uint8Array | string;
+    getRequest_asU8(): Uint8Array;
+    getRequest_asB64(): string;
+    setRequest(value: Uint8Array | string): CallbackInvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallbackInvokeRequest.AsObject;
@@ -51,15 +51,15 @@ export class CallbackInvokeRequest extends jspb.Message {
 export namespace CallbackInvokeRequest {
     export type AsObject = {
         token: string,
-        argumentsList: Array<google_protobuf_struct_pb.Value.AsObject>,
+        request: Uint8Array | string,
     }
 }
 
 export class CallbackInvokeResponse extends jspb.Message { 
-    clearReturnsList(): void;
-    getReturnsList(): Array<google_protobuf_struct_pb.Value>;
-    setReturnsList(value: Array<google_protobuf_struct_pb.Value>): CallbackInvokeResponse;
-    addReturns(value?: google_protobuf_struct_pb.Value, index?: number): google_protobuf_struct_pb.Value;
+    getResponse(): Uint8Array | string;
+    getResponse_asU8(): Uint8Array;
+    getResponse_asB64(): string;
+    setResponse(value: Uint8Array | string): CallbackInvokeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallbackInvokeResponse.AsObject;
@@ -73,6 +73,6 @@ export class CallbackInvokeResponse extends jspb.Message {
 
 export namespace CallbackInvokeResponse {
     export type AsObject = {
-        returnsList: Array<google_protobuf_struct_pb.Value.AsObject>,
+        response: Uint8Array | string,
     }
 }

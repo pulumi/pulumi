@@ -15,9 +15,11 @@
 package lifecycletest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,15 +32,41 @@ import (
 )
 
 func TransformationFunction(f func(name, typ string, props resource.PropertyMap) (resource.PropertyMap, error),
-) func([]resource.PropertyValue) ([]resource.PropertyValue, error) {
-	return func(args []resource.PropertyValue) ([]resource.PropertyValue, error) {
-		name := args[0].StringValue()
-		typ := args[1].StringValue()
-		props := args[2].ObjectValue()
-		ret, err := f(name, typ, props)
-		return []resource.PropertyValue{
-			resource.NewObjectProperty(ret),
-		}, err
+) func([]byte) (proto.Message, error) {
+	return func(request []byte) (proto.Message, error) {
+		var transformationRequest pulumirpc.TransformationRequest
+		err := proto.Unmarshal(request, &transformationRequest)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+
+		mprops, err := plugin.UnmarshalProperties(transformationRequest.Props, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling properties: %w", err)
+		}
+
+		ret, err := f(transformationRequest.Name, transformationRequest.Type, mprops)
+		if err != nil {
+			return nil, err
+		}
+		mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return &pulumirpc.TransformationResponse{
+			Props: mret,
+		}, nil
 	}
 }
 
@@ -147,8 +175,8 @@ func TestRemoteTransformations(t *testing.T) {
 	}, res.Inputs)
 }
 
-// Test that the engine errors if a transformation function returns a bad structure.
-func TestRemoteTransformationsBadType(t *testing.T) {
+// Test that the engine errors if a transformation function returns an unexpected response.
+func TestRemoteTransformationsBadResponse(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -162,9 +190,10 @@ func TestRemoteTransformationsBadType(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		callback1, err := callbacks.Allocate(func(args []resource.PropertyValue) ([]resource.PropertyValue, error) {
-			return []resource.PropertyValue{
-				resource.NewNumberProperty(42),
+		callback1, err := callbacks.Allocate(func(args []byte) (proto.Message, error) {
+			// return the wrong message type
+			return &pulumirpc.RegisterResourceResponse{
+				Urn: "boom",
 			}, nil
 		})
 		require.NoError(t, err)
@@ -177,7 +206,7 @@ func TestRemoteTransformationsBadType(t *testing.T) {
 				"foo": resource.NewNumberProperty(1),
 			},
 		})
-		assert.ErrorContains(t, err, "expected struct value, got number_value:42")
+		assert.ErrorContains(t, err, "unmarshaling response: proto:\u00a0cannot parse invalid wire-format data")
 		return err
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -188,6 +217,6 @@ func TestRemoteTransformationsBadType(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.ErrorContains(t, err, "expected struct value, got number_value:42")
+	assert.ErrorContains(t, err, "unmarshaling response: proto:\u00a0cannot parse invalid wire-format data")
 	assert.Len(t, snap.Resources, 0)
 }

@@ -252,6 +252,8 @@ func (p *monitorProxy) SupportsFeature(
 	return p.target.SupportsFeature(ctx, req)
 }
 
-func (p *monitorProxy) RegisterStackTransformation(ctx context.Context, cb *pulumirpc.Callback) (*pbempty.Empty, error) {
+func (p *monitorProxy) RegisterStackTransformation(
+	ctx context.Context, cb *pulumirpc.Callback,
+) (*pbempty.Empty, error) {
 	return p.target.RegisterStackTransformation(ctx, cb)
 }

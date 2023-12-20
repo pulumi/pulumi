@@ -478,3 +478,55 @@ export namespace ResourceInvokeRequest {
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
     }
 }
+
+export class TransformationRequest extends jspb.Message { 
+    getType(): string;
+    setType(value: string): TransformationRequest;
+    getName(): string;
+    setName(value: string): TransformationRequest;
+
+    hasProps(): boolean;
+    clearProps(): void;
+    getProps(): google_protobuf_struct_pb.Struct | undefined;
+    setProps(value?: google_protobuf_struct_pb.Struct): TransformationRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformationRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformationRequest): TransformationRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformationRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformationRequest;
+    static deserializeBinaryFromReader(message: TransformationRequest, reader: jspb.BinaryReader): TransformationRequest;
+}
+
+export namespace TransformationRequest {
+    export type AsObject = {
+        type: string,
+        name: string,
+        props?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
+export class TransformationResponse extends jspb.Message { 
+
+    hasProps(): boolean;
+    clearProps(): void;
+    getProps(): google_protobuf_struct_pb.Struct | undefined;
+    setProps(value?: google_protobuf_struct_pb.Struct): TransformationResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformationResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformationResponse): TransformationResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformationResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformationResponse;
+    static deserializeBinaryFromReader(message: TransformationResponse, reader: jspb.BinaryReader): TransformationResponse;
+}
+
+export namespace TransformationResponse {
+    export type AsObject = {
+        props?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}

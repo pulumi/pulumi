@@ -174,3 +174,14 @@ message ResourceInvokeRequest {
 
     SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
 }
+
+message TransformationRequest {
+    string type = 1; // the type of the resource.
+    string name = 2; // the name of the resource.
+    google.protobuf.Struct props = 3; // the properties of the resource.
+}
+
+message TransformationResponse {
+    google.protobuf.Struct props = 1; // the transformed properties.
+
+}

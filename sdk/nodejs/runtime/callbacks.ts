@@ -122,6 +122,9 @@ export class CallbackServer implements ICallbackServer {
 
     async registerTransformation(transform: ResourceTransformation): Promise<callproto.Callback> {
         const cb = (args: structproto.Value[]): structproto.Value[] => {
+
+
+
             return [];
         };
         const uuid = randomUUID();

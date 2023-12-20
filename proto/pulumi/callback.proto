@@ -36,11 +36,11 @@ message Callback {
 message CallbackInvokeRequest {
     // the token for the callback.
     string token = 1;
-    // the property value arguments to pass to the callback function.
-    repeated google.protobuf.Value arguments = 2;
+    // the serialized protobuf message of the arguments for this callback.
+    bytes request = 2;
 }
 
 message CallbackInvokeResponse {
-    // The return values from the callback function.
-    repeated google.protobuf.Value returns = 1;
+    // the serialized protobuf message of the response for this callback.
+   bytes response = 1;
 }

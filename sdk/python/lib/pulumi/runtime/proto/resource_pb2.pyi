@@ -608,3 +608,47 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "args", b"args", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
+
+@typing_extensions.final
+class TransformationRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TYPE_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    PROPS_FIELD_NUMBER: builtins.int
+    type: builtins.str
+    """the type of the resource."""
+    name: builtins.str
+    """the name of the resource."""
+    @property
+    def props(self) -> google.protobuf.struct_pb2.Struct:
+        """the properties of the resource."""
+    def __init__(
+        self,
+        *,
+        type: builtins.str = ...,
+        name: builtins.str = ...,
+        props: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["props", b"props"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "props", b"props", "type", b"type"]) -> None: ...
+
+global___TransformationRequest = TransformationRequest
+
+@typing_extensions.final
+class TransformationResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROPS_FIELD_NUMBER: builtins.int
+    @property
+    def props(self) -> google.protobuf.struct_pb2.Struct:
+        """the transformed properties."""
+    def __init__(
+        self,
+        *,
+        props: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["props", b"props"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["props", b"props"]) -> None: ...
+
+global___TransformationResponse = TransformationResponse

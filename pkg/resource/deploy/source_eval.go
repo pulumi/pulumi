@@ -30,12 +30,12 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	structpb "google.golang.org/protobuf/types/known/structpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
@@ -1134,33 +1134,30 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 			return nil, err
 		}
 
-		// The argumetns for a transform are always the same
-		args := []*structpb.Value{
-			structpb.NewStringValue(name),
-			structpb.NewStringValue(typ),
-			structpb.NewStructValue(mprops),
+		request, err := proto.Marshal(&pulumirpc.TransformationRequest{
+			Name:  name,
+			Type:  typ,
+			Props: mprops,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("marshaling request: %w", err)
 		}
 
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
-			Token:     token,
-			Arguments: args,
+			Token:   token,
+			Request: request,
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		// The response for a transform is always the same, the first argument is the new props (or nil)
-		if len(resp.Returns) == 0 {
-			return nil, nil
+		var response pulumirpc.TransformationResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling response: %w", err)
 		}
-		sprops := resp.Returns[0].GetStructValue()
-		if sprops == nil && resp.Returns[0].Kind != nil {
-			return nil, fmt.Errorf("expected struct value, got %v", resp.Returns[0])
-		}
-		if sprops == nil {
-			return nil, nil
-		}
-		newProps, err := plugin.UnmarshalProperties(sprops, opts)
+
+		newProps, err := plugin.UnmarshalProperties(response.Props, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1367,7 +1364,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 	for _, transform := range transformations {
-		newProps, err := transform(ctx, string(name), string(t), props)
+		newProps, err := transform(ctx, name, string(t), props)
 		if err != nil {
 			return nil, err
 		}
@@ -1383,7 +1380,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		for parent != "" {
 			if transforms, ok := rm.resourceTransformations[parent]; ok {
 				for _, transform := range transforms {
-					newProps, err := transform(ctx, string(name), string(t), props)
+					newProps, err := transform(ctx, name, string(t), props)
 					if err != nil {
 						return err
 					}
@@ -1405,7 +1402,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defer rm.stackTransformationsLock.Unlock()
 
 		for _, transform := range rm.stackTransformations {
-			newProps, err := transform(ctx, string(name), string(t), props)
+			newProps, err := transform(ctx, name, string(t), props)
 			if err != nil {
 				return err
 			}

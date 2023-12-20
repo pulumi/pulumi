@@ -52,7 +52,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.CallbackInvokeRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.CallbackInvokeRequest.repeatedFields_, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.pulumirpc.CallbackInvokeRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -73,7 +73,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.CallbackInvokeResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.CallbackInvokeResponse.repeatedFields_, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.pulumirpc.CallbackInvokeResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -244,13 +244,6 @@ proto.pulumirpc.Callback.prototype.setToken = function(value) {
 
 
 
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.pulumirpc.CallbackInvokeRequest.repeatedFields_ = [2];
-
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -283,8 +276,7 @@ proto.pulumirpc.CallbackInvokeRequest.prototype.toObject = function(opt_includeI
 proto.pulumirpc.CallbackInvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    argumentsList: jspb.Message.toObjectList(msg.getArgumentsList(),
-    google_protobuf_struct_pb.Value.toObject, includeInstance)
+    request: msg.getRequest_asB64()
   };
 
   if (includeInstance) {
@@ -326,9 +318,8 @@ proto.pulumirpc.CallbackInvokeRequest.deserializeBinaryFromReader = function(msg
       msg.setToken(value);
       break;
     case 2:
-      var value = new google_protobuf_struct_pb.Value;
-      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
-      msg.addArguments(value);
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      msg.setRequest(value);
       break;
     default:
       reader.skipField();
@@ -366,12 +357,11 @@ proto.pulumirpc.CallbackInvokeRequest.serializeBinaryToWriter = function(message
       f
     );
   }
-  f = message.getArgumentsList();
+  f = message.getRequest_asU8();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeBytes(
       2,
-      f,
-      google_protobuf_struct_pb.Value.serializeBinaryToWriter
+      f
     );
   }
 };
@@ -396,50 +386,47 @@ proto.pulumirpc.CallbackInvokeRequest.prototype.setToken = function(value) {
 
 
 /**
- * repeated google.protobuf.Value arguments = 2;
- * @return {!Array<!proto.google.protobuf.Value>}
+ * optional bytes request = 2;
+ * @return {!(string|Uint8Array)}
  */
-proto.pulumirpc.CallbackInvokeRequest.prototype.getArgumentsList = function() {
-  return /** @type{!Array<!proto.google.protobuf.Value>} */ (
-    jspb.Message.getRepeatedWrapperField(this, google_protobuf_struct_pb.Value, 2));
+proto.pulumirpc.CallbackInvokeRequest.prototype.getRequest = function() {
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
- * @param {!Array<!proto.google.protobuf.Value>} value
+ * optional bytes request = 2;
+ * This is a type-conversion wrapper around `getRequest()`
+ * @return {string}
+ */
+proto.pulumirpc.CallbackInvokeRequest.prototype.getRequest_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getRequest()));
+};
+
+
+/**
+ * optional bytes request = 2;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getRequest()`
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.CallbackInvokeRequest.prototype.getRequest_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getRequest()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.pulumirpc.CallbackInvokeRequest} returns this
-*/
-proto.pulumirpc.CallbackInvokeRequest.prototype.setArgumentsList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 2, value);
+ */
+proto.pulumirpc.CallbackInvokeRequest.prototype.setRequest = function(value) {
+  return jspb.Message.setProto3BytesField(this, 2, value);
 };
 
 
-/**
- * @param {!proto.google.protobuf.Value=} opt_value
- * @param {number=} opt_index
- * @return {!proto.google.protobuf.Value}
- */
-proto.pulumirpc.CallbackInvokeRequest.prototype.addArguments = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.google.protobuf.Value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.pulumirpc.CallbackInvokeRequest} returns this
- */
-proto.pulumirpc.CallbackInvokeRequest.prototype.clearArgumentsList = function() {
-  return this.setArgumentsList([]);
-};
-
-
-
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.pulumirpc.CallbackInvokeResponse.repeatedFields_ = [1];
 
 
 
@@ -472,8 +459,7 @@ proto.pulumirpc.CallbackInvokeResponse.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.CallbackInvokeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    returnsList: jspb.Message.toObjectList(msg.getReturnsList(),
-    google_protobuf_struct_pb.Value.toObject, includeInstance)
+    response: msg.getResponse_asB64()
   };
 
   if (includeInstance) {
@@ -511,9 +497,8 @@ proto.pulumirpc.CallbackInvokeResponse.deserializeBinaryFromReader = function(ms
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = new google_protobuf_struct_pb.Value;
-      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
-      msg.addReturns(value);
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      msg.setResponse(value);
       break;
     default:
       reader.skipField();
@@ -544,52 +529,55 @@ proto.pulumirpc.CallbackInvokeResponse.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.CallbackInvokeResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getReturnsList();
+  f = message.getResponse_asU8();
   if (f.length > 0) {
-    writer.writeRepeatedMessage(
+    writer.writeBytes(
       1,
-      f,
-      google_protobuf_struct_pb.Value.serializeBinaryToWriter
+      f
     );
   }
 };
 
 
 /**
- * repeated google.protobuf.Value returns = 1;
- * @return {!Array<!proto.google.protobuf.Value>}
+ * optional bytes response = 1;
+ * @return {!(string|Uint8Array)}
  */
-proto.pulumirpc.CallbackInvokeResponse.prototype.getReturnsList = function() {
-  return /** @type{!Array<!proto.google.protobuf.Value>} */ (
-    jspb.Message.getRepeatedWrapperField(this, google_protobuf_struct_pb.Value, 1));
+proto.pulumirpc.CallbackInvokeResponse.prototype.getResponse = function() {
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
- * @param {!Array<!proto.google.protobuf.Value>} value
+ * optional bytes response = 1;
+ * This is a type-conversion wrapper around `getResponse()`
+ * @return {string}
+ */
+proto.pulumirpc.CallbackInvokeResponse.prototype.getResponse_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getResponse()));
+};
+
+
+/**
+ * optional bytes response = 1;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getResponse()`
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.CallbackInvokeResponse.prototype.getResponse_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getResponse()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.pulumirpc.CallbackInvokeResponse} returns this
-*/
-proto.pulumirpc.CallbackInvokeResponse.prototype.setReturnsList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 1, value);
-};
-
-
-/**
- * @param {!proto.google.protobuf.Value=} opt_value
- * @param {number=} opt_index
- * @return {!proto.google.protobuf.Value}
  */
-proto.pulumirpc.CallbackInvokeResponse.prototype.addReturns = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.google.protobuf.Value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.pulumirpc.CallbackInvokeResponse} returns this
- */
-proto.pulumirpc.CallbackInvokeResponse.prototype.clearReturnsList = function() {
-  return this.setReturnsList([]);
+proto.pulumirpc.CallbackInvokeResponse.prototype.setResponse = function(value) {
+  return jspb.Message.setProto3BytesField(this, 1, value);
 };
 
 
