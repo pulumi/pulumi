@@ -719,8 +719,8 @@ class Output(Generic[T_co]):
 
         # You'd think this could all be on one line but mypy seems to think `s` is a `Sequence[object]` if you
         # do.
-        os: Output[Union[str, bytes, bytearray]] = Output.from_input(s)
-        return os.apply(loads)
+        s_output: Output[Union[str, bytes, bytearray]] = Output.from_input(s)
+        return s_output.apply(loads)
 
     def __str__(self) -> str:
         msg = """Calling __str__ on an Output[T] is not supported.
