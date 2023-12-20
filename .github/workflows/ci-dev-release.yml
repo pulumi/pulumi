@@ -35,7 +35,7 @@ jobs:
         run: |
           version="${{ steps.ghd.outputs.describe }}"
           version="${version#v}"
-          ./.github/scripts/set-output dev-version "$version"
+          echo version="$version" >>"${GITHUB_OUTPUT}"
     outputs:
       dev-version: ${{ steps.strip-prefix.outputs.dev-version }}
       version: ${{ inputs.version }}
