@@ -15,6 +15,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -98,6 +99,11 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
+}
+
+// do proxies the http client's Do method. This is a low-level construct and should be used sparingly
+func (pc *Client) do(ctx context.Context, req *http.Request) (*http.Response, error) {
+	return pc.httpClient.Do(req.WithContext(ctx))
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -186,6 +192,11 @@ func publishPolicyPackPublishComplete(orgName, policyPackName string, versionTag
 func getPolicyPackConfigSchemaPath(orgName, policyPackName string, versionTag string) string {
 	return fmt.Sprintf(
 		"/api/orgs/%s/policypacks/%s/versions/%s/schema", orgName, policyPackName, versionTag)
+}
+
+// getAIPromptPath returns the API path to create a Pulumi AI prompt.
+func getAIPromptPath() string {
+	return "/api/ai/template"
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -1202,4 +1213,23 @@ func is404(err error) bool {
 		return true
 	}
 	return false
+}
+
+// SubmitAIPrompt sends the user's prompt to the Pulumi Service and streams back the response.
+func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (*http.Response, error) {
+	url, err := url.Parse(pc.apiURL + getAIPromptPath())
+	if err != nil {
+		return nil, err
+	}
+	marshalledBody, err := json.Marshal(requestBody)
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url.String(), bytes.NewReader(marshalledBody))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+	res, err := pc.do(ctx, request)
+	return res, err
 }

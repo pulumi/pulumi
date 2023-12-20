@@ -68,6 +68,67 @@ const (
 	AccessTokenEnvVar = "PULUMI_ACCESS_TOKEN"
 )
 
+type PulumiAILanguage string
+
+const (
+	PulumiAILanguageTypeScript PulumiAILanguage = "TypeScript"
+	PulumiAILanguageJavaScript PulumiAILanguage = "JavaScript"
+	PulumiAILanguagePython     PulumiAILanguage = "Python"
+	PulumiAILanguageGo         PulumiAILanguage = "Go"
+	PulumiAILanguageCSharp     PulumiAILanguage = "C#"
+	PulumiAILanguageJava       PulumiAILanguage = "Java"
+	PulumiAILanguageYAML       PulumiAILanguage = "YAML"
+)
+
+var pulumiAILanguageMap = map[string]PulumiAILanguage{
+	"typescript": PulumiAILanguageTypeScript,
+	"javascript": PulumiAILanguageJavaScript,
+	"python":     PulumiAILanguagePython,
+	"go":         PulumiAILanguageGo,
+	"c#":         PulumiAILanguageCSharp,
+	"java":       PulumiAILanguageJava,
+	"yaml":       PulumiAILanguageYAML,
+}
+
+// All of the languages supported by Pulumi AI.
+var PulumiAILanguageOptions = []PulumiAILanguage{
+	PulumiAILanguageTypeScript,
+	PulumiAILanguageJavaScript,
+	PulumiAILanguagePython,
+	PulumiAILanguageGo,
+	PulumiAILanguageCSharp,
+	PulumiAILanguageJava,
+	PulumiAILanguageYAML,
+}
+
+// A natural language list of languages supported by Pulumi AI.
+const PulumiAILanguagesClause = "TypeScript, JavaScript, Python, Go, C#, Java, or YAML"
+
+func (e *PulumiAILanguage) String() string {
+	return string(*e)
+}
+
+func (e *PulumiAILanguage) Set(v string) error {
+	value, ok := pulumiAILanguageMap[strings.ToLower(v)]
+	if !ok {
+		return fmt.Errorf("must be one of %s", PulumiAILanguagesClause)
+	}
+	*e = value
+	return nil
+}
+
+func (e *PulumiAILanguage) Type() string {
+	return "pulumiAILanguage"
+}
+
+type AIPromptRequestBody struct {
+	Language       PulumiAILanguage `json:"language"`
+	Instructions   string           `json:"instructions"`
+	ResponseMode   string           `json:"responseMode"`
+	ConversationID string           `json:"conversationId"`
+	ConnectionID   string           `json:"connectionId"`
+}
+
 // Name validation rules enforced by the Pulumi Service.
 var stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
 
@@ -121,6 +182,7 @@ type Backend interface {
 	NaturalLanguageSearch(
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
+	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 }
 
 type cloudBackend struct {
@@ -1085,6 +1147,16 @@ func (b *cloudBackend) NaturalLanguageSearch(
 		return nil, err
 	}
 	return results, err
+}
+
+func (b *cloudBackend) PromptAI(
+	ctx context.Context, requestBody AIPromptRequestBody,
+) (*http.Response, error) {
+	res, err := b.client.SubmitAIPrompt(ctx, requestBody)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
+	}
+	return res, err
 }
 
 type updateMetadata struct {
