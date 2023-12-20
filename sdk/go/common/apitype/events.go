@@ -179,12 +179,14 @@ type StepEventStateMetadata struct {
 type ResourcePreEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Planning bool              `json:"planning,omitempty"`
+	Internal bool              `json:"internal,omitempty"`
 }
 
 // ResOutputsEvent is emitted when a resource is finished being provisioned.
 type ResOutputsEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Planning bool              `json:"planning,omitempty"`
+	Internal bool              `json:"internal,omitempty"`
 }
 
 // ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is

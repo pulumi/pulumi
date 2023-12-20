@@ -145,6 +145,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		apiEvent.ResourcePreEvent = &apitype.ResourcePreEvent{
 			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
 			Planning: p.Planning,
+			Internal: p.Internal,
 		}
 
 	case engine.ResourceOutputsEvent:
@@ -155,6 +156,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		apiEvent.ResOutputsEvent = &apitype.ResOutputsEvent{
 			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
 			Planning: p.Planning,
+			Internal: p.Internal,
 		}
 
 	case engine.ResourceOperationFailed:

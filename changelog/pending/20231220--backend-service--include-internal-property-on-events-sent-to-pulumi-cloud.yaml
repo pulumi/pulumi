@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/service
+  description: Include Internal property on events sent to Pulumi Cloud
