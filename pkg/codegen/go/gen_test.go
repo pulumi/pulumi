@@ -503,6 +503,7 @@ func TestTitle(t *testing.T) {
 	assert.Equal("WaldoThudFred", Title("waldo-ThudFred"))
 	assert.Equal("WaldoThud_Fred", Title("waldo-Thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("waldo-thud_Fred"))
+	assert.Equal("WaldoThud_Fred", Title("$waldo-thud_Fred"))
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {

@@ -264,12 +264,8 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
-	if pkg == nil {
-		panic(fmt.Errorf("pkg is nil. token %s", tok))
-	}
-	if pkg.pkg == nil {
-		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
-	}
+	contract.Assertf(pkg != nil, "pkg is nil. token %s", tok)
+	contract.Assertf(pkg.pkg != nil, "pkg.pkg is nil. token %s", tok)
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
