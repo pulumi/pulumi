@@ -58,7 +58,7 @@ func runAINew(
 	opts display.Options,
 	backend httpstate.Backend,
 ) (conversationURL string, err error) {
-	var languageOptions []string
+	languageOptions := make([]string, 0, len(httpstate.PulumiAILanguageOptions))
 	for _, language := range httpstate.PulumiAILanguageOptions {
 		languageOptions = append(languageOptions, language.String())
 	}
@@ -155,7 +155,7 @@ func sendPromptToPulumiAI(
 	connectionID = res.Header.Get("x-connection-id")
 	projectURL := parsedURL.JoinPath("api", "project", url.PathEscape(fmt.Sprintf("%s.zip", conversationID))).String()
 	conversationURL := parsedURL.JoinPath("conversations", conversationID).String()
-	fmt.Println("View this conversation at:", conversationURL)
+	fmt.Println("View this conversation at: ", conversationURL)
 	return projectURL, connectionID, conversationID, nil
 }
 
