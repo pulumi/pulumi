@@ -107,7 +107,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
 		if err != nil {
-			return fmt.Errorf("failed to open URL: %s", err)
+			return fmt.Errorf("failed to open URL: %w", err)
 		}
 	}
 	return nil

@@ -87,12 +87,12 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 
 	delta, err := dds.computeEdits(childCtx, dds.lastSavedDeployment, deployment)
 	if err != nil {
-		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %v", err)
+		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %w", err)
 	}
 
 	checkpointHash, err := checkpointHashPromise.Result(ctx)
 	if err != nil {
-		return deploymentDiff{}, fmt.Errorf("Cannot compute the checkpoint hash: %v", err)
+		return deploymentDiff{}, fmt.Errorf("Cannot compute the checkpoint hash: %w", err)
 	}
 
 	tracingSpan.SetTag("before", len(before))

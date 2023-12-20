@@ -188,7 +188,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	)
 	if err != nil {
 		contract.IgnoreClose(wrapper)
-		return nil, nil, fmt.Errorf("could not connect to resource provider service: %v", err)
+		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
@@ -286,7 +286,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
-		panic(fmt.Errorf("could not start engine service: %v", err))
+		panic(fmt.Errorf("could not start engine service: %w", err))
 	}
 	engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
 

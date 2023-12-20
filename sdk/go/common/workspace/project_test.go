@@ -79,8 +79,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 
 	project.Config = invalidConfig
 	err := project.Validate()
-	assert.Contains(t,
-		err.Error(),
+	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'instanceSize' is not of the expected type 'integer'")
 
 	invalidValues := make([]interface{}, 0)
@@ -102,9 +101,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	}
 	project.Config = invalidConfigWithArray
 	err = project.Validate()
-	assert.Error(t, err, "There is a validation error")
-	assert.Contains(t,
-		err.Error(),
+	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'values' is not of the expected type 'array<array<string>>'")
 }
 
@@ -798,9 +795,7 @@ config:
 		invalidStackConfig.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t,
-		configError.Error(),
+	assert.ErrorContains(t, configError,
 		"Stack 'dev' with configuration key 'importantNumber' must be of type 'integer'")
 }
 
@@ -965,9 +960,7 @@ config:
 		invalidStackConfig.Config,
 		crypter,
 		crypter)
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t,
-		configError.Error(),
+	assert.ErrorContains(t, configError,
 		"Stack 'dev' with configuration key 'importantNumber' must be encrypted as it's secret")
 }
 

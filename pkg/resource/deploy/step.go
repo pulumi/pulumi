@@ -139,7 +139,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			err := s.Deployment().SameProvider(s.new)
 			if err != nil {
 				return resource.StatusOK, nil,
-					fmt.Errorf("bad provider state for resource %v: %v", s.URN(), err)
+					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
 			}
 		}
 	}
@@ -1356,7 +1356,7 @@ func getProvider(s Step) (plugin.Provider, error) {
 	}
 	ref, err := providers.ParseReference(s.Provider())
 	if err != nil {
-		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %w", s.Provider(), s.URN(), err)
 	}
 	if providers.IsDenyDefaultsProvider(ref) {
 		pkg := providers.GetDeniedDefaultProviderPkg(ref)

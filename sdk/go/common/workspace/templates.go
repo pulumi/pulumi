@@ -129,7 +129,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				logging.V(2).Infof(
 					"Failed to load template %s: %s",
-					name, err.Error(),
+					name, err,
 				)
 				result = append(result, Template{Name: name, Error: err})
 			} else if err == nil {
@@ -183,7 +183,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				logging.V(2).Infof(
 					"Failed to load template %s: %s",
-					name, err.Error(),
+					name, err,
 				)
 				result = append(result, PolicyPackTemplate{Name: name, Error: err})
 			} else if err == nil {

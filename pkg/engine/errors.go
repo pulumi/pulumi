@@ -36,5 +36,5 @@ type DecryptError struct {
 }
 
 func (d DecryptError) Error() string {
-	return fmt.Sprintf("failed to decrypt configuration key '%s': %s", d.Key, d.Err.Error())
+	return fmt.Sprintf("failed to decrypt configuration key '%s': %s", d.Key, d.Err)
 }

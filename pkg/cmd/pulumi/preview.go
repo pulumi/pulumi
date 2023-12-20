@@ -161,7 +161,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			if new.Provider != "" {
 				ref, err := providers.ParseReference(new.Provider)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not parse provider reference: %v", err)
+					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
 				// If we're trying to create this provider in the same deployment and it's not a default provider then
@@ -183,7 +183,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 				v, err := providers.GetProviderVersion(inputs)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not get provider version for %s: %v", ref, err)
+					return importFile{}, fmt.Errorf("could not get provider version for %s: %w", ref, err)
 				}
 				if v != nil {
 					version = v.String()
@@ -191,7 +191,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 				pluginDownloadURL, err = providers.GetProviderDownloadURL(inputs)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not get provider download url for %s: %v", ref, err)
+					return importFile{}, fmt.Errorf("could not get provider download url for %s: %w", ref, err)
 				}
 			}
 

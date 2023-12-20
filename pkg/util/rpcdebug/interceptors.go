@@ -164,12 +164,12 @@ func (i *DebugInterceptor) record(log debugInterceptorLogEntry) error {
 
 	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
-		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %v", i.logFile, err)
+		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %w", i.logFile, err)
 	}
 	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(log); err != nil {
-		return fmt.Errorf("Failed to encode GRPC debug logs: %v", err)
+		return fmt.Errorf("Failed to encode GRPC debug logs: %w", err)
 	}
 	return nil
 }

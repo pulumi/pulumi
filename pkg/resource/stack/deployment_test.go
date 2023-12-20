@@ -459,8 +459,7 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 		},
 	}, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, "resource missing required 'urn' field", err.Error())
+	assert.EqualError(t, err, "resource missing required 'urn' field")
 
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
 
@@ -472,8 +471,7 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 		},
 	}, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf("resource '%s' missing required 'type' field", urn), err.Error())
+	assert.EqualError(t, err, fmt.Sprintf("resource '%s' missing required 'type' field", urn))
 
 	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
@@ -486,8 +484,7 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 		},
 	}, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn), err.Error())
+	assert.EqualError(t, err, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn))
 }
 
 func TestSerializePropertyValue(t *testing.T) {
