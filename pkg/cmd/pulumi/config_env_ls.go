@@ -22,7 +22,7 @@ import (
 func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 	var jsonOut bool
 
-	impl := configEnvLsCmd{parent: parent, jsonOut: jsonOut}
+	impl := configEnvLsCmd{parent: parent, jsonOut: &jsonOut}
 
 	cmd := &cobra.Command{
 		Use:   "ls",
@@ -42,9 +42,9 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 type configEnvLsCmd struct {
 	parent *configEnvCmd
 
-	jsonOut bool
+	jsonOut *bool
 }
 
 func (cmd *configEnvLsCmd) run(_ *cobra.Command, _ []string) error {
-	return cmd.parent.listStackEnvironments(cmd.jsonOut)
+	return cmd.parent.listStackEnvironments(*cmd.jsonOut)
 }

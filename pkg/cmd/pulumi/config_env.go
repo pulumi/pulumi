@@ -119,9 +119,13 @@ func (cmd *configEnvCmd) listStackEnvironments(jsonOut bool) error {
 	imports := projectStack.Environment.Imports()
 
 	if jsonOut {
-		err := fprintJSON(cmd.stdout, imports)
-		if err != nil {
-			return err
+		if len(imports) == 0 {
+			fprintf(cmd.stdout, "[]\n")
+		} else {
+			err := fprintJSON(cmd.stdout, imports)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		rows := []cmdutil.TableRow{}
