@@ -546,7 +546,7 @@ func getCachedVersionInfo(devVersion bool) (semver.Version, semver.Version, semv
 type cachedVersionInfo struct {
 	LatestVersion        string `json:"latestVersion"`
 	OldestWithoutWarning string `json:"oldestWithoutWarning"`
-	LatestDevVersion     string `json:"latestDevVersion`
+	LatestDevVersion     string `json:"latestDevVersion"`
 }
 
 // getUpgradeMessage gets a message to display to a user instructing them they are out of date and how to move from
