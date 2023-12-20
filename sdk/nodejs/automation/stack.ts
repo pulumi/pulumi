@@ -547,6 +547,12 @@ Event: ${line}\n${e.toString()}`);
         await this.workspace.addEnvironments(this.name, ...environments);
     }
     /**
+     * Returns the list of environments currently in the stack's import list.
+     */
+    async listEnvironments(): Promise<string[]> {
+        return this.workspace.listEnvironments(this.name);
+    }
+    /**
      * Removes an environment from a stack's import list.
      *
      * @param environment The name of the environment to remove from the stack's configuration

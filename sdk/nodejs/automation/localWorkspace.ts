@@ -467,6 +467,26 @@ export class LocalWorkspace implements Workspace {
         await this.runPulumiCmd(["config", "env", "add", ...environments, "--stack", stackName, "--yes"]);
     }
     /**
+     * Returns the list of environments associated with the specified stack name.
+     *
+     * @param stackName The stack to operate on
+     */
+    async listEnvironments(stackName: string): Promise<string[]> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.99.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.99 added this command (
+        if (ver.compare("3.99.0") < 0) {
+            throw new Error(`listEnvironments requires Pulumi version >= 3.99.0`);
+        }
+
+        const result = await this.runPulumiCmd(["config", "env", "ls", "--stack", stackName, "--json"]);
+        return JSON.parse(result.stdout);
+    }
+    /**
      * Removes an environment from a stack's import list.
      *
      * @param stackName The stack to operate on
