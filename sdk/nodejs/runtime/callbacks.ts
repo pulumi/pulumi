@@ -14,19 +14,20 @@
 
 import * as grpc from "@grpc/grpc-js";
 import { randomUUID } from "crypto";
-import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+import * as jspb from "google-protobuf";
 import * as log from "../log";
 import * as callrpc from "../proto/callback_grpc_pb";
 import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
+import * as resproto from "../proto/resource_pb";
 import { ResourceTransformation } from "../resource";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
-type CallbackFunction = (args: structproto.Value[]) => structproto.Value[];
+type CallbackFunction = (args: Uint8Array) =>  jspb.Message;
 
 export interface ICallbackServer {
     registerTransformation(callback: ResourceTransformation): Promise<callproto.Callback>;
@@ -103,9 +104,10 @@ export class CallbackServer implements ICallbackServer {
             return;
         }
 
-        const resp = new CallbackInvokeResponse();
         try {
-            resp.setReturnsList(cb(req.getArgumentsList()));
+            const response = cb(req.getRequest_asU8())
+            const resp = new CallbackInvokeResponse();
+            resp.setResponse(response.serializeBinary());
             callback(null, resp);
         } catch (e) {
             const err = new grpc.StatusBuilder();
@@ -121,11 +123,17 @@ export class CallbackServer implements ICallbackServer {
     }
 
     async registerTransformation(transform: ResourceTransformation): Promise<callproto.Callback> {
-        const cb = (args: structproto.Value[]): structproto.Value[] => {
+        const cb = (bytes: Uint8Array): jspb.Message => {
+            const request = resproto.TransformationRequest.deserializeBinary(bytes);
 
 
 
-            return [];
+            const result = transform(request);
+
+            const response = new
+
+
+
         };
         const uuid = randomUUID();
         this._callbacks.set(uuid, cb);
