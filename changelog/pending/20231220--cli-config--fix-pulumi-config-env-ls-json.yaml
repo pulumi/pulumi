@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/config
+  description: Fix a bug in `pulumi config env ls --json` where the json flag was not being correctly passed through.

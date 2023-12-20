@@ -25,6 +25,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func boolPtr(v bool) *bool {
+	return &v
+}
+
 func TestConfigEnvLsCmd(t *testing.T) {
 	t.Parallel()
 
@@ -47,7 +51,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: false}
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
 		err := ls.run(nil, nil)
 		require.NoError(t, err)
 
@@ -73,11 +77,11 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: true}
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
 		err := ls.run(nil, nil)
 		require.NoError(t, err)
 
-		const expectedOut = "null\n"
+		const expectedOut = "[]\n"
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 	})
@@ -105,7 +109,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: false}
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
 		err := ls.run(nil, nil)
 		require.NoError(t, err)
 
@@ -141,7 +145,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: true}
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
 		err := ls.run(nil, nil)
 		require.NoError(t, err)
 
@@ -178,7 +182,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: false}
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
 		err := ls.run(nil, nil)
 		require.NoError(t, err)
 
@@ -215,7 +219,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: true}
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
 		err := ls.run(nil, nil)
 		require.NoError(t, err)
 
