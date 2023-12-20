@@ -272,6 +272,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Multiline string literals",
 	},
 	{
+		Directory:   "config-variables",
+		Description: "Basic program with a bunch of config variables",
+		// TODO[https://github.com/pulumi/pulumi/issues/14957] - object config variables are broken here
+		SkipCompile: codegen.NewStringSet("go", "dotnet"),
+	},
+	{
 		Directory:   "regress-11176",
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
 		Skip:        allProgLanguages.Except("go"),

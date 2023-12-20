@@ -1443,11 +1443,11 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	switch v.Type() {
 	case model.StringType: // Already default
 	case model.NumberType:
-		getType = "Float"
+		getType = "Float64"
 	case model.IntType:
 		getType = "Int"
 	case model.BoolType:
-		getType = "Boolean"
+		getType = "Bool"
 	case model.DynamicType:
 		getType = "Object"
 	}
@@ -1498,7 +1498,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		case model.BoolType:
 			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param {\n", v.LogicalName())
 		default:
-			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param != nil {\n", v.LogicalName())
+			g.Fgenf(w, "if param := cfg.GetObject(\"%s\"); param != nil {\n", v.LogicalName())
 		}
 		g.Fgenf(w, "%s = param\n", name)
 		g.Fgen(w, "}\n")
