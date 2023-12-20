@@ -317,7 +317,7 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
 /**
  * Waits for any pending stack transforms to register.
  */
-export async function awaitStackRegistrations() : Promise<void> {
+export async function awaitStackRegistrations(): Promise<void> {
     const store = getStore();
     const callbacks = store.callbacks;
     if (callbacks === undefined) {

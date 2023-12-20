@@ -60,7 +60,7 @@ import {
     isLegacyApplyEnabled,
     rpcKeepAlive,
     serialize,
-    terminateRpcs
+    terminateRpcs,
 } from "./settings";
 
 import * as gempty from "google-protobuf/google/protobuf/empty_pb";
@@ -446,7 +446,7 @@ export function registerResource(
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
 
-            await awaitStackRegistrations()
+            await awaitStackRegistrations();
 
             const callbacks: Callback[] = [];
             if (getStore().supportsTransforms) {
