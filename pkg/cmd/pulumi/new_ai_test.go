@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -57,6 +58,11 @@ type mockReaderCloser struct {
 func (mockReaderCloser) Close() error { return nil }
 
 func TestExpectEOFOnHTTPBackend(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// This test behaves differently on Windows, due to an interaction between survey & os.Stdin.
+		t.Skip()
+	}
+
 	t.Parallel()
 
 	tempdir := tempProjectDir(t)
