@@ -15,19 +15,22 @@
 import * as grpc from "@grpc/grpc-js";
 import { randomUUID } from "crypto";
 import * as jspb from "google-protobuf";
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as log from "../log";
 import * as callrpc from "../proto/callback_grpc_pb";
 import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
-import { ResourceTransformation } from "../resource";
+import { ResourceTransformation, ResourceTransformationArgs } from "../resource";
+import { deserializeProperties, serializeProperties } from "./rpc";
+import { getStackResource } from "./stack";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
-type CallbackFunction = (args: Uint8Array) =>  jspb.Message;
+type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 
 export interface ICallbackServer {
     registerTransformation(callback: ResourceTransformation): Promise<callproto.Callback>;
@@ -105,7 +108,7 @@ export class CallbackServer implements ICallbackServer {
         }
 
         try {
-            const response = cb(req.getRequest_asU8())
+            const response = await cb(req.getRequest_asU8())
             const resp = new CallbackInvokeResponse();
             resp.setResponse(response.serializeBinary());
             callback(null, resp);
@@ -123,17 +126,32 @@ export class CallbackServer implements ICallbackServer {
     }
 
     async registerTransformation(transform: ResourceTransformation): Promise<callproto.Callback> {
-        const cb = (bytes: Uint8Array): jspb.Message => {
+        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
             const request = resproto.TransformationRequest.deserializeBinary(bytes);
 
+            const props = deserializeProperties(request.getProps());
 
+            const args: ResourceTransformationArgs = {
+                // Remote transforms can't really synthasize a resource object here so we just pass the root stack object.
+                resource: getStackResource()!,
 
-            const result = transform(request);
+                type: request.getType(),
+                name: request.getName(),
+                props: props,
+                opts: {},
+            }
 
-            const response = new
+            const result = transform(args);
 
+            const response = new resproto.TransformationResponse();
+            if (result === undefined) {
+                response.setProps(request.getProps());
+            } else {
+                const mprops = await serializeProperties("props", result.props);
+                response.setProps(gstruct.Struct.fromJavaScript(mprops));
+            }
 
-
+            return response;
         };
         const uuid = randomUUID();
         this._callbacks.set(uuid, cb);
@@ -172,30 +190,3 @@ export class CallbackServer implements ICallbackServer {
             });
     }
 }
-
-//
-// start() : Promise<void> {
-
-//     const port: number = await new Promise<number>((resolve, reject) => {
-//         server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
-//             if (err) {
-//                 reject(err);
-//             } else {
-//                 resolve(p);
-//             }
-//         });
-//     });
-//     server.start();
-// }
-//export async function createCallbackService(monitor: resrpc.IResourceMonitorClient): Promise<CallbackServer> {
-//    const server = new grpc.Server({
-//        "grpc.max_receive_message_length": maxRPCMessageSize,
-//    });
-//    const calbackServer = new CallbackServer(monitor);
-//    server.addService(provrpc.CallbacksService, calbackServer);
-//    return calbackServer;
-//   // onExit = (hasError: boolean) => {
-//   //     languageServer.onPulumiExit(hasError);
-//   //     server.forceShutdown();
-//   // };
-//}
