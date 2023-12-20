@@ -17,10 +17,21 @@ package deploy
 import (
 	"context"
 	"errors"
+	"io"
+	"sync"
 	"testing"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 )
@@ -172,8 +183,116 @@ func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 	assert.EqualError(t, err, "Query mode does not support registering resource operations")
 }
 
+func TestQueryResourceMonitor(t *testing.T) {
+	t.Parallel()
+	t.Run("newQueryResourceMonitor", func(t *testing.T) {
+		t.Parallel()
+		t.Run("bad decrypter", func(t *testing.T) {
+			t.Parallel()
+			providerRegErrChan := make(chan error, 1)
+			expectedErr := errors.New("expected error")
+			resmon, err := newQueryResourceMonitor(
+				nil, nil, nil, nil, nil, providerRegErrChan, nil, &EvalRunInfo{
+					Proj: &workspace.Project{
+						Name: "expected-project",
+					},
+					Target: &Target{
+						Config: config.Map{
+							config.MustMakeKey("test", "secret"):  config.NewSecureValue("secret-value"),
+							config.MustMakeKey("test", "regular"): config.NewValue("regular-value"),
+						},
+						Decrypter: &decrypterMock{
+							DecryptValueF: func(
+								ctx context.Context, ciphertext string,
+							) (string, error) {
+								return "", expectedErr
+							},
+						},
+					},
+				},
+			)
+			_ = resmon
+			assert.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("ok", func(t *testing.T) {
+			t.Parallel()
+			providerRegErrChan := make(chan error, 1)
+			resmon, err := newQueryResourceMonitor(
+				nil, nil, nil, nil, nil, providerRegErrChan, nil, &EvalRunInfo{
+					Proj: &workspace.Project{
+						Name: "expected-project",
+					},
+					Target: &Target{
+						Name: tokens.MustParseStackName("expected-name"),
+					},
+				},
+			)
+			assert.NoError(t, err)
+			assert.Equal(t, "expected-project", resmon.callInfo.Project)
+			assert.Equal(t, "expected-name", resmon.callInfo.Stack)
+		})
+	})
+	t.Run("Cancel", func(t *testing.T) {
+		t.Parallel()
+		expectedErr := errors.New("expected-error")
+		done := make(chan error, 1)
+		done <- expectedErr
+		rm := &queryResmon{
+			cancel: make(chan bool),
+			done:   done,
+		}
+		assert.ErrorIs(t, rm.Cancel(), expectedErr)
+	})
+	t.Run("Invoke", func(t *testing.T) {
+		t.Parallel()
+		t.Run("bad provider request", func(t *testing.T) {
+			t.Parallel()
+			t.Run("bad version", func(t *testing.T) {
+				t.Parallel()
+
+				rm := &queryResmon{}
+				_, err := rm.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+					Tok:     "pkgA:index:func",
+					Version: "bad-version",
+				})
+				assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
+			})
+			t.Run("default provider error", func(t *testing.T) {
+				t.Parallel()
+
+				providerRegChan := make(chan *registerResourceEvent, 1)
+				requests := make(chan defaultProviderRequest, 1)
+				rm := &queryResmon{
+					reg: &providers.Registry{},
+					defaultProviders: &defaultProviders{
+						requests:        requests,
+						providerRegChan: providerRegChan,
+					},
+				}
+				wg := &sync.WaitGroup{}
+				wg.Add(1)
+				expectedErr := errors.New("expected error")
+				// Needed so defaultProviders.handleRequest() doesn't hang.
+				go func() {
+					req := <-rm.defaultProviders.requests
+					req.response <- defaultProviderResponse{
+						err: expectedErr,
+					}
+					wg.Done()
+				}()
+				_, err := rm.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+					Tok:     "pkgA:index:func",
+					Version: "1.0.0",
+				})
+				wg.Wait()
+				assert.ErrorIs(t, err, expectedErr)
+			})
+		})
+	})
+}
+
 //
-// Test querySoruce constructor.
+// Test querySource constructor.
 //
 
 func newTestQuerySource(mon SourceResourceMonitor,
@@ -273,4 +392,478 @@ func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
 		return rm.RegisterResourceOutputsF(ctx, req)
 	}
 	panic("not implemented")
+}
+
+func TestQuerySource(t *testing.T) {
+	t.Parallel()
+	t.Run("Wait", func(t *testing.T) {
+		t.Parallel()
+
+		var called bool
+		providerRegErrChan := make(chan error, 1)
+		expectedErr := errors.New("expected error")
+		providerRegErrChan <- expectedErr
+		src := &querySource{
+			providerRegErrChan: providerRegErrChan,
+			// Required to not nil ptr dereference.
+			cancel: context.Background(),
+			mon: &mockResmon{
+				CancelF: func() error {
+					called = true
+					return nil
+				},
+			},
+		}
+		err := src.Wait()
+		assert.ErrorIs(t, err, expectedErr)
+		assert.True(t, called)
+	})
+}
+
+func TestRunLangPlugin(t *testing.T) {
+	t.Parallel()
+	t.Run("failed to launch language host", func(t *testing.T) {
+		t.Parallel()
+
+		assert.ErrorContains(t, runLangPlugin(&querySource{
+			plugctx: &plugin.Context{
+				Host: &mockHost{
+					LanguageRuntimeF: func(root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
+						return nil, errors.New("expected error")
+					},
+				},
+			},
+			runinfo: &EvalRunInfo{
+				Proj: &workspace.Project{
+					Runtime: workspace.NewProjectRuntimeInfo("stuff", map[string]interface{}{}),
+				},
+			},
+		}), "failed to launch language host")
+	})
+	t.Run("bad decrypter", func(t *testing.T) {
+		t.Parallel()
+		expectedErr := errors.New("expected error")
+		err := runLangPlugin(&querySource{
+			plugctx: &plugin.Context{
+				Host: &mockHost{
+					LanguageRuntimeF: func(root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
+						return &mockLanguageRuntime{}, nil
+					},
+				},
+			},
+			runinfo: &EvalRunInfo{
+				Proj: &workspace.Project{
+					Runtime: workspace.NewProjectRuntimeInfo("stuff", map[string]interface{}{}),
+				},
+				Target: &Target{
+					Config: config.Map{
+						config.MustMakeKey("test", "secret"):  config.NewSecureValue("secret-value"),
+						config.MustMakeKey("test", "regular"): config.NewValue("regular-value"),
+					},
+					Decrypter: &decrypterMock{
+						DecryptValueF: func(
+							ctx context.Context, ciphertext string,
+						) (string, error) {
+							return "", expectedErr
+						},
+					},
+				},
+			},
+		})
+		assert.ErrorIs(t, err, expectedErr)
+	})
+	t.Run("bail successfully", func(t *testing.T) {
+		t.Parallel()
+		err := runLangPlugin(&querySource{
+			plugctx: &plugin.Context{
+				Host: &mockHost{
+					LanguageRuntimeF: func(root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
+						return &mockLanguageRuntime{
+							RunF: func(info plugin.RunInfo) (string, bool, error) {
+								return "bail should override progerr", true /* bail */, nil
+							},
+						}, nil
+					},
+				},
+			},
+			// Prevent nilptr dereference.
+			mon: &mockResmon{
+				AddressF: func() string { return "" },
+			},
+			runinfo: &EvalRunInfo{
+				Proj: &workspace.Project{
+					Runtime: workspace.NewProjectRuntimeInfo("stuff", map[string]interface{}{}),
+				},
+			},
+		})
+		assert.ErrorContains(t, err, "run bailed")
+	})
+	t.Run("progerr", func(t *testing.T) {
+		t.Parallel()
+		err := runLangPlugin(&querySource{
+			plugctx: &plugin.Context{
+				Host: &mockHost{
+					LanguageRuntimeF: func(root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
+						return &mockLanguageRuntime{
+							RunF: func(info plugin.RunInfo) (string, bool, error) {
+								return "expected progerr", false /* bail */, nil
+							},
+						}, nil
+					},
+				},
+			},
+			// Prevent nilptr dereference.
+			mon: &mockResmon{
+				AddressF: func() string { return "" },
+			},
+			runinfo: &EvalRunInfo{
+				Proj: &workspace.Project{
+					Runtime: workspace.NewProjectRuntimeInfo("stuff", map[string]interface{}{}),
+				},
+			},
+		})
+		assert.ErrorContains(t, err, "expected progerr")
+	})
+	t.Run("langhost is run correctly", func(t *testing.T) {
+		t.Parallel()
+		var runCalled bool
+		err := runLangPlugin(&querySource{
+			plugctx: &plugin.Context{
+				Host: &mockHost{
+					LanguageRuntimeF: func(root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
+						return &mockLanguageRuntime{
+							RunF: func(info plugin.RunInfo) (string, bool, error) {
+								runCalled = true
+								assert.Equal(t, "expected-address", info.MonitorAddress)
+								assert.Equal(t, "expected-stack", info.Stack)
+								assert.Equal(t, "expected-project", info.Project)
+								assert.Equal(t, "expected-pwd", info.Pwd)
+								assert.Equal(t, "expected-program", info.Program)
+								assert.Equal(t, []string{"expected", "args"}, info.Args)
+								assert.Equal(t, "secret-value", info.Config[config.MustMakeKey("test", "secret")])
+								assert.Equal(t, "regular-value", info.Config[config.MustMakeKey("test", "regular")])
+								assert.True(t, info.QueryMode)
+								assert.True(t, info.DryRun)
+								// Disregard Parallel argument.
+								assert.Equal(t, "expected-organization", info.Organization)
+								return "", false, nil
+							},
+						}, nil
+					},
+				},
+			},
+			// Prevent nilptr dereference.
+			mon: &mockResmon{
+				AddressF: func() string { return "expected-address" },
+			},
+			runinfo: &EvalRunInfo{
+				Proj: &workspace.Project{
+					Name:    "expected-project",
+					Runtime: workspace.NewProjectRuntimeInfo("stuff", map[string]interface{}{}),
+				},
+				Pwd:     "expected-pwd",
+				Program: "expected-program",
+				Args:    []string{"expected", "args"},
+				Target: &Target{
+					Config: config.Map{
+						config.MustMakeKey("test", "secret"):  config.NewSecureValue("secret-value"),
+						config.MustMakeKey("test", "regular"): config.NewValue("regular-value"),
+					},
+					Name:         tokens.MustParseStackName("expected-stack"),
+					Organization: "expected-organization",
+					Decrypter: &decrypterMock{
+						DecryptValueF: func(
+							ctx context.Context, ciphertext string,
+						) (string, error) {
+							return ciphertext, nil
+						},
+					},
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.True(t, runCalled)
+	})
+}
+
+type mockHost struct {
+	ServerAddrF func() string
+
+	LogF func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
+
+	LogStatusF func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
+
+	AnalyzerF func(nm tokens.QName) (plugin.Analyzer, error)
+
+	PolicyAnalyzerF func(name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error)
+
+	ListAnalyzersF func() []plugin.Analyzer
+
+	ProviderF func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error)
+
+	CloseProviderF func(provider plugin.Provider) error
+
+	LanguageRuntimeF func(root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error)
+
+	EnsurePluginsF func(plugins []workspace.PluginSpec, kinds plugin.Flags) error
+
+	ResolvePluginF func(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+
+	GetProjectPluginsF func() []workspace.ProjectPlugin
+
+	SignalCancellationF func() error
+
+	CloseF func() error
+}
+
+var _ plugin.Host = (*mockHost)(nil)
+
+func (h *mockHost) ServerAddr() string {
+	if h.ServerAddrF != nil {
+		return h.ServerAddrF()
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	if h.LogF != nil {
+		h.LogF(sev, urn, msg, streamID)
+		return
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	if h.LogStatusF != nil {
+		h.LogStatusF(sev, urn, msg, streamID)
+		return
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
+	if h.AnalyzerF != nil {
+		return h.Analyzer(nm)
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) PolicyAnalyzer(
+	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
+) (plugin.Analyzer, error) {
+	if h.PolicyAnalyzerF != nil {
+		return h.PolicyAnalyzerF(name, path, opts)
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) ListAnalyzers() []plugin.Analyzer {
+	if h.ListAnalyzersF != nil {
+		return h.ListAnalyzersF()
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	if h.ProviderF != nil {
+		return h.ProviderF(pkg, version)
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) CloseProvider(provider plugin.Provider) error {
+	if h.CloseProviderF != nil {
+		return h.CloseProviderF(provider)
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) LanguageRuntime(
+	root, pwd, runtime string, options map[string]interface{},
+) (plugin.LanguageRuntime, error) {
+	if h.LanguageRuntimeF != nil {
+		return h.LanguageRuntimeF(root, pwd, runtime, options)
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+	if h.EnsurePluginsF != nil {
+		return h.EnsurePluginsF(plugins, kinds)
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) ResolvePlugin(
+	kind workspace.PluginKind, name string, version *semver.Version,
+) (*workspace.PluginInfo, error) {
+	if h.ResolvePluginF != nil {
+		return h.ResolvePluginF(kind, name, version)
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) GetProjectPlugins() []workspace.ProjectPlugin {
+	if h.GetProjectPluginsF != nil {
+		return h.GetProjectPluginsF()
+	}
+	panic("unimplemented")
+}
+
+func (h *mockHost) SignalCancellation() error {
+	if h.SignalCancellationF != nil {
+		return h.SignalCancellationF()
+	}
+	panic("unimplemented")
+}
+
+// Close reclaims any resources associated with the host.
+func (h *mockHost) Close() error {
+	if h.CloseF != nil {
+		return h.CloseF()
+	}
+	panic("unimplemented")
+}
+
+type mockLanguageRuntime struct {
+	CloseF func() error
+
+	GetRequiredPluginsF func(info plugin.ProgInfo) ([]workspace.PluginSpec, error)
+
+	RunF func(info plugin.RunInfo) (string, bool, error)
+
+	GetPluginInfoF func() (workspace.PluginInfo, error)
+
+	InstallDependenciesF func(pwd, main string) error
+
+	AboutF func() (plugin.AboutInfo, error)
+
+	GetProgramDependenciesF func(
+		info plugin.ProgInfo, transitiveDependencies bool,
+	) ([]plugin.DependencyInfo, error)
+
+	RunPluginF func(
+		info plugin.RunPluginInfo,
+	) (io.Reader, io.Reader, context.CancelFunc, error)
+
+	GenerateProjectF func(
+		sourceDirectory, targetDirectory, project string,
+		strict bool, loaderTarget string, localDependencies map[string]string,
+	) (hcl.Diagnostics, error)
+
+	GeneratePackageF func(
+		directory string, schema string,
+		extraFiles map[string][]byte, loaderTarget string,
+	) (hcl.Diagnostics, error)
+
+	GenerateProgramF func(
+		program map[string]string,
+		loaderTarget string,
+	) (map[string][]byte, hcl.Diagnostics, error)
+
+	PackF func(
+		packageDirectory string,
+		version semver.Version,
+		destinationDirectory string,
+	) (string, error)
+}
+
+var _ plugin.LanguageRuntime = (*mockLanguageRuntime)(nil)
+
+func (rt *mockLanguageRuntime) Close() error {
+	if rt.CloseF != nil {
+		return rt.CloseF()
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginSpec, error) {
+	if rt.GetRequiredPluginsF != nil {
+		return rt.GetRequiredPluginsF(info)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
+	if rt.RunF != nil {
+		return rt.RunF(info)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
+	if rt.GetPluginInfoF != nil {
+		return rt.GetPluginInfoF()
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) InstallDependencies(pwd, main string) error {
+	if rt.InstallDependenciesF != nil {
+		return rt.InstallDependenciesF(pwd, main)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) About() (plugin.AboutInfo, error) {
+	if rt.AboutF != nil {
+		return rt.AboutF()
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) GetProgramDependencies(
+	info plugin.ProgInfo, transitiveDependencies bool,
+) ([]plugin.DependencyInfo, error) {
+	if rt.GetProgramDependenciesF != nil {
+		return rt.GetProgramDependenciesF(info, transitiveDependencies)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) RunPlugin(
+	info plugin.RunPluginInfo,
+) (io.Reader, io.Reader, context.CancelFunc, error) {
+	if rt.RunPluginF != nil {
+		return rt.RunPluginF(info)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) GenerateProject(
+	sourceDirectory, targetDirectory, project string,
+	strict bool, loaderTarget string, localDependencies map[string]string,
+) (hcl.Diagnostics, error) {
+	if rt.GenerateProjectF != nil {
+		return rt.GenerateProjectF(
+			sourceDirectory, targetDirectory, project, strict, loaderTarget, localDependencies)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) GeneratePackage(
+	directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
+) (hcl.Diagnostics, error) {
+	if rt.GeneratePackageF != nil {
+		return rt.GeneratePackageF(directory, schema, extraFiles, loaderTarget)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) GenerateProgram(
+	program map[string]string, loaderTarget string,
+) (map[string][]byte, hcl.Diagnostics, error) {
+	if rt.GenerateProgramF != nil {
+		return rt.GenerateProgramF(program, loaderTarget)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) Pack(
+	packageDirectory string, version semver.Version, destinationDirectory string,
+) (string, error) {
+	if rt.PackF != nil {
+		return rt.PackF(packageDirectory, version, destinationDirectory)
+	}
+	panic("unimplemented")
 }
