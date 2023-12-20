@@ -11,6 +11,7 @@ from .. import _utilities
 
 __all__ = [
     'Baz',
+    'BazArgs',
 ]
 
 @pulumi.input_type
@@ -39,6 +40,35 @@ class Baz:
 
     @world.setter
     def world(self, value: Optional[str]):
+        pulumi.set(self, "world", value)
+
+
+@pulumi.input_type
+class BazArgs:
+    def __init__(__self__, *,
+                 hello: Optional[pulumi.Input[str]] = None,
+                 world: Optional[pulumi.Input[str]] = None):
+        if hello is not None:
+            pulumi.set(__self__, "hello", hello)
+        if world is not None:
+            pulumi.set(__self__, "world", world)
+
+    @property
+    @pulumi.getter
+    def hello(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "hello")
+
+    @hello.setter
+    def hello(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "hello", value)
+
+    @property
+    @pulumi.getter
+    def world(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "world")
+
+    @world.setter
+    def world(self, value: Optional[pulumi.Input[str]]):
         pulumi.set(self, "world", value)
 
 

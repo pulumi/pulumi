@@ -50,6 +50,7 @@ type typeDetails struct {
 	inputType          bool
 	resourceOutputType bool
 	plainType          bool
+	functionInput      bool
 }
 
 type imports codegen.StringSet
@@ -100,9 +101,9 @@ func title(s string) string {
 }
 
 type modLocator struct {
-	// Returns defining modlue for a given ObjectType. Returns nil
+	// Returns defining module for a given ObjectType. Returns nil
 	// for types that are not being generated in the current
-	// GeneratePacakge call.
+	// GeneratePackage call.
 	objectTypeMod func(*schema.ObjectType) *modContext
 }
 
@@ -1905,6 +1906,101 @@ func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*
 	}
 }
 
+func (mod *modContext) rewritePlainObjectsIntoInputObjects(propertyType schema.Type) schema.Type {
+	switch T := propertyType.(type) {
+	case *schema.ArrayType:
+		elementType := mod.rewritePlainObjectsIntoInputObjects(T.ElementType)
+		return &schema.ArrayType{
+			ElementType: elementType,
+		}
+	case *schema.MapType:
+		elementType := mod.rewritePlainObjectsIntoInputObjects(T.ElementType)
+		return &schema.MapType{
+			ElementType: elementType,
+		}
+	case *schema.OptionalType:
+		elementType := mod.rewritePlainObjectsIntoInputObjects(T.ElementType)
+		return &schema.OptionalType{
+			ElementType: elementType,
+		}
+	case *schema.ObjectType:
+		if T.IsPlainShape() {
+			return T.InputShape
+		}
+
+		var properties []*schema.Property
+		for _, p := range T.Properties {
+			properties = append(properties, &schema.Property{
+				Name:                 p.Name,
+				Type:                 mod.rewritePlainObjectsIntoInputObjects(p.Type),
+				Plain:                p.Plain,
+				Secret:               p.Secret,
+				DeprecationMessage:   p.DeprecationMessage,
+				DefaultValue:         p.DefaultValue,
+				ConstValue:           p.ConstValue,
+				Comment:              p.Comment,
+				ReplaceOnChanges:     p.ReplaceOnChanges,
+				Language:             p.Language,
+				WillReplaceOnChanges: p.WillReplaceOnChanges,
+			})
+		}
+
+		return &schema.ObjectType{
+			Token:            T.Token,
+			PlainShape:       T.PlainShape,
+			InputShape:       T.InputShape,
+			Properties:       properties,
+			Language:         T.Language,
+			Comment:          T.Comment,
+			IsOverlay:        T.IsOverlay,
+			PackageReference: T.PackageReference,
+		}
+	default:
+		return T
+	}
+}
+
+// Generates the function signature line `def fn_output(...):` without the body.
+func (mod *modContext) genOutputFunDef(w io.Writer, name, retTypeName string, args []*schema.Property) {
+	def := fmt.Sprintf("def %s(", name)
+	var indent string
+	if len(args) > 0 {
+		indent = strings.Repeat(" ", len(def))
+	}
+	fmt.Fprint(w, def)
+	for i, arg := range args {
+		var ind string
+		if i != 0 {
+			ind = indent
+		}
+		pname := PyName(arg.Name)
+		propertyType := mod.rewritePlainObjectsIntoInputObjects(arg.Type)
+		var argType schema.Type
+		if !arg.Plain {
+			// not a plain type T -> Option[Input[T]]
+			argType = &schema.OptionalType{
+				ElementType: &schema.InputType{
+					ElementType: propertyType,
+				},
+			}
+		} else {
+			// plain type T -> Option[T]
+			argType = &schema.OptionalType{
+				ElementType: propertyType,
+			}
+		}
+
+		ty := mod.typeString(argType, true /*input*/, true /*acceptMapping*/)
+		fmt.Fprintf(w, "%s%s: %s = None,\n", ind, pname, ty)
+	}
+	fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
+	if retTypeName != "" {
+		fmt.Fprintf(w, ") -> %s:\n", retTypeName)
+	} else {
+		fmt.Fprintf(w, "):\n")
+	}
+}
+
 func returnTypeObject(fun *schema.Function) *schema.ObjectType {
 	if fun.ReturnType != nil {
 		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
@@ -1940,7 +2036,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	}
 
 	fmt.Fprintf(w, "\n\n@_utilities.lift_output_func(%s)\n", originalName)
-	mod.genFunDef(w, outputSuffixedName, retTypeName, args, true /*wrapInput*/)
+	mod.genOutputFunDef(w, outputSuffixedName, retTypeName, args)
 	mod.genFunDocstring(w, fun)
 	mod.genFunDeprecationMessage(w, fun)
 	fmt.Fprintf(w, "    ...\n")
@@ -2800,6 +2896,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			visitObjectTypes(f.Inputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
+					getModFromToken(T.Token, T.PackageReference).details(T).functionInput = true
 					getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
 					getModFromToken(T.Token, T.PackageReference).details(T).plainType = true
 				case *schema.ResourceType:
@@ -2828,15 +2925,97 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		}
 	}
 
+	type plainAndInputObject = struct {
+		plain *schema.ObjectType
+		input *schema.ObjectType
+	}
+
+	// Loop through all the types and find the plain and input variants of objects
+	packageObjectTypes := map[string]*plainAndInputObject{}
+	for _, t := range pkg.Types {
+		if t, ok := t.(*schema.ObjectType); ok {
+			_, has := packageObjectTypes[t.Token]
+			if !has {
+				packageObjectTypes[t.Token] = &plainAndInputObject{}
+			}
+
+			if t.IsPlainShape() {
+				packageObjectTypes[t.Token].plain = t
+			}
+
+			if t.IsInputShape() {
+				packageObjectTypes[t.Token].input = t
+			}
+		}
+	}
+
+	findPlainAndInputVariants := func(objectTypeToken string) (*schema.ObjectType, *schema.ObjectType) {
+		if variants, ok := packageObjectTypes[objectTypeToken]; ok {
+			return variants.plain, variants.input
+		}
+
+		return nil, nil
+	}
+
+	seenTypes := map[*schema.ObjectType]bool{}
+	seen := func(t *schema.ObjectType) bool {
+		_, ok := seenTypes[t]
+		return ok
+	}
+
 	// Find nested types.
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
 			mod := getModFromToken(typ.Token, typ.PackageReference)
-			d := mod.details(typ)
-			if d.inputType || d.outputType {
-				mod.types = append(mod.types, typ)
+			details := mod.details(typ)
+			compatibilityMode := mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20
+			if !details.functionInput {
+				// old behavior
+				if details.inputType || details.outputType && !seen(typ) {
+					mod.types = append(mod.types, typ)
+					seenTypes[typ] = true
+				}
+			} else if !compatibilityMode {
+				// old behavior
+				if details.inputType || details.outputType && !seen(typ) {
+					mod.types = append(mod.types, typ)
+					seenTypes[typ] = true
+				}
+			} else {
+				// when the type is inputty, make sure to include both the plain and input variants
+				plainType, inputType := findPlainAndInputVariants(typ.Token)
+				if plainType != nil && !seen(plainType) {
+					plainDetails := mod.details(plainType)
+					if plainDetails.inputType || plainDetails.outputType {
+						mod.types = append(mod.types, typ)
+						seenTypes[plainType] = true
+						if inputType != nil && !seen(inputType) {
+							mod.details(inputType).inputType = plainDetails.inputType
+							mod.details(inputType).outputType = plainDetails.outputType
+							mod.details(inputType).functionInput = plainDetails.functionInput
+							mod.types = append(mod.types, inputType)
+							seenTypes[inputType] = true
+						}
+					}
+				}
+
+				if inputType != nil && !seen(inputType) {
+					inputDetails := mod.details(inputType)
+					if inputDetails.inputType || inputDetails.outputType {
+						mod.types = append(mod.types, typ)
+						seenTypes[inputType] = true
+						if plainType != nil && !seen(plainType) {
+							mod.details(plainType).inputType = inputDetails.inputType
+							mod.details(plainType).outputType = inputDetails.outputType
+							mod.details(plainType).functionInput = inputDetails.functionInput
+							mod.types = append(mod.types, plainType)
+							seenTypes[plainType] = true
+						}
+					}
+				}
 			}
+
 		case *schema.EnumType:
 			if !typ.IsOverlay {
 				mod := getModFromToken(typ.Token, pkg.Reference())

@@ -88,9 +88,9 @@ def list_product_families(customer_subscription_details: Optional[pulumi.InputTy
 
 
 @_utilities.lift_output_func(list_product_families)
-def list_product_families_output(customer_subscription_details: Optional[pulumi.Input[Optional[pulumi.InputType['CustomerSubscriptionDetails']]]] = None,
+def list_product_families_output(customer_subscription_details: Optional[pulumi.Input[Optional[pulumi.InputType['CustomerSubscriptionDetailsArgs']]]] = None,
                                  expand: Optional[pulumi.Input[Optional[str]]] = None,
-                                 filterable_properties: Optional[pulumi.Input[Mapping[str, Sequence[pulumi.InputType['FilterableProperty']]]]] = None,
+                                 filterable_properties: Optional[pulumi.Input[Mapping[str, Sequence[pulumi.InputType['FilterablePropertyArgs']]]]] = None,
                                  skip_token: Optional[pulumi.Input[Optional[str]]] = None,
                                  opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ListProductFamiliesResult]:
     """

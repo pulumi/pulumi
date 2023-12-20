@@ -12,10 +12,15 @@ from ._enums import *
 
 __all__ = [
     'ConfigurationFilters',
+    'ConfigurationFiltersArgs',
     'CustomerSubscriptionDetails',
+    'CustomerSubscriptionDetailsArgs',
     'CustomerSubscriptionRegisteredFeatures',
+    'CustomerSubscriptionRegisteredFeaturesArgs',
     'FilterableProperty',
+    'FilterablePropertyArgs',
     'HierarchyInformation',
+    'HierarchyInformationArgs',
 ]
 
 @pulumi.input_type
@@ -54,6 +59,45 @@ class ConfigurationFilters:
 
     @filterable_property.setter
     def filterable_property(self, value: Optional[Sequence['FilterableProperty']]):
+        pulumi.set(self, "filterable_property", value)
+
+
+@pulumi.input_type
+class ConfigurationFiltersArgs:
+    def __init__(__self__, *,
+                 hierarchy_information: pulumi.Input['HierarchyInformationArgs'],
+                 filterable_property: Optional[pulumi.Input[Sequence[pulumi.Input['FilterablePropertyArgs']]]] = None):
+        """
+        Configuration filters
+        :param pulumi.Input['HierarchyInformationArgs'] hierarchy_information: Product hierarchy information
+        :param pulumi.Input[Sequence[pulumi.Input['FilterablePropertyArgs']]] filterable_property: Filters specific to product
+        """
+        pulumi.set(__self__, "hierarchy_information", hierarchy_information)
+        if filterable_property is not None:
+            pulumi.set(__self__, "filterable_property", filterable_property)
+
+    @property
+    @pulumi.getter(name="hierarchyInformation")
+    def hierarchy_information(self) -> pulumi.Input['HierarchyInformationArgs']:
+        """
+        Product hierarchy information
+        """
+        return pulumi.get(self, "hierarchy_information")
+
+    @hierarchy_information.setter
+    def hierarchy_information(self, value: pulumi.Input['HierarchyInformationArgs']):
+        pulumi.set(self, "hierarchy_information", value)
+
+    @property
+    @pulumi.getter(name="filterableProperty")
+    def filterable_property(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['FilterablePropertyArgs']]]]:
+        """
+        Filters specific to product
+        """
+        return pulumi.get(self, "filterable_property")
+
+    @filterable_property.setter
+    def filterable_property(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['FilterablePropertyArgs']]]]):
         pulumi.set(self, "filterable_property", value)
 
 
@@ -113,6 +157,61 @@ class CustomerSubscriptionDetails:
 
 
 @pulumi.input_type
+class CustomerSubscriptionDetailsArgs:
+    def __init__(__self__, *,
+                 quota_id: pulumi.Input[str],
+                 location_placement_id: Optional[pulumi.Input[str]] = None,
+                 registered_features: Optional[pulumi.Input[Sequence[pulumi.Input['CustomerSubscriptionRegisteredFeaturesArgs']]]] = None):
+        """
+        Holds Customer subscription details. Clients can display available products to unregistered customers by explicitly passing subscription details
+        :param pulumi.Input[str] quota_id: Quota ID of a subscription
+        :param pulumi.Input[str] location_placement_id: Location placement Id of a subscription
+        :param pulumi.Input[Sequence[pulumi.Input['CustomerSubscriptionRegisteredFeaturesArgs']]] registered_features: List of registered feature flags for subscription
+        """
+        pulumi.set(__self__, "quota_id", quota_id)
+        if location_placement_id is not None:
+            pulumi.set(__self__, "location_placement_id", location_placement_id)
+        if registered_features is not None:
+            pulumi.set(__self__, "registered_features", registered_features)
+
+    @property
+    @pulumi.getter(name="quotaId")
+    def quota_id(self) -> pulumi.Input[str]:
+        """
+        Quota ID of a subscription
+        """
+        return pulumi.get(self, "quota_id")
+
+    @quota_id.setter
+    def quota_id(self, value: pulumi.Input[str]):
+        pulumi.set(self, "quota_id", value)
+
+    @property
+    @pulumi.getter(name="locationPlacementId")
+    def location_placement_id(self) -> Optional[pulumi.Input[str]]:
+        """
+        Location placement Id of a subscription
+        """
+        return pulumi.get(self, "location_placement_id")
+
+    @location_placement_id.setter
+    def location_placement_id(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "location_placement_id", value)
+
+    @property
+    @pulumi.getter(name="registeredFeatures")
+    def registered_features(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['CustomerSubscriptionRegisteredFeaturesArgs']]]]:
+        """
+        List of registered feature flags for subscription
+        """
+        return pulumi.get(self, "registered_features")
+
+    @registered_features.setter
+    def registered_features(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['CustomerSubscriptionRegisteredFeaturesArgs']]]]):
+        pulumi.set(self, "registered_features", value)
+
+
+@pulumi.input_type
 class CustomerSubscriptionRegisteredFeatures:
     def __init__(__self__, *,
                  name: Optional[str] = None,
@@ -153,6 +252,46 @@ class CustomerSubscriptionRegisteredFeatures:
 
 
 @pulumi.input_type
+class CustomerSubscriptionRegisteredFeaturesArgs:
+    def __init__(__self__, *,
+                 name: Optional[pulumi.Input[str]] = None,
+                 state: Optional[pulumi.Input[str]] = None):
+        """
+        Represents subscription registered features
+        :param pulumi.Input[str] name: Name of subscription registered feature
+        :param pulumi.Input[str] state: State of subscription registered feature
+        """
+        if name is not None:
+            pulumi.set(__self__, "name", name)
+        if state is not None:
+            pulumi.set(__self__, "state", state)
+
+    @property
+    @pulumi.getter
+    def name(self) -> Optional[pulumi.Input[str]]:
+        """
+        Name of subscription registered feature
+        """
+        return pulumi.get(self, "name")
+
+    @name.setter
+    def name(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "name", value)
+
+    @property
+    @pulumi.getter
+    def state(self) -> Optional[pulumi.Input[str]]:
+        """
+        State of subscription registered feature
+        """
+        return pulumi.get(self, "state")
+
+    @state.setter
+    def state(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "state", value)
+
+
+@pulumi.input_type
 class FilterableProperty:
     def __init__(__self__, *,
                  supported_values: Sequence[str],
@@ -187,6 +326,44 @@ class FilterableProperty:
 
     @type.setter
     def type(self, value: Union[str, 'SupportedFilterTypes']):
+        pulumi.set(self, "type", value)
+
+
+@pulumi.input_type
+class FilterablePropertyArgs:
+    def __init__(__self__, *,
+                 supported_values: pulumi.Input[Sequence[pulumi.Input[str]]],
+                 type: pulumi.Input[Union[str, 'SupportedFilterTypes']]):
+        """
+        Different types of filters supported and its values.
+        :param pulumi.Input[Sequence[pulumi.Input[str]]] supported_values: Values to be filtered.
+        :param pulumi.Input[Union[str, 'SupportedFilterTypes']] type: Type of product filter.
+        """
+        pulumi.set(__self__, "supported_values", supported_values)
+        pulumi.set(__self__, "type", type)
+
+    @property
+    @pulumi.getter(name="supportedValues")
+    def supported_values(self) -> pulumi.Input[Sequence[pulumi.Input[str]]]:
+        """
+        Values to be filtered.
+        """
+        return pulumi.get(self, "supported_values")
+
+    @supported_values.setter
+    def supported_values(self, value: pulumi.Input[Sequence[pulumi.Input[str]]]):
+        pulumi.set(self, "supported_values", value)
+
+    @property
+    @pulumi.getter
+    def type(self) -> pulumi.Input[Union[str, 'SupportedFilterTypes']]:
+        """
+        Type of product filter.
+        """
+        return pulumi.get(self, "type")
+
+    @type.setter
+    def type(self, value: pulumi.Input[Union[str, 'SupportedFilterTypes']]):
         pulumi.set(self, "type", value)
 
 
@@ -259,6 +436,78 @@ class HierarchyInformation:
 
     @product_name.setter
     def product_name(self, value: Optional[str]):
+        pulumi.set(self, "product_name", value)
+
+
+@pulumi.input_type
+class HierarchyInformationArgs:
+    def __init__(__self__, *,
+                 configuration_name: Optional[pulumi.Input[str]] = None,
+                 product_family_name: Optional[pulumi.Input[str]] = None,
+                 product_line_name: Optional[pulumi.Input[str]] = None,
+                 product_name: Optional[pulumi.Input[str]] = None):
+        """
+        Holds details about product hierarchy information
+        :param pulumi.Input[str] configuration_name: Represents configuration name that uniquely identifies configuration
+        :param pulumi.Input[str] product_family_name: Represents product family name that uniquely identifies product family
+        :param pulumi.Input[str] product_line_name: Represents product line name that uniquely identifies product line
+        :param pulumi.Input[str] product_name: Represents product name that uniquely identifies product
+        """
+        if configuration_name is not None:
+            pulumi.set(__self__, "configuration_name", configuration_name)
+        if product_family_name is not None:
+            pulumi.set(__self__, "product_family_name", product_family_name)
+        if product_line_name is not None:
+            pulumi.set(__self__, "product_line_name", product_line_name)
+        if product_name is not None:
+            pulumi.set(__self__, "product_name", product_name)
+
+    @property
+    @pulumi.getter(name="configurationName")
+    def configuration_name(self) -> Optional[pulumi.Input[str]]:
+        """
+        Represents configuration name that uniquely identifies configuration
+        """
+        return pulumi.get(self, "configuration_name")
+
+    @configuration_name.setter
+    def configuration_name(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "configuration_name", value)
+
+    @property
+    @pulumi.getter(name="productFamilyName")
+    def product_family_name(self) -> Optional[pulumi.Input[str]]:
+        """
+        Represents product family name that uniquely identifies product family
+        """
+        return pulumi.get(self, "product_family_name")
+
+    @product_family_name.setter
+    def product_family_name(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "product_family_name", value)
+
+    @property
+    @pulumi.getter(name="productLineName")
+    def product_line_name(self) -> Optional[pulumi.Input[str]]:
+        """
+        Represents product line name that uniquely identifies product line
+        """
+        return pulumi.get(self, "product_line_name")
+
+    @product_line_name.setter
+    def product_line_name(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "product_line_name", value)
+
+    @property
+    @pulumi.getter(name="productName")
+    def product_name(self) -> Optional[pulumi.Input[str]]:
+        """
+        Represents product name that uniquely identifies product
+        """
+        return pulumi.get(self, "product_name")
+
+    @product_name.setter
+    def product_name(self, value: Optional[pulumi.Input[str]]):
         pulumi.set(self, "product_name", value)
 
 
