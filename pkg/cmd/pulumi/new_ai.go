@@ -58,14 +58,9 @@ func runAINew(
 	opts display.Options,
 	backend httpstate.Backend,
 ) (conversationURL string, err error) {
-	languageOptions := []string{
-		"TypeScript",
-		"JavaScript",
-		"Python",
-		"Go",
-		"C#",
-		"Java",
-		"YAML",
+	var languageOptions []string
+	for _, language := range httpstate.PulumiAILanguageOptions {
+		languageOptions = append(languageOptions, language.String())
 	}
 	var rawLanguageSelect string
 	if args.aiLanguage == "" {

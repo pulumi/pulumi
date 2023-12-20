@@ -90,18 +90,31 @@ var pulumiAILanguageMap = map[string]PulumiAILanguage{
 	"yaml":       PulumiAILanguageYAML,
 }
 
+// All of the languages supported by Pulumi AI.
+var PulumiAILanguageOptions = []PulumiAILanguage{
+	PulumiAILanguageTypeScript,
+	PulumiAILanguageJavaScript,
+	PulumiAILanguagePython,
+	PulumiAILanguageGo,
+	PulumiAILanguageCSharp,
+	PulumiAILanguageJava,
+	PulumiAILanguageYAML,
+}
+
+// A natural language list of languages supported by Pulumi AI.
+const PulumiAILanguagesClause = "TypeScript, JavaScript, Python, Go, C#, Java, or YAML"
+
 func (e *PulumiAILanguage) String() string {
 	return string(*e)
 }
 
 func (e *PulumiAILanguage) Set(v string) error {
-	switch strings.ToLower(v) {
-	case "typescript", "javascript", "python", "go", "c#", "java", "yaml":
-		*e = pulumiAILanguageMap[strings.ToLower(v)]
-		return nil
-	default:
-		return errors.New(`must be one of "TypeScript", "JavaScript", "Python", "Go", "C#", "Java", "YAML"`)
+	value, ok := pulumiAILanguageMap[strings.ToLower(v)]
+	if !ok {
+		return fmt.Errorf("must be one of %s", PulumiAILanguagesClause)
 	}
+	*e = value
+	return nil
 }
 
 func (e *PulumiAILanguage) Type() string {

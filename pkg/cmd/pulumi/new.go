@@ -583,7 +583,7 @@ func newNewCmd() *cobra.Command {
 	)
 	cmd.PersistentFlags().Var(
 		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
-			"(possible choices: TypeScript, JavaScript, Python, Go, C#)",
+			fmt.Sprintf("(must be one of %s)", httpstate.PulumiAILanguagesClause),
 	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.templateMode, "template-mode", "t", false,
