@@ -37,7 +37,7 @@ jobs:
           version="${version#v}"
           ./.github/scripts/set-output dev-version "$version"
     outputs:
-      dev-version: "${{ steps.strip-prefix.outputs.dev-version }}"
+      dev-version: ${{ steps.strip-prefix.outputs.dev-version }}
       version: ${{ inputs.version }}
 
   matrix:
