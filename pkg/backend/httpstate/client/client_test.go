@@ -114,7 +114,6 @@ func TestAPIErrorResponses(t *testing.T) {
 func TestAPIVersionResponses(t *testing.T) {
 	t.Parallel()
 
-	// test handling non-standard error message
 	versionServer := newMockServer(
 		200,
 		`{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0-11-gdeadbeef"}`,

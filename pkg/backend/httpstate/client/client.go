@@ -286,6 +286,13 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
+	// If there is no dev version, return the latest and oldest
+	// versions.  This can happen if the server does not include
+	// https://github.com/pulumi/pulumi-service/pull/17429 yet
+	if versionInfo.LatestDevVersion == "" {
+		return latestSem, oldestSem, semver.Version{}, nil
+	}
+
 	devSem, err := semver.ParseTolerant(versionInfo.LatestDevVersion)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, semver.Version{}, err
