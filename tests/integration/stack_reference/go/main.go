@@ -15,7 +15,7 @@ func main() {
 		slug := fmt.Sprintf("%v/%v/%v", ctx.Organization(), ctx.Project(), ctx.Stack())
 		_, err := pulumi.NewStackReference(ctx, slug, nil)
 		if err != nil {
-			return fmt.Errorf("error reading stack reference: %v", err)
+			return fmt.Errorf("error reading stack reference: %w", err)
 		}
 		ctx.Export("val",
 			pulumi.StringArray([]pulumi.StringInput{pulumi.String("a"), pulumi.String("b")}))

@@ -689,7 +689,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
 				m.Path,
 				m.Version,
-				err.Error(),
+				err,
 			)
 			continue
 		}

@@ -37,7 +37,7 @@ func newAutoError(err error, stdout, stderr string, code int) autoError {
 }
 
 func (ae autoError) Error() string {
-	return fmt.Sprintf("%s\ncode: %d\nstdout: %s\nstderr: %s\n", ae.err.Error(), ae.code, ae.stdout, ae.stderr)
+	return fmt.Sprintf("%s\ncode: %d\nstdout: %s\nstderr: %s\n", ae.err, ae.code, ae.stdout, ae.stderr)
 }
 
 // IsConcurrentUpdateError returns true if the error was a result of a conflicting update locking the stack.

@@ -726,7 +726,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
-		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
+		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
 	t.Run("Custom https URL", func(t *testing.T) {
 		spec := PluginSpec{
@@ -738,7 +738,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
-		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
+		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
 	t.Run("Private Pulumi GitHub Releases", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", token)
@@ -1162,7 +1162,7 @@ func TestMissingErrorText(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			err := NewMissingError(tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.IncludeAmbient)
-			assert.Equal(t, tt.ExpectedError, err.Error())
+			assert.EqualError(t, err, tt.ExpectedError)
 		})
 	}
 }

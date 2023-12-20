@@ -572,7 +572,7 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
 	require.NoError(t, err)
-	t.Logf("%v", diags.Error())
+	t.Logf("%v", diags)
 	require.False(t, diags.HasErrors())
 
 	fs, err := GeneratePackage("tests", pkg)

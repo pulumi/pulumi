@@ -81,8 +81,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		unauthorizedClient := newMockClient(unauthorizedServer)
 		_, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background())
 
-		assert.Error(t, unauthorizedErr)
-		assert.Equal(t, unauthorizedErr.Error(), "this command requires logging in; try running `pulumi login` first")
+		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
 	t.Run("TestRateLimitError", func(t *testing.T) {
 		t.Parallel()
@@ -94,8 +93,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		rateLimitedClient := newMockClient(rateLimitedServer)
 		_, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background())
 
-		assert.Error(t, rateLimitErr)
-		assert.Equal(t, rateLimitErr.Error(), "pulumi service: request rate-limit exceeded")
+		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
 	t.Run("TestDefaultError", func(t *testing.T) {
 		t.Parallel()

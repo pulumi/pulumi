@@ -622,7 +622,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					} else {
 						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %s", err.Error())
+							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
 						}
 						plaintext = unencryptedText
 					}

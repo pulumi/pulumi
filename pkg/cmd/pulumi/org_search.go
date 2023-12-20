@@ -172,7 +172,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	}
 	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
 	if err != nil {
-		return fmt.Errorf("table rendering error: %s", err)
+		return fmt.Errorf("table rendering error: %w", err)
 	}
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)

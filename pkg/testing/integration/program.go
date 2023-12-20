@@ -1555,7 +1555,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 	if f := pt.opts.ExportStateValidator; f != nil {
 		bytes, err := os.ReadFile(filepath.Join(dir, "stack.json"))
 		if err != nil {
-			pt.t.Logf("Failed to read stack.json: %s", err.Error())
+			pt.t.Logf("Failed to read stack.json: %s", err)
 			return err
 		}
 		pt.t.Logf("Calling ExportStateValidator")

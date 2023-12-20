@@ -163,16 +163,13 @@ func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 	rm := &queryResmon{}
 
 	_, err := rm.ReadResource(context.Background(), nil)
-	assert.Error(t, err)
-	assert.Equal(t, "Query mode does not support reading resources", err.Error())
+	assert.EqualError(t, err, "Query mode does not support reading resources")
 
 	_, err = rm.RegisterResource(context.Background(), nil)
-	assert.Error(t, err)
-	assert.Equal(t, "Query mode does not support creating, updating, or deleting resources", err.Error())
+	assert.EqualError(t, err, "Query mode does not support creating, updating, or deleting resources")
 
 	_, err = rm.RegisterResourceOutputs(context.Background(), nil)
-	assert.Error(t, err)
-	assert.Equal(t, "Query mode does not support registering resource operations", err.Error())
+	assert.EqualError(t, err, "Query mode does not support registering resource operations")
 }
 
 //

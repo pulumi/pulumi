@@ -72,7 +72,7 @@ func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) 
 
 	packTarball, err := os.ReadFile(packfile)
 	if err != nil {
-		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %v", err)
+		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %w", err)
 		return nil, newErr
 	}
 

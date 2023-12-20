@@ -143,14 +143,14 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			if providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)
 				if err != nil {
-					return fmt.Errorf("provider %s is not referenceable: %v", urn, err)
+					return fmt.Errorf("provider %s is not referenceable: %w", urn, err)
 				}
 				provs[ref] = struct{}{}
 			}
 			if provider := state.Provider; provider != "" {
 				ref, err := providers.ParseReference(provider)
 				if err != nil {
-					return fmt.Errorf("failed to parse provider reference for resource %s: %v", urn, err)
+					return fmt.Errorf("failed to parse provider reference for resource %s: %w", urn, err)
 				}
 				if _, has := provs[ref]; !has {
 					return fmt.Errorf("resource %s refers to unknown provider %s", urn, ref)
