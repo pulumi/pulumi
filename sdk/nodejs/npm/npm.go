@@ -1,3 +1,17 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package npm
 
 import (
@@ -23,6 +37,11 @@ func newNPM() (*npmManager, error) {
 	instance := &npmManager{
 		executable: npmPath,
 	}
+	if err != nil {
+		err = fmt.Errorf("could not find npm on the $PATH; npm is installed with Node.js "+
+			"available at https://nodejs.org/: %w", err)
+	}
+
 	return instance, err
 }
 
@@ -72,7 +91,7 @@ func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) 
 
 	packTarball, err := os.ReadFile(packfile)
 	if err != nil {
-		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %v", err)
+		newErr := fmt.Errorf("'npm pack' completed successfully but the packaged .tgz file was not generated: %v", err)
 		return nil, newErr
 	}
 
