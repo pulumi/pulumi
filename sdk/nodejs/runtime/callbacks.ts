@@ -108,7 +108,7 @@ export class CallbackServer implements ICallbackServer {
         }
 
         try {
-            const response = await cb(req.getRequest_asU8())
+            const response = await cb(req.getRequest_asU8());
             const resp = new CallbackInvokeResponse();
             resp.setResponse(response.serializeBinary());
             callback(null, resp);
@@ -129,17 +129,15 @@ export class CallbackServer implements ICallbackServer {
         const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
             const request = resproto.TransformationRequest.deserializeBinary(bytes);
 
-            const props = deserializeProperties(request.getProps());
-
             const args: ResourceTransformationArgs = {
                 // Remote transforms can't really synthasize a resource object here so we just pass the root stack object.
                 resource: getStackResource()!,
 
                 type: request.getType(),
                 name: request.getName(),
-                props: props,
+                props: deserializeProperties(request.getProps()),
                 opts: {},
-            }
+            };
 
             const result = transform(args);
 
