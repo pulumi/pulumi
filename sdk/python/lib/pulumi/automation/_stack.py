@@ -590,6 +590,12 @@ class Stack:
         """
         return self.workspace.add_environments(self.name, *environment_names)
 
+    def list_environments(self) -> List[str]:
+        """
+        Returns the list of environments specified in a stack's configuration.
+        """
+        return self.workspace.list_environments(self.name)
+
     def remove_environment(self, environment_name: str) -> None:
         """
         Removes an environment from a stack's import list.
