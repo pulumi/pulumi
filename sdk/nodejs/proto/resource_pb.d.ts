@@ -566,6 +566,8 @@ export class TransformationRequest extends jspb.Message {
     setType(value: string): TransformationRequest;
     getName(): string;
     setName(value: string): TransformationRequest;
+    getCustom(): boolean;
+    setCustom(value: boolean): TransformationRequest;
 
     hasProperties(): boolean;
     clearProperties(): void;
@@ -591,6 +593,7 @@ export namespace TransformationRequest {
     export type AsObject = {
         type: string,
         name: string,
+        custom: boolean,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         options?: TransformationResourceOptions.AsObject,
     }

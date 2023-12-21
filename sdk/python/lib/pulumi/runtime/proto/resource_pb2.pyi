@@ -716,12 +716,15 @@ class TransformationRequest(google.protobuf.message.Message):
 
     TYPE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
+    CUSTOM_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     OPTIONS_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the resource."""
     name: builtins.str
     """the name of the resource."""
+    custom: builtins.bool
+    """true if the resource is a custom resource, else it's a component resource."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """the input properties of the resource."""
@@ -733,11 +736,12 @@ class TransformationRequest(google.protobuf.message.Message):
         *,
         type: builtins.str = ...,
         name: builtins.str = ...,
+        custom: builtins.bool = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         options: global___TransformationResourceOptions | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["options", b"options", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "options", b"options", "properties", b"properties", "type", b"type"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["custom", b"custom", "name", b"name", "options", b"options", "properties", b"properties", "type", b"type"]) -> None: ...
 
 global___TransformationRequest = TransformationRequest
 

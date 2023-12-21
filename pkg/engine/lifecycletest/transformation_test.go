@@ -31,7 +31,10 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func TransformationFunction(f func(name, typ string, props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error),
+func TransformationFunction(
+	f func(
+		name, typ string, custom bool, props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
+	) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error),
 ) func([]byte) (proto.Message, error) {
 	return func(request []byte) (proto.Message, error) {
 		var transformationRequest pulumirpc.TransformationRequest
@@ -50,7 +53,9 @@ func TransformationFunction(f func(name, typ string, props resource.PropertyMap,
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
 
-		ret, opts, err := f(transformationRequest.Name, transformationRequest.Type, mprops, transformationRequest.Options)
+		ret, opts, err := f(
+			transformationRequest.Name, transformationRequest.Type, transformationRequest.Custom,
+			mprops, transformationRequest.Options)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +92,7 @@ func TestRemoteTransformations(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		callback1, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string,
+			TransformationFunction(func(name, typ string, custom bool,
 				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)
@@ -99,7 +104,7 @@ func TestRemoteTransformations(t *testing.T) {
 		require.NoError(t, err)
 
 		callback2, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string,
+			TransformationFunction(func(name, typ string, custom bool,
 				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)
@@ -116,7 +121,7 @@ func TestRemoteTransformations(t *testing.T) {
 		require.NoError(t, err)
 
 		callback3, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string,
+			TransformationFunction(func(name, typ string, custom bool,
 				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)

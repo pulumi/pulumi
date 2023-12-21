@@ -197,8 +197,9 @@ message TransformationResourceOptions {
 message TransformationRequest {
     string type = 1; // the type of the resource.
     string name = 2; // the name of the resource.
-    google.protobuf.Struct properties = 3; // the input properties of the resource.
-    TransformationResourceOptions options = 4; // the options for the resource.
+    bool custom = 3; // true if the resource is a custom resource, else it's a component resource.
+    google.protobuf.Struct properties = 4; // the input properties of the resource.
+    TransformationResourceOptions options = 5; // the options for the resource.
 }
 
 message TransformationResponse {

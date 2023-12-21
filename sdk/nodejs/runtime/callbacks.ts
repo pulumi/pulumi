@@ -22,7 +22,7 @@ import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
-import { ResourceTransformation, ResourceTransformationArgs } from "../resource";
+import { ResourceOptions, ResourceTransformation, ResourceTransformationArgs } from "../resource";
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { getStackResource } from "./stack";
 
@@ -156,24 +156,28 @@ export class CallbackServer implements ICallbackServer {
         const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
             const request = resproto.TransformationRequest.deserializeBinary(bytes);
 
+            const opts: ResourceOptions = {
+
+            }
+
             const args: ResourceTransformationArgs = {
                 // Remote transforms can't really synthasize a resource object here so we just pass the root stack object.
                 resource: getStackResource()!,
 
                 type: request.getType(),
                 name: request.getName(),
-                props: deserializeProperties(request.getProps()),
-                opts: {},
+                props: deserializeProperties(request.getProperties()),
+                opts: opts,
             };
 
             const result = transform(args);
 
             const response = new resproto.TransformationResponse();
             if (result === undefined) {
-                response.setProps(request.getProps());
+                response.setProperties(request.getProperties());
             } else {
                 const mprops = await serializeProperties("props", result.props);
-                response.setProps(gstruct.Struct.fromJavaScript(mprops));
+                response.setProperties(gstruct.Struct.fromJavaScript(mprops));
             }
 
             return response;
