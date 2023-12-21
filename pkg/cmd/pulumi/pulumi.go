@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -397,6 +398,38 @@ func NewPulumiCmd() *cobra.Command {
 	return cmd
 }
 
+// haveNewerDevVersion checks whethere we have a newer dev version available.
+func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) bool {
+	if devVersion.Major != curVersion.Major {
+		return devVersion.Major > curVersion.Major
+	}
+	if devVersion.Minor != curVersion.Minor {
+		return devVersion.Minor > curVersion.Minor
+	}
+	if devVersion.Patch != curVersion.Patch {
+		return devVersion.Patch > curVersion.Patch
+	}
+
+	// The dev version string looks like: v1.0.0-11-g4ff08363.  We
+	// can determine whether we have a newer dev version by
+	// comparing the second part of the version string, which is
+	// the number of commits since the last tag.
+	devVersionParts := strings.Split(devVersion.String(), "-")
+	curVersionParts := strings.Split(curVersion.String(), "-")
+	if len(devVersionParts) != 3 || len(curVersionParts) != 3 {
+		return false
+	}
+	devCommits, err := strconv.Atoi(devVersionParts[1])
+	if err != nil {
+		return false
+	}
+	curCommits, err := strconv.Atoi(curVersionParts[1])
+	if err != nil {
+		return false
+	}
+	return devCommits > curCommits
+}
+
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
 func checkForUpdate(ctx context.Context) *diag.Diag {
@@ -427,7 +460,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 		}
 	}
 
-	if (isDevVersion && !devVer.EQ(curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
+	if (isDevVersion && haveNewerDevVersion(devVer, curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
 		if isDevVersion {
 			latestVer = devVer
 		}

@@ -56,6 +56,22 @@ func TestIsDevVersion(t *testing.T) {
 	assert.True(t, isDevVersion(devVer))
 }
 
+func TestHaveNewerDevVersion(t *testing.T) {
+	t.Parallel()
+
+	devVer, _ := semver.ParseTolerant("v1.0.0-11-g4ff08363")
+	olderCurVer, _ := semver.ParseTolerant("v1.0.0-10-gdeadbeef")
+	newerCurVer, _ := semver.ParseTolerant("v1.0.0-12-gdeadbeef")
+	newerPatchCurVer, _ := semver.ParseTolerant("v1.0.1-11-gdeadbeef")
+	olderMajorCurVer, _ := semver.ParseTolerant("v0.9.9-11-gdeadbeef")
+
+	assert.True(t, haveNewerDevVersion(devVer, olderCurVer))
+	assert.True(t, haveNewerDevVersion(devVer, olderMajorCurVer))
+	assert.False(t, haveNewerDevVersion(devVer, devVer))
+	assert.False(t, haveNewerDevVersion(devVer, newerCurVer))
+	assert.False(t, haveNewerDevVersion(devVer, newerPatchCurVer))
+}
+
 //nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate(t *testing.T) {
 	realVersion := version.Version
