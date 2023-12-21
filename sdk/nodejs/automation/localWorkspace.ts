@@ -832,9 +832,17 @@ export class LocalWorkspace implements Workspace {
         return;
     }
     private async getPulumiVersion(minVersion: semver.SemVer) {
-        const result = await this.runPulumiCmd(["version"]);
         const optOut = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
-        const version = parseAndValidatePulumiVersion(minVersion, result.stdout.trim(), optOut);
+        let version: semver.SemVer | null;
+        if (this.pulumi) {
+            version = this.pulumi.version;
+        } else {
+            const result = await this.runPulumiCmd(["version"]);
+            version = semver.parse(result.stdout.trim());
+        }
+        if (!optOut) {
+            validatePulumiVersion(minVersion, version, optOut);
+        }
         if (version != null) {
             this._pulumiVersion = version;
         }
@@ -1083,33 +1091,30 @@ function loadProjectSettings(workDir: string) {
  *
  * @param minVersion The minimum acceptable version of the Pulumi CLI.
  * @param currentVersion The currently known version. `null` indicates that the current version is unknown.
- * @paramoptOut If the user has opted out of the version check.
+ * @param optOut If the user has opted out of the version check.
  */
-export function parseAndValidatePulumiVersion(
+export function validatePulumiVersion(
     minVersion: semver.SemVer,
-    currentVersion: string,
+    currentVersion: semver.SemVer | null,
     optOut: boolean,
-): semver.SemVer | null {
-    const version = semver.parse(currentVersion);
+) {
     if (optOut) {
-        return version;
+        return;
     }
-    if (version == null) {
+    if (currentVersion == null) {
         throw new Error(
             `Failed to parse Pulumi CLI version. This is probably an internal error. You can override this by setting "${SKIP_VERSION_CHECK_VAR}" to "true".`,
         );
     }
-    if (minVersion.major < version.major) {
+    if (minVersion.major < currentVersion.major) {
         throw new Error(
-            `Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${
-                minVersion.major
+            `Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major
             }. Please update the SDK.`,
         );
     }
-    if (minVersion.compare(version) === 1) {
+    if (minVersion.compare(currentVersion) === 1) {
         throw new Error(
             `Minimum version requirement failed. The minimum CLI version requirement is ${minVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`,
         );
     }
-    return version;
 }

@@ -24,7 +24,7 @@ import {
     OutputMap,
     ProjectSettings,
     Stack,
-    parseAndValidatePulumiVersion,
+    validatePulumiVersion,
 } from "../../automation";
 import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
@@ -1186,7 +1186,7 @@ describe(`checkVersionIsValid`, () => {
 
     versionTests.forEach((test) => {
         it(`validates ${test.name} (${test.currentVersion})`, () => {
-            const validate = () => parseAndValidatePulumiVersion(minVersion, test.currentVersion, test.optOut);
+            const validate = () => validatePulumiVersion(minVersion, semver.parse(test.currentVersion), test.optOut);
             if (test.expectError) {
                 assert.throws(validate, test.expectError);
             } else {
