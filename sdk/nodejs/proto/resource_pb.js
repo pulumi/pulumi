@@ -4086,7 +4086,9 @@ proto.pulumirpc.TransformationResourceOptions.toObject = function(includeInstanc
     retainOnDelete: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     deletedWith: jspb.Message.getFieldWithDefault(msg, 11, ""),
     deleteBeforeReplace: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
-    additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f
+    additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
+    providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
+    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -4176,6 +4178,18 @@ proto.pulumirpc.TransformationResourceOptions.deserializeBinaryFromReader = func
     case 13:
       var value = /** @type {string} */ (reader.readString());
       msg.addAdditionalSecretOutputs(value);
+      break;
+    case 14:
+      var value = msg.getProvidersMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
+      break;
+    case 15:
+      var value = msg.getPluginChecksumsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -4285,8 +4299,8 @@ proto.pulumirpc.TransformationResourceOptions.serializeBinaryToWriter = function
       f
     );
   }
-  f = message.getDeleteBeforeReplace();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 12));
+  if (f != null) {
     writer.writeBool(
       12,
       f
@@ -4298,6 +4312,14 @@ proto.pulumirpc.TransformationResourceOptions.serializeBinaryToWriter = function
       13,
       f
     );
+  }
+  f = message.getProvidersMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(14, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getPluginChecksumsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(15, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
 };
 
@@ -4610,7 +4632,25 @@ proto.pulumirpc.TransformationResourceOptions.prototype.getDeleteBeforeReplace =
  * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
  */
 proto.pulumirpc.TransformationResourceOptions.prototype.setDeleteBeforeReplace = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 12, value);
+  return jspb.Message.setField(this, 12, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.clearDeleteBeforeReplace = function() {
+  return jspb.Message.setField(this, 12, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.hasDeleteBeforeReplace = function() {
+  return jspb.Message.getField(this, 12) != null;
 };
 
 
@@ -4649,6 +4689,50 @@ proto.pulumirpc.TransformationResourceOptions.prototype.addAdditionalSecretOutpu
 proto.pulumirpc.TransformationResourceOptions.prototype.clearAdditionalSecretOutputsList = function() {
   return this.setAdditionalSecretOutputsList([]);
 };
+
+
+/**
+ * map<string, string> providers = 14;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.getProvidersMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 14, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.clearProvidersMap = function() {
+  this.getProvidersMap().clear();
+  return this;};
+
+
+/**
+ * map<string, bytes> plugin_checksums = 15;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,!(string|Uint8Array)>}
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.getPluginChecksumsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
+      jspb.Message.getMapField(this, 15, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.clearPluginChecksumsMap = function() {
+  this.getPluginChecksumsMap().clear();
+  return this;};
 
 
 

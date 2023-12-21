@@ -513,12 +513,21 @@ export class TransformationResourceOptions extends jspb.Message {
     setRetainOnDelete(value: boolean): TransformationResourceOptions;
     getDeletedWith(): string;
     setDeletedWith(value: string): TransformationResourceOptions;
-    getDeleteBeforeReplace(): boolean;
+
+    hasDeleteBeforeReplace(): boolean;
+    clearDeleteBeforeReplace(): void;
+    getDeleteBeforeReplace(): boolean | undefined;
     setDeleteBeforeReplace(value: boolean): TransformationResourceOptions;
     clearAdditionalSecretOutputsList(): void;
     getAdditionalSecretOutputsList(): Array<string>;
     setAdditionalSecretOutputsList(value: Array<string>): TransformationResourceOptions;
     addAdditionalSecretOutputs(value: string, index?: number): string;
+
+    getProvidersMap(): jspb.Map<string, string>;
+    clearProvidersMap(): void;
+
+    getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginChecksumsMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformationResourceOptions.AsObject;
@@ -543,8 +552,12 @@ export namespace TransformationResourceOptions {
         pluginDownloadUrl: string,
         retainOnDelete: boolean,
         deletedWith: string,
-        deleteBeforeReplace: boolean,
+        deleteBeforeReplace?: boolean,
         additionalSecretOutputsList: Array<string>,
+
+        providersMap: Array<[string, string]>,
+
+        pluginChecksumsMap: Array<[string, Uint8Array | string]>,
     }
 }
 

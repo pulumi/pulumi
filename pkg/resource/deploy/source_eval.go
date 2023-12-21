@@ -1385,18 +1385,26 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		aliases = append(aliases, aliasObject)
 	}
 
+	var deleteBeforeReplace *bool
+	if req.GetDeleteBeforeReplaceDefined() {
+		deleteBeforeReplace = &req.DeleteBeforeReplace
+	}
+
 	opts := &pulumirpc.TransformationResourceOptions{
-		DependsOn:         req.GetDependencies(),
-		Protect:           req.GetProtect(),
-		IgnoreChanges:     req.GetIgnoreChanges(),
-		ReplaceOnChanges:  req.GetReplaceOnChanges(),
-		Version:           req.GetVersion(),
-		Aliases:           aliases,
-		Provider:          req.GetProvider(),
-		CustomTimeouts:    req.GetCustomTimeouts(),
-		PluginDownloadUrl: req.GetPluginDownloadURL(),
-		RetainOnDelete:    req.GetRetainOnDelete(),
-		DeletedWith:       req.GetDeletedWith(),
+		DependsOn:               req.GetDependencies(),
+		Protect:                 req.GetProtect(),
+		IgnoreChanges:           req.GetIgnoreChanges(),
+		ReplaceOnChanges:        req.GetReplaceOnChanges(),
+		Version:                 req.GetVersion(),
+		Aliases:                 aliases,
+		Provider:                req.GetProvider(),
+		CustomTimeouts:          req.GetCustomTimeouts(),
+		PluginDownloadUrl:       req.GetPluginDownloadURL(),
+		RetainOnDelete:          req.GetRetainOnDelete(),
+		DeletedWith:             req.GetDeletedWith(),
+		DeleteBeforeReplace:     deleteBeforeReplace,
+		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
+		PluginChecksums:         req.GetPluginChecksums(),
 	}
 
 	// Before we calculate anything else run the transformations. First run the transforms for this resource,
@@ -1468,11 +1476,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if parentsProviders, parentIsComponent := rm.componentProviders[parent]; !custom &&
 			parent != "" && parentIsComponent {
 			for k, v := range parentsProviders {
-				if req.Providers == nil {
-					req.Providers = map[string]string{}
+				if opts.Providers == nil {
+					opts.Providers = map[string]string{}
 				}
-				if _, ok := req.Providers[k]; !ok {
-					req.Providers[k] = v
+				if _, ok := opts.Providers[k]; !ok {
+					opts.Providers[k] = v
 				}
 			}
 		}
@@ -1483,19 +1491,19 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	if custom && !providers.IsProviderType(t) || remote {
 		providerReq, err := parseProviderRequest(
-			t.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums())
+			t.Package(), opts.GetVersion(),
+			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums())
 		if err != nil {
 			return nil, err
 		}
 
-		providerRef, err = getProviderReference(rm.defaultProviders, providerReq, req.GetProvider())
+		providerRef, err = getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
 		if err != nil {
 			return nil, err
 		}
 
-		providerRefs = make(map[string]string, len(req.GetProviders()))
-		for name, provider := range req.GetProviders() {
+		providerRefs = make(map[string]string, len(opts.GetProviders()))
+		for name, provider := range opts.GetProviders() {
 			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
 			if err != nil {
 				return nil, err
@@ -1532,7 +1540,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	dependencies := []resource.URN{}
-	for _, dependingURN := range req.GetDependencies() {
+	for _, dependingURN := range opts.GetDependsOn() {
 		urn, err := resource.ParseURN(dependingURN)
 		if err != nil {
 			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
@@ -1541,21 +1549,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if providers.IsProviderType(t) {
-		if req.GetVersion() != "" {
-			version, err := semver.Parse(req.GetVersion())
+		if opts.GetVersion() != "" {
+			version, err := semver.Parse(opts.GetVersion())
 			if err != nil {
 				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
 			}
 			providers.SetProviderVersion(props, &version)
 		}
-		if req.GetPluginDownloadURL() != "" {
-			providers.SetProviderURL(props, req.GetPluginDownloadURL())
+		if opts.GetPluginDownloadUrl() != "" {
+			providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
 		// same plugin as the default provider for the package.
 		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
-		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
 				providers.SetProviderVersion(props, defaultProvider.Version)
 			}
@@ -1588,12 +1596,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	additionalSecretOutputs := req.GetAdditionalSecretOutputs()
-
-	var deleteBeforeReplace *bool
-	if opts.DeleteBeforeReplace || req.GetDeleteBeforeReplaceDefined() {
-		deleteBeforeReplace = &deleteBeforeReplaceValue
+	protect := opts.Protect
+	ignoreChanges := opts.IgnoreChanges
+	replaceOnChanges := opts.ReplaceOnChanges
+	retainOnDelete := opts.RetainOnDelete
+	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
 	}
+	customTimeouts := opts.CustomTimeouts
+
+	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
