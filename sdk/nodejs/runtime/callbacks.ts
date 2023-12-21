@@ -17,13 +17,15 @@ import { randomUUID } from "crypto";
 import * as jspb from "google-protobuf";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as log from "../log";
+import { isUnknown, output } from "../output";
+import * as aliasproto from "../proto/alias_pb";
 import * as callrpc from "../proto/callback_grpc_pb";
 import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
-import { ResourceOptions, ResourceTransformation, ResourceTransformationArgs } from "../resource";
-import { deserializeProperties, serializeProperties } from "./rpc";
+import { Alias, ComponentResourceOptions, CustomResourceOptions, DependencyProviderResource, DependencyResource, ProviderResource, Resource, ResourceOptions, ResourceTransformation, ResourceTransformationArgs } from "../resource";
+import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { getStackResource } from "./stack";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -156,9 +158,59 @@ export class CallbackServer implements ICallbackServer {
         const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
             const request = resproto.TransformationRequest.deserializeBinary(bytes);
 
-            const opts: ResourceOptions = {
+            const opts = request.getOptions() || new resproto.TransformationResourceOptions();
 
+            let ropts: ResourceOptions;
+            if (request.getCustom()) {
+                ropts = {
+                    deleteBeforeReplace: opts.getDeleteBeforeReplace(),
+                    additionalSecretOutputs: opts.getAdditionalSecretOutputsList(),
+                } as CustomResourceOptions;
+            } else {
+                const providers : Record<string, ProviderResource> = {};
+                for (const [key, value] of opts.getProvidersMap().entries()) {
+                    providers[key] =  new DependencyProviderResource(value);
+                }
+                ropts = {
+                    providers: providers,
+                } as ComponentResourceOptions;
             }
+
+            ropts.aliases = opts.getAliasesList().map((alias): string|Alias => {
+                if (alias.hasUrn()) {
+                    return alias.getUrn()
+                } else {
+                    const spec = alias.getSpec();
+                    if (spec === undefined) {
+                        throw new Error("alias must have either a urn or a spec");
+                    }
+                    return {
+                        name: spec.getName(),
+                        type: spec.getType(),
+                        project: spec.getProject(),
+                        stack: spec.getStack(),
+                        parent: spec.getParenturn() !== "" ? new DependencyResource(spec.getParenturn()) : undefined,
+                    };
+                }
+            });
+            const timeouts = opts.getCustomTimeouts();
+            if (timeouts !== undefined) {
+                ropts.customTimeouts = {
+                    create: timeouts.getCreate(),
+                    update: timeouts.getUpdate(),
+                    delete: timeouts.getDelete(),
+                };
+            }
+            ropts.deletedWith = opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
+            ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
+            ropts.ignoreChanges = opts.getIgnoreChangesList();
+            ropts.parent = request.getParent() !== "" ? new DependencyResource(request.getParent()) : undefined;
+            ropts.pluginDownloadURL = opts.getPluginDownloadUrl() !== "" ? opts.getPluginDownloadUrl() : undefined;
+            ropts.protect = opts.getProtect();
+            ropts.provider = opts.getProvider() !== "" ? new DependencyProviderResource(opts.getProvider()) : undefined;
+            ropts.replaceOnChanges = opts.getReplaceOnChangesList();
+            ropts.retainOnDelete = opts.getRetainOnDelete();
+            ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
 
             const args: ResourceTransformationArgs = {
                 // Remote transforms can't really synthasize a resource object here so we just pass the root stack object.
@@ -167,7 +219,7 @@ export class CallbackServer implements ICallbackServer {
                 type: request.getType(),
                 name: request.getName(),
                 props: deserializeProperties(request.getProperties()),
-                opts: opts,
+                opts: ropts,
             };
 
             const result = transform(args);
@@ -175,10 +227,109 @@ export class CallbackServer implements ICallbackServer {
             const response = new resproto.TransformationResponse();
             if (result === undefined) {
                 response.setProperties(request.getProperties());
+                response.setOptions(request.getOptions());
             } else {
                 const mprops = await serializeProperties("props", result.props);
                 response.setProperties(gstruct.Struct.fromJavaScript(mprops));
+
+                // Copy the options over.
+                if (result.opts !== undefined) {
+                    if (result.opts.aliases !== undefined) {
+                        const aliases = []
+                        for(const alias of result.opts.aliases) {
+                            const resolved = await output(alias).promise(true);
+                            if (isUnknown(resolved)) {
+                                // Can't do anything with unknowns on options.
+                                continue;
+                            }
+
+                            if (typeof resolved === "string") {
+                                const a = new aliasproto.Alias();
+                                a.setUrn(resolved);
+                                aliases.push(a);
+                            } else {
+                                const spec = new aliasproto.Alias.Spec();
+                                if (resolved.name !== undefined) {
+                                    spec.setName(resolved.name)
+                                }
+                                if (resolved.type !== undefined) {
+                                    spec.setType(resolved.type);
+                                }
+                                if (resolved.project !== undefined) {
+                                    spec.setProject(resolved.project);
+                                }
+                                if (resolved.stack !== undefined) {
+                                    spec.setStack(resolved.stack);
+                                }
+                                if (resolved.parent !== undefined) {
+                                    if (Resource.isInstance(resolved.parent)) {
+                                        spec.setParenturn(await resolved.parent.urn.promise());
+                                    } else {
+                                        spec.setParenturn(resolved.parent);
+                                    }
+                                }
+                                const a = new aliasproto.Alias();
+                                a.setSpec(spec);
+                                aliases.push(a);
+                            }
+                        }
+                        opts.setAliasesList(aliases);
+                    }
+                    if (result.opts.customTimeouts !== undefined) {
+                        const timeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
+                        if (result.opts.customTimeouts.create !== undefined) {
+                            timeouts.setCreate(result.opts.customTimeouts.create);
+                        }
+                        if (result.opts.customTimeouts.update !== undefined) {
+                            timeouts.setUpdate(result.opts.customTimeouts.update);
+                        }
+                        if (result.opts.customTimeouts.delete !== undefined) {
+                            timeouts.setDelete(result.opts.customTimeouts.delete);
+                        }
+                        opts.setCustomTimeouts(timeouts);
+                    }
+                    if (result.opts.deletedWith !== undefined) {
+                        opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
+                    }
+                    if (result.opts.dependsOn !== undefined) {
+                        const resolvedDeps =  await output(result.opts.dependsOn).promise();
+                        const deps = [];
+                        if (Resource.isInstance(resolvedDeps)) {
+                            deps.push(await resolvedDeps.urn.promise());
+                        } else {
+                            for(const dep of resolvedDeps) {
+                                deps.push(await dep.urn.promise());
+                            }
+                        }
+                        opts.setDependsOnList(deps);
+                    }
+                    if (result.opts.ignoreChanges !== undefined) {
+                        opts.setIgnoreChangesList(result.opts.ignoreChanges);
+                    }
+                    if (result.opts.pluginDownloadURL !== undefined) {
+                        opts.setPluginDownloadUrl(result.opts.pluginDownloadURL);
+                    }
+                    if (result.opts.protect !== undefined) {
+                        opts.setProtect(result.opts.protect);
+                    }
+                    if (result.opts.provider !== undefined) {
+                        const providerURN = await result.opts.provider.urn.promise();
+                        const providerID = (await result.opts.provider.id.promise()) || unknownValue;
+                        opts.setProvider(`${providerURN}::${providerID}`);
+                    }
+                    if (result.opts.replaceOnChanges !== undefined) {
+                        opts.setReplaceOnChangesList(result.opts.replaceOnChanges);
+                    }
+                    if (result.opts.retainOnDelete !== undefined) {
+                        opts.setRetainOnDelete(result.opts.retainOnDelete);
+                    }
+                    if (result.opts.version !== undefined) {
+                        opts.setVersion(result.opts.version);
+                    }
+                }
+                response.setOptions(opts);
             }
+
 
             return response;
         };

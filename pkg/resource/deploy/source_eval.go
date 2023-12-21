@@ -516,7 +516,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // A transformation function that can be applied to a resource.
 type TransformationFunction func(
 	ctx context.Context,
-	name, typ string, custom bool,
+	name, typ string, custom bool, parent resource.URN,
 	props resource.PropertyMap,
 	opts *pulumirpc.TransformationResourceOptions,
 ) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error)
@@ -1123,10 +1123,11 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 
 	token := cb.Token
 	return func(
-		ctx context.Context, name, typ string, custom bool,
+		ctx context.Context, name, typ string, custom bool, parent resource.URN,
 		props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 	) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
-		logging.V(5).Infof("Transform: name=%v type=%v props=%v opts=%v", name, typ, props, opts)
+		logging.V(5).Infof("Transform: name=%v type=%v custom=%v parent=%v props=%v opts=%v",
+			name, typ, custom, parent, props, opts)
 
 		mopts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
@@ -1420,7 +1421,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 	for _, transform := range transformations {
-		newProps, newOpts, err := transform(ctx, name, string(t), custom, props, opts)
+		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1437,7 +1438,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		for parent != "" {
 			if transforms, ok := rm.resourceTransformations[parent]; ok {
 				for _, transform := range transforms {
-					newProps, newOpts, err := transform(ctx, name, string(t), custom, props, opts)
+					newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 					if err != nil {
 						return err
 					}
@@ -1460,7 +1461,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defer rm.stackTransformationsLock.Unlock()
 
 		for _, transform := range rm.stackTransformations {
-			newProps, newOpts, err := transform(ctx, name, string(t), custom, props, opts)
+			newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 			if err != nil {
 				return err
 			}

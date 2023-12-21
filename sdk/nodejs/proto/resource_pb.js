@@ -4770,6 +4770,7 @@ proto.pulumirpc.TransformationRequest.toObject = function(includeInstance, msg) 
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
     name: jspb.Message.getFieldWithDefault(msg, 2, ""),
     custom: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+    parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     options: (f = msg.getOptions()) && proto.pulumirpc.TransformationResourceOptions.toObject(includeInstance, f)
   };
@@ -4821,11 +4822,15 @@ proto.pulumirpc.TransformationRequest.deserializeBinaryFromReader = function(msg
       msg.setCustom(value);
       break;
     case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParent(value);
+      break;
+    case 5:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
-    case 5:
+    case 6:
       var value = new proto.pulumirpc.TransformationResourceOptions;
       reader.readMessage(value,proto.pulumirpc.TransformationResourceOptions.deserializeBinaryFromReader);
       msg.setOptions(value);
@@ -4880,10 +4885,17 @@ proto.pulumirpc.TransformationRequest.serializeBinaryToWriter = function(message
       f
     );
   }
+  f = message.getParent();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
   f = message.getProperties();
   if (f != null) {
     writer.writeMessage(
-      4,
+      5,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -4891,7 +4903,7 @@ proto.pulumirpc.TransformationRequest.serializeBinaryToWriter = function(message
   f = message.getOptions();
   if (f != null) {
     writer.writeMessage(
-      5,
+      6,
       f,
       proto.pulumirpc.TransformationResourceOptions.serializeBinaryToWriter
     );
@@ -4954,12 +4966,30 @@ proto.pulumirpc.TransformationRequest.prototype.setCustom = function(value) {
 
 
 /**
- * optional google.protobuf.Struct properties = 4;
+ * optional string parent = 4;
+ * @return {string}
+ */
+proto.pulumirpc.TransformationRequest.prototype.getParent = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.TransformationRequest} returns this
+ */
+proto.pulumirpc.TransformationRequest.prototype.setParent = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct properties = 5;
  * @return {?proto.google.protobuf.Struct}
  */
 proto.pulumirpc.TransformationRequest.prototype.getProperties = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
 };
 
 
@@ -4968,7 +4998,7 @@ proto.pulumirpc.TransformationRequest.prototype.getProperties = function() {
  * @return {!proto.pulumirpc.TransformationRequest} returns this
 */
 proto.pulumirpc.TransformationRequest.prototype.setProperties = function(value) {
-  return jspb.Message.setWrapperField(this, 4, value);
+  return jspb.Message.setWrapperField(this, 5, value);
 };
 
 
@@ -4986,17 +5016,17 @@ proto.pulumirpc.TransformationRequest.prototype.clearProperties = function() {
  * @return {boolean}
  */
 proto.pulumirpc.TransformationRequest.prototype.hasProperties = function() {
-  return jspb.Message.getField(this, 4) != null;
+  return jspb.Message.getField(this, 5) != null;
 };
 
 
 /**
- * optional TransformationResourceOptions options = 5;
+ * optional TransformationResourceOptions options = 6;
  * @return {?proto.pulumirpc.TransformationResourceOptions}
  */
 proto.pulumirpc.TransformationRequest.prototype.getOptions = function() {
   return /** @type{?proto.pulumirpc.TransformationResourceOptions} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.TransformationResourceOptions, 5));
+    jspb.Message.getWrapperField(this, proto.pulumirpc.TransformationResourceOptions, 6));
 };
 
 
@@ -5005,7 +5035,7 @@ proto.pulumirpc.TransformationRequest.prototype.getOptions = function() {
  * @return {!proto.pulumirpc.TransformationRequest} returns this
 */
 proto.pulumirpc.TransformationRequest.prototype.setOptions = function(value) {
-  return jspb.Message.setWrapperField(this, 5, value);
+  return jspb.Message.setWrapperField(this, 6, value);
 };
 
 
@@ -5023,7 +5053,7 @@ proto.pulumirpc.TransformationRequest.prototype.clearOptions = function() {
  * @return {boolean}
  */
 proto.pulumirpc.TransformationRequest.prototype.hasOptions = function() {
-  return jspb.Message.getField(this, 5) != null;
+  return jspb.Message.getField(this, 6) != null;
 };
 
 
