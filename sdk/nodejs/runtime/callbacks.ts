@@ -59,17 +59,36 @@ export class CallbackServer implements ICallbackServer {
             invoke: this.invoke,
         };
         this._server.addService(callrpc.CallbacksService, implementation);
-        this._target = new Promise<string>((resolve, reject) => {
 
+        const self = this
+        this._target = new Promise<string>((resolve, reject) => {
             console.log("binding server")
-            this._server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, port) => {
+            self._server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, port) => {
                 console.log("bound server: ", port, err)
-                if (err) {
+                if (err !== null) {
                     reject(err);
                     return;
                 }
-                this._server.start();
-                resolve(`127.0.0.1:${port}`);
+                self._server.start();
+
+                // The server takes a while to _actually_ startup so we need to keep trying to send an invoke
+                // to ourselves before we resolve the address to tell the engine about it.
+                const target = `127.0.0.1:${port}`
+
+                const client = new callrpc.CallbacksClient(target, grpc.credentials.createInsecure());
+
+                const connect = () => {
+                    client.invoke(new CallbackInvokeRequest(), (err, _) => {
+                        console.log(err)
+                        if (err?.code === grpc.status.UNAVAILABLE) {
+                            setTimeout(connect, 1000);
+                            return;
+                        }
+
+                        resolve(target);
+                    })
+                }
+                connect();
             });
         });
     }

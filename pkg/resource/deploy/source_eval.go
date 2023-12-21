@@ -1122,6 +1122,8 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 
 	token := cb.Token
 	return func(ctx context.Context, name, typ string, props resource.PropertyMap) (resource.PropertyMap, error) {
+		logging.V(5).Infof("Transform: name=%v type=%v props=%v", name, typ, props)
+
 		opts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
@@ -1148,6 +1150,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 			Request: request,
 		})
 		if err != nil {
+			logging.V(5).Infof("Transform callback error: %v", err)
 			return nil, err
 		}
 
@@ -1161,6 +1164,8 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 		if err != nil {
 			return nil, err
 		}
+
+		logging.V(5).Infof("Transform: props=%v", newProps)
 
 		return newProps, nil
 	}, nil
