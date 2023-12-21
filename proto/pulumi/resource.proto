@@ -175,13 +175,29 @@ message ResourceInvokeRequest {
     SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
 }
 
+// TransformationResourceOptions is a subset of all resource options that are relevant to transformations.
+message TransformationResourceOptions {
+    repeated string depends_on = 1;
+    bool protect = 2;
+    repeated string ignore_changes = 3;
+    repeated string replace_on_changes = 4;
+    string version = 5;
+    repeated Alias aliases = 6;
+    string provider = 7;
+    RegisterResourceRequest.CustomTimeouts custom_timeouts = 8;
+    string plugin_download_url = 9;
+    bool retain_on_delete = 10;
+    string deleted_with = 11;
+}
+
 message TransformationRequest {
     string type = 1; // the type of the resource.
     string name = 2; // the name of the resource.
-    google.protobuf.Struct props = 3; // the properties of the resource.
+    google.protobuf.Struct properties = 3; // the input properties of the resource.
+    TransformationResourceOptions options = 4; // the options for the resource.
 }
 
 message TransformationResponse {
-    google.protobuf.Struct props = 1; // the transformed properties.
-
+    google.protobuf.Struct properties = 1; // the transformed input properties.
+    TransformationResourceOptions options = 2; // the options for the resource.
 }

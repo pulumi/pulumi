@@ -479,16 +479,82 @@ export namespace ResourceInvokeRequest {
     }
 }
 
+export class TransformationResourceOptions extends jspb.Message { 
+    clearDependsOnList(): void;
+    getDependsOnList(): Array<string>;
+    setDependsOnList(value: Array<string>): TransformationResourceOptions;
+    addDependsOn(value: string, index?: number): string;
+    getProtect(): boolean;
+    setProtect(value: boolean): TransformationResourceOptions;
+    clearIgnoreChangesList(): void;
+    getIgnoreChangesList(): Array<string>;
+    setIgnoreChangesList(value: Array<string>): TransformationResourceOptions;
+    addIgnoreChanges(value: string, index?: number): string;
+    clearReplaceOnChangesList(): void;
+    getReplaceOnChangesList(): Array<string>;
+    setReplaceOnChangesList(value: Array<string>): TransformationResourceOptions;
+    addReplaceOnChanges(value: string, index?: number): string;
+    getVersion(): string;
+    setVersion(value: string): TransformationResourceOptions;
+    clearAliasesList(): void;
+    getAliasesList(): Array<pulumi_alias_pb.Alias>;
+    setAliasesList(value: Array<pulumi_alias_pb.Alias>): TransformationResourceOptions;
+    addAliases(value?: pulumi_alias_pb.Alias, index?: number): pulumi_alias_pb.Alias;
+    getProvider(): string;
+    setProvider(value: string): TransformationResourceOptions;
+
+    hasCustomTimeouts(): boolean;
+    clearCustomTimeouts(): void;
+    getCustomTimeouts(): RegisterResourceRequest.CustomTimeouts | undefined;
+    setCustomTimeouts(value?: RegisterResourceRequest.CustomTimeouts): TransformationResourceOptions;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): TransformationResourceOptions;
+    getRetainOnDelete(): boolean;
+    setRetainOnDelete(value: boolean): TransformationResourceOptions;
+    getDeletedWith(): string;
+    setDeletedWith(value: string): TransformationResourceOptions;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformationResourceOptions.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformationResourceOptions): TransformationResourceOptions.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformationResourceOptions, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformationResourceOptions;
+    static deserializeBinaryFromReader(message: TransformationResourceOptions, reader: jspb.BinaryReader): TransformationResourceOptions;
+}
+
+export namespace TransformationResourceOptions {
+    export type AsObject = {
+        dependsOnList: Array<string>,
+        protect: boolean,
+        ignoreChangesList: Array<string>,
+        replaceOnChangesList: Array<string>,
+        version: string,
+        aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
+        provider: string,
+        customTimeouts?: RegisterResourceRequest.CustomTimeouts.AsObject,
+        pluginDownloadUrl: string,
+        retainOnDelete: boolean,
+        deletedWith: string,
+    }
+}
+
 export class TransformationRequest extends jspb.Message { 
     getType(): string;
     setType(value: string): TransformationRequest;
     getName(): string;
     setName(value: string): TransformationRequest;
 
-    hasProps(): boolean;
-    clearProps(): void;
-    getProps(): google_protobuf_struct_pb.Struct | undefined;
-    setProps(value?: google_protobuf_struct_pb.Struct): TransformationRequest;
+    hasProperties(): boolean;
+    clearProperties(): void;
+    getProperties(): google_protobuf_struct_pb.Struct | undefined;
+    setProperties(value?: google_protobuf_struct_pb.Struct): TransformationRequest;
+
+    hasOptions(): boolean;
+    clearOptions(): void;
+    getOptions(): TransformationResourceOptions | undefined;
+    setOptions(value?: TransformationResourceOptions): TransformationRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformationRequest.AsObject;
@@ -504,16 +570,22 @@ export namespace TransformationRequest {
     export type AsObject = {
         type: string,
         name: string,
-        props?: google_protobuf_struct_pb.Struct.AsObject,
+        properties?: google_protobuf_struct_pb.Struct.AsObject,
+        options?: TransformationResourceOptions.AsObject,
     }
 }
 
 export class TransformationResponse extends jspb.Message { 
 
-    hasProps(): boolean;
-    clearProps(): void;
-    getProps(): google_protobuf_struct_pb.Struct | undefined;
-    setProps(value?: google_protobuf_struct_pb.Struct): TransformationResponse;
+    hasProperties(): boolean;
+    clearProperties(): void;
+    getProperties(): google_protobuf_struct_pb.Struct | undefined;
+    setProperties(value?: google_protobuf_struct_pb.Struct): TransformationResponse;
+
+    hasOptions(): boolean;
+    clearOptions(): void;
+    getOptions(): TransformationResourceOptions | undefined;
+    setOptions(value?: TransformationResourceOptions): TransformationResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformationResponse.AsObject;
@@ -527,6 +599,7 @@ export class TransformationResponse extends jspb.Message {
 
 export namespace TransformationResponse {
     export type AsObject = {
-        props?: google_protobuf_struct_pb.Struct.AsObject,
+        properties?: google_protobuf_struct_pb.Struct.AsObject,
+        options?: TransformationResourceOptions.AsObject,
     }
 }
