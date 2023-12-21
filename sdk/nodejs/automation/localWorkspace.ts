@@ -865,6 +865,12 @@ export class LocalWorkspace implements Workspace {
         if (this.isRemote) {
             envs["PULUMI_EXPERIMENTAL"] = "true";
         }
+        // If pulumi points to a custom installation, run with
+        // IGNORE_AMBIENT_PLUGINS to ensure we pickup bundled bundled plugins
+        // from the installation instead of $PATH.
+        if (this.pulumi.command !== "pulumi") {
+            envs["IGNORE_AMBIENT_PLUGINS"] = "true";
+        }
         envs = { ...envs, ...this.envVars };
         return this.pulumi.run(args, this.workDir, envs);
     }
