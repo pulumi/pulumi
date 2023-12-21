@@ -24,7 +24,18 @@ import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
-import { Alias, ComponentResourceOptions, CustomResourceOptions, DependencyProviderResource, DependencyResource, ProviderResource, Resource, ResourceOptions, ResourceTransformation, ResourceTransformationArgs } from "../resource";
+import {
+    Alias,
+    ComponentResourceOptions,
+    CustomResourceOptions,
+    DependencyProviderResource,
+    DependencyResource,
+    ProviderResource,
+    Resource,
+    ResourceOptions,
+    ResourceTransformation,
+    ResourceTransformationArgs,
+} from "../resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { getStackResource } from "./stack";
 
@@ -62,11 +73,11 @@ export class CallbackServer implements ICallbackServer {
         };
         this._server.addService(callrpc.CallbacksService, implementation);
 
-        const self = this
+        const self = this;
         this._target = new Promise<string>((resolve, reject) => {
-            console.log("binding server")
+            console.log("binding server");
             self._server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, port) => {
-                console.log("bound server: ", port, err)
+                console.log("bound server: ", port, err);
                 if (err !== null) {
                     reject(err);
                     return;
@@ -75,28 +86,28 @@ export class CallbackServer implements ICallbackServer {
 
                 // The server takes a while to _actually_ startup so we need to keep trying to send an invoke
                 // to ourselves before we resolve the address to tell the engine about it.
-                const target = `127.0.0.1:${port}`
+                const target = `127.0.0.1:${port}`;
 
                 const client = new callrpc.CallbacksClient(target, grpc.credentials.createInsecure());
 
                 const connect = () => {
-                    client.invoke(new CallbackInvokeRequest(), (err, _) => {
-                        console.log(err)
-                        if (err?.code === grpc.status.UNAVAILABLE) {
+                    client.invoke(new CallbackInvokeRequest(), (error, _) => {
+                        console.log(error);
+                        if (error?.code === grpc.status.UNAVAILABLE) {
                             setTimeout(connect, 1000);
                             return;
                         }
 
                         resolve(target);
-                    })
-                }
+                    });
+                };
                 connect();
             });
         });
     }
 
     awaitStackRegistrations(): Promise<void> {
-        console.log("awaitStackRegistrations: ", this._pendingRegistrations)
+        console.log("awaitStackRegistrations: ", this._pendingRegistrations);
         if (this._pendingRegistrations === 0) {
             return Promise.resolve();
         }
@@ -119,12 +130,12 @@ export class CallbackServer implements ICallbackServer {
         call: grpc.ServerUnaryCall<CallbackInvokeRequest, CallbackInvokeResponse>,
         callback: grpc.sendUnaryData<CallbackInvokeResponse>,
     ) {
-        console.log("Invoke called with request: ", call)
+        console.log("Invoke called with request: ", call);
         const req = call.request;
 
         const cb = this._callbacks.get(req.getToken());
         if (cb === undefined) {
-            console.log("callback not found: ", req.getToken())
+            console.log("callback not found: ", req.getToken());
             const err = new grpc.StatusBuilder();
             err.withCode(grpc.status.INVALID_ARGUMENT);
             err.withDetails("callback not found");
@@ -133,14 +144,14 @@ export class CallbackServer implements ICallbackServer {
         }
 
         try {
-            console.log("calling callback")
+            console.log("calling callback");
             const response = await cb(req.getRequest_asU8());
             const resp = new CallbackInvokeResponse();
-            console.log("callback response: ", resp)
+            console.log("callback response: ", resp);
             resp.setResponse(response.serializeBinary());
             callback(null, resp);
         } catch (e) {
-            console.log("callback failed: ", e)
+            console.log("callback failed: ", e);
 
             const err = new grpc.StatusBuilder();
             err.withCode(grpc.status.UNKNOWN);
@@ -167,18 +178,18 @@ export class CallbackServer implements ICallbackServer {
                     additionalSecretOutputs: opts.getAdditionalSecretOutputsList(),
                 } as CustomResourceOptions;
             } else {
-                const providers : Record<string, ProviderResource> = {};
+                const providers: Record<string, ProviderResource> = {};
                 for (const [key, value] of opts.getProvidersMap().entries()) {
-                    providers[key] =  new DependencyProviderResource(value);
+                    providers[key] = new DependencyProviderResource(value);
                 }
                 ropts = {
                     providers: providers,
                 } as ComponentResourceOptions;
             }
 
-            ropts.aliases = opts.getAliasesList().map((alias): string|Alias => {
+            ropts.aliases = opts.getAliasesList().map((alias): string | Alias => {
                 if (alias.hasUrn()) {
-                    return alias.getUrn()
+                    return alias.getUrn();
                 } else {
                     const spec = alias.getSpec();
                     if (spec === undefined) {
@@ -201,7 +212,8 @@ export class CallbackServer implements ICallbackServer {
                     delete: timeouts.getDelete(),
                 };
             }
-            ropts.deletedWith = opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
+            ropts.deletedWith =
+                opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
             ropts.ignoreChanges = opts.getIgnoreChangesList();
             ropts.parent = request.getParent() !== "" ? new DependencyResource(request.getParent()) : undefined;
@@ -235,8 +247,8 @@ export class CallbackServer implements ICallbackServer {
                 // Copy the options over.
                 if (result.opts !== undefined) {
                     if (result.opts.aliases !== undefined) {
-                        const aliases = []
-                        for(const alias of result.opts.aliases) {
+                        const aliases = [];
+                        for (const alias of result.opts.aliases) {
                             const resolved = await output(alias).promise(true);
                             if (isUnknown(resolved)) {
                                 // Can't do anything with unknowns on options.
@@ -250,7 +262,7 @@ export class CallbackServer implements ICallbackServer {
                             } else {
                                 const spec = new aliasproto.Alias.Spec();
                                 if (resolved.name !== undefined) {
-                                    spec.setName(resolved.name)
+                                    spec.setName(resolved.name);
                                 }
                                 if (resolved.type !== undefined) {
                                     spec.setType(resolved.type);
@@ -276,28 +288,28 @@ export class CallbackServer implements ICallbackServer {
                         opts.setAliasesList(aliases);
                     }
                     if (result.opts.customTimeouts !== undefined) {
-                        const timeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
+                        const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
                         if (result.opts.customTimeouts.create !== undefined) {
-                            timeouts.setCreate(result.opts.customTimeouts.create);
+                            customTimeouts.setCreate(result.opts.customTimeouts.create);
                         }
                         if (result.opts.customTimeouts.update !== undefined) {
-                            timeouts.setUpdate(result.opts.customTimeouts.update);
+                            customTimeouts.setUpdate(result.opts.customTimeouts.update);
                         }
                         if (result.opts.customTimeouts.delete !== undefined) {
-                            timeouts.setDelete(result.opts.customTimeouts.delete);
+                            customTimeouts.setDelete(result.opts.customTimeouts.delete);
                         }
-                        opts.setCustomTimeouts(timeouts);
+                        opts.setCustomTimeouts(customTimeouts);
                     }
                     if (result.opts.deletedWith !== undefined) {
                         opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
                     }
                     if (result.opts.dependsOn !== undefined) {
-                        const resolvedDeps =  await output(result.opts.dependsOn).promise();
+                        const resolvedDeps = await output(result.opts.dependsOn).promise();
                         const deps = [];
                         if (Resource.isInstance(resolvedDeps)) {
                             deps.push(await resolvedDeps.urn.promise());
                         } else {
-                            for(const dep of resolvedDeps) {
+                            for (const dep of resolvedDeps) {
                                 deps.push(await dep.urn.promise());
                             }
                         }
@@ -330,7 +342,6 @@ export class CallbackServer implements ICallbackServer {
                 response.setOptions(opts);
             }
 
-
             return response;
         };
         const uuid = randomUUID();
@@ -338,18 +349,18 @@ export class CallbackServer implements ICallbackServer {
         const req = new Callback();
         req.setToken(uuid);
         req.setTarget(await this._target);
-        console.log("registered transform: ", req)
+        console.log("registered transform: ", req);
         return req;
     }
 
     registerStackTransformation(transform: ResourceTransformation): void {
         this._pendingRegistrations++;
-        console.log("registerStackTransformation: ", this._pendingRegistrations)
+        console.log("registerStackTransformation: ", this._pendingRegistrations);
 
         this.registerTransformation(transform)
             .then(
                 (req) => {
-                    console.log("register stack transform: ", req)
+                    console.log("register stack transform: ", req);
                     this._monitor.registerStackTransformation(req, (err, _) => {
                         if (err !== null) {
                             log.error(`failed to register stack transformation: ${err.message}`);
@@ -363,7 +374,7 @@ export class CallbackServer implements ICallbackServer {
             )
             .finally(() => {
                 this._pendingRegistrations--;
-                console.log("registered stack transform: ", this._pendingRegistrations)
+                console.log("registered stack transform: ", this._pendingRegistrations);
                 if (this._pendingRegistrations === 0) {
                     const queue = this._awaitQueue;
                     this._awaitQueue = [];
