@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/config
-  description: Adds `pulumi config env ls` command to list the environment imports declared in a stack configuration.
