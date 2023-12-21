@@ -240,6 +240,7 @@ class LocalWorkspace(Workspace):
         if self.__pulumi_version is not None:
             ver = VersionInfo.parse(self.__pulumi_version)
 
+        # 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
         if ver >= VersionInfo(3, 99):
             result = self._run_pulumi_cmd_sync(
                 ["config", "env", "ls", "--json", "--stack", stack_name]

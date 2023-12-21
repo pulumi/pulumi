@@ -478,7 +478,7 @@ export class LocalWorkspace implements Workspace {
             ver = semver.parse("3.0.0")!;
         }
 
-        // 3.99 added this command (
+        // 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
         if (ver.compare("3.99.0") < 0) {
             throw new Error(`listEnvironments requires Pulumi version >= 3.99.0`);
         }
