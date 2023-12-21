@@ -15,9 +15,11 @@
 import execa from "execa";
 import * as fs from "fs";
 import got from "got";
+import * as os from "os";
 import * as path from "path";
 import * as semver from "semver";
 import * as tmp from "tmp";
+import { version as DEFAULT_VERSION } from "../version";
 
 import { createCommandError } from "./errors";
 
@@ -48,7 +50,7 @@ export interface PulumiOptions {
 }
 
 export class Pulumi {
-    private constructor(readonly command: string, readonly version: semver.SemVer) {}
+    private constructor(readonly command: string, readonly version: semver.SemVer) { }
 
     static async get(opts?: PulumiOptions): Promise<Pulumi> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
@@ -63,23 +65,25 @@ export class Pulumi {
     }
 
     static async install(opts?: PulumiOptions): Promise<Pulumi> {
+        const optsWithDefaults = withDefaults(opts);
         try {
-            return await Pulumi.get(opts);
+            return await Pulumi.get(optsWithDefaults);
         } catch (err) {
             // ignore
         }
 
         if (process.platform === "win32") {
-            await Pulumi.installWindows(opts);
+            await Pulumi.installWindows(optsWithDefaults);
         } else {
-            await Pulumi.installPosix(opts);
+            await Pulumi.installPosix(optsWithDefaults);
         }
 
-        return await Pulumi.get(opts);
+        return await Pulumi.get(optsWithDefaults);
     }
 
-    private static async installWindows(opts?: PulumiOptions): Promise<void> {
-        const response = await got("https://get.pulumi.com/install.ps1");
+    private static async installWindows(opts: Required<PulumiOptions>): Promise<void> {
+        // TODO: const response = await got("https://get.pulumi.com/install.ps1");
+        const response = await got("https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.ps1");
         const script = await writeTempFile(response.body);
 
         try {
@@ -93,16 +97,11 @@ export class Pulumi {
                 "None",
                 "-ExecutionPolicy",
                 "Bypass",
-                "-File",
-                script.path,
+                "-File", script.path,
+                "-NoEditPath",
+                "-InstallRoot", opts.root,
+                "-Version", `${opts.version}`,
             ];
-
-            if (opts?.root) {
-                args.push("-InstallRoot", opts.root);
-            }
-            if (opts?.version) {
-                args.push("-Version", `${opts.version}`);
-            }
 
             await exec(command, args);
         } finally {
@@ -110,18 +109,18 @@ export class Pulumi {
         }
     }
 
-    private static async installPosix(opts?: PulumiOptions): Promise<void> {
-        const response = await got("https://get.pulumi.com/install.sh");
+    private static async installPosix(opts: Required<PulumiOptions>): Promise<void> {
+        // TODO: const response = await got("https://get.pulumi.com/install.sh");
+        const response = await got("https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.sh");
         const script = await writeTempFile(response.body);
 
         try {
-            const args = [script.path, "--no-edit-path"];
-            if (opts?.root) {
-                args.push("--install-root", opts.root);
-            }
-            if (opts?.version) {
-                args.push("--version", `${opts.version}`);
-            }
+            const args = [
+                script.path,
+                "--no-edit-path",
+                "--install-root", opts.root,
+                "--version", `${opts.version}`,
+            ];
 
             await exec("/bin/sh", args);
         } finally {
@@ -180,6 +179,18 @@ async function exec(
         const error = err as Error;
         throw createCommandError(new CommandResult("", error.message, unknownErrCode, error));
     }
+}
+
+function withDefaults(opts?: PulumiOptions): Required<PulumiOptions> {
+    let version = opts?.version;
+    if (!version) {
+        version = new semver.SemVer(DEFAULT_VERSION);
+    }
+    let root = opts?.root;
+    if (!root) {
+        root = path.join(os.homedir(), ".pulumi", "versions", `${version}`);
+    }
+    return { version, root };
 }
 
 function writeTempFile(contents: string): Promise<{ path: string; cleanup: () => void }> {

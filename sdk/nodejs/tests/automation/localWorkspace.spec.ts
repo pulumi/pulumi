@@ -14,6 +14,7 @@
 
 import assert from "assert";
 import * as semver from "semver";
+import * as tmp from "tmp";
 import * as upath from "upath";
 
 import {
@@ -23,6 +24,7 @@ import {
     LocalWorkspace,
     OutputMap,
     ProjectSettings,
+    Pulumi,
     Stack,
     validatePulumiVersion,
 } from "../../automation";
@@ -1039,6 +1041,16 @@ describe("LocalWorkspace", () => {
         const ws = await LocalWorkspace.create({});
         assert(ws.pulumiVersion);
         assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
+    });
+    it("sets pulumi version when using a custom CLI instance", async () => {
+        const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
+        try {
+            const pulumi = await Pulumi.get();
+            const ws = await LocalWorkspace.create({ pulumi });
+            assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
+        } finally {
+            tmpDir.removeCallback();
+        }
     });
     it(`respects existing project settings`, async () => {
         const projectName = "correct_project";
