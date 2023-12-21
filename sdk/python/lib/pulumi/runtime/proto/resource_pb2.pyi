@@ -626,6 +626,8 @@ class TransformationResourceOptions(google.protobuf.message.Message):
     PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
     RETAIN_ON_DELETE_FIELD_NUMBER: builtins.int
     DELETED_WITH_FIELD_NUMBER: builtins.int
+    DELETE_BEFORE_REPLACE_FIELD_NUMBER: builtins.int
+    ADDITIONAL_SECRET_OUTPUTS_FIELD_NUMBER: builtins.int
     @property
     def depends_on(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     protect: builtins.bool
@@ -642,6 +644,9 @@ class TransformationResourceOptions(google.protobuf.message.Message):
     plugin_download_url: builtins.str
     retain_on_delete: builtins.bool
     deleted_with: builtins.str
+    delete_before_replace: builtins.bool
+    @property
+    def additional_secret_outputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     def __init__(
         self,
         *,
@@ -656,9 +661,11 @@ class TransformationResourceOptions(google.protobuf.message.Message):
         plugin_download_url: builtins.str = ...,
         retain_on_delete: builtins.bool = ...,
         deleted_with: builtins.str = ...,
+        delete_before_replace: builtins.bool = ...,
+        additional_secret_outputs: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["custom_timeouts", b"custom_timeouts"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "ignore_changes", b"ignore_changes", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "ignore_changes", b"ignore_changes", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
 
 global___TransformationResourceOptions = TransformationResourceOptions
 

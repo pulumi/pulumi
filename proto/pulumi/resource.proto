@@ -188,6 +188,8 @@ message TransformationResourceOptions {
     string plugin_download_url = 9;
     bool retain_on_delete = 10;
     string deleted_with = 11;
+    bool delete_before_replace = 12;
+    repeated string additional_secret_outputs = 13;
 }
 
 message TransformationRequest {

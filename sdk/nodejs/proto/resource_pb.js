@@ -4040,7 +4040,7 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.hasSourceposition = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.TransformationResourceOptions.repeatedFields_ = [1,3,4,6];
+proto.pulumirpc.TransformationResourceOptions.repeatedFields_ = [1,3,4,6,13];
 
 
 
@@ -4084,7 +4084,9 @@ proto.pulumirpc.TransformationResourceOptions.toObject = function(includeInstanc
     customTimeouts: (f = msg.getCustomTimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
     pluginDownloadUrl: jspb.Message.getFieldWithDefault(msg, 9, ""),
     retainOnDelete: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    deletedWith: jspb.Message.getFieldWithDefault(msg, 11, "")
+    deletedWith: jspb.Message.getFieldWithDefault(msg, 11, ""),
+    deleteBeforeReplace: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
+    additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -4166,6 +4168,14 @@ proto.pulumirpc.TransformationResourceOptions.deserializeBinaryFromReader = func
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.setDeletedWith(value);
+      break;
+    case 12:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDeleteBeforeReplace(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addAdditionalSecretOutputs(value);
       break;
     default:
       reader.skipField();
@@ -4272,6 +4282,20 @@ proto.pulumirpc.TransformationResourceOptions.serializeBinaryToWriter = function
   if (f.length > 0) {
     writer.writeString(
       11,
+      f
+    );
+  }
+  f = message.getDeleteBeforeReplace();
+  if (f) {
+    writer.writeBool(
+      12,
+      f
+    );
+  }
+  f = message.getAdditionalSecretOutputsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      13,
       f
     );
   }
@@ -4569,6 +4593,61 @@ proto.pulumirpc.TransformationResourceOptions.prototype.getDeletedWith = functio
  */
 proto.pulumirpc.TransformationResourceOptions.prototype.setDeletedWith = function(value) {
   return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * optional bool delete_before_replace = 12;
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.getDeleteBeforeReplace = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 12, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.setDeleteBeforeReplace = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 12, value);
+};
+
+
+/**
+ * repeated string additional_secret_outputs = 13;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.getAdditionalSecretOutputsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 13));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.setAdditionalSecretOutputsList = function(value) {
+  return jspb.Message.setField(this, 13, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.addAdditionalSecretOutputs = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 13, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.TransformationResourceOptions} returns this
+ */
+proto.pulumirpc.TransformationResourceOptions.prototype.clearAdditionalSecretOutputsList = function() {
+  return this.setAdditionalSecretOutputsList([]);
 };
 
 

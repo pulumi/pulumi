@@ -518,7 +518,8 @@ type TransformationFunction func(
 	ctx context.Context,
 	name, typ string,
 	props resource.PropertyMap,
-) (resource.PropertyMap, error)
+	opts *pulumirpc.TransformationResourceOptions,
+) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error)
 
 type CallbacksClient struct {
 	pulumirpc.CallbacksClient
@@ -1121,28 +1122,31 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 	}
 
 	token := cb.Token
-	return func(ctx context.Context, name, typ string, props resource.PropertyMap) (resource.PropertyMap, error) {
-		logging.V(5).Infof("Transform: name=%v type=%v props=%v", name, typ, props)
+	return func(
+		ctx context.Context, name, typ string,
+		props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
+	) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
+		logging.V(5).Infof("Transform: name=%v type=%v props=%v opts=%v", name, typ, props, opts)
 
-		opts := plugin.MarshalOptions{
+		mopts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
 		}
 
-		mprops, err := plugin.MarshalProperties(props, opts)
+		mprops, err := plugin.MarshalProperties(props, mopts)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		request, err := proto.Marshal(&pulumirpc.TransformationRequest{
-			Name:  name,
-			Type:  typ,
-			Props: mprops,
+			Name:       name,
+			Type:       typ,
+			Properties: mprops,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("marshaling request: %w", err)
+			return nil, nil, fmt.Errorf("marshaling request: %w", err)
 		}
 
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
@@ -1151,23 +1155,31 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 		})
 		if err != nil {
 			logging.V(5).Infof("Transform callback error: %v", err)
-			return nil, err
+			return nil, nil, err
 		}
 
 		var response pulumirpc.TransformationResponse
 		err = proto.Unmarshal(resp.Response, &response)
 		if err != nil {
-			return nil, fmt.Errorf("unmarshaling response: %w", err)
+			return nil, nil, fmt.Errorf("unmarshaling response: %w", err)
 		}
 
-		newProps, err := plugin.UnmarshalProperties(response.Props, opts)
-		if err != nil {
-			return nil, err
+		newOpts := opts
+		if response.Options != nil {
+			newOpts = response.Options
 		}
 
-		logging.V(5).Infof("Transform: props=%v", newProps)
+		newProps := props
+		if response.Properties != nil {
+			newProps, err = plugin.UnmarshalProperties(response.Properties, mopts)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
 
-		return newProps, nil
+		logging.V(5).Infof("Transform: props=%v opts=%v", newProps, newOpts)
+
+		return newProps, newOpts, nil
 	}, nil
 }
 
@@ -1290,8 +1302,7 @@ func requestFromNodeJS(ctx context.Context) bool {
 }
 
 // transformAliasForNodeJSCompat transforms the alias from the legacy Node.js values to properly specified values.
-func transformAliasForNodeJSCompat(alias resource.Alias) resource.Alias {
-	contract.Assertf(alias.URN == "", "alias.URN must be empty")
+func transformAliasForNodeJSCompat(alias *pulumirpc.Alias_Spec) {
 	// The original implementation in the Node.js SDK did not specify aliases correctly:
 	//
 	// - It did not set NoParent when it should have, but instead set Parent to empty.
@@ -1302,10 +1313,9 @@ func transformAliasForNodeJSCompat(alias resource.Alias) resource.Alias {
 	//
 	// - { Parent: "", NoParent: false } -> { Parent: "", NoParent: true }
 	// - { Parent: "", NoParent: true }  -> { Parent: "", NoParent: false }
-	if alias.Parent == "" {
-		alias.NoParent = !alias.NoParent
+	if alias.Parent == nil {
+		alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: false}
 	}
-	return alias
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
@@ -1320,17 +1330,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
-	protect := req.GetProtect()
-	deleteBeforeReplaceValue := req.GetDeleteBeforeReplace()
-	ignoreChanges := req.GetIgnoreChanges()
-	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
-	customTimeouts := req.GetCustomTimeouts()
-	retainOnDelete := req.GetRetainOnDelete()
-	deletedWith, err := resource.ParseOptionalURN(req.GetDeletedWith())
-	if err != nil {
-		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
-	}
 	sourcePosition := rm.sourcePositions.getFromRequest(req)
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -1362,6 +1362,43 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 
+	// We need to build the full alias spec list here, so we can pass it to transforms.
+	aliases := []*pulumirpc.Alias{}
+	for _, aliasURN := range req.GetAliasURNs() {
+		aliases = append(aliases, &pulumirpc.Alias{Alias: &pulumirpc.Alias_Urn{Urn: aliasURN}})
+	}
+
+	// We assume aliases are properly specified. However, if a request hasn't explicitly
+	// indicated that it is using properly specified aliases and the request is coming
+	// from Node.js, transform the aliases from the incorrect Node.js values to properly
+	// specified values, to maintain backward compatibility for users of older Node.js
+	// SDKs that aren't sending properly specified aliases.
+	transformAliases := !req.GetAliasSpecs() && requestFromNodeJS(ctx)
+
+	for _, aliasObject := range req.GetAliases() {
+		aliasSpec := aliasObject.GetSpec()
+		if aliasSpec != nil {
+			if transformAliases {
+				transformAliasForNodeJSCompat(aliasSpec)
+			}
+		}
+		aliases = append(aliases, aliasObject)
+	}
+
+	opts := &pulumirpc.TransformationResourceOptions{
+		DependsOn:         req.GetDependencies(),
+		Protect:           req.GetProtect(),
+		IgnoreChanges:     req.GetIgnoreChanges(),
+		ReplaceOnChanges:  req.GetReplaceOnChanges(),
+		Version:           req.GetVersion(),
+		Aliases:           aliases,
+		Provider:          req.GetProvider(),
+		CustomTimeouts:    req.GetCustomTimeouts(),
+		PluginDownloadUrl: req.GetPluginDownloadURL(),
+		RetainOnDelete:    req.GetRetainOnDelete(),
+		DeletedWith:       req.GetDeletedWith(),
+	}
+
 	// Before we calculate anything else run the transformations. First run the transforms for this resource,
 	// then it's parents etc etc
 	transformations, err := slice.MapError(req.Transformations, rm.wrapTransformCallback)
@@ -1369,11 +1406,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 	for _, transform := range transformations {
-		newProps, err := transform(ctx, name, string(t), props)
+		newProps, newOpts, err := transform(ctx, name, string(t), props, opts)
 		if err != nil {
 			return nil, err
 		}
 		props = newProps
+		opts = newOpts
 	}
 	// Lookup our parents transformations and run those
 	err = func() error {
@@ -1385,11 +1423,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		for parent != "" {
 			if transforms, ok := rm.resourceTransformations[parent]; ok {
 				for _, transform := range transforms {
-					newProps, err := transform(ctx, name, string(t), props)
+					newProps, newOpts, err := transform(ctx, name, string(t), props, opts)
 					if err != nil {
 						return err
 					}
 					props = newProps
+					opts = newOpts
 				}
 			}
 			parent = rm.resGoals[parent].Parent
@@ -1407,11 +1446,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defer rm.stackTransformationsLock.Unlock()
 
 		for _, transform := range rm.stackTransformations {
-			newProps, err := transform(ctx, name, string(t), props)
+			newProps, newOpts, err := transform(ctx, name, string(t), props, opts)
 			if err != nil {
 				return err
 			}
 			props = newProps
+			opts = newOpts
 		}
 		return nil
 	}()
@@ -1464,23 +1504,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	aliases := []resource.Alias{}
-	for _, aliasURN := range req.GetAliasURNs() {
-		urn, err := resource.ParseURN(aliasURN)
-		if err != nil {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid alias URN: %s", err))
-		}
-		aliases = append(aliases, resource.Alias{URN: urn})
-	}
-
-	// We assume aliases are properly specified. However, if a request hasn't explicitly
-	// indicated that it is using properly specified aliases and the request is coming
-	// from Node.js, transform the aliases from the incorrect Node.js values to properly
-	// specified values, to maintain backward compatibility for users of older Node.js
-	// SDKs that aren't sending properly specified aliases.
-	transformAliases := !req.GetAliasSpecs() && requestFromNodeJS(ctx)
-
-	for _, aliasObject := range req.GetAliases() {
+	parsedAliases := []resource.Alias{}
+	for _, aliasObject := range opts.Aliases {
 		aliasSpec := aliasObject.GetSpec()
 		var alias resource.Alias
 		if aliasSpec != nil {
@@ -1496,9 +1521,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Parent:   parentURN,
 				NoParent: aliasSpec.GetNoParent(),
 			}
-			if transformAliases {
-				alias = transformAliasForNodeJSCompat(alias)
-			}
 		} else {
 			urn, err := resource.ParseURN(aliasObject.GetUrn())
 			if err != nil {
@@ -1506,7 +1528,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			alias = resource.Alias{URN: urn}
 		}
-		aliases = append(aliases, alias)
+		parsedAliases = append(parsedAliases, alias)
 	}
 
 	dependencies := []resource.URN{}
@@ -1569,7 +1591,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	additionalSecretOutputs := req.GetAdditionalSecretOutputs()
 
 	var deleteBeforeReplace *bool
-	if deleteBeforeReplaceValue || req.GetDeleteBeforeReplaceDefined() {
+	if opts.DeleteBeforeReplace || req.GetDeleteBeforeReplaceDefined() {
 		deleteBeforeReplace = &deleteBeforeReplaceValue
 	}
 
@@ -1578,7 +1600,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1668,7 +1690,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 			providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
+			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
 			sourcePosition,
 		)
 
