@@ -121,9 +121,12 @@ jobs:
         run: |
           find artifacts.tmp
           mkdir -p ./artifacts
-          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.sig ./artifacts
+          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.tar.gz.sig ./artifacts
+          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.zip.sig ./artifacts
+          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.txt.sig ./artifacts
           mv ./artifacts.tmp/artifacts-signatures/pulumi-*.txt ./artifacts
           mv ./artifacts.tmp/artifacts-cli-*/pulumi-*.tar.gz ./artifacts
+          mv ./artifacts.tmp/artifacts-cli-*/pulumi-*.zip ./artifacts
 
       - name: Find artifacts
         run: |
