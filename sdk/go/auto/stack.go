@@ -682,6 +682,11 @@ func (s *Stack) AddEnvironments(ctx context.Context, envs ...string) error {
 	return s.Workspace().AddEnvironments(ctx, s.Name(), envs...)
 }
 
+// ListEnvironments returns the list of environments from the stack's configuration.
+func (s *Stack) ListEnvironments(ctx context.Context) ([]string, error) {
+	return s.Workspace().ListEnvironments(ctx, s.Name())
+}
+
 // RemoveEnvironment removes an environment from a stack's configuration.
 func (s *Stack) RemoveEnvironment(ctx context.Context, env string) error {
 	return s.Workspace().RemoveEnvironment(ctx, s.Name(), env)
