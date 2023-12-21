@@ -56,7 +56,6 @@ on:
         default: false
         type: boolean
 
-
 defaults:
   run:
     shell: bash
@@ -333,6 +332,9 @@ jobs:
         id: test
         run: ${{ inputs.test-command }}
         env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Convert Node coverage data
