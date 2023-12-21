@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Avoid pretty printing large object graphs when a resource property doesn't type-check when binding PCL programs

@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.99.0 (2023-12-20)
+
+
+### Features
+
+- [cli/config] Adds `pulumi config env ls` command to list the environment imports declared in a stack configuration.
+  [#14855](https://github.com/pulumi/pulumi/pull/14855)
+
+- [cli/new] Adds pulumi new --ai functionality.
+  [#14685](https://github.com/pulumi/pulumi/pull/14685)
+
+- [sdk/nodejs] Add an environment variable (`PULUMI_ERROR_OUTPUT_STRING`) to throw when an output tries to convert to a string.
+  [#14811](https://github.com/pulumi/pulumi/pull/14811)
+
+
+### Bug Fixes
+
+- [auto/nodejs] Always run cleanup for refresh and destroy commands
+  [#14948](https://github.com/pulumi/pulumi/pull/14948)
+
+- [auto/nodejs] Don't mutate original stack settings when saving
+  [#14952](https://github.com/pulumi/pulumi/pull/14952)
+
+- [programgen] Avoid pretty printing large object graphs when a resource property doesn't type-check when binding PCL programs
+  [#14864](https://github.com/pulumi/pulumi/pull/14864)
+
+- [cli/config] Fixes config copy command to also copy environments from the source stack
+  [#14847](https://github.com/pulumi/pulumi/pull/14847)
+
+- [cli/config] Fix a bug in `pulumi config env ls --json` where the json flag was not being correctly passed through.
+  [#14961](https://github.com/pulumi/pulumi/pull/14961)
+
+- [programgen/go] Fix required config variables of type bool and number
+  [#14958](https://github.com/pulumi/pulumi/pull/14958)
+
+
+### Miscellaneous
+
+- [cli] Update esc to v0.6.2
+  [#14960](https://github.com/pulumi/pulumi/pull/14960)
+
+- [yaml] Upgrade yaml to 1.4.4
+  [#14963](https://github.com/pulumi/pulumi/pull/14963)
+
 ## 3.98.0 (2023-12-19)
 
 

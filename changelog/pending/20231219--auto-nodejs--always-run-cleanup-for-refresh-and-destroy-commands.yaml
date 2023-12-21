@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/nodejs
-  description: Always run cleanup for refresh and destroy commands
