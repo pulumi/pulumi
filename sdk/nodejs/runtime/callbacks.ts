@@ -56,17 +56,18 @@ export class CallbackServer implements ICallbackServer {
         });
 
         const implementation: callrpc.ICallbacksServer = {
-            invoke: this.invoke.bind(this),
+            invoke: this.invoke,
         };
         this._server.addService(callrpc.CallbacksService, implementation);
-
         this._target = new Promise<string>((resolve, reject) => {
+
+            console.log("binding server")
             this._server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, port) => {
+                console.log("bound server: ", port, err)
                 if (err) {
                     reject(err);
                     return;
                 }
-
                 this._server.start();
                 resolve(`127.0.0.1:${port}`);
             });
@@ -74,6 +75,7 @@ export class CallbackServer implements ICallbackServer {
     }
 
     awaitStackRegistrations(): Promise<void> {
+        console.log("awaitStackRegistrations: ", this._pendingRegistrations)
         if (this._pendingRegistrations === 0) {
             return Promise.resolve();
         }
@@ -96,10 +98,12 @@ export class CallbackServer implements ICallbackServer {
         call: grpc.ServerUnaryCall<CallbackInvokeRequest, CallbackInvokeResponse>,
         callback: grpc.sendUnaryData<CallbackInvokeResponse>,
     ) {
+        console.log("Invoke called with request: ", call)
         const req = call.request;
 
         const cb = this._callbacks.get(req.getToken());
         if (cb === undefined) {
+            console.log("callback not found: ", req.getToken())
             const err = new grpc.StatusBuilder();
             err.withCode(grpc.status.INVALID_ARGUMENT);
             err.withDetails("callback not found");
@@ -108,11 +112,15 @@ export class CallbackServer implements ICallbackServer {
         }
 
         try {
+            console.log("calling callback")
             const response = await cb(req.getRequest_asU8());
             const resp = new CallbackInvokeResponse();
+            console.log("callback response: ", resp)
             resp.setResponse(response.serializeBinary());
             callback(null, resp);
         } catch (e) {
+            console.log("callback failed: ", e)
+
             const err = new grpc.StatusBuilder();
             err.withCode(grpc.status.UNKNOWN);
             if (e instanceof Error) {
@@ -156,15 +164,18 @@ export class CallbackServer implements ICallbackServer {
         const req = new Callback();
         req.setToken(uuid);
         req.setTarget(await this._target);
+        console.log("registered transform: ", req)
         return req;
     }
 
     registerStackTransformation(transform: ResourceTransformation): void {
         this._pendingRegistrations++;
+        console.log("registerStackTransformation: ", this._pendingRegistrations)
 
         this.registerTransformation(transform)
             .then(
                 (req) => {
+                    console.log("register stack transform: ", req)
                     this._monitor.registerStackTransformation(req, (err, _) => {
                         if (err !== null) {
                             log.error(`failed to register stack transformation: ${err.message}`);
@@ -178,6 +189,7 @@ export class CallbackServer implements ICallbackServer {
             )
             .finally(() => {
                 this._pendingRegistrations--;
+                console.log("registered stack transform: ", this._pendingRegistrations)
                 if (this._pendingRegistrations === 0) {
                     const queue = this._awaitQueue;
                     this._awaitQueue = [];
