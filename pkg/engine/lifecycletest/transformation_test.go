@@ -31,7 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func TransformationFunction(f func(name, typ string, props resource.PropertyMap) (resource.PropertyMap, error),
+func TransformationFunction(f func(name, typ string, props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error),
 ) func([]byte) (proto.Message, error) {
 	return func(request []byte) (proto.Message, error) {
 		var transformationRequest pulumirpc.TransformationRequest
@@ -40,7 +40,7 @@ func TransformationFunction(f func(name, typ string, props resource.PropertyMap)
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
 
-		mprops, err := plugin.UnmarshalProperties(transformationRequest.Props, plugin.MarshalOptions{
+		mprops, err := plugin.UnmarshalProperties(transformationRequest.Properties, plugin.MarshalOptions{
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
@@ -50,7 +50,7 @@ func TransformationFunction(f func(name, typ string, props resource.PropertyMap)
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
 
-		ret, err := f(transformationRequest.Name, transformationRequest.Type, mprops)
+		ret, opts, err := f(transformationRequest.Name, transformationRequest.Type, mprops, transformationRequest.Options)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,8 @@ func TransformationFunction(f func(name, typ string, props resource.PropertyMap)
 		}
 
 		return &pulumirpc.TransformationResponse{
-			Props: mret,
+			Properties: mret,
+			Options:    opts,
 		}, nil
 	}
 }
@@ -86,17 +87,21 @@ func TestRemoteTransformations(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		callback1, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string, props resource.PropertyMap) (resource.PropertyMap, error) {
+			TransformationFunction(func(name, typ string,
+				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)
 				// callback 2 should run before this one so "bar" should exist at this point
 				props["bar"] = resource.NewStringProperty(props["bar"].StringValue() + "baz")
 
-				return props, nil
+				return props, opts, nil
 			}))
 		require.NoError(t, err)
 
 		callback2, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string, props resource.PropertyMap) (resource.PropertyMap, error) {
+			TransformationFunction(func(name, typ string,
+				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)
 				props["bar"] = resource.NewStringProperty("bar")
 				// if this is for resB then callback 3 will have run before this one
@@ -106,15 +111,17 @@ func TestRemoteTransformations(t *testing.T) {
 					props["frob"] = resource.NewStringProperty("nofrob")
 				}
 
-				return props, nil
+				return props, opts, nil
 			}))
 		require.NoError(t, err)
 
 		callback3, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string, props resource.PropertyMap) (resource.PropertyMap, error) {
+			TransformationFunction(func(name, typ string,
+				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)
 				props["frob"] = resource.NewStringProperty("frob")
-				return props, nil
+				return props, opts, nil
 			}))
 		require.NoError(t, err)
 

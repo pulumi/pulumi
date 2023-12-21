@@ -1313,8 +1313,13 @@ func transformAliasForNodeJSCompat(alias *pulumirpc.Alias_Spec) {
 	//
 	// - { Parent: "", NoParent: false } -> { Parent: "", NoParent: true }
 	// - { Parent: "", NoParent: true }  -> { Parent: "", NoParent: false }
-	if alias.Parent == nil {
-		alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: false}
+	switch parent := alias.Parent.(type) {
+	case *pulumirpc.Alias_Spec_NoParent:
+		alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: !parent.NoParent}
+	case *pulumirpc.Alias_Spec_ParentUrn:
+		if parent.ParentUrn == "" {
+			alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: true}
+		}
 	}
 }
 

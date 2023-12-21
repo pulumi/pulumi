@@ -1255,46 +1255,19 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 		expected *pulumirpc.Alias_Spec
 	}{
 		{
-			name:     `{Parent: nil} (transformed)`,
-			input:    &pulumirpc.Alias_Spec{Parent: nil},
+			name:     `{Parent: ""} (transformed)`,
+			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
 			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
 		},
 		{
-			name:     `{Parent: "", NoParent: false} (transformed)`,
+			name:     `{NoParent: true} (transformed)`,
+			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
+			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: false}},
+		},
+		{
+			name:     `{NoParent: false} (transformed)`,
 			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: false}},
 			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
-		},
-		{
-			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
-			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
-			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
-
-			input:    resource.Alias{Parent: "", NoParent: false, Name: "name"},
-			expected: resource.Alias{Parent: "", NoParent: true, Name: "name"},
-		},
-		{
-			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
-			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
-			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
-
-			input:    resource.Alias{Parent: "", NoParent: true, Name: "name"},
-			expected: resource.Alias{Parent: "", NoParent: false, Name: "name"},
-		},
-		{
-			name:     `{Parent: "foo", NoParent: false} (no transform)`,
-			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
-			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
-
-			input:    resource.Alias{Parent: "foo", NoParent: false},
-			expected: resource.Alias{Parent: "foo", NoParent: false},
-		},
-		{
-			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
-			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
-			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
-
-			input:    resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
-			expected: resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
 		},
 	}
 	for _, tt := range tests {
