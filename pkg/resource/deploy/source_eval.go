@@ -1753,14 +1753,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// We've got a safe URN now, safe the transformations
-	func() {
-		rm.resourceTransformationsLock.Lock()
-		defer rm.resourceTransformationsLock.Unlock()
-		rm.resourceTransformations[result.State.URN] = transformations
-	}()
-
 	if !custom && result != nil && result.State != nil && result.State.URN != "" {
+		// We've got a safe URN now, save the transformations
+		func() {
+			rm.resourceTransformationsLock.Lock()
+			defer rm.resourceTransformationsLock.Unlock()
+			rm.resourceTransformations[result.State.URN] = transformations
+		}()
 		func() {
 			rm.componentProvidersLock.Lock()
 			defer rm.componentProvidersLock.Unlock()
