@@ -416,6 +416,12 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 	// the number of commits since the last tag.
 	devVersionParts := strings.Split(devVersion.String(), "-")
 	curVersionParts := strings.Split(curVersion.String(), "-")
+
+	// We're being leninent with parsing here.  If we can't parse
+	// a version number correctly for any reason, we default to
+	// pretending there is no newer version, and not warning the
+	// user.  As this is only a warning this is better than
+	// asserting or crashing in the error case.
 	if len(devVersionParts) != 3 || len(curVersionParts) != 3 {
 		return false
 	}
