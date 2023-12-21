@@ -845,10 +845,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	case *model.MapType:
 		valType := g.argumentTypeName(nil, destType.ElementType, isInput)
 		if isInput {
-			if Title(valType) == "pulumi.Any" {
-				return "pulumi.Map"
-			}
-			return fmt.Sprintf("pulumi.%sMap", Title(valType))
+			trimmedType := strings.TrimPrefix(valType, "pulumi.")
+			return fmt.Sprintf("pulumi.%sMap", Title(trimmedType))
 		}
 		return "map[string]" + valType
 	case *model.ListType:
