@@ -1517,17 +1517,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		aliasSpec := aliasObject.GetSpec()
 		var alias resource.Alias
 		if aliasSpec != nil {
-			parentURN, err := resource.ParseOptionalURN(aliasSpec.GetParentUrn())
-			if err != nil {
-				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent alias URN: %s", err))
-			}
 			alias = resource.Alias{
-				Name:     aliasSpec.Name,
-				Type:     aliasSpec.Type,
-				Stack:    aliasSpec.Stack,
-				Project:  aliasSpec.Project,
-				Parent:   parentURN,
-				NoParent: aliasSpec.GetNoParent(),
+				Name:    aliasSpec.Name,
+				Type:    aliasSpec.Type,
+				Stack:   aliasSpec.Stack,
+				Project: aliasSpec.Project,
+			}
+			switch parent := aliasSpec.GetParent().(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				parentURN, err := resource.ParseURN(parent.ParentUrn)
+				if err != nil {
+					return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent alias URN: %s", err))
+				}
+				alias.Parent = parentURN
+			case *pulumirpc.Alias_Spec_NoParent:
+				alias.NoParent = parent.NoParent
 			}
 		} else {
 			urn, err := resource.ParseURN(aliasObject.GetUrn())
@@ -1753,7 +1757,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		func() {
 			rm.componentProvidersLock.Lock()
 			defer rm.componentProvidersLock.Unlock()
-			rm.componentProviders[result.State.URN] = req.GetProviders()
+			rm.componentProviders[result.State.URN] = opts.GetProviders()
 		}()
 	}
 

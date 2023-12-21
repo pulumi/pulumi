@@ -1251,36 +1251,48 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		input    resource.Alias
-		expected resource.Alias
+		input    *pulumirpc.Alias_Spec
+		expected *pulumirpc.Alias_Spec
 	}{
 		{
-			name:     `{Parent: "", NoParent: true} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: true},
-			expected: resource.Alias{Parent: "", NoParent: false},
+			name:     `{Parent: nil} (transformed)`,
+			input:    &pulumirpc.Alias_Spec{Parent: nil},
+			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
 		},
 		{
 			name:     `{Parent: "", NoParent: false} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: false},
-			expected: resource.Alias{Parent: "", NoParent: true},
+			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: false}},
+			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
 		},
 		{
 			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
+			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
+			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
+
 			input:    resource.Alias{Parent: "", NoParent: false, Name: "name"},
 			expected: resource.Alias{Parent: "", NoParent: true, Name: "name"},
 		},
 		{
 			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
+			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
+			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
+
 			input:    resource.Alias{Parent: "", NoParent: true, Name: "name"},
 			expected: resource.Alias{Parent: "", NoParent: false, Name: "name"},
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false} (no transform)`,
+			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
+			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
+
 			input:    resource.Alias{Parent: "foo", NoParent: false},
 			expected: resource.Alias{Parent: "foo", NoParent: false},
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
+			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
+			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
+
 			input:    resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
 			expected: resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
 		},
@@ -1289,8 +1301,8 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			actual := transformAliasForNodeJSCompat(tt.input)
-			assert.Equal(t, tt.expected, actual)
+			transformAliasForNodeJSCompat(tt.input)
+			assert.Equal(t, tt.expected, tt.input)
 		})
 	}
 }
