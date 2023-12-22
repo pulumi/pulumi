@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -526,5 +527,200 @@ func TestDeleteProtectedErrorUsesCorrectQuotesOnOS(t *testing.T) {
 			return
 		}
 		assert.Contains(t, gotErrMsg, contains)
+	})
+}
+
+func TestStepGenerator(t *testing.T) {
+	t.Parallel()
+	t.Run("isTargetedForUpdate", func(t *testing.T) {
+		t.Parallel()
+		t.Run("has targeted dependencies", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				opts: Options{
+					TargetDependents: true,
+					Targets: UrnTargets{
+						literals: []resource.URN{"c"},
+					},
+				},
+				targetsActual: UrnTargets{
+					literals: []resource.URN{"b"},
+				},
+			}
+			assert.False(t, sg.isTargetedForUpdate(&resource.State{
+				Dependencies: []resource.URN{"a"},
+			}))
+			assert.True(t, sg.isTargetedForUpdate(&resource.State{
+				Dependencies: []resource.URN{
+					"a",
+					"b", // targeted
+				},
+			}))
+		})
+	})
+	t.Run("checkParent", func(t *testing.T) {
+		t.Parallel()
+		t.Run("could not find parent resource", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+			}
+			_, err := sg.checkParent("does-not-exist", "")
+			assert.ErrorContains(t, err, "could not find parent resource")
+		})
+	})
+	t.Run("GenerateReadSteps", func(t *testing.T) {
+		t.Parallel()
+		t.Run("could not find parent resource", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+			}
+			_, err := sg.GenerateReadSteps(&readResourceEvent{
+				parent: "does-not-exist",
+			})
+			assert.ErrorContains(t, err, "could not find parent resource")
+		})
+		t.Run("fail generateURN", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{
+					"urn:pulumi:::::::": true,
+				},
+				deployment: &Deployment{
+					target: &Target{},
+					source: &nullSource{},
+					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
+				},
+			}
+			_, err := sg.GenerateReadSteps(&readResourceEvent{})
+			assert.ErrorContains(t, err, "Duplicate resource URN")
+		})
+	})
+	t.Run("generateSteps", func(t *testing.T) {
+		t.Parallel()
+		t.Run("could not find parent resource", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					target: &Target{},
+					source: &nullSource{},
+				},
+			}
+			_, err := sg.generateSteps(&registerResourceEvent{
+				goal: &resource.Goal{
+					Parent: "does-not-exist",
+				},
+			})
+			assert.ErrorContains(t, err, "could not find parent resource")
+		})
+	})
+	t.Run("determineAllowedResourcesToDeleteFromTargets", func(t *testing.T) {
+		t.Parallel()
+		t.Run("handle non-existent target", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev: &Snapshot{
+						Resources: []*resource.State{
+							{
+								URN: "a",
+							},
+						},
+					},
+					olds: map[resource.URN]*resource.State{},
+				},
+			}
+			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(UrnTargets{
+				literals: []resource.URN{"a"},
+			})
+			assert.NoError(t, err)
+			assert.Empty(t, targets)
+		})
+	})
+	t.Run("ScheduleDeletes", func(t *testing.T) {
+		t.Parallel()
+		t.Run("don't TrustDependencies", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				opts: Options{
+					TrustDependencies: false,
+				},
+				deployment: &Deployment{
+					prev: &Snapshot{},
+					olds: map[resource.URN]*resource.State{},
+				},
+			}
+			antichains := sg.ScheduleDeletes([]Step{
+				&DeleteStep{},
+				&CreateStep{},
+				&UpdateStep{},
+			})
+			assert.Len(t, antichains, 3)
+		})
+	})
+	t.Run("providerChanged", func(t *testing.T) {
+		t.Parallel()
+		t.Run("invalid old ProviderReference", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev: &Snapshot{},
+					olds: map[resource.URN]*resource.State{},
+				},
+			}
+			_, err := sg.providerChanged("",
+				&resource.State{
+					Provider: "invalid-old-provider",
+				},
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
+				},
+			)
+			assert.ErrorContains(t, err, "expected '::' in provider reference 'invalid-old-provider'")
+		})
+		t.Run("invalid new ProviderReference", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev: &Snapshot{},
+					olds: map[resource.URN]*resource.State{},
+				},
+			}
+			_, err := sg.providerChanged("",
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
+				},
+				&resource.State{
+					Provider: "invalid-new-provider",
+				},
+			)
+			assert.ErrorContains(t, err, "expected '::' in provider reference 'invalid-new-provider'")
+		})
+		t.Run("error getting new default provider", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev:      &Snapshot{},
+					olds:      map[resource.URN]*resource.State{},
+					providers: &providers.Registry{},
+				},
+			}
+			_, err := sg.providerChanged("",
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_name::uuid",
+				},
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_new::uuid",
+				},
+			)
+			assert.ErrorContains(t, err, "failed to resolve provider reference")
+		})
 	})
 }
