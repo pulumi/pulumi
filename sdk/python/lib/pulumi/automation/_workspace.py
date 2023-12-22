@@ -214,7 +214,17 @@ class Workspace(ABC):
         environment.
 
 
+        :param stack_name: The name of the stack.
         :param environment_names: The names of the environment to add.
+        """
+
+    @abstractmethod
+    def list_environments(self, stack_name: str) -> List[str]:
+        """
+        Returns the list of environments specified in a stack's configuration.
+
+        :param stack_name: The name of the stack.
+        :returns: List[str]
         """
 
     @abstractmethod
