@@ -26,9 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mocks backendInstance
 func TestErrorsOnNonHTTPBackend(t *testing.T) {
-	t.Parallel()
-
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	mockBackendInstance(t, &backend.MockBackend{
@@ -57,13 +56,12 @@ type mockReaderCloser struct {
 
 func (mockReaderCloser) Close() error { return nil }
 
+//nolint:paralleltest // mocks backendInstance
 func TestExpectEOFOnHTTPBackend(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// This test behaves differently on Windows, due to an interaction between survey & os.Stdin.
 		t.Skip()
 	}
-
-	t.Parallel()
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
