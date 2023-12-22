@@ -1729,9 +1729,7 @@ func TestEnvFunctions(t *testing.T) {
 
 	envs, err := s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
-	assert.Equal(t, 2, len(envs))
-	assert.Equal(t, "automation-api-test-env", envs[0])
-	assert.Equal(t, "automation-api-test-env-2", envs[1])
+	assert.Equal(t, []string{"automation-api-test-env", "automation-api-test-env-2"}, envs)
 
 	// Check that we can access config from the envs
 	cfg, err := s.GetAllConfig(ctx)
@@ -1742,8 +1740,7 @@ func TestEnvFunctions(t *testing.T) {
 	err = s.RemoveEnvironment(ctx, "automation-api-test-env")
 	envs, err = s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
-	assert.Equal(t, 1, len(envs))
-	assert.Equal(t, "automation-api-test-env-2", envs[0])
+	assert.Equal(t, []string{"automation-api-test-env-2"}, envs)
 
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "new_key")
@@ -1754,7 +1751,7 @@ func TestEnvFunctions(t *testing.T) {
 	err = s.RemoveEnvironment(ctx, "automation-api-test-env-2")
 	envs, err = s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
-	assert.Equal(t, 0, len(envs))
+	assert.Len(t, envs, 0)
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
 	assert.Error(t, err)

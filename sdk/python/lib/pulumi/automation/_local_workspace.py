@@ -246,11 +246,11 @@ class LocalWorkspace(Workspace):
                 ["config", "env", "ls", "--json", "--stack", stack_name]
             )
             return json.loads(result.stdout)
-        else:
-            raise InvalidVersionError(
-                "The installed version of the CLI does not support this operation. Please "
-                "upgrade to at least version 3.99.0."
-            )
+
+        raise InvalidVersionError(
+            "The installed version of the CLI does not support this operation. Please "
+            "upgrade to at least version 3.99.0."
+        )
 
     def remove_environment(self, stack_name: str, environment_name: str) -> None:
         # Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.

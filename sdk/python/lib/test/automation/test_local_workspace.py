@@ -236,9 +236,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         # Ensure envs can be listed
         envs = stack.list_environments()
-        self.assertEqual(len(envs), 2)
-        self.assertEqual(envs[0], "automation-api-test-env")
-        self.assertEqual(envs[1], "automation-api-test-env-2")
+        self.assertListEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"])
 
         # Check that we can access config from each env.
         config = stack.get_all_config()
@@ -250,8 +248,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         # Check that only one env remains
         envs = stack.list_environments()
-        self.assertEqual(len(envs), 1)
-        self.assertEqual(envs[0], "automation-api-test-env")
+        self.assertListEqual(envs, ["automation-api-test-env"])
 
         # Check that we can still access config from the remaining env,
         # and that the config from the removed env is no longer present.

@@ -166,9 +166,7 @@ describe("LocalWorkspace", () => {
         await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
 
         let envs = await stack.listEnvironments();
-        assert.strictEqual(envs.length, 2);
-        assert.strictEqual(envs[0], "automation-api-test-env");
-        assert.strictEqual(envs[1], "automation-api-test-env-2");
+        assert.deepStrictEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"]);
 
         const config = await stack.getAllConfig();
         assert.strictEqual(config["node_env_test:new_key"].value, "test_value");
@@ -177,8 +175,7 @@ describe("LocalWorkspace", () => {
         // Removing existing env should succeed.
         await stack.removeEnvironment("automation-api-test-env");
         envs = await stack.listEnvironments();
-        assert.strictEqual(envs.length, 1);
-        assert.strictEqual(envs[0], "automation-api-test-env-2");
+        assert.deepStrictEqual(envs, ["automation-api-test-env-2"]);
 
         const alsoConfig = await stack.getConfig("also");
         assert.strictEqual(alsoConfig.value, "business");
