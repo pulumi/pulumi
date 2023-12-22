@@ -50,8 +50,18 @@ export interface PulumiOptions {
 }
 
 export class Pulumi {
-    private constructor(readonly command: string, readonly version: semver.SemVer) {}
+    private constructor(readonly command: string, readonly version: semver.SemVer) { }
 
+    /**
+     * Get a new Pulumi instance that uses the installation in `opts.root`.
+     * Defaults to using the pulumi binary found in $PATH if no installation
+     * root is specified.  If `opts.version` is specified, it validates that
+     * the CLI is compatible with the requested version and throws an error if
+     * not.
+     *
+     * @param opts.version the version of the CLI.
+     * @param opts.root the directory to install the CLI in.
+     */
     static async get(opts?: PulumiOptions): Promise<Pulumi> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
 
@@ -64,6 +74,12 @@ export class Pulumi {
         return new Pulumi(command, version);
     }
 
+    /**
+     * Installs the Pulumi CLI.
+     *
+     * @param opts.version the version of the CLI. Defaults to the CLI version matching the SDK version.
+     * @param opts.root the directory to install the CLI in. Defaults to $HOME/.pulumi/versions/$VERSION.
+     */
     static async install(opts?: PulumiOptions): Promise<Pulumi> {
         const optsWithDefaults = withDefaults(opts);
         try {
