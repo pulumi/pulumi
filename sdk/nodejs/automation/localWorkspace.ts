@@ -840,9 +840,7 @@ export class LocalWorkspace implements Workspace {
             const result = await this.runPulumiCmd(["version"]);
             version = semver.parse(result.stdout.trim());
         }
-        if (!optOut) {
-            validatePulumiVersion(minVersion, version, optOut);
-        }
+        validatePulumiVersion(minVersion, version, optOut);
         if (version != null) {
             this._pulumiVersion = version;
         }
