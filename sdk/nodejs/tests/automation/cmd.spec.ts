@@ -63,7 +63,9 @@ describe("automation/cmd", () => {
         it("defaults to $HOME/.pulumi/versions/$VERSION if no root is provided", async () => {
             const version = new semver.SemVer("3.97.0");
             const pulumi = await Pulumi.install({ version });
-            assert.doesNotThrow(() => fs.statSync(upath.join(os.homedir(), ".pulumi", "versions", `${version}`, "bin", "pulumi")));
+            assert.doesNotThrow(() =>
+                fs.statSync(upath.join(os.homedir(), ".pulumi", "versions", `${version}`, "bin", "pulumi")),
+            );
             const { stdout } = await pulumi.run(["version"], ".", {});
             assert.strictEqual(stdout.trim(), `${version}`);
         });

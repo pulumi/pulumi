@@ -1114,7 +1114,8 @@ export function validatePulumiVersion(
     }
     if (minVersion.major < currentVersion.major) {
         throw new Error(
-            `Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major
+            `Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${
+                minVersion.major
             }. Please update the SDK.`,
         );
     }

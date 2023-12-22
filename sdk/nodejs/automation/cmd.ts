@@ -50,7 +50,7 @@ export interface PulumiOptions {
 }
 
 export class Pulumi {
-    private constructor(readonly command: string, readonly version: semver.SemVer) { }
+    private constructor(readonly command: string, readonly version: semver.SemVer) {}
 
     static async get(opts?: PulumiOptions): Promise<Pulumi> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
@@ -83,7 +83,9 @@ export class Pulumi {
 
     private static async installWindows(opts: Required<PulumiOptions>): Promise<void> {
         // TODO: const response = await got("https://get.pulumi.com/install.ps1");
-        const response = await got("https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.ps1");
+        const response = await got(
+            "https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.ps1",
+        );
         const script = await writeTempFile(response.body);
 
         try {
@@ -97,10 +99,13 @@ export class Pulumi {
                 "None",
                 "-ExecutionPolicy",
                 "Bypass",
-                "-File", script.path,
+                "-File",
+                script.path,
                 "-NoEditPath",
-                "-InstallRoot", opts.root,
-                "-Version", `${opts.version}`,
+                "-InstallRoot",
+                opts.root,
+                "-Version",
+                `${opts.version}`,
             ];
 
             await exec(command, args);
@@ -111,16 +116,13 @@ export class Pulumi {
 
     private static async installPosix(opts: Required<PulumiOptions>): Promise<void> {
         // TODO: const response = await got("https://get.pulumi.com/install.sh");
-        const response = await got("https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.sh");
+        const response = await got(
+            "https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.sh",
+        );
         const script = await writeTempFile(response.body);
 
         try {
-            const args = [
-                script.path,
-                "--no-edit-path",
-                "--install-root", opts.root,
-                "--version", `${opts.version}`,
-            ];
+            const args = [script.path, "--no-edit-path", "--install-root", opts.root, "--version", `${opts.version}`];
 
             await exec("/bin/sh", args);
         } finally {
