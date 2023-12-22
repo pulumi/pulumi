@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Warn correctly about new versions being availablen when using the CLI dev channel

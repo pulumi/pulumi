@@ -268,8 +268,8 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 }
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
-// oldest version before the CLI should warn about an upgrade).
-func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
+// oldest version before the CLI should warn about an upgrade, and the current dev version).
+func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
 
 	err := pc.restCallWithOptions(
@@ -284,20 +284,32 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 		},
 	)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	latestSem, err := semver.ParseTolerant(versionInfo.LatestVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	oldestSem, err := semver.ParseTolerant(versionInfo.OldestWithoutWarning)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
-	return latestSem, oldestSem, nil
+	// If there is no dev version, return the latest and oldest
+	// versions.  This can happen if the server does not include
+	// https://github.com/pulumi/pulumi-service/pull/17429 yet
+	if versionInfo.LatestDevVersion == "" {
+		return latestSem, oldestSem, semver.Version{}, nil
+	}
+
+	devSem, err := semver.ParseTolerant(versionInfo.LatestDevVersion)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
+	}
+
+	return latestSem, oldestSem, devSem, nil
 }
 
 // ListStacksFilter describes optional filters when listing stacks.
