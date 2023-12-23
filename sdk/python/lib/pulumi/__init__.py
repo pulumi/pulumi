@@ -64,6 +64,9 @@ from .resource import (
     ResourceTransformation,
     ResourceTransformationArgs,
     ResourceTransformationResult,
+    ResourceTransform,
+    ResourceTransformArgs,
+    ResourceTransformResult,
 )
 
 from .output import (
@@ -136,6 +139,9 @@ __all__ = [
     "ResourceTransformation",
     "ResourceTransformationArgs",
     "ResourceTransformationResult",
+    "ResourceTransform",
+    "ResourceTransformArgs",
+    "ResourceTransformResult",
     # output
     "Output",
     "Input",

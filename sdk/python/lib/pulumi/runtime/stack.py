@@ -20,9 +20,19 @@ from inspect import isawaitable
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional
 
 from .. import log
-from ..resource import ComponentResource, Resource, ResourceTransformation
+from ..resource import (
+    ComponentResource,
+    Resource,
+    ResourceTransformation,
+    ResourceTransform,
+)
+from ._callbacks import _CallbackServicer
 from .settings import (
+    _get_callbacks,
     _get_rpc_manager,
+    _load_monitor_feature_support,
+    _shutdown_callbacks,
+    _sync_monitor_supports_transforms,
     get_project,
     get_root_resource,
     get_stack,
@@ -49,6 +59,7 @@ async def run_pulumi_func(func: Callable[[], None]):
         func()
     finally:
         await wait_for_rpcs()
+        _shutdown_callbacks()
 
         # By now, all tasks have exited and we're good to go.
         log.debug("run_pulumi_func completed")
@@ -138,6 +149,7 @@ async def run_in_stack(func: Callable[[], Optional[Awaitable[None]]]):
     def run() -> None:
         Stack(func)
 
+    await _load_monitor_feature_support()
     await run_pulumi_func(run)
 
 
@@ -303,3 +315,20 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = [t]
     else:
         root_resource._transformations = root_resource._transformations + [t]
+
+
+def x_register_stack_transform(t: ResourceTransform):
+    """
+    Add a transform to all future resources constructed in this Pulumi stack.
+
+    This function is experimental.
+    """
+    if not _sync_monitor_supports_transforms():
+        raise Exception(
+            "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
+        )
+
+    callbacks = _get_callbacks()
+    if callbacks is None:
+        raise Exception("No callback server registered.")
+    callbacks.register_stack_transform(t)
