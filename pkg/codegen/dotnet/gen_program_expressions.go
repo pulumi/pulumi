@@ -817,6 +817,22 @@ func isEmptyList(expr model.Expression) bool {
 	return false
 }
 
+func objectKey(item model.ObjectConsItem) string {
+	switch key := item.Key.(type) {
+	case *model.LiteralValueExpression:
+		return key.Value.AsString()
+	case *model.TemplateExpression:
+		// assume a template expression has one constant part that is a LiteralValueExpression
+		if len(key.Parts) == 1 {
+			if literal, ok := key.Parts[0].(*model.LiteralValueExpression); ok {
+				return literal.Value.AsString()
+			}
+		}
+	}
+
+	return ""
+}
+
 func (g *generator) genObjectConsExpressionWithTypeName(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
@@ -846,8 +862,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		g.Indented(func() {
 			for _, item := range expr.Items {
 				g.Fgenf(w, "%s", g.Indent)
-				lit := item.Key.(*model.LiteralValueExpression)
-				propertyKey := lit.Value.AsString()
+				propertyKey := objectKey(item)
 				g.Fprint(w, resolvePropertyName(propertyKey, propertyNames))
 				if g.usingDefaultListInitializer() && isEmptyList(item.Value) {
 					g.Fgen(w, " = new() { },\n")
