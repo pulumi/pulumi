@@ -6,6 +6,11 @@ const bar = new kubernetes.core.v1.Pod("bar", {
     metadata: {
         namespace: "foo",
         name: "bar",
+        labels: {
+            "app.kubernetes.io/name": "cilium-agent",
+            "app.kubernetes.io/part-of": "cilium",
+            "k8s-app": "cilium",
+        },
     },
     spec: {
         containers: [
