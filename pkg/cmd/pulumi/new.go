@@ -1104,7 +1104,9 @@ func promptForValue(
 			value = defaultValue
 		} else {
 			var prompt string
-			if defaultValue == "" {
+			if valueType == "" && defaultValue == "" {
+				// No need to print anything, this is a full line / blank prompt.
+			} else if defaultValue == "" {
 				prompt = opts.Color.Colorize(
 					fmt.Sprintf("%s%s%s", colors.SpecPrompt, valueType, colors.Reset))
 			} else {
@@ -1147,7 +1149,12 @@ func promptForValue(
 			} else if validationError != nil {
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
-				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
+				var err error
+				if valueType == "" {
+					err = fmt.Errorf("Sorry, '%s' is not valid: %w", value, validationError)
+				} else {
+					err = fmt.Errorf("Sorry, '%s' is not a valid %s: %w", value, valueType, validationError)
+				}
 				if yes {
 					return "", err
 				}

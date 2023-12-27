@@ -159,6 +159,40 @@ func sendPromptToPulumiAI(
 	return projectURL, connectionID, conversationID, nil
 }
 
+const initialPromptPrompt = `What cloud infrastructure would you like to build?
+(try something like "a static website on AWS behind a CDN")`
+
+const refinePromptPrompt = "Tell Pulumi AI how to refine the previous program:"
+
+var errEmptyPrompt = errors.New("prompt cannot be empty")
+
+func isValidAiPrompt(prompt string) error {
+	if prompt == "" {
+		return errors.New("prompt cannot be empty")
+	}
+	return nil
+}
+
+func promptForAiMessage(prompt promptForValueFunc, opts display.Options, isInitial bool) (string, error) {
+	for {
+		if isInitial {
+			fmt.Println(initialPromptPrompt)
+		} else {
+			fmt.Println(refinePromptPrompt)
+		}
+		promptMessage, err := prompt(false, "", "", false, isValidAiPrompt, opts)
+		if err != nil {
+			if errors.Is(err, errEmptyPrompt) {
+				continue
+			}
+
+			return promptMessage, err
+		}
+
+		return promptMessage, nil
+	}
+}
+
 func runAINewPromptStep(
 	ctx context.Context,
 	backend httpstate.Backend,
@@ -176,9 +210,9 @@ func runAINewPromptStep(
 ) {
 	var promptMessage string
 	if args.aiPrompt == "" || currentContinueSelection != "" {
-		if err := survey.AskOne(&survey.Input{
-			Message: "Please input your prompt here (\"a static website on AWS behind a CDN\"):\n",
-		}, &promptMessage, surveyIcons(opts.Color)); err != nil {
+		isInitial := currentContinueSelection == ""
+		promptMessage, err = promptForAiMessage(args.prompt, opts, isInitial)
+		if err != nil {
 			return "", "", "", "", err
 		}
 	} else {
