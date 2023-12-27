@@ -519,3 +519,30 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 	}
 	assert.Equal(t, expected, importFile.Resources[2])
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/15002
+// Creates two unimported resources of the same name to ensure that we correctly track only the
+// taken names in the import file.
+func TestBuildImportFile_regress_15002(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(events)
+
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: engine.StepEventMetadata{
+			URN: "urn:pulumi:test::test::pkgA:m:typA::resA",
+		},
+	})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: engine.StepEventMetadata{
+			URN: "urn:pulumi:test::test::pkgA:m:a-different-type::resA",
+		},
+	})
+	// Finally, close the events channel to signal that we're done
+	close(events)
+
+	importFile, err := importFilePromise.Result(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, importFile.Resources)
+}

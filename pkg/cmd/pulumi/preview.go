@@ -113,7 +113,6 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			}
 
 			// Name is unique at this point
-			takenNames[name] = len(imports.Resources)
 			fullNameTable[urn] = name
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
@@ -208,6 +207,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 				logicalName = urn.Name()
 			}
 
+			takenNames[name] = len(imports.Resources)
 			imports.Resources = append(imports.Resources, importSpec{
 				Type:              new.Type,
 				Name:              name,
