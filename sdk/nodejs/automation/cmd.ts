@@ -67,7 +67,10 @@ export class Pulumi {
 
         const { stdout } = await exec(command, ["version"]);
 
-        const version = semver.parse(stdout) || semver.parse("3.0.0")!;
+        const version = semver.parse(stdout.trim());
+        if (version === null) {
+            throw new Error(`Failed to parse version number ${stdout.trim()}`);
+        }
         if (opts?.version && version.compare(opts.version.toString()) < 0) {
             throw Error(`${command} version ${version} does not satisfy version ${opts.version}`);
         }
