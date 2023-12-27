@@ -50,7 +50,7 @@ export interface PulumiOptions {
 }
 
 export class Pulumi {
-    private constructor(readonly command: string, readonly version: semver.SemVer) {}
+    private constructor(readonly command: string, readonly version: semver.SemVer, readonly root?: string) {}
 
     /**
      * Get a new Pulumi instance that uses the installation in `opts.root`.
@@ -74,7 +74,7 @@ export class Pulumi {
         if (opts?.version && version.compare(opts.version.toString()) < 0) {
             throw Error(`${command} version ${version} does not satisfy version ${opts.version}`);
         }
-        return new Pulumi(command, version);
+        return new Pulumi(command, version, opts?.root);
     }
 
     /**
@@ -163,6 +163,12 @@ export class Pulumi {
             args.push("--non-interactive");
         }
 
+        // Prepend the installation root to the path to ensure we pickup the
+        // matching bundled plugins.
+        if (this.root) {
+            additionalEnv["PATH"] = prependRootToPath(this.root, additionalEnv["PATH"] || process.env["PATH"]);
+        }
+
         return exec(this.command || "pulumi", args, cwd, additionalEnv, onOutput);
     }
 }
@@ -232,4 +238,13 @@ function writeTempFile(contents: string): Promise<{ path: string; cleanup: () =>
             }
         });
     });
+}
+
+function prependRootToPath(root: string, base?: string): string {
+    const pulumiBin = path.join(root, "bin");
+    if (!base) {
+        return pulumiBin;
+    }
+    const sep = os.platform() === "win32" ? ";" : ":";
+    return pulumiBin + sep + base;
 }
