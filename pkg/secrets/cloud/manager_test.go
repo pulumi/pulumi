@@ -32,10 +32,10 @@ import (
 // the main testing function, takes a kms url and tries to make a new secret manager out of it and encrypt and
 // decrypt data, this is used by the aws_test and azure_test files.
 func testURL(ctx context.Context, t *testing.T, url string) {
-	dataKey, err := generateNewDataKey(url)
-	require.NoError(t, err)
+	info := &workspace.ProjectStack{}
+	info.SecretsProvider = url
 
-	manager, err := newCloudSecretsManager(url, dataKey)
+	manager, err := NewCloudSecretsManager(info, url, false)
 	require.NoError(t, err)
 
 	enc, err := manager.Encrypter()
