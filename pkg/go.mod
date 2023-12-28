@@ -60,6 +60,7 @@ require (
 )
 
 require (
+	cloud.google.com/go/kms v1.12.1
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys v0.10.0
@@ -106,7 +107,6 @@ require (
 	cloud.google.com/go/compute v1.20.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.1 // indirect
-	cloud.google.com/go/kms v1.12.1 // indirect
 	cloud.google.com/go/longrunning v0.5.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/azure-sdk-for-go v66.0.0+incompatible // indirect

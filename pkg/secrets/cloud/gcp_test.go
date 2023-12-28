@@ -30,7 +30,6 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 	parent := "projects/pulumi-development/locations/global/keyRings/pulumi-testing"
 	client, err := kms.NewKeyManagementClient(ctx)
 	assert.NoError(t, err)
-	defer client.Close()
 
 	// Build the request.
 	req := &kmspb.CreateCryptoKeyRequest{
@@ -47,6 +46,13 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 	// Call the API.
 	result, err := client.CreateCryptoKey(ctx, req)
 	assert.NoError(t, err)
+	t.Cleanup(func() {
+		_, err := client.DestroyCryptoKeyVersion(ctx, &kmspb.DestroyCryptoKeyVersionRequest{
+			Name: result.Name + "/cryptoKeyVersions/1",
+		})
+		assert.NoError(t, err)
+		client.Close()
+	})
 	return result.Name
 }
 

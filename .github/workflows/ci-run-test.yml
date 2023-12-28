@@ -328,6 +328,11 @@ jobs:
       - name: Set PULUMI_ACCEPT if version-set is not current
         if: ${{ fromJson(inputs.version-set).name != 'current' }}
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
+      - name: Create GCP service account key file
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > ${{ runner.temp }}/application_default_credentials.json
+          sha256sum ${{ runner.temp }}/application_default_credentials.json
+          ls -l
       - name: run tests
         id: test
         run: ${{ inputs.test-command }}
@@ -337,6 +342,7 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |
