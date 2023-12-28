@@ -16,7 +16,7 @@ package cloud
 
 import (
 	"context"
-	"fmt"
+	"encoding/base64"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -52,8 +52,7 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 		_, err := keysClient.DeleteKey(ctx, keyName, nil)
 		assert.NoError(t, err)
 	})
-	fmt.Printf("%s", key.Key.KID.Name())
-	return url + "/keys/" + keyName
+	return url + "/keys/" + key.Key.KID.Name()
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -64,4 +63,37 @@ func TestAzureCloudManager(t *testing.T) {
 	url := "azurekeyvault://" + keyName
 
 	testURL(ctx, t, url)
+}
+
+// This is a regression test for
+// https://github.com/pulumi/pulumi/issues/11982.  The issue only
+// appears when we have an existing key from gocloud.dev v0.27.0, and
+// we try to use it with a newer version.
+//
+//nolint:paralleltest // mutates environment variables
+func TestAzureKeyVaultExistingKey(t *testing.T) {
+	ctx := context.Background()
+	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
+	url := "azurekeyvault://" + keyName
+
+	//nolint:lll // this is a base64 encoded key
+	encryptionKeyBase64 := "Ti1qQklqTnlPTWh4RFUtNmd2WmhxcTBHeUFDa0hlS1lmNERwb3dpRHhIRlFMekxyVEdvRTZ6aFV3Q2N1Q1NISmFOeXFqajd6QzY5VmNxQzF1Z0hxRExUQUtJQUhpbE00T0ZFeXU2aUdfeS1YVE9adjlPS0M5aHlYSXdJUGwyZk01Z2FRWmJhckZfQ1kyd3lWRHlXS3JQUDcwWGFQcFBZSWJnQWJuTm5KVF9ua3gyR3I0QnBTZDVabnVrd0ViM0w1NEpjOGFqc29paVZPNVZ6OURmQ0x3MXUzVDZxTHBGLXZpV1VMTlJoQnZTMjRHdzhRWGtmczRfTzZ1NTZWdmxJRWh5TUREOF9tb2YzYlpQY0V5NW1nZDVzVjJWWHhVQWdQQlYwVDFGT2p4cGxvN1VvTUdEWUd1Q1FMcmJBS0JxbEdNZmFtSFRZcDZlYXVTQ3pUd3ptYW93"
+	dataKey, err := base64.StdEncoding.DecodeString(encryptionKeyBase64)
+	require.NoError(t, err)
+
+	manager, err := newCloudSecretsManager(url, dataKey)
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	dec, err := manager.Decrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
 }

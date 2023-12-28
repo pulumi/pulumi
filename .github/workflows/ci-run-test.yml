@@ -331,8 +331,6 @@ jobs:
       - name: Create GCP service account key file
         run: |
           echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > ${{ runner.temp }}/application_default_credentials.json
-          sha256sum ${{ runner.temp }}/application_default_credentials.json
-          ls -l
       - name: run tests
         id: test
         run: ${{ inputs.test-command }}
