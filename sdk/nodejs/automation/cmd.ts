@@ -101,10 +101,7 @@ export class Pulumi {
     }
 
     private static async installWindows(opts: Required<PulumiOptions>): Promise<void> {
-        // TODO: const response = await got("https://get.pulumi.com/install.ps1");
-        const response = await got(
-            "https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.ps1",
-        );
+        const response = await got("https://get.pulumi.com/install.ps1");
         const script = await writeTempFile(response.body);
 
         try {
@@ -134,10 +131,7 @@ export class Pulumi {
     }
 
     private static async installPosix(opts: Required<PulumiOptions>): Promise<void> {
-        // TODO: const response = await got("https://get.pulumi.com/install.sh");
-        const response = await got(
-            "https://raw.githubusercontent.com/pulumi/get.pulumi.com/julienp/install-root/dist/install.sh",
-        );
+        const response = await got("https://get.pulumi.com/install.sh");
         const script = await writeTempFile(response.body);
 
         try {
