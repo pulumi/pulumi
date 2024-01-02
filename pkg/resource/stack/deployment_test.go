@@ -200,7 +200,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
@@ -214,7 +214,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
@@ -445,7 +445,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 				ID:     "vol-044ba5ad2bd959bc1",
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.NoError(t, err)
 }
 
@@ -457,7 +457,7 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 		Resources: []apitype.ResourceV3{
 			{},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.EqualError(t, err, "resource missing required 'urn' field")
 
@@ -469,7 +469,7 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 				URN: resource.URN(urn),
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.EqualError(t, err, fmt.Sprintf("resource '%s' missing required 'type' field", urn))
 
@@ -482,7 +482,7 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 				ID:     "vol-044ba5ad2bd959bc1",
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.EqualError(t, err, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn))
 }
