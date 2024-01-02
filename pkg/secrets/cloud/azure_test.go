@@ -16,11 +16,11 @@ package cloud
 
 import (
 	"context"
-	"encoding/base64"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,11 +77,10 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 	url := "azurekeyvault://" + keyName
 
 	//nolint:lll // this is a base64 encoded key
-	encryptionKeyBase64 := "Ti1qQklqTnlPTWh4RFUtNmd2WmhxcTBHeUFDa0hlS1lmNERwb3dpRHhIRlFMekxyVEdvRTZ6aFV3Q2N1Q1NISmFOeXFqajd6QzY5VmNxQzF1Z0hxRExUQUtJQUhpbE00T0ZFeXU2aUdfeS1YVE9adjlPS0M5aHlYSXdJUGwyZk01Z2FRWmJhckZfQ1kyd3lWRHlXS3JQUDcwWGFQcFBZSWJnQWJuTm5KVF9ua3gyR3I0QnBTZDVabnVrd0ViM0w1NEpjOGFqc29paVZPNVZ6OURmQ0x3MXUzVDZxTHBGLXZpV1VMTlJoQnZTMjRHdzhRWGtmczRfTzZ1NTZWdmxJRWh5TUREOF9tb2YzYlpQY0V5NW1nZDVzVjJWWHhVQWdQQlYwVDFGT2p4cGxvN1VvTUdEWUd1Q1FMcmJBS0JxbEdNZmFtSFRZcDZlYXVTQ3pUd3ptYW93"
-	dataKey, err := base64.StdEncoding.DecodeString(encryptionKeyBase64)
-	require.NoError(t, err)
-
-	manager, err := newCloudSecretsManager(url, dataKey)
+	encryptedKeyBase64 := "Ti1qQklqTnlPTWh4RFUtNmd2WmhxcTBHeUFDa0hlS1lmNERwb3dpRHhIRlFMekxyVEdvRTZ6aFV3Q2N1Q1NISmFOeXFqajd6QzY5VmNxQzF1Z0hxRExUQUtJQUhpbE00T0ZFeXU2aUdfeS1YVE9adjlPS0M5aHlYSXdJUGwyZk01Z2FRWmJhckZfQ1kyd3lWRHlXS3JQUDcwWGFQcFBZSWJnQWJuTm5KVF9ua3gyR3I0QnBTZDVabnVrd0ViM0w1NEpjOGFqc29paVZPNVZ6OURmQ0x3MXUzVDZxTHBGLXZpV1VMTlJoQnZTMjRHdzhRWGtmczRfTzZ1NTZWdmxJRWh5TUREOF9tb2YzYlpQY0V5NW1nZDVzVjJWWHhVQWdQQlYwVDFGT2p4cGxvN1VvTUdEWUd1Q1FMcmJBS0JxbEdNZmFtSFRZcDZlYXVTQ3pUd3ptYW93"
+	stackConfig := &workspace.ProjectStack{}
+	stackConfig.EncryptedKey = encryptedKeyBase64
+	manager, err := NewCloudSecretsManager(stackConfig, url, false)
 	require.NoError(t, err)
 
 	enc, err := manager.Encrypter()
