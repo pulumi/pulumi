@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: fixes fulfillValue error when joining a nil output state
