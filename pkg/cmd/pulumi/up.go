@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"os"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -38,9 +38,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-const (
-	defaultParallel = math.MaxInt32
-)
+// The default number of parallel resource operations to run at once during an update, if --parallel is unset.
+// See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
+var defaultParallel = runtime.NumCPU() * 4
 
 // intentionally disabling here for cleaner err declaration/assignment.
 //
@@ -577,7 +577,7 @@ func newUpCmd() *cobra.Command {
 		"Serialize the update diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
