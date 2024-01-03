@@ -275,8 +275,75 @@ func (ctx *Context) registerTransform(t ResourceTransformation) (*pulumirpc.Call
 	contract.Assertf(ctx.supportsTransforms, "transformation attempted but not supported by resource monitor")
 
 	// Wrap the transformation in a callback function.
-	callback := func(ctx context.Context, req []byte) (proto.Message, error) {
-		return nil, fmt.Errorf("transformations don't work yet")
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		// Unmarshal the request to a pulumirpc.ResourceTransformationRequest.
+		var rpcReq pulumirpc.TransformationRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+
+		// Unmarshal the resource inputs.
+		properties, err := plugin.UnmarshalProperties(rpcReq.Properties, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling properties: %w", err)
+		}
+
+		umProperties, _, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(properties))
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling properties: %w", err)
+		}
+
+		o, r, _ := NewOutput()
+		r(umProperties)
+
+		args := &ResourceTransformationArgs{
+			Resource: ctx.stack,
+			Type:     rpcReq.Type,
+			Name:     rpcReq.Name,
+			Props:    o,
+			Opts:     nil,
+		}
+
+		res := t(args)
+
+		// Serialize arguments. Outputs will not be awaited: instead, an error will be returned if any Outputs are present.
+		umProperties = res.Props
+		if umProperties == nil {
+			umProperties = struct{}{}
+		}
+		mProperties, _, err := marshalInput(umProperties, anyType, false)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling properties: %w", err)
+		}
+
+		properties = resource.PropertyMap{}
+		if mProperties.IsObject() {
+			properties = mProperties.ObjectValue()
+		}
+
+		rpcProperties, err := plugin.MarshalProperties(
+			properties,
+			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+				KeepSecrets:   true,
+				KeepResources: ctx.keepResources,
+			}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling properties: %w", err)
+		}
+
+		// Marshal the result.
+		rpcRes := &pulumirpc.TransformationResponse{
+			Properties: rpcProperties,
+			Options:    nil,
+		}
+
+		return rpcRes, nil
 	}
 
 	err := func() error {

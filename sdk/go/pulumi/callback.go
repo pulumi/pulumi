@@ -16,27 +16,46 @@ package pulumi
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type callbackFunction = func(ctx context.Context, req []byte) (proto.Message, error)
 
 type callbackServer struct {
-	target    string
+	pulumirpc.UnsafeCallbacksServer
+
+	stop      chan bool
+	handle    rpcutil.ServeHandle
 	functions map[string]callbackFunction
 }
 
 func newCallbackServer() (*callbackServer, error) {
-	// Start a grpc server for the callback service.
-
-	return &callbackServer{
+	callbackServer := &callbackServer{
 		functions: map[string]callbackFunction{},
-		target:    "",
-	}, nil
+		stop:      make(chan bool),
+	}
+
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: callbackServer.stop,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterCallbacksServer(srv, callbackServer)
+			return nil
+		},
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not start resource provider service: %w", err)
+	}
+	callbackServer.handle = handle
+
+	return callbackServer, nil
 }
 
 func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc.Callback, error) {
@@ -48,7 +67,7 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 	s.functions[uuidString] = function
 	return &pulumirpc.Callback{
 		Token:  uuidString,
-		Target: s.target,
+		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
 	}, nil
 }
 
