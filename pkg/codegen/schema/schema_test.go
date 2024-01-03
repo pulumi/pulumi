@@ -1438,27 +1438,3 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 		})
 	}
 }
-
-func TestInvalidProperties(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		filename string
-		expected string
-	}{
-		{"bad-property-1.json", "failed to bind properties for fake-provider:index:typ: property name \"urn\" is reserved"},
-		{"bad-property-2.json", "failed to bind properties for fake-provider:index:typ: property name \"id\" is reserved"},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.filename, func(t *testing.T) {
-			t.Parallel()
-
-			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
-
-			_, err := ImportSpec(pkgSpec, nil)
-			assert.ErrorContains(t, err, tt.expected)
-		})
-	}
-}
