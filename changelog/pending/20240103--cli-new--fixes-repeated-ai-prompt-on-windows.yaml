@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Fixes duplicate printing of the AI prompt & answer on Windows.
