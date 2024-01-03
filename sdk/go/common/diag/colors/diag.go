@@ -21,8 +21,6 @@ import (
 type Colorization string
 
 const (
-	// Auto determines if we should colorize depending on the surrounding environment we're in.
-	Auto Colorization = "auto"
 	// Always colorizes text.
 	Always Colorization = "always"
 	// Never colorizes text.
