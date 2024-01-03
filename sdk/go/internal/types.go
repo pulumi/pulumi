@@ -727,6 +727,7 @@ func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 			return
 		}
 
+		//nolint:exhaustive // We only need to further process a few kinds of values.
 		switch v.Kind() {
 		case reflect.Interface, reflect.Ptr:
 			if v.IsNil() {

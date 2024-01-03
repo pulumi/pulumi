@@ -14,9 +14,7 @@
 
 package colors
 
-import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-)
+import "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 type Colorization string
 
@@ -46,10 +44,11 @@ func (c Colorization) ColorizeWithMaxWidth(v string, maxWidth int) string {
 		return colorizeText(v, Always, maxWidth)
 	case Never:
 		return colorizeText(v, Never, maxWidth)
-	default:
-		contract.Failf("Unexpected colorization value: %v", c)
-		return ""
+	case Auto:
+		return colorizeText(v, Auto, maxWidth)
 	}
+	contract.Failf("Unrecognized colorization mode: %v", c)
+	return ""
 }
 
 // TrimColorizedString takes a string with embedded color tags and returns a new string (still with

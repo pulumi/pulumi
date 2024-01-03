@@ -829,6 +829,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+	//nolint:exhaustive // we are only interested in a subset of events
 	switch event.Type {
 	case engine.PreludeEvent:
 		// A prelude event can just be printed out directly to the console.

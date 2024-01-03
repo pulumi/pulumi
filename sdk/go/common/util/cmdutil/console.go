@@ -373,8 +373,7 @@ func (m readConsoleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// it's time to stop the bubbletea loop.
 		//
 		// Only Enter is considered a success.
-		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+		if msg.Type == tea.KeyEnter || msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
 			m.Value = m.input.Value()
 			m.Canceled = msg.Type != tea.KeyEnter
 

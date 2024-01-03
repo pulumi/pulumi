@@ -15,6 +15,7 @@ linters:
   enable-all: false
   enable:
     - errcheck
+    - exhaustive
     - prealloc
     - gofumpt
     - revive
@@ -49,6 +50,8 @@ linters-settings:
       - sortslice
       # Detect write to struct/arrays by-value that aren't read again.
       - unusedwrite
+  exhaustive:
+    default-signifies-exhaustive: true
 
 issues:
   exclude-rules:

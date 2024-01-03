@@ -751,6 +751,8 @@ func (e *Environment) Remove(env string) *Environment {
 								match = n.Value == env
 							case yaml.MappingNode:
 								match = len(n.Content) == 2 && n.Content[0].Value == env
+							case yaml.SequenceNode, yaml.AliasNode, yaml.DocumentNode:
+								// These nodes never match, so we can ignore them here.
 							}
 							if match {
 								value.Content = append(value.Content[:j], value.Content[j+1:]...)

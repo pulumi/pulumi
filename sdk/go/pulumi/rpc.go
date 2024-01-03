@@ -375,6 +375,7 @@ func marshalInputImpl(v interface{},
 				"%v: cannot assign %v to %v", v, valueType, destType)
 		}
 
+		//nolint:exhaustive // We only need to handle the types we care about.
 		switch rv.Type().Kind() {
 		case reflect.Bool:
 			return resource.NewBoolProperty(rv.Bool()), deps, nil
