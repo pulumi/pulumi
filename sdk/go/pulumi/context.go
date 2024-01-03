@@ -30,6 +30,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -51,19 +52,22 @@ type workGroup = internal.WorkGroup
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
-	ctx         context.Context
-	info        RunInfo
-	stack       Resource
-	exports     map[string]Input
-	monitor     pulumirpc.ResourceMonitorClient
-	monitorConn *grpc.ClientConn
-	engine      pulumirpc.EngineClient
-	engineConn  *grpc.ClientConn
+	ctx           context.Context
+	info          RunInfo
+	stack         Resource
+	exports       map[string]Input
+	monitor       pulumirpc.ResourceMonitorClient
+	monitorConn   *grpc.ClientConn
+	engine        pulumirpc.EngineClient
+	engineConn    *grpc.ClientConn
+	callbacksLock sync.Mutex
+	callbacks     *callbackServer
 
 	keepResources       bool       // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues    bool       // true if outputs should be marshaled as strongly-type output values.
 	supportsDeletedWith bool       // true if deletedWith supported by pulumi
 	supportsAliasSpecs  bool       // true if full alias specification is supported by pulumi
+	supportsTransforms  bool       // true if remote transformations are supported by pulumi
 	rpcs                int        // the number of outstanding RPC requests.
 	rpcsDone            *sync.Cond // an event signaling completion of RPCs.
 	rpcsLock            sync.Mutex // a lock protecting the RPC count and event.
@@ -150,6 +154,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsTransforms, err := supportsFeature("transformations")
+	if err != nil {
+		return nil, err
+	}
+
 	context := &Context{
 		ctx:                 ctx,
 		info:                info,
@@ -162,6 +171,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		keepOutputValues:    keepOutputValues,
 		supportsDeletedWith: supportsDeletedWith,
 		supportsAliasSpecs:  supportsAliasSpecs,
+		supportsTransforms:  supportsTransforms,
 	}
 	context.rpcsDone = sync.NewCond(&context.rpcsLock)
 	context.Log = &logState{
@@ -258,6 +268,39 @@ func (ctx *Context) IsConfigSecret(key string) bool {
 		}
 	}
 	return false
+}
+
+// registerTransform starts up a callback server if not already running and registers the given transformation.
+func (ctx *Context) registerTransform(t ResourceTransformation) (*pulumirpc.Callback, error) {
+	contract.Assertf(ctx.supportsTransforms, "transformation attempted but not supported by resource monitor")
+
+	// Wrap the transformation in a callback function.
+	callback := func(ctx context.Context, req []byte) (proto.Message, error) {
+		return nil, fmt.Errorf("transformations don't work yet")
+	}
+
+	err := func() error {
+		ctx.callbacksLock.Lock()
+		defer ctx.callbacksLock.Unlock()
+		if ctx.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	return cb, nil
 }
 
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
@@ -613,9 +656,13 @@ func (ctx *Context) ReadResource(
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
-	if err != nil {
-		return err
+	var transformations []ResourceTransformation
+	if !ctx.supportsTransforms {
+		var err error
+		props, options, transformations, err = applyTransformations(t, name, props, resource, opts, options)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Collapse aliases to URNs.
@@ -1823,7 +1870,18 @@ func (ctx *Context) Export(name string, value Input) {
 
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
-	ctx.stack.addTransformation(t)
+	if ctx.supportsTransforms {
+		cb, err := ctx.registerTransform(t)
+		if err != nil {
+			return err
+		}
+
+		_, err = ctx.monitor.RegisterStackTransformation(ctx.ctx, cb)
+		return err
+
+	} else {
+		ctx.stack.addTransformation(t)
+	}
 	return nil
 }
 
