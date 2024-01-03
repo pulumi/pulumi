@@ -1374,16 +1374,13 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 
-		// If this resource is a provider then, regardless of the schema of the underlying provider
-		// type, we must project all properties as strings. For all properties that are not strings,
-		// we'll marshal them to JSON and use the JSON string as a string input.
 		handledSecret := false
 		if res.IsProvider && !isStringType(prop.Type) {
 			if prop.Secret {
-				arg = fmt.Sprintf("pulumi.Output.secret(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
+				arg = fmt.Sprintf("pulumi.Output.secret(%s) if %s is not None else None", arg, arg)
 				handledSecret = true
 			} else {
-				arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
+				arg = fmt.Sprintf("pulumi.Output.from_input(%s) if %s is not None else None", arg, arg)
 			}
 		}
 		name := PyName(prop.Name)

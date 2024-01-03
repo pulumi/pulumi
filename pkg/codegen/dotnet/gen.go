@@ -530,18 +530,6 @@ func (pt *plainType) genInputPropertyAttribute(w io.Writer, indent string, prop 
 	if prop.IsRequired() {
 		attributeArgs = ", required: true"
 	}
-	if pt.res != nil && pt.res.IsProvider {
-		json := true
-		typ := codegen.UnwrapType(prop.Type)
-		if typ == schema.StringType {
-			json = false
-		} else if t, ok := typ.(*schema.TokenType); ok && t.UnderlyingType == schema.StringType {
-			json = false
-		}
-		if json {
-			attributeArgs += ", json: true"
-		}
-	}
 	fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
 }
 
@@ -917,9 +905,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		propertyType := mod.typeString(typ, "Outputs", false, false, false)
 
-		// Workaround the fact that provider inputs come back as strings.
 		if r.IsProvider && !schema.IsPrimitiveType(prop.Type) {
-			propertyType = "string"
 			if !prop.IsRequired() {
 				propertyType += "?"
 			}

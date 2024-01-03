@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: Fix codegen to no longer JSON-encode provider config

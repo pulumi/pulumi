@@ -84,7 +84,7 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
-            __props__.__dict__["helm_release_settings"] = pulumi.Output.from_input(helm_release_settings).apply(pulumi.runtime.to_json) if helm_release_settings is not None else None
+            __props__.__dict__["helm_release_settings"] = pulumi.Output.from_input(helm_release_settings) if helm_release_settings is not None else None
         super(Provider, __self__).__init__(
             'example',
             resource_name,

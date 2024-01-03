@@ -791,11 +791,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 					arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
 				}
+			}
 
-				// provider properties must be marshaled as JSON strings.
-				if r.IsProvider && !isStringType(prop.Type) {
-					arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
-				}
+			if r.IsProvider && !isStringType(prop.Type) {
+				arg = fmt.Sprintf("pulumi.output(%s)", arg)
 			}
 			fmt.Fprintf(w, "%sresourceInputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
 		}

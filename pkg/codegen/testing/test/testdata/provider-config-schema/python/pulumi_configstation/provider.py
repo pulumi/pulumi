@@ -106,8 +106,8 @@ class Provider(pulumi.ProviderResource):
 
             if favorite_color is None:
                 favorite_color = _utilities.get_env('FAVE_COLOR')
-            __props__.__dict__["favorite_color"] = pulumi.Output.from_input(favorite_color).apply(pulumi.runtime.to_json) if favorite_color is not None else None
-            __props__.__dict__["secret_sandwiches"] = pulumi.Output.secret(secret_sandwiches).apply(pulumi.runtime.to_json) if secret_sandwiches is not None else None
+            __props__.__dict__["favorite_color"] = pulumi.Output.from_input(favorite_color) if favorite_color is not None else None
+            __props__.__dict__["secret_sandwiches"] = pulumi.Output.secret(secret_sandwiches) if secret_sandwiches is not None else None
         super(Provider, __self__).__init__(
             'configstation',
             resource_name,
