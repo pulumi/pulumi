@@ -168,7 +168,7 @@ var errEmptyPrompt = errors.New("prompt cannot be empty")
 
 func isValidAiPrompt(prompt string) error {
 	if prompt == "" {
-		return errors.New("prompt cannot be empty")
+		return errEmptyPrompt
 	}
 	return nil
 }
