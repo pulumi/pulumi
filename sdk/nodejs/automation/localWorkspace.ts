@@ -301,12 +301,16 @@ export class LocalWorkspace implements Workspace {
         this.workDir = dir;
         this.envVars = envs;
 
-        const pulumi = opts?.pulumi ? Promise.resolve(opts.pulumi) : Pulumi.get();
+        const skipVersionCheck = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
+        const pulumi = opts?.pulumi ? Promise.resolve(opts.pulumi) : Pulumi.get({ skipVersionCheck });
 
         const readinessPromises: Promise<any>[] = [
             pulumi.then((p) => {
                 this._pulumi = p;
-                return this.getPulumiVersion(minimumVersion);
+                if (p.version) {
+                    this._pulumiVersion = p.version;
+                }
+                return this.checkRemoteSupport();
             }),
         ];
 
@@ -831,20 +835,8 @@ export class LocalWorkspace implements Workspace {
         // LocalWorkspace does not utilize this extensibility point.
         return;
     }
-    private async getPulumiVersion(minVersion: semver.SemVer) {
+    private async checkRemoteSupport() {
         const optOut = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
-        let version: semver.SemVer | null;
-        if (this.pulumi) {
-            version = this.pulumi.version;
-        } else {
-            const result = await this.runPulumiCmd(["version"]);
-            version = semver.parse(result.stdout.trim());
-        }
-        validatePulumiVersion(minVersion, version, optOut);
-        if (version != null) {
-            this._pulumiVersion = version;
-        }
-
         // If remote was specified, ensure the CLI supports it.
         if (!optOut && this.isRemote) {
             // See if `--remote` is present in `pulumi preview --help`'s output.
@@ -1081,39 +1073,4 @@ function loadProjectSettings(workDir: string) {
         return yaml.safeLoad(contents) as ProjectSettings;
     }
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
-}
-
-/**
- * @internal
- * Throws an error if the Pulumi CLI version is not valid.
- *
- * @param minVersion The minimum acceptable version of the Pulumi CLI.
- * @param currentVersion The currently known version. `null` indicates that the current version is unknown.
- * @param optOut If the user has opted out of the version check.
- */
-export function validatePulumiVersion(
-    minVersion: semver.SemVer,
-    currentVersion: semver.SemVer | null,
-    optOut: boolean,
-) {
-    if (optOut) {
-        return;
-    }
-    if (currentVersion == null) {
-        throw new Error(
-            `Failed to parse Pulumi CLI version. This is probably an internal error. You can override this by setting "${SKIP_VERSION_CHECK_VAR}" to "true".`,
-        );
-    }
-    if (minVersion.major < currentVersion.major) {
-        throw new Error(
-            `Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${
-                minVersion.major
-            }. Please update the SDK.`,
-        );
-    }
-    if (minVersion.compare(currentVersion) === 1) {
-        throw new Error(
-            `Minimum version requirement failed. The minimum CLI version requirement is ${minVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`,
-        );
-    }
 }

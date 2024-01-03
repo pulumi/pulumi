@@ -18,7 +18,7 @@ import * as semver from "semver";
 import * as os from "os";
 import * as tmp from "tmp";
 import * as upath from "upath";
-import { Pulumi } from "../../automation";
+import { Pulumi, parseAndValidatePulumiVersion } from "../../automation";
 
 describe("automation/cmd", () => {
     it("calls onOutput when provided to runPulumiCmd", async () => {
@@ -68,6 +68,99 @@ describe("automation/cmd", () => {
             );
             const { stdout } = await pulumi.run(["version"], ".", {});
             assert.strictEqual(stdout.trim(), `${version}`);
+        });
+    });
+
+    describe(`checkVersionIsValid`, () => {
+        const MAJOR = /Major version mismatch./;
+        const MINIMUM = /Minimum version requirement failed./;
+        const PARSE = /Failed to parse/;
+        const versionTests = [
+            {
+                name: "higher_major",
+                currentVersion: "100.0.0",
+                expectError: MAJOR,
+                optOut: false,
+            },
+            {
+                name: "lower_major",
+                currentVersion: "1.0.0",
+                expectError: MINIMUM,
+                optOut: false,
+            },
+            {
+                name: "higher_minor",
+                currentVersion: "v2.22.0",
+                expectError: null,
+                optOut: false,
+            },
+            {
+                name: "lower_minor",
+                currentVersion: "v2.1.0",
+                expectError: MINIMUM,
+                optOut: false,
+            },
+            {
+                name: "equal_minor_higher_patch",
+                currentVersion: "v2.21.2",
+                expectError: null,
+                optOut: false,
+            },
+            {
+                name: "equal_minor_equal_patch",
+                currentVersion: "v2.21.1",
+                expectError: null,
+                optOut: false,
+            },
+            {
+                name: "equal_minor_lower_patch",
+                currentVersion: "v2.21.0",
+                expectError: MINIMUM,
+                optOut: false,
+            },
+            {
+                name: "equal_minor_equal_patch_prerelease",
+                // Note that prerelease < release so this case will error
+                currentVersion: "v2.21.1-alpha.1234",
+                expectError: MINIMUM,
+                optOut: false,
+            },
+            {
+                name: "opt_out_of_check_would_fail_otherwise",
+                currentVersion: "v2.20.0",
+                expectError: null,
+                optOut: true,
+            },
+            {
+                name: "opt_out_of_check_would_succeed_otherwise",
+                currentVersion: "v2.22.0",
+                expectError: null,
+                optOut: true,
+            },
+            {
+                name: "invalid_version",
+                currentVersion: "invalid",
+                expectError: PARSE,
+                optOut: false,
+            },
+            {
+                name: "invalid_version_opt_out",
+                currentVersion: "invalid",
+                expectError: null,
+                optOut: true,
+            },
+        ];
+        const minVersion = new semver.SemVer("v2.21.1");
+
+        versionTests.forEach((test) => {
+            it(`validates ${test.name} (${test.currentVersion})`, () => {
+                const validate = () => parseAndValidatePulumiVersion(minVersion, test.currentVersion, test.optOut);
+                if (test.expectError) {
+                    assert.throws(validate, test.expectError);
+                } else {
+                    assert.doesNotThrow(validate);
+                }
+            });
         });
     });
 });

@@ -20,8 +20,10 @@ import * as path from "path";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import { version as DEFAULT_VERSION } from "../version";
-
+import { minimumVersion } from "./minimumVersion";
 import { createCommandError } from "./errors";
+
+const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
 
 /** @internal */
 export class CommandResult {
@@ -47,10 +49,15 @@ export class CommandResult {
 export interface PulumiOptions {
     version?: semver.SemVer;
     root?: string;
+    /**
+     * Skips the minimum CLI version check, see `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK`.
+     * @internal
+     */
+    skipVersionCheck?: boolean;
 }
 
 export class Pulumi {
-    private constructor(readonly command: string, readonly version: semver.SemVer, readonly root?: string) {}
+    private constructor(readonly command: string, readonly version: semver.SemVer | null, readonly root?: string) {}
 
     /**
      * Get a new Pulumi instance that uses the installation in `opts.root`.
@@ -58,22 +65,12 @@ export class Pulumi {
      * root is specified.  If `opts.version` is specified, it validates that
      * the CLI is compatible with the requested version and throws an error if
      * not.
-     *
-     * @param opts.version the version of the CLI.
-     * @param opts.root the directory to install the CLI in.
      */
     static async get(opts?: PulumiOptions): Promise<Pulumi> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
-
         const { stdout } = await exec(command, ["version"]);
-
-        const version = semver.parse(stdout.trim());
-        if (version === null) {
-            throw new Error(`Failed to parse version number ${stdout.trim()}`);
-        }
-        if (opts?.version && version.compare(opts.version.toString()) < 0) {
-            throw Error(`${command} version ${version} does not satisfy version ${opts.version}`);
-        }
+        const skipVersionCheck = opts?.skipVersionCheck !== undefined ? opts.skipVersionCheck : false;
+        const version = parseAndValidatePulumiVersion(minimumVersion, stdout.trim(), skipVersionCheck);
         return new Pulumi(command, version, opts?.root);
     }
 
@@ -212,7 +209,8 @@ function withDefaults(opts?: PulumiOptions): Required<PulumiOptions> {
     if (!root) {
         root = path.join(os.homedir(), ".pulumi", "versions", `${version}`);
     }
-    return { version, root };
+    const skipVersionCheck = opts?.skipVersionCheck !== undefined ? opts.skipVersionCheck : false;
+    return { version, root, skipVersionCheck };
 }
 
 function writeTempFile(contents: string): Promise<{ path: string; cleanup: () => void }> {
@@ -241,4 +239,39 @@ function prependRootToPath(root: string, base?: string): string {
     }
     const sep = os.platform() === "win32" ? ";" : ":";
     return pulumiBin + sep + base;
+}
+
+/**
+ * @internal
+ * Throws an error if the Pulumi CLI version is not valid.
+ *
+ * @param minVersion The minimum acceptable version of the Pulumi CLI.
+ * @param currentVersion The currently known version. `null` indicates that the current version is unknown.
+ * @param optOut If the user has opted out of the version check.
+ */
+export function parseAndValidatePulumiVersion(
+    minVersion: semver.SemVer,
+    currentVersion: string,
+    optOut: boolean,
+): semver.SemVer | null {
+    const version = semver.parse(currentVersion);
+    if (optOut) {
+        return version;
+    }
+    if (version == null) {
+        throw new Error(
+            `Failed to parse Pulumi CLI version. This is probably an internal error. You can override this by setting "${SKIP_VERSION_CHECK_VAR}" to "true".`,
+        );
+    }
+    if (minVersion.major < version.major) {
+        throw new Error(
+            `Major version mismatch. You are using Pulumi CLI version ${currentVersion} with Automation SDK v${minVersion.major}. Please update the SDK.`,
+        );
+    }
+    if (minVersion.compare(version) === 1) {
+        throw new Error(
+            `Minimum version requirement failed. The minimum CLI version requirement is ${minVersion.toString()}, your current CLI version is ${currentVersion}. Please update the Pulumi CLI.`,
+        );
+    }
+    return version;
 }
