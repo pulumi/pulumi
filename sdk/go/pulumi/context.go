@@ -310,37 +310,36 @@ func (ctx *Context) registerTransform(t ResourceTransformation) (*pulumirpc.Call
 		}
 
 		res := t(args)
-
-		// Serialize arguments. Outputs will not be awaited: instead, an error will be returned if any Outputs are present.
-		umProperties = res.Props
-		if umProperties == nil {
-			umProperties = struct{}{}
-		}
-		mProperties, _, err := marshalInput(umProperties, anyType, false)
-		if err != nil {
-			return nil, fmt.Errorf("marshaling properties: %w", err)
-		}
-
-		properties = resource.PropertyMap{}
-		if mProperties.IsObject() {
-			properties = mProperties.ObjectValue()
-		}
-
-		rpcProperties, err := plugin.MarshalProperties(
-			properties,
-			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
-				KeepSecrets:   true,
-				KeepResources: ctx.keepResources,
-			}),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("marshaling properties: %w", err)
-		}
-
-		// Marshal the result.
 		rpcRes := &pulumirpc.TransformationResponse{
-			Properties: rpcProperties,
+			Properties: nil,
 			Options:    nil,
+		}
+
+		if res != nil {
+			umProperties = res.Props
+			if umProperties == nil {
+				umProperties = struct{}{}
+			}
+			mProperties, _, err := marshalInput(umProperties, anyType, true)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling properties: %w", err)
+			}
+
+			properties = resource.PropertyMap{}
+			if mProperties.IsObject() {
+				properties = mProperties.ObjectValue()
+			}
+
+			rpcRes.Properties, err = plugin.MarshalProperties(
+				properties,
+				ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+					KeepSecrets:   true,
+					KeepResources: ctx.keepResources,
+				}),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling properties: %w", err)
+			}
 		}
 
 		return rpcRes, nil
