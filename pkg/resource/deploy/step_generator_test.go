@@ -23,8 +23,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 )
 
 func TestIgnoreChanges(t *testing.T) {
@@ -705,6 +708,78 @@ func TestStepGenerator(t *testing.T) {
 				},
 			)
 			assert.ErrorContains(t, err, "failed to resolve provider reference")
+		})
+	})
+}
+
+// This runs combinations of public calls to stepGenerator to ensure that it never deadlocks or
+// panics
+func TestStepGenerator_randomActions(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(rt *rapid.T) {
+		sink := diagtest.LogSink(t)
+		statusSink := diagtest.LogSink(t)
+		program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
+			return nil
+		}
+		lang := deploytest.NewLanguageRuntime(program)
+		host := deploytest.NewPluginHost(sink, statusSink, lang)
+		ctx, err := plugin.NewContext(sink, statusSink, host, nil, "", nil, false, nil)
+		require.NoError(rt, err)
+		deployment := &Deployment{
+			prev:      &Snapshot{},
+			olds:      map[resource.URN]*resource.State{},
+			providers: &providers.Registry{},
+			target:    &Target{},
+			source:    &nullSource{},
+			ctx:       ctx,
+			goals:     &goalMap{},
+			news:      &resourceMap{},
+		}
+		sg := newStepGenerator(deployment, Options{}, NewUrnTargets(nil), NewUrnTargets(nil))
+		sg.urns["urn:pulumi::stack::project::qualified$type$name::parent"] = true
+
+		rt.Run(map[string]func(*rapid.T){
+			"GetURNs": func(t *rapid.T) {
+				sg.GetURNs()
+			},
+			"GenerateReadSteps": func(t *rapid.T) {
+				tok, err := tokens.ParseTypeToken("test:resource:parent")
+				require.NoError(t, err)
+				//nolint:errcheck
+				sg.GenerateReadSteps(&readResourceEvent{
+					baseType: tok,
+					props:    make(resource.PropertyMap),
+				})
+			},
+			"GenerateSteps": func(t *rapid.T) {
+				tok, err := tokens.ParseTypeToken("test:resource:child")
+				require.NoError(t, err)
+				//nolint:errcheck
+				sg.GenerateSteps(&registerResourceEvent{
+					goal: &resource.Goal{
+						Parent:     "urn:pulumi::stack::project::qualified$type$name::parent",
+						Type:       tok,
+						Properties: make(resource.PropertyMap),
+					},
+				})
+			},
+			"GenerateDeletes": func(*rapid.T) {
+				//nolint:errcheck
+				sg.GenerateDeletes(NewUrnTargets([]string{}))
+			},
+			"ScheduleDeletes": func(*rapid.T) {
+				//nolint:errcheck
+				sg.ScheduleDeletes([]Step{})
+			},
+			"Errored": func(*rapid.T) {
+				sg.Errored()
+			},
+			"AnalyzeResources": func(*rapid.T) {
+				//nolint:errcheck
+				sg.AnalyzeResources()
+			},
 		})
 	})
 }

@@ -54,8 +54,10 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 
 	olds := ex.deployment.olds
 	var news map[resource.URN]bool
+	// Step generator may not have been initialized yet, in which case the news
+	// set will be empty anyway
 	if ex.stepGen != nil {
-		news = ex.stepGen.urns
+		news = ex.stepGen.GetURNs()
 	}
 
 	hasUnknownTarget := false
@@ -216,6 +218,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+		workerPool := newWorkerPool(opts.DegreeOfParallelism())
 		for {
 			select {
 			case event := <-incomingEvents:
@@ -233,6 +236,14 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				}
 
 				if event.Event == nil {
+					// Wait for all currently pending and executing workers to
+					// complete. Then check if any worker had an error.
+					poolErr := workerPool.Wait()
+					if poolErr != nil {
+						cancel()
+						return false, result.BailError(poolErr)
+					}
+
 					// Check targets before performDeletes mutates the initial Snapshot.
 					targetErr := ex.checkTargets(opts.Targets)
 
@@ -252,15 +263,23 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 					return false, nil
 				}
 
-				if err := ex.handleSingleEvent(event.Event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+				// Handle the event within the worker pool
+				workerPool.AddWorker(func() error {
+					if err := ex.handleSingleEvent(event.Event); err != nil {
+						if !result.IsBail(err) {
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+						}
+						return err
 					}
+					return nil
+				})
+			case <-ctx.Done():
+				if err := workerPool.Wait(); err != nil {
 					cancel()
 					return false, result.BailError(err)
 				}
-			case <-ctx.Done():
+
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
