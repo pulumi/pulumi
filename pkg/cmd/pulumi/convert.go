@@ -101,6 +101,7 @@ func newConvertCmd() *cobra.Command {
 	var generateOnly bool
 	var mappings []string
 	var strict bool
+	var name string
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -122,7 +123,7 @@ func newConvertCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			return runConvert(env.Global(), args, cwd, mappings, from, language, outDir, generateOnly, strict)
+			return runConvert(env.Global(), args, cwd, mappings, from, language, outDir, generateOnly, strict, name)
 		}),
 	}
 
@@ -151,6 +152,9 @@ func newConvertCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		&strict, "strict", false, "If strict is set the conversion will fail on errors such as missing variables")
+
+	cmd.PersistentFlags().StringVar(
+		&name, "name", "", "The project name; if not specified, the current project name will be used")
 
 	return cmd
 }
@@ -231,8 +235,13 @@ func runConvert(
 	e env.Env,
 	args []string,
 	cwd string, mappings []string, from string, language string,
-	outDir string, generateOnly bool, strict bool,
+	outDir string, generateOnly bool, strict bool, name string,
 ) error {
+	// Validate name (if specified)
+	if name != "" && pkgWorkspace.ValidateProjectName(name) != nil {
+		return fmt.Errorf("'%s' is not a valid project name: %w", name, pkgWorkspace.ValidateProjectName(name))
+	}
+
 	pCtx, err := newPluginContext(cwd)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
@@ -410,8 +419,11 @@ func runConvert(
 	}
 
 	// Load the project from the pcl directory if there is one. We default to a project with just
-	// the name of the original directory.
-	proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
+	// the name of the original directory if no name is passed.
+	if name == "" {
+		name = filepath.Base(cwd)
+	}
+	proj := &workspace.Project{Name: tokens.PackageName(name)}
 	path, _ := workspace.DetectProjectPathFrom(pclDirectory)
 	if path != "" {
 		proj, err = workspace.LoadProject(path)
