@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -2016,25 +2017,30 @@ func (dctx *docGenContext) getMod(
 	add bool,
 ) *modContext {
 	modName := pkg.TokenToModule(token)
-	mod, ok := modules[modName]
+	return dctx.getModByModName(pkg, tokens.ModuleName(modName), tokenPkg, modules, tool, add)
+}
+
+func (dctx *docGenContext) getModByModName(
+	pkg schema.PackageReference,
+	modName tokens.ModuleName,
+	tokenPkg schema.PackageReference,
+	modules map[string]*modContext,
+	tool string,
+	add bool,
+) *modContext {
+	mod, ok := modules[string(modName)]
 	if !ok {
 		mod = &modContext{
 			pkg:           pkg,
-			mod:           modName,
+			mod:           string(modName),
 			tool:          tool,
 			docGenContext: dctx,
 		}
 
 		if modName != "" && codegen.PkgEquals(tokenPkg, pkg) {
-			parentName := path.Dir(modName)
-			// If the parent name is blank, it means this is the package-level.
-			if parentName == "." || parentName == "" {
-				parentName = ":index:"
-			} else {
-				parentName = ":" + parentName + ":"
-			}
-			parent := dctx.getMod(pkg, parentName, tokenPkg, modules, tool, add)
-			if add {
+			parentName, hasParent := parentModule(modName)
+			if add && hasParent {
+				parent := dctx.getModByModName(pkg, parentName, tokenPkg, modules, tool, add)
 				parent.children = append(parent.children, mod)
 			}
 		}
@@ -2042,7 +2048,7 @@ func (dctx *docGenContext) getMod(
 		// Save the module only if we're adding and it's for the current package.
 		// This way, modules for external packages are not saved.
 		if add && tokenPkg == pkg {
-			modules[modName] = mod
+			modules[string(modName)] = mod
 		}
 	}
 	return mod
@@ -2206,6 +2212,11 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 	return files, nil
 }
 
+const (
+	// "" indicates the top-most module.
+	topMostModule tokens.ModuleName = ""
+)
+
 // GeneratePackageTree returns a navigable structure starting from the top-most module.
 func (dctx *docGenContext) generatePackageTree() ([]PackageTreeItem, error) {
 	if dctx.modules() == nil {
@@ -2215,8 +2226,7 @@ func (dctx *docGenContext) generatePackageTree() ([]PackageTreeItem, error) {
 	defer glog.Flush()
 
 	var packageTree []PackageTreeItem
-	// "" indicates the top-most module.
-	if rootMod, ok := dctx.modules()[""]; ok {
+	if rootMod, ok := dctx.modules()[string(topMostModule)]; ok {
 		tree, err := generatePackageTree(*rootMod)
 		if err != nil {
 			glog.Errorf("Error generating the package tree for package: %v", err)
@@ -2258,4 +2268,17 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 // GeneratePackageTree returns a navigable structure starting from the top-most module.
 func GeneratePackageTree() ([]PackageTreeItem, error) {
 	return defaultContext.generatePackageTree()
+}
+
+// Returns the parent module, if available. For top-level modules the parent is a special
+// topMostModule. For topMostModule itself there is no parent and this function returns false.
+func parentModule(modName tokens.ModuleName) (tokens.ModuleName, bool) {
+	switch {
+	case modName == topMostModule:
+		return "", false
+	case strings.Contains(string(modName), tokens.QNameDelimiter):
+		return tokens.ModuleName(tokens.QName(modName).Namespace()), true
+	default:
+		return topMostModule, true
+	}
 }

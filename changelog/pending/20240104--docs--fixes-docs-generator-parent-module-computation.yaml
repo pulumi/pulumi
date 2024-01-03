@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: docs
+  description: Fixes docs generator parent module computation
