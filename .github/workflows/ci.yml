@@ -60,6 +60,15 @@ on:
       CODECOV_TOKEN:
         required: false
         description: "CodeCov token, required to publish CodeCov coverage data"
+      AZURE_TENANT_ID:
+        required: false
+        description: "Azure tenant ID, required to run tests against Azure"
+      AZURE_CLIENT_ID:
+        required: false
+        description: "Azure client ID, required to run tests against Azure"
+      AZURE_CLIENT_SECRET:
+        required: false
+        description: "Azure clients secret, needs to be rotated before 2025-12-21 (see the pulumi-test user in Azure portal)"
 
 jobs:
   matrix:
