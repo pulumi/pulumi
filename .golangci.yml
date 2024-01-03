@@ -50,8 +50,6 @@ linters-settings:
       - sortslice
       # Detect write to struct/arrays by-value that aren't read again.
       - unusedwrite
-  exhaustive:
-    default-signifies-exhaustive: true
 
 issues:
   exclude-rules:

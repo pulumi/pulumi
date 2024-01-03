@@ -208,6 +208,7 @@ type TemplateDelimiter struct {
 // template delimiter, this function will panic.
 func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
 	var s string
+	//nolint:exhaustive // Only some tokens are template delimiters.
 	switch typ {
 	case hclsyntax.TokenTemplateInterp:
 		s = "${"

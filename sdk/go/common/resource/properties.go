@@ -332,6 +332,7 @@ func NewPropertyValueRepl(v interface{},
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
 	rv := reflect.ValueOf(v)
+	//nolint:exhaustive // We intentionally only handle some types here.
 	switch rk := rv.Type().Kind(); rk {
 	case reflect.Array, reflect.Slice:
 		// If an array or slice, just create an array out of it.

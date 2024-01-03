@@ -145,6 +145,7 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 				// We have an error; see if it's a known status and, if so, react appropriately.
 				status, ok := status.FromError(err)
 				if ok {
+					//nolint:exhaustive // we have a default case for other statuses
 					switch status.Code() {
 					case codes.Unavailable:
 						// The server is unavailable.  This is the Linux bug.  Wait a little and retry.

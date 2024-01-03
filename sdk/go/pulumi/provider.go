@@ -354,6 +354,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				inputType = inputType.Elem()
 			}
 
+			//nolint:exhaustive // We only need to process a few types here.
 			switch inputType.Kind() {
 			case reflect.Bool:
 				if !v.IsBool() {

@@ -1358,6 +1358,8 @@ func (b *cloudBackend) runEngineAction(
 		_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
 		_, changes, updateErr = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+	case apitype.StackImportUpdate:
+		contract.Failf("unexpected stack import event")
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}

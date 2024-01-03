@@ -107,6 +107,8 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 			prefix.WriteString(colors.SpecError)
 		case diag.Warning:
 			prefix.WriteString(colors.SpecWarning)
+		case diag.Info, diag.Infoerr:
+			// handled above
 		default:
 			contract.Failf("Unrecognized diagnostic severity: %v", sev)
 		}

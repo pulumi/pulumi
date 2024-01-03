@@ -15,6 +15,8 @@
 package yamlutil
 
 import (
+	"errors"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -120,9 +122,9 @@ func editNodes(original, new *yaml.Node) (yaml.Node, error) {
 
 		ret.Content = content
 		return ret, nil
-	default: // alias and scalar nodes
-
+	case yaml.ScalarNode, yaml.AliasNode:
 		ret.Content = new.Content
 		return ret, nil
 	}
+	return yaml.Node{}, errors.New("unknown node type")
 }

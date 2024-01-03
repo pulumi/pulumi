@@ -163,6 +163,7 @@ var policyPayloads []engine.PolicyViolationEventPayload
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
+	//nolint:exhaustive // Only a subset of events have urns.
 	switch event.Type {
 	case engine.ResourcePreEvent:
 		payload := event.Payload().(engine.ResourcePreEventPayload)

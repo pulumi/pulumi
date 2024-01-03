@@ -918,6 +918,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	}
 
 	known, secret, deps, err := true, false, make([]Resource, 0), error(nil)
+	//nolint:exhaustive // The default case is equipped to handle the rest of the types.
 	switch v.Kind() {
 	case reflect.Interface:
 		if !v.IsNil() {

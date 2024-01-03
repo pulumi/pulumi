@@ -2633,6 +2633,7 @@ func getPrimitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // Only a subset of types can have default values
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {

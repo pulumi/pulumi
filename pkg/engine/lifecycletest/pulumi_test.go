@@ -943,6 +943,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
 					assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
+					//nolint:exhaustive // default case signifies testing failure
 					switch entry.Kind {
 					case JournalEntryBegin:
 						continue
@@ -3640,6 +3641,7 @@ func TestEventSecrets(t *testing.T) {
 	) error {
 		for _, e := range evts {
 			var step StepEventMetadata
+			//nolint:exhaustive // We only care about a subset of events here
 			switch e.Type {
 			case ResourcePreEvent:
 				step = e.Payload().(ResourcePreEventPayload).Metadata

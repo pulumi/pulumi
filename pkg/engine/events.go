@@ -471,6 +471,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 
 	// Write prefix.
 	var prefix bytes.Buffer
+	//nolint:exhaustive // We only expect mandatory or advisory events here.
 	switch d.EnforcementLevel {
 	case apitype.Mandatory:
 		prefix.WriteString(colors.SpecError)

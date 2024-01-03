@@ -316,6 +316,8 @@ func (t *terminal) ReadKey() (string, error) {
 			}
 		}
 		return fmt.Sprintf("<control %v>", d.final), nil
+	case ansiError:
+		return "", errors.New("invalid ANSI sequence")
 	default:
 		return "", errors.New("invalid control sequence")
 	}

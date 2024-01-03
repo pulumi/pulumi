@@ -169,9 +169,11 @@ func (d DiffKind) IsReplace() bool {
 	switch d {
 	case DiffAddReplace, DiffDeleteReplace, DiffUpdateReplace:
 		return true
-	default:
+	case DiffAdd, DiffDelete, DiffUpdate:
 		return false
 	}
+	contract.Failf("Unknown diff kind %v", int(d))
+	return false
 }
 
 // AsReplace converts a DiffKind into the equivalent replacement if it not already
