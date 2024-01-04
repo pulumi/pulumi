@@ -1829,7 +1829,9 @@ func createConfigureError(rpcerr *rpcerror.Error) error {
 func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 	rpcError := rpcerror.Convert(err)
 	logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
-	if rpcError.Code() == codes.Internal || rpcError.Code() == codes.DataLoss || rpcError.Code() == codes.Unknown {
+	//nolint:exhaustive // We want to handle only some error codes specially
+	switch rpcError.Code() {
+	case codes.Internal, codes.DataLoss, codes.Unknown:
 		logging.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcError.Code())
 		return resource.StatusUnknown, rpcError
 	}
