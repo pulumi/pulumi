@@ -226,6 +226,9 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
+		if *snap == nil {
+			return "", errors.New("no snapshot found")
+		}
 	}
 	urnList := make([]string, len((*snap).Resources))
 	for i, r := range (*snap).Resources {
