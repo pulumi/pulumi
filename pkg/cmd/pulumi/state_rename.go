@@ -181,6 +181,9 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				err := surveyStack(
 					func() (err error) {
 						urn, err = getURNFromState(ctx, stack, &snap, "Select a resource to rename:")
+						if err != nil {
+							err = fmt.Errorf("failed to select resource: %w", err)
+						}
 						return
 					},
 					func() (err error) {
