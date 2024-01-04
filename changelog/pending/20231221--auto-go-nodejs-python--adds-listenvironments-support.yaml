@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go,nodejs,python
-  description: Adds ListEnvironments support to Go, Nodejs and Python Automation API.
