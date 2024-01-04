@@ -85,7 +85,9 @@ runtime: yaml`
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
-		const expectedYAML = `environment:
+		const expectedYAML = `secrets:
+  name: b64
+environment:
   - test-stack
 `
 
@@ -163,7 +165,9 @@ runtime: yaml`
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
-		const expectedYAML = `environment:
+		const expectedYAML = `secrets:
+  name: b64
+environment:
   - test-stack
 `
 		assert.Equal(t, expectedYAML, newStackYAML)
@@ -239,7 +243,9 @@ runtime: yaml`
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
-		const expectedYAML = `environment:
+		const expectedYAML = `secrets:
+  name: b64
+environment:
   - test-stack
 `
 		assert.Equal(t, expectedYAML, newStackYAML)
@@ -320,7 +326,9 @@ runtime: yaml`
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
-		const expectedYAML = `environment:
+		const expectedYAML = `secrets:
+  name: b64
+environment:
   - env
   - test-stack
 `

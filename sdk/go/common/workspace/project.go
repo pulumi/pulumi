@@ -23,9 +23,11 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/esc/ast"
 	"github.com/pulumi/esc/eval"
 
@@ -811,8 +813,59 @@ func (e *Environment) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
+// SecretsProvider is a Pulumi secrets provider manifest.
+type SecretsProvider struct {
+	// Name is the name of the plugin for the secret provider.
+	Name string `json:"name" yaml:"name"`
+	// Version is the optional plugin version for the secret provider.
+	Version *semver.Version `json:"version,omitempty" yaml:"version,omitempty"`
+	// State is the plugin defined state for the secret provider.
+	State json.RawMessage `json:"state,omitempty" yaml:"state,omitempty"`
+}
+
+// Equals returns true if the two secrets providers are equal. JSON state is compared as JSON objects if
+// possible for this.
+func (sp *SecretsProvider) Equals(other *SecretsProvider) bool {
+	if sp == nil && other == nil {
+		return true
+	} else if sp == nil || other == nil {
+		return false
+	}
+
+	versionEqual := true
+	if sp.Version != nil || other.Version != nil {
+		if sp.Version == nil || other.Version == nil {
+			versionEqual = false
+		} else {
+			versionEqual = sp.Version.Equals(*other.Version)
+		}
+	}
+
+	stateEqual := true
+	if len(sp.State) != 0 || len(other.State) != 0 {
+		if len(sp.State) == 0 || len(other.State) == 0 {
+			stateEqual = false
+		} else {
+			// Try to parse the state as JSON and compare the resulting objects, but if this errors just
+			// fallback to comparing as strings.
+			var sa, sb interface{}
+			erra := json.Unmarshal(sp.State, &sa)
+			errb := json.Unmarshal(other.State, &sb)
+			if erra == nil && errb == nil {
+				stateEqual = reflect.DeepEqual(sa, sb)
+			} else {
+				stateEqual = string(sp.State) == string(other.State)
+			}
+		}
+	}
+
+	return sp.Name == other.Name && versionEqual && stateEqual
+}
+
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
+	// Secrets is this stack's plugin secrets provider.
+	Secrets *SecretsProvider `json:"secrets,omitempty" yaml:"secrets,omitempty"`
 	// SecretsProvider is this stack's secrets provider.
 	SecretsProvider string `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
 	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
@@ -828,6 +881,104 @@ type ProjectStack struct {
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
 	raw []byte
+}
+
+// Parse Secrets, SecretsProvider, EncryptedKey, and EncryptionSalt into a SecretsProvider.
+func (ps ProjectStack) GetSecrets() *SecretsProvider {
+	if ps.Secrets != nil {
+		return ps.Secrets
+	}
+	// If EncryptionSalt is set this is a passphrase-based secrets provider.
+	if ps.EncryptionSalt != "" {
+		return &SecretsProvider{
+			Name: "passphrase",
+			State: json.RawMessage(fmt.Sprintf(`{
+				"salt": %q
+			}`, ps.EncryptionSalt)),
+		}
+	}
+	// If SecretsProvider is set this is a cloud-based secrets provider.
+	if ps.SecretsProvider != "" {
+		return &SecretsProvider{
+			Name: "cloud",
+			State: json.RawMessage(fmt.Sprintf(`{
+				"url": %q
+				"encryptedkey": %q
+			}`, ps.SecretsProvider, ps.EncryptedKey)),
+		}
+	}
+	// Otherwise, there is no secrets provider, use the default.
+	return nil
+}
+
+// Set Secrets, SecretsProvider, EncryptedKey, and EncryptionSalt based on a SecretsProvider.
+func (ps *ProjectStack) SetSecrets(secrets SecretsProvider) error {
+	contract.Requiref(ps != nil, "ps", "must not be nil")
+
+	// We don't store anything in the state file when using the service secret provider.
+	if secrets.Name == "service" {
+		// To change the secrets provider to a service we would need to ensure that there are no
+		// remnants of the old secret manager To remove those remnants, we would set those values to be empty in
+		// the project stack.
+		// A passphrase secrets provider has an encryption salt, therefore, changing
+		// from passphrase to service requires the encryption salt
+		// to be removed.
+		// A cloud secrets manager has an encryption key and a secrets provider,
+		// therefore, changing from cloud to service requires the
+		// encryption key and secrets provider to be removed.
+		// Regardless of what the current secrets provider is, all of these values
+		// need to be empty otherwise `getStackSecretsManager` in crypto.go can
+		// potentially return the incorrect secret type for the stack.
+		ps.Secrets = nil
+		ps.SecretsProvider = ""
+		ps.EncryptedKey = ""
+		ps.EncryptionSalt = ""
+		return nil
+	}
+
+	if secrets.Name == "passphrase" {
+		// If there are any other secrets providers set in the config, remove them, as the passphrase
+		// provider deals only with EncryptionSalt, not EncryptedKey or SecretsProvider.
+		ps.Secrets = nil
+		ps.EncryptedKey = ""
+		ps.SecretsProvider = ""
+
+		var s struct {
+			Salt string `json:"salt"`
+		}
+		if err := json.Unmarshal(secrets.State, &s); err != nil {
+			return fmt.Errorf("unmarshalling passphrase state: %w", err)
+		}
+		ps.EncryptionSalt = s.Salt
+		return nil
+	}
+
+	if secrets.Name == "cloud" {
+		// Only a passphrase provider has an encryption salt. So changing a secrets provider
+		// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
+		// as it's a legacy artifact and needs to be removed
+		ps.Secrets = nil
+		ps.EncryptionSalt = ""
+
+		var s struct {
+			URL          string `json:"url"`
+			EncryptedKey string `json:"encryptedkey"`
+		}
+		if err := json.Unmarshal(secrets.State, &s); err != nil {
+			return fmt.Errorf("unmarshalling cloud state: %w", err)
+		}
+
+		ps.SecretsProvider = s.URL
+		ps.EncryptedKey = s.EncryptedKey
+		return nil
+	}
+
+	// Any other secrets provider gets saved to the new "secrets" field
+	ps.Secrets = &secrets
+	ps.SecretsProvider = ""
+	ps.EncryptedKey = ""
+	ps.EncryptionSalt = ""
+	return nil
 }
 
 func (ps ProjectStack) EnvironmentBytes() []byte {

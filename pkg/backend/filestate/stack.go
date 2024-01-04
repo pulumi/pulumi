@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -122,8 +121,8 @@ func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
-func (s *localStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
-	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)
+func (s *localStack) DefaultSecretManager() (secrets.Manager, error) {
+	return passphrase.NewPromptingPassphraseSecretsManager(nil, false /* rotatePassphraseSecretsProvider */)
 }
 
 type localStackSummary struct {

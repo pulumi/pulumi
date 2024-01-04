@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
@@ -58,7 +59,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -223,22 +223,27 @@ func createSecretsManager(
 		return err
 	}
 
-	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+	var sm secrets.Manager
 	if isDefaultSecretsProvider {
-		_, err = stack.DefaultSecretManager(ps)
+		sm, err = stack.DefaultSecretManager()
 	} else if secretsProvider == passphrase.Type {
-		_, err = passphrase.NewPromptingPassphraseSecretsManager(ps, rotateSecretsProvider)
+		sm, err = passphrase.NewPromptingPassphraseSecretsManager(nil, rotateSecretsProvider)
 	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-		_, err = cloud.NewCloudSecretsManager(ps, secretsProvider, rotateSecretsProvider)
+		sm, err = cloud.NewCloudSecretsManager(nil, secretsProvider, rotateSecretsProvider)
 	}
 	if err != nil {
 		return err
 	}
 
 	// Handle if the configuration changed any of EncryptedKey, etc
-	if needsSaveProjectStackAfterSecretManger(stack, oldConfig, ps) {
+	needsSave, err := needsSaveProjectStackAfterSecretManger(stack, ps, sm)
+	if err != nil {
+		return err
+	}
+
+	if needsSave {
 		if err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); err != nil {
 			return fmt.Errorf("saving stack config: %w", err)
 		}

@@ -217,7 +217,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			snapshot = snap
 			return nil
 		},
-		DefaultSecretManagerF: func(_ *workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func() (secrets.Manager, error) {
 			return secretsManager, nil
 		},
 	}
@@ -245,6 +245,9 @@ runtime: mock
 	require.NoError(t, err)
 	cfgKey := config.MustMakeKey("testStack", "secret")
 	cfg := workspace.ProjectStack{
+		Secrets: &workspace.SecretsProvider{
+			Name: "b64",
+		},
 		Config: config.Map{
 			cfgKey: config.NewSecureValue(secretBar),
 		},

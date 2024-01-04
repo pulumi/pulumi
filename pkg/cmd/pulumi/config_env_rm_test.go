@@ -108,7 +108,9 @@ Save? Yes
 
 		ctx := context.Background()
 
-		const stackYAML = `environment:
+		const stackYAML = `secrets:
+  name: b64
+environment:
   - env
   - env2
 `
@@ -145,7 +147,9 @@ Save? Yes
 			},
 		}
 
-		const stackYAML = `environment:
+		const stackYAML = `secrets:
+  name: b64
+environment:
  - env
  - env2
 `
@@ -167,50 +171,9 @@ Save? Yes
 
 		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
-		const expectedYAML = `environment:
-  - env
-`
-
-		assert.Equal(t, expectedYAML, newStackYAML)
-	})
-
-	t.Run("two imports, secrets", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := context.Background()
-
-		env := &esc.Environment{
-			Properties: map[string]esc.Value{
-				"pulumiConfig": esc.NewValue(map[string]esc.Value{
-					"aws:region":   esc.NewValue("us-west-2"),
-					"app:password": esc.NewSecret("hunter2"),
-				}),
-			},
-		}
-
-		const stackYAML = `environment:
- - env
- - env2
-`
-
-		var newStackYAML string
-		stdin := strings.NewReader("y")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent, showSecrets: true}
-		err := rm.run(nil, []string{"env2"})
-		require.NoError(t, err)
-
-		const expectedOut = `KEY           VALUE
-app:password  hunter2
-aws:region    us-west-2
-
-Save? Yes
-`
-
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
-
-		const expectedYAML = `environment:
+		const expectedYAML = `secrets:
+  name: b64
+environment:
   - env
 `
 

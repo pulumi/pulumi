@@ -123,24 +123,8 @@ func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
 }
 
 func NewServiceSecretsManager(
-	client *client.Client, id client.StackIdentifier, info *workspace.ProjectStack,
+	client *client.Client, id client.StackIdentifier,
 ) (secrets.Manager, error) {
-	// To change the secrets provider to a serviceSecretsManager we would need to ensure that there are no
-	// remnants of the old secret manager To remove those remnants, we would set those values to be empty in
-	// the project stack.
-	// A passphrase secrets provider has an encryption salt, therefore, changing
-	// from passphrase to serviceSecretsManager requires the encryption salt
-	// to be removed.
-	// A cloud secrets manager has an encryption key and a secrets provider,
-	// therefore, changing from cloud to serviceSecretsManager requires the
-	// encryption key and secrets provider to be removed.
-	// Regardless of what the current secrets provider is, all of these values
-	// need to be empty otherwise `getStackSecretsManager` in crypto.go can
-	// potentially return the incorrect secret type for the stack.
-	info.EncryptionSalt = ""
-	info.SecretsProvider = ""
-	info.EncryptedKey = ""
-
 	state, err := json.Marshal(serviceSecretsManagerState{
 		URL:      client.URL(),
 		Owner:    id.Owner,
