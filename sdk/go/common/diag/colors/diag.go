@@ -44,11 +44,10 @@ func (c Colorization) ColorizeWithMaxWidth(v string, maxWidth int) string {
 		return colorizeText(v, Always, maxWidth)
 	case Never:
 		return colorizeText(v, Never, maxWidth)
-	case Auto:
-		return colorizeText(v, Auto, maxWidth)
+	default:
+		contract.Failf("Unrecognized colorization mode: %v", c)
+		return ""
 	}
-	contract.Failf("Unrecognized colorization mode: %v", c)
-	return ""
 }
 
 // TrimColorizedString takes a string with embedded color tags and returns a new string (still with
