@@ -99,7 +99,7 @@ publish::
 		mv -vT "$${file}" "../../artifacts/$${basename##sdk-python-}"; \
 	done
 	twine upload \
-	-u pulumi -p "${PYPI_PASSWORD}" \
+	-u "${PYPI_USERNAME}" -p "${PYPI_PASSWORD}" \
 		../../artifacts/*.whl \
 		--skip-existing \
 		--verbose
