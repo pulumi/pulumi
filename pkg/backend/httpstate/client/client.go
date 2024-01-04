@@ -15,6 +15,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -98,6 +99,11 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
+}
+
+// do proxies the http client's Do method. This is a low-level construct and should be used sparingly
+func (pc *Client) do(ctx context.Context, req *http.Request) (*http.Response, error) {
+	return pc.httpClient.Do(req.WithContext(ctx))
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -188,6 +194,11 @@ func getPolicyPackConfigSchemaPath(orgName, policyPackName string, versionTag st
 		"/api/orgs/%s/policypacks/%s/versions/%s/schema", orgName, policyPackName, versionTag)
 }
 
+// getAIPromptPath returns the API path to create a Pulumi AI prompt.
+func getAIPromptPath() string {
+	return "/api/ai/template"
+}
+
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the update root.
 func getUpdatePath(update UpdateIdentifier, components ...string) string {
@@ -257,8 +268,8 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 }
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
-// oldest version before the CLI should warn about an upgrade).
-func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
+// oldest version before the CLI should warn about an upgrade, and the current dev version).
+func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
 
 	err := pc.restCallWithOptions(
@@ -273,20 +284,32 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 		},
 	)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	latestSem, err := semver.ParseTolerant(versionInfo.LatestVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	oldestSem, err := semver.ParseTolerant(versionInfo.OldestWithoutWarning)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
-	return latestSem, oldestSem, nil
+	// If there is no dev version, return the latest and oldest
+	// versions.  This can happen if the server does not include
+	// https://github.com/pulumi/pulumi-service/pull/17429 yet
+	if versionInfo.LatestDevVersion == "" {
+		return latestSem, oldestSem, semver.Version{}, nil
+	}
+
+	devSem, err := semver.ParseTolerant(versionInfo.LatestDevVersion)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
+	}
+
+	return latestSem, oldestSem, devSem, nil
 }
 
 // ListStacksFilter describes optional filters when listing stacks.
@@ -1202,4 +1225,23 @@ func is404(err error) bool {
 		return true
 	}
 	return false
+}
+
+// SubmitAIPrompt sends the user's prompt to the Pulumi Service and streams back the response.
+func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (*http.Response, error) {
+	url, err := url.Parse(pc.apiURL + getAIPromptPath())
+	if err != nil {
+		return nil, err
+	}
+	marshalledBody, err := json.Marshal(requestBody)
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url.String(), bytes.NewReader(marshalledBody))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+	res, err := pc.do(ctx, request)
+	return res, err
 }

@@ -231,12 +231,12 @@ class TestLocalWorkspace(unittest.TestCase):
         # Ensure an env that doesn't exist errors
         self.assertRaises(CommandError, stack.add_environments, "non-existent-env")
 
-        # Ideally here we would be able to check that the envs were added/removed, but the CLI doesn't
-        # currently support listing envs from a stack configuration. We can at least check that the
-        # commands don't error.
-
         # Ensure envs that do exist can be added
         stack.add_environments("automation-api-test-env", "automation-api-test-env-2")
+
+        # Ensure envs can be listed
+        envs = stack.list_environments()
+        self.assertListEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"])
 
         # Check that we can access config from each env.
         config = stack.get_all_config()
@@ -246,6 +246,10 @@ class TestLocalWorkspace(unittest.TestCase):
         # Ensure envs can be removed
         stack.remove_environment("automation-api-test-env-2")
 
+        # Check that only one env remains
+        envs = stack.list_environments()
+        self.assertListEqual(envs, ["automation-api-test-env"])
+
         # Check that we can still access config from the remaining env,
         # and that the config from the removed env is no longer present.
         self.assertEqual(stack.get_config("new_key").value, "test_value")
@@ -253,6 +257,10 @@ class TestLocalWorkspace(unittest.TestCase):
 
         stack.remove_environment("automation-api-test-env")
         self.assertRaises(CommandError, stack.get_config, "new_key")
+
+        # Check that no envs remain
+        envs = stack.list_environments()
+        self.assertEqual(len(envs), 0)
 
         ws.remove_stack(stack_name)
 

@@ -1387,7 +1387,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	if err := cleanupTempDirs(finalDir); err != nil {
 		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
 		// Instead, log the error and continue on.
-		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err.Error())
+		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err)
 	}
 
 	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).

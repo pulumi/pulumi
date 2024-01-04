@@ -57,11 +57,22 @@ func annotateAttributeValue(expr model.Expression, attributeType schema.Type) mo
 			}
 
 			for _, item := range attrValue.Items {
+				// annotate the nested object properties
+				// here when the key is a literal such as { key = <inner value> }
 				keyLiteral, isLit := item.Key.(*model.LiteralValueExpression)
 				if isLit {
 					correspondingSchemaType, ok := schemaProperties[keyLiteral.Value.AsString()]
 					if ok {
 						item.Value = annotateAttributeValue(item.Value, correspondingSchemaType)
+					}
+				}
+
+				// here when the key is a quoted literal such as { "key" = <inner value> }
+				if templateExpression, ok := item.Key.(*model.TemplateExpression); ok && len(templateExpression.Parts) == 1 {
+					if literalValue, ok := templateExpression.Parts[0].(*model.LiteralValueExpression); ok {
+						if correspondingSchemaType, ok := schemaProperties[literalValue.Value.AsString()]; ok {
+							item.Value = annotateAttributeValue(item.Value, correspondingSchemaType)
+						}
 					}
 				}
 			}

@@ -822,30 +822,32 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 	}
 
 	// Get the current state from the stack to be renamed.
-	stk, err := b.GetStack(ctx, oldRef)
+	chk, err := b.getCheckpoint(ctx, oldRef)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 
-	// TODO: This should work on the Checkpoint data directly, there's no need to deserialize to a snapshot
-	// really but that's currently how RenameStack is written.
-	snap, err := stk.Snapshot(ctx, stack.DefaultSecretsProvider)
-	if err != nil {
-		return err
-	}
-
-	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
-	if snap != nil {
+	// If we have a checkpoint, we need to rename the URNs inside it to use the new stack name.
+	if chk != nil && chk.Latest != nil {
 		project, has := newRef.Project()
 		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
-
-		if err = edit.RenameStack(snap, newRef.name, tokens.PackageName(project)); err != nil {
+		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project)); err != nil {
 			return err
 		}
 	}
 
+	chkJSON, err := encoding.JSON.Marshal(chk)
+	if err != nil {
+		return fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
+	versionedCheckpoint := &apitype.VersionedCheckpoint{
+		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Checkpoint: json.RawMessage(chkJSON),
+	}
+
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(ctx, newRef, snap, nil); err != nil {
+	if _, _, err = b.saveCheckpoint(ctx, newRef, versionedCheckpoint); err != nil {
 		return err
 	}
 

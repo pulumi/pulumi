@@ -3153,7 +3153,7 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 
 		lowerBound, err := pep440VersionToSemver(matches[1])
 		if err != nil {
-			return nil, fmt.Errorf("invalid version for lower bound: %v", err)
+			return nil, fmt.Errorf("invalid version for lower bound: %w", err)
 		}
 		if lowerBound.LT(oldestAllowedPulumi) {
 			return nil, fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)

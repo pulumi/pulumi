@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet,python
+  description: Allow object keys to be template expressions such as static quoted strings 

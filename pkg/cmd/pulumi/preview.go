@@ -113,7 +113,6 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			}
 
 			// Name is unique at this point
-			takenNames[name] = len(imports.Resources)
 			fullNameTable[urn] = name
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
@@ -161,7 +160,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			if new.Provider != "" {
 				ref, err := providers.ParseReference(new.Provider)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not parse provider reference: %v", err)
+					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
 				// If we're trying to create this provider in the same deployment and it's not a default provider then
@@ -183,7 +182,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 				v, err := providers.GetProviderVersion(inputs)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not get provider version for %s: %v", ref, err)
+					return importFile{}, fmt.Errorf("could not get provider version for %s: %w", ref, err)
 				}
 				if v != nil {
 					version = v.String()
@@ -191,7 +190,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 				pluginDownloadURL, err = providers.GetProviderDownloadURL(inputs)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not get provider download url for %s: %v", ref, err)
+					return importFile{}, fmt.Errorf("could not get provider download url for %s: %w", ref, err)
 				}
 			}
 
@@ -208,6 +207,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 				logicalName = urn.Name()
 			}
 
+			takenNames[name] = len(imports.Resources)
 			imports.Resources = append(imports.Resources, importSpec{
 				Type:              new.Type,
 				Name:              name,
@@ -571,7 +571,7 @@ func newPreviewCmd() *cobra.Command {
 		"Serialize the preview diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")

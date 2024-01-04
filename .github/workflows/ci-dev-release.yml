@@ -35,9 +35,9 @@ jobs:
         run: |
           version="${{ steps.ghd.outputs.describe }}"
           version="${version#v}"
-          ./.github/scripts/set-output dev-version "$version"
+          echo dev-version="$version" >>"${GITHUB_OUTPUT}"
     outputs:
-      dev-version: "${{ steps.strip-prefix.outputs.dev-version }}"
+      dev-version: ${{ steps.strip-prefix.outputs.dev-version }}
       version: ${{ inputs.version }}
 
   matrix:
@@ -121,9 +121,12 @@ jobs:
         run: |
           find artifacts.tmp
           mkdir -p ./artifacts
-          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.sig ./artifacts
+          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.tar.gz.sig ./artifacts
+          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.zip.sig ./artifacts
+          mv ./artifacts.tmp/artifacts-signatures/pulumi-*.txt.sig ./artifacts
           mv ./artifacts.tmp/artifacts-signatures/pulumi-*.txt ./artifacts
           mv ./artifacts.tmp/artifacts-cli-*/pulumi-*.tar.gz ./artifacts
+          mv ./artifacts.tmp/artifacts-cli-*/pulumi-*.zip ./artifacts
 
       - name: Find artifacts
         run: |

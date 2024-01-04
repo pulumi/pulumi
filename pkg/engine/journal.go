@@ -168,7 +168,7 @@ type Journal struct {
 	done    chan bool
 }
 
-func (j *Journal) Entries() []JournalEntry {
+func (j *Journal) Entries() JournalEntries {
 	<-j.done
 
 	return j.entries

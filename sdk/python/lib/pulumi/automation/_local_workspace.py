@@ -234,6 +234,24 @@ class LocalWorkspace(Workspace):
                 "upgrade to at least version 3.95.0."
             )
 
+    def list_environments(self, stack_name: str) -> List[str]:
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.99.
+        ver = VersionInfo(3)
+        if self.__pulumi_version is not None:
+            ver = VersionInfo.parse(self.__pulumi_version)
+
+        # 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
+        if ver >= VersionInfo(3, 99):
+            result = self._run_pulumi_cmd_sync(
+                ["config", "env", "ls", "--json", "--stack", stack_name]
+            )
+            return json.loads(result.stdout)
+
+        raise InvalidVersionError(
+            "The installed version of the CLI does not support this operation. Please "
+            "upgrade to at least version 3.99.0."
+        )
+
     def remove_environment(self, stack_name: str, environment_name: str) -> None:
         # Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
         ver = VersionInfo(3)

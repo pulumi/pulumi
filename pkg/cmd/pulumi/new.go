@@ -33,6 +33,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -71,6 +72,9 @@ type newArgs struct {
 	templateNameOrURL string
 	yes               bool
 	listTemplates     bool
+	aiPrompt          string
+	aiLanguage        httpstate.PulumiAILanguage
+	templateMode      bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -142,6 +146,39 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	if args.templateNameOrURL == "" {
+		// Try to read the current project
+		project, _, err := readProject()
+		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+			return err
+		}
+
+		b, err := currentBackend(ctx, project, opts)
+		if err != nil {
+			return err
+		}
+
+		var aiOrTemplate string
+		if shouldPromptForAIOrTemplate(args, b) {
+			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
+		} else {
+			aiOrTemplate = deriveAIOrTemplate(args)
+		}
+		if err != nil {
+			return err
+		}
+		if aiOrTemplate == "ai" {
+			checkedBackend, ok := b.(httpstate.Backend)
+			if !ok {
+				return errors.New("please log in to Pulumi Cloud to use Pulumi AI")
+			}
+			conversationURL, err := runAINew(ctx, args, opts, checkedBackend)
+			if err != nil {
+				return err
+			}
+			args.templateNameOrURL = conversationURL
+		}
+	}
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
@@ -453,7 +490,13 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new git@github.com:<user>/<private-repo>`\n" +
 			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
 			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
-			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n",
+			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n" +
+			"To create a project using Pulumi AI, either select `ai` from the first selection, " +
+			"or provide any of the following:\n" +
+			"* `pulumi new --ai \"<prompt>\"`\n" +
+			"* `pulumi new --language <language>`\n" +
+			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
+			"Any missing but required information will be prompted for.\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
@@ -535,6 +578,17 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.listTemplates, "list-templates", "l", false,
 		"List locally installed templates and exit")
+	cmd.PersistentFlags().StringVar(
+		&args.aiPrompt, "ai", "", "Prompt to use for Pulumi AI",
+	)
+	cmd.PersistentFlags().Var(
+		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
+			fmt.Sprintf("(must be one of %s)", httpstate.PulumiAILanguagesClause),
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.templateMode, "template-mode", "t", false,
+		"Run in template mode, which will skip prompting for AI or Template functionality",
+	)
 
 	return cmd
 }

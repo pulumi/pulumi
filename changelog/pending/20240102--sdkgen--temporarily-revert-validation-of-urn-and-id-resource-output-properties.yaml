@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen
+  description: Temporarily revert validation of `urn` and `id` resource output properties

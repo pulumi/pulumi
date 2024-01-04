@@ -46,6 +46,8 @@ type Workspace interface {
 	PostCommandCallback(context.Context, string) error
 	// AddEnvironments adds the specified environments to the provided stack's configuration.
 	AddEnvironments(context.Context, string, ...string) error
+	// ListEnvironments returns the list of environments from the provided stack's configuration.
+	ListEnvironments(context.Context, string) ([]string, error)
 	// RemoveEnvironment removes the specified environment from the provided stack's configuration.
 	RemoveEnvironment(context.Context, string, string) error
 	// GetConfig returns the value associated with the specified stack name and key,

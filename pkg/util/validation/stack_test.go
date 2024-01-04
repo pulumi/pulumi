@@ -58,9 +58,8 @@ func TestValidateStackTag(t *testing.T) {
 				}
 
 				err := ValidateStackTags(tags)
-				assert.Error(t, err)
 				msg := "stack tag names may only contain alphanumerics, hyphens, underscores, periods, or colons"
-				assert.Equal(t, err.Error(), msg)
+				assert.EqualError(t, err, msg)
 			})
 		}
 	})
@@ -73,9 +72,8 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		err := ValidateStackTags(tags)
-		assert.Error(t, err)
 		msg := fmt.Sprintf("stack tag %q is too long (max length %d characters)", strings.Repeat("v", 41), 40)
-		assert.Equal(t, err.Error(), msg)
+		assert.EqualError(t, err, msg)
 	})
 
 	t.Run("too long tag value", func(t *testing.T) {
@@ -86,8 +84,7 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		err := ValidateStackTags(tags)
-		assert.Error(t, err)
 		msg := fmt.Sprintf("stack tag %q value is too long (max length %d characters)", "tag-name", 256)
-		assert.Equal(t, err.Error(), msg)
+		assert.EqualError(t, err, msg)
 	})
 }

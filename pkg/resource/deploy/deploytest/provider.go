@@ -36,6 +36,8 @@ type Provider struct {
 	Config     resource.PropertyMap
 	configured bool
 
+	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
+
 	GetSchemaF func(version int) ([]byte, error)
 
 	CheckConfigF func(urn resource.URN, olds,
@@ -203,7 +205,11 @@ func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name
 	if prov.ConstructF == nil {
 		return plugin.ConstructResult{}, nil
 	}
-	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	dialMonitorImpl := dialMonitor
+	if prov.DialMonitorF != nil {
+		dialMonitorImpl = prov.DialMonitorF
+	}
+	monitor, err := dialMonitorImpl(context.Background(), info.MonitorAddress)
 	if err != nil {
 		return plugin.ConstructResult{}, err
 	}
@@ -235,7 +241,11 @@ func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, i
 	if prov.CallF == nil {
 		return plugin.CallResult{}, nil
 	}
-	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	dialMonitorImpl := dialMonitor
+	if prov.DialMonitorF != nil {
+		dialMonitorImpl = prov.DialMonitorF
+	}
+	monitor, err := dialMonitorImpl(context.Background(), info.MonitorAddress)
 	if err != nil {
 		return plugin.CallResult{}, err
 	}

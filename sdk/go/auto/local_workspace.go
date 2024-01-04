@@ -150,6 +150,25 @@ func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, 
 	return nil
 }
 
+// ListEnvironments returns the list of environments from the provided stack's configuration.
+func (l *LocalWorkspace) ListEnvironments(ctx context.Context, stackName string) ([]string, error) {
+	// 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
+	if l.pulumiVersion.LT(semver.Version{Major: 3, Minor: 99}) {
+		return nil, fmt.Errorf("ListEnvironments requires Pulumi CLI version >= 3.99.0")
+	}
+	args := []string{"config", "env", "ls", "--stack", stackName, "--json"}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return nil, newAutoError(fmt.Errorf("unable to list environments: %w", err), stdout, stderr, errCode)
+	}
+	var envs []string
+	err = json.Unmarshal([]byte(stdout), &envs)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal environments: %w", err)
+	}
+	return envs, nil
+}
+
 // RemoveEnvironment removes an environment from a stack's configuration.
 func (l *LocalWorkspace) RemoveEnvironment(ctx context.Context, stackName string, env string) error {
 	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)

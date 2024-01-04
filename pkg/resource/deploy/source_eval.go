@@ -702,7 +702,7 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 	if rawProviderRef != "" {
 		ref, err := providers.ParseReference(rawProviderRef)
 		if err != nil {
-			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %v", err)
+			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
 		}
 		return ref, nil
 	}
@@ -1879,7 +1879,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	// Obtain and validate the message's inputs (a URN plus the output property map).
 	urn, err := resource.ParseURN(req.Urn)
 	if err != nil {
-		return nil, fmt.Errorf("invalid resource URN: %s", err)
+		return nil, fmt.Errorf("invalid resource URN: %w", err)
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResourceOutputs(%s)", urn)

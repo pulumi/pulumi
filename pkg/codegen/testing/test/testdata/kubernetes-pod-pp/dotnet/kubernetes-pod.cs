@@ -12,6 +12,12 @@ return await Deployment.RunAsync(() =>
         {
             Namespace = "foo",
             Name = "bar",
+            Labels = 
+            {
+                { "app.kubernetes.io/name", "cilium-agent" },
+                { "app.kubernetes.io/part-of", "cilium" },
+                { "k8s-app", "cilium" },
+            },
         },
         Spec = new Kubernetes.Types.Inputs.Core.V1.PodSpecArgs
         {

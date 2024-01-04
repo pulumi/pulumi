@@ -1359,14 +1359,6 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
 	}
 
-	// Some property names are reserved for resource outputs
-	for _, property := range properties {
-		name := property.Name
-		if name == "id" || name == "urn" {
-			return diags, fmt.Errorf("failed to bind properties for %v: property name %q is reserved", token, name)
-		}
-	}
-
 	inputProperties, _, inputDiags, err := t.bindProperties(path+"/inputProperties", spec.InputProperties,
 		path+"/requiredInputs", spec.RequiredInputs, true)
 	diags = diags.Extend(inputDiags)

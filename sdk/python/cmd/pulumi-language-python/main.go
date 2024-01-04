@@ -486,7 +486,7 @@ func determinePluginDependency(
 		if err != nil {
 			logging.V(5).Infof(
 				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s: %s",
-				pkg.Name, pkg.Version, err.Error())
+				pkg.Name, pkg.Version, err)
 			return nil, nil
 		}
 	}
@@ -836,7 +836,7 @@ func validateVersion(ctx context.Context, virtualEnvPath string) {
 	}
 	var out []byte
 	if out, err = versionCmd.Output(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to resolve python version command: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "Failed to resolve python version command: %s\n", err)
 		return
 	}
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))

@@ -26,10 +26,10 @@ require (
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	golang.org/x/crypto v0.15.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/mod v0.14.0
-	golang.org/x/net v0.18.0
-	golang.org/x/sys v0.14.0
+	golang.org/x/net v0.19.0
+	golang.org/x/sys v0.15.0
 	google.golang.org/grpc v1.57.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -40,7 +40,7 @@ require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
-	github.com/go-git/go-git/v5 v5.9.0
+	github.com/go-git/go-git/v5 v5.11.0
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
@@ -48,7 +48,7 @@ require (
 	github.com/pulumi/esc v0.6.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
-	golang.org/x/term v0.14.0
+	golang.org/x/term v0.15.0
 	lukechampine.com/frand v1.4.2
 )
 
@@ -56,7 +56,6 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
-	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
@@ -77,7 +76,7 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
-	github.com/skeema/knownhosts v1.2.0 // indirect
+	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect

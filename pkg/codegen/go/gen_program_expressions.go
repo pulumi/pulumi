@@ -231,21 +231,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
-	case "element":
-		g.genNYI(w, "element")
-	case "entries":
-		g.genNYI(w, "call %v", expr.Name)
-		// switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
-		// case *model.ListType, *model.TupleType:
-		// 	if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
-		// 		g.genRange(w, call, true)
-		// 		return
-		// 	}
-		// 	g.Fgenf(w, "%.20v.Select((v, k)", expr.Args[0])
-		// case *model.MapType, *model.ObjectType:
-		// 	g.genNYI(w, "MapOrObjectEntries")
-		// }
-		// g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.NewFileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
@@ -317,16 +302,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
 		g.Fgenf(w, "len(%.20v)", expr.Args[0])
-	case "lookup":
-		g.genNYI(w, "Lookup")
-	case keywordRange:
-		g.genNYI(w, "call %v", expr.Name)
-		// g.genRange(w, expr, false)
 	case "readFile":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "readFileOrPanic(%v)", expr.Args[0])
-	case "readDir":
-		contract.Failf("unlowered readDir function expression @ %v", expr.SyntaxNode().Range())
 	case "secret":
 		outputTypeName := "pulumi.Any"
 		if model.ResolveOutputs(expr.Type()) != model.DynamicType {
@@ -339,15 +317,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			outputTypeName = g.argumentTypeName(nil, expr.Type(), false)
 		}
 		g.Fgenf(w, "pulumi.Unsecret(%v).(%sOutput)", expr.Args[0], outputTypeName)
-	case "split":
-		g.genNYI(w, "call %v", expr.Name)
-		// g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
 		g.Fgenf(w, "base64.StdEncoding.EncodeToString([]byte(%v))", expr.Args[0])
 	case fromBase64Fn:
 		g.Fgenf(w, "base64.StdEncoding.DecodeString(%v)", expr.Args[0])
-	case "toJSON":
-		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "mimeType":
 		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
 	case "sha1":
@@ -367,6 +340,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "cwd":
 		g.Fgen(w, "func(cwd string, err error) string { if err != nil { panic(err) }; return cwd }(os.Getwd())")
 	default:
+		// toJSON and readDir are reduced away, shouldn't see them here
+		reducedFunctions := codegen.NewStringSet("toJSON", "readDir")
+		contract.Assertf(!reducedFunctions.Has(expr.Name), "unlowered function %s", expr.Name)
+		// TODO: implement "element", "entries", "lookup", "split" and "range"
 		g.genNYI(w, "call %v", expr.Name)
 	}
 }
@@ -868,10 +845,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	case *model.MapType:
 		valType := g.argumentTypeName(nil, destType.ElementType, isInput)
 		if isInput {
-			if Title(valType) == "pulumi.Any" {
-				return "pulumi.Map"
-			}
-			return fmt.Sprintf("pulumi.%sMap", Title(valType))
+			trimmedType := strings.TrimPrefix(valType, "pulumi.")
+			return fmt.Sprintf("pulumi.%sMap", Title(trimmedType))
 		}
 		return "map[string]" + valType
 	case *model.ListType:

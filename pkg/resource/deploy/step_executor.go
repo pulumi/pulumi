@@ -220,7 +220,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := se.opts.Events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
-			se.log(synchronousWorkerID, "register resource outputs failed: %s", eventerr.Error())
+			se.log(synchronousWorkerID, "register resource outputs failed: %s", eventerr)
 
 			// This is a bit of a kludge, but ExecuteRegisterResourceOutputs is an odd duck
 			// in that it doesn't execute on worker goroutines. Arguably, it should, but today it's

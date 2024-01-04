@@ -173,6 +173,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "K8s Template",
 	},
 	{
+		Directory:   "kubernetes-template-quoted",
+		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
+	},
+	{
 		Directory:   "random-pet",
 		Description: "Random Pet",
 	},
@@ -270,6 +274,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "multiline-string",
 		Description: "Multiline string literals",
+	},
+	{
+		Directory:   "config-variables",
+		Description: "Basic program with a bunch of config variables",
+		// TODO[https://github.com/pulumi/pulumi/issues/14957] - object config variables are broken here
+		SkipCompile: codegen.NewStringSet("go", "dotnet"),
 	},
 	{
 		Directory:   "regress-11176",

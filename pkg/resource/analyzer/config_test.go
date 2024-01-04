@@ -324,10 +324,7 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 
 			result, err := extractEnforcementLevel(test.Properties)
 			assert.Equal(t, apitype.EnforcementLevel(""), result)
-			assert.Error(t, err)
-			if test.ExpectedError != "" {
-				assert.Equal(t, test.ExpectedError, err.Error())
-			}
+			assert.EqualError(t, err, test.ExpectedError)
 		})
 	}
 }

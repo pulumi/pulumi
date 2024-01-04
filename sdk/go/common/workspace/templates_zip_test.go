@@ -172,7 +172,7 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 			testName:    "invalid_zip_url",
 			templateURL: "not a url",
 			expectedError: "failed to retrieve zip archive: " +
-				"Get \"not%20a%20url\": unsupported protocol scheme \"\"",
+				"invalid template URL: not%20a%20url",
 		},
 	}
 	for _, tt := range tests {

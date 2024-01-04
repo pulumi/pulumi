@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: Fixes config copy command to also copy environments from the source stack

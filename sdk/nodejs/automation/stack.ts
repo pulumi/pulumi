@@ -454,9 +454,12 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const refPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let refResult: CommandResult;
+        try {
+            refResult = await this.runPulumiCmd(args, opts?.onOutput);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
@@ -517,9 +520,12 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const desPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let desResult: CommandResult;
+        try {
+            desResult = await this.runPulumiCmd(args, opts?.onOutput);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
@@ -539,6 +545,12 @@ Event: ${line}\n${e.toString()}`);
      */
     async addEnvironments(...environments: string[]): Promise<void> {
         await this.workspace.addEnvironments(this.name, ...environments);
+    }
+    /**
+     * Returns the list of environments currently in the stack's import list.
+     */
+    async listEnvironments(): Promise<string[]> {
+        return this.workspace.listEnvironments(this.name);
     }
     /**
      * Removes an environment from a stack's import list.

@@ -115,7 +115,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 
 	sv, err := semver.ParseTolerant(version.StringValue())
 	if err != nil {
-		return nil, fmt.Errorf("could not parse provider version: %v", err)
+		return nil, fmt.Errorf("could not parse provider version: %w", err)
 	}
 	return &sv, nil
 }
@@ -430,16 +430,16 @@ func (r *Registry) Same(res *resource.State) error {
 		// Parse the provider version, then load, configure, and register the provider.
 		version, err := GetProviderVersion(res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse version for %v provider '%v': %v", providerPkg, urn, err)
+			return fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		downloadURL, err := GetProviderDownloadURL(res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse download URL for %v provider '%v': %v", providerPkg, urn, err)
+			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
 		provider, err = loadProvider(providerPkg, version, downloadURL, nil, r.host, r.builtins)
 		if err != nil {
-			return fmt.Errorf("load plugin for %v provider '%v': %v", providerPkg, urn, err)
+			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		if provider == nil {
 			return fmt.Errorf("find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
@@ -450,7 +450,7 @@ func (r *Registry) Same(res *resource.State) error {
 	if err := provider.Configure(res.Inputs); err != nil {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-		return fmt.Errorf("configure provider '%v': %v", urn, err)
+		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
 	logging.V(7).Infof("loaded provider %v", ref)
@@ -483,18 +483,18 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 		version, err := GetProviderVersion(news)
 		if err != nil {
 			return "", nil, resource.StatusUnknown,
-				fmt.Errorf("parse version for %v provider '%v': %v", providerPkg, urn, err)
+				fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		downloadURL, err := GetProviderDownloadURL(news)
 		if err != nil {
 			return "", nil, resource.StatusUnknown,
-				fmt.Errorf("parse download URL for %v provider '%v': %v", providerPkg, urn, err)
+				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
 		provider, err = loadProvider(providerPkg, version, downloadURL, nil, r.host, r.builtins)
 		if err != nil {
 			return "", nil, resource.StatusUnknown,
-				fmt.Errorf("load plugin for %v provider '%v': %v", providerPkg, urn, err)
+				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		if provider == nil {
 			return "", nil, resource.StatusUnknown,

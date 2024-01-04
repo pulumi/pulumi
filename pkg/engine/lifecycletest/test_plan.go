@@ -3,6 +3,7 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -128,7 +129,7 @@ func (op TestOp) runWithContext(
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	contract.IgnoreClose(journal)
+	closeErr := journal.Close()
 
 	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
 	// the deployment context, not expecting it to have any effect on the test code here. See
@@ -141,17 +142,22 @@ func (op TestOp) runWithContext(
 	if validate != nil {
 		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
 	}
+	errs := []error{opErr, closeErr}
 	if dryRun {
-		return plan, nil, opErr
+		return plan, nil, errors.Join(errs...)
 	}
 
 	snap, err := journal.Snap(target.Snapshot)
-	if opErr == nil && err != nil {
-		opErr = err
-	} else if opErr == nil && snap != nil {
-		opErr = snap.VerifyIntegrity()
+	if err != nil {
+		errs = append(errs, err)
+	} else {
+		err = snap.VerifyIntegrity()
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil, snap, opErr
+
+	return nil, snap, errors.Join(errs...)
 }
 
 type TestStep struct {
