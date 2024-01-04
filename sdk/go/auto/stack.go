@@ -988,7 +988,7 @@ func (s *Stack) runPulumiCmdSync(
 	args = append(args, additionalArgs...)
 	args = append(args, "--stack", s.Name())
 
-	stdout, stderr, errCode, err := runPulumiCommandSync(
+	stdout, stderr, errCode, err := s.workspace.PulumiCommand().Run(
 		ctx,
 		s.Workspace().WorkDir(),
 		nil,

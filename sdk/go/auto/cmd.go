@@ -17,17 +17,210 @@ package auto
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"path"
+	"runtime"
+	"strings"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
 
 const unknownErrorCode = -2
 
-func runPulumiCommandSync(
-	ctx context.Context,
+// PulumiCommand manages the Pulumi CLI and runs operations.
+type PulumiCommand interface {
+	Run(ctx context.Context,
+		workdir string,
+		stdin io.Reader,
+		additionalOutput []io.Writer,
+		additionalErrorOutput []io.Writer,
+		additionalEnv []string,
+		args ...string) (string, string, int, error)
+	Version() semver.Version
+}
+
+type pulumiCommand struct {
+	version semver.Version
+	command string
+}
+
+// NewPulumiCommand creates a new PulumiCommand instance that uses a local CLI
+// installation. PulumiCommandOptions can be used to configure things like the
+// the installation root or to validate that the version meets a minimum
+// requirement. By default the pulumi binary found in $PATH is used.
+func NewPulumiCommand(opts ...PulumiCommandOption) (PulumiCommand, error) {
+	pOpts := &pulumiCommandOptions{}
+	for _, opt := range opts {
+		opt.applyPulumiCommandOption(pOpts)
+	}
+
+	command := "pulumi"
+	if pOpts.root != "" {
+		command = path.Join(pOpts.root, "bin", "pulumi")
+	}
+
+	cmd := exec.Command(command, "version")
+	out, err := cmd.Output()
+	if err != nil {
+		return pulumiCommand{}, fmt.Errorf("failed to run `pulumi version`: %w", err)
+	}
+	currentVersion := strings.TrimSpace(string(out))
+	min := minimumVersion
+	if pOpts.version.GT(min) {
+		min = pOpts.version
+	}
+	version, err := parseAndValidatePulumiVersion(min, currentVersion, pOpts.skipVersionCheck)
+	if err != nil {
+		return pulumiCommand{}, err
+	}
+
+	return pulumiCommand{
+		version: version,
+		command: command,
+	}, nil
+}
+
+// InstallPulumiCommand downloads and installs the Pulumi CLI. By default the
+// CLI version matching the current SDK release is installed in
+// $HOME/.pulumi/versions/$VERSION. Use the option `PulumiCommandRoot` to
+// specify a different directory, and `PulumiCommandVersion` to install a
+// custom version.
+func InstallPulumiCommand(ctx context.Context, opts ...PulumiCommandOption) (
+	PulumiCommand,
+	error,
+) {
+	pOpts := &pulumiCommandOptions{}
+	for _, opt := range opts {
+		opt.applyPulumiCommandOption(pOpts)
+	}
+	err := pOpts.applyDefaults()
+	if err != nil {
+		return pulumiCommand{}, err
+	}
+	fullOpts := []PulumiCommandOption{
+		PulumiCommandRoot(pOpts.root),
+		PulumiCommandVersion(pOpts.version),
+		skipVersionCheck(pOpts.skipVersionCheck),
+	}
+	pulumi, err := NewPulumiCommand(fullOpts...)
+	if err == nil {
+		// Found an installation and it satisfies the version requirement
+		return pulumi, nil
+	}
+	if runtime.GOOS == "windows" {
+		if err := installWindows(ctx, pOpts.version, pOpts.root); err != nil {
+			return pulumiCommand{}, err
+		}
+	} else {
+		if err := installPosix(ctx, pOpts.version, pOpts.root); err != nil {
+			return pulumiCommand{}, err
+		}
+	}
+	return NewPulumiCommand(fullOpts...)
+}
+
+func downloadToTmpFile(ctx context.Context, url, filePattern string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
+	if err != nil {
+		return "", fmt.Errorf("failed to download %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+	scriptData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response from %s: %w", url, err)
+	}
+	tmp, err := os.CreateTemp("", filePattern)
+	if err != nil {
+		return "", err
+	}
+	scriptPath := tmp.Name()
+	onErrorCleanup := func() {
+		os.Remove(scriptPath)
+	}
+	// The permissions here are ignored because the tmp file already exists.
+	// We need to explicitly call chmod below to set the desired permissions.
+	err = os.WriteFile(scriptPath, scriptData, 0o600)
+	if err != nil {
+		onErrorCleanup()
+		return "", err
+	}
+	if err = tmp.Close(); err != nil {
+		onErrorCleanup()
+		return "", err
+	}
+	err = os.Chmod(scriptPath, 0o700)
+	if err != nil {
+		onErrorCleanup()
+		return "", err
+	}
+	return scriptPath, nil
+}
+
+func installWindows(ctx context.Context, version semver.Version, root string) error {
+	scriptPath, err := downloadToTmpFile(ctx, "https://get.pulumi.com/install.ps1", "install-*.ps1")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(scriptPath)
+	command := "powershell.exe"
+	if os.Getenv("SystemRoot") != "" {
+		command = path.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+	}
+	args := []string{
+		"-NoProfile",
+		"-InputFormat",
+		"None",
+		"-ExecutionPolicy",
+		"Bypass",
+		"-File",
+		scriptPath,
+		"-NoEditPath",
+		"-InstallRoot",
+		root,
+		"-Version",
+		version.String(),
+	}
+	cmd := exec.CommandContext(ctx, command, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("installation failed with %w: %s", err, out)
+	}
+	return nil
+}
+
+func installPosix(ctx context.Context, version semver.Version, root string) error {
+	scriptPath, err := downloadToTmpFile(ctx, "https://get.pulumi.com/install.sh", "install-*.sh")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(scriptPath)
+	args := []string{
+		"--no-edit-path",
+		"--install-root", root,
+		"--version", version.String(),
+	}
+	cmd := exec.CommandContext(ctx, scriptPath, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("installation failed with %w: %s", err, out)
+	}
+	return nil
+}
+
+// Run executes a Pulumi CLI command.
+func (p pulumiCommand) Run(ctx context.Context,
 	workdir string,
 	stdin io.Reader,
 	additionalOutput []io.Writer,
@@ -38,9 +231,14 @@ func runPulumiCommandSync(
 	// all commands should be run in non-interactive mode.
 	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
 	args = withNonInteractiveArg(args)
-	cmd := exec.CommandContext(ctx, "pulumi", args...)
+	cmd := exec.CommandContext(ctx, p.command, args...) // #nosec G204
 	cmd.Dir = workdir
-	cmd.Env = append(os.Environ(), additionalEnv...)
+	env := append(os.Environ(), additionalEnv...)
+	if path.IsAbs(p.command) {
+		pulumiBin := path.Dir(p.command)
+		env = fixupPath(env, pulumiBin)
+	}
+	cmd.Env = env
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -61,6 +259,71 @@ func runPulumiCommandSync(
 	return stdout.String(), stderr.String(), code, err
 }
 
+// The version of the current Pulumi CLI installation.
+func (p pulumiCommand) Version() semver.Version {
+	return p.version
+}
+
+type pulumiCommandOptions struct {
+	version          semver.Version
+	root             string
+	skipVersionCheck bool
+}
+
+// PulumiCommandOption is used configure a PulumiCommand at initialization and
+// installation time.
+type PulumiCommandOption interface {
+	applyPulumiCommandOption(*pulumiCommandOptions)
+}
+
+type pulumiCommandOption func(*pulumiCommandOptions)
+
+func (o pulumiCommandOption) applyPulumiCommandOption(opts *pulumiCommandOptions) {
+	o(opts)
+}
+
+// PulumiCommandVersion is the version to install or validate.
+func PulumiCommandVersion(version semver.Version) PulumiCommandOption {
+	return pulumiCommandOption(func(o *pulumiCommandOptions) {
+		o.version = version
+	})
+}
+
+// PulumiCommandRoot sets the directory where the CLI should be installed to,
+// or from where the CLI should be retrieved.
+func PulumiCommandRoot(root string) PulumiCommandOption {
+	return pulumiCommandOption(func(o *pulumiCommandOptions) {
+		o.root = root
+	})
+}
+
+// skipVersionCheck is used to disable the validation of the found Pulumi
+// binary.
+func skipVersionCheck(skip bool) PulumiCommandOption {
+	return pulumiCommandOption(func(o *pulumiCommandOptions) {
+		o.skipVersionCheck = skip
+	})
+}
+
+// applyDefaults sets default values for root and version if none have been
+// specified. Version defaults to the CLI version matching the current SDK
+// release. Root defaults to $HOME/.pulumi/versions/$VERSION.
+func (opts *pulumiCommandOptions) applyDefaults() error {
+	if opts.version.EQ(semver.Version{}) {
+		opts.version = sdk.Version
+	}
+
+	if opts.root == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		opts.root = path.Join(home, ".pulumi", "versions", opts.version.String())
+	}
+
+	return nil
+}
+
 func withNonInteractiveArg(args []string) []string {
 	out := slice.Prealloc[string](len(args))
 	seen := false
@@ -74,4 +337,47 @@ func withNonInteractiveArg(args []string) []string {
 		out = append(out, "--non-interactive")
 	}
 	return out
+}
+
+// fixupPath returns a new copy of `env` where the `PATH` entry contains
+// pulumiBin as the first path.
+func fixupPath(env []string, pulumiBin string) []string {
+	newEnv := make([]string, len(env))
+	copy(newEnv, env)
+	pathIndex := -1
+	for i, e := range env {
+		if strings.HasPrefix(e, "PATH=") {
+			pathIndex = i
+			break
+		}
+	}
+	if pathIndex >= 0 {
+		pathEntry := pulumiBin
+		oldPath := strings.TrimPrefix(env[pathIndex], "PATH=")
+		if oldPath != "" {
+			pathEntry = pulumiBin + string(os.PathListSeparator) + oldPath
+		}
+		newEnv[pathIndex] = fmt.Sprintf("PATH=%s", pathEntry)
+	} else {
+		newEnv = append(newEnv, fmt.Sprintf("PATH=%s", pulumiBin))
+	}
+	return newEnv
+}
+
+//nolint:lll
+func parseAndValidatePulumiVersion(minVersion semver.Version, currentVersion string, optOut bool) (semver.Version, error) {
+	version, err := semver.ParseTolerant(currentVersion)
+	if err != nil && !optOut {
+		return semver.Version{}, fmt.Errorf("Unable to parse Pulumi CLI version (skip with %s=true): %w", env.SkipVersionCheck.Var().Name(), err)
+	}
+	if optOut {
+		return version, nil
+	}
+	if minVersion.Major < version.Major {
+		return semver.Version{}, fmt.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major) //nolint
+	}
+	if minVersion.GT(version) {
+		return semver.Version{}, fmt.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion) //nolint
+	}
+	return version, nil
 }

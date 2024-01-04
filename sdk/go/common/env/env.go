@@ -81,6 +81,9 @@ var GitSSHPassphrase = env.String("GITSSH_PASSPHRASE",
 var ErrorOnDependencyCycles = env.Bool("ERROR_ON_DEPENDENCY_CYCLES",
 	"Whether or not to error when dependency cycles are detected.")
 
+var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
+	"If set skip validating the version number reported by the CLI.")
+
 // Environment variables that affect the self-managed backend.
 var (
 	SelfManagedStateNoLegacyWarning = env.Bool("SELF_MANAGED_STATE_NO_LEGACY_WARNING",
