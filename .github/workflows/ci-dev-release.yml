@@ -149,3 +149,4 @@ jobs:
       - name: Publish Blobs
         run: |
           aws s3 sync artifacts s3://get.pulumi.com/releases/sdk --acl public-read
+          aws s3 sync artifacts s3://get.pulumi.com/releases/dev-sdk --acl public-read
