@@ -87,9 +87,6 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 			schema.PackageSpec{
 				Name:    "fortios",
 				Version: "0.0.1",
-				Meta: &schema.MetadataSpec{
-					ModuleFormat: "(.*)(?:/[^/]*)",
-				},
 				Resources: map[string]schema.ResourceSpec{
 					"fortios:router/bgp:Bgp":             {},
 					"fortios:router/bgp/network:Network": {},
@@ -133,9 +130,6 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 			schema.PackageSpec{
 				Name:    "fortios",
 				Version: "0.0.1",
-				Meta: &schema.MetadataSpec{
-					ModuleFormat: "(.*)(?:/[^/]*)",
-				},
 				Resources: map[string]schema.ResourceSpec{
 					"fortios:log/syslogd/v2/filter:Filter":                   {},
 					"fortios:log/syslogd/v2/overridefilter:Overridefilter":   {},
@@ -210,33 +204,44 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			c, _ := prep(t, tc)
-
-			items, err := c.generatePackageTree()
-			require.NoError(t, err)
-
-			data, err := json.MarshalIndent(items, "", "  ")
-			require.NoError(t, err)
-
-			t.Logf("%s", string(data))
-
-			require.JSONEq(t, tc.expect, string(data))
-		})
-
-		t.Run(tc.name+"/generatePackage", func(t *testing.T) {
-			t.Parallel()
-
-			c, schemaPkg := prep(t, tc)
-
-			files, err := c.generatePackage("test", schemaPkg)
-			require.NoError(t, err)
-
-			for f := range files {
-				t.Logf("+ %v", f)
+		for _, mv := range []string{"", "(.*)(?:/[^/]*)"} {
+			name := tc.name
+			if mv != "" {
+				tc.spec.Meta = &schema.MetadataSpec{
+					ModuleFormat: mv,
+				}
+				name += "-withModuleFormat"
+			} else {
+				name += "-withoutModuleFormat"
 			}
-		})
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				c, _ := prep(t, tc)
+
+				items, err := c.generatePackageTree()
+				require.NoError(t, err)
+
+				data, err := json.MarshalIndent(items, "", "  ")
+				require.NoError(t, err)
+
+				t.Logf("%s", string(data))
+
+				require.JSONEq(t, tc.expect, string(data))
+			})
+
+			t.Run(name+"/generatePackage", func(t *testing.T) {
+				t.Parallel()
+
+				c, schemaPkg := prep(t, tc)
+
+				files, err := c.generatePackage("test", schemaPkg)
+				require.NoError(t, err)
+
+				for f := range files {
+					t.Logf("+ %v", f)
+				}
+			})
+		}
 	}
 }
