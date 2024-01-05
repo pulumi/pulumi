@@ -773,11 +773,13 @@ func (mod *modContext) genInit(exports []string) string {
 	return w.String()
 }
 
-func (mod *modContext) getRelImportFromRoot() string {
-	rel, err := filepath.Rel(mod.mod, "")
+func (mod *modContext) getRelImportFromRoot(target string) string {
+	rel, err := filepath.Rel(mod.mod, target)
 	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
-	relRoot := path.Dir(rel)
-	return relPathToRelImport(relRoot)
+	if path.Base(rel) == "." {
+		rel = path.Dir(rel)
+	}
+	return relPathToRelImport(rel)
 }
 
 func (mod *modContext) genUtilitiesImport() string {
@@ -805,7 +807,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 		return "from . import outputs"
 	}
 
-	importPath := mod.getRelImportFromRoot()
+	importPath := mod.getRelImportFromRoot("")
 
 	if modName == "" {
 		imp, as := "outputs", "_root_outputs"
@@ -829,7 +831,7 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 		return "from ._enums import *"
 	}
 
-	importPath := mod.getRelImportFromRoot()
+	importPath := mod.getRelImportFromRoot("")
 
 	if modName == "" {
 		return fmt.Sprintf("from %s import _enums as _root_enums", importPath)
@@ -853,22 +855,34 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		return "import pulumi_" + parts[2]
 	}
 
-	modName := mod.tokenToResource(tok)
+	modName := mod.tokenToModule(tok)
+	if mod.mod == modName || modName == "" {
+		// We want a relative import if we're in the same module: from .some_member import SomeMember
+		importPath := mod.getRelImportFromRoot(modName)
 
-	importPath := mod.getRelImportFromRoot()
+		name := PyName(tokenToName(r.Token))
+		if mod.compatibility == kubernetes20 {
+			// To maintain backward compatibility for kubernetes, the file names
+			// need to be CamelCase instead of the standard snake_case.
+			name = tokenToName(r.Token)
+		}
+		if r.Resource != nil && r.Resource.IsProvider {
+			name = "provider"
+		}
 
-	name := PyName(tokenToName(r.Token))
-	if mod.compatibility == kubernetes20 {
-		// To maintain backward compatibility for kubernetes, the file names
-		// need to be CamelCase instead of the standard snake_case.
-		name = tokenToName(r.Token)
-	}
-	if r.Resource != nil && r.Resource.IsProvider {
-		name = "provider"
+		if strings.HasSuffix(importPath, ".") {
+			importPath += name
+		} else {
+			importPath = importPath + "." + name
+		}
+
+		resourceName := mod.tokenToResource(tok)
+
+		return fmt.Sprintf("from %s import %s", importPath, resourceName)
 	}
 
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s%s import %s", importPath, name, components[0])
+	return fmt.Sprintf("from %s import %[2]s as _%[2]s", mod.getRelImportFromRoot(""), components[0])
 }
 
 // genConfig emits all config variables in the given module, returning the resulting file.

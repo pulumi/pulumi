@@ -8,8 +8,8 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
-from ..component2 import Component2
 from ..main_component import MainComponent
+from .component2 import Component2
 
 __all__ = ['ComponentArgs', 'Component']
 
