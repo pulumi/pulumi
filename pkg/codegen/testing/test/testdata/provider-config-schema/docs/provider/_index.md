@@ -256,7 +256,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_go" style="color: inherit; text-decoration: inherit;">Secret<wbr>Sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">Sandwich</a></span>
+        <span class="property-type"><a href="#sandwich">Sandwich<wbr>Args</a></span>
     </dt>
     <dd>Super duper secret sandwiches.</dd></dl>
 </pulumi-choosable>

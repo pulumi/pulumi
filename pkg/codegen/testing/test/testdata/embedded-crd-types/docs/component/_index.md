@@ -248,7 +248,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#eniconfig_go" style="color: inherit; text-decoration: inherit;">Eni<wbr>Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">ENIConfig<wbr>Spec</span>
+        <span class="property-type">ENIConfig<wbr>Spec<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
