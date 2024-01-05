@@ -205,3 +205,15 @@ get_schemas: \
 .PHONY: changelog
 changelog:
 	go run github.com/aaronfriel/go-change@v0.1.2 create
+
+.PHONY: work
+work:
+	rm -f go.work go.work.sum
+	go work init \
+		cmd/pulumi-test-language \
+		pkg \
+		sdk \
+		sdk/go/pulumi-language-go \
+		sdk/nodejs/cmd/pulumi-language-nodejs \
+		sdk/python/cmd/pulumi-language-python \
+		tests
