@@ -27,146 +27,127 @@ import (
 
 // Tests the output of 'pulumi stack graph'
 // under different conditions.
-func TestStackGraphCmd_smokeTest(t *testing.T) {
+func TestStackGraphCmd(t *testing.T) {
 	t.Parallel()
-	snap := deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				Type: resource.RootStackType,
+
+	t.Run("Single node graph", func(t *testing.T) {
+		t.Parallel()
+		snap := deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:  "urn:pulumi",
+					Type: resource.RootStackType,
+				},
 			},
-		},
-	}
+		}
 
-	opts := graphCommandOptions{}
-	dg := makeDependencyGraph(&snap, &opts)
+		t.Run("Smoke test", func(t *testing.T) {
+			t.Parallel()
 
-	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			opts := graphCommandOptions{}
+			dg := makeDependencyGraph(&snap, &opts)
 
-	dotOutput := outputBuf.String()
+			var outputBuf bytes.Buffer
+			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
-	require.Equal(t, `strict digraph {
-    Resource0;
+			dotOutput := outputBuf.String()
+
+			require.Equal(t, `strict digraph {
+    Resource0 [label="urn:pulumi"];
 }
 `, dotOutput)
-}
+		})
 
-func TestStackGraphCmd_dotFragmentIsInserted(t *testing.T) {
-	t.Parallel()
-	snap := deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				Type: resource.RootStackType,
-			},
-		},
-	}
+		t.Run("dot fragment is inserted", func(t *testing.T) {
+			t.Parallel()
 
-	opts := graphCommandOptions{
-		dotFragment: "[node shape=rect]\n[edge penwidth=2]",
-	}
-	dg := makeDependencyGraph(&snap, &opts)
+			opts := graphCommandOptions{
+				dotFragment: "[node shape=rect]\n[edge penwidth=2]",
+			}
+			dg := makeDependencyGraph(&snap, &opts)
 
-	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			var outputBuf bytes.Buffer
+			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
-	dotOutput := outputBuf.String()
+			dotOutput := outputBuf.String()
 
-	require.Equal(t, `strict digraph {
+			require.Equal(t, `strict digraph {
 [node shape=rect]
 [edge penwidth=2]
-    Resource0;
+    Resource0 [label="urn:pulumi"];
 }
 `, dotOutput)
-}
+		})
+	})
 
-func TestStackGraphCmd_parentAndChild(t *testing.T) {
-	t.Parallel()
-	expectedMaxNode := 2
-	provider := resource.URN("urn:pulumi:dev::pets::random::provider")
-	parent := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::parent")
-	child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet$random:index/randomPet:RandomPet::child")
+	t.Run("graph with parent and child", func(t *testing.T) {
+		t.Parallel()
+		provider := resource.URN("urn:pulumi:dev::pets::random::provider")
+		parent := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::parent")
+		child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::child")
 
-	snap := deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:  provider,
-				ID:   "provider-id",
-				Type: "pulumi:provider:random",
+		snap := deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:  provider,
+					ID:   "provider-id",
+					Type: "pulumi:provider:random",
+				},
+				{
+					URN:  parent,
+					ID:   "parent-id",
+					Type: "random:index/randomPet:RandomPet",
+				},
+				{
+					URN:    child,
+					ID:     "child-id",
+					Type:   "random:index/randomPet:RandomPet",
+					Parent: parent,
+				},
 			},
-			{
-				URN:  parent,
-				ID:   "parent-id",
-				Type: "random:index/randomPet:RandomPet",
-			},
-			{
-				URN:    child,
-				ID:     "child-id",
-				Type:   "random:index/randomPet:RandomPet",
-				Parent: parent,
-			},
-		},
-	}
+		}
 
-	opts := graphCommandOptions{}
-	dg := makeDependencyGraph(&snap, &opts)
+		t.Run("With default options", func(t *testing.T) {
+			t.Parallel()
+			expectedMaxNode := 2
 
-	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			opts := graphCommandOptions{}
+			dg := makeDependencyGraph(&snap, &opts)
 
-	dotOutput := outputBuf.String()
+			var outputBuf bytes.Buffer
+			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
-	for i := 0; i <= expectedMaxNode; i++ {
-		require.Contains(t, dotOutput, fmt.Sprintf("Resource%d [label=", i))
-	}
-	for i := 1; i <= 4; i++ {
-		require.NotContains(t, dotOutput, fmt.Sprintf("Resource%d", expectedMaxNode+i))
-	}
+			dotOutput := outputBuf.String()
 
-	require.Contains(t, dotOutput, " -> ")
-}
+			for i := 0; i <= expectedMaxNode; i++ {
+				require.Contains(t, dotOutput, fmt.Sprintf("Resource%d [label=", i))
+			}
+			for i := 1; i <= 4; i++ {
+				require.NotContains(t, dotOutput, fmt.Sprintf("Resource%d", expectedMaxNode+i))
+			}
 
-func TestStackGraphCmd_shortNodeName(t *testing.T) {
-	t.Parallel()
-	expectedLabels := []string{
-		"provider", "parent", "child",
-	}
+			require.Contains(t, dotOutput, " -> ")
+		})
 
-	provider := resource.URN("urn:pulumi:dev::pets::random::provider")
-	parent := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::parent")
-	child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet$random:index/randomPet:RandomPet::child")
+		t.Run("with shortNodeName flag", func(t *testing.T) {
+			t.Parallel()
+			expectedLabels := []string{
+				"provider", "parent", "child",
+			}
 
-	snap := deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:  provider,
-				ID:   "provider-id",
-				Type: "pulumi:provider:random",
-			},
-			{
-				URN:  parent,
-				ID:   "parent-id",
-				Type: "random:index/randomPet:RandomPet",
-			},
-			{
-				URN:    child,
-				ID:     "child-id",
-				Type:   "random:index/randomPet:RandomPet",
-				Parent: parent,
-			},
-		},
-	}
+			opts := graphCommandOptions{
+				shortNodeName: true,
+			}
+			dg := makeDependencyGraph(&snap, &opts)
 
-	opts := graphCommandOptions{
-		shortNodeName: true,
-	}
-	dg := makeDependencyGraph(&snap, &opts)
+			var outputBuf bytes.Buffer
+			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
 
-	var outputBuf bytes.Buffer
-	require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			dotOutput := outputBuf.String()
 
-	dotOutput := outputBuf.String()
-
-	for _, label := range expectedLabels {
-		require.Contains(t, dotOutput, fmt.Sprintf("[label=\"%s\"]", label))
-	}
+			for _, label := range expectedLabels {
+				require.Contains(t, dotOutput, fmt.Sprintf("[label=\"%s\"]", label))
+			}
+		})
+	})
 }
