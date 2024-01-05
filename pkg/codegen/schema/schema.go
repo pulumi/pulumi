@@ -564,6 +564,9 @@ func (fun *Function) NeedsOutputVersion() bool {
 
 // Package describes a Pulumi package.
 type Package struct {
+	// Force the use of legacy names.
+	legacyNames bool
+
 	moduleFormat *regexp.Regexp
 
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes". "random")
@@ -856,6 +859,10 @@ func (pkg *Package) Equals(other *Package) bool {
 	return pkg == other || pkg.Identity() == other.Identity()
 }
 
+func (pkg *Package) LegacyNames() bool {
+	return pkg.legacyNames
+}
+
 var defaultModuleFormat = regexp.MustCompile("(.*)")
 
 func (pkg *Package) TokenToModule(tok string) string {
@@ -930,6 +937,12 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	var metadata *MetadataSpec
 	if pkg.moduleFormat != nil {
 		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
+	}
+	if pkg.legacyNames {
+		if metadata == nil {
+			metadata = &MetadataSpec{}
+		}
+		metadata.LegacyNames = true
 	}
 
 	spec = &PackageSpec{
@@ -1827,6 +1840,8 @@ type MetadataSpec struct {
 	// a format. The regex must define one capturing group that contains the module name, which must be formatted as
 	// "namespace1/namespace2/...namespaceN".
 	ModuleFormat string `json:"moduleFormat,omitempty" yaml:"moduleFormat,omitempty"`
+	// LegacyNames forces snake_case names to behave in their legacy behavior.
+	LegacyNames bool `json:"legacyNames,omitempty" yaml:"legacyNames,omitempty"`
 }
 
 // PackageInfoSpec is the serializable description of a Pulumi package's metadata.

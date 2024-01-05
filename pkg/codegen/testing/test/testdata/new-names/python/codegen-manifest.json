@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    "pulumi_new_names/README.md",
+    "pulumi_new_names/__init__.py",
+    "pulumi_new_names/_enums.py",
+    "pulumi_new_names/_utilities.py",
+    "pulumi_new_names/example_resource.py",
+    "pulumi_new_names/http_module/__init__.py",
+    "pulumi_new_names/http_module/_inputs.py",
+    "pulumi_new_names/provider.py",
+    "pulumi_new_names/pulumi-plugin.json",
+    "pulumi_new_names/py.typed",
+    "setup.py"
+  ]
+}

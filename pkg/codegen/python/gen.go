@@ -328,7 +328,7 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	return title(components[2])
+	return pyClassName(components[2])
 }
 
 func tokenToModule(tok string, pkg schema.PackageReference, moduleNameOverrides map[string]string) string {
@@ -1576,7 +1576,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 		}
 	}
 
-	name := pyClassName(title(method.Name)) + "Result"
+	name := pyClassName(method.Name) + "Result"
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprintf(w, "    @pulumi.output_type\n")
@@ -2475,6 +2475,16 @@ func pyPack(s string) string {
 
 // pyClassName turns a raw name into one that is suitable as a Python class name.
 func pyClassName(name string) string {
+	if codegen.IsNewStyleName(name) {
+		// New style names are already snake cased.
+		parts := strings.Split(name, "_")
+		for i, part := range parts {
+			parts[i] = title(part)
+		}
+		name = strings.Join(parts, "")
+	} else {
+		name = title(name)
+	}
 	return EnsureKeywordSafe(name)
 }
 

@@ -111,6 +111,18 @@ func isValueType(t schema.Type) bool {
 	}
 }
 
+// Returns a name appropriate for a csharp type/namespace/property from a pulumi name.
+func csharpName(name string) string {
+	if codegen.IsNewStyleName(name) {
+		parts := strings.Split(name, "_")
+		for i, part := range parts {
+			parts[i] = Title(part)
+		}
+		return strings.Join(parts, "")
+	}
+	return Title(name)
+}
+
 func namespaceName(namespaces map[string]string, name string) string {
 	if ns, ok := namespaces[name]; ok {
 		return ns
@@ -121,7 +133,7 @@ func namespaceName(namespaces map[string]string, name string) string {
 	for i, part := range parts {
 		names := strings.Split(part, "-")
 		for j, name := range names {
-			names[j] = Title(name)
+			names[j] = csharpName(name)
 		}
 		parts[i] = strings.Join(names, "")
 	}
@@ -165,7 +177,7 @@ func (mod *modContext) propertyName(p *schema.Property) string {
 	if n, ok := mod.propertyNames[p]; ok {
 		return n
 	}
-	return Title(p.Name)
+	return csharpName(p.Name)
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -183,7 +195,7 @@ func tokenToName(tok string) string {
 
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return Title(components[2])
+	return csharpName(components[2])
 }
 
 func resourceName(r *schema.Resource) string {

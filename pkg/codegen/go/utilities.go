@@ -140,7 +140,7 @@ func enumTitle(s string) string {
 
 // Calculate the name of a field in a resource
 func fieldName(pkg *pkgContext, r *schema.Resource, p *schema.Property) string {
-	s := Title(p.Name)
+	s := pkg.goName(p.Name)
 	var name string
 	if r != nil {
 		name = disambiguatedResourceName(r, pkg)

@@ -100,7 +100,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	}
 
 	// Capitalize and make a valid identifier.
-	safeName = strings.Title(makeValidIdentifier(safeName))
+	safeName = makeValidIdentifier(csharpName(safeName))
 
 	// If there are multiple underscores in a row, replace with one.
 	regex := regexp.MustCompile(`_+`)

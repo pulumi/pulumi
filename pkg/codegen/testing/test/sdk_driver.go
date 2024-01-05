@@ -435,6 +435,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing the use of snake_case names and tokens.",
 		Skip:        codegen.NewStringSet("go/test"),
 	},
+	{
+		Directory:   "new-names",
+		Description: "Testing the use of new snake_case names and tokens.",
+	},
 }
 
 var genSDKOnly bool

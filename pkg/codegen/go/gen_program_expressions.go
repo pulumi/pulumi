@@ -163,7 +163,7 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 	return func(member *schema.Enum) {
 		// We know the enum value at the call site, so we can directly stamp in a
 		// valid enum instance. We don't need to convert.
-		enumName := tokenToName(to.Token)
+		enumName := tokenToName(to.Token, false)
 		memberTag := member.Name
 		if memberTag == "" {
 			memberTag = member.Value.(string)

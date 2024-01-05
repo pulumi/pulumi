@@ -1,0 +1,79 @@
+{
+  "name": "new_names",
+  "version": "1.0.0",
+  "types":{
+    "new_names:index:enum_XYZ": {
+      "type": "string",
+      "enum": [
+          {
+              "name": "plain",
+              "value": "A"
+          },
+          {
+              "name": "snake_case",
+              "value": "B"
+          },
+          {
+              "name": "SHA256",
+              "value": "C"
+          },
+          {
+              "name": "SHA256_hash",
+              "value": "D"
+          }
+      ]
+    },
+    "new_names:HTTP_module:request": {
+      "type": "object",
+      "properties": {
+        "URL": {
+          "type": "string"
+        },
+        "content_body": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "resources": {
+    "new_names:index:example_resource": {
+      "properties":{
+        "URL": {
+          "type": "string"
+        },
+        "good_URL+": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "map_enum": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/types/new_names:index:enum_XYZ"
+            }
+          }
+        }
+      },
+      "inputProperties": {
+        "map_enum": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/types/new_names:index:enum_XYZ"
+            }
+          }
+        },
+        "request_HTTP": {
+          "$ref": "#/types/new_names:HTTP_module:request"
+        },
+        "@IoT_support": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

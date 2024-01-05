@@ -47,6 +47,12 @@ func PyName(name string) string {
 }
 
 func pyName(name string, legacy bool) string {
+	_, isLegacy := codegen.ParseName(name)
+	if !isLegacy {
+		// new style names are already snake case, just need to lower the uppercase acronyms.
+		return EnsureKeywordSafe(strings.ToLower(name))
+	}
+
 	// This method is a state machine with four states:
 	//   stateFirst - the initial state.
 	//   stateUpper - The last character we saw was an uppercase letter and the character before it

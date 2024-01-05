@@ -236,6 +236,10 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	if err != nil {
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
+	legacyNames := false
+	if info.Meta != nil {
+		legacyNames = info.Meta.LegacyNames
+	}
 
 	language := make(map[string]interface{}, len(info.Language))
 	for name, v := range info.Language {
@@ -243,6 +247,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	}
 
 	pkg := &Package{
+		legacyNames:         legacyNames,
 		moduleFormat:        moduleFormatRegexp,
 		Name:                info.Name,
 		DisplayName:         info.DisplayName,

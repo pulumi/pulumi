@@ -17,7 +17,9 @@ package codegen
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -200,4 +202,43 @@ func PkgEquals(p1, p2 schema.PackageReference) bool {
 		return false
 	}
 	return v1.Equals(*v2)
+}
+
+var newStylePartRegex = regexp.MustCompile(`^(([a-z\d]+)|([A-Z\d]+)|(@[A-Za-z\d]+))\+?$`)
+
+// ParseName returns the wire name for a given source name and if that source name is a legacy name or new style snake_case name.
+func ParseName(name string) (wireName string, isLegacy bool) {
+	builder := strings.Builder{}
+
+	parts := strings.Split(name, "_")
+	for i, part := range parts {
+		if i > 0 {
+			builder.WriteRune('_')
+		}
+
+		// If it doesn't match the regexp for a new style part, then it's a legacy name.
+		if !newStylePartRegex.MatchString(part) {
+			return name, true
+		}
+
+		if part[0] == '@' {
+			part = part[1:]
+		} else {
+			// If this isn't prefixed with @ and is mixed case then it's a legacy name.
+			if strings.ToLower(part) != part && strings.ToUpper(part) != part {
+				return name, true
+			}
+		}
+		// Always want lower case names on the wire format
+		part = strings.ToLower(part)
+
+		if part[len(part)-1] == '+' {
+			builder.WriteString(part[:len(part)-1])
+			builder.WriteRune('s')
+		} else {
+			builder.WriteString(part)
+		}
+	}
+
+	return builder.String(), false
 }

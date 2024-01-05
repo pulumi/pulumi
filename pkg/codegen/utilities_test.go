@@ -67,3 +67,38 @@ func TestSimplifyInputUnion(t *testing.T) {
 		},
 	}, u2)
 }
+
+func TestParseName(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		wire   string
+		legacy bool
+	}{
+		"new_style_name": {"new_style_name", false},
+		"newname":        {"newname", false}, // also a valid legacy name but it will render the same either way
+		"CAPS":           {"caps", false},
+		"SHA+":           {"shas", false},
+		"@IoT_parts":     {"iot_parts", false},
+		"new_CAP_SHA+":   {"new_cap_shas", false},
+		"@XBox":          {"xbox", false},
+		"new_part+":      {"new_parts", false},
+		"@IoT+":          {"iots", false},
+		"oldStyleName":   {"oldStyleName", true},
+		"OldStyleName":   {"OldStyleName", true},
+		"oldStyle":       {"oldStyle", true},
+		"old-style":      {"old-style", true},
+		"old_style-name": {"old_style-name", true},
+	}
+
+	for name, expected := range cases {
+		name, expected := name, expected
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			wireName, isLegacy := ParseName(name)
+			assert.Equal(t, expected.wire, wireName)
+			assert.Equal(t, expected.legacy, isLegacy)
+		})
+	}
+}

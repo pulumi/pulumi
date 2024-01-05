@@ -1,0 +1,14 @@
+{
+  "emittedFiles": [
+    "new_names/doc.go",
+    "new_names/exampleResource.go",
+    "new_names/http_module/pulumiTypes.go",
+    "new_names/init.go",
+    "new_names/internal/pulumiUtilities.go",
+    "new_names/internal/pulumiVersion.go",
+    "new_names/provider.go",
+    "new_names/pulumi-plugin.json",
+    "new_names/pulumiEnums.go",
+    "new_names/pulumiTypes.go"
+  ]
+}

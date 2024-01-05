@@ -39,6 +39,9 @@ type PackageReference interface {
 	// TokenToModule extracts a package member's module name from its token.
 	TokenToModule(token string) string
 
+	// True if this package should use legacy names.
+	LegacyNames() bool
+
 	// Definition fully loads the referenced package and returns the result.
 	Definition() (*Package, error)
 }
@@ -133,6 +136,10 @@ type FunctionsIter interface {
 // packageDefRef is an implementation of PackageReference backed by a *Package.
 type packageDefRef struct {
 	pkg *Package
+}
+
+func (pkg packageDefRef) LegacyNames() bool {
+	return pkg.pkg.legacyNames
 }
 
 func (p packageDefRef) Name() string {
@@ -305,6 +312,16 @@ type PartialPackage struct {
 	config []*Property
 
 	def *Package
+}
+
+func (p *PartialPackage) LegacyNames() bool {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.legacyNames
+	}
+	return false
 }
 
 func (p *PartialPackage) Name() string {

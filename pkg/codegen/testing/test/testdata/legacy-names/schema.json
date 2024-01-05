@@ -1,6 +1,9 @@
 {
   "name": "legacy_names",
   "version": "1.0.0",
+  "metadata": {
+    "legacyNames": true
+  },
   "types":{
     "legacy_names:index:enum_XYZ": {
       "type": "string",

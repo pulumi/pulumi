@@ -245,7 +245,7 @@ func TestLanguageResources(t *testing.T) {
 
 			resources, err := LanguageResources("test", pkg)
 			for token, resource := range resources {
-				assert.Equal(t, tokenToName(token), resource.Name)
+				assert.Equal(t, tokenToName(token, false), resource.Name)
 			}
 			require.NoError(t, err)
 		})

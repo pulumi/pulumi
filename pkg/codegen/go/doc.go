@@ -119,11 +119,16 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 }
 
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
-	funcName := tokenToName(f.Token)
 	pkg, ok := d.packages[modName]
 	if !ok {
-		return funcName
+		// This is probably an error really but for now just pick the first package and assume that has LegacyNames set
+		// correctly.
+		for _, p := range d.packages {
+			pkg = p
+			break
+		}
 	}
+	funcName := pkg.tokenToName(f.Token)
 
 	if override, ok := pkg.functionNames[f]; ok {
 		funcName = override
@@ -164,7 +169,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 			return modPkg.outputType(t)
 		}
 	}
-	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
+	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r, pkg.LegacyNames()), d.GetMethodName(m))
 }
 
 // GetModuleDocLink returns the display name and the link for a module.
