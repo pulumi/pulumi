@@ -168,14 +168,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	if err != nil {
 		return err
 	}
-
-	// Workaround for python, most of our templates don't specify a venv but we want to use one
-	if proj.Runtime.Name() == "python" {
-		// If the template does give virtualenv use it, else default to "venv"
-		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
-			proj.Runtime.SetOption("virtualenv", "venv")
-		}
-	}
+	proj.Runtime.FixupPythonDefaultVirtualenv()
 
 	if err = proj.Save(projPath); err != nil {
 		return fmt.Errorf("saving project: %w", err)

@@ -317,13 +317,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	proj.Name = tokens.PackageName(args.name)
 	proj.Description = &args.description
 	proj.Template = nil
-	// Workaround for python, most of our templates don't specify a venv but we want to use one
-	if proj.Runtime.Name() == "python" {
-		// If the template does give virtualenv use it, else default to "venv"
-		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
-			proj.Runtime.SetOption("virtualenv", "venv")
-		}
-	}
+	proj.Runtime.FixupPythonDefaultVirtualenv()
 
 	proj.SetProjectTagsConfig(map[string]string{
 		apitype.ProjectTemplateTag: args.templateNameOrURL,
