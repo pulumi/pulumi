@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Revert using plain object type when the plainness is shallow and we should use inputty-types instead
