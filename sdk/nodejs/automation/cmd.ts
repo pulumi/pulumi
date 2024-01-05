@@ -98,8 +98,7 @@ export class PulumiCommand {
     }
 
     private static async installWindows(opts: Required<PulumiCommandOptions>): Promise<void> {
-        //TODO: const response = await got("https://get.pulumi.com/install.ps1");
-        const response = await got("get.pulumi-staging.io/install.ps1");
+        const response = await got("https://get.pulumi.com/install.ps1");
         const script = await writeTempFile(response.body);
 
         try {
@@ -129,8 +128,7 @@ export class PulumiCommand {
     }
 
     private static async installPosix(opts: Required<PulumiCommandOptions>): Promise<void> {
-        // TODO: const response = await got("https://get.pulumi.com/install.sh");
-        const response = await got("https://get.pulumi-staging.io/install.sh");
+        const response = await got("https://get.pulumi.com/install.sh");
         const script = await writeTempFile(response.body);
 
         try {
