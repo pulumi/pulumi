@@ -413,11 +413,6 @@ def get_matrix(
 
         test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags)
 
-    if kind == JobKind.ACCEPTANCE_TEST:
-        # Temporarily disable running acceptance tests on Windows.
-        # platforms = list(map(lambda p: "windows-16core-2022" if p == "windows-latest" else p, platforms))
-        platforms = list(filter(lambda p: p != "windows-latest", platforms))
-
     return {
         "test-suite": test_suites,
         "platform": platforms,
