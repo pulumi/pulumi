@@ -18,7 +18,7 @@ import * as os from "os";
 import * as semver from "semver";
 import * as upath from "upath";
 
-import { CommandResult, Pulumi } from "./cmd";
+import { CommandResult, PulumiCommand } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
@@ -58,15 +58,15 @@ export class LocalWorkspace implements Workspace {
      * See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
      */
     readonly secretsProvider?: string;
-    private _pulumi?: Pulumi;
+    private _pulumiCommand?: PulumiCommand;
     /**
      * The underlying Pulumi CLI.
      */
-    public get pulumi(): Pulumi {
-        if (this._pulumi === undefined) {
+    public get pulumiCommand(): PulumiCommand {
+        if (this._pulumiCommand === undefined) {
             throw new Error("Failed to get Pulumi CLI");
         }
-        return this._pulumi;
+        return this._pulumiCommand;
     }
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
@@ -302,11 +302,13 @@ export class LocalWorkspace implements Workspace {
         this.envVars = envs;
 
         const skipVersionCheck = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
-        const pulumi = opts?.pulumi ? Promise.resolve(opts.pulumi) : Pulumi.get({ skipVersionCheck });
+        const pulumiCommand = opts?.pulumiCommand
+            ? Promise.resolve(opts.pulumiCommand)
+            : PulumiCommand.get({ skipVersionCheck });
 
         const readinessPromises: Promise<any>[] = [
-            pulumi.then((p) => {
-                this._pulumi = p;
+            pulumiCommand.then((p) => {
+                this._pulumiCommand = p;
                 if (p.version) {
                     this._pulumiVersion = p.version;
                 }
@@ -856,7 +858,7 @@ export class LocalWorkspace implements Workspace {
             envs["PULUMI_EXPERIMENTAL"] = "true";
         }
         envs = { ...envs, ...this.envVars };
-        return this.pulumi.run(args, this.workDir, envs);
+        return this.pulumiCommand.run(args, this.workDir, envs);
     }
     /** @internal */
     get isRemote(): boolean {
@@ -969,7 +971,7 @@ export interface LocalWorkspaceOptions {
     /**
      * The underlying Pulumi CLI.
      */
-    pulumi?: Pulumi;
+    pulumiCommand?: PulumiCommand;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.

@@ -46,7 +46,7 @@ export class CommandResult {
     }
 }
 
-export interface PulumiOptions {
+export interface PulumiCommandOptions {
     version?: semver.SemVer;
     root?: string;
     /**
@@ -56,7 +56,7 @@ export interface PulumiOptions {
     skipVersionCheck?: boolean;
 }
 
-export class Pulumi {
+export class PulumiCommand {
     private constructor(readonly command: string, readonly version: semver.SemVer | null, readonly root?: string) {}
 
     /**
@@ -66,12 +66,12 @@ export class Pulumi {
      * the CLI is compatible with the requested version and throws an error if
      * not.
      */
-    static async get(opts?: PulumiOptions): Promise<Pulumi> {
+    static async get(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
         const { stdout } = await exec(command, ["version"]);
         const skipVersionCheck = opts?.skipVersionCheck !== undefined ? opts.skipVersionCheck : false;
         const version = parseAndValidatePulumiVersion(minimumVersion, stdout.trim(), skipVersionCheck);
-        return new Pulumi(command, version, opts?.root);
+        return new PulumiCommand(command, version, opts?.root);
     }
 
     /**
@@ -80,24 +80,24 @@ export class Pulumi {
      * @param opts.version the version of the CLI. Defaults to the CLI version matching the SDK version.
      * @param opts.root the directory to install the CLI in. Defaults to $HOME/.pulumi/versions/$VERSION.
      */
-    static async install(opts?: PulumiOptions): Promise<Pulumi> {
+    static async install(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const optsWithDefaults = withDefaults(opts);
         try {
-            return await Pulumi.get(optsWithDefaults);
+            return await PulumiCommand.get(optsWithDefaults);
         } catch (err) {
             // ignore
         }
 
         if (process.platform === "win32") {
-            await Pulumi.installWindows(optsWithDefaults);
+            await PulumiCommand.installWindows(optsWithDefaults);
         } else {
-            await Pulumi.installPosix(optsWithDefaults);
+            await PulumiCommand.installPosix(optsWithDefaults);
         }
 
-        return await Pulumi.get(optsWithDefaults);
+        return await PulumiCommand.get(optsWithDefaults);
     }
 
-    private static async installWindows(opts: Required<PulumiOptions>): Promise<void> {
+    private static async installWindows(opts: Required<PulumiCommandOptions>): Promise<void> {
         //TODO: const response = await got("https://get.pulumi.com/install.ps1");
         const response = await got("get.pulumi-staging.io/install.ps1");
         const script = await writeTempFile(response.body);
@@ -128,7 +128,7 @@ export class Pulumi {
         }
     }
 
-    private static async installPosix(opts: Required<PulumiOptions>): Promise<void> {
+    private static async installPosix(opts: Required<PulumiCommandOptions>): Promise<void> {
         // TODO: const response = await got("https://get.pulumi.com/install.sh");
         const response = await got("https://get.pulumi-staging.io/install.sh");
         const script = await writeTempFile(response.body);
@@ -202,7 +202,7 @@ async function exec(
     }
 }
 
-function withDefaults(opts?: PulumiOptions): Required<PulumiOptions> {
+function withDefaults(opts?: PulumiCommandOptions): Required<PulumiCommandOptions> {
     let version = opts?.version;
     if (!version) {
         version = new semver.SemVer(DEFAULT_VERSION);

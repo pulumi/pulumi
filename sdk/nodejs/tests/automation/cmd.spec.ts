@@ -18,13 +18,13 @@ import * as semver from "semver";
 import * as os from "os";
 import * as tmp from "tmp";
 import * as upath from "upath";
-import { Pulumi, parseAndValidatePulumiVersion } from "../../automation";
+import { PulumiCommand, parseAndValidatePulumiVersion } from "../../automation";
 
 describe("automation/cmd", () => {
     it("calls onOutput when provided to runPulumiCmd", async () => {
         let output = "";
         let numCalls = 0;
-        const pulumi = await Pulumi.get();
+        const pulumi = await PulumiCommand.get();
         await pulumi.run(["--help"], ".", {}, (data: string) => {
             output += data;
             numCalls += 1;
@@ -38,9 +38,9 @@ describe("automation/cmd", () => {
         it("installs the requested version", async () => {
             const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
             try {
-                const pulumi = await Pulumi.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
+                const cmd = await PulumiCommand.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
                 assert.doesNotThrow(() => fs.statSync(upath.join(tmpDir.name, "bin", "pulumi")));
-                const { stdout } = await pulumi.run(["version"], ".", {});
+                const { stdout } = await cmd.run(["version"], ".", {});
                 assert.strictEqual(stdout.trim(), "3.97.0");
             } finally {
                 tmpDir.removeCallback();
@@ -50,9 +50,9 @@ describe("automation/cmd", () => {
         it("does not re-install the version if it already exists", async () => {
             const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
             try {
-                await Pulumi.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
+                await PulumiCommand.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
                 const binary1 = fs.statSync(upath.join(tmpDir.name, "bin", "pulumi"));
-                await Pulumi.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
+                await PulumiCommand.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
                 const binary2 = fs.statSync(upath.join(tmpDir.name, "bin", "pulumi"));
                 assert.strictEqual(binary1.ino, binary2.ino);
             } finally {
@@ -62,11 +62,11 @@ describe("automation/cmd", () => {
 
         it("defaults to $HOME/.pulumi/versions/$VERSION if no root is provided", async () => {
             const version = new semver.SemVer("3.97.0");
-            const pulumi = await Pulumi.install({ version });
+            const cmd = await PulumiCommand.install({ version });
             assert.doesNotThrow(() =>
                 fs.statSync(upath.join(os.homedir(), ".pulumi", "versions", `${version}`, "bin", "pulumi")),
             );
-            const { stdout } = await pulumi.run(["version"], ".", {});
+            const { stdout } = await cmd.run(["version"], ".", {});
             assert.strictEqual(stdout.trim(), `${version}`);
         });
     });

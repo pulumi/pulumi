@@ -25,7 +25,7 @@ import {
     LocalWorkspace,
     OutputMap,
     ProjectSettings,
-    Pulumi,
+    PulumiCommand,
     Stack,
 } from "../../automation";
 import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
@@ -1045,8 +1045,8 @@ describe("LocalWorkspace", () => {
     it("sets pulumi version when using a custom CLI instance", async () => {
         const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
         try {
-            const pulumi = await Pulumi.get();
-            const ws = await LocalWorkspace.create({ pulumi });
+            const cmd = await PulumiCommand.get();
+            const ws = await LocalWorkspace.create({ pulumiCommand: cmd });
             assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
         } finally {
             tmpDir.removeCallback();
@@ -1059,7 +1059,7 @@ describe("LocalWorkspace", () => {
             run: async () => new CommandResult("some output", "", 0),
         };
         const ws = await LocalWorkspace.create({
-            pulumi: mockWithNoVersion,
+            pulumiCommand: mockWithNoVersion,
             envVars: {
                 PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
             },
@@ -1075,7 +1075,7 @@ describe("LocalWorkspace", () => {
             // `LocalWorkspace.checkRemoteSupport`.
             run: async () => new CommandResult("some output", "", 0),
         };
-        await assert.rejects(LocalWorkspace.create({ pulumi: mockWithNoRemoteSupport, remote: true }));
+        await assert.rejects(LocalWorkspace.create({ pulumiCommand: mockWithNoRemoteSupport, remote: true }));
     });
     it("bypasses remote support check", async () => {
         const mockWithNoRemoteSupport = {
@@ -1088,7 +1088,7 @@ describe("LocalWorkspace", () => {
         };
         await assert.doesNotReject(
             LocalWorkspace.create({
-                pulumi: mockWithNoRemoteSupport,
+                pulumiCommand: mockWithNoRemoteSupport,
                 remote: true,
                 envVars: {
                     PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
