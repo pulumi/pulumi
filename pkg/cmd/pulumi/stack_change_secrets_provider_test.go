@@ -114,7 +114,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 			}, nil
 		},
 		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, b64.Base64SecretsProvider)
 			if err != nil {
 				return err
 			}
@@ -210,7 +210,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			}, nil
 		},
 		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, b64.Base64SecretsProvider)
 			if err != nil {
 				return err
 			}
