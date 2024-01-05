@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -833,7 +832,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		M:                  &backend.UpdateMetadata{},
 		StackConfiguration: cfg,
 		SecretsManager:     sm,
-		SecretsProvider:    stack.DefaultSecretsProvider,
+		SecretsProvider:    b64secrets.Base64SecretsProvider,
 		Scopes:             backend.CancellationScopes,
 	})
 
@@ -845,7 +844,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("get stack: %w", err)
 		}
 
-		snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+		snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
 		if err != nil {
 			return nil, fmt.Errorf("snapshot: %w", err)
 		}
