@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -1049,4 +1050,31 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 			},
 		))
 	assert.Truef(t, called, "expected resolution to be called with duplicate name")
+}
+
+//nolint:paralleltest // changes directory for process
+func TestPulumiNewSetsTemplateTag(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		interactive:       false,
+		generateOnly:      true,
+		yes:               true,
+		name:              projectName,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(context.Background(), args)
+	assert.NoError(t, err)
+
+	proj := loadProject(t, tempdir)
+	require.NoError(t, err)
+	tagsValue, has := proj.Config[apitype.PulumiTagsConfigKey]
+	assert.True(t, has)
+	tagsObject, ok := tagsValue.Value.(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "typescript", tagsObject[apitype.ProjectTemplateTag])
 }

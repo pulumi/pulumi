@@ -325,6 +325,10 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	proj.SetProjectTagsConfig(map[string]string{
+		apitype.ProjectTemplateTag: args.templateNameOrURL,
+	})
+
 	if err = workspace.SaveProject(proj); err != nil {
 		return fmt.Errorf("saving project: %w", err)
 	}
