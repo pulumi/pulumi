@@ -43,6 +43,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/nxadm/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -671,6 +672,104 @@ func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string
 	return output, err
 }
 
+// debugCommand produces python program args to launch a python file with debugpy.
+func debugCommand(waitForAttach bool) ([]string, *debugger, error) {
+	logDir, err := os.MkdirTemp("", "pulumi-python-debugpy-")
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to allocate tmp dir: %w", err)
+	}
+	port, err := netutil.SelectPort()
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
+	}
+	args := []string{}
+	args = append(args, "-Xfrozen_modules=off")
+	args = append(args, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	if waitForAttach {
+		args = append(args, "--wait-for-client")
+	}
+	args = append(args, "--log-to", logDir)
+	return args, &debugger{Host: "127.0.0.1", Port: port, LogDir: logDir}, nil
+}
+
+type debugger struct {
+	Host   string
+	Port   int
+	LogDir string
+}
+
+func (c *debugger) Cleanup() {
+	contract.IgnoreError(os.RemoveAll(c.LogDir))
+}
+
+// WaitForReady waits for debugpy to be ready to accept connections.
+// Returns an error if the context is canceled or the log file is unable to be tailed.
+func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
+	logFile := filepath.Join(c.LogDir, fmt.Sprintf("debugpy.server-%d.log", pid))
+	t, err := tail.TailFile(logFile, tail.Config{
+		Follow: true,
+		Logger: tail.DiscardingLogger,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		contract.IgnoreError(t.Stop())
+		t.Cleanup()
+	}()
+	ready := make(chan bool)
+	go func(tailedLog *tail.Tail) {
+		for line := range tailedLog.Lines {
+			if line.Err != nil {
+				continue
+			}
+			if strings.Contains(line.Text, "Adapter is accepting incoming client connections") {
+				close(ready)
+				break
+			}
+		}
+	}(t)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.Dead():
+		return t.Err()
+	case <-ready:
+		return nil
+	}
+}
+
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
+	// wait for the debugger to be ready
+	ctx, _ = context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
+	err := dbg.WaitForReady(ctx, cmd.Process.Pid)
+	if err != nil {
+		return err
+	}
+
+	// emit a debug configuration
+	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+		"name":    "Pulumi: Program (Python)",
+		"type":    "python",
+		"request": "attach",
+		"connect": map[string]interface{}{
+			"host": dbg.Host,
+			"port": dbg.Port,
+		},
+		"justMyCode": true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to serialize debug configuration: %w", err)
+	}
+	_, err = engineClient.StartDebugger(ctx, &pulumirpc.StartDebuggerRequest{
+		Config: debugConfig,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to start debugging: %w", err)
+	}
+	return nil
+}
+
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	engineClient, closer, err := host.connectToEngine()
@@ -682,19 +781,15 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}()
 
 	args := []string{}
-
-	// Python options (https://docs.python.org/3/using/cmdline.html)
-	var port int
+	var dbg *debugger
 	if req.GetDebug() {
-		port, err = netutil.SelectPort()
+		args, dbg, err = debugCommand(req.GetWaitForAttach())
 		if err != nil {
-			return nil, fmt.Errorf("unable to select a debug port: %w", err)
+			return &pulumirpc.RunResponse{
+				Error: err.Error(),
+			}, nil
 		}
-		args = append(args, "-Xfrozen_modules=off")
-		args = append(args, "-m", "debugpy", "--listen", fmt.Sprintf("%d", port))
-		if req.GetWaitForAttach() {
-			args = append(args, "--wait-for-client")
-		}
+		defer dbg.Cleanup()
 	}
 
 	// Entrypoint script and arguments
@@ -755,24 +850,17 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			return err
 		}
 		if req.GetDebug() {
-			debugConfig, err := structpb.NewStruct(map[string]interface{}{
-				"name":    "Pulumi: Program (Python)",
-				"type":    "python",
-				"request": "attach",
-				"connect": map[string]interface{}{
-					"host": "127.0.0.1",
-					"port": port,
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("failed serialize debug configuration: %w", err)
-			}
-			_, err = engineClient.StartDebugger(ctx, &pulumirpc.StartDebuggerRequest{
-				Config: debugConfig,
-			})
-			if err != nil {
-				return fmt.Errorf("unable to start debugging: %w", err)
-			}
+			// create a sub-context to cancel the startDebugging operation when the process exits.
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go func() {
+				err := startDebugging(ctx, engineClient, cmd, dbg)
+				if err != nil {
+					// kill the program if we can't start debugging.
+					logging.Errorf("Unable to start debugging: %v", err)
+					contract.IgnoreError(cmd.Process.Kill())
+				}
+			}()
 		}
 		return cmd.Wait()
 	}

@@ -32,6 +32,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/nxadm/tail"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
@@ -727,16 +728,53 @@ func runCmdStatus(runF func() error) (int, error) {
 	return status.ExitStatus(), nil
 }
 
-type delveContext struct {
+type debugger struct {
+	Host    string
 	Port    int
 	LogDest string
 }
 
-func (c *delveContext) Cleanup() {
+// WaitForReady waits for Delve to be ready to accept connections.
+// Returns an error if the context is canceled or the log file is unable to be tailed.
+func (c *debugger) WaitForReady(ctx context.Context) error {
+	t, err := tail.TailFile(c.LogDest, tail.Config{
+		Follow: true,
+		Logger: tail.DiscardingLogger,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		contract.IgnoreError(t.Stop())
+		t.Cleanup()
+	}()
+	ready := make(chan bool)
+	go func(tailedLog *tail.Tail) {
+		for line := range tailedLog.Lines {
+			if line.Err != nil {
+				continue
+			}
+			if strings.Contains(line.Text, "API server listening at") {
+				close(ready)
+				break
+			}
+		}
+	}(t)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.Dead():
+		return t.Err()
+	case <-ready:
+		return nil
+	}
+}
+
+func (c *debugger) Cleanup() {
 	contract.IgnoreError(os.Remove(c.LogDest))
 }
 
-func delveCommand(bin string, waitForAttach bool) (*exec.Cmd, *delveContext, error) {
+func debugCommand(bin string, waitForAttach bool) (*exec.Cmd, *debugger, error) {
 	godlv, err := executable.FindExecutable("dlv")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to find 'dlv' executable: %w", err)
@@ -750,28 +788,57 @@ func delveCommand(bin string, waitForAttach bool) (*exec.Cmd, *delveContext, err
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}
-	args := []string{fmt.Sprintf("--listen=localhost:%d", port), "--headless=true", "--api-version=2"}
+	args := []string{fmt.Sprintf("--listen=127.0.0.1:%d", port), "--headless=true", "--api-version=2"}
 	if !waitForAttach {
 		args = append(args, "--continue")
 	}
 	args = append(args, "--log", "--log-dest", logFile.Name())
 	args = append(args, "exec", bin)
 	dlvCmd := exec.Command(godlv, args...)
-	return dlvCmd, &delveContext{Port: port, LogDest: logFile.Name()}, nil
+	return dlvCmd, &debugger{Host: "127.0.0.1", Port: port, LogDest: logFile.Name()}, nil
+}
+
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
+	// wait for the debugger to be ready
+	ctx, _ = context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
+	err := dbg.WaitForReady(ctx)
+	if err != nil {
+		return err
+	}
+
+	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+		"name":    "Pulumi: Program (Go)",
+		"type":    "go",
+		"request": "attach",
+		"mode":    "remote",
+		"host":    dbg.Host,
+		"port":    dbg.Port,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = engineClient.StartDebugger(ctx, &pulumirpc.StartDebuggerRequest{
+		Config: debugConfig,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to start debugging: %w", err)
+	}
+
+	return nil
 }
 
 func runProgram(ctx context.Context, engineClient pulumirpc.EngineClient, req *pulumirpc.RunRequest, pwd, bin string, env []string) *pulumirpc.RunResponse {
 	var err error
-	var delveCtx *delveContext
+	var dbg *debugger
 	var cmd *exec.Cmd
 	if req.GetDebug() {
-		cmd, delveCtx, err = delveCommand(bin, req.GetWaitForAttach())
+		cmd, dbg, err = debugCommand(bin, req.GetWaitForAttach())
 		if err != nil {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
 			}
 		}
-		defer delveCtx.Cleanup()
+		defer dbg.Cleanup()
 	} else {
 		cmd = exec.Command(bin)
 	}
@@ -784,23 +851,17 @@ func runProgram(ctx context.Context, engineClient pulumirpc.EngineClient, req *p
 			return err
 		}
 		if req.GetDebug() {
-			debugConfig, err := structpb.NewStruct(map[string]interface{}{
-				"name":    "Pulumi: Program (Go)",
-				"type":    "go",
-				"request": "attach",
-				"mode":    "remote",
-				"host":    "localhost",
-				"port":    delveCtx.Port,
-			})
-			if err != nil {
-				return err
-			}
-			_, err = engineClient.StartDebugger(ctx, &pulumirpc.StartDebuggerRequest{
-				Config: debugConfig,
-			})
-			if err != nil {
-				return fmt.Errorf("unable to start debugging: %w", err)
-			}
+			// create a sub-context to cancel the startDebugging operation when the process exits.
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go func() {
+				err := startDebugging(ctx, engineClient, cmd, dbg)
+				if err != nil {
+					// kill the program if we can't start debugging.
+					logging.Errorf("Unable to start debugging: %v", err)
+					contract.IgnoreError(cmd.Process.Kill())
+				}
+			}()
 		}
 		return cmd.Wait()
 	}
