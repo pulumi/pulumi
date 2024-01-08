@@ -45,6 +45,7 @@ export async function runPulumiCmd(
     cwd: string,
     additionalEnv: { [key: string]: string },
     onOutput?: (data: string) => void,
+    signal?: AbortSignal,
 ): Promise<CommandResult> {
     // all commands should be run in non-interactive mode.
     // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
@@ -64,6 +65,12 @@ export async function runPulumiCmd(
                     data = data.toString();
                 }
                 onOutput(data);
+            });
+        }
+
+        if (signal) {
+            signal.addEventListener("abort", () => {
+                proc.kill("SIGINT", {forceKillAfterTimeout: false});
             });
         }
 

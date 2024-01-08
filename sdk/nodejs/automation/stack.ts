@@ -252,7 +252,7 @@ Event: ${line}\n${e.toString()}`);
 
         let upResult: CommandResult;
         try {
-            upResult = await this.runPulumiCmd(args, opts?.onOutput);
+            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -385,7 +385,7 @@ Event: ${line}\n${e.toString()}`);
 
         let previewResult: CommandResult;
         try {
-            previewResult = await this.runPulumiCmd(args, opts?.onOutput);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -454,7 +454,7 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const refPromise = this.runPulumiCmd(args, opts?.onOutput);
+        const refPromise = this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
@@ -517,7 +517,7 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const desPromise = this.runPulumiCmd(args, opts?.onOutput);
+        const desPromise = this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
@@ -684,7 +684,10 @@ Event: ${line}\n${e.toString()}`);
         return this.workspace.importStack(this.name, state);
     }
 
-    private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
+    private async runPulumiCmd(
+        args: string[],
+        onOutput?: (out: string) => void,
+        signal?: AbortSignal): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
             PULUMI_DEBUG_COMMANDS: "true",
         };
@@ -698,7 +701,7 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
+        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput, signal);
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -897,6 +900,10 @@ export interface UpOptions extends GlobalOpts {
      * Include secrets in the UpSummary.
      */
     showSecrets?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
@@ -925,6 +932,10 @@ export interface PreviewOptions extends GlobalOpts {
      * Plan specifies the path where the update plan should be saved.
      */
     plan?: string;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
@@ -941,6 +952,10 @@ export interface RefreshOptions extends GlobalOpts {
     color?: "always" | "never" | "raw" | "auto";
     // Include secrets in the RefreshSummary
     showSecrets?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
@@ -961,6 +976,10 @@ export interface DestroyOptions extends GlobalOpts {
      * Do not destroy protected resources.
      */
     excludeProtected?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 const execKind = {
