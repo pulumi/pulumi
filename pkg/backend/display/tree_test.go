@@ -57,7 +57,7 @@ func TestTreeFrameSize(t *testing.T) {
 			treeRenderer.treeTableRows = treeRenderer.systemMessages
 
 			// Required to get the frame to render.
-			treeRenderer.dirty = true
+			treeRenderer.markDirty()
 
 			// This should not panic.
 			treeRenderer.frame(false /* locked */, false /* done */)

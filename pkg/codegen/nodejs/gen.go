@@ -20,6 +20,7 @@ package nodejs
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -126,7 +127,7 @@ func pascal(s string) string {
 // externalModuleName Formats the name of package to comply with an external
 // module.
 func externalModuleName(s string) string {
-	return fmt.Sprintf("pulumi%s", pascal(s))
+	return "pulumi" + pascal(s)
 }
 
 type modContext struct {
@@ -247,7 +248,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 			pkgName = externalModuleName(pkgName)
 		}
 
-		return fmt.Sprintf("%s.Provider", pkgName)
+		return pkgName + ".Provider"
 	}
 
 	pkg := mod.pkg
@@ -597,31 +598,6 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "{ ")
-
-	var parts []string
-	if alias.Name != nil {
-		parts = append(parts, fmt.Sprintf("name: \"%v\"", *alias.Name))
-	}
-	if alias.Project != nil {
-		parts = append(parts, fmt.Sprintf("project: \"%v\"", *alias.Project))
-	}
-	if alias.Type != nil {
-		parts = append(parts, fmt.Sprintf("type: \"%v\"", *alias.Type))
-	}
-
-	for i, part := range parts {
-		if i > 0 {
-			fmt.Fprintf(w, ", ")
-		}
-
-		fmt.Fprintf(w, "%s", part)
-	}
-
-	fmt.Fprintf(w, " }")
-}
-
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFileInfo, error) {
 	info := resourceFileInfo{}
 
@@ -693,7 +669,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, "            return false;\n")
 	fmt.Fprintf(w, "        }\n")
 
-	typeExpression := fmt.Sprintf("%s.__pulumiType", name)
+	typeExpression := name + ".__pulumiType"
 	if r.IsProvider {
 		// We pass __pulumiType to the ProviderResource constructor as the "type" for this provider, the
 		// ProviderResource constructor in the SDK then prefixes "pulumi:providers:" to that token and passes that
@@ -791,7 +767,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argValue := applyDefaults(fmt.Sprintf("args.%s", prop.Name))
+			argValue := applyDefaults("args." + prop.Name)
 			if prop.Secret {
 				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
 			} else {
@@ -904,10 +880,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	if len(r.Aliases) > 0 {
 		fmt.Fprintf(w, "        const aliasOpts = { aliases: [")
 		for i, alias := range r.Aliases {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
+			if alias.Type != nil {
+				fmt.Fprintf(w, "{ type: \"%v\" }", *alias.Type)
+				if i != len(r.Aliases)-1 {
+					fmt.Fprintf(w, ", ")
+				}
 			}
-			mod.genAlias(w, alias)
 		}
 		fmt.Fprintf(w, "] };\n")
 		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, aliasOpts);\n")
@@ -947,7 +925,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnType != nil {
 			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 				objectReturnType = objectType
-			} else {
+			} else if !fun.ReturnTypePlain {
+				// Currently the code only knows how to generate code for methods returning an
+				// ObjectType or methods returning a plain resource All other methods are simply
+				// skipped; bail here.
 				return
 			}
 		}
@@ -986,6 +967,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
+		} else if fun.ReturnTypePlain {
+			var innerType string
+			if objectReturnType == nil {
+				innerType = mod.typeString(fun.ReturnType, false, nil)
+			} else {
+				innerType = fmt.Sprintf("%s.%sResult", name, title(method.Name))
+			}
+			retty = fmt.Sprintf("Promise<%s>", innerType)
 		} else if liftReturn {
 			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
 		} else {
@@ -1011,7 +1000,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				ret = "return "
 			}
 		}
-		fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+
+		if fun.ReturnTypePlain {
+			fmt.Fprintf(w, "        %sutilities.callAsync(\"%s\", {\n", ret, fun.Token)
+		} else {
+			fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+		}
+
 		if fun.Inputs != nil {
 			for _, p := range fun.Inputs.InputShape.Properties {
 				// Pass the argument to the invocation.
@@ -1022,12 +1017,25 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				}
 			}
 		}
-		fmt.Fprintf(w, "        }, this);\n")
+		fmt.Fprintf(w, "        }, this")
+
+		if fun.ReturnTypePlain {
+			// Unwrap magic property "res" for methods that return a plain non-object-type.
+			if objectReturnType == nil {
+				fmt.Fprintf(w, `, {property: "res"});`)
+			} else {
+				fmt.Fprintf(w, `, {});`)
+			}
+		} else {
+			fmt.Fprintf(w, ");\n")
+		}
+
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
 		}
 		fmt.Fprintf(w, "    }\n")
 	}
+
 	for _, method := range r.Methods {
 		genMethod(method)
 	}
@@ -1078,16 +1086,23 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 
 		if fun.ReturnType != nil {
-			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+			genReturnType := func(properties []*schema.Property) error {
 				comment := fun.Inputs.Comment
 				if comment == "" {
 					comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Result", comment, objectType.Properties, false, true, 1); err != nil {
+				if err := mod.genPlainType(w, methodName+"Result", comment, properties, false, true, 1); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "\n")
+				return nil
 			}
+			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				if err := genReturnType(objectType.Properties); err != nil {
+					return err
+				}
+			}
+			// For non-object types with fun.ReturnTypePlain return type is not needed.
 		}
 		return nil
 	}
@@ -1208,7 +1223,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
-			body := fmt.Sprintf("args.%s", p.Name)
+			body := "args." + p.Name
 			if fun.MultiArgumentInputs {
 				body = p.Name
 			}
@@ -1277,10 +1292,10 @@ func (mod *modContext) genFunctionOutputVersion(
 	}
 
 	originalName := tokenToFunctionName(fun.Token)
-	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	fnOutput := originalName + "Output"
 	returnType := mod.functionReturnType(fun)
 	info.functionOutputVersionName = fnOutput
-	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
+	argTypeName := title(fnOutput) + "Args"
 
 	argsig := ""
 	if fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
@@ -1550,6 +1565,9 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 		for _, method := range member.Methods {
 			if method.Function.Inputs != nil {
 				for _, p := range method.Function.Inputs.Properties {
+					if p.Name == "__self__" {
+						continue
+					}
 					needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}
@@ -1559,6 +1577,10 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 					for _, p := range objectType.Properties {
 						needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 					}
+				} else if method.Function.ReturnTypePlain {
+					needsTypes = mod.getTypeImportsForResource(
+						method.Function.ReturnType, false, externalImports,
+						imports, seen, res) || needsTypes
 				}
 			}
 		}
@@ -2131,7 +2153,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			if path.Base(rel) == "." {
 				rel = path.Dir(rel)
 			}
-			importPath := fmt.Sprintf(`./%s`, strings.TrimSuffix(rel, ".ts"))
+			importPath := "./" + strings.TrimSuffix(rel, ".ts")
 			ll.genReexport(w, exp, importPath)
 		}
 	}
@@ -2155,7 +2177,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			if mod.mod == "" {
 				filePath = ""
 			} else {
-				filePath = fmt.Sprintf("/%s", mod.mod)
+				filePath = "/" + mod.mod
 			}
 			fmt.Fprintf(w, "export * from \"%s/types/enums%s\";\n", rel, filePath)
 		}
@@ -2353,7 +2375,7 @@ type npmPackage struct {
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	packageName := info.PackageName
 	if packageName == "" {
-		packageName = fmt.Sprintf("@pulumi/%s", pkg.Name)
+		packageName = "@pulumi/" + pkg.Name
 	}
 
 	devDependencies := map[string]string{}
@@ -2726,80 +2748,24 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	return files, nil
 }
 
+//go:embed utilities.ts
+var utilitiesFile string
+
 func (mod *modContext) genUtilitiesFile(w io.Writer) error {
-	const body = `
-export function getEnv(...vars: string[]): string | undefined {
-    for (const v of vars) {
-        const value = process.env[v];
-        if (value) {
-            return value;
-        }
-    }
-    return undefined;
-}
-
-export function getEnvBoolean(...vars: string[]): boolean | undefined {
-    const s = getEnv(...vars);
-    if (s !== undefined) {
-        // NOTE: these values are taken from https://golang.org/src/strconv/atob.go?s=351:391#L1, which is what
-        // Terraform uses internally when parsing boolean values.
-        if (["1", "t", "T", "true", "TRUE", "True"].find(v => v === s) !== undefined) {
-            return true;
-        }
-        if (["0", "f", "F", "false", "FALSE", "False"].find(v => v === s) !== undefined) {
-            return false;
-        }
-    }
-    return undefined;
-}
-
-export function getEnvNumber(...vars: string[]): number | undefined {
-    const s = getEnv(...vars);
-    if (s !== undefined) {
-        const f = parseFloat(s);
-        if (!isNaN(f)) {
-            return f;
-        }
-    }
-    return undefined;
-}
-
-export function getVersion(): string {
-    let version = require('./package.json').version;
-    // Node allows for the version to be prefixed by a "v", while semver doesn't.
-    // If there is a v, strip it off.
-    if (version.indexOf('v') === 0) {
-        version = version.slice(1);
-    }
-    return version;
-}
-
-/** @internal */
-export function resourceOptsDefaults(): any {
-    return { version: getVersion()%s };
-}
-
-/** @internal */
-export function lazyLoad(exports: any, props: string[], loadModule: any) {
-    for (let property of props) {
-        Object.defineProperty(exports, property, {
-            enumerable: true,
-            get: function() {
-                return loadModule()[property];
-            },
-        });
-    }
-}
-`
 	def, err := mod.pkg.Definition()
 	if err != nil {
 		return err
 	}
-	var pluginDownloadURL string
+	code := utilitiesFile
+
 	if url := def.PluginDownloadURL; url != "" {
-		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
+		code = strings.ReplaceAll(code, "/*pluginDownloadURL*/",
+			fmt.Sprintf(", pluginDownloadURL: %q", url))
+	} else {
+		code = strings.ReplaceAll(code, "/*pluginDownloadURL*/", "")
 	}
-	_, err = fmt.Fprintf(w, body, pluginDownloadURL)
+
+	_, err = fmt.Fprintf(w, "%s", code)
 	return err
 }
 

@@ -51,11 +51,11 @@ const (
 var (
 	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too old to understand.
-	ErrDeploymentSchemaVersionTooOld = fmt.Errorf("this stack's deployment is too old")
+	ErrDeploymentSchemaVersionTooOld = errors.New("this stack's deployment is too old")
 
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
-	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
+	ErrDeploymentSchemaVersionTooNew = errors.New("this stack's deployment version is too new")
 )
 
 var (
@@ -156,14 +156,11 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	}, nil
 }
 
-// DeserializeUntypedDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
-// from it. DeserializeDeployment will return an error if the untyped deployment's version is
-// not within the range `DeploymentSchemaVersionCurrent` and `DeploymentSchemaVersionOldestSupported`.
-func DeserializeUntypedDeployment(
+// UnmarshalUntypedDeployment unmarshals a raw untyped deployment into an up to date deployment object.
+func UnmarshalUntypedDeployment(
 	ctx context.Context,
 	deployment *apitype.UntypedDeployment,
-	secretsProv secrets.Provider,
-) (*deploy.Snapshot, error) {
+) (*apitype.DeploymentV3, error) {
 	contract.Requiref(deployment != nil, "deployment", "must not be nil")
 	switch {
 	case deployment.Version > apitype.DeploymentSchemaVersionCurrent:
@@ -195,7 +192,22 @@ func DeserializeUntypedDeployment(
 		contract.Failf("unrecognized version: %d", deployment.Version)
 	}
 
-	return DeserializeDeploymentV3(ctx, v3deployment, secretsProv)
+	return &v3deployment, nil
+}
+
+// DeserializeUntypedDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
+// from it. DeserializeDeployment will return an error if the untyped deployment's version is
+// not within the range `DeploymentSchemaVersionCurrent` and `DeploymentSchemaVersionOldestSupported`.
+func DeserializeUntypedDeployment(
+	ctx context.Context,
+	deployment *apitype.UntypedDeployment,
+	secretsProv secrets.Provider,
+) (*deploy.Snapshot, error) {
+	v3deployment, err := UnmarshalUntypedDeployment(ctx, deployment)
+	if err != nil {
+		return nil, err
+	}
+	return DeserializeDeploymentV3(ctx, *v3deployment, secretsProv)
 }
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
@@ -498,7 +510,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 	}
 
 	if res.URN == "" {
-		return nil, fmt.Errorf("resource missing required 'urn' field")
+		return nil, errors.New("resource missing required 'urn' field")
 	}
 
 	if res.Type == "" {
@@ -610,7 +622,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					} else {
 						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %s", err.Error())
+							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
 						}
 						plaintext = unencryptedText
 					}

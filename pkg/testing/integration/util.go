@@ -186,7 +186,7 @@ func AssertHTTPResultWithRetry(
 		return false
 	}
 	if !(strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://")) {
-		hostname = fmt.Sprintf("http://%s", hostname)
+		hostname = "http://" + hostname
 	}
 	var err error
 	var resp *http.Response

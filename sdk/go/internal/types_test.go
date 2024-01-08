@@ -152,8 +152,7 @@ func TestNewApplier_errors(t *testing.T) {
 			t.Parallel()
 
 			_, err := newApplier(tt.give, stringType)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
+			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }

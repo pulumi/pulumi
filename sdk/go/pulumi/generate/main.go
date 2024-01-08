@@ -337,7 +337,7 @@ func main() {
 
 		pwd, err := os.Getwd()
 		if err != nil {
-			log.Fatalf("code generation failed: %v", err.Error())
+			log.Fatalf("code generation failed: %v", err)
 		}
 
 		fullname := filepath.Join(pwd, templateFilePath(t.Name()))

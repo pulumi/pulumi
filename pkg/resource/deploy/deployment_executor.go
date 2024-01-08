@@ -388,17 +388,6 @@ func (ex *deploymentExecutor) performDeletes(
 		logging.V(4).Infof("deploymentExecutor.Execute(...): antichain complete")
 	}
 
-	// After executing targeted deletes, we may now have resources that depend on the resource that
-	// were deleted.  Go through and clean things up accordingly for them.
-	if targetsOpt.IsConstrained() {
-		resourceToStep := make(map[*resource.State]Step)
-		for _, step := range deleteSteps {
-			resourceToStep[ex.deployment.olds[step.URN()]] = step
-		}
-
-		ex.rebuildBaseState(resourceToStep, false /*refresh*/)
-	}
-
 	return nil
 }
 
@@ -512,7 +501,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
-	ex.rebuildBaseState(resourceToStep, true /*refresh*/)
+	ex.rebuildBaseState(resourceToStep)
 
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
@@ -529,7 +518,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	return nil
 }
 
-func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step, refresh bool) {
+func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step) {
 	// Rebuild this deployment's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
@@ -576,10 +565,8 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 
 		if new == nil {
-			if refresh {
-				contract.Assertf(old.Custom, "expected custom resource")
-				contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
-			}
+			contract.Assertf(old.Custom, "expected custom resource")
+			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}
 

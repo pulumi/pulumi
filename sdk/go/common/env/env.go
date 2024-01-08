@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,6 +56,9 @@ var DisableResourceReferences = env.Bool("DISABLE_RESOURCE_REFERENCES", "")
 
 var DisableOutputValues = env.Bool("DISABLE_OUTPUT_VALUES", "")
 
+var ErrorOutputString = env.Bool("ERROR_OUTPUT_STRING", "Throw an error instead "+
+	"of returning a string on attempting to convert an Output to a string")
+
 var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 	"Discover additional plugins by examining $PATH.")
 
@@ -74,6 +77,9 @@ The variable should be set to the log file to which gRPC debug traces will be se
 
 var GitSSHPassphrase = env.String("GITSSH_PASSPHRASE",
 	"The passphrase to use with Git operations that use SSH.", env.Secret)
+
+var ErrorOnDependencyCycles = env.Bool("ERROR_ON_DEPENDENCY_CYCLES",
+	"Whether or not to error when dependency cycles are detected.")
 
 // Environment variables that affect the self-managed backend.
 var (
@@ -97,3 +103,14 @@ var (
 var (
 	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
 )
+
+var DisableValidation = env.Bool(
+	"DISABLE_VALIDATION",
+	`Disables format validation of system inputs.
+
+Currently this disables validation of the following formats:
+	- Stack names
+
+This should only be used in cases where current data does not conform to the format and either cannot be migrated
+without using the system itself, or show that the validation is too strict. Over time entries in the list above will be
+removed and enforced to be validated.`)

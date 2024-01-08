@@ -12,5 +12,5 @@ type ConflictingUpdateError struct {
 
 func (c ConflictingUpdateError) Error() string {
 	return fmt.Sprintf("%s\nTo learn more about possible reasons and resolution, visit "+
-		"https://www.pulumi.com/docs/troubleshooting/#conflict", c.Err.Error())
+		"https://www.pulumi.com/docs/troubleshooting/#conflict", c.Err)
 }

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -154,9 +155,18 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			}
 			defer contract.IgnoreClose(grpcServer)
 
-			err = languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr())
+			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr())
 			if err != nil {
 				return err
+			}
+
+			// These diagnostics come directly from the converter and so _should_ be user friendly. So we're just
+			// going to print them.
+			printDiagnostics(pCtx.Diag, diags)
+			if diags.HasErrors() {
+				// If we've got error diagnostics then package generation failed, we've printed the error above so
+				// just return a plain message here.
+				return errors.New("generation failed")
 			}
 
 			return nil

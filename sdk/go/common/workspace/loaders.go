@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -98,8 +99,13 @@ func LoadProject(path string) (*Project, error) {
 		return nil, fmt.Errorf("could not read '%s': %w", path, err)
 	}
 
+	return LoadProjectBytes(b, path, marshaller)
+}
+
+// LoadProjectBytes reads a project definition from a byte slice.
+func LoadProjectBytes(b []byte, path string, marshaller encoding.Marshaler) (*Project, error) {
 	var raw interface{}
-	err = marshaller.Unmarshal(b, &raw)
+	err := marshaller.Unmarshal(b, &raw)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal '%s': %w", path, err)
 	}
@@ -157,8 +163,18 @@ func LoadProjectStack(project *Project, path string) (*ProjectStack, error) {
 		return nil, err
 	}
 
+	return LoadProjectStackBytes(project, b, path, marshaller)
+}
+
+// LoadProjectStack reads a stack definition from a byte slice.
+func LoadProjectStackBytes(
+	project *Project,
+	b []byte,
+	path string,
+	marshaller encoding.Marshaler,
+) (*ProjectStack, error) {
 	var projectStackRaw interface{}
-	err = marshaller.Unmarshal(b, &projectStackRaw)
+	err := marshaller.Unmarshal(b, &projectStackRaw)
 	if err != nil {
 		return nil, err
 	}

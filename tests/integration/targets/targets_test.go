@@ -81,7 +81,7 @@ func TestDeleteManyTargets(t *testing.T) {
 
 	// Create a handy mkURN func to create URNs for dynamic resources in this project/stack.
 	resourceType := tokens.Type("pulumi-nodejs:dynamic:Resource")
-	mkURNStr := func(resourceName tokens.QName, parentType tokens.Type) string {
+	mkURNStr := func(resourceName string, parentType tokens.Type) string {
 		return string(resource.NewURN(
 			tokens.QName(stackName), tokens.PackageName(projName), parentType, resourceType, resourceName))
 	}

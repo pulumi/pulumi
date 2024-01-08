@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ type ProgressDisplay struct {
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
 	// stack is the stack this progress pertains to.
-	stack tokens.Name
+	stack tokens.StackName
 	// proj is the project this progress pertains to.
 	proj tokens.PackageName
 
@@ -139,6 +139,9 @@ type ProgressDisplay struct {
 
 	// Structure that tracks the time taken to perform an action on a resource.
 	opStopwatch opStopwatch
+
+	// Indicates whether we already printed the loading policy packs message.
+	shownPolicyLoadEvent bool
 }
 
 type opStopwatch struct {
@@ -182,7 +185,7 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
-func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
+func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.StackName, proj tokens.PackageName,
 	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
 	stdin := opts.Stdin
@@ -650,7 +653,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 			for _, remediationEvent := range info.RemediationEvents {
 				// Print the individual policy event.
 				remediationLine := renderDiffPolicyRemediationEvent(
-					remediationEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
+					remediationEvent, subItemIndent+"- ", false, display.opts)
 				remediationLine = strings.TrimSuffix(remediationLine, "\n")
 				if remediationLine != "" {
 					display.println(remediationLine)
@@ -692,7 +695,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 		for _, policyEvent := range info.ViolationEvents {
 			// Print the individual policy event.
 			policyLine := renderDiffPolicyViolationEvent(
-				policyEvent, fmt.Sprintf("%s- ", subItemIndent), subItemIndent+"  ", display.opts)
+				policyEvent, subItemIndent+"- ", subItemIndent+"  ", display.opts)
 			policyLine = strings.TrimSuffix(policyLine, "\n")
 			display.println(policyLine)
 		}
@@ -834,7 +837,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		payload := event.Payload().(engine.PreludeEventPayload)
 		preludeEventString := renderPreludeEvent(payload, display.opts)
 		if display.isTerminal {
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
 				Ephemeral: false,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -842,6 +845,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			}))
 		} else {
 			display.println(preludeEventString)
+		}
+		return
+	case engine.PolicyLoadEvent:
+		if !display.shownPolicyLoadEvent {
+			policyLoadEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
+			display.println(policyLoadEventString)
+			display.shownPolicyLoadEvent = true
 		}
 		return
 	case engine.SummaryEvent:
@@ -878,7 +888,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// what's going on, we can show them as ephemeral diagnostic messages that are
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
 				Ephemeral: true,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),

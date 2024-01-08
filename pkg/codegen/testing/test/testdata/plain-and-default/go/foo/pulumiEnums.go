@@ -150,10 +150,12 @@ func (o EnumThingPtrOutput) ToIntPtrOutputWithContext(ctx context.Context) pulum
 	}).(pulumi.IntPtrOutput)
 }
 
-// EnumThingInput is an input type that accepts EnumThingArgs and EnumThingOutput values.
-// You can construct a concrete instance of `EnumThingInput` via:
+// EnumThingInput is an input type that accepts values of the EnumThing enum
+// A concrete instance of `EnumThingInput` can be one of the following:
 //
-//	EnumThingArgs{...}
+//	EnumThingFour
+//	EnumThingSix
+//	EnumThingEight
 type EnumThingInput interface {
 	pulumi.Input
 

@@ -38,7 +38,7 @@ func PrintEngineResult(res result.Result) result.Result {
 func printDecryptError(e engine.DecryptError) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
-	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s", e.Key, e.Err.Error())
+	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s", e.Key, e.Err)
 	fprintf(writer, ""+
 		"This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and "+
 		"it is not possible to share an encrypted configuration value across stacks.\n"+

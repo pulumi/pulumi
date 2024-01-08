@@ -122,7 +122,8 @@ GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
 GO_TEST      = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FLAGS)
 GO_TEST_FAST = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
-GOPROXY = 'https://proxy.golang.org'
+GOPROXY = https://proxy.golang.org
+export GOPROXY
 
 .PHONY: default all only_build only_test lint install test_all core build
 

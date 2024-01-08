@@ -2,7 +2,6 @@ package test
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,8 +51,8 @@ func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 	// Obey SkipCompileCheck to skip compile and test targets.
 	if tt.SkipCompileCheck != nil &&
 		tt.SkipCompileCheck.Has(language) &&
-		(test == fmt.Sprintf("%s/compile", language) ||
-			test == fmt.Sprintf("%s/test", language)) {
+		(test == language+"/compile" ||
+			test == language+"/test") {
 		return true
 	}
 
@@ -110,6 +109,9 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "plain-schema-gh6957",
 		Description: "Repro for #6957",
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("go/test"),
 	},
 	{
 		Directory:   "resource-args-python-case-insensitive",
@@ -154,6 +156,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple schema with methods that return single values",
 	},
 	{
+		Directory:   "methods-return-plain-resource",
+		Description: "Test returning plain Resource objects from methods",
+		Skip:        codegen.NewStringSet("dotnet/any"),
+	},
+	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
 	},
@@ -166,6 +173,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "replace-on-change",
 		Description: "Simple use of replaceOnChange in schema",
+	},
+	{
+		Directory:   "simple-resource-with-aliases",
+		Description: "Simple schema with a resource that has aliases",
 	},
 	{
 		Directory:        "resource-property-overlap",
@@ -234,6 +245,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/compile"),
 	},
 	{
+		Directory:   "array-of-enum-map",
+		Description: "A schema with an array of maps where the values are enums. Issue pulumi/pulumi#14734",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
 		Directory:   "azure-native-nested-types",
 		Description: "Condensed example of nested collection types from Azure Native",
 		Skip:        codegen.NewStringSet("go/any"),
@@ -286,7 +302,9 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		// Google Native has its own import aliases, so those should be respected, unless there are local aliases.
 		// AWS Classic doesn't have any import aliases, so none should be used, unless there are local aliases.
 		Description: "Ensure external import aliases are honored, and any local import aliases override them",
-		Skip:        allLanguages.Except("go/any"),
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		// Skip:        allLanguages.Except("go/any"),
+		Skip: allLanguages,
 	},
 	{
 		Directory:   "external-python-same-module-name",
@@ -357,9 +375,65 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
+		Directory:   "unions-inside-arrays",
+		Description: "A schema with a union type inside an array",
+	},
+	{
+		Directory:   "assets-and-archives",
+		Description: "A schema with assets and archives",
+	},
+	{
 		Directory:   "regress-py-14012",
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
 		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "regress-py-14539",
+		Description: "Regresses https://github.com/pulumi/pulumi/issues/14539",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "output-funcs-go-generics-only",
+		Description: "Tests targeting the $fn_output code generation feature, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "plain-and-default-go-generics-only",
+		Description: "resource with a plain default property works, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "secrets-go-generics-only",
+		Description: "Generate a resource with secret properties, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "simple-enum-schema-go-generics-only",
+		Description: "Simple schema with enum types, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "simple-plain-schema-go-generics-only",
+		Description: "Simple schema with plain properties, only for Go generics == generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "assets-and-archives-go-generics-only",
+		Description: "Testing generating a schema with assets and archives for go using generics-only",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "urn-id-properties",
+		Description: "Testing urn and id properties in valid locations",
+	},
+	{
+		Directory:   "regress-py-12980",
+		Description: "Import resources across modules",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "unions-inline",
+		Description: "Testing the use of unions/oneOf in the schema inline with the property definition.",
 	},
 }
 

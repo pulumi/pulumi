@@ -1,8 +1,10 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -108,7 +110,7 @@ type GoalPlan struct {
 	// the type of resource.
 	Type tokens.Type
 	// the name for the resource's URN.
-	Name tokens.QName
+	Name string
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
 	// the resource's checked input properties we expect to change.
@@ -522,7 +524,7 @@ func (rp *ResourcePlan) checkGoal(
 
 	if rp.Goal == nil {
 		// If the plan goal is nil it expected a delete
-		return fmt.Errorf("resource unexpectedly not deleted")
+		return errors.New("resource unexpectedly not deleted")
 	}
 
 	// Check that either both resources are custom resources or both are component resources.
@@ -573,7 +575,7 @@ func (rp *ResourcePlan) checkGoal(
 	default:
 		expected := "no value"
 		if rp.Goal.DeleteBeforeReplace != nil {
-			expected = fmt.Sprintf("%v", *rp.Goal.DeleteBeforeReplace)
+			expected = strconv.FormatBool(*rp.Goal.DeleteBeforeReplace)
 		}
 		return fmt.Errorf("deleteBeforeReplace changed (expected %v)", expected)
 	}

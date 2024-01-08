@@ -16,7 +16,7 @@ func newResource(name string) *resource.State {
 	ty := tokens.Type("test")
 	return &resource.State{
 		Type:    ty,
-		URN:     resource.NewURN(tokens.QName("teststack"), tokens.PackageName("pkg"), ty, ty, tokens.QName(name)),
+		URN:     resource.NewURN(tokens.QName("teststack"), tokens.PackageName("pkg"), ty, ty, name),
 		Inputs:  make(resource.PropertyMap),
 		Outputs: make(resource.PropertyMap),
 	}

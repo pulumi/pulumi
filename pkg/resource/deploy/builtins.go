@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -30,6 +31,7 @@ import (
 type builtinProvider struct {
 	context context.Context
 	cancel  context.CancelFunc
+	diag    diag.Sink
 
 	backendClient BackendClient
 	resources     *resourceMap
@@ -37,13 +39,14 @@ type builtinProvider struct {
 	organization  tokens.Name
 }
 
-func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, plugctx *plugin.Context, organization tokens.Name) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, d diag.Sink, plugctx *plugin.Context, organization tokens.Name) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
 		cancel:        cancel,
 		backendClient: backendClient,
 		resources:     resources,
+		diag:          d,
 		plugctx:       plugctx,
 		organization:  organization,
 	}
@@ -98,7 +101,12 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 		return nil, nil, fmt.Errorf("unrecognized resource type '%v'", urn.Type())
 	}
 
-	var name resource.PropertyValue
+	// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
+	// call Check first.
+	msg := "The \"pulumi:pulumi:StackReference\" resource type is deprecated. " +
+		"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
+	p.diag.Warningf(diag.Message(urn, msg))
+
 	for k := range inputs {
 		if k != "name" {
 			return nil, []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}}, nil
@@ -178,6 +186,12 @@ func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	contract.Requiref(id != "", "id", "must not be empty")
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
+	for k := range inputs {
+		if k != "name" {
+			return plugin.ReadResult{}, resource.StatusUnknown, fmt.Errorf("unknown property \"%v\"", k)
+		}
+	}
+
 	outputs, err := p.readStackReference(state)
 	if err != nil {
 		return plugin.ReadResult{}, resource.StatusUnknown, err
@@ -214,7 +228,7 @@ func createConfigValue(rawValue interface{}) (string, error) {
 	return string(configValueJSON), nil
 }
 
-func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name string, parent resource.URN,
 	inputs resource.PropertyMap, options plugin.ConstructOptions,
 ) (plugin.ConstructResult, error) {
 	if typ == "pulumi:pulumi:Stack" {
@@ -542,13 +556,13 @@ func (p *builtinProvider) StreamInvoke(
 	tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error,
 ) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("the builtin provider does not implement streaming invokes")
+	return nil, errors.New("the builtin provider does not implement streaming invokes")
 }
 
 func (p *builtinProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions,
 ) (plugin.CallResult, error) {
-	return plugin.CallResult{}, fmt.Errorf("the builtin provider does not implement call")
+	return plugin.CallResult{}, errors.New("the builtin provider does not implement call")
 }
 
 func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {

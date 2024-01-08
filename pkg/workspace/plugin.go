@@ -38,7 +38,7 @@ type InstallPluginError struct {
 func (err *InstallPluginError) Error() string {
 	var server string
 	if err.Spec.PluginDownloadURL != "" {
-		server = fmt.Sprintf(" --server %s", err.Spec.PluginDownloadURL)
+		server = " --server " + err.Spec.PluginDownloadURL
 	}
 
 	if err.Spec.Version != nil {
@@ -59,6 +59,7 @@ func (err *InstallPluginError) Unwrap() error {
 
 func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, msg string)) (*semver.Version, error) {
 	util.SetKnownPluginDownloadURL(&pluginSpec)
+	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginSpec.GetLatestVersion()
@@ -69,7 +70,7 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
-		log(diag.Infoerr, fmt.Sprintf("Downloading provider: %s", pluginSpec.Name))
+		log(diag.Infoerr, "Downloading provider: "+pluginSpec.Name)
 		return stream
 	}
 

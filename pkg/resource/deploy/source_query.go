@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -51,7 +52,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 ) (QuerySource, error) {
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	// TODO: pass in correct organization
-	builtins := newBuiltinProvider(client, nil, plugctx, "")
+	builtins := newBuiltinProvider(client, nil, plugctx.Diag, plugctx, "")
 
 	reg := providers.NewRegistry(plugctx.Host, false, builtins)
 
@@ -159,7 +160,7 @@ func runLangPlugin(src *querySource) error {
 
 	var name, organization string
 	if src.runinfo.Target != nil {
-		name = string(src.runinfo.Target.Name)
+		name = src.runinfo.Target.Name.String()
 		organization = string(src.runinfo.Target.Organization)
 	}
 
@@ -274,7 +275,7 @@ func newQueryResourceMonitor(
 
 	var name string
 	if runinfo.Target != nil {
-		name = string(runinfo.Target.Name)
+		name = runinfo.Target.Name.String()
 	}
 
 	queryResmon.callInfo = plugin.CallInfo{
@@ -518,14 +519,14 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 func (rm *queryResmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest,
 ) (*pulumirpc.ReadResourceResponse, error) {
-	return nil, fmt.Errorf("Query mode does not support reading resources")
+	return nil, errors.New("Query mode does not support reading resources")
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *queryResmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
-	return nil, fmt.Errorf("Query mode does not support creating, updating, or deleting resources")
+	return nil, errors.New("Query mode does not support creating, updating, or deleting resources")
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial
@@ -533,7 +534,7 @@ func (rm *queryResmon) RegisterResource(ctx context.Context,
 func (rm *queryResmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
 ) (*pbempty.Empty, error) {
-	return nil, fmt.Errorf("Query mode does not support registering resource operations")
+	return nil, errors.New("Query mode does not support registering resource operations")
 }
 
 // SupportsFeature the query resmon is able to have secrets passed to it, which may be arguments to invoke calls.

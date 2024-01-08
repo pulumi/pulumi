@@ -59,8 +59,11 @@ func TestLanguageNewSmoke(t *testing.T) {
 }
 
 // Quick sanity tests that YAML convert works.
+//
+//nolint:paralleltest // sets envvars
 func TestYamlConvertSmoke(t *testing.T) {
-	t.Parallel()
+	// make sure we can download the yaml converter plugin
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
@@ -68,10 +71,7 @@ func TestYamlConvertSmoke(t *testing.T) {
 	e.ImportDirectory("testdata/random_yaml")
 
 	// Make sure random is installed
-	out, _ := e.RunCommand("pulumi", "plugin", "ls")
-	if !strings.Contains(out, "random  resource  4.13.0") {
-		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-	}
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
@@ -105,10 +105,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/random_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -139,10 +136,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/bad_random_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -175,10 +169,7 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/component_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "convert", "--language", Languages[runtime], "--from", "pcl", "--out", "out")
@@ -361,4 +352,56 @@ func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
 	require.NoError(t, err)
 	// If we had an AWS plugin and mapping this would be "aws:ec2/instance:Instance"
 	assert.Contains(t, string(output), "\"aws:index:instance\"")
+}
+
+// Small integration test for preview --import-file
+func TestPreviewImportFile(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	e.ImportDirectory("testdata/import_node")
+
+	// Make sure random is installed
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.12.0")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "preview", "--import-file", "import.json")
+
+	expectedResources := []interface{}{
+		map[string]interface{}{
+			"id": "<PLACEHOLDER>",
+			// This isn't ideal, we don't really need to change the "name" here because it isn't used as a
+			// parent, but currently we generate unique names for all resources rather than just unique names
+			// for all parent resources.
+			"name":        "usernameRandomPet",
+			"logicalName": "username",
+			"type":        "random:index/randomPet:RandomPet",
+			"version":     "4.12.0",
+		},
+		map[string]interface{}{
+			"name":      "component",
+			"type":      "pkg:index:MyComponent",
+			"component": true,
+		},
+		map[string]interface{}{
+			"id":      "<PLACEHOLDER>",
+			"name":    "username",
+			"type":    "random:index/randomPet:RandomPet",
+			"version": "4.12.0",
+			"parent":  "component",
+		},
+	}
+
+	importBytes, err := os.ReadFile(filepath.Join(e.CWD, "import.json"))
+	require.NoError(t, err)
+	var actual map[string]interface{}
+	err = json.Unmarshal(importBytes, &actual)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, expectedResources, actual["resources"])
+	_, has := actual["nameTable"]
+	assert.False(t, has, "nameTable should not be present in import file")
 }

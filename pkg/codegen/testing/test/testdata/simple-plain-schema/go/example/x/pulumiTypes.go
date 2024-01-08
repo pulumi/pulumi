@@ -24,12 +24,12 @@ type Foo struct {
 }
 
 type FooArgs struct {
-	A pulumix.Input[bool]    `pulumi:"a"`
-	B pulumix.Input[*bool]   `pulumi:"b"`
-	C pulumix.Input[int]     `pulumi:"c"`
-	D pulumix.Input[*int]    `pulumi:"d"`
-	E pulumix.Input[string]  `pulumi:"e"`
-	F pulumix.Input[*string] `pulumi:"f"`
+	A bool    `pulumi:"a"`
+	B *bool   `pulumi:"b"`
+	C int     `pulumi:"c"`
+	D *int    `pulumi:"d"`
+	E string  `pulumi:"e"`
+	F *string `pulumi:"f"`
 }
 
 func (FooArgs) ElementType() reflect.Type {

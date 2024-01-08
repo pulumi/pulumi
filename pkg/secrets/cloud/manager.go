@@ -23,6 +23,7 @@ import (
 	"fmt"
 	netUrl "net/url"
 	"os"
+	"strings"
 
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
@@ -124,6 +125,20 @@ func (m *Manager) State() json.RawMessage               { return m.state }
 func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
 func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
 
+func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
+	info.EncryptionSalt = ""
+
+	var s cloudSecretsManagerState
+	err := json.Unmarshal(state, &s)
+	if err != nil {
+		return fmt.Errorf("unmarshalling cloud state: %w", err)
+	}
+
+	info.SecretsProvider = s.URL
+	info.EncryptedKey = base64.StdEncoding.EncodeToString(s.EncryptedKey)
+	return nil
+}
+
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for
 // envelope encryption of secrets values.
@@ -165,14 +180,33 @@ func NewCloudSecretsManager(info *workspace.ProjectStack,
 		if err != nil {
 			return nil, err
 		}
+		// gocloud.dev versions before v0.28.0 wrapped the
+		// data key in a base64.RawURLEncoding before wrapping
+		// it again in base64.StdEncoding.  We keep emulating
+		// this here for compatibility.
+		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
+			dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
+		}
 		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
 	}
 	info.SecretsProvider = secretsProvider
 
+	// We're emulating gocloud.dev's old behaviour here.  Pre
+	// v0.28.0 it used to have an inner wrapping, which we keep
+	// for compatibility (see above).  However the newer version
+	// expects this to be unwrapped, before it's used, so let's do
+	// that here.
 	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptedKey)
 	if err != nil {
 		return nil, err
 	}
+	if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
+		dataKey, err = base64.RawURLEncoding.DecodeString(string(dataKey))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	secretsManager, err = newCloudSecretsManager(secretsProvider, dataKey)
 	if err != nil {
 		return nil, err

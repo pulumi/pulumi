@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: backend/filestate
+  description: Upgrade gocloud.dev to the latest version

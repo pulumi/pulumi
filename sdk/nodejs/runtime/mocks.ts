@@ -14,11 +14,11 @@
 
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { getProject, getStack, setMockOptions } from "./settings";
+import { getStore } from "./state";
 
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
-
-const provproto = require("../proto/provider_pb.js");
-const resproto = require("../proto/resource_pb.js");
+import * as provproto from "../proto/provider_pb";
+import * as resproto from "../proto/resource_pb";
 
 /**
  * MockResourceArgs is used to construct a newResource Mock.
@@ -201,7 +201,7 @@ export class MockMonitor {
 
             const response = new resproto.RegisterResourceResponse();
             response.setUrn(urn);
-            response.setId(result.id);
+            response.setId(result.id || "");
             response.setObject(structproto.Struct.fromJavaScript(serializedState));
             callback(null, response);
         } catch (err) {
@@ -245,6 +245,20 @@ export class MockMonitor {
  * @param preview: If provided, indicates whether or not the program is running a preview. Defaults to false.
  * @param organization: If provided, the name of the Pulumi organization. Defaults to nothing.
  */
-export function setMocks(mocks: Mocks, project?: string, stack?: string, preview?: boolean, organization?: string) {
+export async function setMocks(
+    mocks: Mocks,
+    project?: string,
+    stack?: string,
+    preview?: boolean,
+    organization?: string,
+) {
     setMockOptions(new MockMonitor(mocks), project, stack, preview, organization);
+
+    // Mocks enable all features except outputValues.
+    const store = getStore();
+    store.supportsSecrets = true;
+    store.supportsResourceReferences = true;
+    store.supportsOutputValues = false;
+    store.supportsDeletedWith = true;
+    store.supportsAliasSpecs = true;
 }

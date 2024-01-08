@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,7 +93,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
 				StringV: "testStack",
-				NameV:   "testStack",
+				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -122,12 +123,11 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
-	}
-	t.Cleanup(func() { backendInstance = nil })
+	})
 
 	tmpDir := t.TempDir()
 	chdir(t, tmpDir)
@@ -189,7 +189,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
 				StringV: "testStack",
-				NameV:   "testStack",
+				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -222,12 +222,11 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
-	}
-	t.Cleanup(func() { backendInstance = nil })
+	})
 
 	tmpDir := t.TempDir()
 	chdir(t, tmpDir)

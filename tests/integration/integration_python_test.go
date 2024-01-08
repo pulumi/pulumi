@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -36,6 +37,8 @@ import (
 )
 
 // This checks that error logs are not being emitted twice
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -56,6 +59,8 @@ func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
 }
 
 // TestPrintfPython tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPrintfPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("printf", "python"),
@@ -67,6 +72,7 @@ func TestPrintfPython(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_outputs", "python"),
@@ -92,6 +98,8 @@ func TestStackOutputsPython(t *testing.T) {
 }
 
 // Tests basic configuration from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "python"),
@@ -122,6 +130,8 @@ func TestConfigBasicPython(t *testing.T) {
 }
 
 // Tests configuration error from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigMissingPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_missing", "python"),
@@ -150,6 +160,8 @@ func TestConfigMissingPython(t *testing.T) {
 }
 
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigSecretsWarnPython(t *testing.T) {
 	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
 	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
@@ -328,6 +340,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 	integration.ProgramTest(t, importerOpts)
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceWithSecretSerializationPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("secret_outputs", "python"),
@@ -370,6 +383,8 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPython3NotInstalled(t *testing.T) {
 	// TODO[pulumi/pulumi#6304]
 	t.Skip("Temporarily skipping failing test - pulumi/pulumi#6304")
@@ -400,6 +415,8 @@ func TestPython3NotInstalled(t *testing.T) {
 }
 
 // Tests custom resource type name of dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-resource-type-name"),
@@ -415,6 +432,7 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialValuesPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("partial_values", "python"),
@@ -426,6 +444,8 @@ func TestPartialValuesPython(t *testing.T) {
 }
 
 // Tests a resource with a large (>4mb) string prop in Python
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestLargeResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("large_resource", "python"),
@@ -436,6 +456,8 @@ func TestLargeResourcePython(t *testing.T) {
 }
 
 // Test enum outputs
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEnumOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("enums", "python"),
@@ -453,6 +475,8 @@ func TestEnumOutputsPython(t *testing.T) {
 }
 
 // Test to ensure Pylint is clean.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonPylint(t *testing.T) {
 	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	var opts *integration.ProgramTestOptions
@@ -487,6 +511,8 @@ func TestPythonPylint(t *testing.T) {
 
 // Test Python SDK codegen to ensure <Resource>Args and traditional keyword args work.
 func TestPythonResourceArgs(t *testing.T) {
+	t.Parallel()
+
 	testdir := filepath.Join("python", "resource_args")
 
 	// Generate example library from schema.
@@ -517,18 +543,22 @@ func TestPythonResourceArgs(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 			filepath.Join(testdir, "lib"),
 		},
-		Quick: true,
+		Quick:      true,
+		NoParallel: true,
 	})
 }
 
 // Test to ensure that internal stacks are hidden
 func TestPythonStackTruncate(t *testing.T) {
+	t.Parallel()
+
 	cases := []string{
 		"normal",
 		"main_specified",
 		"main_dir_specified",
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, name := range cases {
 		// Test the program.
 		t.Run(name, func(t *testing.T) {
@@ -576,6 +606,8 @@ func TestPythonStackTruncate(t *testing.T) {
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowPython(t *testing.T) {
+	t.Parallel()
+
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
@@ -597,6 +629,7 @@ func TestConstructSlowPython(t *testing.T) {
 		},
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
+		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -643,6 +676,7 @@ func TestConstructPlainPython(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -675,6 +709,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownPython(t *testing.T) {
+	t.Parallel()
 	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
@@ -698,6 +733,8 @@ func TestConstructMethodsPython(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -720,18 +757,22 @@ func TestConstructMethodsPython(t *testing.T) {
 }
 
 func TestConstructMethodsUnknownPython(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
 func TestConstructMethodsResourcesPython(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
 func TestConstructMethodsErrorsPython(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
 func TestConstructMethodsProviderPython(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsProvider(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
@@ -754,6 +795,8 @@ func TestConstructProviderPython(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -775,6 +818,7 @@ func TestConstructProviderPython(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGetResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("get_resource", "python"),
@@ -788,6 +832,7 @@ func TestGetResourcePython(t *testing.T) {
 func TestPythonAwaitOutputs(t *testing.T) {
 	t.Parallel()
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("SuccessSimple", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "success"),
@@ -810,6 +855,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("SuccessMultipleOutputs", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "multiple_outputs"),
@@ -843,6 +889,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("CreateWithinApply", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "create_inside_apply"),
@@ -865,6 +912,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("ErrorHandlingSuccess", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "error_handling"),
@@ -887,6 +935,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("FailureSimple", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"
@@ -906,6 +955,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("FailureWithExportedOutput", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"
@@ -944,6 +994,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("FailureMultipleOutputs", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"
@@ -984,7 +1035,10 @@ func TestPythonAwaitOutputs(t *testing.T) {
 }
 
 // Test dict key translations.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonTranslation(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "translation"),
 		Dependencies: []string{
@@ -995,6 +1049,7 @@ func TestPythonTranslation(t *testing.T) {
 }
 
 func TestComponentProviderSchemaPython(t *testing.T) {
+	t.Parallel()
 	// TODO[https://github.com/pulumi/pulumi/issues/12365] we no longer have shim files so there's no native
 	// binary for the testComponentProviderSchema to just exec. It _ought_ to be rewritten to use the plugin
 	// host framework so that it starts the component up the same as all the other tests are doing (via
@@ -1018,7 +1073,7 @@ func TestAboutPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(dir)
@@ -1029,11 +1084,14 @@ func TestAboutPython(t *testing.T) {
 }
 
 func TestConstructOutputValuesPython(t *testing.T) {
+	t.Parallel()
 	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
 // TestResourceRefsGetResourcePython tests that invoking the built-in 'pulumi:pulumi:getResource' function
 // returns resource references for any resource reference in a resource's state.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceRefsGetResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("resource_refs_get_resource", "python"),
@@ -1045,6 +1103,8 @@ func TestResourceRefsGetResourcePython(t *testing.T) {
 }
 
 // TestDeletedWithPython tests the DeletedWith resource option.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDeletedWithPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("deleted_with", "python"),
@@ -1067,6 +1127,8 @@ func TestConstructProviderPropagationPython(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/9411
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDuplicateOutputPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "duplicate-output"),
@@ -1087,4 +1149,35 @@ func TestConstructProviderExplicitPython(t *testing.T) {
 	testConstructProviderExplicit(t, "python", []string{
 		filepath.Join("..", "..", "sdk", "python", "env", "src"),
 	})
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13551
+//
+//nolint:paralleltest // ProgramTestManualLifeCycle calls t.Parallel()
+func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
+	t.Skip("Temporarily skipping flakey test - pulumi/pulumi#14708")
+
+	stdout := &bytes.Buffer{}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "implicit-dependency-cycles"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Stdout: stdout,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Contains(
+				t, stdout.String(),
+				"RuntimeError: We have detected a circular dependency involving a resource of type "+
+					"my:module:Child-1 named a-child-1.")
+			assert.Contains(
+				t, stdout.String(),
+				"Please review any `depends_on`, `parent` or other dependency relationships between "+
+					"your resources to ensure no cycles have been introduced in your program.")
+		},
+	})
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	t.Cleanup(pt.TestCleanUp)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview")
 }

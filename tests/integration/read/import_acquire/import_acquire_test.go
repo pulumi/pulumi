@@ -10,6 +10,8 @@ import (
 )
 
 // Test that the engine is capable of assuming control of a resource that was external.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestImportAcquire(t *testing.T) {
 	t.Skipf("import does not yet work with dynamic providers")
 

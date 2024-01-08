@@ -49,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -80,7 +79,7 @@ type UpgradeOptions struct {
 	//
 	// If this function is not specified,
 	// stacks without projects will be skipped during the upgrade.
-	ProjectsForDetachedStacks func(stacks []tokens.Name) (projects []tokens.Name, err error)
+	ProjectsForDetachedStacks func(stacks []tokens.StackName) (projects []tokens.Name, err error)
 }
 
 // Backend extends the base backend interface with specific information about local backends.
@@ -121,7 +120,7 @@ type localBackend struct {
 }
 
 type localBackendReference struct {
-	name    tokens.Name
+	name    tokens.StackName
 	project tokens.Name
 
 	// A thread-safe way to get the current project.
@@ -139,7 +138,7 @@ type localBackendReference struct {
 func (r *localBackendReference) String() string {
 	// If project is blank this is a legacy non-project scoped stack reference, just return the name.
 	if r.project == "" {
-		return string(r.name)
+		return r.name.String()
 	}
 
 	if r.currentProject != nil {
@@ -148,7 +147,7 @@ func (r *localBackendReference) String() string {
 		// we take the current project (if present) into account.
 		// If the project names match, we can elide them.
 		if proj != nil && string(r.project) == string(proj.Name) {
-			return string(r.name)
+			return r.name.String()
 		}
 	}
 
@@ -156,7 +155,7 @@ func (r *localBackendReference) String() string {
 	return fmt.Sprintf("organization/%s/%s", r.project, r.name)
 }
 
-func (r *localBackendReference) Name() tokens.Name {
+func (r *localBackendReference) Name() tokens.StackName {
 	return r.name
 }
 
@@ -355,7 +354,7 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 		return fmt.Errorf("read old references: %w", err)
 	}
 	sort.Slice(olds, func(i, j int) bool {
-		return olds[i].Name() < olds[j].Name()
+		return olds[i].Name().String() < olds[j].Name().String()
 	})
 
 	// There's no limit to the number of stacks we need to upgrade.
@@ -392,7 +391,7 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 	if opts.ProjectsForDetachedStacks != nil {
 		var (
 			// Names of stacks in 'olds' that don't have a project
-			detached []tokens.Name
+			detached []tokens.StackName
 
 			// reverseIdx[i] is the index of detached[i]
 			// in olds and projects.
@@ -563,7 +562,7 @@ func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Proj
 func (b *localBackend) getReference(ref backend.StackReference) (*localBackendReference, error) {
 	stackRef, ok := ref.(*localBackendReference)
 	if !ok {
-		return nil, fmt.Errorf("bad stack reference type")
+		return nil, errors.New("bad stack reference type")
 	}
 	return stackRef, stackRef.Validate()
 }
@@ -590,19 +589,19 @@ func (b *localBackend) SetCurrentProject(project *workspace.Project) {
 func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	d diag.Sink,
 ) (backend.PolicyPack, error) {
-	return nil, fmt.Errorf("File state backend does not support resource policy")
+	return nil, errors.New("File state backend does not support resource policy")
 }
 
 func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
 	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error,
 ) {
-	return apitype.ListPolicyGroupsResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
+	return apitype.ListPolicyGroupsResponse{}, nil, errors.New("File state backend does not support resource policy")
 }
 
 func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
 	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
-	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
+	return apitype.ListPolicyPacksResponse{}, nil, errors.New("File state backend does not support resource policy")
 }
 
 func (b *localBackend) SupportsTags() bool {
@@ -698,10 +697,6 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 	if _, err := b.stackExists(ctx, localStackRef); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
-	}
-
-	if err = validation.ValidateStackProperties(stackName.Name().String(), nil); err != nil {
-		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	_, err = b.saveStack(ctx, localStackRef, nil, nil)
@@ -827,30 +822,32 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 	}
 
 	// Get the current state from the stack to be renamed.
-	stk, err := b.GetStack(ctx, oldRef)
+	chk, err := b.getCheckpoint(ctx, oldRef)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 
-	// TODO: This should work on the Checkpoint data directly, there's no need to deserialize to a snapshot
-	// really but that's currently how RenameStack is written.
-	snap, err := stk.Snapshot(ctx, stack.DefaultSecretsProvider)
-	if err != nil {
-		return err
-	}
-
-	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
-	if snap != nil {
+	// If we have a checkpoint, we need to rename the URNs inside it to use the new stack name.
+	if chk != nil && chk.Latest != nil {
 		project, has := newRef.Project()
 		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
-
-		if err = edit.RenameStack(snap, newRef.name, tokens.PackageName(project)); err != nil {
+		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project)); err != nil {
 			return err
 		}
 	}
 
+	chkJSON, err := encoding.JSON.Marshal(chk)
+	if err != nil {
+		return fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
+	versionedCheckpoint := &apitype.VersionedCheckpoint{
+		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Checkpoint: json.RawMessage(chkJSON),
+	}
+
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(ctx, newRef, snap, nil); err != nil {
+	if _, _, err = b.saveCheckpoint(ctx, newRef, versionedCheckpoint); err != nil {
 		return err
 	}
 
@@ -888,14 +885,14 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
+	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
@@ -973,7 +970,6 @@ func (b *localBackend) apply(
 		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
 	}
 
-	stackName := stackRef.FullyQualifiedName()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
@@ -992,7 +988,7 @@ func (b *localBackend) apply(
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go display.ShowEvents(
-		strings.ToLower(actionLabel), kind, stackName.Name(), op.Proj.Name, "",
+		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.

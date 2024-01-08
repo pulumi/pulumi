@@ -15,11 +15,15 @@
 package main
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc/cmd/esc/cli"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -70,4 +74,17 @@ func (defaultESCWorkspace) StoreAccount(key string, account workspace.Account, c
 
 func (defaultESCWorkspace) GetAccount(key string) (workspace.Account, error) {
 	return workspace.GetAccount(key)
+}
+
+func printESCDiagnostics(out io.Writer, diags []apitype.EnvironmentDiagnostic) {
+	for _, d := range diags {
+		if d.Range != nil {
+			fmt.Fprintf(out, "%v:", d.Range.Environment)
+			if d.Range.Begin.Line != 0 {
+				fmt.Fprintf(out, "%v:%v:", d.Range.Begin.Line, d.Range.Begin.Column)
+			}
+			fmt.Fprintf(out, " ")
+		}
+		fmt.Fprintf(out, "%v\n", d.Summary)
+	}
 }

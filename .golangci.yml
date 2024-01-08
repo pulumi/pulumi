@@ -9,6 +9,8 @@ run:
     - third_party$
     - vendor$
   skip-dirs-use-default: false
+  build-tags:
+  - all
 linters:
   enable-all: false
   enable:
@@ -26,6 +28,7 @@ linters:
     - unconvert
     - unused
     - paralleltest
+    - perfsprint
 
 linters-settings:
   nakedret:

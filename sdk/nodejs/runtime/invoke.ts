@@ -33,9 +33,9 @@ import { DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
 
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-const providerproto = require("../proto/provider_pb.js");
-const resourceproto = require("../proto/resource_pb.js");
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
+import * as providerproto from "../proto/provider_pb";
+import * as resourceproto from "../proto/resource_pb";
 
 /**
  * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`
@@ -210,7 +210,7 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
     const req = new resourceproto.ResourceInvokeRequest();
     req.setTok(tok);
     req.setArgs(obj);
-    req.setProvider(provider);
+    req.setProvider(provider || "");
     req.setVersion(opts.version || "");
     req.setAcceptresources(!utils.disableResourceReferences);
     return req;
@@ -430,7 +430,7 @@ async function createCallRequest(
     const req = new providerproto.CallRequest();
     req.setTok(tok);
     req.setArgs(obj);
-    req.setProvider(provider);
+    req.setProvider(provider || "");
     req.setVersion(version || "");
     req.setPlugindownloadurl(pluginDownloadURL || "");
 

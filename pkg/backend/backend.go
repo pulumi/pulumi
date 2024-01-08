@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ type StackReference interface {
 	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that information is not part of the StackName() we pass to the engine.
-	Name() tokens.Name
+	Name() tokens.StackName
 
 	// Project is the project name that this stack belongs to.
 	// For old filestate backends this will return false.
@@ -179,7 +179,9 @@ type Backend interface {
 	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	Preview(
+		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+	) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	// Import imports resources into a stack.
@@ -220,13 +222,26 @@ type Backend interface {
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
 type EnvironmentsBackend interface {
+	CreateEnvironment(
+		ctx context.Context,
+		org string,
+		name string,
+		yaml []byte,
+	) (apitype.EnvironmentDiagnostics, error)
+
+	CheckYAMLEnvironment(
+		ctx context.Context,
+		org string,
+		yaml []byte,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
 	// OpenYAMLEnvironment opens a literal environment.
 	OpenYAMLEnvironment(
 		ctx context.Context,
 		org string,
 		yaml []byte,
 		duration time.Duration,
-	) (*esc.Environment, []apitype.EnvironmentDiagnostic, error)
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

@@ -34,7 +34,7 @@ func Refresh(
 	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events <- NewCancelEvent() }()
 
 	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
 	if err != nil {

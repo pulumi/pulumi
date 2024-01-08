@@ -6,7 +6,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -87,7 +87,7 @@ func generateComplexTestDependencyGraph(
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
-			_, id, _, err := monitor.RegisterResource(urn.Type(), string(urn.Name()), true, deploytest.ResourceOptions{
+			_, id, _, err := monitor.RegisterResource(urn.Type(), urn.Name(), true, deploytest.ResourceOptions{
 				Provider: provider,
 				Inputs:   inputs,
 			})

@@ -33,6 +33,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -71,6 +72,9 @@ type newArgs struct {
 	templateNameOrURL string
 	yes               bool
 	listTemplates     bool
+	aiPrompt          string
+	aiLanguage        httpstate.PulumiAILanguage
+	templateMode      bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -142,6 +146,39 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	if args.templateNameOrURL == "" {
+		// Try to read the current project
+		project, _, err := readProject()
+		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+			return err
+		}
+
+		b, err := currentBackend(ctx, project, opts)
+		if err != nil {
+			return err
+		}
+
+		var aiOrTemplate string
+		if shouldPromptForAIOrTemplate(args, b) {
+			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
+		} else {
+			aiOrTemplate = deriveAIOrTemplate(args)
+		}
+		if err != nil {
+			return err
+		}
+		if aiOrTemplate == "ai" {
+			checkedBackend, ok := b.(httpstate.Backend)
+			if !ok {
+				return errors.New("please log in to Pulumi Cloud to use Pulumi AI")
+			}
+			conversationURL, err := runAINew(ctx, args, opts, checkedBackend)
+			if err != nil {
+				return err
+			}
+			args.templateNameOrURL = conversationURL
+		}
+	}
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
@@ -453,7 +490,13 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new git@github.com:<user>/<private-repo>`\n" +
 			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
 			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
-			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n",
+			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n" +
+			"To create a project using Pulumi AI, either select `ai` from the first selection, " +
+			"or provide any of the following:\n" +
+			"* `pulumi new --ai \"<prompt>\"`\n" +
+			"* `pulumi new --language <language>`\n" +
+			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
+			"Any missing but required information will be prompted for.\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
@@ -535,6 +578,17 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.listTemplates, "list-templates", "l", false,
 		"List locally installed templates and exit")
+	cmd.PersistentFlags().StringVar(
+		&args.aiPrompt, "ai", "", "Prompt to use for Pulumi AI",
+	)
+	cmd.PersistentFlags().Var(
+		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
+			fmt.Sprintf("(must be one of %s)", httpstate.PulumiAILanguagesClause),
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.templateMode, "template-mode", "t", false,
+		"Run in template mode, which will skip prompting for AI or Template functionality",
+	)
 
 	return cmd
 }
@@ -730,7 +784,7 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 }
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, directory string) error {
+func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, runtime.Name(), runtime.Options())
@@ -738,7 +792,7 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(directory); err != nil {
+	if err = lang.InstallDependencies(ctx.Pwd, main); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}
@@ -766,7 +820,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 			cd = fmt.Sprintf("\"%s\"", cd)
 		}
 
-		cd = fmt.Sprintf("cd %s", cd)
+		cd = "cd " + cd
 		commands = append(commands, cd)
 	}
 
@@ -1050,7 +1104,9 @@ func promptForValue(
 			value = defaultValue
 		} else {
 			var prompt string
-			if defaultValue == "" {
+			if valueType == "" && defaultValue == "" {
+				// No need to print anything, this is a full line / blank prompt.
+			} else if defaultValue == "" {
 				prompt = opts.Color.Colorize(
 					fmt.Sprintf("%s%s%s", colors.SpecPrompt, valueType, colors.Reset))
 			} else {
@@ -1093,7 +1149,12 @@ func promptForValue(
 			} else if validationError != nil {
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
-				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
+				var err error
+				if valueType == "" {
+					err = fmt.Errorf("Sorry, '%s' is not valid: %w", value, validationError)
+				} else {
+					err = fmt.Errorf("Sorry, '%s' is not a valid %s: %w", value, valueType, validationError)
+				}
 				if yes {
 					return "", err
 				}

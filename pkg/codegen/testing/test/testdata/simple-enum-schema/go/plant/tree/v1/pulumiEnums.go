@@ -149,10 +149,11 @@ func (o DiameterPtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pu
 	}).(pulumi.Float64PtrOutput)
 }
 
-// DiameterInput is an input type that accepts DiameterArgs and DiameterOutput values.
-// You can construct a concrete instance of `DiameterInput` via:
+// DiameterInput is an input type that accepts values of the Diameter enum
+// A concrete instance of `DiameterInput` can be one of the following:
 //
-//	DiameterArgs{...}
+//	DiameterSixinch
+//	DiameterTwelveinch
 type DiameterInput interface {
 	pulumi.Input
 
@@ -331,10 +332,11 @@ func (o FarmPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.
 	}).(pulumi.StringPtrOutput)
 }
 
-// FarmInput is an input type that accepts FarmArgs and FarmOutput values.
-// You can construct a concrete instance of `FarmInput` via:
+// FarmInput is an input type that accepts values of the Farm enum
+// A concrete instance of `FarmInput` can be one of the following:
 //
-//	FarmArgs{...}
+//	Farm_Pulumi_Planters_Inc_
+//	Farm_Plants_R_Us
 type FarmInput interface {
 	pulumi.Input
 
@@ -518,10 +520,12 @@ func (o RubberTreeVarietyPtrOutput) ToStringPtrOutputWithContext(ctx context.Con
 	}).(pulumi.StringPtrOutput)
 }
 
-// RubberTreeVarietyInput is an input type that accepts RubberTreeVarietyArgs and RubberTreeVarietyOutput values.
-// You can construct a concrete instance of `RubberTreeVarietyInput` via:
+// RubberTreeVarietyInput is an input type that accepts values of the RubberTreeVariety enum
+// A concrete instance of `RubberTreeVarietyInput` can be one of the following:
 //
-//	RubberTreeVarietyArgs{...}
+//	RubberTreeVarietyBurgundy
+//	RubberTreeVarietyRuby
+//	RubberTreeVarietyTineke
 type RubberTreeVarietyInput interface {
 	pulumi.Input
 
@@ -758,10 +762,12 @@ func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pul
 	}).(pulumi.StringPtrOutput)
 }
 
-// TreeSizeInput is an input type that accepts TreeSizeArgs and TreeSizeOutput values.
-// You can construct a concrete instance of `TreeSizeInput` via:
+// TreeSizeInput is an input type that accepts values of the TreeSize enum
+// A concrete instance of `TreeSizeInput` can be one of the following:
 //
-//	TreeSizeArgs{...}
+//	TreeSizeSmall
+//	TreeSizeMedium
+//	TreeSizeLarge
 type TreeSizeInput interface {
 	pulumi.Input
 

@@ -77,7 +77,7 @@ type Provider interface {
 		inputs, outputs resource.PropertyMap, timeout float64) (resource.Status, error)
 
 	// Construct creates a new component resource.
-	Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap,
+	Construct(info ConstructInfo, typ tokens.Type, name string, parent resource.URN, inputs resource.PropertyMap,
 		options ConstructOptions) (ConstructResult, error)
 
 	// Invoke dynamically executes a built-in function in the provider.

@@ -46,7 +46,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			tokens.PackageName("resource/test"),
 			tokens.Type(""),
 			tokens.Type("Test"),
-			tokens.QName("resource-x"),
+			"resource-x",
 		),
 		true,
 		false,
@@ -200,7 +200,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
@@ -214,7 +214,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
@@ -445,7 +445,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 				ID:     "vol-044ba5ad2bd959bc1",
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.NoError(t, err)
 }
 
@@ -457,10 +457,9 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 		Resources: []apitype.ResourceV3{
 			{},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, "resource missing required 'urn' field", err.Error())
+	assert.EqualError(t, err, "resource missing required 'urn' field")
 
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
 
@@ -470,10 +469,9 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 				URN: resource.URN(urn),
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf("resource '%s' missing required 'type' field", urn), err.Error())
+	assert.EqualError(t, err, fmt.Sprintf("resource '%s' missing required 'type' field", urn))
 
 	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
@@ -484,10 +482,9 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 				ID:     "vol-044ba5ad2bd959bc1",
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn), err.Error())
+	assert.EqualError(t, err, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn))
 }
 
 func TestSerializePropertyValue(t *testing.T) {

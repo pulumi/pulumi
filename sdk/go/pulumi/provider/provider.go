@@ -153,6 +153,16 @@ func NewCallResult(result interface{}) (*CallResult, error) {
 	}, nil
 }
 
+// NewCallResult expects a pointer to a struct to return multiple properties. When a function call
+// returns only a single property, use NewSingletonCallResult instead.
+func NewSingletonCallResult[T any](result T) (*CallResult, error) {
+	type wrapper struct {
+		// Wrapping the value in a "res" magic property by convention.
+		Result T `pulumi:"res"`
+	}
+	return NewCallResult(&wrapper{result})
+}
+
 type constructFunc func(ctx *pulumi.Context, typ, name string, inputs map[string]interface{},
 	options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error)
 

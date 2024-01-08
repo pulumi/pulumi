@@ -50,6 +50,8 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(settings.secretsProvider, "abc");
             assert.strictEqual(settings.config!["plain"], "plain");
             assert.strictEqual(settings.config!["secure"].secure, "secret");
+            await ws.saveStackSettings("dev", settings);
+            assert.strictEqual(settings.secretsProvider, "abc");
         }
     });
 
@@ -138,6 +140,53 @@ describe("LocalWorkspace", () => {
         afterEach(async () => {
             await workspace.removeStack(stackName);
         });
+    });
+    it(`Environment functions`, async function () {
+        // Skipping test because the required environments are in the moolumi org.
+        if (getTestOrg() !== "moolumi") {
+            this.skip();
+            return;
+        }
+        const projectName = "node_env_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+
+        // Adding non-existent env should fail.
+        await assert.rejects(
+            stack.addEnvironments("non-existent-env"),
+            "stack.addEnvironments('non-existent-env') did not reject",
+        );
+
+        // Adding existing envs should succeed.
+        await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
+
+        let envs = await stack.listEnvironments();
+        assert.deepStrictEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"]);
+
+        const config = await stack.getAllConfig();
+        assert.strictEqual(config["node_env_test:new_key"].value, "test_value");
+        assert.strictEqual(config["node_env_test:also"].value, "business");
+
+        // Removing existing env should succeed.
+        await stack.removeEnvironment("automation-api-test-env");
+        envs = await stack.listEnvironments();
+        assert.deepStrictEqual(envs, ["automation-api-test-env-2"]);
+
+        const alsoConfig = await stack.getConfig("also");
+        assert.strictEqual(alsoConfig.value, "business");
+        await assert.rejects(stack.getConfig("new_key"), "stack.getConfig('new_key') did not reject");
+
+        await stack.removeEnvironment("automation-api-test-env-2");
+        envs = await stack.listEnvironments();
+        assert.strictEqual(envs.length, 0);
+        await assert.rejects(stack.getConfig("also"), "stack.getConfig('also') did not reject");
+
+        await ws.removeStack(stackName);
     });
     it(`Config`, async () => {
         const projectName = "node_test";
@@ -296,26 +345,27 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     });
+    // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
+    // config from the file. This means we can't remove the stack at the end of the test.
+    // We should also not include secrets in this config, because the secret encryption is only valid within
+    // the context of a stack and org, and running this test in different orgs will fail if there are secrets.
     it(`nested_config`, async () => {
-        if (getTestOrg() !== "pulumi-test") {
-            return;
-        }
         const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
 
         const allConfig = await stack.getAllConfig();
         const outerVal = allConfig["nested_config:outer"];
-        assert.strictEqual(outerVal.secret, true);
-        assert.strictEqual(outerVal.value, '{"inner":"my_secret","other":"something_else"}');
+        assert.strictEqual(outerVal.secret, false);
+        assert.strictEqual(outerVal.value, '{"inner":"my_value","other":"something_else"}');
 
         const listVal = allConfig["nested_config:myList"];
         assert.strictEqual(listVal.secret, false);
         assert.strictEqual(listVal.value, '["one","two","three"]');
 
         const outer = await stack.getConfig("outer");
-        assert.strictEqual(outer.secret, true);
-        assert.strictEqual(outer.value, '{"inner":"my_secret","other":"something_else"}');
+        assert.strictEqual(outer.secret, false);
+        assert.strictEqual(outer.value, '{"inner":"my_value","other":"something_else"}');
 
         const list = await stack.getConfig("myList");
         assert.strictEqual(list.secret, false);
@@ -951,6 +1001,32 @@ describe("LocalWorkspace", () => {
 
         // pulumi up
         await assert.rejects(stack.up());
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`runs successfully after a previous failure`, async () => {
+        let shouldFail = true;
+        const program = async () => {
+            if (shouldFail) {
+                Promise.reject(new Error());
+            }
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up rejects the first time
+        await assert.rejects(stack.up());
+
+        // pulumi up succeeds the 2nd time
+        shouldFail = false;
+        await assert.doesNotReject(stack.up());
 
         // pulumi destroy
         const destroyRes = await stack.destroy();

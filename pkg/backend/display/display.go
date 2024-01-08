@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -60,9 +61,14 @@ func printPermalink(out io.Writer, opts Options, message, permalink string) {
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
 func ShowEvents(
-	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
+	op string, action apitype.UpdateKind, stack tokens.StackName, proj tokens.PackageName,
 	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
+	// Need to filter the engine events here to exclude any internal events.
+	events = channel.FilterRead(events, func(e engine.Event) bool {
+		return !e.Internal()
+	})
+
 	if opts.EventLogPath != "" {
 		events, done = startEventLogger(events, done, opts)
 	}
@@ -179,7 +185,7 @@ func isRootStack(step engine.StepEventMetadata) bool {
 }
 
 func isRootURN(urn resource.URN) bool {
-	return urn != "" && urn.Type() == resource.RootStackType
+	return urn != "" && urn.QualifiedType() == resource.RootStackType
 }
 
 // shouldShow returns true if a step should show in the output.

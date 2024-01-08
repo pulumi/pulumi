@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global = (function() { return this || window || global || self || Function('return this')(); }).call(null);
+var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 goog.exportSymbol('proto.pulumirpc.codegen.Diagnostic', null, global);
 goog.exportSymbol('proto.pulumirpc.codegen.DiagnosticSeverity', null, global);

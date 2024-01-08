@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -100,9 +101,6 @@ func compileProgram(programDirectory string, outfile string) (string, error) {
 // runParams defines the command line arguments accepted by this program.
 type runParams struct {
 	tracing       string
-	binary        string
-	buildTarget   string
-	root          string
 	engineAddress string
 }
 
@@ -111,16 +109,12 @@ type runParams struct {
 func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
 	var p runParams
 	flag.StringVar(&p.tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.StringVar(&p.binary, "binary", "", "Look on path for a binary executable with this name")
-	flag.StringVar(&p.buildTarget, "buildTarget", "", "Path to use to output the compiled Pulumi Go program")
-	flag.StringVar(&p.root, "root", "", "Project root path to use")
+	flag.String("binary", "", "[obsolete] Look on path for a binary executable with this name")
+	flag.String("buildTarget", "", "[obsolete] Path to use to output the compiled Pulumi Go program")
+	flag.String("root", "", "[obsolete] Project root path to use")
 
 	if err := flag.Parse(args); err != nil {
 		return nil, err
-	}
-
-	if p.binary != "" && p.buildTarget != "" {
-		return nil, errors.New("binary and buildTarget cannot both be specified")
 	}
 
 	// Pluck out the engine so we can do logging, etc.
@@ -188,7 +182,7 @@ func (cmd *mainCmd) Run(p *runParams) error {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(p.engineAddress, cwd, p.tracing, p.binary, p.buildTarget)
+			host := newLanguageHost(p.engineAddress, cwd, p.tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -216,17 +210,45 @@ type goLanguageHost struct {
 	cwd           string
 	engineAddress string
 	tracing       string
-	binary        string
-	buildTarget   string
 }
 
-func newLanguageHost(engineAddress, cwd, tracing, binary, buildTarget string) pulumirpc.LanguageRuntimeServer {
+type goOptions struct {
+	// Look on path for a binary executable with this name.
+	binary string
+	// Path to use to output the compiled Pulumi Go program.
+	buildTarget string
+}
+
+func parseOptions(root string, options map[string]interface{}) (goOptions, error) {
+	var goOptions goOptions
+	if binary, ok := options["binary"]; ok {
+		if binary, ok := binary.(string); ok {
+			goOptions.binary = binary
+		} else {
+			return goOptions, errors.New("binary option must be a string")
+		}
+	}
+
+	if buildTarget, ok := options["buildTarget"]; ok {
+		if args, ok := buildTarget.(string); ok {
+			goOptions.buildTarget = args
+		} else {
+			return goOptions, errors.New("buildTarget option must be a string")
+		}
+	}
+
+	if goOptions.binary != "" && goOptions.buildTarget != "" {
+		return goOptions, errors.New("binary and buildTarget cannot both be specified")
+	}
+
+	return goOptions, nil
+}
+
+func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		cwd:           cwd,
 		tracing:       tracing,
-		binary:        binary,
-		buildTarget:   buildTarget,
 	}
 }
 
@@ -641,7 +663,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
-	moduleDir, gomod, err := host.loadGomod(gobin, req.Pwd)
+	moduleDir, gomod, err := host.loadGomod(gobin, req.Info.ProgramDirectory)
 	if err != nil {
 		// Don't fail if not using Go modules.
 		logging.V(5).Infof("GetRequiredPlugins: Error reading go.mod: %v", err)
@@ -667,7 +689,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
 				m.Path,
 				m.Version,
-				err.Error(),
+				err,
 			)
 			continue
 		}
@@ -739,6 +761,11 @@ func runProgram(pwd, bin string, env []string) *pulumirpc.RunResponse {
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
 	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
 	env, err := host.constructEnv(req)
@@ -748,10 +775,10 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	// the user can explicitly opt in to using a binary executable by specifying
 	// runtime.options.binary in the Pulumi.yaml
-	if host.binary != "" {
-		bin, err := executable.FindExecutable(host.binary)
+	if opts.binary != "" {
+		bin, err := executable.FindExecutable(opts.binary)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find '%s' executable: %w", host.binary, err)
+			return nil, fmt.Errorf("unable to find '%s' executable: %w", opts.binary, err)
 		}
 		return runProgram(req.Pwd, bin, env), nil
 	}
@@ -763,7 +790,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			return nil, fmt.Errorf("unable to find 'go' executable: %w", err)
 		}
 
-		cmd := exec.Command(gobin, "run", req.Program)
+		cmd := exec.Command(gobin, "run", req.Info.ProgramDirectory)
 		cmd.Dir = host.cwd
 		status, err := runCmdStatus(cmd, env)
 		if err != nil {
@@ -787,11 +814,11 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(req.Program, host.buildTarget)
+	program, err := compileProgram(req.Info.ProgramDirectory, opts.buildTarget)
 	if err != nil {
 		return nil, fmt.Errorf("error in compiling Go: %w", err)
 	}
-	if host.buildTarget == "" {
+	if opts.buildTarget == "" {
 		// If there is no specified buildTarget, delete the temporary program after running it.
 		defer os.Remove(program)
 	}
@@ -823,8 +850,8 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	maybeAppendEnv(pulumi.EnvStack, req.GetStack())
 	maybeAppendEnv(pulumi.EnvConfig, config)
 	maybeAppendEnv(pulumi.EnvConfigSecretKeys, configSecretKeys)
-	maybeAppendEnv(pulumi.EnvDryRun, fmt.Sprintf("%v", req.GetDryRun()))
-	maybeAppendEnv(pulumi.EnvParallel, fmt.Sprint(req.GetParallel()))
+	maybeAppendEnv(pulumi.EnvDryRun, strconv.FormatBool(req.GetDryRun()))
+	maybeAppendEnv(pulumi.EnvParallel, strconv.Itoa(int(req.GetParallel())))
 	maybeAppendEnv(pulumi.EnvMonitor, req.GetMonitorAddress())
 	maybeAppendEnv(pulumi.EnvEngine, host.engineAddress)
 
@@ -890,7 +917,7 @@ func (host *goLanguageHost) InstallDependencies(
 	}
 
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
-	cmd.Dir = req.Directory
+	cmd.Dir = req.Info.ProgramDirectory
 	cmd.Env = os.Environ()
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
@@ -941,7 +968,7 @@ func (host *goLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("couldn't find go binary: %w", err)
 	}
 
-	_, gomod, err := host.loadGomod(gobin, req.Pwd)
+	_, gomod, err := host.loadGomod(gobin, req.Info.ProgramDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("load go.mod: %w", err)
 	}
@@ -964,9 +991,9 @@ func (host *goLanguageHost) GetProgramDependencies(
 func (host *goLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
+	logging.V(5).Infof("Attempting to run go plugin in %s", req.Info.ProgramDirectory)
 
-	program, err := compileProgram(req.Program, "")
+	program, err := compileProgram(req.Info.ProgramDirectory, "")
 	if err != nil {
 		return fmt.Errorf("error in compiling Go: %w", err)
 	}
@@ -1118,8 +1145,11 @@ func (host *goLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
-		return nil, diags
+		return &pulumirpc.GeneratePackageResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
 	files, err := codegen.GeneratePackage("pulumi-language-go", pkg)
 	if err != nil {
@@ -1140,7 +1170,9 @@ func (host *goLanguageHost) GeneratePackage(
 		}
 	}
 
-	return &pulumirpc.GeneratePackageResponse{}, nil
+	return &pulumirpc.GeneratePackageResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {

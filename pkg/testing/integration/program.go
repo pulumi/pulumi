@@ -647,6 +647,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
 	}
+	if overrides.PostPrepareProject != nil {
+		opts.PostPrepareProject = overrides.PostPrepareProject
+	}
 	if overrides.LocalProviders != nil {
 		opts.LocalProviders = append(opts.LocalProviders, overrides.LocalProviders...)
 	}
@@ -735,7 +738,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
 	disableCheckpointBackups := env.SelfManagedDisableCheckpointBackups.Var().Name()
-	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", disableCheckpointBackups))
+	opts.Env = append(opts.Env, disableCheckpointBackups+"=1")
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
 	if !opts.NoParallel && !opts.DestroyOnCleanup {
@@ -880,7 +883,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 // MakeTempBackend creates a temporary backend directory which will clean up on test exit.
 func MakeTempBackend(t *testing.T) string {
 	tempDir := t.TempDir()
-	return fmt.Sprintf("file://%s", filepath.ToSlash(tempDir))
+	return "file://" + filepath.ToSlash(tempDir)
 }
 
 func (pt *ProgramTester) getBin() (string, error) {
@@ -1552,7 +1555,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 	if f := pt.opts.ExportStateValidator; f != nil {
 		bytes, err := os.ReadFile(filepath.Join(dir, "stack.json"))
 		if err != nil {
-			pt.t.Logf("Failed to read stack.json: %s", err.Error())
+			pt.t.Logf("Failed to read stack.json: %s", err)
 			return err
 		}
 		pt.t.Logf("Calling ExportStateValidator")
@@ -1824,7 +1827,7 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	var rootResource apitype.ResourceV3
 	var outputs map[string]interface{}
 	for _, res := range deployment.Resources {
-		if res.Type == resource.RootStackType {
+		if res.Type == resource.RootStackType && res.Parent == "" {
 			rootResource = res
 			outputs = res.Outputs
 		}
@@ -2303,7 +2306,7 @@ func getVirtualenvBinPath(cwd, bin string, pt *ProgramTester) (string, error) {
 	}
 	virtualenvBinPath := filepath.Join(virtualEnvBasePath, "bin", bin)
 	if runtime.GOOS == windowsOS {
-		virtualenvBinPath = filepath.Join(virtualEnvBasePath, "Scripts", fmt.Sprintf("%s.exe", bin))
+		virtualenvBinPath = filepath.Join(virtualEnvBasePath, "Scripts", bin+".exe")
 	}
 	if info, err := os.Stat(virtualenvBinPath); err != nil || info.IsDir() {
 		return "", fmt.Errorf("Expected %s to exist in virtual environment at %q", bin, virtualenvBinPath)
@@ -2406,7 +2409,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	if pt.opts.RunBuild {
 		outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
 		if runtime.GOOS == windowsOS {
-			outBin = fmt.Sprintf("%s.exe", outBin)
+			outBin = outBin + ".exe"
 		}
 		err = pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
 		if err != nil {

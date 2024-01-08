@@ -35,7 +35,7 @@ func TestLegacyReferenceStore_referencePaths(t *testing.T) {
 	ref, err := store.ParseReference("foo")
 	require.NoError(t, err)
 
-	assert.Equal(t, tokens.Name("foo"), ref.Name())
+	assert.Equal(t, tokens.MustParseStackName("foo"), ref.Name())
 	assert.Equal(t, tokens.QName("foo"), ref.FullyQualifiedName())
 	assert.Equal(t, ".pulumi/stacks/foo", ref.StackBasePath())
 	assert.Equal(t, ".pulumi/history/foo", ref.HistoryDir())
@@ -71,7 +71,7 @@ func TestProjectReferenceStore_ParseReference(t *testing.T) {
 		give string
 
 		fqname  tokens.QName
-		name    tokens.Name
+		name    string
 		project tokens.Name
 		str     string
 	}{
@@ -111,7 +111,7 @@ func TestProjectReferenceStore_ParseReference(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.fqname, ref.FullyQualifiedName())
-			assert.Equal(t, tt.name, ref.Name())
+			assert.Equal(t, tokens.MustParseStackName(tt.name), ref.Name())
 			proj, has := ref.Project()
 			assert.True(t, has)
 			assert.Equal(t, tt.project, proj)
@@ -182,7 +182,7 @@ func TestProjectReferenceStore_ParseReference_errors(t *testing.T) {
 		{
 			desc:    "long project stack name",
 			give:    "organization/foo/" + strings.Repeat("a", 101),
-			wantErr: "stack names are limited to 100 characters",
+			wantErr: "a stack name cannot exceed 100 characters",
 		},
 		{
 			desc:    "no current project",

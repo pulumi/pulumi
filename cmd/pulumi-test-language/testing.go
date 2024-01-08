@@ -21,6 +21,8 @@ import (
 	"runtime/debug"
 	"sync"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -46,7 +48,7 @@ type L struct {
 
 	// These names are from the runtime.Frame.Function field.
 	// They're fully qualified with package names.
-	helpers map[string]struct{}
+	helpers mapset.Set[string]
 }
 
 // Helper marks the calling function as a test helper function.
@@ -65,9 +67,9 @@ func (l *L) Helper() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.helpers == nil {
-		l.helpers = make(map[string]struct{})
+		l.helpers = mapset.NewSet[string]()
 	}
-	l.helpers[frame.Function] = struct{}{}
+	l.helpers.Add(frame.Function)
 }
 
 // FailNow marks this test as having failed and halts execution.
@@ -145,7 +147,7 @@ func (l *L) callerFrame(skip int) (frame runtime.Frame, ok bool) {
 	frames := runtime.CallersFrames(pc[:n])
 	for {
 		frame, more := frames.Next()
-		if _, ok := l.helpers[frame.Function]; !ok {
+		if !l.helpers.Contains(frame.Function) {
 			// Not a helper. Use this frame.
 			return frame, true
 		}

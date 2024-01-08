@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
@@ -97,7 +98,7 @@ func NewPolicyAnalyzer(
 	// All other languages have the runtime appended, e.g. "policy-<runtime>".
 	policyAnalyzerName := "policy"
 	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
+		policyAnalyzerName = "policy-" + proj.Runtime.Name()
 	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
@@ -186,7 +187,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
-		Name:       string(name),
+		Name:       name,
 		Properties: mprops,
 		Options:    marshalResourceOptions(r.Options),
 		Provider:   provider,
@@ -243,7 +244,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
 			Urn:                  string(resource.URN),
 			Type:                 string(resource.Type),
-			Name:                 string(resource.Name),
+			Name:                 resource.Name,
 			Properties:           props,
 			Options:              marshalResourceOptions(resource.Options),
 			Provider:             provider,
@@ -300,7 +301,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 	resp, err := a.client.Remediate(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
-		Name:       string(name),
+		Name:       name,
 		Properties: mprops,
 		Options:    marshalResourceOptions(r.Options),
 		Provider:   provider,
@@ -343,7 +344,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
-	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
+	label := a.label() + ".GetAnalyzerInfo()"
 	logging.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
@@ -421,7 +422,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 
 // GetPluginInfo returns this plugin's information.
 func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
-	label := fmt.Sprintf("%s.GetPluginInfo()", a.label())
+	label := a.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
@@ -448,7 +449,7 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 }
 
 func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
-	label := fmt.Sprintf("%s.Configure(...)", a.label())
+	label := a.label() + ".Configure(...)"
 	logging.V(7).Infof("%s executing", label)
 
 	if len(policyConfig) == 0 {
@@ -546,7 +547,7 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	return &pulumirpc.AnalyzerProviderResource{
 		Urn:        string(provider.URN),
 		Type:       string(provider.Type),
-		Name:       string(provider.Name),
+		Name:       provider.Name,
 		Properties: props,
 	}, nil
 }
@@ -778,13 +779,13 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 			maybeAppendEnv("PULUMI_NODEJS_ORGANIZATION", opts.Organization)
 			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
 			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
-			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", strconv.FormatBool(opts.DryRun))
 		}
 
 		maybeAppendEnv("PULUMI_ORGANIZATION", opts.Organization)
 		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
-		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
 	}
 
 	return env, nil

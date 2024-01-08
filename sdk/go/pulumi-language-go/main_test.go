@@ -52,11 +52,6 @@ func TestParseRunParams(t *testing.T) {
 			},
 		},
 		{
-			desc:    "binary buildTarget exclusivity",
-			give:    []string{"-binary", "foo", "-buildTarget=bar"},
-			wantErr: "binary and buildTarget cannot both be specified",
-		},
-		{
 			desc: "tracing",
 			give: []string{"-tracing", "foo.trace", "localhost:1234"},
 			want: runParams{
@@ -68,7 +63,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "binary",
 			give: []string{"-binary", "foo", "localhost:1234"},
 			want: runParams{
-				binary:        "foo",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -76,7 +70,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "buildTarget",
 			give: []string{"-buildTarget", "foo", "localhost:1234"},
 			want: runParams{
-				buildTarget:   "foo",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -84,7 +77,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "root",
 			give: []string{"-root", "path/to/root", "localhost:1234"},
 			want: runParams{
-				root:          "path/to/root",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -123,12 +115,12 @@ func TestGetPlugin(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		Name      string
-		Mod       *modInfo
-		Expected  *pulumirpc.PluginDependency
-		ShouldErr bool
-		JSON      *plugin.PulumiPluginJSON
-		JSONPath  string
+		Name          string
+		Mod           *modInfo
+		Expected      *pulumirpc.PluginDependency
+		ExpectedError string
+		JSON          *plugin.PulumiPluginJSON
+		JSONPath      string
 	}{
 		{
 			Name: "valid-pulumi-mod",
@@ -158,7 +150,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/moolumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "invalid-version-module",
@@ -166,7 +158,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "42-42-42",
 			},
-			ShouldErr: true,
+			ExpectedError: "module does not have semver compatible version",
 		},
 		{
 			Name: "pulumi-pulumi-mod",
@@ -174,7 +166,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi/sdk",
 				Version: "v1.14.0",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "beta-pulumi-module",
@@ -216,9 +208,9 @@ func TestGetPlugin(t *testing.T) {
 			},
 		},
 		{
-			Name:      "non-resource",
-			Mod:       &modInfo{},
-			ShouldErr: true,
+			Name:          "non-resource",
+			Mod:           &modInfo{},
+			ExpectedError: "module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
 				Resource: false,
 			},
@@ -228,7 +220,7 @@ func TestGetPlugin(t *testing.T) {
 			Mod: &modInfo{
 				Dir: "/not/real",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
 				Name:    "thing2",
 				Version: "v1.2.3",
@@ -277,7 +269,7 @@ func TestGetPlugin(t *testing.T) {
 				Name:     "name",
 				Resource: true,
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "nested-wrong-folder",
@@ -290,7 +282,7 @@ func TestGetPlugin(t *testing.T) {
 				Name:     "name",
 				Resource: true,
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 	}
 
@@ -314,8 +306,8 @@ func TestGetPlugin(t *testing.T) {
 			}
 
 			actual, err := c.Mod.getPlugin(t.TempDir())
-			if c.ShouldErr {
-				assert.Error(t, err)
+			if c.ExpectedError != "" {
+				assert.EqualError(t, err, c.ExpectedError)
 			} else {
 				// Kind must be resource. We can thus exclude it from the test.
 				if c.Expected.Kind == "" {
@@ -409,7 +401,7 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
-	host := newLanguageHost("0.0.0.0:0", progDir, "", "", "")
+	host := newLanguageHost("0.0.0.0:0", progDir, "")
 	ctx := context.Background()
 
 	t.Run("GetRequiredPlugins", func(t *testing.T) {
@@ -419,6 +411,11 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		res, err := host.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{
 			Project: "prog",
 			Pwd:     progDir,
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    progDir,
+				ProgramDirectory: progDir,
+				EntryPoint:       ".",
+			},
 		})
 		require.NoError(t, err)
 
@@ -439,6 +436,11 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 			Project:                "prog",
 			Pwd:                    progDir,
 			TransitiveDependencies: true,
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    progDir,
+				ProgramDirectory: progDir,
+				EntryPoint:       ".",
+			},
 		})
 		require.NoError(t, err)
 

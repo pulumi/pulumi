@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,10 @@
 package edit
 
 import (
-	"fmt"
-
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -153,10 +152,10 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 	return resources
 }
 
-// RenameStack changes the `stackName` component of every URN in a snapshot. In addition, it rewrites the name of
+// RenameStack changes the `stackName` component of every URN in a deployment. In addition, it rewrites the name of
 // the root Stack resource itself. May optionally change the project/package name as well.
-func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.PackageName) error {
-	contract.Requiref(snap != nil, "snap", "must not be nil")
+func RenameStack(deployment *apitype.DeploymentV3, newName tokens.StackName, newProject tokens.PackageName) error {
+	contract.Requiref(deployment != nil, "deployment", "must not be nil")
 
 	rewriteUrn := func(u resource.URN) resource.URN {
 		project := u.Project()
@@ -166,14 +165,14 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.P
 
 		// The pulumi:pulumi:Stack resource's name component is of the form `<project>-<stack>` so we want
 		// to rename the name portion as well.
-		if u.QualifiedType() == "pulumi:pulumi:Stack" {
-			return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), tokens.QName(project)+"-"+newName.Q())
+		if u.QualifiedType() == resource.RootStackType {
+			return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), string(tokens.QName(project)+"-"+newName.Q()))
 		}
 
-		return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), u.Name())
+		return resource.NewURN(tokens.QName(newName.String()), project, "", u.QualifiedType(), u.Name())
 	}
 
-	rewriteState := func(res *resource.State) {
+	rewriteState := func(res *apitype.ResourceV3) {
 		contract.Assertf(res != nil, "resource state must not be nil")
 
 		res.URN = rewriteUrn(res.URN)
@@ -203,16 +202,12 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.P
 		}
 	}
 
-	if err := snap.VerifyIntegrity(); err != nil {
-		return fmt.Errorf("checkpoint is invalid: %w", err)
+	for i := range deployment.Resources {
+		rewriteState(&deployment.Resources[i])
 	}
 
-	for _, res := range snap.Resources {
-		rewriteState(res)
-	}
-
-	for _, ops := range snap.PendingOperations {
-		rewriteState(ops.Resource)
+	for i := range deployment.PendingOperations {
+		rewriteState(&deployment.PendingOperations[i].Resource)
 	}
 
 	return nil

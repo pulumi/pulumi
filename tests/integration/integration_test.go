@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ func TestStackTagValidation(t *testing.T) {
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr,
-			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods")
+			"a stack name may only contain alphanumeric, hyphens, underscores, or periods")
 	})
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {
@@ -823,15 +823,19 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 		Quick:      true,
 		NoParallel: true, // already called by tests
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			gotProviders := make(map[tokens.QName]tokens.QName) // resource name => provider name
+			gotProviders := make(map[string]string) // resource name => provider name
 
 			for _, res := range stackInfo.Deployment.Resources {
 				if res.URN.Type() == "testprovider:index:Random" {
-					gotProviders[res.URN.Name()] = resource.URN(res.Provider).Name()
+					ref, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					if err == nil {
+						gotProviders[res.URN.Name()] = ref.URN().Name()
+					}
 				}
 			}
 
-			assert.Equal(t, map[tokens.QName]tokens.QName{
+			assert.Equal(t, map[string]string{
 				"uses_default":       "default",
 				"uses_provider":      "explicit",
 				"uses_providers":     "explicit",
@@ -850,7 +854,7 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 	runComponentSetup(t, testDir)
 
 	validate := func(t *testing.T, resources []apitype.ResourceV3) {
-		urns := make(map[tokens.QName]resource.URN) // name => URN
+		urns := make(map[string]resource.URN) // name => URN
 		for _, res := range resources {
 			urns[res.URN.Name()] = res.URN
 		}
@@ -1068,4 +1072,85 @@ func TestStackRmConfig_Cloud(t *testing.T) {
 	output, _ := e.RunCommand("pulumi", "whoami")
 	organization := strings.TrimSpace(output)
 	testStackRmConfig(e, organization)
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestAdvisoryPolicyPack(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	stackName, err := resource.NewUniqueHex("advisory-policy-pack", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
+	assert.NoError(t, err)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
+	assert.NoError(t, err)
+	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestMandatoryPolicyPack(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	stackName, err := resource.NewUniqueHex("mandatory-policy-pack", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
+	assert.NoError(t, err)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
+	assert.Error(t, err)
+	assert.Contains(t, stdout, "error: update failed")
+	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestMultiplePolicyPacks(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	stackName, err := resource.NewUniqueHex("multiple-policy-pack", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
+	assert.NoError(t, err)
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
+	assert.NoError(t, err)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
+		"--policy-pack", "advisory_policy_pack",
+		"--policy-pack", "mandatory_policy_pack")
+	assert.Error(t, err)
+	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
+	assert.Contains(t, stdout, "error: update failed")
+	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
 }

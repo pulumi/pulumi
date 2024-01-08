@@ -528,7 +528,7 @@ func copyToMap(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest re
 
 	keyType, elemType := typ.Key(), typ.Elem()
 	if keyType.Kind() != reflect.String {
-		return fmt.Errorf("map keys must be assignable from type string")
+		return errors.New("map keys must be assignable from type string")
 	}
 
 	result := reflect.MakeMap(typ)
@@ -564,6 +564,7 @@ func copyToStruct(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest
 		}
 
 		tag := typ.Field(i).Tag.Get("pulumi")
+		tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 		if tag == "" {
 			continue
 		}

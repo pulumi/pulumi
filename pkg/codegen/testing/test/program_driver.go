@@ -110,6 +110,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS IAM Policy",
 	},
 	{
+		Directory:   "read-file-func",
+		Description: "ReadFile function translation works",
+	},
+	{
 		Directory:   "python-regress-10914",
 		Description: "Python regression test for #10914",
 		Skip:        allProgLanguages.Except("python"),
@@ -147,6 +151,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "azure-sa",
 		Description: "Azure SA",
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "kubernetes-operator",
@@ -165,6 +171,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "kubernetes-template",
 		Description: "K8s Template",
+	},
+	{
+		Directory:   "kubernetes-template-quoted",
+		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
 	},
 	{
 		Directory:   "random-pet",
@@ -266,9 +276,17 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Multiline string literals",
 	},
 	{
+		Directory:   "config-variables",
+		Description: "Basic program with a bunch of config variables",
+		// TODO[https://github.com/pulumi/pulumi/issues/14957] - object config variables are broken here
+		SkipCompile: codegen.NewStringSet("go", "dotnet"),
+	},
+	{
 		Directory:   "regress-11176",
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
 		Skip:        allProgLanguages.Except("go"),
+		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
+		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "throw-not-implemented",

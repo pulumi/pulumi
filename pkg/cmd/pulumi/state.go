@@ -226,6 +226,9 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
+		if *snap == nil {
+			return "", errors.New("no snapshot found")
+		}
 	}
 	urnList := make([]string, len((*snap).Resources))
 	for i, r := range (*snap).Resources {
@@ -255,7 +258,7 @@ func getNewResourceName() (tokens.QName, error) {
 			if tokens.IsQName(ans.(string)) {
 				return nil
 			}
-			return fmt.Errorf("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
+			return errors.New("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
 		}))
 	if err != nil {
 		return "", err

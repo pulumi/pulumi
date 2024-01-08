@@ -117,12 +117,12 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "dotnet": "6",
     "go": "1.20.x",
     "nodejs": "16.x",
-    "python": "3.9.x",
+    "python": "3.8.x",
 }
 
 CURRENT_VERSION_SET = {
     "name": "current",
-    "dotnet": "7",
+    "dotnet": "8",
     "go": "1.21.x",
     "nodejs": "20.x",
     "python": "3.11.x",
@@ -412,9 +412,6 @@ def get_matrix(
         pkg_tests = run_list_tests(item.package_dir, tags)
 
         test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags)
-
-    if kind == JobKind.ACCEPTANCE_TEST:
-        platforms = list(map(lambda p: "windows-16core-2022" if p == "windows-latest" else p, platforms))
 
     return {
         "test-suite": test_suites,

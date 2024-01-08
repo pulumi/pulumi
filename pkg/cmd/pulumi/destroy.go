@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -351,7 +353,7 @@ func newDestroyCmd() *cobra.Command {
 		"Serialize the destroy diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
@@ -421,16 +423,16 @@ func separateProtected(resources []*resource.State) (
 	/*unprotected*/ []*resource.State /*protected*/, []*resource.State,
 ) {
 	dg := graph.NewDependencyGraph(resources)
-	transitiveProtected := graph.ResourceSet{}
+	transitiveProtected := mapset.NewSet[*resource.State]()
 	for _, r := range resources {
 		if r.Protect {
 			rProtected := dg.TransitiveDependenciesOf(r)
-			rProtected[r] = true
-			transitiveProtected.UnionWith(rProtected)
+			rProtected.Add(r)
+			transitiveProtected = transitiveProtected.Union(rProtected)
 		}
 	}
-	allResources := graph.NewResourceSetFromArray(resources)
-	return allResources.SetMinus(transitiveProtected).ToArray(), transitiveProtected.ToArray()
+	allResources := mapset.NewSet(resources...)
+	return allResources.Difference(transitiveProtected).ToSlice(), transitiveProtected.ToSlice()
 }
 
 // Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.

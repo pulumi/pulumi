@@ -92,6 +92,28 @@ export interface Workspace {
      */
     postCommandCallback(stackName: string): Promise<void>;
     /**
+     * Adds environments to the end of a stack's import list. Imported environments are merged in order
+     * per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param stackName The stack to operate on
+     * @param environments The names of the environments to add to the stack's configuration
+     */
+    addEnvironments(stackName: string, ...environments: string[]): Promise<void>;
+    /**
+     * Returns the list of environments associated with the specified stack name.
+     *
+     * @param stackName The stack to operate on
+     */
+    listEnvironments(stackName: string): Promise<string[]>;
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param stackName The stack to operate on
+     * @param environment The name of the environment to remove from the stack's configuration
+     */
+    removeEnvironment(stackName: string, environment: string): Promise<void>;
+    /**
      * Returns the value associated with the specified stack name and key,
      * scoped to the Workspace.
      *

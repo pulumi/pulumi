@@ -39,6 +39,7 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
+      enable-coverage: true
     secrets: inherit
 
   prepare-release:
@@ -56,9 +57,52 @@ jobs:
       project: ${{ github.repository }}
     secrets: inherit
 
+  dev-release:
+    name: dev-release
+    needs: [info, ci, prepare-release]
+    uses: ./.github/workflows/ci-dev-release.yml
+    permissions:
+      contents: write
+      # To sign artifacts.
+      id-token: write
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+    secrets: inherit
+
+  update-dev-version:
+    name: update-dev-version
+    needs: [dev-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+      - name: Install Pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.46
+          cache: enable
+      - name: Git describe
+        id: ghd
+        uses: proudust/gh-describe@v1
+      - name: Dispatch event to docs repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        run: |
+          version="${{ steps.ghd.outputs.describe }}"
+          # the git describe output includes a 'v' prefix, but we
+          # don't expect that in the latest-dev-version file.  Strip
+          # it here.
+          version="${version#v}"
+          pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version="$version"
+
   ci-ok:
     name: ci-ok
-    needs: [ci, prepare-release]
+    needs: [ci, prepare-release, dev-release, update-dev-version]
     if: always() # always report a status
     runs-on: ubuntu-latest
     steps:
@@ -67,6 +111,12 @@ jobs:
         run: exit 1
       - name: Release failed
         if: ${{ needs.prepare-release.result != 'success' }}
+        run: exit 1
+      - name: Dev release failed
+        if: ${{ needs.dev-release.result != 'success' }}
+        run: exit 1
+      - name: Update dev version failed
+        if: ${{ needs.update-dev-version.result != 'success' }}
         run: exit 1
       - name: CI succeeded
         run: exit 0

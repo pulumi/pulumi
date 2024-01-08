@@ -387,7 +387,7 @@ export class LocalWorkspace implements Workspace {
             }
         }
         const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${foundExt}`);
-        const serializeSettings = settings as any;
+        const serializeSettings = { ...settings } as any;
         let contents;
 
         // Transform the keys to the serialized representation that we expect.
@@ -443,6 +443,68 @@ export class LocalWorkspace implements Workspace {
      */
     async removeStack(stackName: string): Promise<void> {
         await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
+    }
+    /**
+     * Adds environments to the end of a stack's import list. Imported environments are merged in order
+     * per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param stackName The stack to operate on
+     * @param environments The names of the environments to add to the stack's configuration
+     */
+    async addEnvironments(stackName: string, ...environments: string[]): Promise<void> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if (ver.compare("3.95.0") < 0) {
+            throw new Error(`addEnvironments requires Pulumi version >= 3.95.0`);
+        }
+
+        await this.runPulumiCmd(["config", "env", "add", ...environments, "--stack", stackName, "--yes"]);
+    }
+    /**
+     * Returns the list of environments associated with the specified stack name.
+     *
+     * @param stackName The stack to operate on
+     */
+    async listEnvironments(stackName: string): Promise<string[]> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.99.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
+        if (ver.compare("3.99.0") < 0) {
+            throw new Error(`listEnvironments requires Pulumi version >= 3.99.0`);
+        }
+
+        const result = await this.runPulumiCmd(["config", "env", "ls", "--stack", stackName, "--json"]);
+        return JSON.parse(result.stdout);
+    }
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param stackName The stack to operate on
+     * @param environment The name of the environment to remove from the stack's configuration
+     */
+    async removeEnvironment(stackName: string, environment: string): Promise<void> {
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if (ver.compare("3.95.0") < 0) {
+            throw new Error(`removeEnvironments requires Pulumi version >= 3.95.0`);
+        }
+
+        await this.runPulumiCmd(["config", "env", "rm", environment, "--stack", stackName, "--yes"]);
     }
     /**
      * Returns the value associated with the specified stack name and key,

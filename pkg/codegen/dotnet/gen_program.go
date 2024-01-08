@@ -293,7 +293,7 @@ func GenerateProject(
 			continue
 		}
 
-		packageName := fmt.Sprintf("Pulumi.%s", namespaceName(map[string]string{}, p.Name))
+		packageName := "Pulumi." + namespaceName(map[string]string{}, p.Name)
 		if langInfo, found := p.Language["csharp"]; found {
 			csharpInfo, ok := langInfo.(CSharpPackageInfo)
 			if ok {
@@ -670,7 +670,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 						switch configType.ElementType.(type) {
 						case *model.ObjectType:
 							objectTypeName := configObjectTypeName(configVar.Name())
-							inputType = fmt.Sprintf("%s[]", objectTypeName)
+							inputType = objectTypeName + "[]"
 						}
 					case *model.MapType:
 						// for map(T) where T is an object type, generate Dictionary<string, T>
@@ -734,7 +734,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 				g.Fprintf(w, "        %s\n\n", preambleHelperMethodBody)
 			}
 
-			token := fmt.Sprintf("components:index:%s", componentName)
+			token := "components:index:" + componentName
 			if len(configVars) == 0 {
 				// There is no args class
 				g.Fgenf(w, "%spublic %s(string name, ComponentResourceOptions? opts = null)\n",
@@ -935,6 +935,14 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 
+	if r.Schema != nil {
+		if val1, ok := r.Schema.Language["csharp"]; ok {
+			val2, ok := val1.(CSharpResourceInfo)
+			contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+			member = val2.Name
+		}
+	}
+
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 
@@ -978,7 +986,7 @@ func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
 	if g.compatibilities[pkg] == "kubernetes20" && module != "" {
-		namespace = fmt.Sprintf("Types.Inputs.%s", namespace)
+		namespace = "Types.Inputs." + namespace
 	}
 
 	if namespace != "" {
@@ -1330,7 +1338,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	componentName := r.DeclarationName()
-	qualifiedMemberName := fmt.Sprintf("Components.%s", componentName)
+	qualifiedMemberName := "Components." + componentName
 
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
@@ -1429,7 +1437,7 @@ func computeConfigTypeParam(configName string, configType model.Type) string {
 			return typeName
 		case *model.ListType:
 			elementType := computeConfigTypeParam(configName, complexType.ElementType)
-			return fmt.Sprintf("%s[]", elementType)
+			return elementType + "[]"
 		case *model.MapType:
 			elementType := computeConfigTypeParam(configName, complexType.ElementType)
 			return fmt.Sprintf("Dictionary<string, %s>", elementType)
@@ -1509,7 +1517,7 @@ func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariab
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagWarning,
 		Summary:  message,

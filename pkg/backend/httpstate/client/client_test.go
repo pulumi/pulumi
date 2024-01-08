@@ -79,10 +79,9 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background())
 
-		assert.Error(t, unauthorizedErr)
-		assert.Equal(t, unauthorizedErr.Error(), "this command requires logging in; try running `pulumi login` first")
+		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
 	t.Run("TestRateLimitError", func(t *testing.T) {
 		t.Parallel()
@@ -92,10 +91,9 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background())
 
-		assert.Error(t, rateLimitErr)
-		assert.Equal(t, rateLimitErr.Error(), "pulumi service: request rate-limit exceeded")
+		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
 	t.Run("TestDefaultError", func(t *testing.T) {
 		t.Parallel()
@@ -105,10 +103,28 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background())
+		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background())
 
 		assert.Error(t, defaultErrorErr)
 	})
+}
+
+func TestAPIVersionResponses(t *testing.T) {
+	t.Parallel()
+
+	versionServer := newMockServer(
+		200,
+		`{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0-11-gdeadbeef"}`,
+	)
+	defer versionServer.Close()
+
+	versionClient := newMockClient(versionServer)
+	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, latestVersion.String(), "1.0.0")
+	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
+	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
 }
 
 func TestGzip(t *testing.T) {

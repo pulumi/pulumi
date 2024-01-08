@@ -26,12 +26,12 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
-import { LanguageServer, maxRPCMessageSize } from "./server";
-import { Deployment, PulumiFn, Workspace } from "./workspace";
 import { LocalWorkspace } from "./localWorkspace";
+import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
+import { Deployment, PulumiFn, Workspace } from "./workspace";
 
-const langrpc = require("../proto/language_grpc_pb.js");
+import * as langrpc from "../proto/language_grpc_pb";
 
 interface ReadlineResult {
     tail: TailFile;
@@ -454,9 +454,12 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const refPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let refResult: CommandResult;
+        try {
+            refResult = await this.runPulumiCmd(args, opts?.onOutput);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
@@ -517,9 +520,12 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const desPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let desResult: CommandResult;
+        try {
+            desResult = await this.runPulumiCmd(args, opts?.onOutput);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
@@ -529,6 +535,30 @@ Event: ${line}\n${e.toString()}`);
             stderr: desResult.stderr,
             summary: summary!,
         };
+    }
+    /**
+     * Adds environments to the end of a stack's import list. Imported environments are merged in order
+     * per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param environments The names of the environments to add to the stack's configuration
+     */
+    async addEnvironments(...environments: string[]): Promise<void> {
+        await this.workspace.addEnvironments(this.name, ...environments);
+    }
+    /**
+     * Returns the list of environments currently in the stack's import list.
+     */
+    async listEnvironments(): Promise<string[]> {
+        return this.workspace.listEnvironments(this.name);
+    }
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param environment The name of the environment to remove from the stack's configuration
+     */
+    async removeEnvironment(environment: string): Promise<void> {
+        await this.workspace.removeEnvironment(this.name, environment);
     }
     /**
      * Returns the config value associated with the specified key.

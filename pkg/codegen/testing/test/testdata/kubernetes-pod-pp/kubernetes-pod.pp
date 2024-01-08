@@ -3,6 +3,11 @@ resource bar "kubernetes:core/v1:Pod" {
     metadata = {
         namespace = "foo"
         name = "bar"
+        "labels" = {
+            "app.kubernetes.io/name" = "cilium-agent"
+            "app.kubernetes.io/part-of" = "cilium"
+            "k8s-app" = "cilium"
+        }
     }
     spec = {
         containers = [

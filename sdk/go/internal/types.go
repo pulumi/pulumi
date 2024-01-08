@@ -196,7 +196,7 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 	if o.join != nil {
 		// If this output is being resolved to another output O' with a different wait group, ensure that we
 		// don't decrement the current output's wait group until O' completes.
-		if other, ok := getOutputState(value); ok && other.join != o.join {
+		if other, ok := getOutputState(value); ok && other != nil && other.join != o.join {
 			go func() {
 				//nolint:errcheck
 				other.await(context.Background())
@@ -839,9 +839,8 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 				if !v.Type().AssignableTo(resolved.Type()) {
 					panic(fmt.Errorf("cannot convert an input of type %T to a value of type %v",
 						input, resolved.Type()))
-				} else {
-					assignInput = true
 				}
+				assignInput = true
 			}
 		}
 

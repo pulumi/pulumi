@@ -213,6 +213,12 @@ func (e *Environment) LocalURL() string {
 // GetCommandResults runs the given command and args in the Environments CWD, returning
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResults(command string, args ...string) (string, string, error) {
+	return e.GetCommandResultsIn(e.CWD, command, args...)
+}
+
+// GetCommandResultsIn runs the given command and args in the given directory, returning
+// STDOUT, STDERR, and the result of os/exec.Command{}.Run.
+func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.T.Helper()
 	e.T.Logf("Running command %v %v", command, strings.Join(args, " "))
 
@@ -227,7 +233,7 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 
 	//nolint:gas
 	cmd := exec.Command(command, args...)
-	cmd.Dir = e.CWD
+	cmd.Dir = dir
 	if e.Stdin != nil {
 		cmd.Stdin = e.Stdin
 	}
@@ -237,10 +243,10 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 	if !e.NoPassphrase {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_CONFIG_PASSPHRASE=%s", passphrase))
+		cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE="+passphrase)
 	}
 	if e.Backend != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_BACKEND_URL=%s", e.Backend))
+		cmd.Env = append(cmd.Env, "PULUMI_BACKEND_URL="+e.Backend)
 	}
 	// According to https://pkg.go.dev/os/exec#Cmd.Env:
 	//     If Env contains duplicate environment keys, only the last

@@ -13,6 +13,11 @@ func main() {
 			Metadata: &metav1.ObjectMetaArgs{
 				Namespace: pulumi.String("foo"),
 				Name:      pulumi.String("bar"),
+				Labels: pulumi.StringMap{
+					"app.kubernetes.io/name":    pulumi.String("cilium-agent"),
+					"app.kubernetes.io/part-of": pulumi.String("cilium"),
+					"k8s-app":                   pulumi.String("cilium"),
+				},
 			},
 			Spec: &corev1.PodSpecArgs{
 				Containers: []corev1.ContainerArgs{

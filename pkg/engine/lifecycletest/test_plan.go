@@ -3,10 +3,11 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"reflect"
-	"sync"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,8 +18,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -114,36 +118,57 @@ func (op TestOp) runWithContext(
 	}()
 
 	// Begin draining events.
-	var wg sync.WaitGroup
-	var firedEvents []Event
-	wg.Add(1)
-	go func() {
+	firedEventsPromise := promise.Run(func() ([]Event, error) {
+		var firedEvents []Event
 		for e := range events {
 			firedEvents = append(firedEvents, e)
 		}
-		wg.Done()
-	}()
+		return firedEvents, nil
+	})
 
 	// Run the step and its validator.
 	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
-	wg.Wait()
-	contract.IgnoreClose(journal)
+	closeErr := journal.Close()
+
+	// Wait for the events to finish. You'd think this would cancel with the callerCtx but tests explicitly use that for
+	// the deployment context, not expecting it to have any effect on the test code here. See
+	// https://github.com/pulumi/pulumi/issues/14588 for what happens if you try to use callerCtx here.
+	firedEvents, err := firedEventsPromise.Result(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if validate != nil {
 		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
 	}
+	errs := []error{opErr, closeErr}
 	if dryRun {
-		return plan, nil, opErr
+		return plan, nil, errors.Join(errs...)
 	}
 
-	snap, err := journal.Snap(target.Snapshot)
-	if opErr == nil && err != nil {
-		opErr = err
-	} else if opErr == nil && snap != nil {
-		opErr = snap.VerifyIntegrity()
+	entries := journal.Entries()
+	// Check that each possible snapshot we could have created is valid
+	var snap *deploy.Snapshot
+	for i := 0; i <= len(entries); i++ {
+		var err error
+		snap, err = entries[0:i].Snap(target.Snapshot)
+		if err != nil {
+			// if any snapshot fails to create just return this error, don't keep going
+			errs = append(errs, err)
+			snap = nil
+			break
+		}
+		err = snap.VerifyIntegrity()
+		if err != nil {
+			// Likewise as soon as one snapshot fails to validate stop checking
+			errs = append(errs, err)
+			snap = nil
+			break
+		}
 	}
-	return nil, snap, opErr
+
+	return nil, snap, errors.Join(errs...)
 }
 
 type TestStep struct {
@@ -194,7 +219,7 @@ type TestPlan struct {
 	Steps          []TestStep
 }
 
-func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
+func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
 		project = "test"
@@ -203,9 +228,9 @@ func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, ru
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.Name(p.Stack)
-	if stack == "" {
-		stack = "test"
+	stack = tokens.MustParseStackName("test")
+	if p.Stack != "" {
+		stack = tokens.MustParseStackName(p.Stack)
 	}
 	return stack, project, runtime
 }
@@ -216,7 +241,7 @@ func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) res
 	if parent != "" {
 		pt = parent.QualifiedType()
 	}
-	return resource.NewURN(stack.Q(), project, pt, typ, tokens.QName(name))
+	return resource.NewURN(stack.Q(), project, pt, typ, name)
 }
 
 func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -425,4 +450,54 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			},
 		},
 	}
+}
+
+type testBuilder struct {
+	t       *testing.T
+	loaders []*deploytest.ProviderLoader
+	snap    *deploy.Snapshot
+}
+
+func newTestBuilder(t *testing.T, snap *deploy.Snapshot) *testBuilder {
+	return &testBuilder{
+		t:       t,
+		snap:    snap,
+		loaders: slice.Prealloc[*deploytest.ProviderLoader](1),
+	}
+}
+
+func (b *testBuilder) WithProvider(name string, version string, prov *deploytest.Provider) *testBuilder {
+	loader := deploytest.NewProviderLoader("pkgA", semver.MustParse(version), func() (plugin.Provider, error) {
+		return prov, nil
+	})
+	b.loaders = append(b.loaders, loader)
+	return b
+}
+
+type Result struct {
+	snap *deploy.Snapshot
+	err  error
+}
+
+func (b *testBuilder) RunUpdate(program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error) *Result {
+	programF := deploytest.NewLanguageRuntimeF(program)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, b.loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	// Run an update for initial state.
+	var err error
+	snap, err := TestOp(Update).Run(
+		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil)
+	return &Result{
+		snap: snap,
+		err:  err,
+	}
+}
+
+// Then() is used to convey dependence between program runs via program structure.
+func (res *Result) Then(do func(snap *deploy.Snapshot, err error)) {
+	do(res.snap, res.err)
 }

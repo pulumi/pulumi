@@ -127,6 +127,10 @@ func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 	ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+		return nil, fmt.Errorf("unexpected directory to get required plugins %s", req.Info.ProgramDirectory)
+	}
+
 	if h.skipRequiredPlugins {
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
@@ -145,8 +149,8 @@ func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 func (h *L2ResourceSimpleLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	if req.Directory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Directory)
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+		return fmt.Errorf("unexpected directory to install dependencies %s", req.Info.ProgramDirectory)
 	}
 	return nil
 }

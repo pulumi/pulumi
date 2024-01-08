@@ -151,10 +151,11 @@ func (o ContainerBrightnessPtrOutput) ToFloat64PtrOutputWithContext(ctx context.
 	}).(pulumi.Float64PtrOutput)
 }
 
-// ContainerBrightnessInput is an input type that accepts ContainerBrightnessArgs and ContainerBrightnessOutput values.
-// You can construct a concrete instance of `ContainerBrightnessInput` via:
+// ContainerBrightnessInput is an input type that accepts values of the ContainerBrightness enum
+// A concrete instance of `ContainerBrightnessInput` can be one of the following:
 //
-//	ContainerBrightnessArgs{...}
+//	ContainerBrightnessZeroPointOne
+//	ContainerBrightnessOne
 type ContainerBrightnessInput interface {
 	pulumi.Input
 
@@ -203,6 +204,171 @@ const (
 	ContainerColorBlue   = ContainerColor("blue")
 	ContainerColorYellow = ContainerColor("yellow")
 )
+
+func (ContainerColor) ElementType() reflect.Type {
+	return reflect.TypeOf((*ContainerColor)(nil)).Elem()
+}
+
+func (e ContainerColor) ToContainerColorOutput() ContainerColorOutput {
+	return pulumi.ToOutput(e).(ContainerColorOutput)
+}
+
+func (e ContainerColor) ToContainerColorOutputWithContext(ctx context.Context) ContainerColorOutput {
+	return pulumi.ToOutputWithContext(ctx, e).(ContainerColorOutput)
+}
+
+func (e ContainerColor) ToContainerColorPtrOutput() ContainerColorPtrOutput {
+	return e.ToContainerColorPtrOutputWithContext(context.Background())
+}
+
+func (e ContainerColor) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
+	return ContainerColor(e).ToContainerColorOutputWithContext(ctx).ToContainerColorPtrOutputWithContext(ctx)
+}
+
+func (e ContainerColor) ToStringOutput() pulumi.StringOutput {
+	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e ContainerColor) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e ContainerColor) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e ContainerColor) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+type ContainerColorOutput struct{ *pulumi.OutputState }
+
+func (ContainerColorOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ContainerColor)(nil)).Elem()
+}
+
+func (o ContainerColorOutput) ToContainerColorOutput() ContainerColorOutput {
+	return o
+}
+
+func (o ContainerColorOutput) ToContainerColorOutputWithContext(ctx context.Context) ContainerColorOutput {
+	return o
+}
+
+func (o ContainerColorOutput) ToContainerColorPtrOutput() ContainerColorPtrOutput {
+	return o.ToContainerColorPtrOutputWithContext(context.Background())
+}
+
+func (o ContainerColorOutput) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ContainerColor) *ContainerColor {
+		return &v
+	}).(ContainerColorPtrOutput)
+}
+
+func (o ContainerColorOutput) ToStringOutput() pulumi.StringOutput {
+	return o.ToStringOutputWithContext(context.Background())
+}
+
+func (o ContainerColorOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ContainerColor) string {
+		return string(e)
+	}).(pulumi.StringOutput)
+}
+
+func (o ContainerColorOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o ContainerColorOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ContainerColor) *string {
+		v := string(e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+type ContainerColorPtrOutput struct{ *pulumi.OutputState }
+
+func (ContainerColorPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**ContainerColor)(nil)).Elem()
+}
+
+func (o ContainerColorPtrOutput) ToContainerColorPtrOutput() ContainerColorPtrOutput {
+	return o
+}
+
+func (o ContainerColorPtrOutput) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
+	return o
+}
+
+func (o ContainerColorPtrOutput) Elem() ContainerColorOutput {
+	return o.ApplyT(func(v *ContainerColor) ContainerColor {
+		if v != nil {
+			return *v
+		}
+		var ret ContainerColor
+		return ret
+	}).(ContainerColorOutput)
+}
+
+func (o ContainerColorPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o ContainerColorPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *ContainerColor) *string {
+		if e == nil {
+			return nil
+		}
+		v := string(*e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+// ContainerColorInput is an input type that accepts values of the ContainerColor enum
+// A concrete instance of `ContainerColorInput` can be one of the following:
+//
+//	ContainerColorRed
+//	ContainerColorBlue
+//	ContainerColorYellow
+type ContainerColorInput interface {
+	pulumi.Input
+
+	ToContainerColorOutput() ContainerColorOutput
+	ToContainerColorOutputWithContext(context.Context) ContainerColorOutput
+}
+
+var containerColorPtrType = reflect.TypeOf((**ContainerColor)(nil)).Elem()
+
+type ContainerColorPtrInput interface {
+	pulumi.Input
+
+	ToContainerColorPtrOutput() ContainerColorPtrOutput
+	ToContainerColorPtrOutputWithContext(context.Context) ContainerColorPtrOutput
+}
+
+type containerColorPtr string
+
+func ContainerColorPtr(v string) ContainerColorPtrInput {
+	return (*containerColorPtr)(&v)
+}
+
+func (*containerColorPtr) ElementType() reflect.Type {
+	return containerColorPtrType
+}
+
+func (in *containerColorPtr) ToContainerColorPtrOutput() ContainerColorPtrOutput {
+	return pulumi.ToOutput(in).(ContainerColorPtrOutput)
+}
+
+func (in *containerColorPtr) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(ContainerColorPtrOutput)
+}
+
+func (in *containerColorPtr) ToOutput(ctx context.Context) pulumix.Output[*ContainerColor] {
+	return pulumix.Output[*ContainerColor]{
+		OutputState: in.ToContainerColorPtrOutputWithContext(ctx).OutputState,
+	}
+}
 
 // plant container sizes
 type ContainerSize int
@@ -333,10 +499,11 @@ func (o ContainerSizePtrOutput) ToIntPtrOutputWithContext(ctx context.Context) p
 	}).(pulumi.IntPtrOutput)
 }
 
-// ContainerSizeInput is an input type that accepts ContainerSizeArgs and ContainerSizeOutput values.
-// You can construct a concrete instance of `ContainerSizeInput` via:
+// ContainerSizeInput is an input type that accepts values of the ContainerSize enum
+// A concrete instance of `ContainerSizeInput` can be one of the following:
 //
-//	ContainerSizeArgs{...}
+//	ContainerSizeFourInch
+//	ContainerSizeSixInch
 type ContainerSizeInput interface {
 	pulumi.Input
 
@@ -380,10 +547,14 @@ func (in *containerSizePtr) ToOutput(ctx context.Context) pulumix.Output[*Contai
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessInput)(nil)).Elem(), ContainerBrightness(0.1))
 	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessPtrInput)(nil)).Elem(), ContainerBrightness(0.1))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorInput)(nil)).Elem(), ContainerColor("red"))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorPtrInput)(nil)).Elem(), ContainerColor("red"))
 	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizeInput)(nil)).Elem(), ContainerSize(4))
 	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizePtrInput)(nil)).Elem(), ContainerSize(4))
 	pulumi.RegisterOutputType(ContainerBrightnessOutput{})
 	pulumi.RegisterOutputType(ContainerBrightnessPtrOutput{})
+	pulumi.RegisterOutputType(ContainerColorOutput{})
+	pulumi.RegisterOutputType(ContainerColorPtrOutput{})
 	pulumi.RegisterOutputType(ContainerSizeOutput{})
 	pulumi.RegisterOutputType(ContainerSizePtrOutput{})
 }

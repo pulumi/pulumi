@@ -88,7 +88,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 	if strings.Contains(orgName, "/") {
 		return errors.New("organization name must not contain slashes")
 	}
-	policyPackRef := fmt.Sprintf("%s/", orgName)
+	policyPackRef := orgName + "/"
 
 	//
 	// Obtain current PolicyPack, tied to the Pulumi Cloud backend.

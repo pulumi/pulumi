@@ -365,6 +365,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	var componentImports []string
 
 	npmToPuPkgName := make(map[string]string)
+	seenComponentImports := map[string]bool{}
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
@@ -385,8 +386,12 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
-			importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
-			componentImports = append(componentImports, importStatement)
+			dirAndName := componentDir + "-" + componentName
+			if _, ok := seenComponentImports[dirAndName]; !ok {
+				importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
+				componentImports = append(componentImports, importStatement)
+				seenComponentImports[dirAndName] = true
+			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
@@ -459,7 +464,7 @@ func componentElementType(pclType model.Type) string {
 		switch pclType := pclType.(type) {
 		case *model.ListType:
 			elementType := componentElementType(pclType.ElementType)
-			return fmt.Sprintf("%s[]", elementType)
+			return elementType + "[]"
 		case *model.MapType:
 			elementType := componentElementType(pclType.ElementType)
 			return fmt.Sprintf("Record<string, pulumi.Input<%s>>", elementType)
@@ -616,7 +621,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			g.Fgenf(w, "public %s: %s;\n", output.Name(), outputType)
 		}
 
-		token := fmt.Sprintf("components:index:%s", componentName)
+		token := "components:index:" + componentName
 
 		if len(configVars) == 0 {
 			g.Fgenf(w, "%s", g.Indent)
@@ -1252,7 +1257,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  message,

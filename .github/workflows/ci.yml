@@ -57,6 +57,18 @@ on:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
         description: "Pulumi access token, required to run tests against the service"
+      CODECOV_TOKEN:
+        required: false
+        description: "CodeCov token, required to publish CodeCov coverage data"
+      AZURE_TENANT_ID:
+        required: false
+        description: "Azure tenant ID, required to run tests against Azure"
+      AZURE_CLIENT_ID:
+        required: false
+        description: "Azure client ID, required to run tests against Azure"
+      AZURE_CLIENT_SECRET:
+        required: false
+        description: "Azure clients secret, needs to be rotated before 2025-12-21 (see the pulumi-test user in Azure portal)"
 
 jobs:
   matrix:
@@ -177,7 +189,7 @@ jobs:
             --partition-module pkg 1 \
             --partition-module sdk 1 \
             --partition-module tests 1 \
-            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 2
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
           echo "::endgroup::"
 
@@ -354,3 +366,58 @@ jobs:
         run: |
           ls -lhR test-results
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
+  test-collect-coverage:
+    needs: [unit-test, integration-test, acceptance-test]
+    if: ${{ inputs.enable-coverage }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve code coverage statuses
+        uses: actions/download-artifact@v3
+        with:
+          path: status
+      # Check that there are no incomplete tests.
+      - name: Check tests completed successfully.
+        run: |
+          if test -z "$(grep -rl 'incomplete' ./status)"; then
+              echo "Tests OK!"
+          else
+              echo "Test Failure.. skipping CodeCov upload."
+              exit 1
+          fi
+      # Checkout repository to upload coverage results.
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Retrieve code coverage reports
+        uses: actions/download-artifact@v3
+        with:
+          path: coverage
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3
+        with:
+          directory: coverage/
+          files: "*,!.gitkeep"
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+  build-release-binaries:
+    # This overwrites the previously built testing binaries with versions without coverage.
+    name: Rebuild binaries
+    needs: [matrix, unit-test, integration-test, acceptance-test]
+    if: ${{ inputs.enable-coverage }}
+    strategy:
+      # To avoid tying up macOS runners:
+      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
+      fail-fast: ${{ contains(needs.matrix.outputs.build-targets, 'macos') }}
+      matrix:
+        target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: ${{ matrix.target.os }}
+      arch: ${{ matrix.target.arch }}
+      build-platform: ${{ matrix.target.build-platform }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
+      enable-coverage: false
+    secrets: inherit

@@ -109,7 +109,7 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 	t.Parallel()
 
 	target := &deploy.Target{
-		Name:      "test",
+		Name:      tokens.MustParseStackName("test"),
 		Config:    config.Map{},
 		Decrypter: config.NopDecrypter,
 		Snapshot:  nil,
@@ -120,12 +120,12 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.UntypedDeployment, error) {
+func makeUntypedDeployment(name string, phrase, state string) (*apitype.UntypedDeployment, error) {
 	return makeUntypedDeploymentTimestamp(name, phrase, state, nil, nil)
 }
 
 func makeUntypedDeploymentTimestamp(
-	name tokens.QName,
+	name string,
 	phrase, state string,
 	created, modified *time.Time,
 ) (*apitype.UntypedDeployment, error) {
@@ -562,7 +562,7 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 
 	// • Create a mock local backend
 	tmpDir := t.TempDir()
-	dirURI := fmt.Sprintf("file://%s", filepath.ToSlash(tmpDir))
+	dirURI := "file://" + filepath.ToSlash(tmpDir)
 	local, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -1070,12 +1070,16 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
 	// For the first two stacks, we'll return project names to upgrade them.
 	// For the third stack, we will not set a project name, and it should be skipped.
 	err = b.Upgrade(ctx, &UpgradeOptions{
-		ProjectsForDetachedStacks: func(stacks []tokens.Name) (projects []tokens.Name, err error) {
-			assert.ElementsMatch(t, []tokens.Name{"foo", "bar", "baz"}, stacks)
+		ProjectsForDetachedStacks: func(stacks []tokens.StackName) (projects []tokens.Name, err error) {
+			assert.ElementsMatch(t, []tokens.StackName{
+				tokens.MustParseStackName("foo"),
+				tokens.MustParseStackName("bar"),
+				tokens.MustParseStackName("baz"),
+			}, stacks)
 
 			projects = make([]tokens.Name, len(stacks))
 			for idx, stack := range stacks {
-				switch stack {
+				switch stack.String() {
 				case "foo":
 					projects[idx] = "proj1"
 				case "bar":
@@ -1142,8 +1146,10 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
 
 	giveErr := errors.New("canceled operation")
 	err = b.Upgrade(ctx, &UpgradeOptions{
-		ProjectsForDetachedStacks: func(stacks []tokens.Name) (projects []tokens.Name, err error) {
-			assert.Equal(t, []tokens.Name{"bar"}, stacks)
+		ProjectsForDetachedStacks: func(stacks []tokens.StackName) (projects []tokens.Name, err error) {
+			assert.Equal(t, []tokens.StackName{
+				tokens.MustParseStackName("bar"),
+			}, stacks)
 			return nil, giveErr
 		},
 	})
@@ -1342,4 +1348,51 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 	}
 	assert.True(t, found,
 		"file with a timestamp extension not found in %v", got)
+}
+
+//nolint:paralleltest // mutates global state
+func TestDisableIntegrityChecking(t *testing.T) {
+	stateDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil)
+	require.NoError(t, err)
+
+	// make up a bad stack
+	deployment := apitype.UntypedDeployment{
+		Version: 3,
+		Deployment: json.RawMessage(`{
+			"resources": [
+				{
+					"urn": "urn:pulumi:stack::proj::type::name1",
+					"type": "type",
+					"parent": "urn:pulumi:stack::proj::type::name2"
+				},
+				{
+					"urn": "urn:pulumi:stack::proj::type::name2",
+					"type": "type"
+				}
+			]
+		}`),
+	}
+
+	// Import deployment doesn't verify the deployment
+	err = b.ImportDeployment(ctx, s, &deployment)
+	require.NoError(t, err)
+
+	backend.DisableIntegrityChecking = false
+	snap, err := s.Snapshot(ctx, b64.Base64SecretsProvider)
+	require.ErrorContains(t, err,
+		"child resource urn:pulumi:stack::proj::type::name1's parent urn:pulumi:stack::proj::type::name2 comes after it")
+	assert.Nil(t, snap)
+
+	backend.DisableIntegrityChecking = true
+	snap, err = s.Snapshot(ctx, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
 }

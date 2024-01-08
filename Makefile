@@ -199,8 +199,21 @@ get_schemas: \
 			schema-awsx!1.0.0-beta.5    \
 			schema-aws-native!0.13.0    \
 			schema-google-native!0.18.2 \
-			schema-google-native!0.27.0
+			schema-google-native!0.27.0 \
+			schema-tls!4.10.0
 
 .PHONY: changelog
 changelog:
 	go run github.com/aaronfriel/go-change@v0.1.2 create
+
+.PHONY: work
+work:
+	rm -f go.work go.work.sum
+	go work init \
+		cmd/pulumi-test-language \
+		pkg \
+		sdk \
+		sdk/go/pulumi-language-go \
+		sdk/nodejs/cmd/pulumi-language-nodejs \
+		sdk/python/cmd/pulumi-language-python \
+		tests

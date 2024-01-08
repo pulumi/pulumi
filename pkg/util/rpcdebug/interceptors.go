@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -48,7 +49,7 @@ type LogOptions struct {
 // Each LogFile should have a unique instance of DebugInterceptor for proper locking.
 func NewDebugInterceptor(opts DebugInterceptorOptions) (*DebugInterceptor, error) {
 	if opts.LogFile == "" {
-		return nil, fmt.Errorf("logFile cannot be empty")
+		return nil, errors.New("logFile cannot be empty")
 	}
 	i := &DebugInterceptor{logFile: opts.LogFile}
 
@@ -163,12 +164,12 @@ func (i *DebugInterceptor) record(log debugInterceptorLogEntry) error {
 
 	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
-		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %v", i.logFile, err)
+		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %w", i.logFile, err)
 	}
 	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(log); err != nil {
-		return fmt.Errorf("Failed to encode GRPC debug logs: %v", err)
+		return fmt.Errorf("Failed to encode GRPC debug logs: %w", err)
 	}
 	return nil
 }

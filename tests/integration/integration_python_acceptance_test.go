@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -36,6 +37,8 @@ func boolPointer(b bool) *bool {
 }
 
 // TestEmptyPython simply tests that we can run an empty Python project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
@@ -46,7 +49,9 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferencePython(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
 
@@ -57,11 +62,11 @@ func TestStackReferencePython(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step1",
+				Dir:      filepath.Join("stack_reference", "python", "step1"),
 				Additive: true,
 			},
 			{
-				Dir:      "step2",
+				Dir:      filepath.Join("stack_reference", "python", "step2"),
 				Additive: true,
 			},
 		},
@@ -70,6 +75,8 @@ func TestStackReferencePython(t *testing.T) {
 }
 
 // Tests dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicPython(t *testing.T) {
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -81,7 +88,7 @@ func TestDynamicPython(t *testing.T) {
 			randomVal = stack.Outputs["random_val"].(string)
 		},
 		EditDirs: []integration.EditDir{{
-			Dir:      "step1",
+			Dir:      filepath.Join("dynamic", "python", "step1"),
 			Additive: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
@@ -147,6 +154,7 @@ func TestConstructPython(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -159,7 +167,9 @@ func TestConstructPython(t *testing.T) {
 	}
 }
 
-func optsForConstructPython(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPython(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component", "python"),
@@ -186,7 +196,7 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, localProvid
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {
@@ -211,6 +221,24 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, localProvid
 	}
 }
 
+func TestConstructComponentConfigureProviderPython(t *testing.T) {
+	t.Parallel()
+
+	const testDir = "construct_component_configure_provider"
+	runComponentSetup(t, testDir)
+	pulumiRoot, err := filepath.Abs("../..")
+	require.NoError(t, err)
+	pulumiPySDK := filepath.Join("..", "..", "sdk", "python", "env", "src")
+	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/python")
+	opts := testConstructComponentConfigureProviderCommonOptions()
+	opts = opts.With(integration.ProgramTestOptions{
+		Dir:          filepath.Join(testDir, "python"),
+		Dependencies: []string{pulumiPySDK, componentSDK},
+		NoParallel:   true,
+	})
+	integration.ProgramTest(t, &opts)
+}
+
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
 	t.Parallel()
@@ -220,8 +248,6 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	// handling by the pulumi CLI itself.
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
-		t.Parallel()
-
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -246,12 +272,18 @@ func TestAutomaticVenvCreation(t *testing.T) {
 			"virtualenv: venv",
 			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
 
-		if err := os.WriteFile(pulumiYaml, newYaml, 0o644); err != nil {
+		if err := os.WriteFile(pulumiYaml, newYaml, 0o600); err != nil {
 			t.Error(err)
 			return
 		}
 
 		t.Logf("Wrote Pulumi.yaml:\n%s\n", string(newYaml))
+
+		// Make a subdir and change to it to ensure paths aren't just relative to the working directory.
+		subdir := filepath.Join(e.RootPath, "subdir")
+		err = os.Mkdir(subdir, 0o755)
+		require.NoError(t, err)
+		e.CWD = subdir
 
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "teststack")
@@ -271,18 +303,22 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	}
 
 	t.Run("RelativePath", func(t *testing.T) {
+		t.Parallel()
 		check(t, "venv", filepath.Join("python", "venv"))
 	})
 
 	t.Run("AbsolutePath", func(t *testing.T) {
+		t.Parallel()
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv"))
 	})
 
 	t.Run("RelativePathWithMain", func(t *testing.T) {
+		t.Parallel()
 		check(t, "venv", filepath.Join("python", "venv-with-main"))
 	})
 
 	t.Run("AbsolutePathWithMain", func(t *testing.T) {
+		t.Parallel()
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
 	})
 

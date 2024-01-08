@@ -44,7 +44,7 @@ type LanguageRuntime interface {
 	GetPluginInfo() (workspace.PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(directory string) error
+	InstallDependencies(pwd, main string) error
 
 	// About returns information about the language runtime.
 	About() (AboutInfo, error)
@@ -61,7 +61,9 @@ type LanguageRuntime interface {
 		strict bool, loaderTarget string, localDependencies map[string]string) (hcl.Diagnostics, error)
 
 	// GeneratePlugin generates an SDK package.
-	GeneratePackage(directory string, schema string, extraFiles map[string][]byte, loaderTarget string) error
+	GeneratePackage(
+		directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
+	) (hcl.Diagnostics, error)
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program
 	// source code.

@@ -196,26 +196,32 @@ class OutputImpl<T> implements OutputInstance<T> {
             );
 
         this.toString = () => {
-            const message = `Calling [toString] on an [Output<T>] is not supported.
+            let message = `Calling [toString] on an [Output<T>] is not supported.
 
 To get the value of an Output<T> as an Output<string> consider either:
 1: o.apply(v => \`prefix\${v}suffix\`)
 2: pulumi.interpolate \`prefix\${v}suffix\`
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-This function may throw in a future version of @pulumi/pulumi.`;
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
+            if (utils.errorOutputString) {
+                throw new Error(message);
+            }
+            message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
 
         this.toJSON = () => {
-            const message = `Calling [toJSON] on an [Output<T>] is not supported.
+            let message = `Calling [toJSON] on an [Output<T>] is not supported.
 
 To get the value of an Output as a JSON value or JSON string consider either:
     1: o.apply(v => v.toJSON())
     2: o.apply(v => JSON.stringify(v))
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-This function may throw in a future version of @pulumi/pulumi.`;
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
+            if (utils.errorOutputString) {
+                throw new Error(message);
+            }
+            message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
 
@@ -999,7 +1005,9 @@ export type Lifted<T> =
           {};
 
 // The set of property names in T that are *not* functions.
-type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
+type NonFunctionPropertyNames<T> = {
+    [K in keyof T]: T[K] extends Function ? never : K;
+}[keyof T];
 
 // Lift up all the non-function properties.  If it was optional before, keep it optional after.
 // If it's require before, keep it required afterwards.

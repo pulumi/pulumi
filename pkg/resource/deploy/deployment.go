@@ -464,7 +464,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	newResources := &resourceMap{}
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(backendClient, newResources, ctx, target.Organization)
+	builtins := newBuiltinProvider(backendClient, newResources, ctx.Diag, ctx, target.Organization)
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
@@ -539,10 +539,10 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 
 // generateURN generates a resource's URN from its parent, type, and name under the scope of the deployment's stack and
 // project.
-func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
+func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name string) resource.URN {
 	// Use the resource goal state name to produce a globally unique URN.
 	parentType := tokens.Type("")
-	if parent != "" && parent.Type() != resource.RootStackType {
+	if parent != "" && parent.QualifiedType() != resource.RootStackType {
 		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
 		parentType = parent.QualifiedType()
 	}

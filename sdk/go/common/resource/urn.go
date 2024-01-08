@@ -15,6 +15,7 @@
 package resource
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -57,7 +58,7 @@ const (
 // ParseURN attempts to parse a string into a URN returning an error if it's not valid.
 func ParseURN(s string) (URN, error) {
 	if s == "" {
-		return "", fmt.Errorf("missing required URN")
+		return "", errors.New("missing required URN")
 	}
 
 	urn := URN(s)
@@ -76,7 +77,7 @@ func ParseOptionalURN(s string) (URN, error) {
 }
 
 // NewURN creates a unique resource URN for the given resource object.
-func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
+func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name string) URN {
 	typ := string(baseType)
 	if parentType != "" && parentType != RootStackType {
 		typ = string(parentType) + URNTypeDelimiter + typ
@@ -87,7 +88,7 @@ func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType to
 			string(stack) +
 			URNNameDelimiter + string(proj) +
 			URNNameDelimiter + typ +
-			URNNameDelimiter + string(name),
+			URNNameDelimiter + name,
 	)
 }
 
@@ -106,7 +107,11 @@ func (urn URN) IsValid() bool {
 	if !strings.HasPrefix(string(urn), URNPrefix) {
 		return false
 	}
-	return len(strings.Split(string(urn), URNNameDelimiter)) == 4
+
+	split := strings.SplitN(string(urn), URNNameDelimiter, 4)
+	return len(split) == 4
+	// TODO: We should validate the stack, project and type tokens here, but currently those fields might not
+	// actually be "valid" (e.g. spaces in project names, custom component types, etc).
 }
 
 // URNName returns the URN name part of a URN (i.e., strips off the prefix).
@@ -140,8 +145,9 @@ func (urn URN) Type() tokens.Type {
 }
 
 // Name returns the resource name part of a URN.
-func (urn URN) Name() tokens.QName {
-	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[3])
+func (urn URN) Name() string {
+	split := strings.SplitN(urn.URNName(), URNNameDelimiter, 4)
+	return split[3]
 }
 
 // Returns a new URN with an updated name part
@@ -153,6 +159,6 @@ func (urn URN) Rename(newName string) URN {
 		// assuming the qualified type already includes it
 		"",
 		urn.QualifiedType(),
-		tokens.QName(newName),
+		newName,
 	)
 }

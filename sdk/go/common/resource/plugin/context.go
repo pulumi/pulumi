@@ -107,6 +107,7 @@ func NewContextWithContext(
 		StatusDiag:      statusD,
 		Host:            host,
 		Pwd:             pwd,
+		Root:            root,
 		tracingSpan:     parentSpan,
 		DebugTraceMutex: &sync.Mutex{},
 		cancelLock:      &sync.Mutex{},

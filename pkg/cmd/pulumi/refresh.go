@@ -201,8 +201,7 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			if skipPendingCreates && clearPendingCreates {
-				return result.FromError(fmt.Errorf(
-					"cannot set both --skip-pending-creates and --clear-pending-creates"))
+				return result.FromError(errors.New("cannot set both --skip-pending-creates and --clear-pending-creates"))
 			}
 
 			// First we handle explicit create->imports we were given
@@ -318,7 +317,7 @@ func newRefreshCmd() *cobra.Command {
 		"Serialize the refresh diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
@@ -381,7 +380,7 @@ func filterMapPendingCreates(
 		var pending []resource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
-				return fmt.Errorf("found operation without resource")
+				return errors.New("found operation without resource")
 			}
 			if op.Type != resource.OperationTypeCreating {
 				pending = append(pending, op)

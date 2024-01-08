@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 
+	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
@@ -45,7 +46,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -67,6 +67,67 @@ const (
 	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
 	AccessTokenEnvVar = "PULUMI_ACCESS_TOKEN"
 )
+
+type PulumiAILanguage string
+
+const (
+	PulumiAILanguageTypeScript PulumiAILanguage = "TypeScript"
+	PulumiAILanguageJavaScript PulumiAILanguage = "JavaScript"
+	PulumiAILanguagePython     PulumiAILanguage = "Python"
+	PulumiAILanguageGo         PulumiAILanguage = "Go"
+	PulumiAILanguageCSharp     PulumiAILanguage = "C#"
+	PulumiAILanguageJava       PulumiAILanguage = "Java"
+	PulumiAILanguageYAML       PulumiAILanguage = "YAML"
+)
+
+var pulumiAILanguageMap = map[string]PulumiAILanguage{
+	"typescript": PulumiAILanguageTypeScript,
+	"javascript": PulumiAILanguageJavaScript,
+	"python":     PulumiAILanguagePython,
+	"go":         PulumiAILanguageGo,
+	"c#":         PulumiAILanguageCSharp,
+	"java":       PulumiAILanguageJava,
+	"yaml":       PulumiAILanguageYAML,
+}
+
+// All of the languages supported by Pulumi AI.
+var PulumiAILanguageOptions = []PulumiAILanguage{
+	PulumiAILanguageTypeScript,
+	PulumiAILanguageJavaScript,
+	PulumiAILanguagePython,
+	PulumiAILanguageGo,
+	PulumiAILanguageCSharp,
+	PulumiAILanguageJava,
+	PulumiAILanguageYAML,
+}
+
+// A natural language list of languages supported by Pulumi AI.
+const PulumiAILanguagesClause = "TypeScript, JavaScript, Python, Go, C#, Java, or YAML"
+
+func (e *PulumiAILanguage) String() string {
+	return string(*e)
+}
+
+func (e *PulumiAILanguage) Set(v string) error {
+	value, ok := pulumiAILanguageMap[strings.ToLower(v)]
+	if !ok {
+		return fmt.Errorf("must be one of %s", PulumiAILanguagesClause)
+	}
+	*e = value
+	return nil
+}
+
+func (e *PulumiAILanguage) Type() string {
+	return "pulumiAILanguage"
+}
+
+type AIPromptRequestBody struct {
+	Language       PulumiAILanguage `json:"language"`
+	Instructions   string           `json:"instructions"`
+	ResponseMode   string           `json:"responseMode"`
+	ConversationID string           `json:"conversationId"`
+	ConnectionID   string           `json:"connectionId"`
+}
 
 // Name validation rules enforced by the Pulumi Service.
 var stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
@@ -121,12 +182,14 @@ type Backend interface {
 	NaturalLanguageSearch(
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
+	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 }
 
 type cloudBackend struct {
 	d            diag.Sink
 	url          string
 	client       *client.Client
+	escClient    esc_client.Client
 	capabilities func(context.Context) capabilities
 
 	// The current project, if any.
@@ -145,13 +208,15 @@ func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool
 	}
 	apiToken := account.AccessToken
 
-	client := client.NewClient(cloudURL, apiToken, insecure, d)
-	capabilities := detectCapabilities(d, client)
+	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
+	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
+	capabilities := detectCapabilities(d, apiClient)
 
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
-		client:         client,
+		client:         apiClient,
+		escClient:      escClient,
 		capabilities:   capabilities,
 		currentProject: project,
 	}, nil
@@ -352,7 +417,7 @@ func (m defaultLoginManager) Current(
 	if err != nil {
 		return nil, err
 	} else if !valid {
-		return nil, fmt.Errorf("invalid access token")
+		return nil, errors.New("invalid access token")
 	}
 
 	// Save them.
@@ -408,7 +473,7 @@ func (m defaultLoginManager) Login(
 	fmt.Printf(opts.Color.Colorize(line1) + "\n")
 	maxlen := line1len
 
-	line2 := fmt.Sprintf("Run `%s --help` for alternative login options.", command)
+	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
 	line2len := len(line2)
 	fmt.Printf(opts.Color.Colorize(line2) + "\n")
 	if line2len > maxlen {
@@ -427,7 +492,7 @@ func (m defaultLoginManager) Login(
 			}
 		}
 	} else {
-		line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
+		line3 := "Enter your access token from " + accountLink
 		line3len := len(line3)
 		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
 		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
@@ -462,7 +527,7 @@ func (m defaultLoginManager) Login(
 	if err != nil {
 		return nil, err
 	} else if !valid {
-		return nil, fmt.Errorf("invalid access token")
+		return nil, errors.New("invalid access token")
 	}
 
 	// Save them.
@@ -687,23 +752,22 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 
 	if qualifiedName.Project == "" {
 		if b.currentProject == nil {
-			return nil, fmt.Errorf("If you're using the --stack flag, " +
+			return nil, errors.New("If you're using the --stack flag, " +
 				"pass the fully qualified name (org/project/stack)")
 		}
 
 		qualifiedName.Project = b.currentProject.Name.String()
 	}
 
-	if err := validation.ValidateStackName(qualifiedName.Name); err != nil {
+	parsedName, err := tokens.ParseStackName(qualifiedName.Name)
+	if err != nil {
 		return nil, err
 	}
-	contract.Assertf(tokens.IsName(qualifiedName.Name),
-		"qualifiedName.Name must be a valid name because it is a valid stack name")
 
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: tokens.Name(qualifiedName.Project),
-		name:    tokens.Name(qualifiedName.Name),
+		name:    parsedName,
 		b:       b,
 	}, nil
 }
@@ -728,7 +792,8 @@ func (b *cloudBackend) ValidateStackName(s string) error {
 		}
 	}
 
-	return validation.ValidateStackName(qualifiedName.Name)
+	_, err = tokens.ParseStackName(qualifiedName.Name)
+	return err
 }
 
 // validateOwnerName checks if a stack owner name is valid. An "owner" is simply the namespace
@@ -785,7 +850,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
 // must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
-	return path.Join(stackID.Owner, stackID.Project, stackID.Stack)
+	return path.Join(stackID.Owner, stackID.Project, stackID.Stack.String())
 }
 
 func inferOrg(ctx context.Context,
@@ -1011,7 +1076,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
@@ -1019,7 +1084,7 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 		ShowLink: true,
 	}
 	return b.apply(
-		ctx, apitype.PreviewUpdate, stack, op, opts, nil /*events*/)
+		ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1082,6 +1147,16 @@ func (b *cloudBackend) NaturalLanguageSearch(
 		return nil, err
 	}
 	return results, err
+}
+
+func (b *cloudBackend) PromptAI(
+	ctx context.Context, requestBody AIPromptRequestBody,
+) (*http.Response, error) {
+	res, err := b.client.SubmitAIPrompt(ctx, requestBody)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
+	}
+	return res, err
 }
 
 type updateMetadata struct {
@@ -1535,7 +1610,7 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 	return client.StackIdentifier{
 		Owner:   cloudBackendStackRef.owner,
 		Project: cleanProjectName(string(cloudBackendStackRef.project)),
-		Stack:   string(cloudBackendStackRef.name),
+		Stack:   cloudBackendStackRef.name,
 	}, nil
 }
 
@@ -1820,7 +1895,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 	permalink := b.getPermalink(update, version, dryRun)
 	go display.ShowEvents(
-		backend.ActionLabel(kind, dryRun), kind, tokens.Name(stackID.Stack), tokens.PackageName(stackID.Project),
+		backend.ActionLabel(kind, dryRun), kind, stackID.Stack, tokens.PackageName(stackID.Project),
 		permalink, events, done, opts, dryRun)
 
 	// The UpdateEvents API returns a continuation token to only get events after the previous call.
@@ -1845,7 +1920,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 		if continuationToken == nil {
 			// If the event stream does not terminate with a cancel event, synthesize one here.
 			if lastEvent.Type != engine.CancelEvent {
-				events <- engine.NewEvent(engine.CancelEvent, nil)
+				events <- engine.NewCancelEvent()
 			}
 
 			close(events)
@@ -1865,7 +1940,7 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 	// When using the cloud backend, require that stack references are fully qualified so they
 	// look like "<org>/<project>/<stack>"
 	if strings.Count(name, "/") != 2 {
-		return nil, fmt.Errorf("a stack reference's name should be of the form " +
+		return nil, errors.New("a stack reference's name should be of the form " +
 			"'<organization>/<project>/<stack>'. See https://pulumi.io/help/stack-reference for more information.")
 	}
 

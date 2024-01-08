@@ -110,9 +110,9 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		if tokenInfo != nil {
 			tokenType := "unknown"
 			if tokenInfo.Team != "" {
-				tokenType = fmt.Sprintf("team: %s", tokenInfo.Team)
+				tokenType = "team: " + tokenInfo.Team
 			} else if tokenInfo.Organization != "" {
-				tokenType = fmt.Sprintf("organization: %s", tokenInfo.Organization)
+				tokenType = "organization: " + tokenInfo.Organization
 			}
 			fmt.Fprintf(cmd.Stdout, "Token type: %s\n", tokenType)
 			fmt.Fprintf(cmd.Stdout, "Token name: %s\n", tokenInfo.Name)

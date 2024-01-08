@@ -75,7 +75,7 @@ func TestRebuildBaseState(t *testing.T) {
 
 		ex := nl.Executor()
 
-		ex.rebuildBaseState(nl.AsRefreshSteps(), true)
+		ex.rebuildBaseState(nl.AsRefreshSteps())
 
 		assert.EqualValues(t, map[resource.URN]*resource.State{
 			"B": {URN: "B"},
@@ -97,7 +97,7 @@ func TestRebuildBaseState(t *testing.T) {
 
 		ex := nl.Executor()
 
-		ex.rebuildBaseState(nl.AsRefreshSteps(), true)
+		ex.rebuildBaseState(nl.AsRefreshSteps())
 
 		assert.EqualValues(t, map[resource.URN]*resource.State{
 			"A": {URN: "A"},

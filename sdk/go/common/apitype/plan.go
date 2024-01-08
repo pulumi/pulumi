@@ -23,7 +23,7 @@ type GoalV1 struct {
 	// the type of resource.
 	Type tokens.Type `json:"type"`
 	// the name for the resource's URN.
-	Name tokens.QName `json:"name"`
+	Name string `json:"name"`
 	// true if this resource is custom, managed by a plugin.
 	Custom bool `json:"custom"`
 	// the resource properties that will be changed.

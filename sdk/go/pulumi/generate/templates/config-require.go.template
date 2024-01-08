@@ -53,7 +53,7 @@ func Require(ctx *pulumi.Context, key string) string {
 func requireObject(ctx *pulumi.Context, key string, secret bool, output interface{}, use, insteadOf string) {
 	v := require(ctx, key, secret, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
-		failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to unmarshall required configuration variable '%s'; %s", key, err)
 	}
 }
 
@@ -69,7 +69,7 @@ func require{{.Name}}(ctx *pulumi.Context, key string, secret bool, use, instead
 	v := require(ctx, key, secret, use, insteadOf)
 	o, err := cast.To{{.Name}}E(v)
 	if err != nil {
-		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err)
 	}
 	return o
 }

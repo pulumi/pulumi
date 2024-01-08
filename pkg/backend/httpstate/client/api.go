@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -52,7 +53,7 @@ func UserAgent() string {
 type StackIdentifier struct {
 	Owner   string
 	Project string
-	Stack   string
+	Stack   tokens.StackName
 }
 
 func (s StackIdentifier) String() string {
@@ -453,7 +454,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 			// Return the raw bytes of the response body.
 			*respObj = respBody
 		case []byte:
-			return fmt.Errorf("Can't unmarshal response body to []byte. Try *[]byte")
+			return errors.New("Can't unmarshal response body to []byte. Try *[]byte")
 		default:
 			// Else, unmarshal as JSON.
 			if err = json.Unmarshal(respBody, respObj); err != nil {

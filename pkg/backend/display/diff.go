@@ -98,6 +98,8 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
+	case engine.PolicyLoadEvent:
+		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.
@@ -204,7 +206,7 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 
 	// The message may span multiple lines, so we massage it so it will be indented properly.
 	message := strings.TrimSuffix(payload.Message, "\n")
-	message = strings.ReplaceAll(message, "\n", fmt.Sprintf("\n%s", linePrefix))
+	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
 	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
 	return opts.Color.Colorize(policyLine + "\n")
 }

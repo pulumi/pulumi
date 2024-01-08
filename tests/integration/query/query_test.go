@@ -9,7 +9,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-// TestQuery creates a stack and runs a query over the stack's resource ouptputs.
+// TestQuery creates a stack and runs a query over the stack's resource outputs.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestQuery(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		// Create Pulumi resources.

@@ -17,7 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -79,8 +79,8 @@ func TestSearch_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), name)
 	assert.Contains(t, buff.String(), typ)
 	assert.Contains(t, buff.String(), program)
-	assert.Contains(t, buff.String(), fmt.Sprintf("Results are also visible in Pulumi Cloud:\n%s", searchURL))
-	assert.Contains(t, buff.String(), fmt.Sprint(total))
+	assert.Contains(t, buff.String(), "Results are also visible in Pulumi Cloud:\n"+searchURL)
+	assert.Contains(t, buff.String(), strconv.FormatInt(total, 10))
 }
 
 func TestSearchNoOrgName_cmd(t *testing.T) {
@@ -131,8 +131,8 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), name)
 	assert.Contains(t, buff.String(), typ)
 	assert.Contains(t, buff.String(), program)
-	assert.Contains(t, buff.String(), fmt.Sprintf("Results are also visible in Pulumi Cloud:\n%s", searchURL))
-	assert.Contains(t, buff.String(), fmt.Sprint(total))
+	assert.Contains(t, buff.String(), "Results are also visible in Pulumi Cloud:\n"+searchURL)
+	assert.Contains(t, buff.String(), strconv.FormatInt(total, 10))
 }
 
 type stubHTTPBackend struct {

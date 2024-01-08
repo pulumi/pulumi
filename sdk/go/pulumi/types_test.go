@@ -66,7 +66,7 @@ func TestBasicOutputs(t *testing.T) {
 			reject(errors.New("boom"))
 		}()
 		v, _, _, _, err := await(out)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "boom")
 		assert.Nil(t, v)
 	}
 }
@@ -235,7 +235,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 			go func() { rejectOther(errors.New("boom")) }()
 		}()
 		v, _, _, _, err := await(out)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "boom")
 		assert.Nil(t, v)
 	}
 }
@@ -1114,7 +1114,7 @@ func TestJSONMarshalNested(t *testing.T) {
 	}()
 	json := JSONMarshal(out)
 	v, known, secret, deps, err := await(json)
-	assert.Equal(t, "json: error calling MarshalJSON for type pulumi.AnyOutput: outputs can not be marshaled to JSON", err.Error())
+	assert.EqualError(t, err, "json: error calling MarshalJSON for type pulumi.AnyOutput: outputs can not be marshaled to JSON")
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)

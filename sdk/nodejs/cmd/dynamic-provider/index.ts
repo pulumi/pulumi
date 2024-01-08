@@ -21,12 +21,12 @@ import { version } from "../../version";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+import * as plugproto from "../../proto/plugin_pb";
+import * as provrpc from "../../proto/provider_grpc_pb";
+import * as provproto from "../../proto/provider_pb";
+import * as statusproto from "../../proto/status_pb";
 
 const requireFromString = require("require-from-string");
-const provproto = require("../../proto/provider_pb.js");
-const provrpc = require("../../proto/provider_grpc_pb.js");
-const plugproto = require("../../proto/plugin_pb.js");
-const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
 

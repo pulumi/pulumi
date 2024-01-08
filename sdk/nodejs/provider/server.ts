@@ -27,11 +27,10 @@ import { parseArgs } from "./internals";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
-
-const provproto = require("../proto/provider_pb.js");
-const provrpc = require("../proto/provider_grpc_pb.js");
-const plugproto = require("../proto/plugin_pb.js");
-const statusproto = require("../proto/status_pb.js");
+import * as plugproto from "../proto/plugin_pb";
+import * as provrpc from "../proto/provider_grpc_pb";
+import * as provproto from "../proto/provider_pb";
+import * as statusproto from "../proto/status_pb";
 
 class Server implements grpc.UntypedServiceImplementation {
     engineAddr: string | undefined;
@@ -219,6 +218,9 @@ class Server implements grpc.UntypedServiceImplementation {
                 const result: any = await this.provider.read(id, req.getUrn(), props);
                 resp.setId(result.id);
                 resp.setProperties(structproto.Struct.fromJavaScript(result.props));
+                resp.setInputs(
+                    result.inputs === undefined ? undefined : structproto.Struct.fromJavaScript(result.inputs),
+                );
             } else {
                 // In the event of a missing read, simply return back the input state.
                 resp.setId(id);
@@ -306,7 +308,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
 
@@ -397,7 +399,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
 
@@ -487,7 +489,7 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-function configureRuntime(req: any, engineAddr: string | undefined) {
+async function configureRuntime(req: any, engineAddr: string | undefined) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
     if (engineAddr === undefined) {
@@ -503,6 +505,9 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
         req.getDryrun(),
         req.getOrganization(),
     );
+
+    // resetOptions doesn't reset the saved features
+    await settings.awaitFeatureSupport();
 
     const pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();

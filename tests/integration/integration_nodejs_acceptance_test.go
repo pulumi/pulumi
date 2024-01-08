@@ -17,16 +17,23 @@
 package ints
 
 import (
+	"bytes"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 )
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("empty", "nodejs"),
@@ -36,7 +43,10 @@ func TestEmptyNodeJS(t *testing.T) {
 }
 
 // Tests that stack references work in Node.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferenceNodeJS(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
 
@@ -45,11 +55,11 @@ func TestStackReferenceNodeJS(t *testing.T) {
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step1",
+				Dir:      filepath.Join("stack_reference", "nodejs", "step1"),
 				Additive: true,
 			},
 			{
-				Dir:      "step2",
+				Dir:      filepath.Join("stack_reference", "nodejs", "step2"),
 				Additive: true,
 			},
 		},
@@ -85,6 +95,7 @@ func TestConstructNode(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -97,7 +108,9 @@ func TestConstructNode(t *testing.T) {
 	}
 }
 
-func optsForConstructNode(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency) *integration.ProgramTestOptions {
+func optsForConstructNode(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
@@ -122,7 +135,7 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, localProvider
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {
@@ -145,4 +158,63 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, localProvider
 			}
 		},
 	}
+}
+
+func TestConstructComponentConfigureProviderNode(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows")
+	}
+
+	// NOTE: this test can be quite awkward about dependencies. Specifically, the component, the
+	// component's node SDK, and the test program need to agree on the version of pulumi-tls
+	// dependency, and when there are discrepancies two versions of pulumi-tls may be installed
+	// at the same time breaking assumptions. This is currently achieved as follows:
+	//
+	// ${componentSDK} has a direct node "x.y.z" reference not a floating one "^x.y.z".
+	// ${testDir}/nodejs/package.json has the a direct reference also
+
+	const testDir = "construct_component_configure_provider"
+	runComponentSetup(t, testDir)
+	pulumiRoot, err := filepath.Abs("../..")
+	require.NoError(t, err)
+	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/nodejs")
+
+	// The test relies on artifacts (Node package) from a codegen test. Ensure the SDK is generated.
+	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	cmd.Dir = filepath.Join(pulumiRoot, "pkg", "codegen", "nodejs")
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
+	err = cmd.Run()
+	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
+		" test has generated the Node SDK:\n%s\n%s\n",
+		stdout.String(), stderr.String())
+
+	t.Logf("yarn run tsc # precompile @pulumi/metaprovider")
+	cmd2 := exec.Command("yarn", "run", "tsc")
+	cmd2.Dir = filepath.Join(componentSDK)
+	err = cmd2.Run()
+	require.NoError(t, err)
+
+	t.Logf("yarn link # prelink @pulumi/metaprovider")
+	cmd3 := exec.Command("yarn", "link")
+	cmd3.Dir = filepath.Join(componentSDK, "bin")
+	err = cmd3.Run()
+	require.NoError(t, err)
+
+	opts := testConstructComponentConfigureProviderCommonOptions()
+	opts = opts.With(integration.ProgramTestOptions{
+		NoParallel: true,
+		Dir:        filepath.Join(testDir, "nodejs"),
+		Dependencies: []string{
+			"@pulumi/pulumi",
+			"@pulumi/metaprovider",
+		},
+	})
+	integration.ProgramTest(t, &opts)
 }

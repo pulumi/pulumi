@@ -30,7 +30,6 @@ func TestRemoveANSI(t *testing.T) {
 	input := "\033[31mHello, World!\033[0m"
 	expected := "Hello, World!"
 	e := engine.NewEvent(
-		engine.DiagEvent,
 		engine.DiagEventPayload{
 			Message: input,
 		},

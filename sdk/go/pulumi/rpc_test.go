@@ -849,7 +849,7 @@ func TestInvalidAsset(t *testing.T) {
 	require.True(t, d.(*asset).invalid)
 
 	_, _, err = marshalInput(d, assetType, true)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "invalid asset")
 }
 
 func TestInvalidArchive(t *testing.T) {
@@ -865,7 +865,7 @@ func TestInvalidArchive(t *testing.T) {
 	require.True(t, d.(*archive).invalid)
 
 	_, _, err = marshalInput(d, archiveType, true)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "invalid archive")
 }
 
 func TestDependsOnComponent(t *testing.T) {

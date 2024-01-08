@@ -17,6 +17,7 @@ package deploy
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -33,7 +34,7 @@ import (
 // An Import specifies a resource to import.
 type Import struct {
 	Type              tokens.Type       // The type token for the resource. Required.
-	Name              tokens.QName      // The name of the resource. Required.
+	Name              string            // The name of the resource. Required.
 	ID                resource.ID       // The ID of the resource. Required.
 	Parent            resource.URN      // The parent of the resource, if any.
 	Provider          resource.URN      // The specific provider to use for the resource, if any.
@@ -42,6 +43,11 @@ type Import struct {
 	PluginChecksums   map[string][]byte // The provider checksums to use for the resource, if any.
 	Protect           bool              // Whether to mark the resource as protected after import
 	Properties        []string          // Which properties to include (Defaults to required properties)
+
+	// True if this import should create an empty component resource. ID must not be set if this is used.
+	Component bool
+	// True if this is a remote component resource. Component must be true if this is true.
+	Remote bool
 }
 
 // ImportOptions controls the import process.
@@ -80,7 +86,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	// Create a goal map for the deployment.
 	newGoals := &goalMap{}
 
-	builtins := newBuiltinProvider(nil, nil, ctx, target.Organization)
+	builtins := newBuiltinProvider(nil, nil, ctx.Diag, ctx, target.Organization)
 
 	// Create a new provider registry.
 	reg := providers.NewRegistry(ctx.Host, preview, builtins)
@@ -99,6 +105,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		preview:      preview,
 		providers:    reg,
 		newPlans:     newResourcePlan(target.Config),
+		news:         &resourceMap{},
 	}, nil
 }
 
@@ -143,8 +150,11 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 				continue
 			}
 
+			// Clear the ID because Same asserts that the new state has no ID.
 			new := *r
 			new.ID = ""
+			// Set a dummy goal so the resource is tracked as managed.
+			i.deployment.goals.set(r.URN, &resource.Goal{})
 			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
 				return false
 			}
@@ -157,7 +167,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	// Get or create the root resource.
 	if i.deployment.prev != nil {
 		for _, res := range i.deployment.prev.Resources {
-			if res.Type == resource.RootStackType {
+			if res.Type == resource.RootStackType && res.Parent == "" {
 				return res.URN, false, true
 			}
 		}
@@ -165,7 +175,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
-	urn := resource.NewURN(stackName.Q(), projectName, "", typ, tokens.QName(name))
+	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
 		nil, false, nil, nil, nil, "", false, "", nil, nil, "")
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
@@ -186,6 +196,11 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	defaultProviderRequests := slice.Prealloc[providers.ProviderRequest](len(i.deployment.imports))
 	defaultProviders := map[resource.URN]struct{}{}
 	for _, imp := range i.deployment.imports {
+		if imp.Component && !imp.Remote {
+			// Skip local component resources, they don't have providers.
+			continue
+		}
+
 		if imp.Provider != "" {
 			// If the provider for this import exists, map its URN to its provider reference. If it does not exist,
 			// the import step will issue an appropriate error or errors.
@@ -201,7 +216,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		if imp.Type.Package() == "" {
-			return nil, false, fmt.Errorf("incorrect package type specified")
+			return nil, false, errors.New("incorrect package type specified")
 		}
 		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
@@ -230,7 +245,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	})
 	for idx, req := range defaultProviderRequests {
 		if req.Package() == "" {
-			return nil, false, fmt.Errorf("incorrect package type specified")
+			return nil, false, errors.New("incorrect package type specified")
 		}
 
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
@@ -264,6 +279,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, nil
 		}
 
+		// Set a dummy goal so the resource is tracked as managed.
+		i.deployment.goals.set(urn, &resource.Goal{})
 		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state)
 	}
 
@@ -304,7 +321,8 @@ func (i *importer) importResources(ctx context.Context) error {
 		return err
 	}
 
-	// Create a step per resource to import and execute them in parallel. If there are duplicates, fail the import.
+	// Create a step per resource to import and execute them in parallel batches which don't depend on each other.
+	// If there are duplicates, fail the import.
 	urns := map[resource.URN]struct{}{}
 	steps := slice.Prealloc[Step](len(i.deployment.imports))
 	for _, imp := range i.deployment.imports {
@@ -320,7 +338,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		}
 		urns[urn] = struct{}{}
 
-		// If the resource already exists and the ID matches the ID to import, skip this resource. If the ID does
+		// If the resource already exists and the ID matches the ID to import, then Same this resource. If the ID does
 		// not match, the step itself will issue an error.
 		if old, ok := i.deployment.olds[urn]; ok {
 			oldID := old.ID
@@ -328,42 +346,106 @@ func (i *importer) importResources(ctx context.Context) error {
 				oldID = old.ImportID
 			}
 			if oldID == imp.ID {
+				// Clear the ID because Same asserts that the new state has no ID.
+				new := *old
+				new.ID = ""
+				// Set a dummy goal so the resource is tracked as managed.
+				i.deployment.goals.set(old.URN, &resource.Goal{})
+				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
+				continue
+			}
+		}
+
+		// If the resource already exists and the ID matches the ID to import, then Same this resource. If the ID does
+		// not match, the step itself will issue an error.
+		if old, ok := i.deployment.olds[urn]; ok {
+			oldID := old.ID
+			if old.ImportID != "" {
+				oldID = old.ImportID
+			}
+			if oldID == imp.ID {
+				// Clear the ID because Same asserts that the new state has no ID.
+				new := *old
+				new.ID = ""
+				// Set a dummy goal so the resource is tracked as managed.
+				i.deployment.goals.set(old.URN, &resource.Goal{})
+				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
 				continue
 			}
 		}
 
 		providerURN := imp.Provider
-		if providerURN == "" {
+		if providerURN == "" && (!imp.Component || imp.Remote) {
 			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
 
-		// Fetch the provider reference for this import. All provider URNs should be mapped.
-		provider, ok := urnToReference[providerURN]
-		contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
-
-		// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
-		var randomSeed []byte
-		if i.deployment.plan != nil {
-			if resourcePlan, ok := i.deployment.plan.ResourcePlans[urn]; ok {
-				randomSeed = resourcePlan.Seed
-			}
-		} else {
-			randomSeed = make([]byte, 32)
-			n, err := cryptorand.Read(randomSeed)
-			contract.AssertNoErrorf(err, "could not read random bytes")
-			contract.Assertf(n == len(randomSeed), "read %d random bytes, expected %d", n, len(randomSeed))
+		var provider string
+		if providerURN != "" {
+			// Fetch the provider reference for this import. All provider URNs should be mapped.
+			provider, ok = urnToReference[providerURN]
+			contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
 		}
 
-		// Create the new desired state. Note that the resource is protected.
-		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
+		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
+		new := resource.NewState(
+			urn.Type(), urn, !imp.Component, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
 			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "")
-		steps = append(steps, newImportDeploymentStep(i.deployment, new, randomSeed))
+		// Set a dummy goal so the resource is tracked as managed.
+		i.deployment.goals.set(urn, &resource.Goal{})
+
+		if imp.Component {
+			if imp.Remote {
+				contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
+			}
+
+			steps = append(steps, newImportDeploymentStep(i.deployment, new, nil))
+		} else {
+			contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
+
+			// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
+			var randomSeed []byte
+			if i.deployment.plan != nil {
+				if resourcePlan, ok := i.deployment.plan.ResourcePlans[urn]; ok {
+					randomSeed = resourcePlan.Seed
+				}
+			} else {
+				randomSeed = make([]byte, 32)
+				n, err := cryptorand.Read(randomSeed)
+				contract.AssertNoErrorf(err, "could not read random bytes")
+				contract.Assertf(n == len(randomSeed), "read %d random bytes, expected %d", n, len(randomSeed))
+			}
+
+			steps = append(steps, newImportDeploymentStep(i.deployment, new, randomSeed))
+		}
 	}
 
-	if !i.executeParallel(ctx, steps...) {
-		return nil
+	// We've created all the steps above but we need to execute them in parallel batches which don't depend on each other
+	for len(urns) > 0 {
+		// Find all the steps that can be executed in parallel. `urns` is a map of every resource we still
+		// need to import so if we need a resource from that map we can't yet build this resource.
+		parallelSteps := []Step{}
+		for _, step := range steps {
+			// If we've already done this step don't do it again
+			if _, ok := urns[step.New().URN]; !ok {
+				continue
+			}
+
+			// If the step has no dependencies (we actually only need to look at parent), it can be executed in parallel
+			if _, ok := urns[step.New().Parent]; !ok {
+				parallelSteps = append(parallelSteps, step)
+			}
+		}
+
+		// Remove all the urns we're about to import
+		for _, step := range parallelSteps {
+			delete(urns, step.New().URN)
+		}
+
+		if !i.executeParallel(ctx, parallelSteps...) {
+			return nil
+		}
 	}
 
 	if createdStack {

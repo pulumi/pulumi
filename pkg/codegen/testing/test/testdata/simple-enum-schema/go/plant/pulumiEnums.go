@@ -157,10 +157,14 @@ func (o CloudAuditOptionsLogNamePtrOutput) ToStringPtrOutputWithContext(ctx cont
 	}).(pulumi.StringPtrOutput)
 }
 
-// CloudAuditOptionsLogNameInput is an input type that accepts CloudAuditOptionsLogNameArgs and CloudAuditOptionsLogNameOutput values.
-// You can construct a concrete instance of `CloudAuditOptionsLogNameInput` via:
+// CloudAuditOptionsLogNameInput is an input type that accepts values of the CloudAuditOptionsLogName enum
+// A concrete instance of `CloudAuditOptionsLogNameInput` can be one of the following:
 //
-//	CloudAuditOptionsLogNameArgs{...}
+//	CloudAuditOptionsLogNameUnspecifiedLogName
+//	CloudAuditOptionsLogNameAdminActivity
+//	CloudAuditOptionsLogNameDataAccess
+//	CloudAuditOptionsLogNameSynthetic
+//	CloudAuditOptionsLogName_NO_NAME
 type CloudAuditOptionsLogNameInput interface {
 	pulumi.Input
 
@@ -339,10 +343,11 @@ func (o ContainerBrightnessPtrOutput) ToFloat64PtrOutputWithContext(ctx context.
 	}).(pulumi.Float64PtrOutput)
 }
 
-// ContainerBrightnessInput is an input type that accepts ContainerBrightnessArgs and ContainerBrightnessOutput values.
-// You can construct a concrete instance of `ContainerBrightnessInput` via:
+// ContainerBrightnessInput is an input type that accepts values of the ContainerBrightness enum
+// A concrete instance of `ContainerBrightnessInput` can be one of the following:
 //
-//	ContainerBrightnessArgs{...}
+//	ContainerBrightnessZeroPointOne
+//	ContainerBrightnessOne
 type ContainerBrightnessInput interface {
 	pulumi.Input
 
@@ -523,10 +528,12 @@ func (o ContainerColorPtrOutput) ToStringPtrOutputWithContext(ctx context.Contex
 	}).(pulumi.StringPtrOutput)
 }
 
-// ContainerColorInput is an input type that accepts ContainerColorArgs and ContainerColorOutput values.
-// You can construct a concrete instance of `ContainerColorInput` via:
+// ContainerColorInput is an input type that accepts values of the ContainerColor enum
+// A concrete instance of `ContainerColorInput` can be one of the following:
 //
-//	ContainerColorArgs{...}
+//	ContainerColorRed
+//	ContainerColorBlue
+//	ContainerColorYellow
 type ContainerColorInput interface {
 	pulumi.Input
 
@@ -708,10 +715,11 @@ func (o ContainerSizePtrOutput) ToIntPtrOutputWithContext(ctx context.Context) p
 	}).(pulumi.IntPtrOutput)
 }
 
-// ContainerSizeInput is an input type that accepts ContainerSizeArgs and ContainerSizeOutput values.
-// You can construct a concrete instance of `ContainerSizeInput` via:
+// ContainerSizeInput is an input type that accepts values of the ContainerSize enum
+// A concrete instance of `ContainerSizeInput` can be one of the following:
 //
-//	ContainerSizeArgs{...}
+//	ContainerSizeFourInch
+//	ContainerSizeSixInch
 type ContainerSizeInput interface {
 	pulumi.Input
 

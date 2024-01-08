@@ -39,6 +39,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,18 +93,14 @@ const (
 // endpoint.
 func main() {
 	var tracing string
-	var typescript bool
-	var root string
-	var tsconfigpath string
-	var nodeargs string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.BoolVar(&typescript, "typescript", true,
-		"Use ts-node at runtime to support typescript source natively")
-	flag.StringVar(&root, "root", "", "Project root path to use")
-	flag.StringVar(&tsconfigpath, "tsconfig", "",
-		"Path to tsconfig.json to use")
-	flag.StringVar(&nodeargs, "nodeargs", "", "Arguments for the Node process")
+	flag.Bool("typescript", true,
+		"[obsolete] Use ts-node at runtime to support typescript source natively")
+	flag.String("root", "", "[obsolete] Project root path to use")
+	flag.String("tsconfig", "",
+		"[obsolete] Path to tsconfig.json to use")
+	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
 	flag.Parse()
 
 	args := flag.Args()
@@ -133,7 +130,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, typescript, tsconfigpath, nodeargs)
+			host := newLanguageHost(engineAddress, tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -181,22 +178,56 @@ type nodeLanguageHost struct {
 
 	engineAddress string
 	tracing       string
-	typescript    bool
-	tsconfigpath  string
-	nodeargs      string
+}
+
+type nodeOptions struct {
+	// Use ts-node at runtime to support typescript source natively
+	typescript bool
+	// Path to tsconfig.json to use
+	tsconfigpath string
+	// Arguments for the Node process
+	nodeargs string
+}
+
+func parseOptions(root string, options map[string]interface{}) (nodeOptions, error) {
+	// typescript defaults to true
+	nodeOptions := nodeOptions{
+		typescript: true,
+	}
+
+	if typescript, ok := options["typescript"]; ok {
+		if ts, ok := typescript.(bool); ok {
+			nodeOptions.typescript = ts
+		} else {
+			return nodeOptions, errors.New("typescript option must be a boolean")
+		}
+	}
+
+	if tsconfigpath, ok := options["tsconfig"]; ok {
+		if tsconfig, ok := tsconfigpath.(string); ok {
+			nodeOptions.tsconfigpath = tsconfig
+		} else {
+			return nodeOptions, errors.New("tsconfigpath option must be a string")
+		}
+	}
+
+	if nodeargs, ok := options["nodeargs"]; ok {
+		if args, ok := nodeargs.(string); ok {
+			nodeOptions.nodeargs = args
+		} else {
+			return nodeOptions, errors.New("nodeargs option must be a string")
+		}
+	}
+
+	return nodeOptions, nil
 }
 
 func newLanguageHost(
 	engineAddress, tracing string,
-	typescript bool, tsconfigpath,
-	nodeargs string,
 ) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
-		typescript:    typescript,
-		tsconfigpath:  tsconfigpath,
-		nodeargs:      nodeargs,
 	}
 }
 
@@ -242,7 +273,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
 	plugins, err := getPluginsFromDir(
-		filepath.Join(req.Pwd, req.Program),
+		req.Info.ProgramDirectory,
 		pulumiPackagePathToVersionMap,
 		false, /*inNodeModules*/
 		make(map[string]struct{}))
@@ -538,7 +569,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Pwd, nodeBin)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
@@ -596,14 +627,19 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	env = append(env, pulumiConfigVar+"="+config)
 	env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
-	if host.typescript {
-		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
-	}
-	if host.tsconfigpath != "" {
-		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
 
-	nodeargs, err := shlex.Split(host.nodeargs)
+	if opts.typescript {
+		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+	}
+	if opts.tsconfigpath != "" {
+		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
+	}
+
+	nodeargs, err := shlex.Split(opts.nodeargs)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
@@ -689,21 +725,17 @@ func (host *nodeLanguageHost) constructArguments(
 	maybeAppendArg("organization", req.GetOrganization())
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
-	maybeAppendArg("pwd", req.GetPwd())
+	maybeAppendArg("pwd", req.Info.ProgramDirectory)
 	if req.GetDryRun() {
 		args = append(args, "--dry-run")
 	}
 
-	maybeAppendArg("query-mode", fmt.Sprint(req.GetQueryMode()))
-	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
+	maybeAppendArg("query-mode", strconv.FormatBool(req.GetQueryMode()))
+	maybeAppendArg("parallel", strconv.Itoa(int(req.GetParallel())))
 	maybeAppendArg("tracing", host.tracing)
-	if req.GetProgram() == "" {
-		// If the program path is empty, just use "."; this will cause Node to try to load the default module
-		// file, by default ./index.js, but possibly overridden in the "main" element inside of package.json.
-		args = append(args, ".")
-	} else {
-		args = append(args, req.GetProgram())
-	}
+
+	// The engine should always pass a name for entry point, even if its just "." for the program directory.
+	args = append(args, req.Info.EntryPoint)
 
 	args = append(args, req.GetArgs()...)
 	return args
@@ -775,7 +807,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	_, err = npm.Install(ctx, req.Directory, false /*production*/, stdout, stderr)
+	_, err = npm.Install(ctx, req.Info.ProgramDirectory, false /*production*/, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("npm install failed: %w", err)
 	}
@@ -968,9 +1000,9 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	// dependencies, we need to also parse "package.json" and intersect it with
 	// reported dependencies.
 	var err error
-	yarnFile := filepath.Join(req.Pwd, "yarn.lock")
-	npmFile := filepath.Join(req.Pwd, "package-lock.json")
-	packageFile := filepath.Join(req.Pwd, "package.json")
+	yarnFile := filepath.Join(req.Info.ProgramDirectory, "yarn.lock")
+	npmFile := filepath.Join(req.Info.ProgramDirectory, "package-lock.json")
+	packageFile := filepath.Join(req.Info.ProgramDirectory, "package.json")
 	var result []*pulumirpc.DependencyInfo
 
 	if _, err = os.Stat(yarnFile); err == nil {
@@ -1127,8 +1159,11 @@ func (host *nodeLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
-		return nil, diags
+		return &pulumirpc.GeneratePackageResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
 	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles)
 	if err != nil {
@@ -1149,7 +1184,9 @@ func (host *nodeLanguageHost) GeneratePackage(
 		}
 	}
 
-	return &pulumirpc.GeneratePackageResponse{}, nil
+	return &pulumirpc.GeneratePackageResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func readPackageJSON(packageJSONPath string) (map[string]interface{}, error) {

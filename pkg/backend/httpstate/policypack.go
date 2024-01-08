@@ -252,7 +252,7 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
-	tempDir, err := os.MkdirTemp(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
+	tempDir, err := os.MkdirTemp(filepath.Dir(finalDir), filepath.Base(finalDir)+".tmp")
 	if err != nil {
 		return fmt.Errorf("creating plugin directory %s: %w", tempDir, err)
 	}

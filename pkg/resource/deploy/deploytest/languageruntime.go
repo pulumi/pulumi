@@ -17,7 +17,6 @@ package deploytest
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/blang/semver"
@@ -92,7 +91,7 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
-func (p *languageRuntime) InstallDependencies(directory string) error {
+func (p *languageRuntime) InstallDependencies(pwd, main string) error {
 	if p.closed {
 		return ErrLanguageRuntimeIsClosed
 	}
@@ -116,23 +115,23 @@ func (p *languageRuntime) GetProgramDependencies(
 }
 
 func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
-	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
+	return nil, nil, nil, errors.New("inline plugins are not currently supported")
 }
 
 func (p *languageRuntime) GenerateProject(string, string, string,
 	bool, string, map[string]string,
 ) (hcl.Diagnostics, error) {
-	return nil, fmt.Errorf("GenerateProject is not supported")
+	return nil, errors.New("GenerateProject is not supported")
 }
 
-func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte, string) error {
-	return fmt.Errorf("GeneratePackage is not supported")
+func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte, string) (hcl.Diagnostics, error) {
+	return nil, errors.New("GeneratePackage is not supported")
 }
 
 func (p *languageRuntime) GenerateProgram(map[string]string, string) (map[string][]byte, hcl.Diagnostics, error) {
-	return nil, nil, fmt.Errorf("GenerateProgram is not supported")
+	return nil, nil, errors.New("GenerateProgram is not supported")
 }
 
 func (p *languageRuntime) Pack(string, semver.Version, string) (string, error) {
-	return "", fmt.Errorf("Pack is not supported")
+	return "", errors.New("Pack is not supported")
 }

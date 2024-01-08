@@ -250,7 +250,7 @@ func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource,
 func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
-		authorization = fmt.Sprintf("Bearer %s", source.token)
+		authorization = "Bearer " + source.token
 	}
 
 	req, err := buildHTTPRequest(url, authorization)
@@ -384,7 +384,7 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
-		authorization = fmt.Sprintf("token %s", source.token)
+		authorization = "token " + source.token
 	}
 
 	req, err := buildHTTPRequest(url, authorization)
@@ -766,7 +766,7 @@ func (spec PluginSpec) LockFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.lock", dir), nil
+	return dir + ".lock", nil
 }
 
 // PartialFilePath returns the full path to the plugin's partial file used during installation
@@ -776,7 +776,7 @@ func (spec PluginSpec) PartialFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.partial", dir), nil
+	return dir + ".partial", nil
 }
 
 func (spec PluginSpec) String() string {
@@ -824,8 +824,8 @@ func (info *PluginInfo) Delete() error {
 	}
 	// Attempt to delete any leftover .partial or .lock files.
 	// Don't fail the operation if we can't delete these.
-	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.partial", dir)))
-	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.lock", dir)))
+	contract.IgnoreError(os.Remove(dir + ".partial"))
+	contract.IgnoreError(os.Remove(dir + ".lock"))
 	return nil
 }
 
@@ -1051,7 +1051,7 @@ func (spec PluginSpec) installLock() (unlock func(), err error) {
 	if err != nil {
 		return nil, err
 	}
-	lockFilePath := fmt.Sprintf("%s.lock", finalDir)
+	lockFilePath := finalDir + ".lock"
 
 	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o700); err != nil {
 		return nil, fmt.Errorf("creating plugin root: %w", err)
@@ -1387,7 +1387,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	if err := cleanupTempDirs(finalDir); err != nil {
 		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
 		// Instead, log the error and continue on.
-		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err.Error())
+		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err)
 	}
 
 	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
@@ -1549,22 +1549,14 @@ func HasPluginGTE(spec PluginSpec) (bool, error) {
 	// If we're not doing the legacy plugin behavior and we've been asked for a specific version, do the same plugin
 	// search that we'd do at runtime. This ensures that `pulumi plugin install` works the same way that the runtime
 	// loader does, to minimize confusion when a user has to install new plugins.
+	var match *PluginInfo
 	if !enableLegacyPluginBehavior && spec.Version != nil {
 		requestedVersion := semver.MustParseRange(spec.Version.String())
-		_, err := SelectCompatiblePlugin(plugs, spec.Kind, spec.Name, requestedVersion)
-		return err == nil, err
+		match = SelectCompatiblePlugin(plugs, spec.Kind, spec.Name, requestedVersion)
+	} else {
+		match = LegacySelectCompatiblePlugin(plugs, spec.Kind, spec.Name, spec.Version)
 	}
-
-	for _, p := range plugs {
-		if p.Name == spec.Name && p.Kind == spec.Kind {
-			if spec.Version == nil {
-				return true, nil
-			} else if p.Version != nil && p.Version.GTE(*spec.Version) {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+	return match != nil, nil
 }
 
 // GetPolicyDir returns the directory in which an organization's Policy Packs on the current machine are managed.
@@ -1647,7 +1639,7 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 				Version: &version,
 				Path:    path,
 			}
-			if _, err := os.Stat(fmt.Sprintf("%s.partial", path)); err == nil {
+			if _, err := os.Stat(path + ".partial"); err == nil {
 				// Skip it if the partial file exists, meaning the plugin is not fully installed.
 				continue
 			} else if !os.IsNotExist(err) {
@@ -1867,36 +1859,10 @@ func getPluginInfoAndPath(
 	var match *PluginInfo
 	if !enableLegacyPluginBehavior && version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
-		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
-		if err != nil {
-			return nil, "", NewMissingError(kind, name, version, includeAmbient)
-		}
-		match = &candidate
+		match = SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 	} else {
-		for _, cur := range plugins {
-			// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local that
-			// we can take a pointer to if this plugin is the best match yet.
-			plugin := cur
-			if plugin.Kind == kind && plugin.Name == name {
-				// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
-				// keep on searching just in case there's a newer version available.
-				var m *PluginInfo
-				if match == nil && version == nil {
-					m = &plugin // no existing match, no version spec, take it.
-				} else if match != nil &&
-					(match.Version == nil || (plugin.Version != nil && plugin.Version.GT(*match.Version))) {
-					m = &plugin // existing match, but this plugin is newer, prefer it.
-				} else if version != nil && plugin.Version != nil && plugin.Version.GTE(*version) {
-					m = &plugin // this plugin is >= the version being requested, use it.
-				}
-
-				if m != nil {
-					match = m
-					logging.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
-						kind, name, version, match.Version)
-				}
-			}
-		}
+		logging.V(6).Infof("GetPluginPath(%s, %s, %s): using legacy plugin behavior", kind, name, version)
+		match = LegacySelectCompatiblePlugin(plugins, kind, name, version)
 	}
 
 	if match != nil {
@@ -1952,6 +1918,71 @@ func (sp SortedPluginSpec) Less(i, j int) bool {
 }
 func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
+// LegacySelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that
+// satisfies the requested version. It returns the highest version plugin greater than the requested version,
+// or an error if no such plugin could be found.
+//
+// If there exist plugins in the plugin list that don't have a version, LegacySelectCompatiblePlugin will select
+// them if there are no other compatible plugins available.
+func LegacySelectCompatiblePlugin(
+	plugins []PluginInfo, kind PluginKind, name string, version *semver.Version,
+) *PluginInfo {
+	var match *PluginInfo
+	for _, cur := range plugins {
+		// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local
+		// that we can take a pointer to if this plugin is the best match yet.
+		plugin := cur
+		if plugin.Kind == kind && plugin.Name == name {
+			// Always pick the most recent version of the plugin available. Even if this is an exact match,
+			// we keep on searching just in case there's a newer version available.
+			var m *PluginInfo
+			if match == nil {
+				// no existing match
+				if version == nil {
+					m = &plugin // no version spec, accept anything
+				} else if plugin.Version == nil || plugin.Version.GTE(*version) {
+					// Either the plugin doesn't have a version, in which case we'll take it but prefer
+					// anything else, or it has a version >= requested.
+					m = &plugin
+				}
+			} else {
+				// existing match
+				if plugin.Version != nil && match.Version == nil {
+					// existing match is unversioned, but this plugin has a version, so prefer it.
+					m = &plugin
+				} else if plugin.Version == nil {
+					// this plugin is unversioned ignore it, our current match might also be unversioned but
+					// we just pick the first we see in this case.
+				} else {
+					// both have versions, pick the greater stable one.
+					matchIsPre := len(match.Version.Pre) != 0
+					pluginIsPre := len(plugin.Version.Pre) != 0
+
+					// The plugin has to at least be greater than the requested version.
+					if version == nil || plugin.Version.GTE(*version) {
+						if matchIsPre && !pluginIsPre {
+							// If one is pre-release and the other is not, prefer the non-pre-release one.
+							m = &plugin
+						} else if !matchIsPre && pluginIsPre {
+							// current match is not pre-release, but this plugin is, so prefer the current match.
+						} else if plugin.Version.GT(*match.Version) {
+							// Else if the plugin is greater than the current match, prefer it.
+							m = &plugin
+						}
+					}
+				}
+			}
+
+			if m != nil {
+				match = m
+				logging.V(6).Infof("LegacySelectCompatiblePlugin(%s, %s, %s): found candidate (#%s)",
+					kind, name, version, match.Version)
+			}
+		}
+	}
+	return match
+}
+
 // SelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that sastisfies the
 // requested semver range. It returns the highest version plugin that satisfies the requested constraints, or an error
 // if no such plugin could be found.
@@ -1960,7 +1991,7 @@ func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 // are no other compatible plugins available.
 func SelectCompatiblePlugin(
 	plugins []PluginInfo, kind PluginKind, name string, requested semver.Range,
-) (PluginInfo, error) {
+) *PluginInfo {
 	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)
 	var bestMatch PluginInfo
 	var hasMatch bool
@@ -2000,11 +2031,9 @@ func SelectCompatiblePlugin(
 	}
 
 	if !hasMatch {
-		logging.V(7).Infof("SelectCompatiblePlugin(..., %s): failed to find match", name)
-		return PluginInfo{}, fmt.Errorf("failed to locate compatible plugin: %#v", name)
+		return nil
 	}
-	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): selecting plugin '%s': best match ", name, bestMatch.String())
-	return bestMatch, nil
+	return &bestMatch
 }
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.

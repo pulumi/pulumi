@@ -195,6 +195,9 @@ type ResOpFailedEvent struct {
 	Steps    int               `json:"steps"`
 }
 
+// PolicyLoadEvent is emitted when a policy starts loading
+type PolicyLoadEvent struct{}
+
 // EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
@@ -221,6 +224,7 @@ type EngineEvent struct {
 	ResOpFailedEvent       *ResOpFailedEvent       `json:"resOpFailedEvent,omitempty"`
 	PolicyEvent            *PolicyEvent            `json:"policyEvent,omitempty"`
 	PolicyRemediationEvent *PolicyRemediationEvent `json:"policyRemediationEvent,omitempty"`
+	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.

@@ -115,6 +115,19 @@ func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
 	return sm.crypter, nil
 }
 
+func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
+	info.EncryptedKey = ""
+	info.SecretsProvider = ""
+
+	var s localSecretsManagerState
+	err := json.Unmarshal(state, &s)
+	if err != nil {
+		return fmt.Errorf("unmarshalling passphrase state: %w", err)
+	}
+	info.EncryptionSalt = s.Salt
+	return nil
+}
+
 var (
 	lock  sync.Mutex
 	cache map[string]secrets.Manager
