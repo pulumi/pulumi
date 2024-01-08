@@ -618,10 +618,13 @@ export function deserializeProperty(prop: any): any {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
                 case specialSecretSig:
-                    return {
-                        [specialSigKey]: specialSecretSig,
-                        value: deserializeProperty(prop["value"]),
-                    };
+                    return new Output(
+                        [],
+                        Promise.resolve(deserializeProperty(prop["value"])),
+                        Promise.resolve(true),
+                        Promise.resolve(true),
+                        Promise.resolve([]),
+                    );
                 case specialResourceSig:
                     // Deserialize the resource into a live Resource reference
                     const urn = prop["urn"];
