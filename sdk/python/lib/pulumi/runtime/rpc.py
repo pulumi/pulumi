@@ -126,7 +126,7 @@ except ImportError:
 
 # New versions of protobuf have moved the above import to api_implementation
 try:
-    from google.protobuf.pyext import (
+    from google.protobuf.pyext import (  # type: ignore
         cpp_message,
     )  # pylint: disable-msg=E0611
 
