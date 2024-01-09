@@ -220,7 +220,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
-		urn := i.deployment.generateURN("", typ, name)
+		urn, err := i.deployment.generateURN("", typ, name)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to generate provider URN with type %q and name %q: %w", typ, name, err)
+		}
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
 			contract.AssertNoErrorf(err,
@@ -249,7 +252,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
-		urn := i.deployment.generateURN("", typ, name)
+		urn, err := i.deployment.generateURN("", typ, name)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to generate provider URN with type %q and name %q: %w", typ, name, err)
+		}
 
 		// Fetch, prepare, and check the configuration for this provider.
 		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
@@ -330,7 +336,10 @@ func (i *importer) importResources(ctx context.Context) error {
 		if parent == "" {
 			parent = stackURN
 		}
-		urn := i.deployment.generateURN(parent, imp.Type, imp.Name)
+		urn, err := i.deployment.generateURN(parent, imp.Type, imp.Name)
+		if err != nil {
+			return fmt.Errorf("failed to generate URN for import: %w", err)
+		}
 
 		// Check for duplicate imports.
 		if _, has := urns[urn]; has {
@@ -378,7 +387,10 @@ func (i *importer) importResources(ctx context.Context) error {
 		if providerURN == "" && (!imp.Component || imp.Remote) {
 			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
-			providerURN = i.deployment.generateURN("", typ, name)
+			providerURN, err = i.deployment.generateURN("", typ, name)
+			if err != nil {
+				return fmt.Errorf("failed to generate provider URN with type %q and name %q: %w", typ, name, err)
+			}
 		}
 
 		var provider string
