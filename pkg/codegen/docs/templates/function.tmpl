@@ -115,17 +115,4 @@ The following output properties are available:
 
 {{ template "properties" .OutputProperties }}
 
-<!-- Supporting types -->
-{{ if ne (len .NestedTypes) 0 }}
-
-## Supporting Types
-
-{{ range .NestedTypes }}
-<h4 id="{{ .AnchorID }}">{{ htmlSafe .Name }}</h4>
-
-{{ template "properties" .Properties }}
-{{ end }}
-
-{{ end }}
-
 {{ template "package_details" .PackageDetails }}

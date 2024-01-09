@@ -291,28 +291,6 @@ The following state arguments are supported:
 
 {{ end }}
 
-<!-- Supporting types -->
-{{ if ne (len .NestedTypes) 0 }}
-
-## Supporting Types
-
-{{- if ge (len .NestedTypes) 200 }}
-> **Note:** There are over 200 nested types for this resource.
-Only the first 200 types are included in this documentation.
-{{ end }}
-
-{{ range $index, $elem := .NestedTypes }}
-{{ if lt $index 200 }}
-<h4 id="{{ $elem.AnchorID }}">
-{{ htmlSafe $elem.Name }}<pulumi-choosable type="language" values="python,go" class="inline">, {{ htmlSafe $elem.Name }}<wbr>Args</pulumi-choosable>
-</h4>
-
-{{- if $elem.Properties }}{{template "properties" $elem.Properties -}}{{ end -}}
-{{- if $elem.EnumValues }}{{- template "enums" $elem.EnumValues -}}{{ end -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
 {{ if .ImportDocs  }}
 
 ## Import
