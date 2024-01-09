@@ -42,7 +42,6 @@ func newPulumiPackage() *Package {
 								Ref: "pulumi.json#/Any",
 							},
 						}},
-						"prefixResourceNames": {TypeSpec: TypeSpec{Type: "boolean"}},
 					},
 					Required: []string{
 						"source",
@@ -56,7 +55,6 @@ func newPulumiPackage() *Package {
 							Ref: "pulumi.json#/Any",
 						},
 					}},
-					"prefixResourceNames": {TypeSpec: TypeSpec{Type: "boolean"}},
 				},
 				RequiredInputs: []string{
 					"source",

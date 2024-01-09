@@ -27,11 +27,9 @@ export class Program extends ComponentResource {
         if (!opts.id) {
             resourceInputs["source"] = args ? args.source : undefined;
             resourceInputs["config"] = args ? args.config : undefined;
-            resourceInputs["prefixResourceNames"] = args ? args.prefixResourceNames : true;
         } else {
             resourceInputs["source"] = undefined;
             resourceInputs["config"] = undefined;
-            resourceInputs["prefixResourceNames"] = true;
         }
         resourceInputs["outputs"] = undefined;
         super("pulumi:pulumi:Stack", name, resourceInputs, opts, true);
@@ -48,9 +46,4 @@ export interface StackArgs {
      * The input configure the stack.
      */
     config?: Inputs;
-
-    /**
-     * Whether the resource name of the substack should be prefixed by the substack name.
-     */
-    prefixResourceNames?: boolean;
 }

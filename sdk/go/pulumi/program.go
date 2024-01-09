@@ -49,9 +49,8 @@ func (p *Program) GetOutput(name StringInput) AnyOutput {
 }
 
 type programArgs struct {
-	Source              string                 `pulumi:"source"`
-	Inputs              map[string]interface{} `pulumi:"inputs"`
-	PrefixResourceNames bool                   `pulumi:"prefixResourceNames"`
+	Source string                 `pulumi:"source"`
+	Inputs map[string]interface{} `pulumi:"inputs"`
 }
 
 type ProgramArgs struct {
@@ -60,9 +59,6 @@ type ProgramArgs struct {
 
 	// Inputs is the input to configure the stack
 	Inputs MapInput
-
-	// PrefixResourceNames is a boolean that indicates whether to prefix the names of resources with the name of the program.
-	PrefixResourceNames BoolInput
 }
 
 func (ProgramArgs) ElementType() reflect.Type {
