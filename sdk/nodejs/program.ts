@@ -22,7 +22,7 @@ export class Program extends ComponentResource {
     public readonly outputs!: Output<Inputs>;
 
     constructor(name: string, args: StackArgs, opts?: ComponentResourceOptions) {
-        let resourceInputs: Inputs = {};
+        const resourceInputs: Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["source"] = args ? args.source : undefined;

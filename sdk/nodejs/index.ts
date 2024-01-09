@@ -22,7 +22,7 @@ export * from "./invoke";
 export * from "./metadata";
 export * from "./output";
 export * from "./resource";
-export * from "./program"
+export * from "./program";
 export * from "./stackReference";
 
 // Export submodules individually.

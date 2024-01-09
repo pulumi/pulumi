@@ -39,7 +39,9 @@ type builtinProvider struct {
 	organization  tokens.Name
 }
 
-func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, d diag.Sink, plugctx *plugin.Context, organization tokens.Name) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, resources *resourceMap,
+	d diag.Sink, plugctx *plugin.Context, organization tokens.Name,
+) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
@@ -248,11 +250,11 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			return plugin.ConstructResult{}, err
 		}
 
-		config_source := inputs["config"]
-		if config_source.IsNull() {
-			config_source = resource.NewObjectProperty(resource.PropertyMap{})
+		configSource := inputs["config"]
+		if configSource.IsNull() {
+			configSource = resource.NewObjectProperty(resource.PropertyMap{})
 		}
-		config_inputs := config_source.ObjectValue()
+		configInputs := configSource.ObjectValue()
 
 		// grpc channel -> client for resource monitor
 		var monitorConn *grpc.ClientConn
@@ -270,8 +272,8 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 
 		registerSubStackResourceResponse, err := monitor.RegisterResource(p.context, &pulumirpc.RegisterResourceRequest{
 			Type: string(typ),
-			// Top-level stacks are named as PROJECT-STACK, but in sub-stacks we only use the name specified in the Program resource.
-			Name:   string(name),
+			// Top-level stacks are named as PROJECT-STACK but in sub-stacks we use the name specified in the Program resource.
+			Name:   name,
 			Parent: string(parent),
 		})
 		if err != nil {
@@ -314,7 +316,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		if err != nil {
 			return plugin.ConstructResult{}, fmt.Errorf("detecting project path: %w", err)
 		}
-		// For sub-programs, we require that the project file must be directly in the source path and not in a parent directory.
+		// Sub-programs require that the project file must be directly in the source path and not in a parent directory.
 		if filepath.Dir(projectPath) != resolvedSource {
 			return plugin.ConstructResult{}, fmt.Errorf("project path %s is not a parent of %s", projectPath, resolvedSource)
 		}
@@ -326,7 +328,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		// We can't yet handle unknowns during a preview as unknowns can't be represented in a config object yet.
 		// Therefore we just mark the whole output as unknown during preview for now.
 		// In the future we should be able to handle unknowns in config objects.
-		if config_inputs.ContainsUnknowns() {
+		if configInputs.ContainsUnknowns() {
 			contract.Assertf(info.DryRun, "config inputs must be known in non-dry-run mode")
 			return plugin.ConstructResult{
 				URN:     resource.URN(subStackResourceUrn),
@@ -346,22 +348,22 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 		configs := map[config.Key]string{}
 
 		for key, val := range project.Config {
-			config_val := val.Value
-			if config_val == nil {
-				config_val = val.Default
+			configVal := val.Value
+			if configVal == nil {
+				configVal = val.Default
 			}
 
-			if config_val != nil {
-				configValue, err := createConfigValue(config_val)
+			if configVal != nil {
+				configValue, err := createConfigValue(configVal)
 				if err != nil {
 					return plugin.ConstructResult{}, err
 				}
-				configKey := config.MustMakeKey(info.Project, string(key))
+				configKey := config.MustMakeKey(info.Project, key)
 				configs[configKey] = configValue
 			}
 		}
 		secretKeys := make([]config.Key, 0)
-		for key, val := range config_inputs {
+		for key, val := range configInputs {
 			unwrappedVal := val
 			if val.IsOutput() {
 				unwrappedVal = val.OutputValue().Element
@@ -375,7 +377,9 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			} else if unwrappedVal.IsNumber() {
 				encodedValue = strconv.FormatFloat(unwrappedVal.NumberValue(), 'f', -1, 64)
 			} else {
-				marshalled, err := plugin.MarshalPropertyValue(key, unwrappedVal, plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true})
+				marshalled, err := plugin.MarshalPropertyValue(key, unwrappedVal, plugin.MarshalOptions{
+					KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true,
+				})
 				if err != nil {
 					return plugin.ConstructResult{}, err
 				}
@@ -401,7 +405,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 			Args:              []string{}, // TODO: make this an arg
 			Config:            configs,
 			ConfigSecretKeys:  secretKeys,
-			ConfigPropertyMap: config_inputs,
+			ConfigPropertyMap: configInputs,
 			DryRun:            info.DryRun,
 			Parallel:          info.Parallel,
 			Organization:      string(p.organization),
