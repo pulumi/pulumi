@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.101.0 (2024-01-09)
+
+
+### Features
+
+- [cli] Adds a flag that allows inserting a fragment into the dot file when generating a graph. This can be used for styling the graph elements, setting properties etc.
+  [#14858](https://github.com/pulumi/pulumi/pull/14858)
+
+
+### Bug Fixes
+
+- [engine] Fix an uncommon datarace with replace steps.
+  [#15112](https://github.com/pulumi/pulumi/pull/15112)
+
+- [sdkgen/go] Revert using plain object type when the plainness is shallow and we should use inputty-types instead
+  [#15059](https://github.com/pulumi/pulumi/pull/15059)
+
+- [cli/state] Fix a panic in pulumi state when no snapshots are available
+  [#15045](https://github.com/pulumi/pulumi/pull/15045)
+
+- [sdkgen/python] Fixes resource imports when importing across different modules
+  [#14832](https://github.com/pulumi/pulumi/pull/14832)
+
+
+### Miscellaneous
+
+- [backend/filestate] Upgrade gocloud.dev to the latest version
+  [#15011](https://github.com/pulumi/pulumi/pull/15011)
+
 ## 3.100.0 (2024-01-03)
 
 
