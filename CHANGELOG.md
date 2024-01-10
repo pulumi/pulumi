@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.101.1 (2024-01-10)
+
+
+### Bug Fixes
+
+- [backend/filestate] Revert gocloud.dev upgrade to fix regressions introduced by the upgrade.
+  [#15128](https://github.com/pulumi/pulumi/pull/15128)
+
 ## 3.101.0 (2024-01-09)
 
 

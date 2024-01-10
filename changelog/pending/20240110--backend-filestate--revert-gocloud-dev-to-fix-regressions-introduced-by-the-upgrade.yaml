@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/filestate
-  description: Revert gocloud.dev to fix regressions introduced by the upgrade.
