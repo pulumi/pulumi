@@ -1,0 +1,144 @@
+{
+    "check": {
+        "properties": {
+            "alpha": {
+                "value": "beta",
+                "trace": {
+                    "def": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "c",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 47
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 50
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "c",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 42
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 50
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "type": "object"
+        }
+    },
+    "checkJson": {
+        "alpha": "beta",
+        "some_object": {
+            "baz": "qux"
+        }
+    },
+    "eval": {
+        "properties": {
+            "alpha": {
+                "value": "beta",
+                "trace": {
+                    "def": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "c",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 47
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 50
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "c",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 42
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 50
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "type": "object"
+        }
+    },
+    "evalJsonRedacted": {
+        "alpha": "beta",
+        "some_object": {
+            "baz": "qux"
+        }
+    },
+    "evalJSONRevealed": {
+        "alpha": "beta",
+        "some_object": {
+            "baz": "qux"
+        }
+    }
+}
