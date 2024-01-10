@@ -40,7 +40,6 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       enable-coverage: true
-      enable-race-detection: true
     secrets: inherit
 
   prepare-release:
