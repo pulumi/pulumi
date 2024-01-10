@@ -905,12 +905,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		propertyType := mod.typeString(typ, "Outputs", false, false, false)
 
-		if r.IsProvider && !schema.IsPrimitiveType(prop.Type) {
-			if !prop.IsRequired() {
-				propertyType += "?"
-			}
-		}
-
 		if prop.Secret {
 			secretProps = append(secretProps, prop.Name)
 		}
