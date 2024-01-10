@@ -30,7 +30,7 @@ case "$1" in
         if [ -z "$MODE" ]; then
             # If a build mode was not specified,
             # guess based on whether a coverage path was supplied.
-            MODE=normal
+            MODE=coverage
             if [ -z "$PULUMI_TEST_COVERAGE_PATH" ]; then
                 MODE=normal
             fi
