@@ -37,9 +37,12 @@ case "$1" in
         fi
 
         RACE=
+        CGO_ENABLED=0
         if [ "$PULUMI_ENABLE_RACE_DETECTION" = "true" ]; then
             RACE='-race'
+            CGO_ENABLED=1
         fi
+        export CGO_ENABLED
 
         case "$MODE" in
             normal)
