@@ -85,6 +85,7 @@ jobs:
       build-platform: ${{ matrix.build-platform }}
       version-set: ${{ needs.matrix.outputs.version-set }}
       enable-coverage: false
+      enable-race-detection: true
     secrets: inherit
 
   sign:

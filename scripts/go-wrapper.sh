@@ -36,13 +36,19 @@ case "$1" in
             fi
         fi
 
+        RACE=
+        if [ "$PULUMI_ENABLE_RACE_DETECTION" = "true" ]; then
+            RACE='-race'
+        fi
+
         case "$MODE" in
             normal)
-                go "$@"
+                shift
+                go build ${RACE} "$@"
                 ;;
             coverage)
                 shift
-                go build -cover -coverpkg "$COVERPKG" "$@"
+                go build ${RACE} -cover -coverpkg "$COVERPKG" "$@"
                 ;;
             *)
                 echo "unknown build mode: $MODE"
