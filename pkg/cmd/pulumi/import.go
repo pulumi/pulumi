@@ -161,7 +161,7 @@ type importSpec struct {
 
 type importFile struct {
 	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
-	Resources []importSpec            `json:"resources"`
+	Resources []importSpec            `json:"resources,omitempty"`
 }
 
 func readImportFile(p string) (importFile, error) {
