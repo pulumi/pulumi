@@ -99,7 +99,7 @@ export class PulumiCommand {
 
     private static async installWindows(opts: Required<PulumiCommandOptions>): Promise<void> {
         const response = await got("https://get.pulumi.com/install.ps1");
-        const script = await writeTempFile(response.body);
+        const script = await writeTempFile(response.body, { extension: ".ps1" });
 
         try {
             const command = process.env.SystemRoot
@@ -213,22 +213,33 @@ function withDefaults(opts?: PulumiCommandOptions): Required<PulumiCommandOption
     return { version, root, skipVersionCheck };
 }
 
-function writeTempFile(contents: string): Promise<{ path: string; cleanup: () => void }> {
+function writeTempFile(
+    contents: string,
+    options?: { extension?: string },
+): Promise<{ path: string; cleanup: () => void }> {
     return new Promise<{ path: string; cleanup: () => void }>((resolve, reject) => {
-        tmp.file((tmpErr, tmpPath, fd, cleanup) => {
-            if (tmpErr) {
-                reject(tmpErr);
-            } else {
-                fs.writeFile(fd, contents, (writeErr) => {
-                    if (writeErr) {
-                        cleanup();
-                        reject(writeErr);
-                    } else {
-                        resolve({ path: tmpPath, cleanup });
-                    }
-                });
-            }
-        });
+        tmp.file(
+            {
+                // Powershell requires a `.ps1` extension.
+                postfix: options?.extension,
+                // Powershell won't execute the script if the file descriptor is open.
+                discardDescriptor: true,
+            },
+            (tmpErr, tmpPath, _fd, cleanup) => {
+                if (tmpErr) {
+                    reject(tmpErr);
+                } else {
+                    fs.writeFile(tmpPath, contents, (writeErr) => {
+                        if (writeErr) {
+                            cleanup();
+                            reject(writeErr);
+                        } else {
+                            resolve({ path: tmpPath, cleanup });
+                        }
+                    });
+                }
+            },
+        );
     });
 }
 
