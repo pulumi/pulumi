@@ -276,11 +276,19 @@ func TestEval(t *testing.T) {
 				assert.Equal(t, expected.EvalJSONRedacted, evalJSONRedacted)
 				evalJSONRevealed := esc.NewValue(actual.Properties).ToJSON(false)
 				assert.Equal(t, expected.EvalJSONRevealed, evalJSONRevealed)
+
+				bytes, err := json.MarshalIndent(evalJSONRevealed, "", "  ")
+				require.NoError(t, err)
+				t.Logf("eval: %v", string(bytes))
 			}
 
 			if check != nil {
 				checkJSON := esc.NewValue(check.Properties).ToJSON(true)
 				assert.Equal(t, expected.CheckJSON, checkJSON)
+
+				bytes, err := json.MarshalIndent(checkJSON, "", "  ")
+				require.NoError(t, err)
+				t.Logf("check: %v", string(bytes))
 			}
 
 			assert.Equal(t, expected.Check, check)
