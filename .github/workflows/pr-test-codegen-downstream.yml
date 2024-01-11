@@ -42,6 +42,7 @@ jobs:
             event-type: upgrade-bridge
             client-payload: |-
               {
+                 "kind": "pulumi",
                  "target-pulumi-version": ${{ toJSON( github.event.pull_request.head.sha ) }},
                  "target-bridge-version": "",
                  "pr-reviewers": ${{ toJSON( github.triggering_actor || 'justinvp' ) }},
