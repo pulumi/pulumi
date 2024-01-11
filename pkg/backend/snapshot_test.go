@@ -1046,9 +1046,11 @@ func TestRegisterOutputs(t *testing.T) {
 	// There should be zero snaps performed at the start.
 	assert.Len(t, sp.SavedSnapshots, 0)
 
-	// The step here is not important.
-	step := deploy.NewSameStep(nil, nil, resourceA, resourceA)
-	err := manager.RegisterResourceOutputs(step)
+	expected := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"hello": 42,
+		})
+	err := manager.RegisterResourceOutputs(resourceA, expected)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
@@ -1056,10 +1058,11 @@ func TestRegisterOutputs(t *testing.T) {
 	// The RegisterResourceOutputs should have caused a snapshot to be written.
 	assert.Len(t, sp.SavedSnapshots, 1)
 
-	// It should be identical to what has already been written.
+	// It should be identical to what has already been written except for the outputs.
 	lastSnap := sp.LastSnap()
 	assert.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
+	assert.Equal(t, expected, lastSnap.Resources[0].Outputs)
 }
 
 func TestRecordingSameFailure(t *testing.T) {

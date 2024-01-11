@@ -181,12 +181,9 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	reg := value.(Step)
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	se.pendingNews.Delete(urn)
-	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
-	// might already be there, since otherwise "deleting" outputs would have no affect.
 	outs := e.Outputs()
 	se.log(synchronousWorkerID,
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
-	reg.New().Outputs = outs
 
 	old := se.deployment.Olds()[urn]
 	var oldOuts resource.PropertyMap
@@ -219,7 +216,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := se.opts.Events; e != nil {
-		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
+		if eventerr := e.OnResourceOutputs(reg, outs); eventerr != nil {
 			se.log(synchronousWorkerID, "register resource outputs failed: %s", eventerr)
 
 			// This is a bit of a kludge, but ExecuteRegisterResourceOutputs is an odd duck

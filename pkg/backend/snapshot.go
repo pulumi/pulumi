@@ -60,16 +60,28 @@ type SnapshotPersister interface {
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
 type SnapshotManager struct {
-	persister        SnapshotPersister        // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
-	secretsManager   secrets.Manager          // The default secrets manager to use
-	resources        []*resource.State        // The list of resources operated upon by this plan
-	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
-	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
-	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
-	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
-	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
-	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+	// The persister responsible for invalidating and persisting the snapshot.
+	persister SnapshotPersister
+	// The base snapshot for this plan.
+	baseSnapshot *deploy.Snapshot
+	// The default secrets manager to use.
+	secretsManager secrets.Manager
+	// The list of resources operated upon by this plan.
+	resources []*resource.State
+	// The set of operations known to be outstanding in this plan.
+	operations []resource.Operation
+	// The set of resources that have been operated upon already by this plan.
+	dones map[*resource.State]bool
+	// The set of resources that have completed their operation.
+	completeOps map[*resource.State]bool
+	// New resource outputs from RegisterResourceOutputs.
+	outputs map[*resource.State]resource.PropertyMap
+	// The queue of mutation requests, to be retired serially by the manager.
+	mutationRequests chan<- mutationRequest
+	// A channel used to request cancellation of any new mutation requests.
+	cancel chan bool
+	// A channel that sends a single result when the manager has shut down.
+	done <-chan error
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -114,16 +126,9 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
 // completed. This is accomplished by doing an in-place mutation of the resources currently
 // resident in the snapshot.
-//
-// Due to the way this is currently implemented, the engine directly mutates output properties
-// on the resource State object that it created. Since we are storing pointers to these objects
-// in the `resources` slice, we need only to do a no-op mutation in order to flush these new
-// mutations to disk.
-//
-// Note that this is completely not thread-safe and defeats the purpose of having a `mutate` callback
-// entirely, but the hope is that this state of things will not be permament.
-func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
-	return sm.mutate(func() bool { return true })
+func (sm *SnapshotManager) RegisterResourceOutputs(resource *resource.State, outputs resource.PropertyMap) error {
+	sm.outputs[resource] = outputs
+	return nil
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
@@ -608,6 +613,16 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	resources := make([]*resource.State, len(sm.resources))
 	copy(resources, sm.resources)
 
+	// Fix up any resource outputs that have been registered
+	for i, res := range resources {
+		if o, has := sm.outputs[res]; has {
+			cp := *res
+			res = &cp
+			res.Outputs = o
+			resources[i] = res
+		}
+	}
+
 	// Append any resources from the base plan that were not produced by the current plan.
 	if base := sm.baseSnapshot; base != nil {
 		for _, res := range base.Resources {
@@ -736,6 +751,7 @@ func NewSnapshotManager(
 		baseSnapshot:     baseSnap,
 		dones:            make(map[*resource.State]bool),
 		completeOps:      make(map[*resource.State]bool),
+		outputs:          make(map[*resource.State]resource.PropertyMap),
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,

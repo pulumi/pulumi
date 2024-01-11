@@ -650,7 +650,7 @@ func (acts *updateActions) OnResourceStepPost(
 	return ctx.(SnapshotMutation).End(step, err == nil || status == resource.StatusPartialFailure)
 }
 
-func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
+func (acts *updateActions) OnResourceOutputs(step deploy.Step, outputs resource.PropertyMap) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -659,7 +659,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
+	return acts.Context.SnapshotManager.RegisterResourceOutputs(step.New(), outputs)
 }
 
 func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
@@ -764,11 +764,13 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 	return nil
 }
 
-func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
+func (acts *previewActions) OnResourceOutputs(step deploy.Step, outputs resource.PropertyMap) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
+	// TODO: This mutation is probably not safe.
+	step.New().Outputs = outputs
 	// Print the resource outputs separately.
 	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug, isInternalStep(step))
 

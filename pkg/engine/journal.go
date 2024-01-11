@@ -39,12 +39,17 @@ const (
 type JournalEntry struct {
 	Kind JournalEntryKind
 	Step deploy.Step
+
+	// For JournalEntryOutputs these fields are filled in instead of Step.
+	State   *resource.State
+	Outputs resource.PropertyMap
 }
 
 type JournalEntries []JournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
+	outputs := make(map[*resource.State]resource.PropertyMap)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
@@ -75,6 +80,8 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				doneOps[e.Step.Old()] = true
 			}
+		case JournalEntryOutputs:
+			outputs[e.State] = e.Outputs
 		}
 
 		// Now mark resources done as necessary.
@@ -122,6 +129,16 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			if !dones[res] {
 				resources = append(resources, res)
 			}
+		}
+	}
+
+	// Fix up any resource outputs that have been registered
+	for i, res := range resources {
+		if o, has := outputs[res]; has {
+			cp := *res
+			res = &cp
+			res.Outputs = o
+			resources[i] = res
 		}
 	}
 
@@ -203,9 +220,9 @@ func (j *Journal) End(step deploy.Step, success bool) error {
 	}
 }
 
-func (j *Journal) RegisterResourceOutputs(step deploy.Step) error {
+func (j *Journal) RegisterResourceOutputs(state *resource.State, outputs resource.PropertyMap) error {
 	select {
-	case j.events <- JournalEntry{Kind: JournalEntryOutputs, Step: step}:
+	case j.events <- JournalEntry{Kind: JournalEntryOutputs, State: state, Outputs: outputs}:
 		return nil
 	case <-j.cancel:
 		return errors.New("journal closed")

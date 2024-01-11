@@ -77,7 +77,7 @@ func (e *mockEvents) OnResourceStepPost(ctx interface{}, step Step, status resou
 	panic("unimplemented")
 }
 
-func (e *mockEvents) OnResourceOutputs(step Step) error {
+func (e *mockEvents) OnResourceOutputs(step Step, outputs resource.PropertyMap) error {
 	if e.OnResourceOutputsF != nil {
 		return e.OnResourceOutputsF(step)
 	}
