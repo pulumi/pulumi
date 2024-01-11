@@ -31,7 +31,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
       strategy:
         matrix:
-          provider: ["aws", "gcp", "azure", "azuread", "random"]
+          provider: ["aws", "gcp", "azure", "azuread", "random", "keycloak"]
         fail-fast: false
       steps:
         - name: Trigger upgrade
