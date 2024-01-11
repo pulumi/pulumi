@@ -38,6 +38,24 @@
                                 }
                             }
                         }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 10,
+                                    "byte": 32
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 35
+                                }
+                            }
+                        }
                     }
                 },
                 "trace": {
@@ -53,6 +71,43 @@
                             "column": 13,
                             "byte": 50
                         }
+                    },
+                    "base": {
+                        "value": {
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 10,
+                                            "byte": 32
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 35
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 27
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 35
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -64,7 +119,8 @@
     "checkJson": {
         "alpha": "beta",
         "some_object": {
-            "baz": "qux"
+            "baz": "qux",
+            "foo": "bar"
         }
     },
     "eval": {
@@ -106,6 +162,24 @@
                                 }
                             }
                         }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 10,
+                                    "byte": 32
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 35
+                                }
+                            }
+                        }
                     }
                 },
                 "trace": {
@@ -121,6 +195,43 @@
                             "column": 13,
                             "byte": 50
                         }
+                    },
+                    "base": {
+                        "value": {
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 10,
+                                            "byte": 32
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 35
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 27
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 35
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -132,13 +243,15 @@
     "evalJsonRedacted": {
         "alpha": "beta",
         "some_object": {
-            "baz": "qux"
+            "baz": "qux",
+            "foo": "bar"
         }
     },
     "evalJSONRevealed": {
         "alpha": "beta",
         "some_object": {
-            "baz": "qux"
+            "baz": "qux",
+            "foo": "bar"
         }
     }
 }

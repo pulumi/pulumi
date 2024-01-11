@@ -729,6 +729,24 @@
                                             "column": 17,
                                             "byte": 42
                                         }
+                                    },
+                                    "base": {
+                                        "value": "foo",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 14,
+                                                    "byte": 39
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 17,
+                                                    "byte": 42
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1842,6 +1860,24 @@
                                             "line": 3,
                                             "column": 17,
                                             "byte": 42
+                                        }
+                                    },
+                                    "base": {
+                                        "value": "foo",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 14,
+                                                    "byte": 39
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 17,
+                                                    "byte": 42
+                                                }
+                                            }
                                         }
                                     }
                                 }

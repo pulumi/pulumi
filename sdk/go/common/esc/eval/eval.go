@@ -317,6 +317,7 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	// root.
 	properties := make(map[string]*expr, len(e.env.Values.GetEntries()))
 	e.root = &expr{
+		path: fmt.Sprintf("<%v>", e.name),
 		repr: &objectExpr{
 			node:       ast.Object(),
 			properties: properties,
@@ -414,7 +415,7 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 
 	myImports[name] = val
 	if merge {
-		val = val.copy()
+		val = newCopier().copy(val)
 		val.merge(e.base)
 		e.base = val
 	}
@@ -566,7 +567,7 @@ func (e *evalContext) evaluateInterpolate(x *expr, repr *interpolateExpr) *value
 func (e *evalContext) evaluatePropertyAccess(x *expr, accessors []*propertyAccessor) *value {
 	// We make a copy of the resolved value here because evaluateExpr will merge it with its base, which mutates the
 	// value. We also stamp over the def with the provided expression in order to maintain proper error reporting.
-	v := e.evaluateExprAccess(x, accessors).copy()
+	v := newCopier().copy(e.evaluateExprAccess(x, accessors))
 	v.def = x
 	return v
 }

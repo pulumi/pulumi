@@ -47,6 +47,14 @@ type value struct {
 	repr any // nil | bool | json.Number | string | []*value | map[string]*value
 }
 
+func (v *value) GoString() string {
+	if v == nil {
+		return "<nil>"
+	}
+	r := v.def.defRange("")
+	return fmt.Sprintf("%q @%v:%v (%p)", v.def.path, r.Environment, r.Begin, v)
+}
+
 // containsUnknowns returns true if the value contains any unknown values.
 func (v *value) containsUnknowns() bool {
 	if v == nil {
@@ -63,8 +71,8 @@ func (v *value) containsUnknowns() bool {
 			}
 		}
 	case map[string]*value:
-		for _, v := range repr {
-			if v.containsUnknowns() {
+		for _, k := range v.keys() {
+			if v.property(v.def.repr.syntax(), k).containsUnknowns() {
 				return true
 			}
 		}
@@ -88,8 +96,8 @@ func (v *value) containsSecrets() bool {
 			}
 		}
 	case map[string]*value:
-		for _, v := range repr {
-			if v.containsSecrets() {
+		for _, k := range v.keys() {
+			if v.property(v.def.repr.syntax(), k).containsSecrets() {
 				return true
 			}
 		}
@@ -107,6 +115,24 @@ func (v *value) isObject() bool {
 	}
 	_, ok := v.repr.(map[string]*value)
 	return ok
+}
+
+func (v *value) is(other *value) bool {
+	if v == other {
+		return true
+	}
+	if v.unknown && other.unknown {
+		vaccess, vok := v.def.repr.(*accessExpr)
+		oaccess, ook := other.def.repr.(*accessExpr)
+		if vok && ook {
+			vname, vok := vaccess.accessor.(*ast.PropertyName)
+			oname, ook := oaccess.accessor.(*ast.PropertyName)
+			if vok && ook {
+				return vaccess.receiver.is(oaccess.receiver) && vname.Name == oname.Name
+			}
+		}
+	}
+	return false
 }
 
 // combine combines the unknown-ness and secret-ness of the given values and applies the result to the receiver.
@@ -137,39 +163,6 @@ func (v *value) keys() []string {
 	keys := maps.Keys(keySet)
 	sort.Strings(keys)
 	return keys
-}
-
-// copy returns a deep copy of the receiver.
-func (v *value) copy() *value {
-	if v == nil {
-		return nil
-	}
-
-	var repr any
-	switch vr := v.repr.(type) {
-	case []*value:
-		a := make([]*value, len(vr))
-		for i, v := range vr {
-			a[i] = v.copy()
-		}
-		repr = a
-	case map[string]*value:
-		m := make(map[string]*value, len(vr))
-		for k, v := range vr {
-			m[k] = v.copy()
-		}
-		repr = m
-	default:
-		repr = vr
-	}
-	return &value{
-		def:     v.def,
-		base:    v.base.copy(),
-		schema:  v.schema,
-		unknown: v.unknown,
-		secret:  v.secret,
-		repr:    repr,
-	}
 }
 
 // property returns the named property (if any) as per JSON merge patch semantics. If the receiver is unknown,
@@ -211,7 +204,7 @@ func (v *value) property(x ast.Expr, key string) *value {
 // merge merges this value with the base. Note that this is mutating, and callers should probably make a copy prior to
 // calling merge.
 func (v *value) merge(base *value) {
-	if v == base || base == nil {
+	if base == nil || v.is(base) {
 		return
 	}
 
@@ -219,12 +212,14 @@ func (v *value) merge(base *value) {
 		// If this value already has a base, apply the merge to its base.
 		v.base.merge(base)
 	} else {
-		// Otherwise, set the base and merge each property of the value if it is an object.
+		// Otherwise, set the base.
 		v.base = base
-		if object, ok := v.repr.(map[string]*value); ok {
-			for k, v := range object {
-				v.merge(base.property(v.def.repr.syntax(), k))
-			}
+	}
+
+	// If this is an object, re-merge each property.
+	if object, ok := v.repr.(map[string]*value); ok {
+		for k, p := range object {
+			p.merge(v.base.property(p.def.repr.syntax(), k))
 		}
 	}
 
@@ -376,4 +371,53 @@ func mergedSchema(base, top *schema.Schema) *schema.Schema {
 	}
 
 	return schema.Record(record).AdditionalProperties(additional).Schema()
+}
+
+type copier struct {
+	memo map[*value]*value
+}
+
+func newCopier() copier {
+	return copier{memo: map[*value]*value{}}
+}
+
+func (c copier) copy(v *value) *value {
+	if v == nil {
+		return nil
+	}
+
+	if copy, ok := c.memo[v]; ok {
+		return copy
+	}
+
+	copy := &value{}
+	c.memo[v] = copy
+
+	var repr any
+	switch vr := v.repr.(type) {
+	case []*value:
+		a := make([]*value, len(vr))
+		for i, v := range vr {
+			a[i] = c.copy(v)
+		}
+		repr = a
+	case map[string]*value:
+		m := make(map[string]*value, len(vr))
+		for k, v := range vr {
+			m[k] = c.copy(v)
+		}
+		repr = m
+	default:
+		repr = vr
+	}
+
+	*copy = value{
+		def:     v.def,
+		base:    c.copy(v.base),
+		schema:  v.schema,
+		unknown: v.unknown,
+		secret:  v.secret,
+		repr:    repr,
+	}
+	return copy
 }

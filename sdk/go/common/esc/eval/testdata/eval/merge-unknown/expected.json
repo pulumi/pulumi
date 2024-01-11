@@ -400,24 +400,6 @@
                                                     "column": 10,
                                                     "byte": 62
                                                 }
-                                            },
-                                            "base": {
-                                                "unknown": true,
-                                                "trace": {
-                                                    "def": {
-                                                        "environment": "merge-unknown",
-                                                        "begin": {
-                                                            "line": 7,
-                                                            "column": 12,
-                                                            "byte": 64
-                                                        },
-                                                        "end": {
-                                                            "line": 7,
-                                                            "column": 15,
-                                                            "byte": 67
-                                                        }
-                                                    }
-                                                }
                                             }
                                         }
                                     }
@@ -452,24 +434,6 @@
                                             "line": 6,
                                             "column": 8,
                                             "byte": 51
-                                        }
-                                    },
-                                    "base": {
-                                        "unknown": true,
-                                        "trace": {
-                                            "def": {
-                                                "environment": "merge-unknown",
-                                                "begin": {
-                                                    "line": 7,
-                                                    "column": 7,
-                                                    "byte": 59
-                                                },
-                                                "end": {
-                                                    "line": 7,
-                                                    "column": 15,
-                                                    "byte": 67
-                                                }
-                                            }
                                         }
                                     }
                                 }
@@ -506,24 +470,6 @@
                                             "line": 5,
                                             "column": 8,
                                             "byte": 38
-                                        }
-                                    },
-                                    "base": {
-                                        "unknown": true,
-                                        "trace": {
-                                            "def": {
-                                                "environment": "merge-unknown",
-                                                "begin": {
-                                                    "line": 5,
-                                                    "column": 10,
-                                                    "byte": 40
-                                                },
-                                                "end": {
-                                                    "line": 5,
-                                                    "column": 13,
-                                                    "byte": 43
-                                                }
-                                            }
                                         }
                                     }
                                 }

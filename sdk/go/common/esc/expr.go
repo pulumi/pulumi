@@ -15,6 +15,8 @@
 package esc
 
 import (
+	"fmt"
+
 	"github.com/pulumi/esc/schema"
 )
 
@@ -112,6 +114,10 @@ type Range struct {
 	End Pos `json:"end"`
 }
 
+func (r Range) String() string {
+	return fmt.Sprintf("%v:[%v,%v]", r.Environment, r.Begin, r.End)
+}
+
 // Contains returns true if the range contains the given position.
 func (r Range) Contains(pos Pos) bool {
 	if pos.Byte >= r.Begin.Byte && pos.Byte < r.End.Byte {
@@ -138,4 +144,8 @@ type Pos struct {
 
 	// Byte is the byte offset into the file where the indicated position begins.
 	Byte int `json:"byte"`
+}
+
+func (p Pos) String() string {
+	return fmt.Sprintf("%v:%v", p.Line, p.Column)
 }
