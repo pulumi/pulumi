@@ -69,6 +69,13 @@ describe("automation/cmd", () => {
             const { stdout } = await cmd.run(["version"], ".", {});
             assert.strictEqual(stdout.trim(), `${version}`);
         });
+
+        it("throws if the found version is not compatible with the requested version", async () => {
+            const installedVersion = new semver.SemVer("3.97.0");
+            await PulumiCommand.install({ version: installedVersion });
+            const requestedVersion = new semver.SemVer("3.98.0");
+            assert.rejects(PulumiCommand.get({ version: requestedVersion }));
+        });
     });
 
     describe(`checkVersionIsValid`, () => {

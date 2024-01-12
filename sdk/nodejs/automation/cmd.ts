@@ -70,7 +70,11 @@ export class PulumiCommand {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
         const { stdout } = await exec(command, ["version"]);
         const skipVersionCheck = opts?.skipVersionCheck !== undefined ? opts.skipVersionCheck : false;
-        const version = parseAndValidatePulumiVersion(minimumVersion, stdout.trim(), skipVersionCheck);
+        let min = minimumVersion;
+        if (opts?.version && semver.gt(opts.version, minimumVersion)) {
+            min = opts.version;
+        }
+        const version = parseAndValidatePulumiVersion(min, stdout.trim(), skipVersionCheck);
         return new PulumiCommand(command, version, opts?.root);
     }
 
