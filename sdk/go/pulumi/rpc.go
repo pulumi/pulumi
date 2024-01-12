@@ -593,6 +593,55 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 	}
 }
 
+// unmarshalPropertyMap is used to turn the values in a resource.PropertyMap into sensible runtime types. This tries to
+// keep things as inputs where possible (e.g. a string property value will just be a `pulumi.String`, not an
+// `Output[string]`). It will use `pulumix.Output` for values that are either Computed (will always be a
+// `pulumix.Output[any]`), secret, or an Output property value.
+func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	var unmarshal func(v resource.PropertyValue) (Input, error)
+	unmarshal = func(v resource.PropertyValue) (Input, error) {
+		switch {
+		case v.IsNull():
+			return nil, nil
+		case v.IsBool():
+			return Bool(v.BoolValue()), nil
+		case v.IsNumber():
+			return Float64(v.NumberValue()), nil
+		case v.IsString():
+			return String(v.StringValue()), nil
+		case v.IsArray():
+			a := v.ArrayValue()
+			r := make([]Input, len(a))
+			for i, v := range a {
+				uv, err := unmarshal(v)
+				if err != nil {
+					return nil, err
+				}
+				r[i] = uv
+			}
+			return Array(r), nil
+		case v.IsObject():
+			m := v.ObjectValue()
+		}
+
+		return nil, fmt.Errorf("unknown property value %v", v)
+	}
+
+	m := make(map[string]Input)
+	for k, v := range v {
+		uv, err := unmarshal(v)
+		if err != nil {
+			return nil, err
+		}
+		m[string(k)] = uv
+	}
+	return m, nil
+}
+
 // unmarshalOutput unmarshals a single output variable into its runtime representation.
 // returning a bool that indicates secretness
 func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value) (bool, error) {

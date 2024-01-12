@@ -33,13 +33,10 @@ import {
     ProviderResource,
     Resource,
     ResourceOptions,
-    ResourceTransformation,
-    ResourceTransformationArgs,
     ResourceTransform,
     ResourceTransformArgs,
 } from "../resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
-import { getStackResource } from "./stack";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */

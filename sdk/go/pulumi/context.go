@@ -293,9 +293,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
 
-		o := Map{}
-		r := reflect.ValueOf(&o).Elem()
-		unmarshalOutput(ctx, resource.NewObjectProperty(properties), r)
+		props, err := unmarshalPropertyMap(ctx, properties)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
@@ -304,7 +302,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			Custom: rpcReq.Custom,
 			Type:   rpcReq.Type,
 			Name:   rpcReq.Name,
-			Props:  o,
+			Props:  props,
 			Opts:   nil,
 		}
 
