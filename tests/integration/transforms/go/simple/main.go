@@ -70,7 +70,7 @@ func main() {
 		// Scenario #1 - apply a transform to a CustomResource
 		_, err := NewRandom(ctx, "res1", &RandomArgs{Length: pulumi.Int(5)}, pulumi.Transforms([]pulumi.ResourceTransform{
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
-				fmt.Printf("res1 transform")
+				fmt.Printf("res1 transform\n")
 				return &pulumi.ResourceTransformResult{
 					Props: rta.Props,
 					Opts:  append(rta.Opts, pulumi.AdditionalSecretOutputs([]string{"result"})),
@@ -84,7 +84,7 @@ func main() {
 		// Scenario #2 - apply a transform to a Component to transform it's children
 		_, err = NewMyComponent(ctx, "res2", pulumi.Transforms([]pulumi.ResourceTransform{
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
-				fmt.Printf("res2 transform")
+				fmt.Printf("res2 transform\n")
 				if rta.Type == "testprovider:index:Random" {
 					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
@@ -100,7 +100,8 @@ func main() {
 
 		// Scenario #3 - apply a transform to the Stack to transform all (future) resources in the stack
 		err = ctx.RegisterStackTransform(func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
-			fmt.Printf("stack transform")
+			fmt.Printf("stack transform\n")
+			fmt.Printf("%v %v\n", rta.Type, rta.Props)
 			if rta.Type == "testprovider:index:Random" {
 				rta.Props["prefix"] = pulumi.String("stackDefault")
 
@@ -129,7 +130,7 @@ func main() {
 		// 4. Stack transform
 		_, err = NewMyComponent(ctx, "res4", pulumi.Transforms([]pulumi.ResourceTransform{
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
-				fmt.Printf("res4 transform")
+				fmt.Printf("res4 transform\n")
 				if rta.Type == "testprovider:index:Random" {
 					rta.Props["prefix"] = pulumi.String("default1")
 
@@ -141,7 +142,7 @@ func main() {
 				return nil
 			},
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
-				fmt.Printf("res4 transform 2")
+				fmt.Printf("res4 transform 2\n")
 				if rta.Type == "testprovider:index:Random" {
 					rta.Props["prefix"] = pulumi.String("default2")
 
