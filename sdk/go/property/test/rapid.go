@@ -17,6 +17,7 @@ package test
 import (
 	"pgregory.net/rapid"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
@@ -29,6 +30,7 @@ func Value(maxDepth int) *rapid.Generator[property.Value] {
 		Array(maxDepth),
 		Map(maxDepth),
 		Secret(maxDepth),
+		Dependencies(maxDepth),
 	)
 }
 
@@ -66,6 +68,10 @@ func Map(maxDepth int) *rapid.Generator[property.Value] { return MapOf(Value(max
 
 func Secret(maxDepth int) *rapid.Generator[property.Value] { return SecretOf(Value(maxDepth - 1)) }
 
+func Dependencies(maxDepth int) *rapid.Generator[property.Value] {
+	return DependenciesOf(Value(maxDepth - 1))
+}
+
 func ArrayOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
 	return rapid.Custom(func(t *rapid.T) property.Value {
 		return property.Of(rapid.SliceOf(value).Draw(t, "V"))
@@ -84,5 +90,23 @@ func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Val
 func SecretOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
 	return rapid.Custom(func(t *rapid.T) property.Value {
 		return value.Draw(t, "V").WithSecret()
+	})
+}
+
+func DependenciesOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
+	return rapid.Custom(func(t *rapid.T) property.Value {
+		return value.Draw(t, "V").WithDependencies(
+			rapid.SliceOfN(URN(), 1, 10).Draw(t, "urns"),
+		)
+	})
+}
+
+// A rapid generator for resource.URN.
+//
+// Because the github.com/pulumi/pulumi/sdk/v3/go/property does not enforce URN validity,
+// we don't enforce it here.
+func URN() *rapid.Generator[resource.URN] {
+	return rapid.Custom(func(t *rapid.T) resource.URN {
+		return resource.URN(rapid.String().Draw(t, "urn-body"))
 	})
 }
