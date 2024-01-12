@@ -36,8 +36,7 @@ type (
 //
 // The zero value of Value is null.
 type Value struct {
-	isComputed bool
-	isSecret   bool
+	isSecret bool
 
 	dependencies []resource.URN // the dependencies associated with this value.
 
@@ -54,12 +53,19 @@ type GoValues interface {
 		ResourceReference // Resource references
 }
 
+type allValues interface {
+	GoValues | computed
+}
+
 // Create a new Value from a GoValue.
 func Of[T GoValues](goValue T) Value {
 	return Value{v: goValue}
 }
 
-func is[T GoValues](v Value) bool {
+// Computed returns a computed value.
+func Computed() Value { return Value{v: computed{}} }
+
+func is[T allValues](v Value) bool {
 	_, ok := v.v.(T)
 	return ok
 }
@@ -75,6 +81,7 @@ func (v Value) IsAsset() bool             { return is[Asset](v) }
 func (v Value) IsArchive() bool           { return is[Archive](v) }
 func (v Value) IsResourceReference() bool { return is[ResourceReference](v) }
 func (v Value) IsNull() bool              { return v.v == nil }
+func (v Value) IsComputed() bool          { return is[computed](v) }
 
 func (v Value) AsBool() bool                           { return as[bool](v) }
 func (v Value) AsNumber() float64                      { return as[float64](v) }
@@ -112,31 +119,16 @@ func (v Value) WithNotSecret() Value {
 	return v
 }
 
-// Computed returns true if the Value is computed.
-//
-// It does not check if a contained Value is computed.
-func (v Value) Computed() bool { return v.isComputed }
+type computed struct{}
 
 // HasComputed returns true if the Value or any nested Value is computed.
 func (v Value) HasComputed() bool {
 	var hasComputed bool
 	v.visit(func(v Value) bool {
-		hasComputed = v.isComputed
+		hasComputed = v.IsComputed()
 		return !hasComputed
 	})
 	return hasComputed
-}
-
-// WithComputed copies v where computed is true.
-func (v Value) WithComputed() Value {
-	v.isComputed = true
-	return v
-}
-
-// WithNotComputed copies v where computed is false.
-func (v Value) WithNotComputed() Value {
-	v.isComputed = false
-	return v
 }
 
 // The dependency set of v.

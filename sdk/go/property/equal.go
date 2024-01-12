@@ -37,11 +37,12 @@ type eqOpts struct {
 //
 //     {"b", secret: false} != {"c", secret: false}
 //
-//   - Computed value equality has two different modes. By default, it works like secret
-//     equality, enforcing full structural equality.
+//   - Computed value equality has two different modes. By default, it works like Null
+//     equality: a.IsComputed() => (a.Equals(b) <=> b.IsComputed()) (up to secrets and
+//     dependencies).
 //
-//     If EqualRelaxComputed is true, then computed values are considered equal if they
-//     are of the same type.
+//     If EqualRelaxComputed is passed, then computed values are considered equal to all
+//     other values. (up to secrets and dependencies)
 func (v Value) Equals(other Value, opts ...EqualOption) bool {
 	var eqOpts eqOpts
 	for _, o := range opts {
@@ -64,18 +65,8 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 		}
 	}
 
-	switch {
-	case v.isComputed != other.isComputed:
-		return false
-	case v.isComputed && opts.relaxComputed:
-		// Null values are untyped, so we allow them to type match to anything.
-		if v.IsNull() || other.IsNull() {
-			return true
-		}
-
-		// If a value is typed and computed, we check that the type matches, but
-		// not the value.
-		return v.typ() == other.typ()
+	if opts.relaxComputed && (v.IsComputed() || other.IsComputed()) {
+		return true
 	}
 
 	switch {
@@ -118,6 +109,8 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 		r1, r2 := v.AsResourceReference(), other.AsResourceReference()
 		return r1.Equal(r2)
 	case v.IsNull() && other.IsNull():
+		return true
+	case v.IsComputed() && other.IsComputed():
 		return true
 	default:
 		return false

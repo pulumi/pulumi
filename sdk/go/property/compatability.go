@@ -58,16 +58,16 @@ func ToResourcePropertyValue(v Value) resource.PropertyValue {
 	}
 
 	switch {
-	case len(v.dependencies) > 0 || (v.isSecret && v.isComputed):
+	case len(v.dependencies) > 0 || (v.isSecret && v.IsComputed()):
 		r = resource.NewOutputProperty(resource.Output{
-			Element:      ToResourcePropertyValue(Value{v: v.v}),
-			Known:        v.isComputed,
-			Secret:       v.isSecret,
+			Element:      r,
+			Known:        v.IsComputed(),
+			Secret:       v.Secret(),
 			Dependencies: v.dependencies,
 		})
 	case v.isSecret:
 		r = resource.MakeSecret(r)
-	case v.isComputed:
+	case v.IsComputed():
 		r = resource.MakeComputed(r)
 	}
 
@@ -114,24 +114,28 @@ func FromResourcePropertyValue(v resource.PropertyValue) Value {
 
 	// Flavor types
 	case v.IsComputed():
-		elem := FromResourcePropertyValue(v.Input().Element)
-		elem.isComputed = true
-		return elem
+		if v.Input().Element.IsSecret() || (v.Input().Element.IsOutput() &&
+			v.Input().Element.OutputValue().Secret) {
+			return Computed().WithSecret()
+		}
+		return Computed()
 	case v.IsSecret():
 		elem := FromResourcePropertyValue(v.SecretValue().Element)
 		elem.isSecret = true
 		return elem
 	case v.IsOutput():
 		o := v.OutputValue()
-		elem := FromResourcePropertyValue(o.Element)
+		var elem Value
+		if !o.Known {
+			elem = Computed()
+		} else {
+			elem = FromResourcePropertyValue(o.Element)
+		}
+
 		// If the value is already secret, we leave it secret, otherwise we take
 		// the value from Output.
 		if !elem.isSecret {
 			elem.isSecret = o.Secret
-		}
-
-		if !elem.isComputed {
-			elem.isComputed = !o.Known
 		}
 
 		elem.dependencies = o.Dependencies
