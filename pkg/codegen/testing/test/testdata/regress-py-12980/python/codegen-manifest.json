@@ -1,0 +1,21 @@
+{
+  "emittedFiles": [
+    "pulumi_myPkg/README.md",
+    "pulumi_myPkg/__init__.py",
+    "pulumi_myPkg/_utilities.py",
+    "pulumi_myPkg/mymod/__init__.py",
+    "pulumi_myPkg/mymod/childa/__init__.py",
+    "pulumi_myPkg/mymod/childa/_enums.py",
+    "pulumi_myPkg/mymod/childa/member_a1.py",
+    "pulumi_myPkg/mymod/childa/outputs.py",
+    "pulumi_myPkg/mymod/childb/__init__.py",
+    "pulumi_myPkg/mymod/childb/_enums.py",
+    "pulumi_myPkg/mymod/childb/member_b1.py",
+    "pulumi_myPkg/mymod/childb/member_b2.py",
+    "pulumi_myPkg/mymod/childb/outputs.py",
+    "pulumi_myPkg/provider.py",
+    "pulumi_myPkg/pulumi-plugin.json",
+    "pulumi_myPkg/py.typed",
+    "setup.py"
+  ]
+}

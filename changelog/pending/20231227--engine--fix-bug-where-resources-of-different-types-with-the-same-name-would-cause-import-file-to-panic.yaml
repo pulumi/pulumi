@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix bug where unimported resources (of different types) with the same name would cause `--import-file` to panic.

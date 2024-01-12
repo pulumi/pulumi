@@ -1386,13 +1386,13 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	require.NoError(t, err)
 
 	backend.DisableIntegrityChecking = false
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.ErrorContains(t, err,
 		"child resource urn:pulumi:stack::proj::type::name1's parent urn:pulumi:stack::proj::type::name2 comes after it")
 	assert.Nil(t, snap)
 
 	backend.DisableIntegrityChecking = true
-	snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err = s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 }

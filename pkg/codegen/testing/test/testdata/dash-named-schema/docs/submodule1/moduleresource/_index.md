@@ -239,7 +239,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_go" style="color: inherit; text-decoration: inherit;">Thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Top<wbr>Level</a></span>
+        <span class="property-type"><a href="#toplevel">Top<wbr>Level<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

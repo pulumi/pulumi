@@ -30,7 +30,7 @@ import (
 )
 
 // Print prints a resource graph.
-func Print(g graph.Graph, w io.Writer) error {
+func Print(g graph.Graph, w io.Writer, dotFragment string) error {
 	// Allocate a new writer.  In general, we will ignore write errors throughout this function, for simplicity, opting
 	// instead to return the result of flushing the buffer at the end, which is generally latching.
 	b := bufio.NewWriter(w)
@@ -38,6 +38,19 @@ func Print(g graph.Graph, w io.Writer) error {
 	// Print the graph header.
 	if _, err := b.WriteString("strict digraph {\n"); err != nil {
 		return err
+	}
+
+	// If the caller provided a fragment then insert it here.
+	if dotFragment != "" {
+		if _, err := b.WriteString(dotFragment); err != nil {
+			return err
+		}
+
+		// Ensure that the fragment is followed by newline, this reduces
+		// problems if the fragment doesn't end with a semicolon
+		if _, err := b.WriteString("\n"); err != nil {
+			return err
+		}
 	}
 
 	// Initialize the frontier with unvisited graph vertices.

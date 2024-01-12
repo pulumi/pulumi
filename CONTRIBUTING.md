@@ -105,6 +105,10 @@ $ pulumi preview --logtostderr -v=5
 
 is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
+### Go Language Server
+
+Since this repository contains multiple go modules, `gopls` requires a go workspace. Run `make work` to setup a suitable go workspace.
+
 ## Submitting a Pull Request
 
 For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.

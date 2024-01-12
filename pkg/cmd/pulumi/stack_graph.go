@@ -29,23 +29,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Whether or not we should ignore parent edges when building up our graph.
-var ignoreParentEdges bool
+type graphCommandOptions struct {
+	stackName string
 
-// Whether or not we should ignore dependency edges when building up our graph.
-var ignoreDependencyEdges bool
+	// Whether or not we should ignore parent edges when building up our graph.
+	ignoreParentEdges bool
 
-// The color of dependency edges in the graph. Defaults to #246C60, a blush-green.
-var dependencyEdgeColor string
+	// Whether or not we should ignore dependency edges when building up our graph.
+	ignoreDependencyEdges bool
 
-// The color of parent edges in the graph. Defaults to #AA6639, an orange.
-var parentEdgeColor string
+	// The color of dependency edges in the graph. Defaults to #246C60, a blush-green.
+	dependencyEdgeColor string
 
-// Whether or not to return resource name as the node label for each node of the graph.
-var shortNodeName bool
+	// The color of parent edges in the graph. Defaults to #AA6639, an orange.
+	parentEdgeColor string
+
+	// Whether or not to return resource name as the node label for each node of the graph.
+	shortNodeName bool
+
+	// A DOT fragment that will be inserted at the top of the digraph element. This
+	// can be used for styling the graph elements, setting graph properties etc.")
+	dotFragment string
+}
 
 func newStackGraphCmd() *cobra.Command {
-	var stackName string
+	var cmdOpts graphCommandOptions
 
 	cmd := &cobra.Command{
 		Use:   "graph [filename]",
@@ -62,7 +70,7 @@ func newStackGraphCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, cmdOpts.stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -73,16 +81,17 @@ func newStackGraphCmd() *cobra.Command {
 
 			// This will prevent a panic when trying to assemble a dependencyGraph when no snapshot is found
 			if snap == nil {
-				return fmt.Errorf("unable to find snapshot for stack %q", stackName)
+				return fmt.Errorf("unable to find snapshot for stack %q", cmdOpts.stackName)
 			}
 
-			dg := makeDependencyGraph(snap)
+			dg := makeDependencyGraph(snap, &cmdOpts)
+
 			file, err := os.Create(args[0])
 			if err != nil {
 				return err
 			}
 
-			if err := dotconv.Print(dg, file); err != nil {
+			if err := dotconv.Print(dg, file, cmdOpts.dotFragment); err != nil {
 				_ = file.Close()
 				return err
 			}
@@ -93,17 +102,20 @@ func newStackGraphCmd() *cobra.Command {
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().BoolVar(&ignoreParentEdges, "ignore-parent-edges", false,
+		&cmdOpts.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().BoolVar(&cmdOpts.ignoreParentEdges, "ignore-parent-edges", false,
 		"Ignores edges introduced by parent/child resource relationships")
-	cmd.PersistentFlags().BoolVar(&ignoreDependencyEdges, "ignore-dependency-edges", false,
+	cmd.PersistentFlags().BoolVar(&cmdOpts.ignoreDependencyEdges, "ignore-dependency-edges", false,
 		"Ignores edges introduced by dependency resource relationships")
-	cmd.PersistentFlags().StringVar(&dependencyEdgeColor, "dependency-edge-color", "#246C60",
+	cmd.PersistentFlags().StringVar(&cmdOpts.dependencyEdgeColor, "dependency-edge-color", "#246C60",
 		"Sets the color of dependency edges in the graph")
-	cmd.PersistentFlags().StringVar(&parentEdgeColor, "parent-edge-color", "#AA6639",
+	cmd.PersistentFlags().StringVar(&cmdOpts.parentEdgeColor, "parent-edge-color", "#AA6639",
 		"Sets the color of parent edges in the graph")
-	cmd.PersistentFlags().BoolVar(&shortNodeName, "short-node-name", false,
+	cmd.PersistentFlags().BoolVar(&cmdOpts.shortNodeName, "short-node-name", false,
 		"Sets the resource name as the node label for each node of the graph")
+	cmd.PersistentFlags().StringVar(&cmdOpts.dotFragment, "dot-fragment", "",
+		"An optional DOT fragment that will be inserted at the top of the digraph element. "+
+			"This can be used for styling the graph elements, setting graph properties etc.")
 	return cmd
 }
 
@@ -117,6 +129,7 @@ type dependencyEdge struct {
 	to     *dependencyVertex
 	from   *dependencyVertex
 	labels []string
+	color  string
 }
 
 // In this simple case, edges have no data.
@@ -137,15 +150,16 @@ func (edge *dependencyEdge) From() graph.Vertex {
 }
 
 func (edge *dependencyEdge) Color() string {
-	return dependencyEdgeColor
+	return edge.color
 }
 
 // parentEdges represent edges in the parent-child graph, which
 // exists alongside the dependency graph. An edge exists from node
 // A to node B if node B is considered to be a parent of node A.
 type parentEdge struct {
-	to   *dependencyVertex
-	from *dependencyVertex
+	to    *dependencyVertex
+	from  *dependencyVertex
+	color string
 }
 
 func (edge *parentEdge) Data() interface{} {
@@ -166,7 +180,7 @@ func (edge *parentEdge) From() graph.Vertex {
 }
 
 func (edge *parentEdge) Color() string {
-	return parentEdgeColor
+	return edge.color
 }
 
 // A dependencyVertex contains a reference to the graph to which it belongs
@@ -177,6 +191,7 @@ type dependencyVertex struct {
 	resource      *resource.State
 	incomingEdges []graph.Edge
 	outgoingEdges []graph.Edge
+	useShortName  bool
 }
 
 func (vertex *dependencyVertex) Data() interface{} {
@@ -184,7 +199,7 @@ func (vertex *dependencyVertex) Data() interface{} {
 }
 
 func (vertex *dependencyVertex) Label() string {
-	if shortNodeName {
+	if vertex.useShortName {
 		return vertex.resource.URN.Name()
 	}
 	return string(vertex.resource.URN)
@@ -225,22 +240,23 @@ func (dg *dependencyGraph) Roots() []graph.Edge {
 
 // Makes a dependency graph from a deployment snapshot, allocating a vertex
 // for every resource in the graph.
-func makeDependencyGraph(snapshot *deploy.Snapshot) *dependencyGraph {
+func makeDependencyGraph(snapshot *deploy.Snapshot, opts *graphCommandOptions) *dependencyGraph {
 	dg := &dependencyGraph{
 		vertices: make(map[resource.URN]*dependencyVertex),
 	}
 
 	for _, resource := range snapshot.Resources {
 		vertex := &dependencyVertex{
-			graph:    dg,
-			resource: resource,
+			graph:        dg,
+			resource:     resource,
+			useShortName: opts.shortNodeName,
 		}
 
 		dg.vertices[resource.URN] = vertex
 	}
 
 	for _, vertex := range dg.vertices {
-		if !ignoreDependencyEdges {
+		if !opts.ignoreDependencyEdges {
 			// If we have per-property dependency information, annotate the dependency edges
 			// we generate with the names of the properties associated with each dependency.
 			depBlame := make(map[resource.URN][]string)
@@ -254,7 +270,7 @@ func makeDependencyGraph(snapshot *deploy.Snapshot) *dependencyGraph {
 			// resources on which this vertex immediately depends upon.
 			for _, dep := range vertex.resource.Dependencies {
 				vertexWeDependOn := vertex.graph.vertices[dep]
-				edge := &dependencyEdge{to: vertex, from: vertexWeDependOn, labels: depBlame[dep]}
+				edge := &dependencyEdge{to: vertex, from: vertexWeDependOn, labels: depBlame[dep], color: opts.dependencyEdgeColor}
 				vertex.incomingEdges = append(vertex.incomingEdges, edge)
 				vertexWeDependOn.outgoingEdges = append(vertexWeDependOn.outgoingEdges, edge)
 			}
@@ -263,12 +279,13 @@ func makeDependencyGraph(snapshot *deploy.Snapshot) *dependencyGraph {
 		// alongside the dependency graph sits the resource parentage graph, which
 		// is also displayed as part of this graph, although with different colored
 		// edges.
-		if !ignoreParentEdges {
+		if !opts.ignoreParentEdges {
 			if parent := vertex.resource.Parent; parent != resource.URN("") {
 				parentVertex := dg.vertices[parent]
 				vertex.outgoingEdges = append(vertex.outgoingEdges, &parentEdge{
-					to:   parentVertex,
-					from: vertex,
+					to:    parentVertex,
+					from:  vertex,
+					color: opts.parentEdgeColor,
 				})
 			}
 		}

@@ -192,7 +192,7 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 		"[EXPERIMENTAL] Whether to skip the default dependency installation step")
 	cmd.PersistentFlags().StringVar(
 		&r.gitBranch, "remote-git-branch", "",
-		"[EXPERIMENTAL] Git branch to deploy; this is mutually exclusive with --remote-git-branch; "+
+		"[EXPERIMENTAL] Git branch to deploy; this is mutually exclusive with --remote-git-commit; "+
 			"either value needs to be specified")
 	cmd.PersistentFlags().StringVar(
 		&r.gitCommit, "remote-git-commit", "",

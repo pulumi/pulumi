@@ -230,10 +230,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Ensure that we can still compile safely when defaults are disabled",
 	},
 	{
-		Directory:   "plain-additional-items",
-		Description: "Ensure that we can compile maps where the element type is a plain object",
-	},
-	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
 		SkipCompileCheck: codegen.NewStringSet(python),
@@ -429,6 +425,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "urn-id-properties",
 		Description: "Testing urn and id properties in valid locations",
+	},
+	{
+		Directory:   "regress-py-12980",
+		Description: "Import resources across modules",
+		Skip:        allLanguages.Except("python/any"),
 	},
 	{
 		Directory:   "unions-inline",
