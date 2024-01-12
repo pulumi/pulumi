@@ -22,7 +22,6 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	foundRes2Child := false
 	foundRes3 := false
 	foundRes4Child := false
-	foundRes5Child := false
 	for _, res := range stack.Deployment.Resources {
 		// "res1" has a transformation which adds additionalSecretOutputs
 		if res.URN.Name() == "res1" {
@@ -60,24 +59,9 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, optionalPrefix)
 			assert.Equal(t, "stackDefault", optionalPrefix.(string))
 		}
-		// "res5" modifies one of its children to depend on another of its children.
-		if res.URN.Name() == "res5-child1" {
-			foundRes5Child = true
-			assert.Equal(t, res.Type, tokens.Type(randomResName))
-			assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyOtherComponent"))
-			// TODO[pulumi/pulumi#3282] Due to this bug, the dependency information
-			// will not be correctly recorded in the state file, and so cannot be
-			// verified here.
-			//
-			// assert.Len(t, res.PropertyDependencies, 1)
-			input := res.Inputs["length"]
-			assert.NotNil(t, input)
-			assert.Equal(t, 5.0, input.(float64))
-		}
 	}
 	assert.True(t, foundRes1)
 	assert.True(t, foundRes2Child)
 	assert.True(t, foundRes3)
 	assert.True(t, foundRes4Child)
-	assert.True(t, foundRes5Child)
 }

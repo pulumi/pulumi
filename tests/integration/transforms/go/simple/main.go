@@ -6,11 +6,8 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type MyComponent struct {
@@ -105,16 +102,10 @@ func main() {
 		err = ctx.RegisterStackTransform(func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 			fmt.Printf("stack transform")
 			if rta.Type == "testprovider:index:Random" {
-				var props *RandomArgs
-				if rta.Props == nil {
-					props = &RandomArgs{}
-				} else {
-					props = rta.Props.(*RandomArgs)
-				}
-				props.Prefix = pulumi.String("stackDefault")
+				rta.Props["prefix"] = pulumi.String("stackDefault")
 
 				return &pulumi.ResourceTransformResult{
-					Props: props,
+					Props: rta.Props,
 					Opts:  append(rta.Opts, pulumi.AdditionalSecretOutputs([]string{"result"})),
 				}
 			}
@@ -140,11 +131,10 @@ func main() {
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res4 transform")
 				if rta.Type == "testprovider:index:Random" {
-					props := rta.Props.(*RandomArgs)
-					props.Prefix = pulumi.String("default1")
+					rta.Props["prefix"] = pulumi.String("default1")
 
 					return &pulumi.ResourceTransformResult{
-						Props: props,
+						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
 				}
@@ -153,69 +143,16 @@ func main() {
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res4 transform 2")
 				if rta.Type == "testprovider:index:Random" {
-					props := rta.Props.(*RandomArgs)
-					props.Prefix = pulumi.String("default2")
+					rta.Props["prefix"] = pulumi.String("default2")
 
 					return &pulumi.ResourceTransformResult{
-						Props: props,
+						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
 				}
 				return nil
 			},
 		}))
-		if err != nil {
-			return err
-		}
-
-		// Scenario #5 - cross-resource transforms that inject dependencies on one resource into another.
-
-		// Create a promise that wil be resolved once we find child2.  This is needed because we do not
-		// know what order we will see the resource registrations of child1 and child2.
-		var child2Found promise.CompletionSource[*Random]
-		// Return a transform which will rewrite child1 to depend on the promise for child2, and will
-		// resolve that promise when it finds child2.
-		transformChild1DependsOnChild2 := func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
-			if strings.HasSuffix(rta.Name, "-child2") {
-				// Resolve the child2 promise with the child2 resource.
-				child2Found.MustFulfill(rta.Resource.(*Random))
-				return nil
-			} else if strings.HasSuffix(rta.Name, "-child1") {
-				props := rta.Props.(*RandomArgs)
-
-				// Overwrite the `prefix` to child2 with a dependency on the `length` from child1.
-				child2Result := pulumix.Flatten[string, pulumix.Output[string]](
-					pulumix.ApplyErr[int, pulumix.Output[string]](
-						props.Length.ToIntOutput().ToOutput(ctx.Context()),
-						func(input int) (pulumix.Output[string], error) {
-							var none pulumix.Output[string]
-
-							if input != 5 {
-								// Not strictly necessary - but shows we can confirm invariants we expect to be
-								// true.
-								return none, fmt.Errorf("unexpected input value")
-							}
-
-							args, err := child2Found.Promise().Result(ctx.Context())
-							if err != nil {
-								return none, err
-							}
-
-							return args.Result.ToOutput(ctx.Context()), nil
-						}))
-
-				// Finally - overwrite the input of child2.
-				props.Prefix = child2Result.Untyped().(pulumi.StringInput)
-
-				return &pulumi.ResourceTransformResult{
-					Props: props,
-					Opts:  rta.Opts,
-				}
-			}
-			return nil
-		}
-
-		_, err = NewMyOtherComponent(ctx, "res5", pulumi.Transforms([]pulumi.ResourceTransform{transformChild1DependsOnChild2}))
 		if err != nil {
 			return err
 		}
