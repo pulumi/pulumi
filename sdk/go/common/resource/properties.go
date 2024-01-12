@@ -132,6 +132,18 @@ func (ref ResourceReference) IDString() (value string, hasID bool) {
 	}
 }
 
+func (ref ResourceReference) Equal(other ResourceReference) bool {
+	if ref.URN != other.URN {
+		return false
+	}
+
+	vid, oid := ref.ID, other.ID
+	if vid.IsComputed() && oid.IsComputed() {
+		return true
+	}
+	return vid.DeepEquals(oid)
+}
+
 type ReqError struct {
 	K PropertyKey
 }
