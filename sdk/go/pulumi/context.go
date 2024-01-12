@@ -271,7 +271,7 @@ func (ctx *Context) IsConfigSecret(key string) bool {
 }
 
 // registerTransform starts up a callback server if not already running and registers the given transformation.
-func (ctx *Context) registerTransform(t ResourceTransformation) (*pulumirpc.Callback, error) {
+func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback, error) {
 	contract.Assertf(ctx.supportsTransforms, "transformation attempted but not supported by resource monitor")
 
 	// Wrap the transformation in a callback function.
@@ -293,20 +293,19 @@ func (ctx *Context) registerTransform(t ResourceTransformation) (*pulumirpc.Call
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
 
-		umProperties, _, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(properties))
+		var o Map
+		r := reflect.ValueOf(o)
+		unmarshalOutput(ctx, resource.NewObjectProperty(properties), r)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
 
-		o, r, _ := NewOutput()
-		r(umProperties)
-
-		args := &ResourceTransformationArgs{
-			Resource: ctx.stack,
-			Type:     rpcReq.Type,
-			Name:     rpcReq.Name,
-			Props:    o,
-			Opts:     nil,
+		args := &ResourceTransformArgs{
+			Custom: rpcReq.Custom,
+			Type:   rpcReq.Type,
+			Name:   rpcReq.Name,
+			Props:  o,
+			Opts:   nil,
 		}
 
 		res := t(args)
@@ -316,9 +315,9 @@ func (ctx *Context) registerTransform(t ResourceTransformation) (*pulumirpc.Call
 		}
 
 		if res != nil {
-			umProperties = res.Props
+			umProperties := res.Props
 			if umProperties == nil {
-				umProperties = struct{}{}
+				umProperties = Map{}
 			}
 			mProperties, _, err := marshalInput(umProperties, anyType, true)
 			if err != nil {
@@ -1936,19 +1935,22 @@ func (ctx *Context) Export(name string, value Input) {
 
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
-	if ctx.supportsTransforms {
-		cb, err := ctx.registerTransform(t)
-		if err != nil {
-			return err
-		}
-
-		_, err = ctx.monitor.RegisterStackTransformation(ctx.ctx, cb)
-		return err
-
-	} else {
-		ctx.stack.addTransformation(t)
-	}
+	ctx.stack.addTransformation(t)
 	return nil
+}
+
+func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
+	if !ctx.supportsTransforms {
+		return fmt.Errorf("update engine")
+	}
+
+	cb, err := ctx.registerTransform(t)
+	if err != nil {
+		return err
+	}
+
+	_, err = ctx.monitor.RegisterStackTransformation(ctx.ctx, cb)
+	return err
 }
 
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
