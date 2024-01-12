@@ -13,3 +13,15 @@
 // limitations under the License.
 
 package property
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Calling == does not implement desirable behavior, so we ensure that it is invalid.
+func TestCannotCompareValues(t *testing.T) {
+	assert.False(t, reflect.TypeOf(Value{}).Comparable())
+}

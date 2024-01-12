@@ -42,8 +42,6 @@ type Value struct {
 	dependencies []resource.URN // the dependencies associated with this value.
 
 	v any
-
-	_ []struct{} // ensure that Value are incomparable with ==
 }
 
 // GoValues constrains the set of go values that can be contained inside a Value.
