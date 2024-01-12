@@ -61,7 +61,7 @@ func ToResourcePropertyValue(v Value) resource.PropertyValue {
 	case len(v.dependencies) > 0 || (v.isSecret && v.IsComputed()):
 		r = resource.NewOutputProperty(resource.Output{
 			Element:      r,
-			Known:        v.IsComputed(),
+			Known:        !v.IsComputed(),
 			Secret:       v.Secret(),
 			Dependencies: v.dependencies,
 		})
