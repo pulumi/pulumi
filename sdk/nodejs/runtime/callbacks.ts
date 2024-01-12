@@ -35,6 +35,8 @@ import {
     ResourceOptions,
     ResourceTransformation,
     ResourceTransformationArgs,
+    ResourceTransform,
+    ResourceTransformArgs,
 } from "../resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { getStackResource } from "./stack";
@@ -46,8 +48,8 @@ const maxRPCMessageSize: number = 1024 * 1024 * 400;
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 
 export interface ICallbackServer {
-    registerTransformation(callback: ResourceTransformation): Promise<callproto.Callback>;
-    registerStackTransformation(callback: ResourceTransformation): void;
+    registerTransformation(callback: ResourceTransform): Promise<callproto.Callback>;
+    registerStackTransformation(callback: ResourceTransform): void;
     shutdown(): void;
     // Wait for any pendind registerStackTransformation calls to complete.
     awaitStackRegistrations(): Promise<void>;
@@ -165,7 +167,7 @@ export class CallbackServer implements ICallbackServer {
         }
     }
 
-    async registerTransformation(transform: ResourceTransformation): Promise<callproto.Callback> {
+    async registerTransformation(transform: ResourceTransform): Promise<callproto.Callback> {
         const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
             const request = resproto.TransformationRequest.deserializeBinary(bytes);
 
@@ -224,10 +226,8 @@ export class CallbackServer implements ICallbackServer {
             ropts.retainOnDelete = opts.getRetainOnDelete();
             ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
 
-            const args: ResourceTransformationArgs = {
-                // Remote transforms can't really synthasize a resource object here so we just pass the root stack object.
-                resource: getStackResource()!,
-
+            const args: ResourceTransformArgs = {
+                custom: request.getCustom(),
                 type: request.getType(),
                 name: request.getName(),
                 props: deserializeProperties(request.getProperties()),
@@ -353,7 +353,7 @@ export class CallbackServer implements ICallbackServer {
         return req;
     }
 
-    registerStackTransformation(transform: ResourceTransformation): void {
+    registerStackTransformation(transform: ResourceTransform): void {
         this._pendingRegistrations++;
         console.log("registerStackTransformation: ", this._pendingRegistrations);
 

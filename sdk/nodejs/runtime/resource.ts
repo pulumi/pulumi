@@ -451,7 +451,7 @@ export function registerResource(
             const callbacks: Callback[] = [];
             if (getStore().supportsTransforms) {
                 const callbackServer = getCallbacks();
-                for (const transform of opts.transformations || []) {
+                for (const transform of opts.transforms || []) {
                     if (callbackServer === undefined) {
                         throw new Error("Callback server not initialized");
                     }

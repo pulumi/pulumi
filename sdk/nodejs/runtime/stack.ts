@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { warn } from "../log";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
-import { ComponentResource, Resource, ResourceTransformation } from "../resource";
+import { ComponentResource, Resource, ResourceTransformation, ResourceTransform } from "../resource";
 import { getCallbacks, isDryRun, isQueryMode, setRootResource } from "./settings";
 import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
 
@@ -212,19 +212,25 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
  * Add a transformation to all future resources constructed in this Pulumi stack.
  */
 export function registerStackTransformation(t: ResourceTransformation) {
-    if (getStore().supportsTransforms) {
-        const callbacks = getCallbacks();
-        if (!callbacks) {
-            throw new Error("No callback server registered.");
-        }
-        callbacks.registerStackTransformation(t);
-    } else {
-        const stackResource = getStackResource();
-        if (!stackResource) {
-            throw new Error("The root stack resource was referenced before it was initialized.");
-        }
-        stackResource.__transformations = [...(stackResource.__transformations || []), t];
+    const stackResource = getStackResource();
+    if (!stackResource) {
+        throw new Error("The root stack resource was referenced before it was initialized.");
     }
+    stackResource.__transformations = [...(stackResource.__transformations || []), t];
+}
+
+/**
+ * Add a transformation to all future resources constructed in this Pulumi stack.
+ */
+export function registerStackTransform(t: ResourceTransform) {
+    if (!getStore().supportsTransforms) {
+        throw new Error("update engine");
+    }
+    const callbacks = getCallbacks();
+    if (!callbacks) {
+        throw new Error("No callback server registered.");
+    }
+    callbacks.registerStackTransformation(t);
 }
 
 export function getStackResource(): Stack | undefined {

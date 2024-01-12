@@ -393,27 +393,23 @@ export abstract class Resource {
 
         const parent = opts.parent || getStackResource();
 
-        if (!getStore().supportsTransforms) {
-            // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
-            // options assigned to this resource.
-            this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
-            for (const transformation of this.__transformations) {
-                const tres = transformation({ resource: this, type: t, name, props, opts });
-                if (tres) {
-                    if (tres.opts.parent !== opts.parent) {
-                        // This is currently not allowed because the parent tree is needed to establish what
-                        // transformation to apply in the first place, and to compute inheritance of other
-                        // resource options in the Resource constructor before transformations are run (so
-                        // modifying it here would only even partially take affect).  It's theoretically
-                        // possible this restriction could be lifted in the future, but for now just
-                        // disallow re-parenting resources in transformations to be safe.
-                        throw new Error(
-                            "Transformations cannot currently be used to change the `parent` of a resource.",
-                        );
-                    }
-                    props = tres.props;
-                    opts = tres.opts;
+        // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
+        // options assigned to this resource.
+        this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
+        for (const transformation of this.__transformations) {
+            const tres = transformation({ resource: this, type: t, name, props, opts });
+            if (tres) {
+                if (tres.opts.parent !== opts.parent) {
+                    // This is currently not allowed because the parent tree is needed to establish what
+                    // transformation to apply in the first place, and to compute inheritance of other
+                    // resource options in the Resource constructor before transformations are run (so
+                    // modifying it here would only even partially take affect).  It's theoretically
+                    // possible this restriction could be lifted in the future, but for now just
+                    // disallow re-parenting resources in transformations to be safe.
+                    throw new Error("Transformations cannot currently be used to change the `parent` of a resource.");
                 }
+                props = tres.props;
+                opts = tres.opts;
             }
         }
 
@@ -706,6 +702,14 @@ export interface ResourceOptions {
      * parents walking from the resource up to the stack.
      */
     transformations?: ResourceTransformation[];
+
+    /**
+     * Optional list of transforms to apply to this resource during construction. The
+     * transforms are applied in order, and are applied prior to transforms applied to
+     * parents walking from the resource up to the stack.
+     */
+    transforms?: ResourceTransform[];
+
     /**
      * The URN of a previously-registered resource of this type to read from the engine.
      */
@@ -754,6 +758,58 @@ export interface CustomTimeouts {
  * this indicates that the resource will not be transformed.
  */
 export type ResourceTransformation = (args: ResourceTransformationArgs) => ResourceTransformationResult | undefined;
+
+/**
+ * ResourceTransform is the callback signature for the `transforms` resource option.  A
+ * transform is passed the same set of inputs provided to the `Resource` constructor, and can
+ * optionally return back alternate values for the `props` and/or `opts` prior to the resource
+ * actually being created.  The effect will be as though those props and opts were passed in place
+ * of the original call to the `Resource` constructor.  If the transform returns undefined,
+ * this indicates that the resource will not be transformed.
+ */
+export type ResourceTransform = (args: ResourceTransformArgs) => ResourceTransformResult | undefined;
+
+/**
+ * ResourceTransformArgs is the argument bag passed to a resource transform.
+ */
+export interface ResourceTransformArgs {
+    /**
+     * If the resource is a custom or component resource.
+     */
+    custom: boolean;
+    /**
+     * The type of the Resource.
+     */
+    type: string;
+    /**
+     * The name of the Resource.
+     */
+    name: string;
+    /**
+     * The original properties passed to the Resource constructor.
+     */
+    props: Inputs;
+    /**
+     * The original resource options passed to the Resource constructor.
+     */
+    opts: ResourceOptions;
+}
+
+/**
+ * ResourceTransformResult is the result that must be returned by a resource transformation
+ * callback.  It includes new values to use for the `props` and `opts` of the `Resource` in place of
+ * the originally provided values.
+ */
+export interface ResourceTransformResult {
+    /**
+     * The new properties to use in place of the original `props`
+     */
+    props: Inputs;
+    /**
+     * The new resource options to use in place of the original `opts`
+     */
+    opts: ResourceOptions;
+}
 
 /**
  * ResourceTransformationArgs is the argument bag passed to a resource transformation.
