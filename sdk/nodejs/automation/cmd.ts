@@ -52,11 +52,14 @@ export async function runPulumiCmd(
     if (!args.includes("--non-interactive")) {
         args.push("--non-interactive");
     }
+    if (cwd) {
+        args.push("--cwd", cwd);
+    }
 
     const env = { ...additionalEnv };
 
     try {
-        const proc = execa("pulumi", args, { env, cwd });
+        const proc = execa("pulumi", args, { env });
 
         if (onOutput && proc.stdout) {
             proc.stdout!.on("data", (data: any) => {
