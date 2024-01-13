@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-        "strict": true,
         "outDir": "bin",
         "target": "es2016",
         "module": "commonjs",

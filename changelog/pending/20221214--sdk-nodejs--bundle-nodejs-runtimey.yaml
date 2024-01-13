@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: The NodeJS language runtime is now distributed as bundled JavaScript. This makes bundling of Pulumi programs somewhat less challenging, and might result in a slight performance improvement in certain circumstances.

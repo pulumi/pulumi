@@ -73,7 +73,7 @@ import (
 const (
 	// The path to the "run" program which will spawn the rest of the language host. This may be overridden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
-	defaultRunPath = "@pulumi/pulumi/cmd/run"
+	defaultRunPath = "@pulumi/pulumi/robbies_vendor"
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"

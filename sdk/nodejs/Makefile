@@ -20,7 +20,7 @@ export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 ensure:: yarn.ensure node.ensure .ensure.phony
 .ensure.phony: package.json
-	yarn install --frozen-lockfile
+	yarn install
 	@touch .ensure.phony
 
 format:: ensure
@@ -32,6 +32,8 @@ lint:: ensure
 
 build_package:: ensure
 	yarn run tsc
+	npx esbuild --bundle --tree-shaking=true --minify --format=cjs --allow-overwrite --platform=node --define:window=global --target=node14 --outdir=bundled_dist cmd/run/index.ts
+	cp bundled_dist/index.js bin/robbies_vendor.js
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	mkdir -p bin/tests/automation/data/
