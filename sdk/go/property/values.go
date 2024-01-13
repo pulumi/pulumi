@@ -63,10 +63,31 @@ type GoValues interface {
 
 // Create a new Value from a GoValue.
 func Of[T GoValues](goValue T) Value {
-	if _, ok := (any)(goValue).(null); ok {
-		return Value{}
+	return Value{v: normalize(goValue)}
+}
+
+func normalize(goValue any) any {
+	switch goValue := goValue.(type) {
+	case Array:
+		if goValue == nil {
+			return nil
+		}
+	case Map:
+		if goValue == nil {
+			return nil
+		}
+	case Asset:
+		if goValue == nil {
+			return nil
+		}
+	case Archive:
+		if goValue == nil {
+			return nil
+		}
+	case null:
+		return nil
 	}
-	return Value{v: goValue}
+	return goValue
 }
 
 // Create a new Value from a GoValue of unknown type. An error is returned if goValue is

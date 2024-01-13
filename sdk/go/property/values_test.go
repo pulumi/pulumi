@@ -19,6 +19,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // Calling == does not implement desirable behavior, so we ensure that it is invalid.
@@ -32,4 +35,63 @@ func TestNullEquivalence(t *testing.T) {
 	assert.Nil(t, Of(Null).v)
 
 	assert.True(t, Of(Null).Equals(Value{}))
+
+	assert.True(t, Of(Null).IsNull())
+}
+
+// This test locks in the nil vs null behavior.
+//
+// In go, nil is a value but not a type. For example:
+//
+//	(any)([]A(nil)) != nil
+//
+// This is because when comparing values typed as `any` still carry their underlying type
+// information. This is true even when:
+//
+//	[]A(nil) == nil
+//
+// Unlike the Go language, Value's Null is not typed. This means that:
+//
+//	Of[Array](nil).Equals(Of(Null))
+//
+// Further, since Null is it's own type, it is the case that:
+//
+//	Of[Array](nil).IsArray() == false
+//
+//	Of[Map](nil).IsNull() == true
+func TestNil(t *testing.T) {
+	var nullValue Value
+
+	// []T based type, zero value is Array(nil)
+	t.Run("array", func(t *testing.T) {
+		nilArray := Of[Array](nil)
+
+		assert.False(t, nilArray.IsArray())
+		assert.True(t, nilArray.IsNull())
+		assert.True(t, nilArray.Equals(nullValue))
+
+		assert.True(t, Of(Array{}).IsArray())
+	})
+
+	// *T based type, zero value is *resource.Asset(nil)
+	t.Run("asset", func(t *testing.T) {
+		nilAsset := Of[Asset](nil)
+
+		assert.False(t, nilAsset.IsAsset())
+		assert.True(t, nilAsset.IsNull())
+		assert.True(t, nilAsset.Equals(nullValue))
+
+		a, err := resource.NewTextAsset("")
+		require.NoError(t, err)
+		assert.True(t, Of(a).IsAsset())
+	})
+
+	// string based type, zero value is ""
+	t.Run("string", func(t *testing.T) {
+		emptyString := Of[string]("")
+
+		assert.True(t, emptyString.IsString())
+		assert.False(t, emptyString.IsNull())
+		assert.False(t, emptyString.Equals(nullValue))
+	})
 }
