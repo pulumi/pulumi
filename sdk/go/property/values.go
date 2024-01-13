@@ -42,6 +42,11 @@ type Value struct {
 
 	dependencies []resource.URN // the dependencies associated with this value.
 
+	// The inner go value for the Value.
+	//
+	// Note: null{} is not a valid value for v. null{} should be normalized to nil
+	// during creation, so that the zero value of Value is bit for bit equivalent to
+	// `Of(Null)`.
 	v any
 }
 
@@ -53,11 +58,14 @@ type GoValues interface {
 		Array | Map | // Collection types
 		Asset | Archive | // Pulumi types
 		ResourceReference | // Resource references
-		computed
+		computed | null
 }
 
 // Create a new Value from a GoValue.
 func Of[T GoValues](goValue T) Value {
+	if _, ok := (any)(goValue).(null); ok {
+		return Value{}
+	}
 	return Value{v: goValue}
 }
 
@@ -83,14 +91,32 @@ func OfAny(goValue any) (Value, error) {
 		return Of(goValue), nil
 	case computed:
 		return Of(goValue), nil
-	case nil:
+	case nil, null:
 		return Value{}, nil
 	default:
 		return Value{}, fmt.Errorf("invalid type: %s of type %[1]T", goValue)
 	}
 }
 
-var Computed computed
+// Computed and Null are marker values of distinct singleton types.
+//
+// Because the type of the variable is a singleton, it is not possible to mutate these
+// values (there is no other value to mutate to).
+var (
+	// Mark a property as an untyped computed value.
+	Computed computed
+	// Mark a property as an untyped empty value.
+	Null null
+)
+
+// Singleton marker types.
+//
+// These types are intentionally private. Users should instead use the available exported
+// values.
+type (
+	computed struct{}
+	null     struct{}
+)
 
 func is[T GoValues](v Value) bool {
 	_, ok := v.v.(T)
@@ -146,8 +172,6 @@ func (v Value) WithNotSecret() Value {
 	return v
 }
 
-type computed struct{}
-
 // HasComputed returns true if the Value or any nested Value is computed.
 func (v Value) HasComputed() bool {
 	var hasComputed bool
@@ -165,4 +189,12 @@ func (v Value) Dependencies() []resource.URN { return v.dependencies }
 func (v Value) WithDependencies(deps []resource.URN) Value {
 	v.dependencies = deps
 	return v
+}
+
+// WithGoValue creates a new Value with the inner value newGoValue.
+//
+// To set to a null or computed value, pass Null or Computed as newGoValue.
+func WithGoValue[T GoValues](value Value, newGoValue T) Value {
+	value.v = Of(newGoValue).v
+	return value
 }

@@ -26,3 +26,10 @@ func TestCannotCompareValues(t *testing.T) {
 	t.Parallel()
 	assert.False(t, reflect.TypeOf(Value{}).Comparable())
 }
+
+func TestNullEquivalence(t *testing.T) {
+	t.Parallel()
+	assert.Nil(t, Of(Null).v)
+
+	assert.True(t, Of(Null).Equals(Value{}))
+}
