@@ -133,6 +133,61 @@ func TestRotatePassphrase(t *testing.T) {
 	e.RunCommand("pulumi", "config", "get", "foo")
 }
 
+func TestRotatePassphraseNonInteractiveStdin(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("rotate_passphrase")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
+
+	_, se := e.RunCommandExpectError("pulumi", "stack", "change-secrets-provider", "default", "--stdin")
+	assert.Contains(t, se, "error: --stdin only works with the passphrase secrets provider")
+
+	_, se = e.RunCommandExpectError("pulumi", "stack", "change-secrets-provider", "passphrase")
+	assert.Contains(t, se, "error: existing passphrase rotation requires either an "+
+		"interactive session or providing the --stdin flag to the change-secrets-provider command")
+
+	e.SetEnvVars("PULUMI_TEST_PASSPHRASE=true")
+	_, se = e.RunCommandExpectError("pulumi", "stack", "change-secrets-provider", "passphrase", "--stdin")
+	assert.Contains(t, se, "error: --stdin flag cannot be used in an interactive session")
+
+	e.SetEnvVars("PULUMI_TEST_PASSPHRASE=false")
+
+	e.Stdin = strings.NewReader("asdf\n")
+	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase", "--stdin")
+	e.Stdin, e.Passphrase = nil, "asdf"
+	e.RunCommand("pulumi", "config", "get", "foo")
+
+	e.Stdin = strings.NewReader("   \n")
+	_, se = e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase", "--stdin")
+	assert.Contains(t, se, "warning: empty passphrase provided")
+
+	// No way to change an empty passphrase non-interactively :|
+	e.NoPassphrase = true
+	e.Stdin = strings.NewReader("\n")
+	e.SetEnvVars("PULUMI_TEST_PASSPHRASE=true")
+	e.RunCommand("pulumi", "config", "get", "foo")
+
+	e.Stdin = strings.NewReader("\nqwerty\nqwerty\n")
+	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase")
+
+	e.NoPassphrase = false
+
+	e.Stdin, e.Passphrase = nil, "qwerty"
+	e.RunCommand("pulumi", "config", "get", "foo")
+}
+
 //nolint:paralleltest // uses parallel programtest
 func TestJSONOutputWithStreamingPreview(t *testing.T) {
 	stdout := &bytes.Buffer{}

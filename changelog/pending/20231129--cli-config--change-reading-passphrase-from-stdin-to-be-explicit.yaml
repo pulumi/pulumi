@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Change reading passphrase from stdin to be explicit

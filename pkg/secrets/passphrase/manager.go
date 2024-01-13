@@ -266,8 +266,16 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 	}
 }
 
-func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
+func NewPromptingPassphraseSecretsManager(
+	info *workspace.ProjectStack,
 	rotateSecretsProvider bool,
+) (secrets.Manager, error) {
+	return NewPromptingPassphraseSecretsManagerWithStdin(info, rotateSecretsProvider, false)
+}
+
+func NewPromptingPassphraseSecretsManagerWithStdin(
+	info *workspace.ProjectStack,
+	rotateSecretsProvider, useStdin bool,
 ) (secrets.Manager, error) {
 	if rotateSecretsProvider {
 		info.EncryptionSalt = ""
@@ -284,7 +292,7 @@ func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
 	}
 
 	// Otherwise, prompt the user for a new passphrase.
-	state, sm, err := promptForNewPassphrase(rotateSecretsProvider)
+	state, sm, err := promptForNewPassphrase(rotateSecretsProvider, useStdin)
 	if err != nil {
 		return nil, err
 	}
@@ -297,42 +305,52 @@ func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
 }
 
 // promptForNewPassphrase prompts for a new passphrase, and returns the state and the secrets manager.
-func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
+func promptForNewPassphrase(rotate, useStdin bool) (string, secrets.Manager, error) {
 	var phrase string
 
-	// Get a the passphrase from the user, ensuring that they match.
-	for {
-		firstMessage := "Enter your passphrase to protect config/secrets"
-		if rotate {
-			firstMessage = "Enter your new passphrase to protect config/secrets"
+	if useStdin {
+		if isInteractive() {
+			return "", nil, fmt.Errorf(
+				"--stdin flag cannot be used in an interactive session")
+		}
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+		phrase = strings.TrimSpace(scanner.Text())
+		if phrase == "" {
+			cmdutil.Diag().Warningf(diag.Message("", "empty passphrase provided"))
+		}
+	} else if rotate && !isInteractive() {
+		return "", nil, fmt.Errorf(
+			"existing passphrase rotation requires either an interactive session or " +
+				"providing the --stdin flag to the change-secrets-provider command")
+	} else {
+		// Get a the passphrase from the user, ensuring that they match.
+		for {
+			firstMessage := "Enter your passphrase to protect config/secrets"
+			if rotate {
+				firstMessage = "Enter your new passphrase to protect config/secrets"
+			}
+			// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
+			first, _, err := readPassphrase(firstMessage, !rotate)
+			if err != nil {
+				return "", nil, err
+			}
+			secondMessage := "Re-enter your passphrase to confirm"
+			if rotate {
+				secondMessage = "Re-enter your new passphrase to confirm"
+			}
+			second, _, err := readPassphrase(secondMessage, !rotate)
+			if err != nil {
+				return "", nil, err
+			}
 
-			if !isInteractive() {
-				scanner := bufio.NewScanner(os.Stdin)
-				scanner.Scan()
-				phrase = strings.TrimSpace(scanner.Text())
+			if first == second {
+				phrase = first
 				break
 			}
+			// If they didn't match, print an error and try again
+			cmdutil.Diag().Errorf(diag.Message("", "passphrases do not match"))
 		}
-		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
-		first, _, err := readPassphrase(firstMessage, !rotate)
-		if err != nil {
-			return "", nil, err
-		}
-		secondMessage := "Re-enter your passphrase to confirm"
-		if rotate {
-			secondMessage = "Re-enter your new passphrase to confirm"
-		}
-		second, _, err := readPassphrase(secondMessage, !rotate)
-		if err != nil {
-			return "", nil, err
-		}
-
-		if first == second {
-			phrase = first
-			break
-		}
-		// If they didn't match, print an error and try again
-		cmdutil.Diag().Errorf(diag.Message("", "passphrases do not match"))
 	}
 
 	state, sm, err := NewPassphraseSecretsManager(phrase)
