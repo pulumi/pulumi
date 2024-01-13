@@ -60,7 +60,7 @@ func Number() *rapid.Generator[property.Value] {
 
 func Null() *rapid.Generator[property.Value] { return rapid.Just(property.Value{}) }
 
-func Computed() *rapid.Generator[property.Value] { return rapid.Just(property.Computed()) }
+func Computed() *rapid.Generator[property.Value] { return rapid.Just(property.Of(property.Computed)) }
 
 func Array(maxDepth int) *rapid.Generator[property.Value] { return ArrayOf(Value(maxDepth - 1)) }
 

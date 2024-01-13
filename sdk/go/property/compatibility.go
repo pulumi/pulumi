@@ -116,9 +116,9 @@ func FromResourcePropertyValue(v resource.PropertyValue) Value {
 	case v.IsComputed():
 		if v.Input().Element.IsSecret() || (v.Input().Element.IsOutput() &&
 			v.Input().Element.OutputValue().Secret) {
-			return Computed().WithSecret()
+			return Of(Computed).WithSecret()
 		}
-		return Computed()
+		return Of(Computed)
 	case v.IsSecret():
 		elem := FromResourcePropertyValue(v.SecretValue().Element)
 		elem.isSecret = true
@@ -127,7 +127,7 @@ func FromResourcePropertyValue(v resource.PropertyValue) Value {
 		o := v.OutputValue()
 		var elem Value
 		if !o.Known {
-			elem = Computed()
+			elem = Of(Computed)
 		} else {
 			elem = FromResourcePropertyValue(o.Element)
 		}

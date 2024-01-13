@@ -16,6 +16,8 @@
 package property
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -50,11 +52,8 @@ type GoValues interface {
 	bool | float64 | string | // Primitive types
 		Array | Map | // Collection types
 		Asset | Archive | // Pulumi types
-		ResourceReference // Resource references
-}
-
-type allValues interface {
-	GoValues | computed
+		ResourceReference | // Resource references
+		computed
 }
 
 // Create a new Value from a GoValue.
@@ -62,10 +61,38 @@ func Of[T GoValues](goValue T) Value {
 	return Value{v: goValue}
 }
 
-// Computed returns a computed value.
-func Computed() Value { return Value{v: computed{}} }
+// Create a new Value from a GoValue of unknown type. An error is returned if goValue is
+// not a member of GoValues.
+func OfAny(goValue any) (Value, error) {
+	switch goValue := goValue.(type) {
+	case bool:
+		return Of(goValue), nil
+	case float64:
+		return Of(goValue), nil
+	case string:
+		return Of(goValue), nil
+	case Array:
+		return Of(goValue), nil
+	case Map:
+		return Of(goValue), nil
+	case Asset:
+		return Of(goValue), nil
+	case Archive:
+		return Of(goValue), nil
+	case ResourceReference:
+		return Of(goValue), nil
+	case computed:
+		return Of(goValue), nil
+	case nil:
+		return Value{}, nil
+	default:
+		return Value{}, fmt.Errorf("invalid type: %s of type %[1]T", goValue)
+	}
+}
 
-func is[T allValues](v Value) bool {
+var Computed computed
+
+func is[T GoValues](v Value) bool {
 	_, ok := v.v.(T)
 	return ok
 }
