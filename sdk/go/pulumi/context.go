@@ -177,6 +177,12 @@ func (ctx *Context) Context() context.Context {
 	return ctx.ctx
 }
 
+// Returns a copy of base context in which the value associated with key is val.
+func (ctx *Context) WriteValue(key, val any) context.Context {
+	ctx.ctx = context.WithValue(ctx.ctx, key, val)
+	return ctx.ctx
+}
+
 // Close implements io.Closer and relinquishes any outstanding resources held by the context.
 func (ctx *Context) Close() error {
 	if ctx.engineConn != nil {
