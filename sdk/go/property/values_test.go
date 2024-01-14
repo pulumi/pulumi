@@ -60,10 +60,13 @@ func TestNullEquivalence(t *testing.T) {
 //
 //	Of[Map](nil).IsNull() == true
 func TestNil(t *testing.T) {
+	t.Parallel()
+
 	var nullValue Value
 
 	// []T based type, zero value is Array(nil)
 	t.Run("array", func(t *testing.T) {
+		t.Parallel()
 		nilArray := Of[Array](nil)
 
 		assert.False(t, nilArray.IsArray())
@@ -75,6 +78,7 @@ func TestNil(t *testing.T) {
 
 	// *T based type, zero value is *resource.Asset(nil)
 	t.Run("asset", func(t *testing.T) {
+		t.Parallel()
 		nilAsset := Of[Asset](nil)
 
 		assert.False(t, nilAsset.IsAsset())
@@ -88,6 +92,7 @@ func TestNil(t *testing.T) {
 
 	// string based type, zero value is ""
 	t.Run("string", func(t *testing.T) {
+		t.Parallel()
 		emptyString := Of[string]("")
 
 		assert.True(t, emptyString.IsString())
