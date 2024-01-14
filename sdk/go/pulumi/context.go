@@ -178,7 +178,7 @@ func (ctx *Context) Context() context.Context {
 }
 
 // Returns a copy of base context in which the value associated with key is val.
-func (ctx *Context) WriteValue(key, val any) context.Context {
+func (ctx *Context) WithValue(key, val any) context.Context {
 	ctx.ctx = context.WithValue(ctx.ctx, key, val)
 	return ctx.ctx
 }
