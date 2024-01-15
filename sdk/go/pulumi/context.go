@@ -184,9 +184,14 @@ func (ctx *Context) Context() context.Context {
 }
 
 // Returns a copy of base context in which the value associated with key is val.
-func (ctx *Context) WithValue(key, val any) context.Context {
-	ctx.ctx = context.WithValue(ctx.ctx, key, val)
-	return ctx.ctx
+func (ctx *Context) WithValue(key, val any) *Context {
+	newCtx := &Context{
+		ctx:   ctx.ctx,
+		state: ctx.state,
+		Log:   ctx.Log,
+	}
+	newCtx.ctx = context.WithValue(newCtx.ctx, key, val)
+	return newCtx
 }
 
 // Close implements io.Closer and relinquishes any outstanding resources held by the context.

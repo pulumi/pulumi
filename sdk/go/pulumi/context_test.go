@@ -615,17 +615,13 @@ func TestWithValue(t *testing.T) {
 
 	key := "key"
 	val := "val"
-	testStateCtx := &contextState{}
-	baseCtx := context.Background()
 	testCtx := &Context{
-		state: testStateCtx,
-		ctx:   baseCtx,
+		state: &contextState{},
+		ctx:   context.Background(),
 	}
 	newCtx := testCtx.WithValue(key, val)
 
-	assert.Equal(t, testCtx.ctx.Value(key), val)
-	assert.Equal(t, newCtx.Value(key), val)
-	assert.Equal(t, baseCtx.Value(key), nil)
-	// State is unchanged
-	assert.Equal(t, testStateCtx, testCtx.state)
+	assert.Equal(t, nil, testCtx.ctx.Value(key))
+	assert.Equal(t, val, newCtx.ctx.Value(key))
+	assert.Equal(t, newCtx.state, testCtx.state)
 }
