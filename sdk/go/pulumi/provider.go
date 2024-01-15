@@ -161,7 +161,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -814,7 +814,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}

@@ -49,7 +49,7 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			String("X").ToStringOutput().ApplyT(func(string) int {
-				err := ctx.Log.Debug("Zzz", &LogArgs{})
+				err := ctx.state.Log.Debug("Zzz", &LogArgs{})
 				assert.NoError(t, err)
 				return 0
 			})
@@ -64,16 +64,22 @@ func TestRunningUnderMocks(t *testing.T) {
 
 	t.Run("With mocks", func(t *testing.T) {
 		t.Parallel()
-		testCtx := &Context{
+		testCtxState := &contextState{
 			monitor: &mockMonitor{},
+		}
+		testCtx := &Context{
+			state: testCtxState,
 		}
 		assert.True(t, testCtx.RunningWithMocks())
 	})
 
 	t.Run("Without mocks", func(t *testing.T) {
 		t.Parallel()
-		testCtx := &Context{
+		testCtxState := &contextState{
 			monitor: nil,
+		}
+		testCtx := &Context{
+			state: testCtxState,
 		}
 		assert.False(t, testCtx.RunningWithMocks())
 	})
@@ -117,7 +123,7 @@ func NewLoggingTestResource(
 
 	resource.TestOutput = input.ToStringOutput().ApplyT(func(inputValue string) (string, error) {
 		time.Sleep(10 * time.Nanosecond)
-		err := ctx.Log.Debug("Zzz", &LogArgs{})
+		err := ctx.state.Log.Debug("Zzz", &LogArgs{})
 		assert.NoError(t, err)
 		return inputValue, nil
 	}).(StringOutput)
@@ -602,4 +608,24 @@ func TestSourcePosition(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
+}
+
+func TestWithValue(t *testing.T) {
+	t.Parallel()
+
+	key := "key"
+	val := "val"
+	testStateCtx := &contextState{}
+	baseCtx := context.Background()
+	testCtx := &Context{
+		state: testStateCtx,
+		ctx:   baseCtx,
+	}
+	newCtx := testCtx.WithValue(key, val)
+
+	assert.Equal(t, testCtx.ctx.Value(key), val)
+	assert.Equal(t, newCtx.Value(key), val)
+	assert.Equal(t, baseCtx.Value(key), nil)
+	// State is unchanged
+	assert.Equal(t, testStateCtx, testCtx.state)
 }
