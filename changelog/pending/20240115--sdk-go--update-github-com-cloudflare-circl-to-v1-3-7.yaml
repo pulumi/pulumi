@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Update github.com/cloudflare/circl to v1.3.7.
