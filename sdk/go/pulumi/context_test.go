@@ -49,7 +49,7 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			String("X").ToStringOutput().ApplyT(func(string) int {
-				err := ctx.state.Log.Debug("Zzz", &LogArgs{})
+				err := ctx.Log.Debug("Zzz", &LogArgs{})
 				assert.NoError(t, err)
 				return 0
 			})
@@ -123,7 +123,7 @@ func NewLoggingTestResource(
 
 	resource.TestOutput = input.ToStringOutput().ApplyT(func(inputValue string) (string, error) {
 		time.Sleep(10 * time.Nanosecond)
-		err := ctx.state.Log.Debug("Zzz", &LogArgs{})
+		err := ctx.Log.Debug("Zzz", &LogArgs{})
 		assert.NoError(t, err)
 		return inputValue, nil
 	}).(StringOutput)

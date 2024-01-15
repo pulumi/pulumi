@@ -68,14 +68,13 @@ type contextState struct {
 	rpcError            error      // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
-
-	Log Log // the logging interface for the Pulumi log stream.
 }
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
 	state *contextState
 	ctx   context.Context
+	Log   Log // the logging interface for the Pulumi log stream.
 }
 
 // NewContext creates a fresh run context out of the given metadata.
@@ -166,14 +165,14 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsAliasSpecs:  supportsAliasSpecs,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
-	contextState.Log = &logState{
-		engine: engine,
-		ctx:    ctx,
-		join:   &contextState.join,
-	}
 	context := &Context{
 		state: contextState,
 		ctx:   ctx,
+	}
+	context.Log = &logState{
+		engine: engine,
+		ctx:    ctx,
+		join:   &contextState.join,
 	}
 
 	return context, nil
@@ -833,7 +832,7 @@ func (ctx *Context) registerResource(
 			resourceType = "component resource"
 			registerMethod = "RegisterComponentResource"
 		}
-		err := ctx.state.Log.Warn(fmt.Sprintf(
+		err := ctx.Log.Warn(fmt.Sprintf(
 			"Ignoring %v %T (parent of %v :: %v) because it was not registered with %v",
 			resourceType, parent, name, t, registerMethod), nil /* args */)
 		contract.IgnoreError(err)
@@ -1077,7 +1076,7 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 		// there will always be a conflicting entry in the map.
 		// So we need to also check that it's a different provider.
 		if other, alreadyExists := providerMap[pkg]; alreadyExists && other != provider {
-			err := ctx.state.Log.Warn(fmt.Sprintf("Provider for %s conflicts with providers map. %s %s", pkg,
+			err := ctx.Log.Warn(fmt.Sprintf("Provider for %s conflicts with providers map. %s %s", pkg,
 				"This will become an error in a future version.",
 				"See https://github.com/pulumi/pulumi/issues/8799 for more details.",
 			), nil)
@@ -1240,7 +1239,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	populateResourceStateResolvers := func() {
 		contract.Assertf(rs != nil, "ResourceState must not be nil")
 		if rs.urn.OutputState != nil {
-			err := ctx.state.Log.Error(
+			err := ctx.Log.Error(
 				fmt.Sprintf("The resource named %v (type: %v) was initialized multiple times.", name, t),
 				nil)
 			contract.IgnoreError(err)

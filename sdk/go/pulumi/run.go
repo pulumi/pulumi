@@ -42,7 +42,7 @@ type RunOption func(*RunInfo)
 // If the program fails, the process will be terminated and the function will not return.
 func Run(body RunFunc, opts ...RunOption) {
 	logError := func(ctx *Context, programErr error) {
-		logErr := ctx.state.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v",
+		logErr := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v",
 			programErr), nil)
 		contract.IgnoreError(logErr)
 	}
