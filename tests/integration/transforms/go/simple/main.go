@@ -103,7 +103,7 @@ func main() {
 			fmt.Printf("stack transform\n")
 			fmt.Printf("%v %v\n", rta.Type, rta.Props)
 			if rta.Type == "testprovider:index:Random" {
-				rta.Props["prefix"] = pulumi.String("stackDefault")
+				rta.Props["prefix"] = "stackDefault"
 
 				return &pulumi.ResourceTransformResult{
 					Props: rta.Props,
@@ -132,7 +132,7 @@ func main() {
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res4 transform\n")
 				if rta.Type == "testprovider:index:Random" {
-					rta.Props["prefix"] = pulumi.String("default1")
+					rta.Props["prefix"] = "default1"
 
 					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
@@ -144,7 +144,7 @@ func main() {
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res4 transform 2\n")
 				if rta.Type == "testprovider:index:Random" {
-					rta.Props["prefix"] = pulumi.String("default2")
+					rta.Props["prefix"] = "default2"
 
 					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,

@@ -315,7 +315,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 		if res != nil {
 			umProperties := res.Props
 			if umProperties == nil {
-				umProperties = Map{}
+				umProperties = map[string]any{}
 			}
 			mProperties, _, err := marshalInput(umProperties, anyType, true)
 			if err != nil {

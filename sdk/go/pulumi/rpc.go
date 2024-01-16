@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 // addDependency adds a dependency on the given resource to the set of deps.
@@ -593,29 +594,29 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 	}
 }
 
-// unmarshalPropertyMap is used to turn the values in a resource.PropertyMap into sensible runtime types. This tries to
-// keep things as inputs where possible (e.g. a string property value will just be a `pulumi.String`, not an
-// `Output[string]`). It will use `pulumix.Output` for values that are either Computed (will always be a
-// `pulumix.Output[any]`), secret, or an Output property value.
-func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
+// unmarshalPropertyMap is used to turn the values in a resource.PropertyMap into sensible runtime types. This
+// tries to keep things as plain types where possible (e.g. a string property value will just be a `string`,
+// not an `Output[string]` or `pulumi.String`). It will use `pulumix.Output` for values that are either
+// Computed (will always be a `pulumix.Output[any]`), secret, or an Output property value.
+func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (map[string]any, error) {
 	if v == nil {
 		return nil, nil
 	}
 
-	var unmarshal func(v resource.PropertyValue) (Input, error)
-	unmarshal = func(v resource.PropertyValue) (Input, error) {
+	var unmarshal func(v resource.PropertyValue) (any, error)
+	unmarshal = func(v resource.PropertyValue) (any, error) {
 		switch {
 		case v.IsNull():
 			return nil, nil
 		case v.IsBool():
-			return Bool(v.BoolValue()), nil
+			return v.BoolValue(), nil
 		case v.IsNumber():
-			return Float64(v.NumberValue()), nil
+			return v.NumberValue(), nil
 		case v.IsString():
-			return String(v.StringValue()), nil
+			return v.StringValue(), nil
 		case v.IsArray():
 			a := v.ArrayValue()
-			r := make([]Input, len(a))
+			r := make([]any, len(a))
 			for i, v := range a {
 				uv, err := unmarshal(v)
 				if err != nil {
@@ -623,15 +624,42 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 				}
 				r[i] = uv
 			}
-			return Array(r), nil
+			return r, nil
 		case v.IsObject():
 			m := v.ObjectValue()
+			return unmarshalPropertyMap(ctx, m)
+		case v.IsArchive():
+			return v.ArchiveValue(), nil
+		case v.IsAsset():
+			return v.AssetValue(), nil
+		case v.IsResourceReference():
+			contract.Failf("todo resource")
+		case v.IsComputed():
+			state := internal.NewOutputState(nil /* joinGroup */, reflect.TypeOf((*any)(nil)).Elem())
+			internal.ResolveOutput(state, nil, false, false, nil /* deps */)
+			return pulumix.Output[any]{OutputState: state}, nil
+		case v.IsSecret():
+			element, err := unmarshal(v.SecretValue().Element)
+			if err != nil {
+				return nil, err
+			}
+
+			// Return an output of the type of the inner value, except for nil which should type as
+			// Output[any].
+			typ := reflect.TypeOf(element)
+			if element == nil {
+				typ = reflect.TypeOf((*any)(nil)).Elem()
+			}
+
+			state := internal.NewOutputState(nil /* joinGroup */, typ)
+			internal.ResolveOutput(state, element, true, true, nil /* deps */)
+			return pulumix.Output[any]{OutputState: state}, nil
 		}
 
 		return nil, fmt.Errorf("unknown property value %v", v)
 	}
 
-	m := make(map[string]Input)
+	m := make(map[string]any)
 	for k, v := range v {
 		uv, err := unmarshal(v)
 		if err != nil {
