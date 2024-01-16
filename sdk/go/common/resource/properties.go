@@ -665,19 +665,3 @@ const OutputValueSig = sig.OutputValue
 func IsInternalPropertyKey(key PropertyKey) bool {
 	return strings.HasPrefix(string(key), "__")
 }
-
-const (
-	// Re-export asset sigs
-	AssetSig          = asset.AssetSig
-	AssetHashProperty = asset.AssetHashProperty
-	AssetTextProperty = asset.AssetTextProperty
-	AssetPathProperty = asset.AssetPathProperty
-	AssetURIProperty  = asset.AssetURIProperty
-
-	// Re-export archive sigs
-	ArchiveSig            = sig.ArchiveSig
-	ArchiveHashProperty   = archive.ArchiveHashProperty   // the dynamic property for an archive's hash.
-	ArchiveAssetsProperty = archive.ArchiveAssetsProperty // the dynamic property for an archive's assets.
-	ArchivePathProperty   = archive.ArchivePathProperty   // the dynamic property for an archive's path.
-	ArchiveURIProperty    = archive.ArchiveURIProperty    // the dynamic property for an archive's URI.
-)
