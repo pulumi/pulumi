@@ -183,7 +183,7 @@ func (ctx *Context) Context() context.Context {
 	return ctx.ctx
 }
 
-// Returns a copy of base context in which the value associated with key is val.
+// WithValue returns a copy of base context in which the value associated with key is val.
 func (ctx *Context) WithValue(key, val any) *Context {
 	newCtx := &Context{
 		ctx:   ctx.ctx,
