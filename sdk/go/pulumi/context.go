@@ -49,9 +49,7 @@ var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOU
 
 type workGroup = internal.WorkGroup
 
-// Context handles registration of resources and exposes metadata about the current deployment context.
-type Context struct {
-	ctx         context.Context
+type contextState struct {
 	info        RunInfo
 	stack       Resource
 	exports     map[string]Input
@@ -70,8 +68,13 @@ type Context struct {
 	rpcError            error      // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
+}
 
-	Log Log // the logging interface for the Pulumi log stream.
+// Context handles registration of resources and exposes metadata about the current deployment context.
+type Context struct {
+	state *contextState
+	ctx   context.Context
+	Log   Log // the logging interface for the Pulumi log stream.
 }
 
 // NewContext creates a fresh run context out of the given metadata.
@@ -149,9 +152,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	context := &Context{
-		ctx:                 ctx,
+	contextState := &contextState{
 		info:                info,
 		exports:             make(map[string]Input),
 		monitorConn:         monitorConn,
@@ -163,12 +164,17 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsDeletedWith: supportsDeletedWith,
 		supportsAliasSpecs:  supportsAliasSpecs,
 	}
-	context.rpcsDone = sync.NewCond(&context.rpcsLock)
+	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
+	context := &Context{
+		state: contextState,
+		ctx:   ctx,
+	}
 	context.Log = &logState{
 		engine: engine,
 		ctx:    ctx,
-		join:   &context.join,
+		join:   &contextState.join,
 	}
+
 	return context, nil
 }
 
@@ -177,15 +183,31 @@ func (ctx *Context) Context() context.Context {
 	return ctx.ctx
 }
 
+// WithValue returns a copy of base context in which the value associated with key is val.
+func (ctx *Context) WithValue(key, val any) *Context {
+	newCtx := &Context{
+		ctx:   ctx.ctx,
+		state: ctx.state,
+		Log:   ctx.Log,
+	}
+	newCtx.ctx = context.WithValue(newCtx.ctx, key, val)
+	return newCtx
+}
+
+// Value returns the value associated with key from base context
+func (ctx *Context) Value(key any) any {
+	return ctx.ctx.Value(key)
+}
+
 // Close implements io.Closer and relinquishes any outstanding resources held by the context.
 func (ctx *Context) Close() error {
-	if ctx.engineConn != nil {
-		if err := ctx.engineConn.Close(); err != nil {
+	if ctx.state.engineConn != nil {
+		if err := ctx.state.engineConn.Close(); err != nil {
 			return err
 		}
 	}
-	if ctx.monitorConn != nil {
-		if err := ctx.monitorConn.Close(); err != nil {
+	if ctx.state.monitorConn != nil {
+		if err := ctx.state.monitorConn.Close(); err != nil {
 			return err
 		}
 	}
@@ -196,22 +218,22 @@ func (ctx *Context) Close() error {
 // returns.
 func (ctx *Context) wait() error {
 	// Wait for async work to flush.
-	ctx.join.Wait()
+	ctx.state.join.Wait()
 
 	// Ensure all outstanding RPCs have completed before proceeding. Also, prevent any new RPCs from happening.
-	ctx.rpcsLock.Lock()
-	defer ctx.rpcsLock.Unlock()
+	ctx.state.rpcsLock.Lock()
+	defer ctx.state.rpcsLock.Unlock()
 
 	// Wait until the RPC count hits zero.
-	for ctx.rpcs > 0 {
-		ctx.rpcsDone.Wait()
+	for ctx.state.rpcs > 0 {
+		ctx.state.rpcsDone.Wait()
 	}
 
 	// Mark the RPCs flag so that no more RPCs are permitted.
-	ctx.rpcs = noMoreRPCs
+	ctx.state.rpcs = noMoreRPCs
 
-	if ctx.rpcError != nil {
-		return fmt.Errorf("waiting for RPCs: %w", ctx.rpcError)
+	if ctx.state.rpcError != nil {
+		return fmt.Errorf("waiting for RPCs: %w", ctx.state.rpcError)
 	}
 
 	return nil
@@ -219,7 +241,7 @@ func (ctx *Context) wait() error {
 
 // Organization returns the current organization name.
 func (ctx *Context) Organization() string {
-	org := ctx.info.Organization
+	org := ctx.state.info.Organization
 	if org == "" {
 		org = "organization"
 	}
@@ -227,32 +249,32 @@ func (ctx *Context) Organization() string {
 }
 
 // Project returns the current project name.
-func (ctx *Context) Project() string { return ctx.info.Project }
+func (ctx *Context) Project() string { return ctx.state.info.Project }
 
 // Stack returns the current stack name being deployed into.
-func (ctx *Context) Stack() string { return ctx.info.Stack }
+func (ctx *Context) Stack() string { return ctx.state.info.Stack }
 
 // Parallel returns the degree of parallelism currently being used by the engine (1 being entirely serial).
-func (ctx *Context) Parallel() int { return ctx.info.Parallel }
+func (ctx *Context) Parallel() int { return ctx.state.info.Parallel }
 
 // DryRun is true when evaluating a program for purposes of planning, instead of performing a true deployment.
-func (ctx *Context) DryRun() bool { return ctx.info.DryRun }
+func (ctx *Context) DryRun() bool { return ctx.state.info.DryRun }
 
 // RunningWithMocks is true if the program is running using a Mock monitor instead of a real Pulumi engine.
 func (ctx *Context) RunningWithMocks() bool {
-	_, isMockMonitor := ctx.monitor.(*mockMonitor)
+	_, isMockMonitor := ctx.state.monitor.(*mockMonitor)
 	return isMockMonitor
 }
 
 // GetConfig returns the config value, as a string, and a bool indicating whether it exists or not.
 func (ctx *Context) GetConfig(key string) (string, bool) {
-	v, ok := ctx.info.Config[key]
+	v, ok := ctx.state.info.Config[key]
 	return v, ok
 }
 
 // IsConfigSecret returns true if the config value is a secret.
 func (ctx *Context) IsConfigSecret(key string) bool {
-	for _, secretKey := range ctx.info.ConfigSecretKeys {
+	for _, secretKey := range ctx.state.info.ConfigSecretKeys {
 		if key == secretKey {
 			return true
 		}
@@ -317,7 +339,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		resolvedArgsMap,
 		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
 			KeepSecrets:   true,
-			KeepResources: ctx.keepResources,
+			KeepResources: ctx.state.keepResources,
 		}),
 	)
 	if err != nil {
@@ -326,7 +348,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
-	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
+	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:               tok,
 		Args:              rpcArgs,
 		Provider:          providerRef,
@@ -450,8 +472,8 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			resolvedArgs,
 			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
 				KeepSecrets:      true,
-				KeepResources:    ctx.keepResources,
-				KeepOutputValues: ctx.keepOutputValues,
+				KeepResources:    ctx.state.keepResources,
+				KeepOutputValues: ctx.state.keepOutputValues,
 			}))
 		if err != nil {
 			return nil, fmt.Errorf("marshaling args: %w", err)
@@ -530,7 +552,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		// Now, call the RPC.
 		var resp *pulumirpc.CallResponse
 		logging.V(9).Infof("Call(%s): Goroutine spawned, RPC call being made", tok)
-		resp, err = ctx.monitor.Call(ctx.ctx, req)
+		resp, err = ctx.state.monitor.Call(ctx.ctx, req)
 		if err != nil {
 			logging.V(9).Infof("Call(%s, ...): error: %v", tok, err)
 		} else if len(resp.Failures) > 0 {
@@ -608,7 +630,7 @@ func (ctx *Context) ReadResource(
 	options := merge(opts...)
 	parent := options.Parent
 	if options.Parent == nil {
-		options.Parent = ctx.stack
+		options.Parent = ctx.state.stack
 	}
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
@@ -632,7 +654,7 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	if options.DeletedWith != nil && !ctx.supportsDeletedWith {
+	if options.DeletedWith != nil && !ctx.state.supportsDeletedWith {
 		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
 	}
 
@@ -682,7 +704,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		logging.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
-		resp, err := ctx.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
+		resp, err := ctx.state.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
 			Type:                    t,
 			Name:                    name,
 			Parent:                  inputs.parent,
@@ -747,7 +769,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 		resolvedArgsMap,
 		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
 			KeepSecrets:   true,
-			KeepResources: ctx.keepResources,
+			KeepResources: ctx.state.keepResources,
 		}),
 	)
 	if err != nil {
@@ -756,7 +778,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
-	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
+	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:             "pulumi:pulumi:getResource",
 		Args:            rpcArgs,
 		AcceptResources: !disableResourceReferences,
@@ -836,7 +858,7 @@ func (ctx *Context) registerResource(
 
 	parent := options.Parent
 	if options.Parent == nil {
-		options.Parent = ctx.stack
+		options.Parent = ctx.state.stack
 	}
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
@@ -910,7 +932,7 @@ func (ctx *Context) registerResource(
 			aliases   []*pulumirpc.Alias
 		)
 
-		if !ctx.supportsAliasSpecs {
+		if !ctx.state.supportsAliasSpecs {
 			aliasURNs = make([]string, len(inputs.aliases))
 			for i, alias := range inputs.aliases {
 				aliasURNs[i] = alias.GetUrn()
@@ -929,7 +951,7 @@ func (ctx *Context) registerResource(
 			}
 		} else {
 			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
-			resp, err = ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
+			resp, err = ctx.state.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 				Type:                    t,
 				Name:                    name,
 				Parent:                  inputs.parent,
@@ -1227,7 +1249,9 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	populateResourceStateResolvers := func() {
 		contract.Assertf(rs != nil, "ResourceState must not be nil")
 		if rs.urn.OutputState != nil {
-			err := ctx.Log.Error(fmt.Sprintf("The resource named %v (type: %v) was initialized multiple times.", name, t), nil)
+			err := ctx.Log.Error(
+				fmt.Sprintf("The resource named %v (type: %v) was initialized multiple times.", name, t),
+				nil)
 			contract.IgnoreError(err)
 		}
 		state.providers = providers
@@ -1444,7 +1468,7 @@ func (ctx *Context) mapAliases(aliases []Alias,
 		return value, nil
 	}
 
-	if ctx.supportsAliasSpecs {
+	if ctx.state.supportsAliasSpecs {
 		for _, alias := range aliases {
 			if alias.URN != nil {
 				// fully specified URN, map it as is
@@ -1552,10 +1576,10 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		resolvedProps,
 		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
 			KeepSecrets:   true,
-			KeepResources: ctx.keepResources,
+			KeepResources: ctx.state.keepResources,
 			// To initially scope the use of this new feature, we only keep output values when
 			// remote is true (for multi-lang components).
-			KeepOutputValues: remote && ctx.keepOutputValues,
+			KeepOutputValues: remote && ctx.state.keepOutputValues,
 		}))
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
@@ -1741,30 +1765,30 @@ const noMoreRPCs = -1
 // beginRPC attempts to start a new RPC request, returning a non-nil error if no more RPCs are permitted
 // (usually because the program is shutting down).
 func (ctx *Context) beginRPC() error {
-	ctx.rpcsLock.Lock()
-	defer ctx.rpcsLock.Unlock()
+	ctx.state.rpcsLock.Lock()
+	defer ctx.state.rpcsLock.Unlock()
 
 	// If we're done with RPCs, return an error.
-	if ctx.rpcs == noMoreRPCs {
+	if ctx.state.rpcs == noMoreRPCs {
 		return errors.New("attempted illegal RPC after program completion")
 	}
 
-	ctx.rpcs++
+	ctx.state.rpcs++
 	return nil
 }
 
 // endRPC signals the completion of an RPC and notifies any potential awaiters when outstanding RPCs hit zero.
 func (ctx *Context) endRPC(err error) {
-	ctx.rpcsLock.Lock()
-	defer ctx.rpcsLock.Unlock()
+	ctx.state.rpcsLock.Lock()
+	defer ctx.state.rpcsLock.Unlock()
 
-	if err != nil && ctx.rpcError == nil {
-		ctx.rpcError = err
+	if err != nil && ctx.state.rpcError == nil {
+		ctx.state.rpcError = err
 	}
 
-	ctx.rpcs--
-	if ctx.rpcs == 0 {
-		ctx.rpcsDone.Broadcast()
+	ctx.state.rpcs--
+	if ctx.state.rpcs == 0 {
+		ctx.state.rpcsDone.Broadcast()
 	}
 }
 
@@ -1797,7 +1821,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			outsResolved.ObjectValue(),
 			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
 				KeepSecrets:   true,
-				KeepResources: ctx.keepResources,
+				KeepResources: ctx.state.keepResources,
 			}))
 		if err != nil {
 			return
@@ -1805,7 +1829,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 
 		// Register the outputs
 		logging.V(9).Infof("RegisterResourceOutputs(%s): RPC call being made", urn)
-		_, err = ctx.monitor.RegisterResourceOutputs(ctx.ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		_, err = ctx.state.monitor.RegisterResourceOutputs(ctx.ctx, &pulumirpc.RegisterResourceOutputsRequest{
 			Urn:     string(urn),
 			Outputs: outsMarshalled,
 		})
@@ -1818,29 +1842,29 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 
 // Export registers a key and value pair with the current context's stack.
 func (ctx *Context) Export(name string, value Input) {
-	ctx.exports[name] = value
+	ctx.state.exports[name] = value
 }
 
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
-	ctx.stack.addTransformation(t)
+	ctx.state.stack.addTransformation(t)
 	return nil
 }
 
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
-	return internal.NewOutputState(&ctx.join, elementType, resourcesToInternal(deps)...)
+	return internal.NewOutputState(&ctx.state.join, elementType, resourcesToInternal(deps)...)
 }
 
 func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
-	return internal.NewOutput(&ctx.join, typ, resourcesToInternal(deps)...)
+	return internal.NewOutput(&ctx.state.join, typ, resourcesToInternal(deps)...)
 }
 
 // NewOutput creates a new output associated with this context.
 func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
-	return newAnyOutput(&ctx.join)
+	return newAnyOutput(&ctx.state.join)
 }
 
-// Sets marshalling flags based on `ctx.DryRun()`: we will either
+// Sets marshalling flags based on `ctx.state.DryRun()`: we will either
 // preserve unknowns as-is or fail strictly with an exception if any
 // unkowns are found. The third option, filtering out unknown values
 // from the data structure being marshalled, is never used.
