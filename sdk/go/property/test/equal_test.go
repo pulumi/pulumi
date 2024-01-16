@@ -32,7 +32,7 @@ func TestSameIsEqual(t *testing.T) {
 	})
 }
 
-func TestDifferntIsNotEqual(t *testing.T) {
+func TestDifferentIsNotEqual(t *testing.T) {
 	t.Parallel()
 	rapid.Check(t, func(t *rapid.T) {
 		arr := rapid.SliceOfNDistinct(Value(10), 2, 2, func(v property.Value) string {
