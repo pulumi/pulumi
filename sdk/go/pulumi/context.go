@@ -194,7 +194,7 @@ func (ctx *Context) WithValue(key, val any) *Context {
 	return newCtx
 }
 
-// Returns value associated with key from base context
+// Value returns the value associated with key from base context
 func (ctx *Context) Value(key any) any {
 	return ctx.ctx.Value(key)
 }
