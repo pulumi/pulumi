@@ -621,7 +621,7 @@ func TestWithValue(t *testing.T) {
 	}
 	newCtx := testCtx.WithValue(key, val)
 
-	assert.Equal(t, nil, testCtx.ctx.Value(key))
-	assert.Equal(t, val, newCtx.ctx.Value(key))
+	assert.Equal(t, nil, testCtx.Value(key))
+	assert.Equal(t, val, newCtx.Value(key))
 	assert.Equal(t, newCtx.state, testCtx.state)
 }
