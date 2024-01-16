@@ -71,9 +71,10 @@ func main() {
 		_, err := NewRandom(ctx, "res1", &RandomArgs{Length: pulumi.Int(5)}, pulumi.Transforms([]pulumi.ResourceTransform{
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res1 transform\n")
+				rta.Opts.AdditionalSecretOutputs = append(rta.Opts.AdditionalSecretOutputs, "result")
 				return &pulumi.ResourceTransformResult{
 					Props: rta.Props,
-					Opts:  append(rta.Opts, pulumi.AdditionalSecretOutputs([]string{"result"})),
+					Opts:  rta.Opts,
 				}
 			},
 		}))
@@ -86,9 +87,10 @@ func main() {
 			func(rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res2 transform\n")
 				if rta.Type == "testprovider:index:Random" {
+					rta.Opts.AdditionalSecretOutputs = append(rta.Opts.AdditionalSecretOutputs, "result")
 					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
-						Opts:  append(rta.Opts, pulumi.AdditionalSecretOutputs([]string{"result"})),
+						Opts:  rta.Opts,
 					}
 				}
 				return nil
@@ -104,10 +106,11 @@ func main() {
 			fmt.Printf("%v %v\n", rta.Type, rta.Props)
 			if rta.Type == "testprovider:index:Random" {
 				rta.Props["prefix"] = "stackDefault"
+				rta.Opts.AdditionalSecretOutputs = append(rta.Opts.AdditionalSecretOutputs, "result")
 
 				return &pulumi.ResourceTransformResult{
 					Props: rta.Props,
-					Opts:  append(rta.Opts, pulumi.AdditionalSecretOutputs([]string{"result"})),
+					Opts:  rta.Opts,
 				}
 			}
 			return nil

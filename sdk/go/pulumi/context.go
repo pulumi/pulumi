@@ -298,12 +298,18 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
 
+		// Unmarshal the resource options.
+		var opts ResourceOptions
+		if rpcReq.Options != nil {
+			opts.AdditionalSecretOutputs = rpcReq.Options.AdditionalSecretOutputs
+		}
+
 		args := &ResourceTransformArgs{
 			Custom: rpcReq.Custom,
 			Type:   rpcReq.Type,
 			Name:   rpcReq.Name,
 			Props:  props,
-			Opts:   nil,
+			Opts:   opts,
 		}
 
 		res := t(args)
@@ -336,6 +342,11 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("marshaling properties: %w", err)
+			}
+
+			// Marshal the resource options
+			rpcRes.Options = &pulumirpc.TransformationResourceOptions{
+				AdditionalSecretOutputs: res.Opts.AdditionalSecretOutputs,
 			}
 		}
 
