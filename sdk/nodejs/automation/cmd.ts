@@ -57,7 +57,7 @@ export interface PulumiCommandOptions {
 }
 
 export class PulumiCommand {
-    private constructor(readonly command: string, readonly version: semver.SemVer | null, readonly root?: string) {}
+    private constructor(readonly command: string, readonly version: semver.SemVer | null) {}
 
     /**
      * Get a new Pulumi instance that uses the installation in `opts.root`.
@@ -75,7 +75,7 @@ export class PulumiCommand {
             min = opts.version;
         }
         const version = parseAndValidatePulumiVersion(min, stdout.trim(), skipVersionCheck);
-        return new PulumiCommand(command, version, opts?.root);
+        return new PulumiCommand(command, version);
     }
 
     /**
@@ -153,15 +153,17 @@ export class PulumiCommand {
     ): Promise<CommandResult> {
         // all commands should be run in non-interactive mode.
         // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
-
         if (!args.includes("--non-interactive")) {
             args.push("--non-interactive");
         }
 
-        // Prepend the installation root to the path to ensure we pickup the
-        // matching bundled plugins.
-        if (this.root) {
-            additionalEnv["PATH"] = prependRootToPath(this.root, additionalEnv["PATH"] || process.env["PATH"]);
+        // Prepend the folder where the CLI is installed to the path to ensure
+        // we pickup the matching bundled plugins.
+        if (path.isAbsolute(this.command)) {
+            const pulumiBin = path.dirname(this.command);
+            const sep = os.platform() === "win32" ? ";" : ":";
+            const envPath = pulumiBin + sep + (additionalEnv["PATH"] || process.env["PATH"]);
+            additionalEnv["PATH"] = envPath;
         }
 
         return exec(this.command, args, cwd, additionalEnv, onOutput);
@@ -245,15 +247,6 @@ function writeTempFile(
             },
         );
     });
-}
-
-function prependRootToPath(root: string, base?: string): string {
-    const pulumiBin = path.join(root, "bin");
-    if (!base) {
-        return pulumiBin;
-    }
-    const sep = os.platform() === "win32" ? ";" : ":";
-    return pulumiBin + sep + base;
 }
 
 /**
