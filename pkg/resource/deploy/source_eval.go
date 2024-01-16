@@ -1146,6 +1146,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 			Type:       typ,
 			Custom:     custom,
 			Properties: mprops,
+			Options:    opts,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshaling request: %w", err)

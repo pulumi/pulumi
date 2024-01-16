@@ -304,6 +304,8 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.AdditionalSecretOutputs = rpcReq.Options.AdditionalSecretOutputs
 		}
 
+		fmt.Printf("outputs %v\n", opts.AdditionalSecretOutputs)
+
 		args := &ResourceTransformArgs{
 			Custom: rpcReq.Custom,
 			Type:   rpcReq.Type,
