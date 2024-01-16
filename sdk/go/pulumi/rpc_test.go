@@ -23,6 +23,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
@@ -1387,7 +1389,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				Source: NewFileAsset("foo.txt"),
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewAssetProperty(&resource.Asset{
+				"source": resource.NewAssetProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1398,7 +1400,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				Source: NewFileArchive("bar.zip"),
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewArchiveProperty(&resource.Archive{
+				"source": resource.NewArchiveProperty(&rarchive.Archive{
 					Path: "bar.zip",
 				}),
 			}),
@@ -1409,7 +1411,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				Source: fileAssetOutput,
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewAssetProperty(&resource.Asset{
+				"source": resource.NewAssetProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1421,7 +1423,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
 				"source": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewAssetProperty(&resource.Asset{
+					Element: resource.NewAssetProperty(&rasset.Asset{
 						Path: "foo.txt",
 					}),
 					Known:  true,
@@ -1436,7 +1438,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
 				"source": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewAssetProperty(&resource.Asset{
+					Element: resource.NewAssetProperty(&rasset.Asset{
 						Path: "foo.txt",
 					}),
 					Known:        true,
@@ -1462,7 +1464,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				Nested: nestedOutput,
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"nested": resource.NewAssetProperty(&resource.Asset{
+				"nested": resource.NewAssetProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1473,7 +1475,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				Nested: nestedPtrOutput,
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"nested": resource.NewAssetProperty(&resource.Asset{
+				"nested": resource.NewAssetProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1484,7 +1486,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				Nested: nestedNestedOutput,
 			},
 			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"nested": resource.NewAssetProperty(&resource.Asset{
+				"nested": resource.NewAssetProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),

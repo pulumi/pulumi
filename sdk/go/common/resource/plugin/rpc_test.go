@@ -23,6 +23,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -38,11 +40,11 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that asset and archive serialization round trips.
 	text := "a test asset"
 	pk := resource.PropertyKey("a test asset uri")
-	asset, err := resource.NewTextAsset(text)
+	anAsset, err := asset.FromText(text)
 	assert.NoError(t, err)
-	assert.Equal(t, text, asset.Text)
-	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", asset.Hash)
-	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
+	assert.Equal(t, text, anAsset.Text)
+	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", anAsset.Hash)
+	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(anAsset), MarshalOptions{})
 	assert.NoError(t, err)
 	t.Logf("%v", assetProps)
 	assetValue, err := UnmarshalPropertyValue("", assetProps, MarshalOptions{})
@@ -57,7 +59,7 @@ func TestAssetSerialize(t *testing.T) {
 	setProperty(pk, assetProps, resource.AssetHashProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.EqualError(t, err, "unexpected asset hash of type float64")
-	setProperty(pk, assetProps, resource.AssetHashProperty, asset.Hash)
+	setProperty(pk, assetProps, resource.AssetHashProperty, anAsset.Hash)
 
 	setProperty(pk, assetProps, resource.AssetTextProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
@@ -74,7 +76,7 @@ func TestAssetSerialize(t *testing.T) {
 	assert.EqualError(t, err, "unexpected asset URI of type float64")
 	setProperty(pk, assetProps, resource.AssetURIProperty, "")
 
-	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
+	arch, err := archive.FromAssets(map[string]interface{}{"foo": anAsset})
 	assert.NoError(t, err)
 	switch runtime.Version() {
 	case "go1.9":
@@ -91,8 +93,8 @@ func TestAssetSerialize(t *testing.T) {
 	archDes := archValue.ArchiveValue()
 	assert.True(t, archDes.IsAssets())
 	assert.Equal(t, 1, len(archDes.Assets))
-	assert.True(t, archDes.Assets["foo"].(*resource.Asset).IsText())
-	assert.Equal(t, text, archDes.Assets["foo"].(*resource.Asset).Text)
+	assert.True(t, archDes.Assets["foo"].(*asset.Asset).IsText())
+	assert.Equal(t, text, archDes.Assets["foo"].(*asset.Asset).Text)
 	switch runtime.Version() {
 	case "go1.9":
 		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
@@ -206,7 +208,7 @@ func TestAssetReject(t *testing.T) {
 
 	text := "a test asset"
 	pk := resource.PropertyKey("an asset URI")
-	asset, err := resource.NewTextAsset(text)
+	asset, err := asset.FromText(text)
 	assert.NoError(t, err)
 	{
 		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), opts)
@@ -221,7 +223,7 @@ func TestAssetReject(t *testing.T) {
 		assert.Nil(t, assetPropU)
 	}
 
-	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
+	arch, err := archive.FromAssets(map[string]interface{}{"foo": asset})
 	assert.NoError(t, err)
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), opts)

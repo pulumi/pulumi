@@ -166,7 +166,7 @@ func TestAssetSerialize(t *testing.T) {
 
 		skipWindows(t)
 		url := "file:///dev/null"
-		asset, err := rasset.FromURIL(url)
+		asset, err := rasset.FromURI(url)
 		assert.NoError(t, err)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", asset.Hash)
 		assetSer := asset.Serialize()

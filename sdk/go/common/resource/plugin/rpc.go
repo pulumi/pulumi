@@ -23,6 +23,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -349,11 +351,11 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 		}
 
 		switch sig {
-		case resource.AssetSig:
+		case asset.AssetSig:
 			if opts.RejectAssets {
 				return nil, fmt.Errorf("unexpected Asset property value for %q", key)
 			}
-			asset, isasset, err := resource.DeserializeAsset(objmap)
+			asset, isasset, err := asset.Deserialize(objmap)
 			if err != nil {
 				return nil, err
 			}
@@ -367,11 +369,11 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			}
 			m := resource.NewAssetProperty(asset)
 			return &m, nil
-		case resource.ArchiveSig:
+		case archive.ArchiveSig:
 			if opts.RejectAssets {
 				return nil, fmt.Errorf("unexpected Asset Archive property value for %q", key)
 			}
-			archive, isarchive, err := resource.DeserializeArchive(objmap)
+			archive, isarchive, err := archive.Deserialize(objmap)
 			if err != nil {
 				return nil, err
 			}
@@ -516,9 +518,9 @@ func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.Prop
 	case UnknownArrayValue:
 		elem, unknown = resource.NewArrayProperty([]resource.PropertyValue{}), true
 	case UnknownAssetValue:
-		elem, unknown = resource.NewAssetProperty(&resource.Asset{}), true
+		elem, unknown = resource.NewAssetProperty(&asset.Asset{}), true
 	case UnknownArchiveValue:
-		elem, unknown = resource.NewArchiveProperty(&resource.Archive{}), true
+		elem, unknown = resource.NewArchiveProperty(&archive.Archive{}), true
 	case UnknownObjectValue:
 		elem, unknown = resource.NewObjectProperty(make(resource.PropertyMap)), true
 	}
@@ -566,11 +568,11 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 }
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
-func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
+func MarshalAsset(v *asset.Asset, opts MarshalOptions) (*structpb.Value, error) {
 	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
 	// Serialize the asset with only its hash (if present).
 	if opts.ElideAssetContents {
-		v = &resource.Asset{Hash: v.Hash}
+		v = &asset.Asset{Hash: v.Hash}
 	} else {
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {
@@ -588,11 +590,11 @@ func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, erro
 }
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
-func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
+func MarshalArchive(v *archive.Archive, opts MarshalOptions) (*structpb.Value, error) {
 	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
 	// Serialize the asset with only its hash (if present).
 	if opts.ElideAssetContents {
-		v = &resource.Archive{Hash: v.Hash}
+		v = &archive.Archive{Hash: v.Hash}
 	} else {
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {

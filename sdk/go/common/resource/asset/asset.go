@@ -67,8 +67,8 @@ func FromPath(path string) (*Asset, error) {
 	return a, err
 }
 
-// FromURIL produces a new asset and its corresponding SHA256 hash from the given network URI.
-func FromURIL(uri string) (*Asset, error) {
+// FromURI produces a new asset and its corresponding SHA256 hash from the given network URI.
+func FromURI(uri string) (*Asset, error) {
 	a := &Asset{Sig: AssetSig, URI: uri}
 	err := a.EnsureHash()
 	return a, err
