@@ -47,7 +47,7 @@ func TestWorkerPool_error(t *testing.T) {
 		})
 	}
 
-	err := workerPool.Wait()
+	err := workerPool.Wait(true)
 	require.Error(t, err)
 
 	// Validate that the returned error matches
@@ -74,7 +74,7 @@ func TestWorkerPool_oneError(t *testing.T) {
 		})
 	}
 
-	err := workerPool.Wait()
+	err := workerPool.Wait(true)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, giveErr)
 }
@@ -169,7 +169,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 				})
 			},
 			"wait": func(t *rapid.T) {
-				err := workerPool.Wait()
+				err := workerPool.Wait(false)
 
 				errorMutex.Lock()
 				defer errorMutex.Unlock()
@@ -183,7 +183,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 			},
 		})
 
-		err := workerPool.Wait()
+		err := workerPool.Wait(true)
 		if len(errors) == 0 {
 			assert.NoError(t, err)
 		} else {

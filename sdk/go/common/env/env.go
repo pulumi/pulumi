@@ -46,6 +46,9 @@ var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Skip saving state checkpoints and only save "+
 	"the final deployment. See #10668.")
 
+var ParallelStepGeneration = env.Bool("PARALLEL_STEP_GEN", "Experimental flag to allow the step"+
+	"generation algorithm to run in parallel", env.Needs(Experimental))
+
 var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself.")
 
 var EnableLegacyDiff = env.Bool("ENABLE_LEGACY_DIFF", "")

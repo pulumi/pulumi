@@ -20,18 +20,23 @@ import (
 	"sync"
 )
 
+// A worker pool that can be used to constrain the number of concurrent workers.
 type workerPool struct {
 	numWorkers int
-	sem        chan struct{}
-	wg         sync.WaitGroup
+	// This channel is used as a semaphore to limit how many workers can be active
+	sem chan struct{}
+	wg  sync.WaitGroup
 
 	errorMutex sync.Mutex
 	errors     []error
 }
 
+// Creates a new workerPool. This will allow upto size concurrent workers.
+//
+// IF size is <= 1, OR > NumCPU THEN use the number of available Logical CPUs
 func newWorkerPool(size int) *workerPool {
-	if size <= 0 || size > runtime.GOMAXPROCS(0) {
-		size = runtime.GOMAXPROCS(0)
+	if size <= 1 || size > runtime.NumCPU() {
+		size = runtime.NumCPU()
 	}
 	return &workerPool{
 		numWorkers: size,
@@ -39,46 +44,55 @@ func newWorkerPool(size int) *workerPool {
 	}
 }
 
+// Add a worker to the pool.
+//
+// If possible this will start a goroutine for the worker, otherwise this will
+// wait until the worker can be scheduled.
 func (s *workerPool) AddWorker(thunk func() error) {
 	s.wg.Add(1)
 	s.sem <- struct{}{}
 
 	go func() {
-		defer s.done()
+		defer func() {
+			<-s.sem
+			s.wg.Done()
+		}()
+
 		if err := thunk(); err != nil {
-			s.addError(err)
+			s.errorMutex.Lock()
+			defer s.errorMutex.Unlock()
+
+			s.errors = append(s.errors, err)
 		}
 	}()
 }
 
-func (s *workerPool) done() {
-	<-s.sem
-	s.wg.Done()
-}
-
-func (s *workerPool) Wait() error {
+// Waits until all workers, including any pending workers, have completed
+// execution.
+//
+// This returns an error that contains all errors (if any) returned by worker
+// functions
+//
+// If clearErrors is true then this resets the error list in the pool
+func (s *workerPool) Wait(clearErrors bool) error {
 	s.wg.Wait()
 
-	return s.getErrors()
-}
-
-func (s *workerPool) addError(err error) {
 	s.errorMutex.Lock()
 	defer s.errorMutex.Unlock()
 
-	s.errors = append(s.errors, err)
-}
-
-func (s *workerPool) getErrors() error {
-	s.errorMutex.Lock()
-	defer s.errorMutex.Unlock()
+	var err error
 
 	switch len(s.errors) {
 	case 0:
 		return nil
 	case 1:
-		return s.errors[0]
+		err = s.errors[0]
 	default:
-		return errors.Join(s.errors...)
+		err = errors.Join(s.errors...)
 	}
+
+	if clearErrors {
+		s.errors = nil
+	}
+	return err
 }
