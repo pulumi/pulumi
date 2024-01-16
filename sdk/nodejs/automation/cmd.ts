@@ -164,7 +164,7 @@ export class PulumiCommand {
             additionalEnv["PATH"] = prependRootToPath(this.root, additionalEnv["PATH"] || process.env["PATH"]);
         }
 
-        return exec(this.command || "pulumi", args, cwd, additionalEnv, onOutput);
+        return exec(this.command, args, cwd, additionalEnv, onOutput);
     }
 }
 
