@@ -80,6 +80,16 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 	}
 }
 
+func warningf(path, message string, args ...interface{}) *hcl.Diagnostic {
+	contract.Requiref(path != "", "path", "must not be empty")
+
+	summary := path + ": " + fmt.Sprintf(message, args...)
+	return &hcl.Diagnostic{
+		Severity: hcl.DiagWarning,
+		Summary:  summary,
+	}
+}
+
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 	bytes, err := json.Marshal(spec)
 	if err != nil {
@@ -1357,6 +1367,19 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 	diags = diags.Extend(propertyDiags)
 	if err != nil {
 		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
+	}
+
+	// urn is a reserved property name for all resources
+	// id is a reserved property name for resources which are not components
+	// emit a warning if either of these are used
+	for _, property := range properties {
+		if property.Name == "urn" {
+			diags = diags.Append(warningf(path+"/properties/urn", "urn is a reserved property name"))
+		}
+
+		if !spec.IsComponent && property.Name == "id" {
+			diags = diags.Append(warningf(path+"/properties/id", "id is a reserved property name for resources"))
+		}
 	}
 
 	inputProperties, _, inputDiags, err := t.bindProperties(path+"/inputProperties", spec.InputProperties,

@@ -26,6 +26,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
@@ -632,6 +634,110 @@ func Test_parseTypeSpecRef(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"urn": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+			"test:index:TestComponent": {
+				IsComponent: true,
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"urn": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	// No error as binding should work fine even with warnings
+	assert.NoError(t, err)
+	// assert that there are 2 warnings in the diagnostics because of using URN as a property
+	assert.Len(t, diags, 2)
+	for _, diag := range diags {
+		assert.Equal(t, diag.Severity, hcl.DiagWarning)
+		assert.Contains(t, diag.Summary, "urn is a reserved property name")
+	}
+	assert.NotNil(t, pkg)
+}
+
+func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"id": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	// No error as binding should work fine even with warnings
+	assert.NoError(t, err)
+	assert.NotNil(t, pkg)
+	// assert that there is 1 warning in the diagnostics because of using ID as a property
+	assert.Len(t, diags, 1)
+	assert.Equal(t, diags[0].Severity, hcl.DiagWarning)
+	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
+}
+
+func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestComponent": {
+				IsComponent: true,
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"id": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	assert.NoError(t, err)
+	assert.Empty(t, diags)
+	assert.NotNil(t, pkg)
 }
 
 func TestMethods(t *testing.T) {
