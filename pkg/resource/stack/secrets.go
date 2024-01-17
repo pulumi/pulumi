@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
@@ -42,8 +41,6 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	var sm secrets.Manager
 	var err error
 	switch ty {
-	case b64.Type:
-		sm = b64.NewBase64SecretsManager()
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	case service.Type:

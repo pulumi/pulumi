@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -94,4 +95,28 @@ func (md *MockDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) 
 	}
 
 	return nil, errors.New("mock value not provided")
+}
+
+type MockProvider struct {
+	managers map[string]func(json.RawMessage) (Manager, error)
+}
+
+func (mp *MockProvider) OfType(ty string, state json.RawMessage) (Manager, error) {
+	if f, ok := mp.managers[ty]; ok {
+		return f(state)
+	}
+
+	return nil, fmt.Errorf("no known secrets provider for type %q", ty)
+}
+
+// Return a new MockProvider with the given type and manager function registered.
+func (mp *MockProvider) Add(ty string, f func(json.RawMessage) (Manager, error)) *MockProvider {
+	new := &MockProvider{
+		managers: make(map[string]func(json.RawMessage) (Manager, error)),
+	}
+	for k, v := range mp.managers {
+		new.managers[k] = v
+	}
+	new.managers[ty] = f
+	return new
 }
