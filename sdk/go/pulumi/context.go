@@ -302,9 +302,29 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 		var opts ResourceOptions
 		if rpcReq.Options != nil {
 			opts.AdditionalSecretOutputs = rpcReq.Options.AdditionalSecretOutputs
+			opts.Aliases = rpcReq.Options.Aliases
+			if rpcReq.Options.CustomTimeouts != nil {
+				opts.CustomTimeouts = &CustomTimeouts{
+					Create: rpcReq.Options.CustomTimeouts.Create,
+					Update: rpcReq.Options.CustomTimeouts.Update,
+					Delete: rpcReq.Options.CustomTimeouts.Delete,
+				}
+			}
+			if rpcReq.Options.DeleteBeforeReplace != nil {
+				opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
+			}
+			opts.DependsOn = rpcReq.Options.DependsOn
+			opts.DependsOnInputs = rpcReq.Options.DependsOnInputs
+			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+			opts.Parent = rpcReq.Parent
+			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+			opts.Protect = rpcReq.Options.Protect
+			opts.Provider = rpcReq.Options.Provider
+			opts.Providers = rpcReq.Options.Providers
+			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
+			opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
+			opts.Version = rpcReq.Options.Version
 		}
-
-		fmt.Printf("outputs %v\n", opts.AdditionalSecretOutputs)
 
 		args := &ResourceTransformArgs{
 			Custom: rpcReq.Custom,
@@ -349,6 +369,28 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			// Marshal the resource options
 			rpcRes.Options = &pulumirpc.TransformationResourceOptions{
 				AdditionalSecretOutputs: res.Opts.AdditionalSecretOutputs,
+				opts.Aliases = rpcReq.Options.Aliases
+				if rpcReq.Options.CustomTimeouts != nil {
+					opts.CustomTimeouts = &CustomTimeouts{
+						Create: rpcReq.Options.CustomTimeouts.Create,
+						Update: rpcReq.Options.CustomTimeouts.Update,
+						Delete: rpcReq.Options.CustomTimeouts.Delete,
+					}
+				}
+				if rpcReq.Options.DeleteBeforeReplace != nil {
+					opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
+				}
+				opts.DependsOn = rpcReq.Options.DependsOn
+				opts.DependsOnInputs = rpcReq.Options.DependsOnInputs
+				opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+				opts.Parent = rpcReq.Parent
+				opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+				opts.Protect = rpcReq.Options.Protect
+				opts.Provider = rpcReq.Options.Provider
+				opts.Providers = rpcReq.Options.Providers
+				opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
+				opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
+				opts.Version = rpcReq.Options.Version
 			}
 		}
 

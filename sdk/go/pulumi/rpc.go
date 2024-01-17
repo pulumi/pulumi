@@ -598,25 +598,25 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 // tries to keep things as plain types where possible (e.g. a string property value will just be a `string`,
 // not an `Output[string]` or `pulumi.String`). It will use `pulumix.Output` for values that are either
 // Computed (will always be a `pulumix.Output[any]`), secret, or an Output property value.
-func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (map[string]any, error) {
+func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 	if v == nil {
 		return nil, nil
 	}
 
-	var unmarshal func(v resource.PropertyValue) (any, error)
-	unmarshal = func(v resource.PropertyValue) (any, error) {
+	var unmarshal func(v resource.PropertyValue) (Input, error)
+	unmarshal = func(v resource.PropertyValue) (Input, error) {
 		switch {
 		case v.IsNull():
 			return nil, nil
 		case v.IsBool():
-			return v.BoolValue(), nil
+			return Bool(v.BoolValue()), nil
 		case v.IsNumber():
-			return v.NumberValue(), nil
+			return Float64(v.NumberValue()), nil
 		case v.IsString():
-			return v.StringValue(), nil
+			return String(v.StringValue()), nil
 		case v.IsArray():
 			a := v.ArrayValue()
-			r := make([]any, len(a))
+			r := make(Array, len(a))
 			for i, v := range a {
 				uv, err := unmarshal(v)
 				if err != nil {
@@ -628,12 +628,42 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (map[string]any,
 		case v.IsObject():
 			m := v.ObjectValue()
 			return unmarshalPropertyMap(ctx, m)
-		case v.IsArchive():
-			return v.ArchiveValue(), nil
 		case v.IsAsset():
-			return v.AssetValue(), nil
+			asset := v.AssetValue()
+			switch {
+			case asset.IsPath():
+				return NewFileAsset(asset.Path), nil
+			case asset.IsText():
+				return NewStringAsset(asset.Text), nil
+			case asset.IsURI():
+				return NewRemoteAsset(asset.URI), nil
+			}
+			return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
+		case v.IsArchive():
+			archive := v.ArchiveValue()
+			secret := false
+			switch {
+			case archive.IsAssets():
+				as := make(map[string]interface{})
+				for k, v := range archive.Assets {
+					a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
+					secret = secret || asecret
+					if err != nil {
+						return nil, err
+					}
+					as[k] = a
+				}
+				return NewAssetArchive(as), nil
+			case archive.IsPath():
+				return NewFileArchive(archive.Path), nil
+			case archive.IsURI():
+				return NewRemoteArchive(archive.URI), nil
+			}
+			return nil, errors.New("expected archive to be one of Assets, File, or Remote; got none")
 		case v.IsResourceReference():
-			contract.Failf("todo resource")
+			ref := v.ResourceReferenceValue()
+			res, err := ctx.newDependencyResource(urn)
+
 		case v.IsComputed():
 			state := internal.NewOutputState(nil /* joinGroup */, reflect.TypeOf((*any)(nil)).Elem())
 			internal.ResolveOutput(state, nil, false, false, nil /* deps */)
@@ -659,7 +689,7 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (map[string]any,
 		return nil, fmt.Errorf("unknown property value %v", v)
 	}
 
-	m := make(map[string]any)
+	m := make(Map)
 	for k, v := range v {
 		uv, err := unmarshal(v)
 		if err != nil {
