@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"

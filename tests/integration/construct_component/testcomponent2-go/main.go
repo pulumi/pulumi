@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"strings"
 
+	"google.golang.org/protobuf/types/known/emptypb"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -18,8 +20,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Resource struct {

@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"

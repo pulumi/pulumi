@@ -21,10 +21,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/xeipuuv/gojsonschema"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 // LoadPolicyPackConfigFromFile loads the JSON config from a file.

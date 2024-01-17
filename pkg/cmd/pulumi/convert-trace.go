@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/google/pprof/profile"
-	"github.com/pulumi/appdash"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/appdash"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )

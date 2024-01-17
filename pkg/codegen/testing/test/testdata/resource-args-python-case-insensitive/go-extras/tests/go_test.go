@@ -4,9 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"resource-args-python-case-insensitive/example"
-
 	"github.com/stretchr/testify/assert"
+	"resource-args-python-case-insensitive/example"
 )
 
 func TestArrayElemType(t *testing.T) {

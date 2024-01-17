@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/blang/semver"
+	"github.com/segmentio/encoding/json"
 	"google.golang.org/grpc"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
-	"github.com/segmentio/encoding/json"
 )
 
 type loaderServer struct {

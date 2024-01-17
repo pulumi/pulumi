@@ -22,8 +22,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 var testPackageSpec = schema.PackageSpec{

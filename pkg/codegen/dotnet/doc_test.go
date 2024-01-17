@@ -18,9 +18,10 @@ package dotnet
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/stretchr/testify/assert"
 )
 
 var testPackageSpec = schema.PackageSpec{

@@ -24,10 +24,10 @@ import (
 
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
+	opentracing "github.com/opentracing/opentracing-go"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 type deployment struct {

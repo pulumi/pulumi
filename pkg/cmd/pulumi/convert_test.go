@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 )
 
 // TestConvert is an entrypoint for debugging `pulumi convert“. To use this with an editor such as

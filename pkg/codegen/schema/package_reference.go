@@ -8,9 +8,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/segmentio/encoding/json"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/segmentio/encoding/json"
 )
 
 // A PackageReference represents a references Pulumi Package. Applications that do not need access to the entire

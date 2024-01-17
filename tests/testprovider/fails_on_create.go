@@ -20,9 +20,9 @@ import (
 	"context"
 	"errors"
 
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type failsOnCreateResourceProvider struct{}

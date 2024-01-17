@@ -19,9 +19,10 @@ import (
 	"strings"
 	"testing"
 
-	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 )
 
 // Make sure that TestingT never diverges from testing.T.

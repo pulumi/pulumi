@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"

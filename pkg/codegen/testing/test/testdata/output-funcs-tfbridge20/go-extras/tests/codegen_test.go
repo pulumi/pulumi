@@ -16,12 +16,12 @@ package codegentest
 
 import (
 	"fmt"
-	"output-funcs-tfbridge20/mypkg"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"output-funcs-tfbridge20/mypkg"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"

@@ -30,10 +30,11 @@ import (
 	"strconv"
 	"testing"
 
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 )
 
 // chdir temporarily changes the current directory of the program.

@@ -4,9 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"resource-args-python/example"
-
 	"github.com/stretchr/testify/assert"
+	"resource-args-python/example"
 )
 
 func TestArrayElemType(t *testing.T) {

@@ -19,11 +19,12 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"gocloud.dev/gcerrors"
+	"gopkg.in/yaml.v3"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"gocloud.dev/gcerrors"
-	"gopkg.in/yaml.v3"
 )
 
 // Path inside the bucket where we store the metadata file.

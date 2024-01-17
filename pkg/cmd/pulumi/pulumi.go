@@ -33,13 +33,11 @@ import (
 	"strings"
 	"time"
 
-	user "github.com/tweekmonster/luser"
-
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
 	"github.com/moby/term"
-
 	"github.com/spf13/cobra"
+	user "github.com/tweekmonster/luser"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"

@@ -31,6 +31,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 

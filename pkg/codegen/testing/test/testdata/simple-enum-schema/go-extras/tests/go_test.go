@@ -6,12 +6,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"simple-enum-schema/plant"
+	tree "simple-enum-schema/plant/tree/v1"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-
-	"simple-enum-schema/plant"
-	tree "simple-enum-schema/plant/tree/v1"
 )
 
 func TestEnumUsage(t *testing.T) {

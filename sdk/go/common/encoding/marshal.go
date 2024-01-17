@@ -22,8 +22,9 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
 	yaml "gopkg.in/yaml.v3"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
 )
 
 var (

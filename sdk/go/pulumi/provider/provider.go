@@ -17,10 +17,10 @@ package provider
 import (
 	"context"
 
+	"google.golang.org/grpc"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"google.golang.org/grpc"
 )
 
 // This file relies on implementations in ../provider_linked.go that are made available in this package via

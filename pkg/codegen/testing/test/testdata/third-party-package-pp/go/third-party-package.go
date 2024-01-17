@@ -3,6 +3,7 @@ package main
 import (
 	other "git.example.org/thirdparty/sdk/go/pkg"
 	"git.example.org/thirdparty/sdk/go/pkg/module"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

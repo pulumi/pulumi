@@ -26,6 +26,7 @@ import (
 	"unicode"
 
 	"github.com/dustin/go-humanize/english"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"

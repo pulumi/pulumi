@@ -15,9 +15,10 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/spf13/cobra"
 )
 
 func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {

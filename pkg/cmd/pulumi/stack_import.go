@@ -22,7 +22,6 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-multierror"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"

@@ -23,11 +23,11 @@ import (
 	"strings"
 	"testing"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/term"
 	"google.golang.org/grpc"
 
-	"golang.org/x/term"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func makeStreamMock() *streamMock {

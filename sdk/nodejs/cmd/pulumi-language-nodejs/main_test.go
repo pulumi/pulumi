@@ -22,9 +22,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestArgumentConstruction(t *testing.T) {

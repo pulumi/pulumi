@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 

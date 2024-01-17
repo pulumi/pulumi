@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Bucket is a wrapper around an underlying gocloud blob.Bucket.  It ensures that we pass all paths

@@ -34,7 +34,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util"
+	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -43,9 +45,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-
-	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error

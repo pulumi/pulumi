@@ -25,6 +25,9 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/erikgeiser/promptkit/confirmation"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -33,8 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {

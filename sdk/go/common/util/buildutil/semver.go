@@ -21,8 +21,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/mod/semver"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var (

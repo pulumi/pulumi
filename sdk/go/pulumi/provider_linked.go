@@ -19,9 +19,9 @@ import (
 	"context"
 	_ "unsafe" // unsafe is needed to use go:linkname
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
 	"google.golang.org/grpc"
+
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // We want the public provider-related APIs to be exported from the provider package, but need to make use of unexported

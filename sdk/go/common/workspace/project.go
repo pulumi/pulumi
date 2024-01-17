@@ -26,18 +26,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/esc/ast"
-	"github.com/pulumi/esc/eval"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
+	"github.com/santhosh-tekuri/jsonschema/v5"
+	"golang.org/x/exp/maps"
+	"gopkg.in/yaml.v3"
+
+	"github.com/pulumi/esc/ast"
+	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/santhosh-tekuri/jsonschema/v5"
-	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v3"
 )
 
 const (

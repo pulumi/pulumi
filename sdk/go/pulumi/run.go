@@ -23,13 +23,12 @@ import (
 	"strconv"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"google.golang.org/grpc"
 )
 
 var ErrPlugins = errors.New("pulumi: plugins requested")

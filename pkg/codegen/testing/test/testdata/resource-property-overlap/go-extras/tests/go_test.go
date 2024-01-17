@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"resource-property-overlap/example"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-
-	"resource-property-overlap/example"
 )
 
 // Tests that XArray{x}.ToXArrayOutput().Index(pulumi.Int(0)) == x.

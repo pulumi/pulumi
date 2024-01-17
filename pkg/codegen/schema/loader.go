@@ -23,10 +23,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/edsrzf/mmap-go"
 	"github.com/natefinch/atomic"
-
-	"github.com/blang/semver"
 	"github.com/segmentio/encoding/json"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"

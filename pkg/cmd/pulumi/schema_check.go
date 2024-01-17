@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
-
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 

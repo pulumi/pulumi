@@ -19,9 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	mobytime "github.com/moby/moby/api/types/time"
+	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"

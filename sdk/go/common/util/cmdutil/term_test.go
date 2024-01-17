@@ -28,9 +28,10 @@ import (
 	"time"
 
 	ps "github.com/mitchellh/go-ps"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 )
 
 func TestTerminate_gracefulShutdown(t *testing.T) {

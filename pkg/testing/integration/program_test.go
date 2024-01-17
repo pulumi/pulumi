@@ -21,9 +21,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 )
 
 // Test that RunCommand writes the command's output to a log file.

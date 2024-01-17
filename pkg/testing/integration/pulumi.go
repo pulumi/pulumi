@@ -19,9 +19,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
 )
 
 // CreateBasicPulumiRepo will initialize the environment with a basic Pulumi repository and

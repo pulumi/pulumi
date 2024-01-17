@@ -21,10 +21,10 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/pulumi/appdash"
-	"github.com/pulumi/appdash/traceapp"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/appdash"
+	"github.com/pulumi/appdash/traceapp"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )

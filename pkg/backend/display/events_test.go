@@ -19,8 +19,9 @@ package display
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 )
 
 // This test checks that the ANSI control codes are removed from EngineEvents

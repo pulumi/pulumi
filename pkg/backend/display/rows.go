@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"

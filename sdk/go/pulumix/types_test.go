@@ -19,9 +19,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
 
 // legacyIntOutput is a pulumi.Output that does not implement pulumix.Input[T].

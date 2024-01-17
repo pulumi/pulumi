@@ -16,11 +16,11 @@ package codegentest
 
 import (
 	"fmt"
-	"plain-object-defaults/example"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"plain-object-defaults/example"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"

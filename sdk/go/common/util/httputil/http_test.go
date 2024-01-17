@@ -23,9 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/http2"
-
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/http2"
 )
 
 func http2ServerAndClient(handler http.Handler) (*httptest.Server, *http.Client) {

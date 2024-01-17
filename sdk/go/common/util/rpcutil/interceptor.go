@@ -19,8 +19,9 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"google.golang.org/grpc"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Configures interceptors to propagate OpenTracing metadata through headers. If parentSpan is non-nil, it becomes the

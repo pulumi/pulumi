@@ -7,13 +7,11 @@ import (
 	"os"
 
 	"cloud.google.com/go/storage"
+	"gocloud.dev/blob"
+	"gocloud.dev/blob/gcsblob"
+	"gocloud.dev/gcp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-
-	"gocloud.dev/blob/gcsblob"
-
-	"gocloud.dev/blob"
-	"gocloud.dev/gcp"
 )
 
 type GoogleCredentials struct {

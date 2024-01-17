@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"

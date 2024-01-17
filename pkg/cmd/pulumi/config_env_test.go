@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/acarl005/stripansi"
+
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/esc/syntax"

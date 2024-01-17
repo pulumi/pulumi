@@ -32,7 +32,6 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-
 	"github.com/pgavlin/goldmark"
 
 	"github.com/pulumi/pulumi-java/pkg/codegen/java"

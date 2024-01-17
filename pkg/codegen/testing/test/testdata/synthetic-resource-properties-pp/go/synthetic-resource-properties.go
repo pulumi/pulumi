@@ -2,6 +2,7 @@ package main
 
 import (
 	"git.example.org/pulumi-synthetic/resourceProperties"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

@@ -25,6 +25,10 @@ import (
 	"strconv"
 
 	"github.com/pkg/browser"
+	"github.com/spf13/cobra"
+	auto_table "go.pennock.tech/tabular/auto"
+	"gopkg.in/yaml.v3"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -32,9 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/spf13/cobra"
-	auto_table "go.pennock.tech/tabular/auto"
-	"gopkg.in/yaml.v3"
 )
 
 type Delimiter rune

@@ -17,16 +17,16 @@ package schema
 import (
 	"context"
 
+	"github.com/blang/semver"
+	"github.com/segmentio/encoding/json"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
-	"github.com/segmentio/encoding/json"
 )
 
 // loaderClient reflects a loader service, loaded dynamically from the engine process over gRPC.

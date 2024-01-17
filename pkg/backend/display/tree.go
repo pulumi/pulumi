@@ -24,6 +24,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/pkg/browser"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"

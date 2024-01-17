@@ -30,6 +30,8 @@ linters:
     - paralleltest
     - perfsprint
     - depguard
+    - gci
+    - importas
 
 linters-settings:
   nakedret:
@@ -56,6 +58,19 @@ linters-settings:
         deny:
           - pkg: "github.com/golang/protobuf"
             desc: Use google.golang.org/protobuf instead
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/pulumi)
+  importas:
+    alias:
+    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
+      alias: pulumirpc
+    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go/testing
+      alias: testingrpc
+    - pkg: github.com/deckarep/golang-set/v2
+      alias: mapset
 
 issues:
   exclude-rules:

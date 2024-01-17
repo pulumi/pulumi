@@ -22,11 +22,12 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/secrets"
 	"gocloud.dev/secrets/driver"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // the main testing function, takes a kms url and tries to make a new secret manager out of it and encrypt and

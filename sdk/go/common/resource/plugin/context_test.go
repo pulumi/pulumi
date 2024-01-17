@@ -19,8 +19,9 @@ import (
 	"testing"
 
 	"github.com/opentracing/opentracing-go/mocktracer"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 )
 
 func TestContextRequest_race(t *testing.T) {

@@ -19,9 +19,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func await(out pulumi.Output) (interface{}, bool, bool, []pulumi.Resource, error) {

@@ -3,8 +3,9 @@ package resource
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 )
 
 func TestPropertyPath(t *testing.T) {

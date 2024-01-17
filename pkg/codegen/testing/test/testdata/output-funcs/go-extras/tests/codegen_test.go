@@ -16,11 +16,11 @@ package codegentest
 
 import (
 	"fmt"
-	"output-funcs/mypkg"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"output-funcs/mypkg"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"

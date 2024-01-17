@@ -29,11 +29,12 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/segmentio/encoding/json"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/santhosh-tekuri/jsonschema/v5"
-	"github.com/segmentio/encoding/json"
 )
 
 //go:embed pulumi.json
