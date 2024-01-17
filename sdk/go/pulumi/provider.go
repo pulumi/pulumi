@@ -354,6 +354,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				inputType = inputType.Elem()
 			}
 
+			//nolint:exhaustive // We only need to process a few types here.
 			switch inputType.Kind() {
 			case reflect.Bool:
 				if !v.IsBool() {
@@ -448,6 +449,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 
 	// A resource reference looks like a struct, but must be deserialzed differently.
 	if !v.IsResourceReference() {
+		//nolint:exhaustive // We only need to process a few types here.
 		switch dest.Type().Kind() {
 		case reflect.Map:
 			return copyToMap(ctx, v, dest.Type(), dest)

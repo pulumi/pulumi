@@ -67,12 +67,14 @@ func (p *providerServer) checkNYI(method string, err error) error {
 }
 
 func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, error) {
-	changes := pulumirpc.DiffResponse_DIFF_UNKNOWN
+	var changes pulumirpc.DiffResponse_DiffChanges
 	switch diff.Changes {
 	case DiffNone:
 		changes = pulumirpc.DiffResponse_DIFF_NONE
 	case DiffSome:
 		changes = pulumirpc.DiffResponse_DIFF_SOME
+	case DiffUnknown:
+		changes = pulumirpc.DiffResponse_DIFF_UNKNOWN
 	}
 
 	// Infer the result from the detailed diff.

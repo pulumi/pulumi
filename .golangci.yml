@@ -15,6 +15,7 @@ linters:
   enable-all: false
   enable:
     - errcheck
+    - exhaustive
     - prealloc
     - gofumpt
     - revive

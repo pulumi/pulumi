@@ -163,6 +163,7 @@ var policyPayloads []engine.PolicyViolationEventPayload
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
+	//nolint:exhaustive // Only a subset of events have urns.
 	switch event.Type {
 	case engine.ResourcePreEvent:
 		payload := event.Payload().(engine.ResourcePreEventPayload)
@@ -829,6 +830,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+	//nolint:exhaustive // we are only interested in a subset of events
 	switch event.Type {
 	case engine.PreludeEvent:
 		// A prelude event can just be printed out directly to the console.

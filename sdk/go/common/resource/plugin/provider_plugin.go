@@ -1773,8 +1773,7 @@ func (p *provider) SignalCancellation() error {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
 			rpcError.Message())
-		switch rpcError.Code() {
-		case codes.Unimplemented:
+		if rpcError.Code() == codes.Unimplemented {
 			// For backwards compatibility, do nothing if it's not implemented.
 			return nil
 		}
@@ -1830,6 +1829,7 @@ func createConfigureError(rpcerr *rpcerror.Error) error {
 func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 	rpcError := rpcerror.Convert(err)
 	logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
+	//nolint:exhaustive // We want to handle only some error codes specially
 	switch rpcError.Code() {
 	case codes.Internal, codes.DataLoss, codes.Unknown:
 		logging.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcError.Code())

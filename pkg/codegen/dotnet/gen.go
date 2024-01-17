@@ -786,6 +786,7 @@ func primitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // We only support default values for a subset of types.
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {

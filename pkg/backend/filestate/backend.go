@@ -1036,6 +1036,8 @@ func (b *localBackend) apply(
 		_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
 		_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+	case apitype.StackImportUpdate:
+		contract.Failf("unexpected stack import event")
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}

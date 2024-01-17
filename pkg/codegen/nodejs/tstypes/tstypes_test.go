@@ -109,6 +109,7 @@ func (p *typeScriptTypeParser) parseType1(tokens []typeToken) (TypeAst, []typeTo
 		return nil, nil, errors.New("Expect more tokens")
 	}
 
+	//nolint:exhaustive // Only a subset of token kinds are needed for testing.
 	switch tokens[0].kind {
 	case openParen:
 		t, rest, err := p.parseType(tokens[1:])

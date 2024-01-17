@@ -1098,6 +1098,8 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 			p.withOp(deploy.OpDelete).write(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
 			p.withOp(deploy.OpSame).write(escape(d.Text))
+		case diffmatchpatch.DiffInsert:
+			// An insert has no old text
 		}
 	}
 	p.writeVerbatim(`"`)
@@ -1112,6 +1114,8 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 			p.withOp(deploy.OpCreate).write(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
 			p.withOp(deploy.OpSame).write(escape(d.Text))
+		case diffmatchpatch.DiffDelete:
+			// A delete has no new text
 		}
 	}
 	p.writeVerbatim("\"\n")

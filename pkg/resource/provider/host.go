@@ -74,7 +74,7 @@ func (host *HostClient) log(
 	switch sev {
 	case diag.Debug:
 		rpcsev = pulumirpc.LogSeverity_DEBUG
-	case diag.Info:
+	case diag.Info, diag.Infoerr:
 		rpcsev = pulumirpc.LogSeverity_INFO
 	case diag.Warning:
 		rpcsev = pulumirpc.LogSeverity_WARNING
