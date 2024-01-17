@@ -23,13 +23,13 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	structpb "google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -270,7 +270,7 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 
 	plugInfo.Path = h.plug.Bin
 
-	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
+	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
@@ -358,7 +358,7 @@ func (h *langhost) InstallDependencies(pwd, main string) error {
 
 func (h *langhost) About() (AboutInfo, error) {
 	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
-	resp, err := h.client.About(h.ctx.Request(), &pbempty.Empty{})
+	resp, err := h.client.About(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].About() failed: err=%v", h.runtime, rpcError)

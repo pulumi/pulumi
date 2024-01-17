@@ -29,6 +29,7 @@ linters:
     - unused
     - paralleltest
     - perfsprint
+    - depguard
 
 linters-settings:
   nakedret:
@@ -49,6 +50,12 @@ linters-settings:
       - sortslice
       # Detect write to struct/arrays by-value that aren't read again.
       - unusedwrite
+  depguard:
+    rules:
+      protobuf:
+        deny:
+          - pkg: "github.com/golang/protobuf"
+            desc: Use google.golang.org/protobuf instead
 
 issues:
   exclude-rules:

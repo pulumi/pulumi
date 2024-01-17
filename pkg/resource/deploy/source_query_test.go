@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -34,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestQuerySource_Trivial_Wait(t *testing.T) {
@@ -330,7 +330,7 @@ type mockResmon struct {
 		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 
 	RegisterResourceOutputsF func(ctx context.Context,
-		req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error)
+		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 }
 
 var _ SourceResourceMonitor = (*mockResmon)(nil)
@@ -387,7 +387,7 @@ func (rm *mockResmon) RegisterResource(ctx context.Context,
 
 func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
-) (*pbempty.Empty, error) {
+) (*emptypb.Empty, error) {
 	if rm.RegisterResourceOutputsF != nil {
 		return rm.RegisterResourceOutputsF(ctx, req)
 	}

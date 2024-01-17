@@ -20,7 +20,7 @@ require (
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/glog v1.1.0
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-querystring v1.1.0
 	github.com/google/pprof v0.0.0-20230406165453-00490a63f317
 	github.com/gorilla/mux v1.8.0
