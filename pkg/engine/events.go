@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/asset"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -620,9 +621,9 @@ func filterAsset(v *resource.Asset, debug bool) *resource.Asset {
 	// that is something we want the receiver to see to display as part of
 	// progress/diffs/etc.
 	var text string
-	if v.IsUserProgramCode() {
+	if asset.IsUserProgramCode(v) {
 		// also make sure we filter this in case there are any secrets in the code.
-		text = logging.FilterString(resource.MassageIfUserProgramCodeAsset(v, debug).Text)
+		text = logging.FilterString(asset.MassageIfUserProgramCodeAsset(v, debug).Text)
 	} else {
 		// We need to have some string here so that we preserve that this is a
 		// text-asset
