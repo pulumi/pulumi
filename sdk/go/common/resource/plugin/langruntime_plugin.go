@@ -23,13 +23,13 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	structpb "google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -138,9 +138,8 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, error) {
-	proj := string(info.Proj.Name)
-	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
-		h.runtime, proj, info.Pwd, info.Program)
+	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(pwd=%s,program=%s) executing",
+		h.runtime, info.Pwd, info.Program)
 
 	opts, err := structpb.NewStruct(h.options)
 	if err != nil {
@@ -148,7 +147,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 	}
 
 	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
-		Project: proj,
+		Project: "deprecated",
 		Pwd:     info.Pwd,
 		Program: info.Program,
 		Info: &pulumirpc.ProgramInfo{
@@ -160,8 +159,8 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) failed: err=%v",
-			h.runtime, proj, info.Pwd, info.Program, rpcError)
+		logging.V(7).Infof("langhost[%v].GetRequiredPlugins(pwd=%s,program=%s) failed: err=%v",
+			h.runtime, info.Pwd, info.Program, rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPlugins
 		// method.  In such cases, we will silently error (with the above log left behind).
@@ -194,8 +193,8 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 		})
 	}
 
-	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d",
-		h.runtime, proj, info.Pwd, info.Program, len(results))
+	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(pwd=%s,program=%s) success: #versions=%d",
+		h.runtime, info.Pwd, info.Program, len(results))
 	return results, nil
 }
 
@@ -271,7 +270,7 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 
 	plugInfo.Path = h.plug.Bin
 
-	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
+	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
@@ -359,7 +358,7 @@ func (h *langhost) InstallDependencies(pwd, main string) error {
 
 func (h *langhost) About() (AboutInfo, error) {
 	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
-	resp, err := h.client.About(h.ctx.Request(), &pbempty.Empty{})
+	resp, err := h.client.About(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].About() failed: err=%v", h.runtime, rpcError)
@@ -378,9 +377,8 @@ func (h *langhost) About() (AboutInfo, error) {
 }
 
 func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error) {
-	proj := string(info.Proj.Name)
-	prefix := fmt.Sprintf("langhost[%v].GetProgramDependencies(proj=%s,pwd=%s,program=%s,transitiveDependencies=%t)",
-		h.runtime, proj, info.Pwd, info.Program, transitiveDependencies)
+	prefix := fmt.Sprintf("langhost[%v].GetProgramDependencies(pwd=%s,program=%s,transitiveDependencies=%t)",
+		h.runtime, info.Pwd, info.Program, transitiveDependencies)
 
 	opts, err := structpb.NewStruct(h.options)
 	if err != nil {
@@ -389,7 +387,7 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 
 	logging.V(7).Infof("%s executing", prefix)
 	resp, err := h.client.GetProgramDependencies(h.ctx.Request(), &pulumirpc.GetProgramDependenciesRequest{
-		Project:                proj,
+		Project:                "deprecated",
 		Pwd:                    info.Pwd,
 		Program:                info.Program,
 		TransitiveDependencies: transitiveDependencies,

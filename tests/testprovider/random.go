@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type randomResourceProvider struct{}
@@ -126,9 +126,9 @@ func (p *randomResourceProvider) Update(ctx context.Context, req *rpc.UpdateRequ
 	panic("Update not implemented")
 }
 
-func (p *randomResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *randomResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	// Note that for our Random resource, we don't have to do anything on Delete.
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func makeRandom(length int) (string, error) {

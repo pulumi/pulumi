@@ -19,7 +19,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
@@ -242,7 +242,7 @@ func (p *monitorProxy) RegisterResource(
 
 func (p *monitorProxy) RegisterResourceOutputs(
 	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest,
-) (*pbempty.Empty, error) {
+) (*emptypb.Empty, error) {
 	return p.target.RegisterResourceOutputs(ctx, req)
 }
 

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,6 +37,8 @@ type stackChangeSecretsProviderCmd struct {
 	stdout io.Writer
 
 	stack string
+
+	secretsProvider secrets.Provider
 }
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
@@ -79,6 +82,9 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	stdout := cmd.stdout
 	if stdout == nil {
 		stdout = os.Stdout
+	}
+	if cmd.secretsProvider == nil {
+		cmd.secretsProvider = stack.DefaultSecretsProvider
 	}
 
 	opts := display.Options{
@@ -132,10 +138,12 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 
 	// Fixup the checkpoint
 	fmt.Fprintf(stdout, "Migrating old configuration and state to new secrets provider\n")
-	return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentProjectStack, decrypter)
+	return migrateOldConfigAndCheckpointToNewSecretsProvider(
+		ctx, cmd.secretsProvider, project, currentStack, currentProjectStack, decrypter)
 }
 
 func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
+	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
 	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
@@ -182,7 +190,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, secretsProvider)
 	if err != nil {
 		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
 	}

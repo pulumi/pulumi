@@ -64,7 +64,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				urn, err = getURNFromState(ctx, stack, nil,
 					"Select the resource to delete")
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
 				urn = resource.URN(args[0])

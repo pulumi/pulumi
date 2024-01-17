@@ -1,5 +1,89 @@
 # Changelog
 
+## 3.101.1 (2024-01-10)
+
+
+### Bug Fixes
+
+- [backend/filestate] Revert gocloud.dev upgrade to fix regressions introduced by the upgrade.
+  [#15128](https://github.com/pulumi/pulumi/pull/15128)
+
+## 3.101.0 (2024-01-09)
+
+
+### Features
+
+- [cli] Adds a flag that allows inserting a fragment into the dot file when generating a graph. This can be used for styling the graph elements, setting properties etc.
+  [#14858](https://github.com/pulumi/pulumi/pull/14858)
+
+
+### Bug Fixes
+
+- [engine] Fix an uncommon datarace with replace steps.
+  [#15112](https://github.com/pulumi/pulumi/pull/15112)
+
+- [sdkgen/go] Revert using plain object type when the plainness is shallow and we should use inputty-types instead
+  [#15059](https://github.com/pulumi/pulumi/pull/15059)
+
+- [cli/state] Fix a panic in pulumi state when no snapshots are available
+  [#15045](https://github.com/pulumi/pulumi/pull/15045)
+
+- [sdkgen/python] Fixes resource imports when importing across different modules
+  [#14832](https://github.com/pulumi/pulumi/pull/14832)
+
+
+### Miscellaneous
+
+- [backend/filestate] Upgrade gocloud.dev to the latest version
+  [#15011](https://github.com/pulumi/pulumi/pull/15011)
+
+## 3.100.0 (2024-01-03)
+
+
+### Features
+
+- [auto/{go,nodejs,python}] Adds ListEnvironments support to Go, Nodejs and Python Automation API.
+  [#14995](https://github.com/pulumi/pulumi/pull/14995)
+
+- [cli/display] Warn correctly about new versions being availablen when using the CLI dev channel
+  [#14954](https://github.com/pulumi/pulumi/pull/14954)
+
+
+### Bug Fixes
+
+- [cli/new] Fixes duplicate printing of the AI prompt & answer on Windows.
+  [#15010](https://github.com/pulumi/pulumi/pull/15010)
+
+- [engine] Fix bug where unimported resources (of different types) with the same name would cause `--import-file` to panic.
+  [#15008](https://github.com/pulumi/pulumi/pull/15008)
+
+- [engine] Default parallel operations to a reasonable limit.
+  [#15016](https://github.com/pulumi/pulumi/pull/15016)
+
+- [programgen] Fixes type-annotating nested resource properties when these have quoted keys
+  [#15001](https://github.com/pulumi/pulumi/pull/15001)
+
+- [sdkgen] Temporarily revert validation of `urn` and `id` resource output properties
+  [#15025](https://github.com/pulumi/pulumi/pull/15025)
+
+- [programgen/{dotnet,python}] Allow object keys to be template expressions such as static quoted strings
+  [#15000](https://github.com/pulumi/pulumi/pull/15000)
+
+- [backend/service] Exclude internal events from those sent to Pulumi Cloud.
+  [#14972](https://github.com/pulumi/pulumi/pull/14972)
+
+- [sdk/go] fixes fulfillValue error when joining a nil output state
+  [#14949](https://github.com/pulumi/pulumi/pull/14949)
+
+
+### Miscellaneous
+
+- [pkg] Upgrade pulumi-java to v0.9.9
+  [#15007](https://github.com/pulumi/pulumi/pull/15007)
+
+- [yaml] Upgrade yaml to v1.4.5
+  [#15007](https://github.com/pulumi/pulumi/pull/15007)
+
 ## 3.99.0 (2023-12-20)
 
 

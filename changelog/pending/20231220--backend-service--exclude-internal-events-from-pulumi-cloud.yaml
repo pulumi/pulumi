@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/service
-  description: Exclude internal events from those sent to Pulumi Cloud.

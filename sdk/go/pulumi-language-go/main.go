@@ -32,13 +32,14 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -46,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -889,7 +889,7 @@ func (host *goLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest)
 	return string(configSecretKeysJSON), nil
 }
 
-func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
@@ -930,7 +930,7 @@ func (host *goLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
-func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+func (host *goLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
 	getResponse := func(execString string, args ...string) (string, string, error) {
 		ex, err := executable.FindExecutable(execString)
 		if err != nil {

@@ -109,9 +109,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "plain-schema-gh6957",
 		Description: "Repro for #6957",
-		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
-		SkipCompileCheck: codegen.NewStringSet(golang),
-		Skip:             codegen.NewStringSet("go/test"),
 	},
 	{
 		Directory:   "resource-args-python-case-insensitive",
@@ -230,10 +227,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Ensure that we can still compile safely when defaults are disabled",
 	},
 	{
-		Directory:   "plain-additional-items",
-		Description: "Ensure that we can compile maps where the element type is a plain object",
-	},
-	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
 		SkipCompileCheck: codegen.NewStringSet(python),
@@ -306,9 +299,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		// Google Native has its own import aliases, so those should be respected, unless there are local aliases.
 		// AWS Classic doesn't have any import aliases, so none should be used, unless there are local aliases.
 		Description: "Ensure external import aliases are honored, and any local import aliases override them",
-		// TODO[pulumi/pulumi#14873]: Temporarily skip until we've addressed the appdash-data dependency issue.
-		// Skip:        allLanguages.Except("go/any"),
-		Skip: allLanguages,
+		Skip:        allLanguages.Except("go/any"),
 	},
 	{
 		Directory:   "external-python-same-module-name",
@@ -429,6 +420,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "urn-id-properties",
 		Description: "Testing urn and id properties in valid locations",
+	},
+	{
+		Directory:   "regress-py-12980",
+		Description: "Import resources across modules",
+		Skip:        allLanguages.Except("python/any"),
 	},
 	{
 		Directory:   "unions-inline",

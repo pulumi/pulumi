@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -112,80 +111,6 @@ func (a *Asset) GetURI() (string, bool) {
 		return a.URI, true
 	}
 	return "", false
-}
-
-var (
-	functionRegexp    = regexp.MustCompile(`function __.*`)
-	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
-	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
-	preambleRegexp    = regexp.MustCompile(
-		`function __.*\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn `)
-	postambleRegexp = regexp.MustCompile(
-		`;\n\n    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}`)
-)
-
-// IsUserProgramCode checks to see if this is the special asset containing the users's code
-func (a *Asset) IsUserProgramCode() bool {
-	if !a.IsText() {
-		return false
-	}
-
-	text := a.Text
-
-	return functionRegexp.MatchString(text) &&
-		withRegexp.MatchString(text) &&
-		environmentRegexp.MatchString(text)
-}
-
-// MassageIfUserProgramCodeAsset takes the text for a function and cleans it up a bit to make the
-// user visible diffs less noisy.  Specifically:
-//  1. it tries to condense things by changling multiple blank lines into a single blank line.
-//  2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
-//  3. it elides the with-capture headers, as changes there are not generally meaningful.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/592) this is baking in a lot of knowledge about
-// pulumi serialized functions.  We should try to move to an alternative mode that isn't so brittle.
-// Options include:
-//  1. Have a documented delimeter format that plan.go will look for.  Have the function serializer
-//     emit those delimeters around code that should be ignored.
-//  2. Have our resource generation code supply not just the resource, but the "user presentable"
-//     resource that cuts out a lot of cruft.  We could then just diff that content here.
-func MassageIfUserProgramCodeAsset(asset *Asset, debug bool) *Asset {
-	if debug {
-		return asset
-	}
-
-	// Only do this for strings that match our serialized function pattern.
-	if !asset.IsUserProgramCode() {
-		return asset
-	}
-
-	text := asset.Text
-	replaceNewlines := func() {
-		for {
-			newText := strings.ReplaceAll(text, "\n\n\n", "\n\n")
-			if len(newText) == len(text) {
-				break
-			}
-
-			text = newText
-		}
-	}
-
-	replaceNewlines()
-
-	firstFunc := functionRegexp.FindStringIndex(text)
-	text = text[firstFunc[0]:]
-
-	text = withRegexp.ReplaceAllString(text, "    with (__closure) {")
-	text = environmentRegexp.ReplaceAllString(text, "  }).apply(__environment).apply(this, arguments);")
-
-	text = preambleRegexp.ReplaceAllString(text, "")
-	text = postambleRegexp.ReplaceAllString(text, "")
-
-	replaceNewlines()
-
-	return &Asset{Text: text}
 }
 
 // GetURIURL returns the underlying URI as a parsed URL, provided it is one.  If there was an error parsing the URI, it

@@ -20,7 +20,7 @@ require (
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/glog v1.1.0
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-querystring v1.1.0
 	github.com/google/pprof v0.0.0-20230406165453-00490a63f317
 	github.com/gorilla/mux v1.8.0
@@ -36,7 +36,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
-	github.com/pulumi/pulumi/sdk/v3 v3.99.0
+	github.com/pulumi/pulumi/sdk/v3 v3.101.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.3.1
 	github.com/spf13/cobra v1.7.0
@@ -158,7 +158,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.24.2 // indirect
 	github.com/charmbracelet/lipgloss v0.7.1 // indirect
 	github.com/cheggaaa/pb v1.0.29 // indirect
-	github.com/cloudflare/circl v1.3.3 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect

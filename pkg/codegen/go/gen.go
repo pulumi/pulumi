@@ -786,19 +786,13 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 
 	if !isExternal {
 		name := pkg.tokenToType(t.Token)
-		objectTypeDetails := pkg.detailsForType(t)
-		if t.IsInputShape() && objectTypeDetails.input {
+		if t.IsInputShape() {
 			return name + "Args"
 		}
 		return name
 	}
-	extPkg, externalTypeDetails := pkg.contextForExternalReference(t)
-	typeName := extPkg.tokenToType(t.Token)
-	if t.IsInputShape() && externalTypeDetails.input {
-		return typeName + "Args"
-	}
-
-	return typeName
+	extPkg, _ := pkg.contextForExternalReference(t)
+	return extPkg.typeString(t)
 }
 
 func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, typeDetails) {

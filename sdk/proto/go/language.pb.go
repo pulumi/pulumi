@@ -24,8 +24,8 @@ import (
 	codegen "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	structpb "google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 )
@@ -188,7 +188,7 @@ type GetProgramDependenciesRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Deprecated: Do not use.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name.
+	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name, the engine always sets this to "deprecated" now.
 	// Deprecated: Do not use.
 	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory.
 	// Deprecated: Do not use.
@@ -375,7 +375,7 @@ type GetRequiredPluginsRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Deprecated: Do not use.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name.
+	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"` // the project name, the engine always sets this to "deprecated" now.
 	// Deprecated: Do not use.
 	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"` // the program's working directory.
 	// Deprecated: Do not use.

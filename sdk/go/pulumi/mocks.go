@@ -5,9 +5,9 @@ import (
 	"log"
 	"sync"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -258,8 +258,8 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 
 func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc.RegisterResourceOutputsRequest,
 	opts ...grpc.CallOption,
-) (*empty.Empty, error) {
-	return &empty.Empty{}, nil
+) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 type mockEngine struct {
@@ -270,11 +270,11 @@ type mockEngine struct {
 // Log logs a global message in the engine, including errors and warnings.
 func (m *mockEngine) Log(ctx context.Context, in *pulumirpc.LogRequest,
 	opts ...grpc.CallOption,
-) (*empty.Empty, error) {
+) (*emptypb.Empty, error) {
 	if m.logger != nil {
 		m.logger.Printf("%s: %s", in.GetSeverity(), in.GetMessage())
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 // GetRootResource gets the URN of the root resource, the resource that should be the root of all

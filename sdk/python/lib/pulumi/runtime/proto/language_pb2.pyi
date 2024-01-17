@@ -125,7 +125,7 @@ class GetProgramDependenciesRequest(google.protobuf.message.Message):
     TRANSITIVEDEPENDENCIES_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """the project name."""
+    """the project name, the engine always sets this to "deprecated" now."""
     pwd: builtins.str
     """the program's working directory."""
     program: builtins.str
@@ -195,7 +195,7 @@ class GetRequiredPluginsRequest(google.protobuf.message.Message):
     PROGRAM_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """the project name."""
+    """the project name, the engine always sets this to "deprecated" now."""
     pwd: builtins.str
     """the program's working directory."""
     program: builtins.str

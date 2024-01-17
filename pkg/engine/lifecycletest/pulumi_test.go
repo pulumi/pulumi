@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2583,7 +2583,7 @@ func (ctx *updateContext) Run(_ context.Context, req *pulumirpc.RunRequest) (*pu
 	return &pulumirpc.RunResponse{}, nil
 }
 
-func (ctx *updateContext) GetPluginInfo(_ context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (ctx *updateContext) GetPluginInfo(_ context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: "1.0.0",
 	}, nil

@@ -42,7 +42,6 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -56,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -815,7 +815,7 @@ func (host *pythonLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequ
 	return string(configSecretKeysJSON), nil
 }
 
-func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
@@ -882,7 +882,7 @@ func (host *pythonLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
-func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+func (host *pythonLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
 	errCouldNotGet := func(err error) (*pulumirpc.AboutResponse, error) {
 		return nil, fmt.Errorf("failed to get version: %w", err)
 	}

@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/asset"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -580,7 +581,7 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		if a.IsText() {
 			p.write("asset(text:%s) {\n", shortHash(a.Hash))
 
-			a = resource.MassageIfUserProgramCodeAsset(a, p.debug)
+			a = asset.MassageIfUserProgramCodeAsset(a, p.debug)
 
 			massaged := a.Text
 
@@ -1021,8 +1022,8 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 			titleFunc(p)
 			p.write("asset(text:%s) {", hashChange)
 
-			massagedOldText := resource.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
-			massagedNewText := resource.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
+			massagedOldText := asset.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
+			massagedNewText := asset.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
 
 			p.indented(1).printTextDiff(massagedOldText, massagedNewText)
 
