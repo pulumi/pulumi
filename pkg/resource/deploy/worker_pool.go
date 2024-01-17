@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"errors"
 	"runtime"
 	"sync"
@@ -28,19 +29,21 @@ type workerPool struct {
 	wg  sync.WaitGroup
 
 	errorMutex sync.Mutex
+	cancel     context.CancelFunc
 	errors     []error
 }
 
 // Creates a new workerPool. This will allow upto size concurrent workers.
 //
 // IF size is <= 1, OR > NumCPU THEN use the number of available Logical CPUs
-func newWorkerPool(size int) *workerPool {
+func newWorkerPool(size int, cancel context.CancelFunc) *workerPool {
 	if size <= 1 || size > runtime.NumCPU() {
 		size = runtime.NumCPU()
 	}
 	return &workerPool{
 		numWorkers: size,
 		sem:        make(chan struct{}, size),
+		cancel:     cancel,
 	}
 }
 
@@ -63,6 +66,10 @@ func (s *workerPool) AddWorker(thunk func() error) {
 			defer s.errorMutex.Unlock()
 
 			s.errors = append(s.errors, err)
+			// cancel the context on the first error
+			if len(s.errors) == 1 {
+				s.cancel()
+			}
 		}
 	}()
 }

@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -27,10 +28,32 @@ import (
 	"pgregory.net/rapid"
 )
 
+func TestWorkerPool_NoError(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	workerPool := newWorkerPool(0, cancel)
+
+	const numTasks = 100
+
+	for i := 0; i < numTasks; i++ {
+		workerPool.AddWorker(func() error {
+			runtime.Gosched()
+			return nil
+		})
+	}
+
+	err := workerPool.Wait(true)
+
+	assert.Nil(t, err)
+	assert.Nil(t, ctx.Err())
+}
+
 func TestWorkerPool_error(t *testing.T) {
 	t.Parallel()
 
-	workerPool := newWorkerPool(0)
+	_, cancel := context.WithCancel(context.TODO())
+	workerPool := newWorkerPool(0, cancel)
 
 	const numTasks = 100
 
@@ -60,7 +83,8 @@ func TestWorkerPool_error(t *testing.T) {
 func TestWorkerPool_oneError(t *testing.T) {
 	t.Parallel()
 
-	workerPool := newWorkerPool(0)
+	ctx, cancel := context.WithCancel(context.TODO())
+	workerPool := newWorkerPool(0, cancel)
 
 	const numTasks = 10
 	giveErr := errors.New("great sadness")
@@ -77,6 +101,9 @@ func TestWorkerPool_oneError(t *testing.T) {
 	err := workerPool.Wait(true)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, giveErr)
+
+	assert.NotNil(t, ctx.Err())
+	assert.ErrorIs(t, ctx.Err(), context.Canceled)
 }
 
 func TestWorkerPool_workerCount(t *testing.T) {
@@ -110,7 +137,8 @@ func TestWorkerPool_workerCount(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			workerPool := newWorkerPool(tt.numWorkers)
+			_, cancel := context.WithCancel(context.TODO())
+			workerPool := newWorkerPool(tt.numWorkers, cancel)
 
 			assert.Equal(t, tt.expectedWorkers, workerPool.numWorkers)
 		})
@@ -123,7 +151,8 @@ func TestWorkerPool_randomActions(t *testing.T) {
 	t.Parallel()
 
 	rapid.Check(t, func(t *rapid.T) {
-		workerPool := newWorkerPool(0)
+		ctx, cancel := context.WithCancel(context.TODO())
+		workerPool := newWorkerPool(0, cancel)
 
 		// Number of tasks epqueued but not yet running.
 		var pending atomic.Int64
@@ -186,10 +215,12 @@ func TestWorkerPool_randomActions(t *testing.T) {
 		err := workerPool.Wait(true)
 		if len(errors) == 0 {
 			assert.NoError(t, err)
+			assert.Nil(t, ctx.Err())
 		} else {
 			for _, el := range errors {
 				assert.ErrorIs(t, err, el)
 			}
+			assert.ErrorIs(t, ctx.Err(), context.Canceled)
 		}
 		assert.Zero(t, pending.Load())
 	})

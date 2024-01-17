@@ -33,6 +33,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+var UseParallelStepGen = false
+
 // deploymentExecutor is responsible for taking a deployment and driving it to completion.
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
@@ -222,12 +224,13 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		var workerPool *workerPool
 		// Use a pool of workers to run step generation in parallel if the env
 		// variable PULUMI_PARALLEL_STEP_GEN is truthy.
-		if env.ParallelStepGeneration.Value() {
+		if UseParallelStepGen || env.ParallelStepGeneration.Value() {
 			if opts.InfiniteParallelism() {
-				workerPool = newWorkerPool(0)
+				workerPool = newWorkerPool(0, cancel)
 			} else {
-				workerPool = newWorkerPool(opts.DegreeOfParallelism())
+				workerPool = newWorkerPool(opts.DegreeOfParallelism(), cancel)
 			}
+			logging.V(4).Infof("deploymentExecutor.Execute(...): using %d workers", workerPool.numWorkers)
 		}
 
 		for {

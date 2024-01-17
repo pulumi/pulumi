@@ -116,3 +116,12 @@ func (rl *resourceLock) UnlockDependentReplaces(toReplace []dependentReplace) {
 		}
 	}
 }
+
+// Inverts the mutex lock and runs the supplied function outside the lock
+func (rl *resourceLock) InvertLock(fn func() error) error {
+	contract.Assertf(!rl.mu.TryLock(), "the mutex must be locked")
+	rl.mu.Unlock()
+	defer rl.mu.Lock()
+
+	return fn()
+}

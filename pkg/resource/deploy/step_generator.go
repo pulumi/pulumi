@@ -1101,18 +1101,20 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
-				contract.Assertf(!sg.generatorMutex.TryLock(), "expecting mutex to be locked")
-				sg.generatorMutex.Unlock()
-				defer sg.generatorMutex.Lock()
-
-				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+				err = sg.urnLock.InvertLock(func() error {
+					var failures []plugin.CheckFailure
+					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+					if err != nil {
+						return err
+					} else if issueCheckErrors(sg.deployment, new, urn, failures) {
+						return result.BailErrorf("resource %v has check errors: %v", urn, failures)
+					}
+					new.Inputs = inputs
+					return nil
+				})
 				if err != nil {
 					return nil, err
-				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
-					return nil, result.BailErrorf("resource %v has check errors: %v", urn, failures)
 				}
-				new.Inputs = inputs
 			}
 
 			if logging.V(7) {

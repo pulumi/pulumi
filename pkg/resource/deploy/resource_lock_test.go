@@ -117,8 +117,8 @@ func TestResourceLock(t *testing.T) {
 						}
 					})
 
-					values[a] += 1
-					values[b] += 1
+					values[a]++
+					values[b]++
 					mu.Unlock()
 					runtime.Gosched()
 
@@ -157,7 +157,7 @@ func TestResourceLock(t *testing.T) {
 
 					replacements := make([]dependentReplace, half)
 					for j, res := range resources {
-						values[res.URN] += 1
+						values[res.URN]++
 						replacements[j].res = res
 					}
 					mu.Unlock()
@@ -177,13 +177,15 @@ func TestResourceLock(t *testing.T) {
 	})
 
 	t.Run("randomly call resourceLock methods checking for deadlock or panic", func(t *testing.T) {
+		t.Parallel()
+
 		rapid.Check(t, func(rt *rapid.T) {
 			mu := sync.Mutex{}
 			resourceLock := newResourceLock(&mu)
 
 			rt.Run(map[string]func(*rapid.T){
 				"LockResource": func(*rapid.T) {
-					urn := urns[rand.Intn(len(urns))]
+					urn := urns[rand.Intn(len(urns))] //nolint:gosec
 					mu.Lock()
 					resourceLock.LockResource(urn)
 					mu.Unlock()
@@ -194,12 +196,25 @@ func TestResourceLock(t *testing.T) {
 					resourceLock.UnlockResource(urn)
 					mu.Unlock()
 				},
+				"LockResourceWithInversion": func(*rapid.T) {
+					urn := urns[rand.Intn(len(urns))] //nolint:gosec
+					mu.Lock()
+					resourceLock.LockResource(urn)
+
+					assert.NoError(t, resourceLock.InvertLock(func() error {
+						runtime.Gosched()
+						return nil
+					}))
+
+					resourceLock.UnlockResource(urn)
+					mu.Unlock()
+				},
 				"LockResources": func(*rapid.T) {
 					resources := make([]*resource.State, len(urns)/3)
 					for i := range resources {
 					Retry:
 						for {
-							urn := urns[rand.Intn(len(urns))]
+							urn := urns[rand.Intn(len(urns))] //nolint:gosec
 							for j := 0; j < i; j++ {
 								if resources[j].URN == urn {
 									continue Retry
@@ -229,7 +244,7 @@ func TestResourceLock(t *testing.T) {
 					for i := range resources {
 					Retry:
 						for {
-							urn := urns[rand.Intn(len(urns))]
+							urn := urns[rand.Intn(len(urns))] //nolint:gosec
 							for j := 0; j < i; j++ {
 								if resources[j].URN == urn {
 									continue Retry
