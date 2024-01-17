@@ -15,7 +15,6 @@
 package rpcdebug
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,9 +26,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type DebugInterceptor struct {
@@ -201,19 +200,18 @@ func (*DebugInterceptor) transcode(obj interface{}) (json.RawMessage, error) {
 		return json.RawMessage("null"), nil
 	}
 
-	m, ok := obj.(proto.Message)
+	m, ok := obj.(protoreflect.ProtoMessage)
 	if !ok {
 		return json.RawMessage("null"),
-			fmt.Errorf("Failed to decode, expecting proto.Message, got %v",
+			fmt.Errorf("failed to decode, expecting protoreflect.ProtoMessage, got %v",
 				reflect.TypeOf(obj))
 	}
 
-	jsonSer := jsonpb.Marshaler{}
-	buf := bytes.Buffer{}
-	if err := jsonSer.Marshal(&buf, m); err != nil {
+	buf, err := protojson.Marshal(m)
+	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return buf, nil
 }
 
 // Wraps grpc.ServerStream with interceptor hooks for SendMsg, RecvMsg.

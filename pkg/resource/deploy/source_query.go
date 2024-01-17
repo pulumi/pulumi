@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"math"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	opentracing "github.com/opentracing/opentracing-go"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
 
@@ -532,7 +532,7 @@ func (rm *queryResmon) RegisterResource(ctx context.Context,
 // provisioning.  These will make their way into the eventual checkpoint state file for that resource.
 func (rm *queryResmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
-) (*pbempty.Empty, error) {
+) (*emptypb.Empty, error) {
 	return nil, errors.New("Query mode does not support registering resource operations")
 }
 

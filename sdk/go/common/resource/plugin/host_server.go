@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -87,7 +87,7 @@ func (eng *hostServer) Cancel() error {
 }
 
 // Log logs a global message in the engine, including errors and warnings.
-func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbempty.Empty, error) {
+func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*emptypb.Empty, error) {
 	var sev diag.Severity
 	switch req.Severity {
 	case lumirpc.LogSeverity_DEBUG:
@@ -107,7 +107,7 @@ func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbemp
 	} else {
 		eng.host.Log(sev, resource.URN(req.Urn), req.Message, req.StreamId)
 	}
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 // GetRootResource returns the current root resource's URN, which will serve as the parent of resources that are

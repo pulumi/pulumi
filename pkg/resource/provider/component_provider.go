@@ -20,10 +20,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type componentProvider struct {
@@ -79,7 +79,7 @@ func ComponentMain(name, version string, schema []byte, construct provider.Const
 }
 
 // GetPluginInfo returns generic information about this plugin, like its version.
-func (p *componentProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (p *componentProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil
@@ -136,20 +136,20 @@ func (p *componentProvider) Call(ctx context.Context,
 // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
 // to the host to decide how long to wait after Cancel is called before (e.g.)
 // hard-closing any gRPC connection.
-func (p *componentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *componentProvider) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 // Attach attaches to the engine for an already running provider.
 func (p *componentProvider) Attach(ctx context.Context,
 	req *pulumirpc.PluginAttach,
-) (*pbempty.Empty, error) {
+) (*emptypb.Empty, error) {
 	host, err := NewHostClient(req.GetAddress())
 	if err != nil {
 		return nil, err
 	}
 	p.host = host
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 // GetMapping fetches the conversion mapping (if any) for this resource provider.
