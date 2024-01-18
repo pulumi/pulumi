@@ -258,7 +258,7 @@ func TestPropertyPath(t *testing.T) {
 		`root.array.[1]`,
 		`root.["key with a ."]`,
 	}
-	//nolint:paralleltest
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCasesStrict {
 		c := c
 		t.Run(c, func(t *testing.T) {
