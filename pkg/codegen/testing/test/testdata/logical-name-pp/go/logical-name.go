@@ -17,6 +17,7 @@ func main() {
 			return err
 		}
 		ctx.Export("bB-Beta_beta.💜⁉", resourceLexicalName.ID())
+		ctx.Export("dD-Delta_delta.🔥⁉", resourceLexicalName.ID())
 		return nil
 	})
 }
