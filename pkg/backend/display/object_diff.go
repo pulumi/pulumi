@@ -1201,13 +1201,16 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 		return false
 	}
 
-	if oldKind != newKind {
-		p.write("(%s => %s) ", oldKind, newKind)
-	} else if old != new {
+	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
+	if oldValue.DeepEquals(newValue) {
 		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
 		return true
-	} else {
+	}
+
+	if oldKind == newKind {
 		p.write("(%s) ", oldKind)
+	} else {
+		p.write("(%s => %s) ", oldKind, newKind)
 	}
 
 	diff := oldValue.Diff(newValue, resource.IsInternalPropertyKey)
@@ -1220,6 +1223,8 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 	return true
 }
 
+// decodeValue attempts to decode a string as JSON or YAML. The second return value is the kind of value that was
+// decoded, either "json" or "yaml".
 func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
 	decode := func() (interface{}, string, bool) {
 		// Strip whitespace for the purposes of decoding.
