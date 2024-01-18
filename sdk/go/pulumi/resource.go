@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -199,6 +200,15 @@ func (ctx *Context) newDependencyProviderResource(urn URN, id ID) ProviderResour
 	internal.ResolveOutput(res.id, id, id != "", false, resourcesToInternal(nil))
 	res.pkg = string(resource.URN(urn).Type().Name())
 	return &res
+}
+
+func (ctx *Context) newDependencyProviderResourceFromRef(ref string) ProviderResource {
+	idx := strings.LastIndex(ref, "::")
+	if idx == -1 {
+		return nil
+	}
+	urn, id := ref[:idx], ref[idx+2:]
+	return ctx.newDependencyProviderResource(URN(urn), ID(id))
 }
 
 // Resource represents a cloud resource managed by Pulumi.

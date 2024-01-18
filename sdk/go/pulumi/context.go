@@ -367,13 +367,12 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
 			opts.Protect = rpcReq.Options.Protect
 			if rpcReq.Options.Provider != "" {
-				split := strings.Split(rpcReq.Options.Provider, "::")
-				opts.Provider = ctx.newDependencyProviderResource(URN(rpcReq.Options.Provider))
+				opts.Provider = ctx.newDependencyProviderResourceFromRef(rpcReq.Options.Provider)
 			}
 			if rpcReq.Options.Providers != nil {
 				opts.Providers = make([]ProviderResource, 0, len(rpcReq.Options.Providers))
 				for _, p := range rpcReq.Options.Providers {
-					opts.Providers = append(opts.Providers, ctx.newDependencyProviderResource(URN(p)))
+					opts.Providers = append(opts.Providers, ctx.newDependencyProviderResourceFromRef(p))
 				}
 			}
 			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
@@ -398,7 +397,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 		if res != nil {
 			umProperties := res.Props
 			if umProperties == nil {
-				umProperties = map[string]any{}
+				umProperties = Map{}
 			}
 			mProperties, _, err := marshalInput(umProperties, anyType, true)
 			if err != nil {
@@ -2050,7 +2049,7 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 }
 
 func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
-	if !ctx.supportsTransforms {
+	if !ctx.state.supportsTransforms {
 		return fmt.Errorf("update engine")
 	}
 
@@ -2059,7 +2058,7 @@ func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
 		return err
 	}
 
-	_, err = ctx.monitor.RegisterStackTransformation(ctx.ctx, cb)
+	_, err = ctx.state.monitor.RegisterStackTransformation(ctx.ctx, cb)
 	return err
 }
 

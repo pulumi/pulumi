@@ -9,7 +9,7 @@ type ResourceTransformArgs struct {
 	// The name of the resource.
 	Name string
 	// The original properties passed to the resource constructor.
-	Props map[string]any
+	Props Map
 	// The original resource options passed to the resource constructor.
 	Opts ResourceOptions
 }
@@ -19,7 +19,7 @@ type ResourceTransformArgs struct {
 // the originally provided values.
 type ResourceTransformResult struct {
 	// The new properties to use in place of the original `props`.
-	Props map[string]any
+	Props Map
 	// The new resource options to use in place of the original `opts`.
 	Opts ResourceOptions
 }
