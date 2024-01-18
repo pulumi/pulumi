@@ -264,7 +264,7 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 
 func (m *mockMonitor) RegisterStackTransformation(ctx context.Context, in *pulumirpc.Callback,
 	opts ...grpc.CallOption,
-) (*empty.Empty, error) {
+) (*emptypb.Empty, error) {
 	panic("not implemented")
 }
 

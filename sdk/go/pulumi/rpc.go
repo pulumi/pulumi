@@ -662,9 +662,7 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 			}
 			return nil, errors.New("expected archive to be one of Assets, File, or Remote; got none")
 		case v.IsResourceReference():
-			ref := v.ResourceReferenceValue()
-			res, err := ctx.newDependencyResource(urn)
-
+			return nil, errors.New("TODO")
 		case v.IsComputed():
 			state := internal.NewOutputState(nil /* joinGroup */, reflect.TypeOf((*any)(nil)).Elem())
 			internal.ResolveOutput(state, nil, false, false, nil /* deps */)
