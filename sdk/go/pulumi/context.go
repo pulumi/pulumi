@@ -302,7 +302,28 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 		var opts ResourceOptions
 		if rpcReq.Options != nil {
 			opts.AdditionalSecretOutputs = rpcReq.Options.AdditionalSecretOutputs
-			opts.Aliases = rpcReq.Options.Aliases
+			opts.Aliases = slice.Map(rpcReq.Options.Aliases, func(a *pulumirpc.Alias) Alias {
+				switch v := a.GetAlias().(type) {
+				case *pulumirpc.Alias_Urn:
+					return Alias{URN: URN(v.Urn)}
+				case *pulumirpc.Alias_Spec_:
+					alias := Alias{
+						Name:    String(v.Spec.Name),
+						Type:    String(v.Spec.Type),
+						Stack:   String(v.Spec.Stack),
+						Project: String(v.Spec.Project),
+					}
+
+					switch p := v.Spec.Parent.(type) {
+					case *pulumirpc.Alias_Spec_NoParent:
+						alias.NoParent = Bool(p.NoParent)
+					case *pulumirpc.Alias_Spec_ParentUrn:
+						alias.ParentURN = URN(p.ParentUrn)
+					}
+					return alias
+				}
+				return Alias{}
+			})
 			if rpcReq.Options.CustomTimeouts != nil {
 				opts.CustomTimeouts = &CustomTimeouts{
 					Create: rpcReq.Options.CustomTimeouts.Create,
@@ -313,14 +334,25 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			if rpcReq.Options.DeleteBeforeReplace != nil {
 				opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
 			}
-			opts.DependsOn = rpcReq.Options.DependsOn
-			opts.DependsOnInputs = rpcReq.Options.DependsOnInputs
+			opts.DependsOn = slice.Map(rpcReq.Options.DependsOn, func(d string) Resource {
+				return ctx.newDependencyResource(URN(d))
+			})
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
-			opts.Parent = rpcReq.Parent
+			if rpcReq.Parent != "" {
+				opts.Parent = ctx.newDependencyResource(URN(rpcReq.Parent))
+			}
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
 			opts.Protect = rpcReq.Options.Protect
-			opts.Provider = rpcReq.Options.Provider
-			opts.Providers = rpcReq.Options.Providers
+			if rpcReq.Options.Provider != "" {
+				split := strings.Split(rpcReq.Options.Provider, "::")
+				opts.Provider = ctx.newDependencyProviderResource(URN(rpcReq.Options.Provider))
+			}
+			if rpcReq.Options.Providers != nil {
+				opts.Providers = make([]ProviderResource, 0, len(rpcReq.Options.Providers))
+				for _, p := range rpcReq.Options.Providers {
+					opts.Providers = append(opts.Providers, ctx.newDependencyProviderResource(URN(p)))
+				}
+			}
 			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
 			opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
 			opts.Version = rpcReq.Options.Version
@@ -369,28 +401,28 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			// Marshal the resource options
 			rpcRes.Options = &pulumirpc.TransformationResourceOptions{
 				AdditionalSecretOutputs: res.Opts.AdditionalSecretOutputs,
-				opts.Aliases = rpcReq.Options.Aliases
-				if rpcReq.Options.CustomTimeouts != nil {
-					opts.CustomTimeouts = &CustomTimeouts{
-						Create: rpcReq.Options.CustomTimeouts.Create,
-						Update: rpcReq.Options.CustomTimeouts.Update,
-						Delete: rpcReq.Options.CustomTimeouts.Delete,
-					}
-				}
-				if rpcReq.Options.DeleteBeforeReplace != nil {
-					opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
-				}
-				opts.DependsOn = rpcReq.Options.DependsOn
-				opts.DependsOnInputs = rpcReq.Options.DependsOnInputs
-				opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
-				opts.Parent = rpcReq.Parent
-				opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
-				opts.Protect = rpcReq.Options.Protect
-				opts.Provider = rpcReq.Options.Provider
-				opts.Providers = rpcReq.Options.Providers
-				opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
-				opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
-				opts.Version = rpcReq.Options.Version
+				//opts.Aliases = rpcReq.Options.Aliases
+				//if rpcReq.Options.CustomTimeouts != nil {
+				//	opts.CustomTimeouts = &CustomTimeouts{
+				//		Create: rpcReq.Options.CustomTimeouts.Create,
+				//		Update: rpcReq.Options.CustomTimeouts.Update,
+				//		Delete: rpcReq.Options.CustomTimeouts.Delete,
+				//	}
+				//}
+				//if rpcReq.Options.DeleteBeforeReplace != nil {
+				//	opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
+				//}
+				//opts.DependsOn = rpcReq.Options.DependsOn
+				//opts.DependsOnInputs = rpcReq.Options.DependsOnInputs
+				//opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+				//opts.Parent = rpcReq.Parent
+				//opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+				//opts.Protect = rpcReq.Options.Protect
+				//opts.Provider = rpcReq.Options.Provider
+				//opts.Providers = rpcReq.Options.Providers
+				//opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
+				//opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
+				//opts.Version = rpcReq.Options.Version
 			}
 		}
 

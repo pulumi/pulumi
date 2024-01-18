@@ -92,6 +92,9 @@ export class CallbackServer implements ICallbackServer {
                 const connect = () => {
                     client.invoke(new CallbackInvokeRequest(), (error, _) => {
                         console.log(error);
+                        if (error !== null) {
+                            reject(error);
+                        }
                         if (error?.code === grpc.status.UNAVAILABLE) {
                             setTimeout(connect, 1000);
                             return;
