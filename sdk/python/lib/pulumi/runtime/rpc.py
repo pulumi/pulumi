@@ -811,13 +811,15 @@ result in the exception being re-thrown.
 """
 
 
-def transfer_properties(res: "Resource", props: "Inputs") -> Dict[str, Resolver]:
+def transfer_properties(
+    res: "Resource", props: "Inputs", custom: bool
+) -> Dict[str, Resolver]:
     from .. import Output  # pylint: disable=import-outside-toplevel
 
     resolvers: Dict[str, Resolver] = {}
 
     for name in props:
-        if name in ["id", "urn"]:
+        if name == "urn" or (name == "id" and custom):
             # these properties are handled specially elsewhere.
             continue
 
@@ -1095,6 +1097,7 @@ def resolve_outputs(
     outputs: struct_pb2.Struct,
     deps: Mapping[str, Set["Resource"]],
     resolvers: Dict[str, Resolver],
+    custom: bool,
     transform_using_type_metadata: bool = False,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
@@ -1158,17 +1161,20 @@ def resolve_outputs(
                     return_none_on_dict_type_mismatch=True,
                 )
 
-    resolve_properties(resolvers, all_properties, translated_deps)
+    resolve_properties(resolvers, all_properties, translated_deps, custom)
 
 
 def resolve_properties(
     resolvers: Dict[str, Resolver],
     all_properties: Dict[str, Any],
     deps: Mapping[str, Set["Resource"]],
+    custom: bool,
 ):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
-        if key in ["id", "urn"]:
+        # Only skip ID if this is a custom resource, meaning non-component resource.
+        # For component resources, using ID as output property is allowed.
+        if key == "urn" or (key == "id" and custom):
             continue
 
         # Otherwise, unmarshal the value, and store it on the resource object.
