@@ -322,6 +322,11 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 		}
 
 		// Unmarshal the resource options.
+		var parent Resource
+		if rpcReq.Parent != "" {
+			parent = ctx.newDependencyResource(URN(rpcReq.Parent))
+		}
+
 		var opts ResourceOptions
 		if rpcReq.Options != nil {
 			opts.AdditionalSecretOutputs = rpcReq.Options.AdditionalSecretOutputs
@@ -361,9 +366,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return ctx.newDependencyResource(URN(d))
 			})
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
-			if rpcReq.Parent != "" {
-				opts.Parent = ctx.newDependencyResource(URN(rpcReq.Parent))
-			}
+			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
 			opts.Protect = rpcReq.Options.Protect
 			if rpcReq.Options.Provider != "" {
@@ -421,9 +424,14 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			}
 
 			// Marshal the resource options
+			alias, err := ctx.mapAliases(res.Opts.Aliases, rpcReq.Type, rpcReq.Name, parent)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling aliases: %w", err)
+			}
+
 			rpcRes.Options = &pulumirpc.TransformationResourceOptions{
 				AdditionalSecretOutputs: res.Opts.AdditionalSecretOutputs,
-				//opts.Aliases = rpcReq.Options.Aliases
+				Aliases:                 alias,
 				//if rpcReq.Options.CustomTimeouts != nil {
 				//	opts.CustomTimeouts = &CustomTimeouts{
 				//		Create: rpcReq.Options.CustomTimeouts.Create,
