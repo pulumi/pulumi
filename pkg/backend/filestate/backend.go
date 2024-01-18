@@ -36,7 +36,7 @@ import (
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
 	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/s3blob"      // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -232,10 +232,17 @@ func newLocalBackend(
 
 	blobmux := blob.DefaultURLMux()
 
-	// for gcp we want to support additional credentials
-	// schemes on top of go-cloud's default credentials mux.
+	// for gcp or s3 we want to support additional credentials
+	// schemes on top of how the default credentials mux sources credentials.
 	if p.Scheme == gcsblob.Scheme {
 		blobmux, err = authhelpers.GoogleCredentialsMux(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if p.Scheme == s3blob.Scheme {
+		blobmux, err = authhelpers.S3CredentialsMux(ctx, project.Backend)
 		if err != nil {
 			return nil, err
 		}
