@@ -277,7 +277,7 @@ func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // path segment as the name.
 func parseKeyPath(k Key) (resource.PropertyPath, Key, error) {
 	// Parse the path, which will be in the name portion of the key.
-	p, err := resource.ParsePropertyPath(k.Name())
+	p, err := resource.ParsePropertyPathStrict(k.Name())
 	if err != nil {
 		return nil, Key{}, fmt.Errorf("invalid config key path: %w", err)
 	}
