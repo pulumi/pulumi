@@ -65,4 +65,5 @@ export interface ProjectTemplateConfigValue {
  */
 export interface ProjectBackend {
     url?: string;
+    awsProfileName?: string;
 }

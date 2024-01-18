@@ -101,6 +101,8 @@ type ProjectBackend struct {
 type ProjectOptions struct {
 	// Refresh is the ability to always run a refresh as part of a pulumi update / preview / destroy
 	Refresh string `json:"refresh,omitempty" yaml:"refresh,omitempty"`
+	// AWS Profile name to use a specific profile via the aws cli for s3 backend authentication
+	AwsProfileName string `json:"awsProfileName,omitempty" yaml:"awsProfileName,omitempty"`
 }
 
 type PluginOptions struct {

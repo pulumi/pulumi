@@ -69,9 +69,11 @@ class ProjectBackend:
     """Configuration for the project's Pulumi state storage backend."""
 
     url: Optional[str]
+    awsProfileName: Optional[str]
 
-    def __init__(self, url: Optional[str] = None):
+    def __init__(self, url: Optional[str] = None, awsProfileName: Optional[str] = None):
         self.url = url
+        self.awsProfileName = awsProfileName
 
 
 class ProjectSettings:

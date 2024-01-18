@@ -122,6 +122,10 @@
                 "url":{
                     "description":"URL is optional field to explicitly set backend url",
                     "type":"string"
+                },
+                "awsProfileName":{
+                    "description":"For S3 state backends, attempt authentication with this profile name before environment",
+                    "type":"string"
                 }
             },
             "additionalProperties":false
