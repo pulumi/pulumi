@@ -526,7 +526,7 @@ def get_resource(
         (resolve_id, res.__dict__["id"]) = resource_output(res)
 
     # Like the other resource functions, "transfer" all input properties onto unresolved futures on res.
-    resolvers = rpc.transfer_properties(res, props)
+    resolvers = rpc.transfer_properties(res, props, custom)
 
     async def do_get():
         try:
@@ -590,6 +590,7 @@ def get_resource(
             resp["state"],
             {},
             resolvers,
+            custom,
             transform_using_type_metadata,
         )
 
@@ -711,7 +712,8 @@ def read_resource(
     (resolve_id, res.__dict__["id"]) = resource_output(res)
 
     # Like below, "transfer" all input properties onto unresolved futures on res.
-    resolvers = rpc.transfer_properties(res, props)
+    custom = True  # Reads are always for custom resources (non-components)
+    resolvers = rpc.transfer_properties(res, props, custom)
 
     # Get the source position.
     #
@@ -799,6 +801,7 @@ def read_resource(
             resp.properties,
             {},
             resolvers,
+            custom,
             transform_using_type_metadata,
         )
 
@@ -846,7 +849,7 @@ def register_resource(
     # Now "transfer" all input properties into unresolved futures on res.  This way,
     # this resource will look like it has all its output properties to anyone it is
     # passed to.  However, those futures won't actually resolve until the RPC returns
-    resolvers = rpc.transfer_properties(res, props)
+    resolvers = rpc.transfer_properties(res, props, custom)
 
     # Get the source position.
     #
@@ -1032,6 +1035,7 @@ def register_resource(
                 resp.object,
                 property_deps,
                 resolvers,
+                custom,
                 transform_using_type_metadata,
             )
             resolve_outputs_called = True
