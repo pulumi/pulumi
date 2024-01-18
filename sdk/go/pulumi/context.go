@@ -429,31 +429,64 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return nil, fmt.Errorf("marshaling aliases: %w", err)
 			}
 
+			// It's an error to try and change the parent and the engine doesn't even let you send it back so sanity check that here.
+			if opts.Parent != parent {
+				return nil, fmt.Errorf("cannot change parent in transformation")
+			}
+
 			rpcRes.Options = &pulumirpc.TransformationResourceOptions{
 				AdditionalSecretOutputs: res.Opts.AdditionalSecretOutputs,
 				Aliases:                 alias,
-				//if rpcReq.Options.CustomTimeouts != nil {
-				//	opts.CustomTimeouts = &CustomTimeouts{
-				//		Create: rpcReq.Options.CustomTimeouts.Create,
-				//		Update: rpcReq.Options.CustomTimeouts.Update,
-				//		Delete: rpcReq.Options.CustomTimeouts.Delete,
-				//	}
-				//}
-				//if rpcReq.Options.DeleteBeforeReplace != nil {
-				//	opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
-				//}
-				//opts.DependsOn = rpcReq.Options.DependsOn
-				//opts.DependsOnInputs = rpcReq.Options.DependsOnInputs
-				//opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
-				//opts.Parent = rpcReq.Parent
-				//opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
-				//opts.Protect = rpcReq.Options.Protect
-				//opts.Provider = rpcReq.Options.Provider
-				//opts.Providers = rpcReq.Options.Providers
-				//opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
-				//opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
-				//opts.Version = rpcReq.Options.Version
 			}
+
+			if opts.CustomTimeouts != nil {
+				rpcRes.Options.CustomTimeouts = &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+					Create: opts.CustomTimeouts.Create,
+					Update: opts.CustomTimeouts.Update,
+					Delete: opts.CustomTimeouts.Delete,
+				}
+			}
+
+			if opts.DeleteBeforeReplace {
+				v := true
+				rpcRes.Options.DeleteBeforeReplace = &v
+			}
+
+			marshalToUrn := func(resource Resource) (string, error) {
+				urn, _, _, err := resource.URN().awaitURN(ctx.ctx)
+				if err != nil {
+					return "", err
+				}
+				return string(urn), nil
+			}
+
+			rpcRes.Options.DependsOn, err = slice.MapError(opts.DependsOn, marshalToUrn)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling dependsOn: %w", err)
+			}
+			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
+			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
+			rpcRes.Options.Protect = opts.Protect
+			if opts.Provider != nil {
+				rpcRes.Options.Provider, err = marshalToUrn(opts.Provider)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling provider: %w", err)
+				}
+			}
+			if opts.Providers != nil {
+				rpcRes.Options.Providers = make(map[string]string)
+				for _, p := range opts.Providers {
+					urn, err := marshalToUrn(p)
+					if err != nil {
+						return nil, fmt.Errorf("marshaling providers: %w", err)
+					}
+
+					rpcRes.Options.Providers[p.getPackage()] = urn
+				}
+			}
+			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
+			rpcRes.Options.RetainOnDelete = opts.RetainOnDelete
+			rpcRes.Options.Version = opts.Version
 		}
 
 		return rpcRes, nil
