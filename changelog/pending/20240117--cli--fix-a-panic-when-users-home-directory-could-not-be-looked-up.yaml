@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix a panic when user's home directory could not be looked up.

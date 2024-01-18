@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.102.0 (2024-01-18)
+
+
+### Features
+
+- [sdk/go] Add WithValue to pulumi.Context
+  [#15149](https://github.com/pulumi/pulumi/pull/15149)
+
+
+### Bug Fixes
+
+- [cli] Fix a panic when user's home directory could not be looked up.
+  [#15160](https://github.com/pulumi/pulumi/pull/15160)
+
+- [cli/display] Fix JSON/YAML value diff displays.
+  [#15171](https://github.com/pulumi/pulumi/pull/15171)
+
+- [sdk/go] Update github.com/cloudflare/circl to v1.3.7.
+  [#15151](https://github.com/pulumi/pulumi/pull/15151)
+
+- [cli/import] --import-file now omits empty resource lists.
+  [#15132](https://github.com/pulumi/pulumi/pull/15132)
+
+- [sdk/python] Allow remote components to use output property called id
+  [#15115](https://github.com/pulumi/pulumi/pull/15115)
+
+
+### Miscellaneous
+
+- [sdkgen] Emit a warning when using id or urn as resource outputs
+  [#15060](https://github.com/pulumi/pulumi/pull/15060)
+
 ## 3.101.1 (2024-01-10)
 
 
