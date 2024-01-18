@@ -71,7 +71,9 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 	}, nil
 }
 
-func (s *callbackServer) Invoke(ctx context.Context, req *pulumirpc.CallbackInvokeRequest) (*pulumirpc.CallbackInvokeResponse, error) {
+func (s *callbackServer) Invoke(
+	ctx context.Context, req *pulumirpc.CallbackInvokeRequest,
+) (*pulumirpc.CallbackInvokeResponse, error) {
 	function, ok := s.functions[req.Token]
 	if !ok {
 		return nil, fmt.Errorf("callback function not found")

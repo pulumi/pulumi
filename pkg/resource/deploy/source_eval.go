@@ -1186,7 +1186,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformationF
 	}, nil
 }
 
-func (rm *resmon) RegisterStackTransformation(ctx context.Context, cb *pulumirpc.Callback) (*pbempty.Empty, error) {
+func (rm *resmon) RegisterStackTransformation(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
 	rm.stackTransformationsLock.Lock()
 	defer rm.stackTransformationsLock.Unlock()
 
@@ -1200,7 +1200,7 @@ func (rm *resmon) RegisterStackTransformation(ctx context.Context, cb *pulumirpc
 	}
 
 	rm.stackTransformations = append(rm.stackTransformations, wrapped)
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.

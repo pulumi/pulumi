@@ -429,7 +429,8 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return nil, fmt.Errorf("marshaling aliases: %w", err)
 			}
 
-			// It's an error to try and change the parent and the engine doesn't even let you send it back so sanity check that here.
+			// It's an error to try and change the parent and the engine doesn't even let you send it back so
+			// sanity check that here.
 			if opts.Parent != parent {
 				return nil, fmt.Errorf("cannot change parent in transformation")
 			}
