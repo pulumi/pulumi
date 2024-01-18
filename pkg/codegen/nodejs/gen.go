@@ -532,6 +532,7 @@ func tsPrimitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // Only a subset of types has default values.
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {

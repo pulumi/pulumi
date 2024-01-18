@@ -145,12 +145,8 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Warn user if an update is going to leave untracked resources in the environment.
-	switch kind {
-	case apitype.UpdateUpdate, apitype.PreviewUpdate, apitype.DestroyUpdate:
-		if len(stats.retainedResources) == 0 {
-			// No resources. Skip.
-			break
-		}
+	if (kind == apitype.UpdateUpdate || kind == apitype.PreviewUpdate || kind == apitype.DestroyUpdate) &&
+		len(stats.retainedResources) != 0 {
 		fmt.Printf(
 			"%sThis update will leave %d resource(s) untracked in your environment:\n",
 			infoPrefix, len(stats.retainedResources))

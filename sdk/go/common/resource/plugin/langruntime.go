@@ -93,9 +93,8 @@ type RunPluginInfo struct {
 
 // ProgInfo contains minimal information about the program to be run.
 type ProgInfo struct {
-	Proj    *workspace.Project // the program project/package.
-	Pwd     string             // the program's working directory.
-	Program string             // the path to the program to execute.
+	Pwd     string // the program's working directory.
+	Program string // the path to the program to execute.
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.

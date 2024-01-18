@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -943,6 +943,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
 					assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
+					//nolint:exhaustive // default case signifies testing failure
 					switch entry.Kind {
 					case JournalEntryBegin:
 						continue
@@ -2582,7 +2583,7 @@ func (ctx *updateContext) Run(_ context.Context, req *pulumirpc.RunRequest) (*pu
 	return &pulumirpc.RunResponse{}, nil
 }
 
-func (ctx *updateContext) GetPluginInfo(_ context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (ctx *updateContext) GetPluginInfo(_ context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: "1.0.0",
 	}, nil
@@ -3640,6 +3641,7 @@ func TestEventSecrets(t *testing.T) {
 	) error {
 		for _, e := range evts {
 			var step StepEventMetadata
+			//nolint:exhaustive // We only care about a subset of events here
 			switch e.Type {
 			case ResourcePreEvent:
 				step = e.Payload().(ResourcePreEventPayload).Metadata

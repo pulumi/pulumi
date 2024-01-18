@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/asset"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -580,7 +581,7 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		if a.IsText() {
 			p.write("asset(text:%s) {\n", shortHash(a.Hash))
 
-			a = resource.MassageIfUserProgramCodeAsset(a, p.debug)
+			a = asset.MassageIfUserProgramCodeAsset(a, p.debug)
 
 			massaged := a.Text
 
@@ -1021,8 +1022,8 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 			titleFunc(p)
 			p.write("asset(text:%s) {", hashChange)
 
-			massagedOldText := resource.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
-			massagedNewText := resource.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
+			massagedOldText := asset.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
+			massagedNewText := asset.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
 
 			p.indented(1).printTextDiff(massagedOldText, massagedNewText)
 
@@ -1097,6 +1098,8 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 			p.withOp(deploy.OpDelete).write(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
 			p.withOp(deploy.OpSame).write(escape(d.Text))
+		case diffmatchpatch.DiffInsert:
+			// An insert has no old text
 		}
 	}
 	p.writeVerbatim(`"`)
@@ -1111,6 +1114,8 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 			p.withOp(deploy.OpCreate).write(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
 			p.withOp(deploy.OpSame).write(escape(d.Text))
+		case diffmatchpatch.DiffDelete:
+			// A delete has no new text
 		}
 	}
 	p.writeVerbatim("\"\n")
@@ -1196,13 +1201,16 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 		return false
 	}
 
-	if oldKind != newKind {
-		p.write("(%s => %s) ", oldKind, newKind)
-	} else if old != new {
+	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
+	if oldValue.DeepEquals(newValue) {
 		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
 		return true
-	} else {
+	}
+
+	if oldKind == newKind {
 		p.write("(%s) ", oldKind)
+	} else {
+		p.write("(%s => %s) ", oldKind, newKind)
 	}
 
 	diff := oldValue.Diff(newValue, resource.IsInternalPropertyKey)
@@ -1215,6 +1223,8 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 	return true
 }
 
+// decodeValue attempts to decode a string as JSON or YAML. The second return value is the kind of value that was
+// decoded, either "json" or "yaml".
 func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
 	decode := func() (interface{}, string, bool) {
 		// Strip whitespace for the purposes of decoding.

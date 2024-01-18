@@ -662,7 +662,7 @@ func TestUninitializedParentResource(t *testing.T) {
 				// add a way to supply a logger to the mock
 				// and use that here.
 				var buff bytes.Buffer
-				ctx.engine.(*mockEngine).logger = log.New(&buff, "", 0)
+				ctx.state.engine.(*mockEngine).logger = log.New(&buff, "", 0)
 
 				opts := []ResourceOption{Parent(tt.parent)}
 				opts = append(opts, tt.opts...)

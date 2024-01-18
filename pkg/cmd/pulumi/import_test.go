@@ -404,33 +404,36 @@ func TestParseImportFileAutoURN(t *testing.T) {
 func TestImportFileMarshal(t *testing.T) {
 	t.Parallel()
 
-	importFile := importFile{
-		NameTable: map[string]resource.URN{
-			"foo": "urn:pulumi:stack::proj::foo:bar:a::arb",
-		},
-		Resources: []importSpec{
-			{
-				Name: "bar",
-				Type: "foo:bar:b",
-				ID:   "123",
-			},
-			{
-				Name:      "comp",
-				Type:      "some/comp",
-				Component: true,
-			},
-			{
-				Name:              "thirdParty",
-				Type:              "some:third:party",
-				ID:                "abc123",
-				Parent:            "bar",
-				Version:           "1.2.3",
-				PluginDownloadURL: "https://example.com",
-			},
-		},
-	}
+	t.Run("initial", func(t *testing.T) {
+		t.Parallel()
 
-	expected := `{
+		importFile := importFile{
+			NameTable: map[string]resource.URN{
+				"foo": "urn:pulumi:stack::proj::foo:bar:a::arb",
+			},
+			Resources: []importSpec{
+				{
+					Name: "bar",
+					Type: "foo:bar:b",
+					ID:   "123",
+				},
+				{
+					Name:      "comp",
+					Type:      "some/comp",
+					Component: true,
+				},
+				{
+					Name:              "thirdParty",
+					Type:              "some:third:party",
+					ID:                "abc123",
+					Parent:            "bar",
+					Version:           "1.2.3",
+					PluginDownloadURL: "https://example.com",
+				},
+			},
+		}
+
+		expected := `{
   "nameTable": {
     "foo": "urn:pulumi:stack::proj::foo:bar:a::arb"
   },
@@ -456,10 +459,23 @@ func TestImportFileMarshal(t *testing.T) {
   ]
 }
 `
-	var buffer bytes.Buffer
-	enc := json.NewEncoder(&buffer)
-	enc.SetIndent("", "  ")
-	err := enc.Encode(importFile)
-	require.NoError(t, err)
-	assert.Equal(t, expected, buffer.String())
+		var buffer bytes.Buffer
+		enc := json.NewEncoder(&buffer)
+		enc.SetIndent("", "  ")
+		err := enc.Encode(importFile)
+		require.NoError(t, err)
+		assert.Equal(t, expected, buffer.String())
+	})
+
+	t.Run("omit empty resources list", func(t *testing.T) {
+		t.Parallel()
+
+		importFile := importFile{}
+
+		var buffer bytes.Buffer
+		enc := json.NewEncoder(&buffer)
+		err := enc.Encode(importFile)
+		require.NoError(t, err)
+		assert.NotContains(t, buffer.String(), "resources")
+	})
 }

@@ -1062,7 +1062,8 @@ class ComponentResource(Resource):
         :param bool remote: True if this is a remote component resource.
         """
         Resource.__init__(self, t, name, False, props, opts, remote, False)
-        self.__dict__["id"] = None
+        if not remote:
+            self.__dict__["id"] = None
         self._remote = remote
 
     def register_outputs(self, outputs: "Inputs"):

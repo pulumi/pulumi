@@ -119,10 +119,12 @@ func newPluginSet(plugins ...workspace.PluginSpec) pluginSet {
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
-func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pluginSet, error) {
+func gatherPluginsFromProgram(
+	plugctx *plugin.Context, prog plugin.ProgInfo, proj *workspace.Project,
+) (pluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
 	set := newPluginSet()
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, plugctx.Root, prog, plugin.AllPlugins)
+	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, plugctx.Root, prog, proj, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}

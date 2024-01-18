@@ -493,6 +493,7 @@ func coerceTypeConversion(src interface{}, dst reflect.Type) (interface{}, error
 			dst.Set(src)
 			return nil
 		}
+		//nolint:exhaustive // We only handle a few types here.
 		switch dst.Type().Kind() {
 		case reflect.Map:
 			if src.Kind() != reflect.Map {

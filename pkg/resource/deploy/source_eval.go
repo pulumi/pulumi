@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -1876,7 +1876,7 @@ func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check f
 // provisioning.  These will make their way into the eventual checkpoint state file for that resource.
 func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
-) (*pbempty.Empty, error) {
+) (*emptypb.Empty, error) {
 	// Obtain and validate the message's inputs (a URN plus the output property map).
 	urn, err := resource.ParseURN(req.Urn)
 	if err != nil {
@@ -1921,7 +1921,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResourceOutputs operation finished: urn=%v, #outs=%v", urn, len(outs))
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 type registerResourceEvent struct {

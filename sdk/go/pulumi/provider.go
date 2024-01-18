@@ -161,7 +161,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -354,6 +354,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				inputType = inputType.Elem()
 			}
 
+			//nolint:exhaustive // We only need to process a few types here.
 			switch inputType.Kind() {
 			case reflect.Bool:
 				if !v.IsBool() {
@@ -448,6 +449,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 
 	// A resource reference looks like a struct, but must be deserialzed differently.
 	if !v.IsResourceReference() {
+		//nolint:exhaustive // We only need to process a few types here.
 		switch dest.Type().Kind() {
 		case reflect.Map:
 			return copyToMap(ctx, v, dest.Type(), dest)
@@ -814,7 +816,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}

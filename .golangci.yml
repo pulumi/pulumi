@@ -15,6 +15,7 @@ linters:
   enable-all: false
   enable:
     - errcheck
+    - exhaustive
     - prealloc
     - gofumpt
     - revive
@@ -29,6 +30,8 @@ linters:
     - unused
     - paralleltest
     - perfsprint
+    - depguard
+    - importas
 
 linters-settings:
   nakedret:
@@ -49,6 +52,20 @@ linters-settings:
       - sortslice
       # Detect write to struct/arrays by-value that aren't read again.
       - unusedwrite
+  depguard:
+    rules:
+      protobuf:
+        deny:
+          - pkg: "github.com/golang/protobuf"
+            desc: Use google.golang.org/protobuf instead
+  importas:
+    alias:
+    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
+      alias: pulumirpc
+    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go/testing
+      alias: testingrpc
+    - pkg: github.com/deckarep/golang-set/v2
+      alias: mapset
 
 issues:
   exclude-rules:

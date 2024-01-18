@@ -17,20 +17,12 @@ package b64
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 )
 
-// Bas64SecretsProvider is a SecretsProvider that only supports base64 secrets, it is intended to be used for tests
+// Base64SecretsProvider is a SecretsProvider that only supports base64 secrets, it is intended to be used for tests
 // where actual encryption is not needed.
-var Base64SecretsProvider secrets.Provider = b64SecretsProvider{}
-
-type b64SecretsProvider struct{}
-
-func (b64SecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	if ty != Type {
-		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
-	}
-	return NewBase64SecretsManager(), nil
-}
+var Base64SecretsProvider *secrets.MockProvider = (&secrets.MockProvider{}).Add(
+	Type, func(_ json.RawMessage) (secrets.Manager, error) { mgr := NewBase64SecretsManager(); return mgr, nil },
+)

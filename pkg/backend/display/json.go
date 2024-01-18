@@ -127,6 +127,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
+		case engine.CancelEvent:
+			// Pacify the linter here, this is already handled beforehand
 		// Events occurring early:
 		case engine.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
@@ -200,10 +202,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 		// resolving or operations failing.
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent:
-			// At this point in time, we don't handle policy events in JSON serialization
-			continue
-		case engine.PolicyLoadEvent:
+		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
 		case engine.SummaryEvent:

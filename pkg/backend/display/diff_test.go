@@ -153,3 +153,25 @@ func TestDiffEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestJsonYamlDiff(t *testing.T) {
+	t.Parallel()
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/json-yaml")
+	require.NoError(t, err)
+
+	//nolint:paralleltest
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/json-yaml", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			testDiffEvents(t, path, accept, false)
+		})
+	}
+}

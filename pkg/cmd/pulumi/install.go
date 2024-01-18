@@ -86,7 +86,6 @@ func newInstallCmd() *cobra.Command {
 
 			// Compute the set of plugins the current project needs.
 			installs, err := lang.GetRequiredPlugins(plugin.ProgInfo{
-				Proj:    proj,
 				Pwd:     pwd,
 				Program: main,
 			})

@@ -25,12 +25,12 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -346,7 +346,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	label := a.label() + ".GetAnalyzerInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -424,7 +424,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	label := a.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)

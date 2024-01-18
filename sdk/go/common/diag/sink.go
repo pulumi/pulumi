@@ -203,6 +203,8 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 			prefix.WriteString(colors.SpecError)
 		case Warning:
 			prefix.WriteString(colors.SpecWarning)
+		case Info, Infoerr:
+			// We'll never get here, but the linter doesn't recognize that.
 		default:
 			contract.Failf("Unrecognized diagnostic severity: %v", sev)
 		}

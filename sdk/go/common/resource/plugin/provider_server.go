@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -67,12 +67,14 @@ func (p *providerServer) checkNYI(method string, err error) error {
 }
 
 func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, error) {
-	changes := pulumirpc.DiffResponse_DIFF_UNKNOWN
+	var changes pulumirpc.DiffResponse_DiffChanges
 	switch diff.Changes {
 	case DiffNone:
 		changes = pulumirpc.DiffResponse_DIFF_NONE
 	case DiffSome:
 		changes = pulumirpc.DiffResponse_DIFF_SOME
+	case DiffUnknown:
+		changes = pulumirpc.DiffResponse_DIFF_UNKNOWN
 	}
 
 	// Infer the result from the detailed diff.
@@ -136,7 +138,7 @@ func (p *providerServer) GetSchema(ctx context.Context,
 	return &pulumirpc.GetSchemaResponse{Schema: string(schema)}, nil
 }
 
-func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (p *providerServer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	info, err := p.provider.GetPluginInfo()
 	if err != nil {
 		return nil, err
@@ -144,7 +146,7 @@ func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) 
 	return &pulumirpc.PluginInfo{Version: info.Version.String()}, nil
 }
 
-func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
 	// NewProviderServer should take a GrpcProvider instead of Provider, but that's a breaking change
 	// so for now we type test here
 	if grpcProvider, ok := p.provider.(GrpcProvider); ok {
@@ -152,17 +154,17 @@ func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach
 		if err != nil {
 			return nil, err
 		}
-		return &pbempty.Empty{}, nil
+		return &emptypb.Empty{}, nil
 	}
 	// Else report this is unsupported
 	return nil, status.Error(codes.Unimplemented, "Attach is not yet implemented")
 }
 
-func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
+func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	if err := p.provider.SignalCancellation(); err != nil {
 		return nil, err
 	}
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (p *providerServer) CheckConfig(ctx context.Context,
@@ -408,7 +410,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	return &pulumirpc.UpdateResponse{Properties: rpcState}, nil
 }
 
-func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
 	inputs, err := UnmarshalProperties(req.GetOldInputs(), p.unmarshalOptions("inputs"))
@@ -425,7 +427,7 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, err
 	}
 
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (p *providerServer) Construct(ctx context.Context,

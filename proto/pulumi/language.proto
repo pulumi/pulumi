@@ -83,7 +83,7 @@ message AboutResponse {
 }
 
 message GetProgramDependenciesRequest {
-    string project = 1 [deprecated = true]; // the project name.
+    string project = 1 [deprecated = true]; // the project name, the engine always sets this to "deprecated" now.
     string pwd = 2 [deprecated = true];     // the program's working directory.
     string program = 3 [deprecated = true]; // the path to the program.
     bool transitiveDependencies = 4; // if transitive dependencies should be included in the result.
@@ -100,7 +100,7 @@ message GetProgramDependenciesResponse {
 }
 
 message GetRequiredPluginsRequest {
-    string project = 1 [deprecated = true]; // the project name.
+    string project = 1 [deprecated = true]; // the project name, the engine always sets this to "deprecated" now.
     string pwd = 2 [deprecated = true];     // the program's working directory.
     string program = 3 [deprecated = true]; // the path to the program.
     ProgramInfo info = 4; // the program info to use to calculate plugins.

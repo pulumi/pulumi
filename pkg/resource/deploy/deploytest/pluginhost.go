@@ -23,7 +23,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -204,7 +204,7 @@ type hostEngine struct {
 	stop    chan bool
 }
 
-func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
 	var sev diag.Severity
 	switch req.Severity {
 	case pulumirpc.LogSeverity_DEBUG:
@@ -224,7 +224,7 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	} else {
 		e.sink.Logf(sev, diag.StreamMessage(resource.URN(req.Urn), req.Message, req.StreamId))
 	}
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (e *hostEngine) GetRootResource(_ context.Context,
@@ -356,6 +356,8 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 		host.analyzers = append(host.analyzers, plug.(plugin.Analyzer))
 	case workspace.ResourcePlugin:
 		host.providers = append(host.providers, plug.(plugin.Provider))
+	case workspace.LanguagePlugin, workspace.ConverterPlugin:
+		// Nothing to do for these to plugins.
 	}
 
 	host.plugins[plug] = closer

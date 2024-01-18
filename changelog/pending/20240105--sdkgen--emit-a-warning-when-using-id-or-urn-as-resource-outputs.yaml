@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen
+  description: Emit a warning when using id or urn as resource outputs

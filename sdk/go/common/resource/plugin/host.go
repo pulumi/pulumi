@@ -485,8 +485,8 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 						errors.Wrapf(err, "failed to load resource plugin %s", plugin.Name))
 				}
 			}
-		default:
-			contract.Failf("unexpected plugin kind: %s", plugin.Kind)
+		case workspace.ConverterPlugin:
+			contract.Failf("unexpected plugin kind: workspace.ConverterPlugin")
 		}
 	}
 
@@ -586,18 +586,19 @@ const (
 var AllPlugins = AnalyzerPlugins | LanguagePlugins | ResourcePlugins
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
-func GetRequiredPlugins(host Host, root string, info ProgInfo, kinds Flags) ([]workspace.PluginSpec, error) {
+func GetRequiredPlugins(host Host, root string, info ProgInfo, proj *workspace.Project, kinds Flags,
+) ([]workspace.PluginSpec, error) {
 	var plugins []workspace.PluginSpec
 
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(root, info.Pwd, info.Proj.Runtime.Name(), info.Proj.Runtime.Options())
+		lang, err := host.LanguageRuntime(root, info.Pwd, proj.Runtime.Name(), proj.Runtime.Options())
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
+			return nil, errors.Wrapf(err, "failed to load language plugin %s", proj.Runtime.Name())
 		}
 		plugins = append(plugins, workspace.PluginSpec{
-			Name: info.Proj.Runtime.Name(),
+			Name: proj.Runtime.Name(),
 			Kind: workspace.LanguagePlugin,
 		})
 

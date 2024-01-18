@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -195,7 +196,7 @@ type mapTestSecretsProvider struct {
 }
 
 func (p *mapTestSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	m, err := DefaultSecretsProvider.OfType(ty, state)
+	m, err := b64.Base64SecretsProvider.OfType(ty, state)
 	if err != nil {
 		return nil, err
 	}

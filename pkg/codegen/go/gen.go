@@ -1448,6 +1448,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 		contract.Assertf(!modPkg.names.Has(e.Name), "Name collision for enum constant: %s for %s",
 			e.Name, enumType.Token)
 
+		//nolint:exhaustive // Default case handles the rest of the values
 		switch reflect.TypeOf(e.Value).Kind() {
 		case reflect.String:
 			fmt.Fprintf(w, "%s = %s(%q)\n", e.Name, name, e.Value)
@@ -1971,6 +1972,7 @@ func goPrimitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // Only a subset of types have a default value.
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {

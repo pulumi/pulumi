@@ -20,13 +20,13 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestNewAnalyzerLoaderWithHost(t *testing.T) {
@@ -69,27 +69,27 @@ func TestHostEngine(t *testing.T) {
 				name           string
 				req            *pulumirpc.LogRequest
 				expectedError  error
-				expectedOutput *empty.Empty
+				expectedOutput *emptypb.Empty
 			}{
 				{
 					name:           "DebugSeverity",
 					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_DEBUG},
-					expectedOutput: &empty.Empty{},
+					expectedOutput: &emptypb.Empty{},
 				},
 				{
 					name:           "InfoSeverity",
 					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
-					expectedOutput: &empty.Empty{},
+					expectedOutput: &emptypb.Empty{},
 				},
 				{
 					name:           "WarningSeverity",
 					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
-					expectedOutput: &empty.Empty{},
+					expectedOutput: &emptypb.Empty{},
 				},
 				{
 					name:           "ErrorSeverity",
 					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
-					expectedOutput: &empty.Empty{},
+					expectedOutput: &emptypb.Empty{},
 				},
 				{
 					name:          "InvalidSeverity",
