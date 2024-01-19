@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Improve output when installing policy packs
