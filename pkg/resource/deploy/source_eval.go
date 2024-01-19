@@ -1436,8 +1436,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defer rm.resourceTransformationsLock.Unlock()
 
 		parent := resource.URN(req.Parent)
-		for parent != "" {
-			if transforms, ok := rm.resourceTransformations[parent]; ok {
+		current := parent
+		for current != "" {
+			if transforms, ok := rm.resourceTransformations[current]; ok {
 				for _, transform := range transforms {
 					newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 					if err != nil {
@@ -1448,7 +1449,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				}
 			}
 			rm.resGoalsLock.Lock()
-			parent = rm.resGoals[parent].Parent
+			current = rm.resGoals[current].Parent
 			rm.resGoalsLock.Unlock()
 		}
 		return nil
