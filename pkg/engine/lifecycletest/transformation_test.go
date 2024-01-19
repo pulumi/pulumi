@@ -33,7 +33,8 @@ import (
 
 func TransformationFunction(
 	f func(
-		name, typ string, custom bool, parent string, props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
+		name, typ string, custom bool, parent string,
+		props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 	) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error),
 ) func([]byte) (proto.Message, error) {
 	return func(request []byte) (proto.Message, error) {
