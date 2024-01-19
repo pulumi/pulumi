@@ -18,6 +18,19 @@ const (
 	profileNameEnvironmentVariable string = "PULUMI_BACKEND_AWS_PROFILE_NAME"
 )
 
+var (
+	regionFinder         = S3FindRegionFromProfile
+	sessionOptionBuilder = S3BuildSessionOptions
+)
+
+func S3FindRegionFromProfile(ctx context.Context, profile string) (string, error) {
+	profileConfig, err := config.LoadSharedConfigProfile(ctx, profile)
+	if err != nil {
+		return "", err
+	}
+	return profileConfig.Region, nil
+}
+
 func S3BuildSessionOptions(ctx context.Context, backend *workspace.ProjectBackend) (*session.Options, error) {
 	// Select the session options based on the backend setting, superceded by the PULUMI_ env var if set.
 	// If neither set, fall back to default session builder (Which interprets AWS_ environment vars first)
@@ -46,20 +59,20 @@ func S3BuildSessionOptions(ctx context.Context, backend *workspace.ProjectBacken
 
 	opts := session.Options{}
 	if definitiveProfileName != "" {
-		// Get config for profile
-		profileConfig, err := config.LoadSharedConfigProfile(ctx, definitiveProfileName)
+		// Get configured region for profile
+		region, err := regionFinder(ctx, definitiveProfileName)
 		if err != nil {
 			return nil, err
 		}
 		opts.Profile = definitiveProfileName
 		opts.Config = aws.Config{
-			Region: &profileConfig.Region,
+			Region: &region,
 		}
 		log.Infof(
 			"%sSelected profile \"%s\" and region \"%s\" from profile config for backend auth",
 			logPrefix,
 			definitiveProfileName,
-			profileConfig.Region,
+			region,
 		)
 	} else {
 		log.Infof(
@@ -72,7 +85,7 @@ func S3BuildSessionOptions(ctx context.Context, backend *workspace.ProjectBacken
 
 func S3CredentialsMux(ctx context.Context, backend *workspace.ProjectBackend) (*blob.URLMux, error) {
 	// Returns a blobmux only registered to handle s3, and do so in our specially defined way
-	opts, err := S3BuildSessionOptions(ctx, backend)
+	opts, err := sessionOptionBuilder(ctx, backend)
 	if err != nil {
 		return nil, err
 	}
