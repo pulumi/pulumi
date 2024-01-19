@@ -39,7 +39,6 @@ func S3BuildSessionOptions(ctx context.Context, backend *workspace.ProjectBacken
 		}
 	}
 	return &opts, nil
-
 }
 
 func S3CredentialsMux(ctx context.Context, backend *workspace.ProjectBackend) (*blob.URLMux, error) {

@@ -13,7 +13,10 @@ func TestS3BuildSessionOptions_Unconfigured(t *testing.T) {
 	ctx := context.Background()
 	backendConfig := workspace.ProjectBackend{}
 
-	options := S3BuildSessionOptions(ctx, &backendConfig)
+	options, err := S3BuildSessionOptions(ctx, &backendConfig)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, options)
 
 	assert.Equal(t, options.Profile, "")
 }
@@ -25,7 +28,10 @@ func TestS3BuildSessionOptions_Backend(t *testing.T) {
 		AwsProfileName: "distinct",
 	}
 
-	options := S3BuildSessionOptions(ctx, &backendConfig)
+	options, err := S3BuildSessionOptions(ctx, &backendConfig)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, options)
 
 	assert.Equal(t, options.Profile, "distinct")
 }
@@ -36,7 +42,10 @@ func TestS3BuildSessionOptions_EnvVar(t *testing.T) {
 	t.Setenv("PULUMI_BACKEND_AWS_PROFILE_NAME", "configuredwithenv")
 	backendConfig := workspace.ProjectBackend{}
 
-	options := S3BuildSessionOptions(ctx, &backendConfig)
+	options, err := S3BuildSessionOptions(ctx, &backendConfig)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, options)
 
 	assert.Equal(t, options.Profile, "configuredwithenv")
 }
@@ -49,7 +58,10 @@ func TestS3BuildSessionOptions_Superceded(t *testing.T) {
 		AwsProfileName: "distinct",
 	}
 
-	options := S3BuildSessionOptions(ctx, &backendConfig)
+	options, err := S3BuildSessionOptions(ctx, &backendConfig)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, options)
 
 	assert.Equal(t, options.Profile, "configuredwithenv")
 }
