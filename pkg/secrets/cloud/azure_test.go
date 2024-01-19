@@ -96,3 +96,30 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "plaintext", plaintext)
 }
+
+//nolint:paralleltest // mutates environment variables
+func TestAzureKeyVaultExistingState(t *testing.T) {
+	ctx := context.Background()
+
+	//nolint:lll // this includes a base64 encoded key
+	cloudState := `{
+                    "url": "azurekeyvault://pulumi-testing.vault.azure.net/keys/test-key",
+                    "encryptedkey": "c3YwTUQwWjRHYlZXYWpIX3k2Z2twNDFXTlBlRERVOHJKakdTbWFVdk44NWNBWHdQTUJrNFBsRjl5SXJCaEZ5T1VjSVVCTmVkV3NOaWxCbTBOcnotYjVXOHFMRHdWbk9oQTZDMGNyX1p3ZEhiRW1acVpTX1RjazFLd0RmM1RPc3c3Q2s1UTduSXV1NERQYjdUU3ZSdzlDNU5UZ01RRXRhSWgtVGdvM3U0aXVMZV8zY3d5eHhwamIyRW8tYWEyS29XeEpSNXhUb3gxaUQ0dUFfbEszdEx0bXQxVWpod1BCZUJHcmVWd2RmclBUUk1Jcm52ZkZMaS1nQXpLT1VwLVJMQURpX1pVdU9BUFRnLWR2OGpUeGUxNV9pSkN1U25BVUstY2RRemtpRVVheGlsUVlhX2lOa0JXYm95ZUpubEM3eFhNalAwVGhQMUp4ZUI0bmxpcW9YUFFB"
+}
+`
+	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	dec, err := manager.Decrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
+}
