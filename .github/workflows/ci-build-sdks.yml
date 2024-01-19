@@ -65,7 +65,7 @@ jobs:
           rm setup.py.bak
           python3 -m venv venv
           source venv/bin/activate
-          python -m pip install wheel
+          python -m pip install wheel setuptools
           python setup.py build bdist_wheel --python-tag py3
       - name: Upload pulumi.whl
         uses: actions/upload-artifact@v2
