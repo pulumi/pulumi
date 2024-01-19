@@ -11,7 +11,7 @@ on:
   pull_request:
     paths-ignore:
       - "**" # Skip all files…
-      - "!.version" # …except if only this file changes and nothing else.
+      - "!sdk/.version" # …except if only this file changes and nothing else.
 jobs:
   no-op:
     name: Skip CI on .version changes
