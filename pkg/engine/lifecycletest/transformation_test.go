@@ -33,7 +33,7 @@ import (
 
 func TransformationFunction(
 	f func(
-		name, typ string, custom bool, props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
+		name, typ string, custom bool, parent string, props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 	) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error),
 ) func([]byte) (proto.Message, error) {
 	return func(request []byte) (proto.Message, error) {
@@ -54,7 +54,7 @@ func TransformationFunction(
 		}
 
 		ret, opts, err := f(
-			transformationRequest.Name, transformationRequest.Type, transformationRequest.Custom,
+			transformationRequest.Name, transformationRequest.Type, transformationRequest.Custom, transformationRequest.Parent,
 			mprops, transformationRequest.Options)
 		if err != nil {
 			return nil, err
@@ -92,7 +92,7 @@ func TestRemoteTransformations(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		callback1, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string, custom bool,
+			TransformationFunction(func(name, typ string, custom bool, parent string,
 				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)
@@ -104,7 +104,7 @@ func TestRemoteTransformations(t *testing.T) {
 		require.NoError(t, err)
 
 		callback2, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string, custom bool,
+			TransformationFunction(func(name, typ string, custom bool, parent string,
 				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)
@@ -121,7 +121,7 @@ func TestRemoteTransformations(t *testing.T) {
 		require.NoError(t, err)
 
 		callback3, err := callbacks.Allocate(
-			TransformationFunction(func(name, typ string, custom bool,
+			TransformationFunction(func(name, typ string, custom bool, parent string,
 				props resource.PropertyMap, opts *pulumirpc.TransformationResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformationResourceOptions, error) {
 				props["foo"] = resource.NewNumberProperty(props["foo"].NumberValue() + 1)

@@ -1417,11 +1417,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Before we calculate anything else run the transformations. First run the transforms for this resource,
 	// then it's parents etc etc
-	transformations, err := slice.MapError(req.Transformations, rm.wrapTransformCallback)
+	transforms, err := slice.MapError(req.Transformations, rm.wrapTransformCallback)
 	if err != nil {
 		return nil, err
 	}
-	for _, transform := range transformations {
+	for _, transform := range transforms {
 		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 		if err != nil {
 			return nil, err
@@ -1434,8 +1434,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Function exists to scope the lock
 		rm.resourceTransformationsLock.Lock()
 		defer rm.resourceTransformationsLock.Unlock()
+		rm.resGoalsLock.Lock()
+		defer rm.resGoalsLock.Unlock()
 
-		parent := resource.URN(req.Parent)
 		current := parent
 		for current != "" {
 			if transforms, ok := rm.resourceTransformations[current]; ok {
@@ -1448,9 +1449,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 					opts = newOpts
 				}
 			}
-			rm.resGoalsLock.Lock()
 			current = rm.resGoals[current].Parent
-			rm.resGoalsLock.Unlock()
 		}
 		return nil
 	}()
@@ -1757,18 +1756,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	if !custom && result != nil && result.State != nil && result.State.URN != "" {
+	if result != nil && result.State != nil && result.State.URN != "" {
 		// We've got a safe URN now, save the transformations
 		func() {
 			rm.resourceTransformationsLock.Lock()
 			defer rm.resourceTransformationsLock.Unlock()
-			rm.resourceTransformations[result.State.URN] = transformations
+			rm.resourceTransformations[result.State.URN] = transforms
 		}()
-		func() {
-			rm.componentProvidersLock.Lock()
-			defer rm.componentProvidersLock.Unlock()
-			rm.componentProviders[result.State.URN] = opts.GetProviders()
-		}()
+		if !custom {
+			func() {
+				rm.componentProvidersLock.Lock()
+				defer rm.componentProvidersLock.Unlock()
+				rm.componentProviders[result.State.URN] = opts.GetProviders()
+			}()
+		}
 	}
 
 	// Filter out partially-known values if the requestor does not support them.
