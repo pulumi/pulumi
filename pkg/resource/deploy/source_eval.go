@@ -1447,7 +1447,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 					opts = newOpts
 				}
 			}
+			rm.resGoalsLock.Lock()
 			parent = rm.resGoals[parent].Parent
+			rm.resGoalsLock.Unlock()
 		}
 		return nil
 	}()
