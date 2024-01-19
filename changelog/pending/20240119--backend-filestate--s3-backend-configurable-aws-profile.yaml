@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/filestate
+  description: Add configurable AWS profile setting for authentication to S3 and compatible backends
