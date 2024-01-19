@@ -19,11 +19,13 @@ const (
 )
 
 var (
-	regionFinder         = S3FindRegionFromProfile
-	sessionOptionBuilder = S3BuildSessionOptions
+	regionFinder         = s3FindRegionFromProfile
+	sessionOptionBuilder = s3BuildSessionOptions
 )
 
-func S3FindRegionFromProfile(ctx context.Context, profile string) (string, error) {
+// s3FindRegionFromProfile discovers the region from shared config for a given AWS
+// profile.  Uses config locations as determined by the aws SDK
+func s3FindRegionFromProfile(ctx context.Context, profile string) (string, error) {
 	profileConfig, err := config.LoadSharedConfigProfile(ctx, profile)
 	if err != nil {
 		return "", err
@@ -31,9 +33,11 @@ func S3FindRegionFromProfile(ctx context.Context, profile string) (string, error
 	return profileConfig.Region, nil
 }
 
-func S3BuildSessionOptions(ctx context.Context, backend *workspace.ProjectBackend) (*session.Options, error) {
-	// Select the session options based on the backend setting, superceded by the PULUMI_ env var if set.
-	// If neither set, fall back to default session builder (Which interprets AWS_ environment vars first)
+// s3BuildSessionOptions Constructs session options from passed ProjectBackend configuration
+// uses the AwsProfileName param in backend config, or via PULUMI_BACKEND_AWS_PROFILE_NAME,
+// attempts to load shared configuration, and passes back configured options with the profile name
+// and configured region for this profile
+func s3BuildSessionOptions(ctx context.Context, backend *workspace.ProjectBackend) (*session.Options, error) {
 	log := logging.V(5)
 
 	definitiveProfileName := ""
@@ -83,8 +87,10 @@ func S3BuildSessionOptions(ctx context.Context, backend *workspace.ProjectBacken
 	return &opts, nil
 }
 
+// S3CredentialsMux returns a blob.URLMux with a registered Opener for s3:// schemas
+// The registered opener is constructed based on backend settings, and if configured, an
+// session built off of a specfically configured AWS profile.
 func S3CredentialsMux(ctx context.Context, backend *workspace.ProjectBackend) (*blob.URLMux, error) {
-	// Returns a blobmux only registered to handle s3, and do so in our specially defined way
 	opts, err := sessionOptionBuilder(ctx, backend)
 	if err != nil {
 		return nil, err
