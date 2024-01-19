@@ -1332,6 +1332,12 @@ func TestSetFail(t *testing.T) {
 			},
 			ExpectedError: "outer.inner: expected an array",
 		},
+
+		// Strict path parsing
+		{
+			Key:           `my:root.[1]"`,
+			ExpectedError: "invalid config key path: expected property name after '.'",
+		},
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
