@@ -146,7 +146,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NotEmpty(t, packages)
 		assert.Equal(t, 1, len(packages))
 		random := packages[0]
-		assert.Equal(t, "pulumi-random", random.Name)
+		assert.Equal(t, "pulumi_random", random.Name)
 		assert.NotEmpty(t, random.Location)
 	})
 	t.Run("pulumiplugin", func(t *testing.T) {
