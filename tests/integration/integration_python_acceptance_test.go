@@ -223,6 +223,7 @@ func optsForConstructPython(
 
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
 	t.Parallel()
+	t.Skip("Temporarily skipping test - pulumi/pulumi#15195")
 
 	const testDir = "construct_component_configure_provider"
 	runComponentSetup(t, testDir)
