@@ -16,8 +16,36 @@ It's fine to use urn and id as input properties
 
 
 
+## Creating a Res Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create Res Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  res:
+    type: urnid:index:Res
+    properties:
+      id: "string"
+      urn: "string"
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of Res {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

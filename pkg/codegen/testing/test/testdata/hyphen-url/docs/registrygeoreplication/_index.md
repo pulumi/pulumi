@@ -14,8 +14,35 @@ no_edit_this_page: true
 
 
 
+## Creating a RegistryGeoReplication Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create RegistryGeoReplication Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  registryGeoReplication:
+    type: registrygeoreplication:index:RegistryGeoReplication
+    properties:
+      resourceGroup: 
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of RegistryGeoReplication {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

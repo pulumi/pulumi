@@ -14,8 +14,71 @@ no_edit_this_page: true
 
 
 
+## Creating a Component Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create Component Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  component:
+    type: example::Component
+    properties:
+      a: True|False
+      b: True|False
+      bar: 
+        a: True|False
+        b: True|False
+        c: 0
+        d: 0
+        e: "string"
+        f: "string"
+      baz: [
+        a: True|False
+        b: True|False
+        c: 0
+        d: 0
+        e: "string"
+        f: "string"
+      ]
+      bazMap: 
+        key: 
+          a: True|False
+          b: True|False
+          c: 0
+          d: 0
+          e: "string"
+          f: "string"
+
+      c: 0
+      d: 0
+      e: "string"
+      f: "string"
+      foo: 
+        a: True|False
+        b: True|False
+        c: 0
+        d: 0
+        e: "string"
+        f: "string"
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of Component {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

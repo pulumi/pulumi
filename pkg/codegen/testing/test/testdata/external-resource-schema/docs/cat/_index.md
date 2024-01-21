@@ -14,8 +14,49 @@ no_edit_this_page: true
 
 
 
+## Creating a Cat Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create Cat Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  cat:
+    type: example::Cat
+    properties:
+      age: 0
+      pet: 
+        age: 0
+        name: 
+        nameArray: [
+        ]
+        nameMap: 
+          key: 
+
+        requiredName: 
+        requiredNameArray: [
+        ]
+        requiredNameMap: 
+          key: 
+
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of Cat {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

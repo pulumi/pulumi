@@ -14,8 +14,36 @@ no_edit_this_page: true
 
 
 
+## Creating a ExampleServer Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create ExampleServer Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  exampleServer:
+    type: example:index:ExampleServer
+    properties:
+      propertiesCollection: [
+      ]
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of ExampleServer {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

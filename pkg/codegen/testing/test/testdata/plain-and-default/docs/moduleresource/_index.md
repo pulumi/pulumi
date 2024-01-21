@@ -14,8 +14,51 @@ no_edit_this_page: true
 
 
 
+## Creating a ModuleResource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create ModuleResource Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  moduleResource:
+    type: foobar::ModuleResource
+    properties:
+      optional_bool: True|False
+      optional_const: "string"
+      optional_enum: Four|Six|Eight
+      optional_number: 0.0
+      optional_string: "string"
+      plain_optional_bool: True|False
+      plain_optional_const: "string"
+      plain_optional_number: 0.0
+      plain_optional_string: "string"
+      plain_required_bool: True|False
+      plain_required_const: "string"
+      plain_required_number: 0.0
+      plain_required_string: "string"
+      required_bool: True|False
+      required_enum: Four|Six|Eight
+      required_number: 0.0
+      required_string: "string"
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of ModuleResource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

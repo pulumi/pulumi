@@ -14,8 +14,1263 @@ no_edit_this_page: true
 
 
 
+## Creating a Component Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create Component Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  component:
+    type: foo:index:Component
+    properties:
+      eniConfig: 
+        key: 
+          securityGroups: ["string"]
+          subnet: "string"
+
+      pod: 
+        apiVersion: "string"
+        kind: "string"
+        metadata: 
+          annotations: 
+            key: "string"
+
+          clusterName: "string"
+          creationTimestamp: "string"
+          deletionGracePeriodSeconds: 0
+          deletionTimestamp: "string"
+          finalizers: ["string"]
+          generateName: "string"
+          generation: 0
+          labels: 
+            key: "string"
+
+          managedFields: [
+            apiVersion: "string"
+            fieldsType: "string"
+            fieldsV1: 
+            manager: "string"
+            operation: "string"
+            subresource: "string"
+            time: "string"
+          ]
+          name: "string"
+          namespace: "string"
+          ownerReferences: [
+            apiVersion: "string"
+            blockOwnerDeletion: True|False
+            controller: True|False
+            kind: "string"
+            name: "string"
+            uid: "string"
+          ]
+          resourceVersion: "string"
+          selfLink: "string"
+          uid: "string"
+        spec: 
+          activeDeadlineSeconds: 0
+          affinity: 
+            nodeAffinity: 
+              preferredDuringSchedulingIgnoredDuringExecution: [
+                preference: 
+                  matchExpressions: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                  matchFields: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                weight: 0
+              ]
+              requiredDuringSchedulingIgnoredDuringExecution: 
+                nodeSelectorTerms: [
+                  matchExpressions: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                  matchFields: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                ]
+            podAffinity: 
+              preferredDuringSchedulingIgnoredDuringExecution: [
+                podAffinityTerm: 
+                  labelSelector: 
+                    matchExpressions: [
+                      key: "string"
+                      operator: "string"
+                      values: ["string"]
+                    ]
+                    matchLabels: 
+                      key: "string"
+
+                  namespaceSelector: 
+                    matchExpressions: [
+                      key: "string"
+                      operator: "string"
+                      values: ["string"]
+                    ]
+                    matchLabels: 
+                      key: "string"
+
+                  namespaces: ["string"]
+                  topologyKey: "string"
+                weight: 0
+              ]
+              requiredDuringSchedulingIgnoredDuringExecution: [
+                labelSelector: 
+                  matchExpressions: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                  matchLabels: 
+                    key: "string"
+
+                namespaceSelector: 
+                  matchExpressions: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                  matchLabels: 
+                    key: "string"
+
+                namespaces: ["string"]
+                topologyKey: "string"
+              ]
+            podAntiAffinity: 
+              preferredDuringSchedulingIgnoredDuringExecution: [
+                podAffinityTerm: 
+                  labelSelector: 
+                    matchExpressions: [
+                      key: "string"
+                      operator: "string"
+                      values: ["string"]
+                    ]
+                    matchLabels: 
+                      key: "string"
+
+                  namespaceSelector: 
+                    matchExpressions: [
+                      key: "string"
+                      operator: "string"
+                      values: ["string"]
+                    ]
+                    matchLabels: 
+                      key: "string"
+
+                  namespaces: ["string"]
+                  topologyKey: "string"
+                weight: 0
+              ]
+              requiredDuringSchedulingIgnoredDuringExecution: [
+                labelSelector: 
+                  matchExpressions: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                  matchLabels: 
+                    key: "string"
+
+                namespaceSelector: 
+                  matchExpressions: [
+                    key: "string"
+                    operator: "string"
+                    values: ["string"]
+                  ]
+                  matchLabels: 
+                    key: "string"
+
+                namespaces: ["string"]
+                topologyKey: "string"
+              ]
+          automountServiceAccountToken: True|False
+          containers: [
+            args: ["string"]
+            command: ["string"]
+            env: [
+              name: "string"
+              value: "string"
+              valueFrom: 
+                configMapKeyRef: 
+                  key: "string"
+                  name: "string"
+                  optional: True|False
+                fieldRef: 
+                  apiVersion: "string"
+                  fieldPath: "string"
+                resourceFieldRef: 
+                  containerName: "string"
+                  divisor: "string"
+                  resource: "string"
+                secretKeyRef: 
+                  key: "string"
+                  name: "string"
+                  optional: True|False
+            ]
+            envFrom: [
+              configMapRef: 
+                name: "string"
+                optional: True|False
+              prefix: "string"
+              secretRef: 
+                name: "string"
+                optional: True|False
+            ]
+            image: "string"
+            imagePullPolicy: "string"
+            lifecycle: 
+              postStart: 
+                exec: 
+                  command: ["string"]
+                httpGet: 
+                  host: "string"
+                  httpHeaders: [
+                    name: "string"
+                    value: "string"
+                  ]
+                  path: "string"
+                  port: 0
+                  scheme: "string"
+                tcpSocket: 
+                  host: "string"
+                  port: 0
+              preStop: 
+                exec: 
+                  command: ["string"]
+                httpGet: 
+                  host: "string"
+                  httpHeaders: [
+                    name: "string"
+                    value: "string"
+                  ]
+                  path: "string"
+                  port: 0
+                  scheme: "string"
+                tcpSocket: 
+                  host: "string"
+                  port: 0
+            livenessProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            name: "string"
+            ports: [
+              containerPort: 0
+              hostIP: "string"
+              hostPort: 0
+              name: "string"
+              protocol: "string"
+            ]
+            readinessProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            resources: 
+              limits: 
+                key: "string"
+
+              requests: 
+                key: "string"
+
+            securityContext: 
+              allowPrivilegeEscalation: True|False
+              capabilities: 
+                add: ["string"]
+                drop: ["string"]
+              privileged: True|False
+              procMount: "string"
+              readOnlyRootFilesystem: True|False
+              runAsGroup: 0
+              runAsNonRoot: True|False
+              runAsUser: 0
+              seLinuxOptions: 
+                level: "string"
+                role: "string"
+                type: "string"
+                user: "string"
+              seccompProfile: 
+                localhostProfile: "string"
+                type: "string"
+              windowsOptions: 
+                gmsaCredentialSpec: "string"
+                gmsaCredentialSpecName: "string"
+                hostProcess: True|False
+                runAsUserName: "string"
+            startupProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            stdin: True|False
+            stdinOnce: True|False
+            terminationMessagePath: "string"
+            terminationMessagePolicy: "string"
+            tty: True|False
+            volumeDevices: [
+              devicePath: "string"
+              name: "string"
+            ]
+            volumeMounts: [
+              mountPath: "string"
+              mountPropagation: "string"
+              name: "string"
+              readOnly: True|False
+              subPath: "string"
+              subPathExpr: "string"
+            ]
+            workingDir: "string"
+          ]
+          dnsConfig: 
+            nameservers: ["string"]
+            options: [
+              name: "string"
+              value: "string"
+            ]
+            searches: ["string"]
+          dnsPolicy: "string"
+          enableServiceLinks: True|False
+          ephemeralContainers: [
+            args: ["string"]
+            command: ["string"]
+            env: [
+              name: "string"
+              value: "string"
+              valueFrom: 
+                configMapKeyRef: 
+                  key: "string"
+                  name: "string"
+                  optional: True|False
+                fieldRef: 
+                  apiVersion: "string"
+                  fieldPath: "string"
+                resourceFieldRef: 
+                  containerName: "string"
+                  divisor: "string"
+                  resource: "string"
+                secretKeyRef: 
+                  key: "string"
+                  name: "string"
+                  optional: True|False
+            ]
+            envFrom: [
+              configMapRef: 
+                name: "string"
+                optional: True|False
+              prefix: "string"
+              secretRef: 
+                name: "string"
+                optional: True|False
+            ]
+            image: "string"
+            imagePullPolicy: "string"
+            lifecycle: 
+              postStart: 
+                exec: 
+                  command: ["string"]
+                httpGet: 
+                  host: "string"
+                  httpHeaders: [
+                    name: "string"
+                    value: "string"
+                  ]
+                  path: "string"
+                  port: 0
+                  scheme: "string"
+                tcpSocket: 
+                  host: "string"
+                  port: 0
+              preStop: 
+                exec: 
+                  command: ["string"]
+                httpGet: 
+                  host: "string"
+                  httpHeaders: [
+                    name: "string"
+                    value: "string"
+                  ]
+                  path: "string"
+                  port: 0
+                  scheme: "string"
+                tcpSocket: 
+                  host: "string"
+                  port: 0
+            livenessProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            name: "string"
+            ports: [
+              containerPort: 0
+              hostIP: "string"
+              hostPort: 0
+              name: "string"
+              protocol: "string"
+            ]
+            readinessProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            resources: 
+              limits: 
+                key: "string"
+
+              requests: 
+                key: "string"
+
+            securityContext: 
+              allowPrivilegeEscalation: True|False
+              capabilities: 
+                add: ["string"]
+                drop: ["string"]
+              privileged: True|False
+              procMount: "string"
+              readOnlyRootFilesystem: True|False
+              runAsGroup: 0
+              runAsNonRoot: True|False
+              runAsUser: 0
+              seLinuxOptions: 
+                level: "string"
+                role: "string"
+                type: "string"
+                user: "string"
+              seccompProfile: 
+                localhostProfile: "string"
+                type: "string"
+              windowsOptions: 
+                gmsaCredentialSpec: "string"
+                gmsaCredentialSpecName: "string"
+                hostProcess: True|False
+                runAsUserName: "string"
+            startupProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            stdin: True|False
+            stdinOnce: True|False
+            targetContainerName: "string"
+            terminationMessagePath: "string"
+            terminationMessagePolicy: "string"
+            tty: True|False
+            volumeDevices: [
+              devicePath: "string"
+              name: "string"
+            ]
+            volumeMounts: [
+              mountPath: "string"
+              mountPropagation: "string"
+              name: "string"
+              readOnly: True|False
+              subPath: "string"
+              subPathExpr: "string"
+            ]
+            workingDir: "string"
+          ]
+          hostAliases: [
+            hostnames: ["string"]
+            ip: "string"
+          ]
+          hostIPC: True|False
+          hostNetwork: True|False
+          hostPID: True|False
+          hostname: "string"
+          imagePullSecrets: [
+            name: "string"
+          ]
+          initContainers: [
+            args: ["string"]
+            command: ["string"]
+            env: [
+              name: "string"
+              value: "string"
+              valueFrom: 
+                configMapKeyRef: 
+                  key: "string"
+                  name: "string"
+                  optional: True|False
+                fieldRef: 
+                  apiVersion: "string"
+                  fieldPath: "string"
+                resourceFieldRef: 
+                  containerName: "string"
+                  divisor: "string"
+                  resource: "string"
+                secretKeyRef: 
+                  key: "string"
+                  name: "string"
+                  optional: True|False
+            ]
+            envFrom: [
+              configMapRef: 
+                name: "string"
+                optional: True|False
+              prefix: "string"
+              secretRef: 
+                name: "string"
+                optional: True|False
+            ]
+            image: "string"
+            imagePullPolicy: "string"
+            lifecycle: 
+              postStart: 
+                exec: 
+                  command: ["string"]
+                httpGet: 
+                  host: "string"
+                  httpHeaders: [
+                    name: "string"
+                    value: "string"
+                  ]
+                  path: "string"
+                  port: 0
+                  scheme: "string"
+                tcpSocket: 
+                  host: "string"
+                  port: 0
+              preStop: 
+                exec: 
+                  command: ["string"]
+                httpGet: 
+                  host: "string"
+                  httpHeaders: [
+                    name: "string"
+                    value: "string"
+                  ]
+                  path: "string"
+                  port: 0
+                  scheme: "string"
+                tcpSocket: 
+                  host: "string"
+                  port: 0
+            livenessProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            name: "string"
+            ports: [
+              containerPort: 0
+              hostIP: "string"
+              hostPort: 0
+              name: "string"
+              protocol: "string"
+            ]
+            readinessProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            resources: 
+              limits: 
+                key: "string"
+
+              requests: 
+                key: "string"
+
+            securityContext: 
+              allowPrivilegeEscalation: True|False
+              capabilities: 
+                add: ["string"]
+                drop: ["string"]
+              privileged: True|False
+              procMount: "string"
+              readOnlyRootFilesystem: True|False
+              runAsGroup: 0
+              runAsNonRoot: True|False
+              runAsUser: 0
+              seLinuxOptions: 
+                level: "string"
+                role: "string"
+                type: "string"
+                user: "string"
+              seccompProfile: 
+                localhostProfile: "string"
+                type: "string"
+              windowsOptions: 
+                gmsaCredentialSpec: "string"
+                gmsaCredentialSpecName: "string"
+                hostProcess: True|False
+                runAsUserName: "string"
+            startupProbe: 
+              exec: 
+                command: ["string"]
+              failureThreshold: 0
+              httpGet: 
+                host: "string"
+                httpHeaders: [
+                  name: "string"
+                  value: "string"
+                ]
+                path: "string"
+                port: 0
+                scheme: "string"
+              initialDelaySeconds: 0
+              periodSeconds: 0
+              successThreshold: 0
+              tcpSocket: 
+                host: "string"
+                port: 0
+              terminationGracePeriodSeconds: 0
+              timeoutSeconds: 0
+            stdin: True|False
+            stdinOnce: True|False
+            terminationMessagePath: "string"
+            terminationMessagePolicy: "string"
+            tty: True|False
+            volumeDevices: [
+              devicePath: "string"
+              name: "string"
+            ]
+            volumeMounts: [
+              mountPath: "string"
+              mountPropagation: "string"
+              name: "string"
+              readOnly: True|False
+              subPath: "string"
+              subPathExpr: "string"
+            ]
+            workingDir: "string"
+          ]
+          nodeName: "string"
+          nodeSelector: 
+            key: "string"
+
+          overhead: 
+            key: "string"
+
+          preemptionPolicy: "string"
+          priority: 0
+          priorityClassName: "string"
+          readinessGates: [
+            conditionType: "string"
+          ]
+          restartPolicy: "string"
+          runtimeClassName: "string"
+          schedulerName: "string"
+          securityContext: 
+            fsGroup: 0
+            fsGroupChangePolicy: "string"
+            runAsGroup: 0
+            runAsNonRoot: True|False
+            runAsUser: 0
+            seLinuxOptions: 
+              level: "string"
+              role: "string"
+              type: "string"
+              user: "string"
+            seccompProfile: 
+              localhostProfile: "string"
+              type: "string"
+            supplementalGroups: [0]
+            sysctls: [
+              name: "string"
+              value: "string"
+            ]
+            windowsOptions: 
+              gmsaCredentialSpec: "string"
+              gmsaCredentialSpecName: "string"
+              hostProcess: True|False
+              runAsUserName: "string"
+          serviceAccount: "string"
+          serviceAccountName: "string"
+          setHostnameAsFQDN: True|False
+          shareProcessNamespace: True|False
+          subdomain: "string"
+          terminationGracePeriodSeconds: 0
+          tolerations: [
+            effect: "string"
+            key: "string"
+            operator: "string"
+            tolerationSeconds: 0
+            value: "string"
+          ]
+          topologySpreadConstraints: [
+            labelSelector: 
+              matchExpressions: [
+                key: "string"
+                operator: "string"
+                values: ["string"]
+              ]
+              matchLabels: 
+                key: "string"
+
+            maxSkew: 0
+            topologyKey: "string"
+            whenUnsatisfiable: "string"
+          ]
+          volumes: [
+            awsElasticBlockStore: 
+              fsType: "string"
+              partition: 0
+              readOnly: True|False
+              volumeID: "string"
+            azureDisk: 
+              cachingMode: "string"
+              diskName: "string"
+              diskURI: "string"
+              fsType: "string"
+              kind: "string"
+              readOnly: True|False
+            azureFile: 
+              readOnly: True|False
+              secretName: "string"
+              shareName: "string"
+            cephfs: 
+              monitors: ["string"]
+              path: "string"
+              readOnly: True|False
+              secretFile: "string"
+              secretRef: 
+                name: "string"
+              user: "string"
+            cinder: 
+              fsType: "string"
+              readOnly: True|False
+              secretRef: 
+                name: "string"
+              volumeID: "string"
+            configMap: 
+              defaultMode: 0
+              items: [
+                key: "string"
+                mode: 0
+                path: "string"
+              ]
+              name: "string"
+              optional: True|False
+            csi: 
+              driver: "string"
+              fsType: "string"
+              nodePublishSecretRef: 
+                name: "string"
+              readOnly: True|False
+              volumeAttributes: 
+                key: "string"
+
+            downwardAPI: 
+              defaultMode: 0
+              items: [
+                fieldRef: 
+                  apiVersion: "string"
+                  fieldPath: "string"
+                mode: 0
+                path: "string"
+                resourceFieldRef: 
+                  containerName: "string"
+                  divisor: "string"
+                  resource: "string"
+              ]
+            emptyDir: 
+              medium: "string"
+              sizeLimit: "string"
+            ephemeral: 
+              readOnly: True|False
+              volumeClaimTemplate: 
+                metadata: 
+                  annotations: 
+                    key: "string"
+
+                  clusterName: "string"
+                  creationTimestamp: "string"
+                  deletionGracePeriodSeconds: 0
+                  deletionTimestamp: "string"
+                  finalizers: ["string"]
+                  generateName: "string"
+                  generation: 0
+                  labels: 
+                    key: "string"
+
+                  managedFields: [
+                    apiVersion: "string"
+                    fieldsType: "string"
+                    fieldsV1: 
+                    manager: "string"
+                    operation: "string"
+                    subresource: "string"
+                    time: "string"
+                  ]
+                  name: "string"
+                  namespace: "string"
+                  ownerReferences: [
+                    apiVersion: "string"
+                    blockOwnerDeletion: True|False
+                    controller: True|False
+                    kind: "string"
+                    name: "string"
+                    uid: "string"
+                  ]
+                  resourceVersion: "string"
+                  selfLink: "string"
+                  uid: "string"
+                spec: 
+                  accessModes: ["string"]
+                  dataSource: 
+                    apiGroup: "string"
+                    kind: "string"
+                    name: "string"
+                  dataSourceRef: 
+                    apiGroup: "string"
+                    kind: "string"
+                    name: "string"
+                  resources: 
+                    limits: 
+                      key: "string"
+
+                    requests: 
+                      key: "string"
+
+                  selector: 
+                    matchExpressions: [
+                      key: "string"
+                      operator: "string"
+                      values: ["string"]
+                    ]
+                    matchLabels: 
+                      key: "string"
+
+                  storageClassName: "string"
+                  volumeMode: "string"
+                  volumeName: "string"
+            fc: 
+              fsType: "string"
+              lun: 0
+              readOnly: True|False
+              targetWWNs: ["string"]
+              wwids: ["string"]
+            flexVolume: 
+              driver: "string"
+              fsType: "string"
+              options: 
+                key: "string"
+
+              readOnly: True|False
+              secretRef: 
+                name: "string"
+            flocker: 
+              datasetName: "string"
+              datasetUUID: "string"
+            gcePersistentDisk: 
+              fsType: "string"
+              partition: 0
+              pdName: "string"
+              readOnly: True|False
+            gitRepo: 
+              directory: "string"
+              repository: "string"
+              revision: "string"
+            glusterfs: 
+              endpoints: "string"
+              path: "string"
+              readOnly: True|False
+            hostPath: 
+              path: "string"
+              type: "string"
+            iscsi: 
+              chapAuthDiscovery: True|False
+              chapAuthSession: True|False
+              fsType: "string"
+              initiatorName: "string"
+              iqn: "string"
+              iscsiInterface: "string"
+              lun: 0
+              portals: ["string"]
+              readOnly: True|False
+              secretRef: 
+                name: "string"
+              targetPortal: "string"
+            name: "string"
+            nfs: 
+              path: "string"
+              readOnly: True|False
+              server: "string"
+            persistentVolumeClaim: 
+              claimName: "string"
+              readOnly: True|False
+            photonPersistentDisk: 
+              fsType: "string"
+              pdID: "string"
+            portworxVolume: 
+              fsType: "string"
+              readOnly: True|False
+              volumeID: "string"
+            projected: 
+              defaultMode: 0
+              sources: [
+                configMap: 
+                  items: [
+                    key: "string"
+                    mode: 0
+                    path: "string"
+                  ]
+                  name: "string"
+                  optional: True|False
+                downwardAPI: 
+                  items: [
+                    fieldRef: 
+                      apiVersion: "string"
+                      fieldPath: "string"
+                    mode: 0
+                    path: "string"
+                    resourceFieldRef: 
+                      containerName: "string"
+                      divisor: "string"
+                      resource: "string"
+                  ]
+                secret: 
+                  items: [
+                    key: "string"
+                    mode: 0
+                    path: "string"
+                  ]
+                  name: "string"
+                  optional: True|False
+                serviceAccountToken: 
+                  audience: "string"
+                  expirationSeconds: 0
+                  path: "string"
+              ]
+            quobyte: 
+              group: "string"
+              readOnly: True|False
+              registry: "string"
+              tenant: "string"
+              user: "string"
+              volume: "string"
+            rbd: 
+              fsType: "string"
+              image: "string"
+              keyring: "string"
+              monitors: ["string"]
+              pool: "string"
+              readOnly: True|False
+              secretRef: 
+                name: "string"
+              user: "string"
+            scaleIO: 
+              fsType: "string"
+              gateway: "string"
+              protectionDomain: "string"
+              readOnly: True|False
+              secretRef: 
+                name: "string"
+              sslEnabled: True|False
+              storageMode: "string"
+              storagePool: "string"
+              system: "string"
+              volumeName: "string"
+            secret: 
+              defaultMode: 0
+              items: [
+                key: "string"
+                mode: 0
+                path: "string"
+              ]
+              optional: True|False
+              secretName: "string"
+            storageos: 
+              fsType: "string"
+              readOnly: True|False
+              secretRef: 
+                name: "string"
+              volumeName: "string"
+              volumeNamespace: "string"
+            vsphereVolume: 
+              fsType: "string"
+              storagePolicyID: "string"
+              storagePolicyName: "string"
+              volumePath: "string"
+          ]
+        status: 
+          conditions: [
+            lastProbeTime: "string"
+            lastTransitionTime: "string"
+            message: "string"
+            reason: "string"
+            status: "string"
+            type: "string"
+          ]
+          containerStatuses: [
+            containerID: "string"
+            image: "string"
+            imageID: "string"
+            lastState: 
+              running: 
+                startedAt: "string"
+              terminated: 
+                containerID: "string"
+                exitCode: 0
+                finishedAt: "string"
+                message: "string"
+                reason: "string"
+                signal: 0
+                startedAt: "string"
+              waiting: 
+                message: "string"
+                reason: "string"
+            name: "string"
+            ready: True|False
+            restartCount: 0
+            started: True|False
+            state: 
+              running: 
+                startedAt: "string"
+              terminated: 
+                containerID: "string"
+                exitCode: 0
+                finishedAt: "string"
+                message: "string"
+                reason: "string"
+                signal: 0
+                startedAt: "string"
+              waiting: 
+                message: "string"
+                reason: "string"
+          ]
+          ephemeralContainerStatuses: [
+            containerID: "string"
+            image: "string"
+            imageID: "string"
+            lastState: 
+              running: 
+                startedAt: "string"
+              terminated: 
+                containerID: "string"
+                exitCode: 0
+                finishedAt: "string"
+                message: "string"
+                reason: "string"
+                signal: 0
+                startedAt: "string"
+              waiting: 
+                message: "string"
+                reason: "string"
+            name: "string"
+            ready: True|False
+            restartCount: 0
+            started: True|False
+            state: 
+              running: 
+                startedAt: "string"
+              terminated: 
+                containerID: "string"
+                exitCode: 0
+                finishedAt: "string"
+                message: "string"
+                reason: "string"
+                signal: 0
+                startedAt: "string"
+              waiting: 
+                message: "string"
+                reason: "string"
+          ]
+          hostIP: "string"
+          initContainerStatuses: [
+            containerID: "string"
+            image: "string"
+            imageID: "string"
+            lastState: 
+              running: 
+                startedAt: "string"
+              terminated: 
+                containerID: "string"
+                exitCode: 0
+                finishedAt: "string"
+                message: "string"
+                reason: "string"
+                signal: 0
+                startedAt: "string"
+              waiting: 
+                message: "string"
+                reason: "string"
+            name: "string"
+            ready: True|False
+            restartCount: 0
+            started: True|False
+            state: 
+              running: 
+                startedAt: "string"
+              terminated: 
+                containerID: "string"
+                exitCode: 0
+                finishedAt: "string"
+                message: "string"
+                reason: "string"
+                signal: 0
+                startedAt: "string"
+              waiting: 
+                message: "string"
+                reason: "string"
+          ]
+          message: "string"
+          nominatedNodeName: "string"
+          phase: "string"
+          podIP: "string"
+          podIPs: [
+            ip: "string"
+          ]
+          qosClass: "string"
+          reason: "string"
+          startTime: "string"
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of Component {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

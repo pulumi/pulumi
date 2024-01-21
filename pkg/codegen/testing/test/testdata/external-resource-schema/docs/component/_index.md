@@ -14,8 +14,256 @@ no_edit_this_page: true
 
 
 
+## Creating a Component Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create Component Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  component:
+    type: example::Component
+    properties:
+      metadata: 
+        annotations: 
+          key: "string"
+
+        clusterName: "string"
+        creationTimestamp: "string"
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: "string"
+        finalizers: ["string"]
+        generateName: "string"
+        generation: 0
+        labels: 
+          key: "string"
+
+        managedFields: [
+          apiVersion: "string"
+          fieldsType: "string"
+          fieldsV1: 
+          manager: "string"
+          operation: "string"
+          subresource: "string"
+          time: "string"
+        ]
+        name: "string"
+        namespace: "string"
+        ownerReferences: [
+          apiVersion: "string"
+          blockOwnerDeletion: True|False
+          controller: True|False
+          kind: "string"
+          name: "string"
+          uid: "string"
+        ]
+        resourceVersion: "string"
+        selfLink: "string"
+        uid: "string"
+      metadataArray: [
+        annotations: 
+          key: "string"
+
+        clusterName: "string"
+        creationTimestamp: "string"
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: "string"
+        finalizers: ["string"]
+        generateName: "string"
+        generation: 0
+        labels: 
+          key: "string"
+
+        managedFields: [
+          apiVersion: "string"
+          fieldsType: "string"
+          fieldsV1: 
+          manager: "string"
+          operation: "string"
+          subresource: "string"
+          time: "string"
+        ]
+        name: "string"
+        namespace: "string"
+        ownerReferences: [
+          apiVersion: "string"
+          blockOwnerDeletion: True|False
+          controller: True|False
+          kind: "string"
+          name: "string"
+          uid: "string"
+        ]
+        resourceVersion: "string"
+        selfLink: "string"
+        uid: "string"
+      ]
+      metadataMap: 
+        key: 
+          annotations: 
+            key: "string"
+
+          clusterName: "string"
+          creationTimestamp: "string"
+          deletionGracePeriodSeconds: 0
+          deletionTimestamp: "string"
+          finalizers: ["string"]
+          generateName: "string"
+          generation: 0
+          labels: 
+            key: "string"
+
+          managedFields: [
+            apiVersion: "string"
+            fieldsType: "string"
+            fieldsV1: 
+            manager: "string"
+            operation: "string"
+            subresource: "string"
+            time: "string"
+          ]
+          name: "string"
+          namespace: "string"
+          ownerReferences: [
+            apiVersion: "string"
+            blockOwnerDeletion: True|False
+            controller: True|False
+            kind: "string"
+            name: "string"
+            uid: "string"
+          ]
+          resourceVersion: "string"
+          selfLink: "string"
+          uid: "string"
+
+      requiredMetadata: 
+        annotations: 
+          key: "string"
+
+        clusterName: "string"
+        creationTimestamp: "string"
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: "string"
+        finalizers: ["string"]
+        generateName: "string"
+        generation: 0
+        labels: 
+          key: "string"
+
+        managedFields: [
+          apiVersion: "string"
+          fieldsType: "string"
+          fieldsV1: 
+          manager: "string"
+          operation: "string"
+          subresource: "string"
+          time: "string"
+        ]
+        name: "string"
+        namespace: "string"
+        ownerReferences: [
+          apiVersion: "string"
+          blockOwnerDeletion: True|False
+          controller: True|False
+          kind: "string"
+          name: "string"
+          uid: "string"
+        ]
+        resourceVersion: "string"
+        selfLink: "string"
+        uid: "string"
+      requiredMetadataArray: [
+        annotations: 
+          key: "string"
+
+        clusterName: "string"
+        creationTimestamp: "string"
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: "string"
+        finalizers: ["string"]
+        generateName: "string"
+        generation: 0
+        labels: 
+          key: "string"
+
+        managedFields: [
+          apiVersion: "string"
+          fieldsType: "string"
+          fieldsV1: 
+          manager: "string"
+          operation: "string"
+          subresource: "string"
+          time: "string"
+        ]
+        name: "string"
+        namespace: "string"
+        ownerReferences: [
+          apiVersion: "string"
+          blockOwnerDeletion: True|False
+          controller: True|False
+          kind: "string"
+          name: "string"
+          uid: "string"
+        ]
+        resourceVersion: "string"
+        selfLink: "string"
+        uid: "string"
+      ]
+      requiredMetadataMap: 
+        key: 
+          annotations: 
+            key: "string"
+
+          clusterName: "string"
+          creationTimestamp: "string"
+          deletionGracePeriodSeconds: 0
+          deletionTimestamp: "string"
+          finalizers: ["string"]
+          generateName: "string"
+          generation: 0
+          labels: 
+            key: "string"
+
+          managedFields: [
+            apiVersion: "string"
+            fieldsType: "string"
+            fieldsV1: 
+            manager: "string"
+            operation: "string"
+            subresource: "string"
+            time: "string"
+          ]
+          name: "string"
+          namespace: "string"
+          ownerReferences: [
+            apiVersion: "string"
+            blockOwnerDeletion: True|False
+            controller: True|False
+            kind: "string"
+            name: "string"
+            uid: "string"
+          ]
+          resourceVersion: "string"
+          selfLink: "string"
+          uid: "string"
+
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of Component {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

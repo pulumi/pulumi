@@ -17,7 +17,78 @@ The provider type for the kubernetes package.
 
 
 
-## Create Provider Resource {#create}
+## Creating a Provider Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+const Provider = new Provider("<resource_name>", {...});
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+Provider = Provider("<resource_name>", ...)
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+var Provider = new Provider("<resource_name>", new ProviderArgs {...});
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+resource.NewProvider(ctx, "<resource_name>", &resource.ProviderArgs{...})
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+Provider:
+  <resource_name>: ...
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of Provider {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

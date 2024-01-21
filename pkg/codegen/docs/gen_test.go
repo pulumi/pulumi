@@ -20,6 +20,7 @@ package docs
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -643,4 +644,103 @@ func TestDecomposeDocstring(t *testing.T) {
 		importDetails: "\n\nVPCs can be imported using the `vpc id`, e.g.,\n\n```sh\n $ pulumi import aws:ec2/vpc:Vpc test_vpc vpc-a01106c2\n```\n",
 	},
 		info)
+}
+
+func bindSchema(t *testing.T, pkgSpec schema.PackageSpec) *schema.Package {
+	pkg, err := schema.ImportSpec(pkgSpec, nil)
+	assert.NoError(t, err, "importing spec")
+	return pkg
+}
+
+func getBoundResource(t *testing.T, pkg *schema.Package, tok string) *schema.Resource {
+	for _, r := range pkg.Resources {
+		if r.Token == tok {
+			return r
+		}
+	}
+
+	t.Fatalf("could not find resource %s in package", tok)
+	return nil
+}
+
+func primitiveType(name string) schema.PropertySpec {
+	return schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type: name,
+		},
+	}
+}
+
+func TestCreationExampleSyntaxForYAML(t *testing.T) {
+	t.Parallel()
+
+	pkg := bindSchema(t, schema.PackageSpec{
+		Name: "test",
+		Resources: map[string]schema.ResourceSpec{
+			"test:index:ExampleResource": {
+				InputProperties: map[string]schema.PropertySpec{
+					"a": primitiveType("string"),
+					"b": primitiveType("integer"),
+					"c": primitiveType("number"),
+					"d": primitiveType("boolean"),
+					"e": {
+						TypeSpec: schema.TypeSpec{
+							Type: "array",
+							Items: &schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					"f": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/test:index:ExampleObject",
+						},
+					},
+					"g": {
+						TypeSpec: schema.TypeSpec{
+							Type: "array",
+							Items: &schema.TypeSpec{
+								Ref: "#/types/test:index:ExampleObject",
+							},
+						},
+					},
+				},
+			},
+		},
+		Types: map[string]schema.ComplexTypeSpec{
+			"test:index:ExampleObject": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"x": primitiveType("string"),
+						"y": primitiveType("string"),
+					},
+				},
+			},
+		},
+	})
+
+	r := getBoundResource(t, pkg, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxYAML(r)
+	expected := `
+name: example
+runtime: yaml
+resources:
+  exampleResource:
+    type: test:index:ExampleResource
+    properties:
+      a: "string"
+      b: 0
+      c: 0.0
+      d: True|False
+      e: ["string"]
+      f: 
+        x: "string"
+        y: "string"
+      g: [
+        x: "string"
+        y: "string"
+      ]
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }

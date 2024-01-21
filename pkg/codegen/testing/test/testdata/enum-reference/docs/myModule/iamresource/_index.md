@@ -14,8 +14,40 @@ no_edit_this_page: true
 
 
 
+## Creating a IamResource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create IamResource Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  iamResource:
+    type: example:myModule:IamResource
+    properties:
+      config: 
+        auditLogConfigs: [
+          exemptedMembers: ["string"]
+          logType: LOG_TYPE_UNSPECIFIED|ADMIN_READ|DATA_WRITE|DATA_READ
+        ]
+        service: "string"
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of IamResource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

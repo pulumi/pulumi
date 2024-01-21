@@ -15,7 +15,78 @@ no_edit_this_page: true
 
 
 
-## Create ModuleTest Resource {#create}
+## Creating a ModuleTest Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+const ModuleTest = new ModuleTest("<resource_name>", {...});
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+ModuleTest = ModuleTest("<resource_name>", ...)
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+var ModuleTest = new ModuleTest("<resource_name>", new ModuleTestArgs {...});
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+resource.NewModuleTest(ctx, "<resource_name>", &resource.ModuleTestArgs{...})
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+ModuleTest:
+  <resource_name>: ...
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of ModuleTest {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

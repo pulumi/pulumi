@@ -14,8 +14,43 @@ no_edit_this_page: true
 
 
 
+## Creating a RubberTree Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create RubberTree Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  rubberTree:
+    type: plant:tree/v1:RubberTree
+    properties:
+      container: 
+        brightness: ZeroPointOne|One
+        color: red|blue|yellow
+        material: "string"
+        size: FourInch|SixInch|EightInch
+      diameter: sixinch|twelveinch
+      farm: Pulumi Planters Inc.|Plants'R'Us
+      size: small|medium|large
+      type: Burgundy|Ruby|Tineke
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of RubberTree {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

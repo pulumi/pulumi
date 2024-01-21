@@ -14,8 +14,55 @@ no_edit_this_page: true
 
 
 
+## Creating a TypeUses Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create TypeUses Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  typeUses:
+    type: example::TypeUses
+    properties:
+      bar: 
+        baz: "string"
+      baz: 
+        bar: 0
+        foo: "string"
+      foo: 
+        bar: "string"
+        configs: [
+          config: "string"
+        ]
+        foo: 
+        others: [[
+          baz: "string"
+        ]
+        ]
+        stillOthers: 
+          key: [
+            baz: "string"
+          ]
+
+      qux: Burgundy|Ruby|Tineke
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of TypeUses {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

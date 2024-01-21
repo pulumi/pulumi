@@ -318,6 +318,10 @@ type resourceDocArgs struct {
 	Header header
 
 	Tool string
+	// CreationExampleSyntax is a map from language to the rendered HTML for the
+	// creation example syntax where the key is the language name and the value is
+	// a piece of code that shows how to create a new instance of the resource with default placeholder values.
+	CreationExampleSyntax map[string]string
 	// LangChooserLanguages is a comma-separated list of languages to pass to the
 	// language chooser shortcode. Use this to customize the languages shown for a
 	// resource. By default, the language chooser will show all languages supported
@@ -1602,6 +1606,48 @@ func (mod *modContext) genResourceHeader(r *schema.Resource) header {
 	}
 }
 
+func (mod *modContext) genCreationExampleSyntaxTypeScript(r *schema.Resource) string {
+	return fmt.Sprintf("const %s = new %s(\"<resource_name>\", {...});", resourceName(r), resourceName(r))
+}
+
+func (mod *modContext) genCreationExampleSyntaxGo(r *schema.Resource) string {
+	return fmt.Sprintf("resource.New%s(ctx, \"<resource_name>\", &resource.%sArgs{...})", resourceName(r), resourceName(r))
+}
+
+func (mod *modContext) genCreationExampleSyntaxCSharp(r *schema.Resource) string {
+	return fmt.Sprintf("var %s = new %s(\"<resource_name>\", new %sArgs {...});", resourceName(r), resourceName(r), resourceName(r))
+}
+
+func (mod *modContext) genCreationExampleSyntaxPython(r *schema.Resource) string {
+	return fmt.Sprintf("%s = %s(\"<resource_name>\", ...)", resourceName(r), resourceName(r))
+}
+
+func (mod *modContext) genCreationExampleSyntaxJava(r *schema.Resource) string {
+	return fmt.Sprintf("var %s = new %s(\"<resource_name>\", new %sArgs {...});", resourceName(r), resourceName(r), resourceName(r))
+}
+
+func camelCase(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
+func isPrimitiveType(t schema.Type) bool {
+	switch t {
+	case schema.BoolType, schema.IntType, schema.NumberType, schema.StringType:
+		return true
+	default:
+		switch argType := t.(type) {
+		case *schema.OptionalType:
+			return isPrimitiveType(argType.ElementType)
+		case *schema.EnumType:
+			return true
+		}
+		return false
+	}
+}
+
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
@@ -1668,17 +1714,37 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
+	creationExampleSyntax := map[string]string{}
+	if !r.IsProvider && len(r.InputProperties) > 0 {
+		for _, lang := range dctx.supportedLanguages {
+			switch lang {
+			//case "nodejs":
+			//	creationExampleSyntax["typescript"] = mod.genCreationExampleSyntaxTypeScript(r)
+			//case "go":
+			//	creationExampleSyntax["go"] = mod.genCreationExampleSyntaxGo(r)
+			//case "csharp":
+			//	creationExampleSyntax["csharp"] = mod.genCreationExampleSyntaxCSharp(r)
+			//case "python":
+			//	creationExampleSyntax["python"] = mod.genCreationExampleSyntaxPython(r)
+			//case "java":
+			//	creationExampleSyntax["java"] = mod.genCreationExampleSyntaxJava(r)
+			case "yaml":
+				creationExampleSyntax["yaml"] = genCreationExampleSyntaxYAML(r)
+			}
+		}
+	}
+
 	docInfo := dctx.decomposeDocstring(r.Comment)
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:            docInfo.description,
-		DeprecationMessage: r.DeprecationMessage,
-		ExamplesSection:    docInfo.examples,
-		ImportDocs:         docInfo.importDetails,
-
+		Comment:                docInfo.description,
+		DeprecationMessage:     r.DeprecationMessage,
+		ExamplesSection:        docInfo.examples,
+		ImportDocs:             docInfo.importDetails,
+		CreationExampleSyntax:  creationExampleSyntax,
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,
 

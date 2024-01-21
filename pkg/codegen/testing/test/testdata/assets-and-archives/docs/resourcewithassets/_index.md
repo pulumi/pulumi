@@ -14,8 +14,47 @@ no_edit_this_page: true
 
 
 
+## Creating a ResourceWithAssets Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-## Create ResourceWithAssets Resource {#create}
+
+
+
+
+<div>
+    <pulumi-choosable type="language" values="yaml">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+name: example
+runtime: yaml
+resources:
+  resourceWithAssets:
+    type: example:index:ResourceWithAssets
+    properties:
+      archive: 
+        Fn::FileAsset: ./file.txt
+      nested: 
+        archive: 
+          Fn::FileAsset: ./file.txt
+        asset: 
+          Fn::StringAsset: "example content"
+        plainArchive: 
+          Fn::FileAsset: ./file.txt
+        plainAsset: 
+          Fn::StringAsset: "example content"
+      source: 
+        Fn::StringAsset: "example content"
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of ResourceWithAssets {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

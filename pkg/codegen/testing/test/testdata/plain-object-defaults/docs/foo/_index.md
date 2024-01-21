@@ -17,7 +17,78 @@ test new feature with resoruces
 
 
 
-## Create Foo Resource {#create}
+## Creating a Foo Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+const Foo = new Foo("<resource_name>", {...});
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+Foo = Foo("<resource_name>", ...)
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+var Foo = new Foo("<resource_name>", new FooArgs {...});
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+resource.NewFoo(ctx, "<resource_name>", &resource.FooArgs{...})
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-yaml" data-lang="yaml">
+Foo:
+  <resource_name>: ...
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+## Definition of Foo {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
