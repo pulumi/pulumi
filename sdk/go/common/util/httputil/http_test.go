@@ -95,3 +95,42 @@ func TestRetryPostHTTP2(t *testing.T) {
 	assert.Equal(t, 2, tries)
 	assert.Equal(t, 200, res.StatusCode)
 }
+
+func TestExtractFilenameFromHeader(t *testing.T) {
+	t.Parallel()
+	tests := map[string]struct {
+		headerValues map[string][]string
+		want         string
+	}{
+		"standard quoted filename": {
+			headerValues: map[string][]string{"Content-Disposition": {`attachment; filename="sample.txt"`}},
+			want:         "sample.txt",
+		},
+		"filename without quotes": {
+			headerValues: map[string][]string{"Content-Disposition": {`attachment; filename=sample.txt`}},
+			want:         "sample.txt",
+		},
+		"missing header": {
+			headerValues: map[string][]string{},
+			want:         "",
+		},
+		"attachment without filename": {
+			headerValues: map[string][]string{"Content-Disposition": {`attachment`}},
+			want:         "",
+		},
+		"filename without attachment": {
+			headerValues: map[string][]string{"Content-Disposition": {`filename="sample.txt"`}},
+			want:         "sample.txt",
+		},
+	}
+
+	for _, tt := range tests {
+
+		header := http.Header(tt.headerValues)
+		got := ExtractFilenameFromHeader(header)
+		if got != tt.want {
+			t.Errorf("expected %s, got %s", tt.want, got)
+		}
+
+	}
+}

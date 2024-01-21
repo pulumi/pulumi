@@ -17,6 +17,7 @@ package httputil
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -109,4 +110,21 @@ func GetWithRetry(url string, client *http.Client) (*http.Response, error) {
 	}
 
 	return DoWithRetry(req, client)
+}
+
+func ExtractFilenameFromHeader(header http.Header) string {
+	contentDisposition := header.Get("Content-Disposition")
+	if contentDisposition == "" {
+		return ""
+	}
+
+	const prefix = "filename="
+	if index := strings.Index(contentDisposition, prefix); index != -1 {
+		// The filename may be wrapped in quotes which you'd need to remove
+		filename := contentDisposition[index+len(prefix):]
+		filename = strings.Trim(filename, `"`)
+		return filename
+	}
+
+	return ""
 }

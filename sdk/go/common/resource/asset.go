@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -287,7 +288,11 @@ func (a *Asset) readURI() (*Blob, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewReadCloserBlob(resp.Body)
+		filename := httputil.ExtractFilenameFromHeader(resp.Header)
+		if filename == "" {
+			filename = filepath.Clean(path.Base(url.Path))
+		}
+		return NewReadCloserBlob(resp.Body, filename)
 	case "file":
 		contract.Assertf(url.User == nil, "file:// URIs cannot have a user: %v", url)
 		contract.Assertf(url.RawQuery == "", "file:// URIs cannot have a query string: %v", url)
@@ -358,18 +363,33 @@ func NewFileBlob(f *os.File) (*Blob, error) {
 }
 
 // NewReadCloserBlob turn any old ReadCloser into an Blob, usually by making a copy.
-func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
+func NewReadCloserBlob(r io.ReadCloser, filename string) (*Blob, error) {
 	if f, isf := r.(*os.File); isf {
 		// If it's a file, we can "fast path" the asset creation without making a copy.
 		return NewFileBlob(f)
 	}
 	// Otherwise, read it all in, and create a blob out of that.
 	defer contract.IgnoreClose(r)
-	data, err := io.ReadAll(r)
+	dir, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	return NewByteBlob(data), nil
+	fullPath := filepath.Join(dir, filename)
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = io.Copy(file, r)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+	return NewFileBlob(file)
 }
 
 // Archive is a serialized archive reference.  It is a union: thus, only one of its fields will be non-nil.  Several
