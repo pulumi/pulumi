@@ -35,7 +35,7 @@ resources:
     type: example::OtherResource
     properties:
       bar: ["string"]
-      foo: 
+      foo: reference(example::Resource)
 
                 </code>
             </pre>

@@ -34,7 +34,7 @@ resources:
   barResource:
     type: bar::BarResource
     properties:
-      foo: 
+      foo: reference(example::Resource)
 
                 </code>
             </pre>

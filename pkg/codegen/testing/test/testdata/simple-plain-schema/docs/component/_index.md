@@ -52,7 +52,7 @@ resources:
         f: "string"
       ]
       bazMap: 
-        key: 
+        "string": 
           a: True|False
           b: True|False
           c: 0

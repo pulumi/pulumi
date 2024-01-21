@@ -34,7 +34,7 @@ resources:
   fooResource:
     type: foo::FooResource
     properties:
-      foo: 
+      foo: reference(example::Resource)
 
                 </code>
             </pre>

@@ -35,7 +35,7 @@ resources:
     type: foo:index:Component
     properties:
       eniConfig: 
-        key: 
+        "string": 
           securityGroups: ["string"]
           subnet: "string"
 
@@ -44,8 +44,7 @@ resources:
         kind: "string"
         metadata: 
           annotations: 
-            key: "string"
-
+            "string": "string"
           clusterName: "string"
           creationTimestamp: "string"
           deletionGracePeriodSeconds: 0
@@ -54,8 +53,7 @@ resources:
           generateName: "string"
           generation: 0
           labels: 
-            key: "string"
-
+            "string": "string"
           managedFields: [
             apiVersion: "string"
             fieldsType: "string"
@@ -119,8 +117,7 @@ resources:
                       values: ["string"]
                     ]
                     matchLabels: 
-                      key: "string"
-
+                      "string": "string"
                   namespaceSelector: 
                     matchExpressions: [
                       key: "string"
@@ -128,8 +125,7 @@ resources:
                       values: ["string"]
                     ]
                     matchLabels: 
-                      key: "string"
-
+                      "string": "string"
                   namespaces: ["string"]
                   topologyKey: "string"
                 weight: 0
@@ -142,8 +138,7 @@ resources:
                     values: ["string"]
                   ]
                   matchLabels: 
-                    key: "string"
-
+                    "string": "string"
                 namespaceSelector: 
                   matchExpressions: [
                     key: "string"
@@ -151,8 +146,7 @@ resources:
                     values: ["string"]
                   ]
                   matchLabels: 
-                    key: "string"
-
+                    "string": "string"
                 namespaces: ["string"]
                 topologyKey: "string"
               ]
@@ -166,8 +160,7 @@ resources:
                       values: ["string"]
                     ]
                     matchLabels: 
-                      key: "string"
-
+                      "string": "string"
                   namespaceSelector: 
                     matchExpressions: [
                       key: "string"
@@ -175,8 +168,7 @@ resources:
                       values: ["string"]
                     ]
                     matchLabels: 
-                      key: "string"
-
+                      "string": "string"
                   namespaces: ["string"]
                   topologyKey: "string"
                 weight: 0
@@ -189,8 +181,7 @@ resources:
                     values: ["string"]
                   ]
                   matchLabels: 
-                    key: "string"
-
+                    "string": "string"
                 namespaceSelector: 
                   matchExpressions: [
                     key: "string"
@@ -198,8 +189,7 @@ resources:
                     values: ["string"]
                   ]
                   matchLabels: 
-                    key: "string"
-
+                    "string": "string"
                 namespaces: ["string"]
                 topologyKey: "string"
               ]
@@ -321,11 +311,9 @@ resources:
               timeoutSeconds: 0
             resources: 
               limits: 
-                key: "string"
-
+                "string": "string"
               requests: 
-                key: "string"
-
+                "string": "string"
             securityContext: 
               allowPrivilegeEscalation: True|False
               capabilities: 
@@ -516,11 +504,9 @@ resources:
               timeoutSeconds: 0
             resources: 
               limits: 
-                key: "string"
-
+                "string": "string"
               requests: 
-                key: "string"
-
+                "string": "string"
             securityContext: 
               allowPrivilegeEscalation: True|False
               capabilities: 
@@ -714,11 +700,9 @@ resources:
               timeoutSeconds: 0
             resources: 
               limits: 
-                key: "string"
-
+                "string": "string"
               requests: 
-                key: "string"
-
+                "string": "string"
             securityContext: 
               allowPrivilegeEscalation: True|False
               capabilities: 
@@ -785,11 +769,9 @@ resources:
           ]
           nodeName: "string"
           nodeSelector: 
-            key: "string"
-
+            "string": "string"
           overhead: 
-            key: "string"
-
+            "string": "string"
           preemptionPolicy: "string"
           priority: 0
           priorityClassName: "string"
@@ -844,8 +826,7 @@ resources:
                 values: ["string"]
               ]
               matchLabels: 
-                key: "string"
-
+                "string": "string"
             maxSkew: 0
             topologyKey: "string"
             whenUnsatisfiable: "string"
@@ -897,8 +878,7 @@ resources:
                 name: "string"
               readOnly: True|False
               volumeAttributes: 
-                key: "string"
-
+                "string": "string"
             downwardAPI: 
               defaultMode: 0
               items: [
@@ -920,8 +900,7 @@ resources:
               volumeClaimTemplate: 
                 metadata: 
                   annotations: 
-                    key: "string"
-
+                    "string": "string"
                   clusterName: "string"
                   creationTimestamp: "string"
                   deletionGracePeriodSeconds: 0
@@ -930,8 +909,7 @@ resources:
                   generateName: "string"
                   generation: 0
                   labels: 
-                    key: "string"
-
+                    "string": "string"
                   managedFields: [
                     apiVersion: "string"
                     fieldsType: "string"
@@ -966,11 +944,9 @@ resources:
                     name: "string"
                   resources: 
                     limits: 
-                      key: "string"
-
+                      "string": "string"
                     requests: 
-                      key: "string"
-
+                      "string": "string"
                   selector: 
                     matchExpressions: [
                       key: "string"
@@ -978,8 +954,7 @@ resources:
                       values: ["string"]
                     ]
                     matchLabels: 
-                      key: "string"
-
+                      "string": "string"
                   storageClassName: "string"
                   volumeMode: "string"
                   volumeName: "string"
@@ -993,8 +968,7 @@ resources:
               driver: "string"
               fsType: "string"
               options: 
-                key: "string"
-
+                "string": "string"
               readOnly: True|False
               secretRef: 
                 name: "string"

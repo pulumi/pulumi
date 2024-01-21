@@ -35,8 +35,7 @@ resources:
     type: plant:tree/v1:Nursery
     properties:
       sizes: 
-        key: small|medium|large
-
+        "string": small|medium|large
       varieties: [Burgundy|Ruby|Tineke]
 
                 </code>

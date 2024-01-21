@@ -44,13 +44,13 @@ resources:
         configs: [
           config: "string"
         ]
-        foo: 
+        foo: reference(example::Resource)
         others: [[
           baz: "string"
         ]
         ]
         stillOthers: 
-          key: [
+          "string": [
             baz: "string"
           ]
 

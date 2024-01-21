@@ -37,18 +37,14 @@ resources:
       age: 0
       pet: 
         age: 0
-        name: 
-        nameArray: [
-        ]
+        name: reference(random:index/randomPet:RandomPet)
+        nameArray: [reference(random:index/randomPet:RandomPet)]
         nameMap: 
-          key: 
-
-        requiredName: 
-        requiredNameArray: [
-        ]
+          "string": reference(random:index/randomPet:RandomPet)
+        requiredName: reference(random:index/randomPet:RandomPet)
+        requiredNameArray: [reference(random:index/randomPet:RandomPet)]
         requiredNameMap: 
-          key: 
-
+          "string": reference(random:index/randomPet:RandomPet)
 
                 </code>
             </pre>

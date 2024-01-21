@@ -40,14 +40,13 @@ resources:
         foo: "string"
       ]
       configMap: 
-        key: 
+        "string": 
           foo: "string"
 
       foo: "string"
       fooArray: ["string"]
       fooMap: 
-        key: "string"
-
+        "string": "string"
 
                 </code>
             </pre>

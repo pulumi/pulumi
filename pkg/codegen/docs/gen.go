@@ -1641,7 +1641,7 @@ func isPrimitiveType(t schema.Type) bool {
 		switch argType := t.(type) {
 		case *schema.OptionalType:
 			return isPrimitiveType(argType.ElementType)
-		case *schema.EnumType:
+		case *schema.EnumType, *schema.ResourceType:
 			return true
 		}
 		return false

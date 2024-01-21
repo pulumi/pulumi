@@ -67,9 +67,11 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 			write("\n")
 			indended(func() {
 				indent()
-				write("key: ")
+				write("\"string\": ")
 				writeValue(valueType.ElementType)
-				write("\n")
+				if !isPrimitiveType(valueType.ElementType) {
+					write("\n")
+				}
 			})
 		case *schema.ObjectType:
 			write("\n")
@@ -83,7 +85,8 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 					}
 				}
 			})
-
+		case *schema.ResourceType:
+			write("reference(%s)", valueType.Token)
 		case *schema.EnumType:
 			cases := make([]string, len(valueType.Elements))
 			for index, c := range valueType.Elements {

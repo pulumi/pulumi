@@ -34,8 +34,8 @@ resources:
   component:
     type: example:mod:Component
     properties:
-      local: 
-      main: 
+      local: reference(example:mod:Component2)
+      main: reference(example::MainComponent)
 
                 </code>
             </pre>

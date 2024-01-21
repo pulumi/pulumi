@@ -36,8 +36,7 @@ resources:
     properties:
       metadata: 
         annotations: 
-          key: "string"
-
+          "string": "string"
         clusterName: "string"
         creationTimestamp: "string"
         deletionGracePeriodSeconds: 0
@@ -46,8 +45,7 @@ resources:
         generateName: "string"
         generation: 0
         labels: 
-          key: "string"
-
+          "string": "string"
         managedFields: [
           apiVersion: "string"
           fieldsType: "string"
@@ -72,8 +70,7 @@ resources:
         uid: "string"
       metadataArray: [
         annotations: 
-          key: "string"
-
+          "string": "string"
         clusterName: "string"
         creationTimestamp: "string"
         deletionGracePeriodSeconds: 0
@@ -82,8 +79,7 @@ resources:
         generateName: "string"
         generation: 0
         labels: 
-          key: "string"
-
+          "string": "string"
         managedFields: [
           apiVersion: "string"
           fieldsType: "string"
@@ -108,10 +104,9 @@ resources:
         uid: "string"
       ]
       metadataMap: 
-        key: 
+        "string": 
           annotations: 
-            key: "string"
-
+            "string": "string"
           clusterName: "string"
           creationTimestamp: "string"
           deletionGracePeriodSeconds: 0
@@ -120,8 +115,7 @@ resources:
           generateName: "string"
           generation: 0
           labels: 
-            key: "string"
-
+            "string": "string"
           managedFields: [
             apiVersion: "string"
             fieldsType: "string"
@@ -147,8 +141,7 @@ resources:
 
       requiredMetadata: 
         annotations: 
-          key: "string"
-
+          "string": "string"
         clusterName: "string"
         creationTimestamp: "string"
         deletionGracePeriodSeconds: 0
@@ -157,8 +150,7 @@ resources:
         generateName: "string"
         generation: 0
         labels: 
-          key: "string"
-
+          "string": "string"
         managedFields: [
           apiVersion: "string"
           fieldsType: "string"
@@ -183,8 +175,7 @@ resources:
         uid: "string"
       requiredMetadataArray: [
         annotations: 
-          key: "string"
-
+          "string": "string"
         clusterName: "string"
         creationTimestamp: "string"
         deletionGracePeriodSeconds: 0
@@ -193,8 +184,7 @@ resources:
         generateName: "string"
         generation: 0
         labels: 
-          key: "string"
-
+          "string": "string"
         managedFields: [
           apiVersion: "string"
           fieldsType: "string"
@@ -219,10 +209,9 @@ resources:
         uid: "string"
       ]
       requiredMetadataMap: 
-        key: 
+        "string": 
           annotations: 
-            key: "string"
-
+            "string": "string"
           clusterName: "string"
           creationTimestamp: "string"
           deletionGracePeriodSeconds: 0
@@ -231,8 +220,7 @@ resources:
           generateName: "string"
           generation: 0
           labels: 
-            key: "string"
-
+            "string": "string"
           managedFields: [
             apiVersion: "string"
             fieldsType: "string"

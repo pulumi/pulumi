@@ -34,7 +34,7 @@ resources:
   registryGeoReplication:
     type: registrygeoreplication:index:RegistryGeoReplication
     properties:
-      resourceGroup: 
+      resourceGroup: reference(azure-native:resources:ResourceGroup)
 
                 </code>
             </pre>

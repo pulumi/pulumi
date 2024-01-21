@@ -671,9 +671,7 @@ func primitiveType(name string) schema.PropertySpec {
 	}
 }
 
-func TestCreationExampleSyntaxForYAML(t *testing.T) {
-	t.Parallel()
-
+func testSchemaForCreationExampleSyntax(t *testing.T) *schema.Package {
 	pkg := bindSchema(t, schema.PackageSpec{
 		Name: "test",
 		Resources: map[string]schema.ResourceSpec{
@@ -684,6 +682,7 @@ func TestCreationExampleSyntaxForYAML(t *testing.T) {
 					"c": primitiveType("number"),
 					"d": primitiveType("boolean"),
 					"e": {
+						// Array<string>
 						TypeSpec: schema.TypeSpec{
 							Type: "array",
 							Items: &schema.TypeSpec{
@@ -692,16 +691,63 @@ func TestCreationExampleSyntaxForYAML(t *testing.T) {
 						},
 					},
 					"f": {
+						// ExampleObject
 						TypeSpec: schema.TypeSpec{
 							Ref: "#/types/test:index:ExampleObject",
 						},
 					},
 					"g": {
+						// Array<ExampleObject>
 						TypeSpec: schema.TypeSpec{
 							Type: "array",
 							Items: &schema.TypeSpec{
 								Ref: "#/types/test:index:ExampleObject",
 							},
+						},
+					},
+					"h": {
+						// Map<string>
+						TypeSpec: schema.TypeSpec{
+							Type: "object",
+							AdditionalProperties: &schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					"i": {
+						// Map<ExampleObject>
+						TypeSpec: schema.TypeSpec{
+							Type: "object",
+							AdditionalProperties: &schema.TypeSpec{
+								Ref: "#/types/test:index:ExampleObject",
+							},
+						},
+					},
+					"j": {
+						// Enum
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/test:index:ExampleEnum",
+						},
+					},
+					"k": {
+						// Array<Enum>
+						TypeSpec: schema.TypeSpec{
+							Type: "array",
+							Items: &schema.TypeSpec{
+								Ref: "#/types/test:index:ExampleEnum",
+							},
+						},
+					},
+					"l": {
+						// Asset
+						TypeSpec: schema.TypeSpec{
+							Ref: "pulumi.json#/Asset",
+						},
+					},
+					"m": {
+						// Archive
+						TypeSpec: schema.TypeSpec{
+							Ref: "pulumi.json#/Archive",
 						},
 					},
 				},
@@ -717,11 +763,27 @@ func TestCreationExampleSyntaxForYAML(t *testing.T) {
 					},
 				},
 			},
+			"test:index:ExampleEnum": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "string",
+				},
+				Enum: []schema.EnumValueSpec{
+					{Name: "First", Value: "FIRST"},
+					{Name: "Second", Value: "SECOND"},
+				},
+			},
 		},
 	})
 
-	r := getBoundResource(t, pkg, "test:index:ExampleResource")
-	creationExample := genCreationExampleSyntaxYAML(r)
+	return pkg
+}
+
+func TestCreationExampleSyntaxForYAML(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxYAML(exampleResource)
 	expected := `
 name: example
 runtime: yaml
@@ -741,6 +803,19 @@ resources:
         x: "string"
         y: "string"
       ]
+      h: 
+        "string": "string"
+      i: 
+        "string": 
+          x: "string"
+          y: "string"
+
+      j: FIRST|SECOND
+      k: [FIRST|SECOND]
+      l: 
+        Fn::StringAsset: "example content"
+      m: 
+        Fn::FileAsset: ./file.txt
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
