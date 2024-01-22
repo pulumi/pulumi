@@ -1,7 +1,6 @@
 package filestate
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"testing"
@@ -46,7 +45,6 @@ func TestAzureLoginSasToken(t *testing.T) {
 	t.Cleanup(func() {
 		err := exec.Command("pulumi", "logout").Run()
 		assert.NoError(t, err)
-		fmt.Println("cleaned up 1")
 	})
 	loginAndCreateStack(t, cloudURL)
 }
@@ -81,7 +79,6 @@ func TestAzureLoginAzLogin(t *testing.T) {
 		assert.NoError(t, err)
 		err = exec.Command("pulumi", "logout").Run()
 		assert.NoError(t, err)
-		fmt.Println("cleaned up 2")
 	})
 
 	loginAndCreateStack(t, cloudURL)
