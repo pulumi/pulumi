@@ -28,9 +28,9 @@ func namespaceName(namespaces map[string]string, name string) string {
 	return strings.Join(parts, ".")
 }
 
-func propertyNameOverrides(objectType *schema.ObjectType) map[string]string {
+func propertyNameOverrides(properties []*schema.Property) map[string]string {
 	overrides := make(map[string]string)
-	for _, property := range objectType.Properties {
+	for _, property := range properties {
 		foundOverride := false
 		if csharp, ok := property.Language["csharp"]; ok {
 			if options, ok := csharp.(dotnet.CSharpPropertyInfo); ok {
@@ -182,7 +182,7 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 			write("new %s\n", typeName)
 			indent()
 			write("{\n")
-			overrides := propertyNameOverrides(valueType)
+			overrides := propertyNameOverrides(valueType.Properties)
 			indended(func() {
 				for _, p := range valueType.Properties {
 					indent()
@@ -234,10 +234,11 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 
 	write("\n")
 	write("var %s = new %s(\"%s\", new () \n{\n", camelCase(name), resourceName, camelCase(name))
+	inputPropertyOverrides := propertyNameOverrides(r.InputProperties)
 	indended(func() {
 		for _, p := range r.InputProperties {
 			indent()
-			write("%s = ", title(p.Name, "csharp"))
+			write("%s = ", resolvePropertyName(p.Name, inputPropertyOverrides))
 			writeValue(codegen.ResolvedType(p.Type))
 			write(",\n")
 		}
