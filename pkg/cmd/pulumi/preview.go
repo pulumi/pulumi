@@ -44,6 +44,13 @@ import (
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
 func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 	return promise.Run(func() (importFile, error) {
+		// We may exit the below loop early if we encounter an error, so we need to make sure we drain the events
+		// channel.
+		defer func() {
+			for range events {
+			}
+		}()
+
 		// A mapping of every URN we see to it's name, used to build later resourceSpecs
 		fullNameTable := map[resource.URN]string{}
 		// A set of all URNs we've added to the import list, used to avoid adding parents to NameTable.
