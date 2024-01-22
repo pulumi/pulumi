@@ -276,6 +276,19 @@ func installPlugins(ctx context.Context,
 func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 	deployOpts *deploymentOptions, analyzerOpts *plugin.PolicyAnalyzerOptions,
 ) error {
+	return InstallAndLoadPolicyPlugins(ctx, plugctx, analyzerOpts, deployOpts.RequiredPolicies, deployOpts.LocalPolicyPacks, func() {
+		deployOpts.Events.PolicyLoadEvent()
+	})
+}
+
+// InstallAndLoadPolicyPlugins loads and installs all requird policy plugins and packages as well as any
+// local policy packs. It returns fully populated metadata about those policy plugins.
+func InstallAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
+	analyzerOpts *plugin.PolicyAnalyzerOptions,
+	requiredPolicies []RequiredPolicy,
+	localPolicyPacks []LocalPolicyPack,
+	onLoadPolicy func(),
+) error {
 	var allValidationErrors []string
 	appendValidationErrors := func(policyPackName, policyPackVersion string, validationErrors []string) {
 		for _, validationError := range validationErrors {
@@ -286,10 +299,12 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 	}
 
 	var wg sync.WaitGroup
-	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
+	errs := make(chan error, len(requiredPolicies)+len(localPolicyPacks))
 	// Install and load required policy packs.
-	for _, policy := range deployOpts.RequiredPolicies {
-		deployOpts.Events.PolicyLoadEvent()
+	for _, policy := range requiredPolicies {
+		if (onLoadPolicy != nil) {
+			onLoadPolicy()
+		}
 		policyPath, err := policy.Install(ctx)
 		if err != nil {
 			return err
@@ -337,11 +352,13 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 	}
 
 	// Load local policy packs.
-	for i, pack := range deployOpts.LocalPolicyPacks {
+	for i, pack := range localPolicyPacks {
 		wg.Add(1)
 		go func(i int, pack LocalPolicyPack) {
 			defer wg.Done()
-			deployOpts.Events.PolicyLoadEvent()
+			if (onLoadPolicy != nil) {
+				onLoadPolicy()
+			}
 			abs, err := filepath.Abs(pack.Path)
 			if err != nil {
 				errs <- err
@@ -365,8 +382,8 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 			}
 
 			// Read and store the name and version since it won't have been supplied by anyone else yet.
-			deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
-			deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
+			localPolicyPacks[i].Name = analyzerInfo.Name
+			localPolicyPacks[i].Version = analyzerInfo.Version
 
 			// Load config, reconcile & validate it, and pass it to the policy pack.
 			if !analyzerInfo.SupportsConfig {

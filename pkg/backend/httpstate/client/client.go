@@ -143,6 +143,12 @@ func getStackPath(stack StackIdentifier, components ...string) string {
 	return path.Join(append([]string{prefix}, components...)...)
 }
 
+// listStackRequiredPoliciesPath returns the API path to return the required policy packs for a stack.
+func listStackRequiredPoliciesPath(stack StackIdentifier, components ...string) string {
+	prefix := fmt.Sprintf("/api/stacks/%s/%s/%s/policypacks", stack.Owner, stack.Project, stack.Stack)
+	return path.Join(append([]string{prefix}, components...)...)
+}
+
 // listPolicyGroupsPath returns the path for an API call to the Pulumi service to list the Policy Groups
 // in a Pulumi organization.
 func listPolicyGroupsPath(orgName string) string {
@@ -466,6 +472,17 @@ func isStackHasResourcesError(err error) bool {
 	}
 
 	return errRsp.Code == 400 && errRsp.Message == "Bad Request: Stack still contains resources."
+}
+
+func (pc *Client) ListStackRequiredPolicies(ctx context.Context, stack StackIdentifier,
+) ([]apitype.RequiredPolicy, error) {
+	path := listStackRequiredPoliciesPath(stack)
+	var resp apitype.GetStackPolicyPacksResponse
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.RequiredPolicies, nil
 }
 
 // EncryptValue encrypts a plaintext value in the context of the indicated stack.

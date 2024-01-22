@@ -411,6 +411,12 @@ const (
 	VCSRepositoryRootTag StackTagName = "vcs:root"
 )
 
+const (
+	// PulumiTagsConfigKey sets additional tags for a stack on a deployment. This is additive to any
+	// tags that are already set on the stack.
+	PulumiTagsConfigKey string = "pulumi:tags"
+)
+
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
 	OrgName     string       `json:"orgName"`

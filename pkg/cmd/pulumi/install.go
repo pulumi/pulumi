@@ -21,12 +21,14 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -142,6 +144,37 @@ func newInstallCmd() *cobra.Command {
 				if err = install.InstallWithContext(ctx, payload, reinstall); err != nil {
 					return fmt.Errorf("installing %s: %w", label, err)
 				}
+			}
+
+			b, err := currentBackend(ctx, proj, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			s, err := state.CurrentStack(ctx, b)
+			if err != nil {
+				return err
+			}
+
+			requiredPolicyPacks, err := b.ListStackRequiredPolicies(ctx, s.Ref())
+			if err != nil {
+				return err
+			}
+
+			// TODO: Hardcoded, see: #14132, #14033 for context.
+			orgName := "pulumi"
+			projName := proj.Name.String()
+			stackName := s.Ref().Name().String()
+
+			analyzerOpts := &plugin.PolicyAnalyzerOptions{
+				Organization: orgName,
+				Project:      projName,
+				Stack:        stackName,
+				Config:       map[config.Key]string{},
+				DryRun:       true,
+			}
+			if err := engine.InstallAndLoadPolicyPlugins(ctx, pctx, analyzerOpts, requiredPolicyPacks, nil, nil); err != nil {
+				return err
 			}
 
 			return nil

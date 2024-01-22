@@ -166,6 +166,9 @@ type Backend interface {
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
 	CreateStack(ctx context.Context, stackRef StackReference, root string, opts *CreateStackOptions) (Stack, error)
 
+	// ListStackRequiredPolicies lists the required policies for a stack.
+	ListStackRequiredPolicies(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)
+
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.

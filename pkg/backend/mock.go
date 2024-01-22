@@ -50,6 +50,7 @@ type MockBackend struct {
 	DoesProjectExistF      func(context.Context, string, string) (bool, error)
 	GetStackF              func(context.Context, StackReference) (Stack, error)
 	CreateStackF           func(context.Context, StackReference, string, *CreateStackOptions) (Stack, error)
+	ListStackRequiredPoliciesF func(context.Context, StackReference) ([]engine.RequiredPolicy, error)
 	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
 	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
@@ -211,6 +212,13 @@ func (be *MockBackend) CreateStack(ctx context.Context, stackRef StackReference,
 func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error) {
 	if be.RemoveStackF != nil {
 		return be.RemoveStackF(ctx, stack, force)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) ListStackRequiredPolicies(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error) {
+	if be.ListStackRequiredPoliciesF != nil {
+		return be.ListStackRequiredPoliciesF(ctx, stackRef)
 	}
 	panic("not implemented")
 }

@@ -727,6 +727,11 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(localStackRef, b), nil
 }
 
+func (b *localBackend) ListStackRequiredPolicies(ctx context.Context, stackRef backend.StackReference) ([]engine.RequiredPolicy, error) {
+	// TODO: Return an error?
+	return nil, nil
+}
+
 func (b *localBackend) ListStacks(
 	ctx context.Context, filter backend.ListStacksFilter, _ backend.ContinuationToken) (
 	[]backend.StackSummary, backend.ContinuationToken, error,
