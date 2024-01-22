@@ -38,6 +38,24 @@ const basicResource = new example.BasicResource("basicResource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var basicResource = new Example.BasicResource("basicResource", new () 
+{
+  Bar = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

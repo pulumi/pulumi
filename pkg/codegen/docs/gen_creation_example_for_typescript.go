@@ -9,15 +9,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func decomposeToken(token string) (string, string, string) {
-	components := strings.Split(token, ":")
-	if len(components) != 3 {
-		return "", "", token
-	}
-	pkg, mod, name := components[0], components[1], components[2]
-	return pkg, mod, name
-}
-
 func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 	indentSize := 0
 	buffer := bytes.Buffer{}

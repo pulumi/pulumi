@@ -38,6 +38,24 @@ const overlay = new example.overlay.Overlay("overlay", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var overlay = new Example.Overlay.Overlay("overlay", new () 
+{
+  Bar = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

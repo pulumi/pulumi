@@ -1648,6 +1648,15 @@ func isPrimitiveType(t schema.Type) bool {
 	}
 }
 
+func decomposeToken(token string) (string, string, string) {
+	components := strings.Split(token, ":")
+	if len(components) != 3 {
+		return "", "", token
+	}
+	pkg, mod, name := components[0], components[1], components[2]
+	return pkg, mod, name
+}
+
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
@@ -1720,6 +1729,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			switch lang {
 			case "nodejs":
 				creationExampleSyntax["typescript"] = genCreationExampleSyntaxTypescript(r)
+			case "csharp":
+				creationExampleSyntax["csharp"] = genCreationExampleSyntaxCSharp(r)
 			case "yaml":
 				creationExampleSyntax["yaml"] = genCreationExampleSyntaxYAML(r)
 			}

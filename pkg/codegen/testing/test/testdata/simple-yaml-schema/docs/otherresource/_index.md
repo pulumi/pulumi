@@ -39,6 +39,28 @@ const otherResource = new example.OtherResource("otherResource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var otherResource = new Example.OtherResource("otherResource", new () 
+{
+  Bar = 
+  {
+    "string"
+  },
+  Foo = reference(example::Resource),
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

@@ -883,3 +883,76 @@ const bucket = new test.s3.Bucket("bucket", {
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
+
+func TestCreationExampleSyntaxForCSharp(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxCSharp(exampleResource)
+	expected := `
+using Pulumi;
+using Test = Pulumi.Test;
+
+var exampleResource = new Test.ExampleResource("exampleResource", new () 
+{
+  A = "string",
+  B = 0,
+  C = 0.0,
+  D = true|false,
+  E = 
+  {
+    "string"
+  },
+  F = new Test.Inputs.ExampleObjectArgs
+  {
+    X = "string",
+    Y = "string",
+  },
+  G = 
+  {
+    new Test.Inputs.ExampleObjectArgs
+    {
+      X = "string",
+      Y = "string",
+    }
+  },
+  H = {
+    ["string"] = "string"
+  },
+  I = {
+    ["string"] = new Test.Inputs.ExampleObjectArgs
+    {
+      X = "string",
+      Y = "string",
+    }
+  },
+  J = "FIRST"|"SECOND",
+  K = 
+  {
+    "FIRST"|"SECOND"
+  },
+  L = new StringAsset("Hello, world!"),
+  M = new FileAsset("./file.txt"),
+});
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForCSharpWithModule(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:s3:Bucket")
+	creationExample := genCreationExampleSyntaxCSharp(exampleResource)
+	expected := `
+using Pulumi;
+using Test = Pulumi.Test;
+
+var bucket = new Test.S3.Bucket("bucket", new () 
+{
+  BucketName = "string",
+});
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}

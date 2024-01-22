@@ -41,6 +41,28 @@ const staticPage = new xyz.StaticPage("staticPage", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Xyz = Pulumi.Xyz;
+
+var staticPage = new Xyz.StaticPage("staticPage", new () 
+{
+  Foo = new Xyz.Inputs.FooArgs
+  {
+    A = true|false,
+  },
+  IndexContent = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

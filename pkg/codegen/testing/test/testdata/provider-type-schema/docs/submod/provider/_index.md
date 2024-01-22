@@ -38,6 +38,24 @@ const provider = new providerType.submod.provider("provider", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using ProviderType = Pulumi.ProviderType;
+
+var provider = new ProviderType.Submod.provider("provider", new () 
+{
+  A = true|false,
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

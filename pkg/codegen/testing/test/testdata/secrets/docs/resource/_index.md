@@ -53,6 +53,48 @@ const resource = new mypkg.Resource("resource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Mypkg = Pulumi.Mypkg;
+
+var resource = new Mypkg.Resource("resource", new () 
+{
+  Config = new Mypkg.Inputs.ConfigArgs
+  {
+    Foo = "string",
+  },
+  ConfigArray = 
+  {
+    new Mypkg.Inputs.ConfigArgs
+    {
+      Foo = "string",
+    }
+  },
+  ConfigMap = {
+    ["string"] = new Mypkg.Inputs.ConfigArgs
+    {
+      Foo = "string",
+    }
+  },
+  Foo = "string",
+  FooArray = 
+  {
+    "string"
+  },
+  FooMap = {
+    ["string"] = "string"
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

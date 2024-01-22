@@ -47,6 +47,34 @@ const rubberTree = new plant.tree.v1.RubberTree("rubberTree", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Plant = Pulumi.Plant;
+
+var rubberTree = new Plant.Tree.v1.RubberTree("rubberTree", new () 
+{
+  Container = new Plant.Inputs.ContainerArgs
+  {
+    Brightness = ZeroPointOne|One,
+    Color = "red"|"blue"|"yellow",
+    Material = "string",
+    Size = FourInch|SixInch|EightInch,
+  },
+  Diameter = sixinch|twelveinch,
+  Farm = "Pulumi Planters Inc."|"Plants'R'Us",
+  Size = "small"|"medium"|"large",
+  Type = "Burgundy"|"Ruby"|"Tineke",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

@@ -51,6 +51,44 @@ const cat = new example.Cat("cat", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var cat = new Example.Cat("cat", new () 
+{
+  Age = 0,
+  Pet = new Example.Inputs.PetArgs
+  {
+    Age = 0,
+    Name = reference(random:index/randomPet:RandomPet),
+    NameArray = 
+    {
+      reference(random:index/randomPet:RandomPet)
+    },
+    NameMap = {
+      ["string"] = reference(random:index/randomPet:RandomPet)
+    },
+    RequiredName = reference(random:index/randomPet:RandomPet),
+    RequiredNameArray = 
+    {
+      reference(random:index/randomPet:RandomPet)
+    },
+    RequiredNameMap = {
+      ["string"] = reference(random:index/randomPet:RandomPet)
+    },
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

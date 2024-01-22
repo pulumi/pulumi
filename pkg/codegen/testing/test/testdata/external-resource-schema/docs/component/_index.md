@@ -263,6 +263,327 @@ const component = new example.Component("component", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var component = new Example.Component("component", new () 
+{
+  Metadata = new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
+  {
+    Annotations = {
+      ["string"] = "string"
+    },
+    ClusterName = "string",
+    CreationTimestamp = "string",
+    DeletionGracePeriodSeconds = 0,
+    DeletionTimestamp = "string",
+    Finalizers = 
+    {
+      "string"
+    },
+    GenerateName = "string",
+    Generation = 0,
+    Labels = {
+      ["string"] = "string"
+    },
+    ManagedFields = 
+    {
+      new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
+      {
+        ApiVersion = "string",
+        FieldsType = "string",
+        FieldsV1 = ,
+        Manager = "string",
+        Operation = "string",
+        Subresource = "string",
+        Time = "string",
+      }
+    },
+    Name = "string",
+    Namespace = "string",
+    OwnerReferences = 
+    {
+      new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
+      {
+        ApiVersion = "string",
+        BlockOwnerDeletion = true|false,
+        Controller = true|false,
+        Kind = "string",
+        Name = "string",
+        Uid = "string",
+      }
+    },
+    ResourceVersion = "string",
+    SelfLink = "string",
+    Uid = "string",
+  },
+  MetadataArray = 
+  {
+    new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
+    {
+      Annotations = {
+        ["string"] = "string"
+      },
+      ClusterName = "string",
+      CreationTimestamp = "string",
+      DeletionGracePeriodSeconds = 0,
+      DeletionTimestamp = "string",
+      Finalizers = 
+      {
+        "string"
+      },
+      GenerateName = "string",
+      Generation = 0,
+      Labels = {
+        ["string"] = "string"
+      },
+      ManagedFields = 
+      {
+        new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
+        {
+          ApiVersion = "string",
+          FieldsType = "string",
+          FieldsV1 = ,
+          Manager = "string",
+          Operation = "string",
+          Subresource = "string",
+          Time = "string",
+        }
+      },
+      Name = "string",
+      Namespace = "string",
+      OwnerReferences = 
+      {
+        new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
+        {
+          ApiVersion = "string",
+          BlockOwnerDeletion = true|false,
+          Controller = true|false,
+          Kind = "string",
+          Name = "string",
+          Uid = "string",
+        }
+      },
+      ResourceVersion = "string",
+      SelfLink = "string",
+      Uid = "string",
+    }
+  },
+  MetadataMap = {
+    ["string"] = new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
+    {
+      Annotations = {
+        ["string"] = "string"
+      },
+      ClusterName = "string",
+      CreationTimestamp = "string",
+      DeletionGracePeriodSeconds = 0,
+      DeletionTimestamp = "string",
+      Finalizers = 
+      {
+        "string"
+      },
+      GenerateName = "string",
+      Generation = 0,
+      Labels = {
+        ["string"] = "string"
+      },
+      ManagedFields = 
+      {
+        new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
+        {
+          ApiVersion = "string",
+          FieldsType = "string",
+          FieldsV1 = ,
+          Manager = "string",
+          Operation = "string",
+          Subresource = "string",
+          Time = "string",
+        }
+      },
+      Name = "string",
+      Namespace = "string",
+      OwnerReferences = 
+      {
+        new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
+        {
+          ApiVersion = "string",
+          BlockOwnerDeletion = true|false,
+          Controller = true|false,
+          Kind = "string",
+          Name = "string",
+          Uid = "string",
+        }
+      },
+      ResourceVersion = "string",
+      SelfLink = "string",
+      Uid = "string",
+    }
+  },
+  RequiredMetadata = new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
+  {
+    Annotations = {
+      ["string"] = "string"
+    },
+    ClusterName = "string",
+    CreationTimestamp = "string",
+    DeletionGracePeriodSeconds = 0,
+    DeletionTimestamp = "string",
+    Finalizers = 
+    {
+      "string"
+    },
+    GenerateName = "string",
+    Generation = 0,
+    Labels = {
+      ["string"] = "string"
+    },
+    ManagedFields = 
+    {
+      new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
+      {
+        ApiVersion = "string",
+        FieldsType = "string",
+        FieldsV1 = ,
+        Manager = "string",
+        Operation = "string",
+        Subresource = "string",
+        Time = "string",
+      }
+    },
+    Name = "string",
+    Namespace = "string",
+    OwnerReferences = 
+    {
+      new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
+      {
+        ApiVersion = "string",
+        BlockOwnerDeletion = true|false,
+        Controller = true|false,
+        Kind = "string",
+        Name = "string",
+        Uid = "string",
+      }
+    },
+    ResourceVersion = "string",
+    SelfLink = "string",
+    Uid = "string",
+  },
+  RequiredMetadataArray = 
+  {
+    new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
+    {
+      Annotations = {
+        ["string"] = "string"
+      },
+      ClusterName = "string",
+      CreationTimestamp = "string",
+      DeletionGracePeriodSeconds = 0,
+      DeletionTimestamp = "string",
+      Finalizers = 
+      {
+        "string"
+      },
+      GenerateName = "string",
+      Generation = 0,
+      Labels = {
+        ["string"] = "string"
+      },
+      ManagedFields = 
+      {
+        new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
+        {
+          ApiVersion = "string",
+          FieldsType = "string",
+          FieldsV1 = ,
+          Manager = "string",
+          Operation = "string",
+          Subresource = "string",
+          Time = "string",
+        }
+      },
+      Name = "string",
+      Namespace = "string",
+      OwnerReferences = 
+      {
+        new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
+        {
+          ApiVersion = "string",
+          BlockOwnerDeletion = true|false,
+          Controller = true|false,
+          Kind = "string",
+          Name = "string",
+          Uid = "string",
+        }
+      },
+      ResourceVersion = "string",
+      SelfLink = "string",
+      Uid = "string",
+    }
+  },
+  RequiredMetadataMap = {
+    ["string"] = new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
+    {
+      Annotations = {
+        ["string"] = "string"
+      },
+      ClusterName = "string",
+      CreationTimestamp = "string",
+      DeletionGracePeriodSeconds = 0,
+      DeletionTimestamp = "string",
+      Finalizers = 
+      {
+        "string"
+      },
+      GenerateName = "string",
+      Generation = 0,
+      Labels = {
+        ["string"] = "string"
+      },
+      ManagedFields = 
+      {
+        new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
+        {
+          ApiVersion = "string",
+          FieldsType = "string",
+          FieldsV1 = ,
+          Manager = "string",
+          Operation = "string",
+          Subresource = "string",
+          Time = "string",
+        }
+      },
+      Name = "string",
+      Namespace = "string",
+      OwnerReferences = 
+      {
+        new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
+        {
+          ApiVersion = "string",
+          BlockOwnerDeletion = true|false,
+          Controller = true|false,
+          Kind = "string",
+          Name = "string",
+          Uid = "string",
+        }
+      },
+      ResourceVersion = "string",
+      SelfLink = "string",
+      Uid = "string",
+    }
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

@@ -41,6 +41,30 @@ const nursery = new plant.tree.v1.Nursery("nursery", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Plant = Pulumi.Plant;
+
+var nursery = new Plant.Tree.v1.Nursery("nursery", new () 
+{
+  Sizes = {
+    ["string"] = "small"|"medium"|"large"
+  },
+  Varieties = 
+  {
+    "Burgundy"|"Ruby"|"Tineke"
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

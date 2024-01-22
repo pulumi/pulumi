@@ -54,6 +54,40 @@ const moduleResource = new foobar.ModuleResource("moduleResource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Foobar = Pulumi.Foobar;
+
+var moduleResource = new Foobar.ModuleResource("moduleResource", new () 
+{
+  Optional_bool = true|false,
+  Optional_const = "string",
+  Optional_enum = Four|Six|Eight,
+  Optional_number = 0.0,
+  Optional_string = "string",
+  Plain_optional_bool = true|false,
+  Plain_optional_const = "string",
+  Plain_optional_number = 0.0,
+  Plain_optional_string = "string",
+  Plain_required_bool = true|false,
+  Plain_required_const = "string",
+  Plain_required_number = 0.0,
+  Plain_required_string = "string",
+  Required_bool = true|false,
+  Required_enum = Four|Six|Eight,
+  Required_number = 0.0,
+  Required_string = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

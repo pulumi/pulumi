@@ -38,6 +38,27 @@ const exampleServer = new example.ExampleServer("exampleServer", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var exampleServer = new Example.ExampleServer("exampleServer", new () 
+{
+  PropertiesCollection = 
+  {
+    
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

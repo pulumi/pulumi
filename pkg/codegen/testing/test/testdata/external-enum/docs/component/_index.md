@@ -39,6 +39,25 @@ const component = new example.Component("component", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var component = new Example.Component("component", new () 
+{
+  LocalEnum = pi|small,
+  RemoteEnum = "MANAGEMENT_UNSPECIFIED"|"NONE"|"BASIC"|"COMPLETE",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

@@ -45,6 +45,32 @@ const resourceWithAssets = new example.ResourceWithAssets("resourceWithAssets", 
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var resourceWithAssets = new Example.ResourceWithAssets("resourceWithAssets", new () 
+{
+  Archive = new FileAsset("./file.txt"),
+  Nested = new Example.Inputs.TypeWithAssetsArgs
+  {
+    Archive = new FileAsset("./file.txt"),
+    Asset = new StringAsset("Hello, world!"),
+    PlainArchive = new FileAsset("./file.txt"),
+    PlainAsset = new StringAsset("Hello, world!"),
+  },
+  Source = new StringAsset("Hello, world!"),
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

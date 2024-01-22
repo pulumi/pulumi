@@ -60,6 +60,64 @@ const typeUses = new example.TypeUses("typeUses", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var typeUses = new Example.TypeUses("typeUses", new () 
+{
+  Bar = new Example.Inputs.SomeOtherObjectArgs
+  {
+    Baz = "string",
+  },
+  Baz = new Example.Inputs.ObjectWithNodeOptionalInputsArgs
+  {
+    Bar = 0,
+    Foo = "string",
+  },
+  Foo = new Example.Inputs.ObjectArgs
+  {
+    Bar = "string",
+    Configs = 
+    {
+      new Example.Inputs.ConfigMapArgs
+      {
+        Config = "string",
+      }
+    },
+    Foo = reference(example::Resource),
+    Others = 
+    {
+      
+      {
+        new Example.Inputs.SomeOtherObjectArgs
+        {
+          Baz = "string",
+        }
+      }
+    },
+    StillOthers = {
+      ["string"] = 
+      {
+        new Example.Inputs.SomeOtherObjectArgs
+        {
+          Baz = "string",
+        }
+      }
+    },
+  },
+  Qux = "Burgundy"|"Ruby"|"Tineke",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

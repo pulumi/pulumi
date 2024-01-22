@@ -77,6 +77,70 @@ const component = new example.Component("component", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var component = new Example.Component("component", new () 
+{
+  A = true|false,
+  B = true|false,
+  Bar = new Example.Inputs.FooArgs
+  {
+    A = true|false,
+    B = true|false,
+    C = 0,
+    D = 0,
+    E = "string",
+    F = "string",
+  },
+  Baz = 
+  {
+    new Example.Inputs.FooArgs
+    {
+      A = true|false,
+      B = true|false,
+      C = 0,
+      D = 0,
+      E = "string",
+      F = "string",
+    }
+  },
+  BazMap = {
+    ["string"] = new Example.Inputs.FooArgs
+    {
+      A = true|false,
+      B = true|false,
+      C = 0,
+      D = 0,
+      E = "string",
+      F = "string",
+    }
+  },
+  C = 0,
+  D = 0,
+  E = "string",
+  F = "string",
+  Foo = new Example.Inputs.FooArgs
+  {
+    A = true|false,
+    B = true|false,
+    C = 0,
+    D = 0,
+    E = "string",
+    F = "string",
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

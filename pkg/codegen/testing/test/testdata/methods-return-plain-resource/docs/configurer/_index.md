@@ -38,6 +38,24 @@ const configurer = new metaprovider.Configurer("configurer", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Metaprovider = Pulumi.Metaprovider;
+
+var configurer = new Metaprovider.Configurer("configurer", new () 
+{
+  TlsProxy = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

@@ -39,6 +39,25 @@ const component = new example.mod.Component("component", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var component = new Example.Mod.Component("component", new () 
+{
+  Local = reference(example:mod:Component2),
+  Main = reference(example::MainComponent),
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

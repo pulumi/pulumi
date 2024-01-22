@@ -41,6 +41,25 @@ const res = new urnid.Res("res", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Urnid = Pulumi.Urnid;
+
+var res = new Urnid.Res("res", new () 
+{
+  Id = "string",
+  Urn = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

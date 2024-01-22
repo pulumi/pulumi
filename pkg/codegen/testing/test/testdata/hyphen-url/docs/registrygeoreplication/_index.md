@@ -38,6 +38,24 @@ const registryGeoReplication = new registrygeoreplication.RegistryGeoReplication
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Registrygeoreplication = Pulumi.Registrygeoreplication;
+
+var registryGeoReplication = new Registrygeoreplication.RegistryGeoReplication("registryGeoReplication", new () 
+{
+  ResourceGroup = reference(azure-native:resources:ResourceGroup),
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

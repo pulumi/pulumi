@@ -38,6 +38,24 @@ const fooResource = new foo.FooResource("fooResource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Foo = Pulumi.Foo;
+
+var fooResource = new Foo.FooResource("fooResource", new () 
+{
+  Foo = reference(example::Resource),
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

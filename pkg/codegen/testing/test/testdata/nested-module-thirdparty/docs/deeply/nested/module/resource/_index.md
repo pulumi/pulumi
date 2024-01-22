@@ -38,6 +38,24 @@ const resource = new foo-bar.deeply.nested.module.Resource("resource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Foo-bar = Pulumi.Foo-bar;
+
+var resource = new Foo-bar.Deeply.nested.module.Resource("resource", new () 
+{
+  Baz = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

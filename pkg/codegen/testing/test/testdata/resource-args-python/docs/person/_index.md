@@ -41,6 +41,31 @@ const person = new example.Person("person", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var person = new Example.Person("person", new () 
+{
+  Name = "string",
+  Pets = 
+  {
+    new Example.Inputs.PetArgs
+    {
+      Name = "string",
+    }
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

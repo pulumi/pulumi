@@ -38,6 +38,24 @@ const resource = new foo.nested.module.Resource("resource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Foo = Pulumi.Foo;
+
+var resource = new Foo.Nested.module.Resource("resource", new () 
+{
+  Bar = "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

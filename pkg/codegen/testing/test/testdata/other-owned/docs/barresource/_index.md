@@ -38,6 +38,24 @@ const barResource = new bar.BarResource("barResource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Bar = Pulumi.Bar;
+
+var barResource = new Bar.BarResource("barResource", new () 
+{
+  Foo = reference(example::Resource),
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>

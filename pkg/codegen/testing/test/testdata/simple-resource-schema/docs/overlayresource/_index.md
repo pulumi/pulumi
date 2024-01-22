@@ -41,6 +41,28 @@ const overlayResource = new example.OverlayResource("overlayResource", {
 </div>
 
 
+<div>
+    <pulumi-choosable type="language" values="csharp">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-csharp" data-lang="csharp">
+using Pulumi;
+using Example = Pulumi.Example;
+
+var overlayResource = new Example.OverlayResource("overlayResource", new () 
+{
+  Bar = "SOME_ENUM_VALUE",
+  Foo = new Example.Inputs.ConfigMapOverlayArgs
+  {
+    Config = "string",
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 <div>
