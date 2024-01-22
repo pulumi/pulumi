@@ -91,6 +91,37 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		return fmt.Sprintf("%s%s.%s", rootNamespace, namespace, title(member, "csharp"))
 	}
 
+	resourceTypeName := func(resourceToken string) string {
+		// Compute the resource type from the Pulumi type token.
+		pkg, module, member := decomposeToken(resourceToken)
+
+		if csharpLanguageInfo, ok := pkgDef.Language["csharp"]; ok {
+			if resourceInfo, ok := csharpLanguageInfo.(dotnet.CSharpResourceInfo); ok {
+				member = resourceInfo.Name
+			}
+		}
+
+		namespaces := namespaces[pkg]
+		rootNamespace := namespaceName(namespaces, pkg)
+
+		namespace := namespaceName(namespaces, module)
+		if strings.ToLower(namespace) == "index" {
+			namespace = ""
+		}
+		namespaceTokens := strings.Split(namespace, "/")
+		for i, name := range namespaceTokens {
+			namespaceTokens[i] = title(name, "csharp")
+		}
+		namespace = strings.Join(namespaceTokens, ".")
+
+		if namespace != "" {
+			namespace = "." + namespace
+		}
+
+		qualifiedMemberName := fmt.Sprintf("%s%s.%s", rootNamespace, namespace, title(member, "csharp"))
+		return qualifiedMemberName
+	}
+
 	indentSize := 0
 	buffer := bytes.Buffer{}
 	write := func(format string, args ...interface{}) {
@@ -126,7 +157,7 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 
 		switch valueType := valueType.(type) {
 		case *schema.ArrayType:
-			write("\n")
+			write("new []\n")
 			indent()
 			write("{\n")
 			indended(func() {
@@ -193,19 +224,16 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		}
 	}
 
+	resourceName := resourceTypeName(r.Token)
 	pkg, mod, name := decomposeToken(r.Token)
 	mod = title(strings.ReplaceAll(mod, "/", "."), "csharp")
 	pkg = title(pkg, "csharp")
-	resourceType := fmt.Sprintf("%s.%s.%s", pkg, mod, name)
-	if mod == "" || mod == "Index" {
-		resourceType = fmt.Sprintf("%s.%s", pkg, name)
-	}
 
 	write("using Pulumi;\n")
 	write("using %s = Pulumi.%s;\n", pkg, pkg)
 
 	write("\n")
-	write("var %s = new %s(\"%s\", new () \n{\n", camelCase(name), resourceType, camelCase(name))
+	write("var %s = new %s(\"%s\", new () \n{\n", camelCase(name), resourceName, camelCase(name))
 	indended(func() {
 		for _, p := range r.InputProperties {
 			indent()

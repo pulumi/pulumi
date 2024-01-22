@@ -1484,7 +1484,7 @@ var component = new Foo.Component("component", new ()
   EniConfig = {
     ["string"] = new Kubernetes.Crd.k8s.amazonaws.com.V1alpha1.Inputs.ENIConfigSpecArgs
     {
-      SecurityGroups = 
+      SecurityGroups = new []
       {
         "string"
       },
@@ -1504,7 +1504,7 @@ var component = new Foo.Component("component", new ()
       CreationTimestamp = "string",
       DeletionGracePeriodSeconds = 0,
       DeletionTimestamp = "string",
-      Finalizers = 
+      Finalizers = new []
       {
         "string"
       },
@@ -1513,7 +1513,7 @@ var component = new Foo.Component("component", new ()
       Labels = {
         ["string"] = "string"
       },
-      ManagedFields = 
+      ManagedFields = new []
       {
         new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
         {
@@ -1528,7 +1528,7 @@ var component = new Foo.Component("component", new ()
       },
       Name = "string",
       Namespace = "string",
-      OwnerReferences = 
+      OwnerReferences = new []
       {
         new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
         {
@@ -1551,31 +1551,31 @@ var component = new Foo.Component("component", new ()
       {
         NodeAffinity = new Kubernetes.Core.V1.Inputs.NodeAffinityArgs
         {
-          PreferredDuringSchedulingIgnoredDuringExecution = 
+          PreferredDuringSchedulingIgnoredDuringExecution = new []
           {
             new Kubernetes.Core.V1.Inputs.PreferredSchedulingTermArgs
             {
               Preference = new Kubernetes.Core.V1.Inputs.NodeSelectorTermArgs
               {
-                MatchExpressions = 
+                MatchExpressions = new []
                 {
                   new Kubernetes.Core.V1.Inputs.NodeSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
                   }
                 },
-                MatchFields = 
+                MatchFields = new []
                 {
                   new Kubernetes.Core.V1.Inputs.NodeSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
@@ -1587,29 +1587,29 @@ var component = new Foo.Component("component", new ()
           },
           RequiredDuringSchedulingIgnoredDuringExecution = new Kubernetes.Core.V1.Inputs.NodeSelectorArgs
           {
-            NodeSelectorTerms = 
+            NodeSelectorTerms = new []
             {
               new Kubernetes.Core.V1.Inputs.NodeSelectorTermArgs
               {
-                MatchExpressions = 
+                MatchExpressions = new []
                 {
                   new Kubernetes.Core.V1.Inputs.NodeSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
                   }
                 },
-                MatchFields = 
+                MatchFields = new []
                 {
                   new Kubernetes.Core.V1.Inputs.NodeSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
@@ -1621,7 +1621,7 @@ var component = new Foo.Component("component", new ()
         },
         PodAffinity = new Kubernetes.Core.V1.Inputs.PodAffinityArgs
         {
-          PreferredDuringSchedulingIgnoredDuringExecution = 
+          PreferredDuringSchedulingIgnoredDuringExecution = new []
           {
             new Kubernetes.Core.V1.Inputs.WeightedPodAffinityTermArgs
             {
@@ -1629,13 +1629,13 @@ var component = new Foo.Component("component", new ()
               {
                 LabelSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
                 {
-                  MatchExpressions = 
+                  MatchExpressions = new []
                   {
                     new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                     {
                       Key = "string",
                       Operator = "string",
-                      Values = 
+                      Values = new []
                       {
                         "string"
                       },
@@ -1647,13 +1647,13 @@ var component = new Foo.Component("component", new ()
                 },
                 NamespaceSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
                 {
-                  MatchExpressions = 
+                  MatchExpressions = new []
                   {
                     new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                     {
                       Key = "string",
                       Operator = "string",
-                      Values = 
+                      Values = new []
                       {
                         "string"
                       },
@@ -1663,7 +1663,7 @@ var component = new Foo.Component("component", new ()
                     ["string"] = "string"
                   },
                 },
-                Namespaces = 
+                Namespaces = new []
                 {
                   "string"
                 },
@@ -1672,19 +1672,19 @@ var component = new Foo.Component("component", new ()
               Weight = 0,
             }
           },
-          RequiredDuringSchedulingIgnoredDuringExecution = 
+          RequiredDuringSchedulingIgnoredDuringExecution = new []
           {
             new Kubernetes.Core.V1.Inputs.PodAffinityTermArgs
             {
               LabelSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
               {
-                MatchExpressions = 
+                MatchExpressions = new []
                 {
                   new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
@@ -1696,13 +1696,13 @@ var component = new Foo.Component("component", new ()
               },
               NamespaceSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
               {
-                MatchExpressions = 
+                MatchExpressions = new []
                 {
                   new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
@@ -1712,7 +1712,7 @@ var component = new Foo.Component("component", new ()
                   ["string"] = "string"
                 },
               },
-              Namespaces = 
+              Namespaces = new []
               {
                 "string"
               },
@@ -1722,7 +1722,7 @@ var component = new Foo.Component("component", new ()
         },
         PodAntiAffinity = new Kubernetes.Core.V1.Inputs.PodAntiAffinityArgs
         {
-          PreferredDuringSchedulingIgnoredDuringExecution = 
+          PreferredDuringSchedulingIgnoredDuringExecution = new []
           {
             new Kubernetes.Core.V1.Inputs.WeightedPodAffinityTermArgs
             {
@@ -1730,13 +1730,13 @@ var component = new Foo.Component("component", new ()
               {
                 LabelSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
                 {
-                  MatchExpressions = 
+                  MatchExpressions = new []
                   {
                     new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                     {
                       Key = "string",
                       Operator = "string",
-                      Values = 
+                      Values = new []
                       {
                         "string"
                       },
@@ -1748,13 +1748,13 @@ var component = new Foo.Component("component", new ()
                 },
                 NamespaceSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
                 {
-                  MatchExpressions = 
+                  MatchExpressions = new []
                   {
                     new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                     {
                       Key = "string",
                       Operator = "string",
-                      Values = 
+                      Values = new []
                       {
                         "string"
                       },
@@ -1764,7 +1764,7 @@ var component = new Foo.Component("component", new ()
                     ["string"] = "string"
                   },
                 },
-                Namespaces = 
+                Namespaces = new []
                 {
                   "string"
                 },
@@ -1773,19 +1773,19 @@ var component = new Foo.Component("component", new ()
               Weight = 0,
             }
           },
-          RequiredDuringSchedulingIgnoredDuringExecution = 
+          RequiredDuringSchedulingIgnoredDuringExecution = new []
           {
             new Kubernetes.Core.V1.Inputs.PodAffinityTermArgs
             {
               LabelSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
               {
-                MatchExpressions = 
+                MatchExpressions = new []
                 {
                   new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
@@ -1797,13 +1797,13 @@ var component = new Foo.Component("component", new ()
               },
               NamespaceSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
               {
-                MatchExpressions = 
+                MatchExpressions = new []
                 {
                   new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                   {
                     Key = "string",
                     Operator = "string",
-                    Values = 
+                    Values = new []
                     {
                       "string"
                     },
@@ -1813,7 +1813,7 @@ var component = new Foo.Component("component", new ()
                   ["string"] = "string"
                 },
               },
-              Namespaces = 
+              Namespaces = new []
               {
                 "string"
               },
@@ -1823,19 +1823,19 @@ var component = new Foo.Component("component", new ()
         },
       },
       AutomountServiceAccountToken = true|false,
-      Containers = 
+      Containers = new []
       {
         new Kubernetes.Core.V1.Inputs.ContainerArgs
         {
-          Args = 
+          Args = new []
           {
             "string"
           },
-          Command = 
+          Command = new []
           {
             "string"
           },
-          Env = 
+          Env = new []
           {
             new Kubernetes.Core.V1.Inputs.EnvVarArgs
             {
@@ -1869,7 +1869,7 @@ var component = new Foo.Component("component", new ()
               },
             }
           },
-          EnvFrom = 
+          EnvFrom = new []
           {
             new Kubernetes.Core.V1.Inputs.EnvFromSourceArgs
             {
@@ -1894,7 +1894,7 @@ var component = new Foo.Component("component", new ()
             {
               Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
               {
-                Command = 
+                Command = new []
                 {
                   "string"
                 },
@@ -1902,7 +1902,7 @@ var component = new Foo.Component("component", new ()
               HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
               {
                 Host = "string",
-                HttpHeaders = 
+                HttpHeaders = new []
                 {
                   new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                   {
@@ -1924,7 +1924,7 @@ var component = new Foo.Component("component", new ()
             {
               Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
               {
-                Command = 
+                Command = new []
                 {
                   "string"
                 },
@@ -1932,7 +1932,7 @@ var component = new Foo.Component("component", new ()
               HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
               {
                 Host = "string",
-                HttpHeaders = 
+                HttpHeaders = new []
                 {
                   new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                   {
@@ -1955,7 +1955,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -1964,7 +1964,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -1988,7 +1988,7 @@ var component = new Foo.Component("component", new ()
             TimeoutSeconds = 0,
           },
           Name = "string",
-          Ports = 
+          Ports = new []
           {
             new Kubernetes.Core.V1.Inputs.ContainerPortArgs
             {
@@ -2003,7 +2003,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2012,7 +2012,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2049,11 +2049,11 @@ var component = new Foo.Component("component", new ()
             AllowPrivilegeEscalation = true|false,
             Capabilities = new Kubernetes.Core.V1.Inputs.CapabilitiesArgs
             {
-              Add = 
+              Add = new []
               {
                 "string"
               },
-              Drop = 
+              Drop = new []
               {
                 "string"
               },
@@ -2088,7 +2088,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2097,7 +2097,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2125,7 +2125,7 @@ var component = new Foo.Component("component", new ()
           TerminationMessagePath = "string",
           TerminationMessagePolicy = "string",
           Tty = true|false,
-          VolumeDevices = 
+          VolumeDevices = new []
           {
             new Kubernetes.Core.V1.Inputs.VolumeDeviceArgs
             {
@@ -2133,7 +2133,7 @@ var component = new Foo.Component("component", new ()
               Name = "string",
             }
           },
-          VolumeMounts = 
+          VolumeMounts = new []
           {
             new Kubernetes.Core.V1.Inputs.VolumeMountArgs
             {
@@ -2150,11 +2150,11 @@ var component = new Foo.Component("component", new ()
       },
       DnsConfig = new Kubernetes.Core.V1.Inputs.PodDNSConfigArgs
       {
-        Nameservers = 
+        Nameservers = new []
         {
           "string"
         },
-        Options = 
+        Options = new []
         {
           new Kubernetes.Core.V1.Inputs.PodDNSConfigOptionArgs
           {
@@ -2162,26 +2162,26 @@ var component = new Foo.Component("component", new ()
             Value = "string",
           }
         },
-        Searches = 
+        Searches = new []
         {
           "string"
         },
       },
       DnsPolicy = "string",
       EnableServiceLinks = true|false,
-      EphemeralContainers = 
+      EphemeralContainers = new []
       {
         new Kubernetes.Core.V1.Inputs.EphemeralContainerArgs
         {
-          Args = 
+          Args = new []
           {
             "string"
           },
-          Command = 
+          Command = new []
           {
             "string"
           },
-          Env = 
+          Env = new []
           {
             new Kubernetes.Core.V1.Inputs.EnvVarArgs
             {
@@ -2215,7 +2215,7 @@ var component = new Foo.Component("component", new ()
               },
             }
           },
-          EnvFrom = 
+          EnvFrom = new []
           {
             new Kubernetes.Core.V1.Inputs.EnvFromSourceArgs
             {
@@ -2240,7 +2240,7 @@ var component = new Foo.Component("component", new ()
             {
               Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
               {
-                Command = 
+                Command = new []
                 {
                   "string"
                 },
@@ -2248,7 +2248,7 @@ var component = new Foo.Component("component", new ()
               HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
               {
                 Host = "string",
-                HttpHeaders = 
+                HttpHeaders = new []
                 {
                   new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                   {
@@ -2270,7 +2270,7 @@ var component = new Foo.Component("component", new ()
             {
               Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
               {
-                Command = 
+                Command = new []
                 {
                   "string"
                 },
@@ -2278,7 +2278,7 @@ var component = new Foo.Component("component", new ()
               HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
               {
                 Host = "string",
-                HttpHeaders = 
+                HttpHeaders = new []
                 {
                   new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                   {
@@ -2301,7 +2301,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2310,7 +2310,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2334,7 +2334,7 @@ var component = new Foo.Component("component", new ()
             TimeoutSeconds = 0,
           },
           Name = "string",
-          Ports = 
+          Ports = new []
           {
             new Kubernetes.Core.V1.Inputs.ContainerPortArgs
             {
@@ -2349,7 +2349,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2358,7 +2358,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2395,11 +2395,11 @@ var component = new Foo.Component("component", new ()
             AllowPrivilegeEscalation = true|false,
             Capabilities = new Kubernetes.Core.V1.Inputs.CapabilitiesArgs
             {
-              Add = 
+              Add = new []
               {
                 "string"
               },
-              Drop = 
+              Drop = new []
               {
                 "string"
               },
@@ -2434,7 +2434,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2443,7 +2443,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2472,7 +2472,7 @@ var component = new Foo.Component("component", new ()
           TerminationMessagePath = "string",
           TerminationMessagePolicy = "string",
           Tty = true|false,
-          VolumeDevices = 
+          VolumeDevices = new []
           {
             new Kubernetes.Core.V1.Inputs.VolumeDeviceArgs
             {
@@ -2480,7 +2480,7 @@ var component = new Foo.Component("component", new ()
               Name = "string",
             }
           },
-          VolumeMounts = 
+          VolumeMounts = new []
           {
             new Kubernetes.Core.V1.Inputs.VolumeMountArgs
             {
@@ -2495,11 +2495,11 @@ var component = new Foo.Component("component", new ()
           WorkingDir = "string",
         }
       },
-      HostAliases = 
+      HostAliases = new []
       {
         new Kubernetes.Core.V1.Inputs.HostAliasArgs
         {
-          Hostnames = 
+          Hostnames = new []
           {
             "string"
           },
@@ -2510,26 +2510,26 @@ var component = new Foo.Component("component", new ()
       HostNetwork = true|false,
       HostPID = true|false,
       Hostname = "string",
-      ImagePullSecrets = 
+      ImagePullSecrets = new []
       {
         new Kubernetes.Core.V1.Inputs.LocalObjectReferenceArgs
         {
           Name = "string",
         }
       },
-      InitContainers = 
+      InitContainers = new []
       {
         new Kubernetes.Core.V1.Inputs.ContainerArgs
         {
-          Args = 
+          Args = new []
           {
             "string"
           },
-          Command = 
+          Command = new []
           {
             "string"
           },
-          Env = 
+          Env = new []
           {
             new Kubernetes.Core.V1.Inputs.EnvVarArgs
             {
@@ -2563,7 +2563,7 @@ var component = new Foo.Component("component", new ()
               },
             }
           },
-          EnvFrom = 
+          EnvFrom = new []
           {
             new Kubernetes.Core.V1.Inputs.EnvFromSourceArgs
             {
@@ -2588,7 +2588,7 @@ var component = new Foo.Component("component", new ()
             {
               Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
               {
-                Command = 
+                Command = new []
                 {
                   "string"
                 },
@@ -2596,7 +2596,7 @@ var component = new Foo.Component("component", new ()
               HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
               {
                 Host = "string",
-                HttpHeaders = 
+                HttpHeaders = new []
                 {
                   new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                   {
@@ -2618,7 +2618,7 @@ var component = new Foo.Component("component", new ()
             {
               Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
               {
-                Command = 
+                Command = new []
                 {
                   "string"
                 },
@@ -2626,7 +2626,7 @@ var component = new Foo.Component("component", new ()
               HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
               {
                 Host = "string",
-                HttpHeaders = 
+                HttpHeaders = new []
                 {
                   new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                   {
@@ -2649,7 +2649,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2658,7 +2658,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2682,7 +2682,7 @@ var component = new Foo.Component("component", new ()
             TimeoutSeconds = 0,
           },
           Name = "string",
-          Ports = 
+          Ports = new []
           {
             new Kubernetes.Core.V1.Inputs.ContainerPortArgs
             {
@@ -2697,7 +2697,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2706,7 +2706,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2743,11 +2743,11 @@ var component = new Foo.Component("component", new ()
             AllowPrivilegeEscalation = true|false,
             Capabilities = new Kubernetes.Core.V1.Inputs.CapabilitiesArgs
             {
-              Add = 
+              Add = new []
               {
                 "string"
               },
-              Drop = 
+              Drop = new []
               {
                 "string"
               },
@@ -2782,7 +2782,7 @@ var component = new Foo.Component("component", new ()
           {
             Exec = new Kubernetes.Core.V1.Inputs.ExecActionArgs
             {
-              Command = 
+              Command = new []
               {
                 "string"
               },
@@ -2791,7 +2791,7 @@ var component = new Foo.Component("component", new ()
             HttpGet = new Kubernetes.Core.V1.Inputs.HTTPGetActionArgs
             {
               Host = "string",
-              HttpHeaders = 
+              HttpHeaders = new []
               {
                 new Kubernetes.Core.V1.Inputs.HTTPHeaderArgs
                 {
@@ -2819,7 +2819,7 @@ var component = new Foo.Component("component", new ()
           TerminationMessagePath = "string",
           TerminationMessagePolicy = "string",
           Tty = true|false,
-          VolumeDevices = 
+          VolumeDevices = new []
           {
             new Kubernetes.Core.V1.Inputs.VolumeDeviceArgs
             {
@@ -2827,7 +2827,7 @@ var component = new Foo.Component("component", new ()
               Name = "string",
             }
           },
-          VolumeMounts = 
+          VolumeMounts = new []
           {
             new Kubernetes.Core.V1.Inputs.VolumeMountArgs
             {
@@ -2852,7 +2852,7 @@ var component = new Foo.Component("component", new ()
       PreemptionPolicy = "string",
       Priority = 0,
       PriorityClassName = "string",
-      ReadinessGates = 
+      ReadinessGates = new []
       {
         new Kubernetes.Core.V1.Inputs.PodReadinessGateArgs
         {
@@ -2881,11 +2881,11 @@ var component = new Foo.Component("component", new ()
           LocalhostProfile = "string",
           Type = "string",
         },
-        SupplementalGroups = 
+        SupplementalGroups = new []
         {
           0
         },
-        Sysctls = 
+        Sysctls = new []
         {
           new Kubernetes.Core.V1.Inputs.SysctlArgs
           {
@@ -2907,7 +2907,7 @@ var component = new Foo.Component("component", new ()
       ShareProcessNamespace = true|false,
       Subdomain = "string",
       TerminationGracePeriodSeconds = 0,
-      Tolerations = 
+      Tolerations = new []
       {
         new Kubernetes.Core.V1.Inputs.TolerationArgs
         {
@@ -2918,19 +2918,19 @@ var component = new Foo.Component("component", new ()
           Value = "string",
         }
       },
-      TopologySpreadConstraints = 
+      TopologySpreadConstraints = new []
       {
         new Kubernetes.Core.V1.Inputs.TopologySpreadConstraintArgs
         {
           LabelSelector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
           {
-            MatchExpressions = 
+            MatchExpressions = new []
             {
               new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
               {
                 Key = "string",
                 Operator = "string",
-                Values = 
+                Values = new []
                 {
                   "string"
                 },
@@ -2945,7 +2945,7 @@ var component = new Foo.Component("component", new ()
           WhenUnsatisfiable = "string",
         }
       },
-      Volumes = 
+      Volumes = new []
       {
         new Kubernetes.Core.V1.Inputs.VolumeArgs
         {
@@ -2973,7 +2973,7 @@ var component = new Foo.Component("component", new ()
           },
           Cephfs = new Kubernetes.Core.V1.Inputs.CephFSVolumeSourceArgs
           {
-            Monitors = 
+            Monitors = new []
             {
               "string"
             },
@@ -2999,7 +2999,7 @@ var component = new Foo.Component("component", new ()
           ConfigMap = new Kubernetes.Core.V1.Inputs.ConfigMapVolumeSourceArgs
           {
             DefaultMode = 0,
-            Items = 
+            Items = new []
             {
               new Kubernetes.Core.V1.Inputs.KeyToPathArgs
               {
@@ -3027,7 +3027,7 @@ var component = new Foo.Component("component", new ()
           DownwardAPI = new Kubernetes.Core.V1.Inputs.DownwardAPIVolumeSourceArgs
           {
             DefaultMode = 0,
-            Items = 
+            Items = new []
             {
               new Kubernetes.Core.V1.Inputs.DownwardAPIVolumeFileArgs
               {
@@ -3066,7 +3066,7 @@ var component = new Foo.Component("component", new ()
                 CreationTimestamp = "string",
                 DeletionGracePeriodSeconds = 0,
                 DeletionTimestamp = "string",
-                Finalizers = 
+                Finalizers = new []
                 {
                   "string"
                 },
@@ -3075,7 +3075,7 @@ var component = new Foo.Component("component", new ()
                 Labels = {
                   ["string"] = "string"
                 },
-                ManagedFields = 
+                ManagedFields = new []
                 {
                   new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
                   {
@@ -3090,7 +3090,7 @@ var component = new Foo.Component("component", new ()
                 },
                 Name = "string",
                 Namespace = "string",
-                OwnerReferences = 
+                OwnerReferences = new []
                 {
                   new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
                   {
@@ -3108,7 +3108,7 @@ var component = new Foo.Component("component", new ()
               },
               Spec = new Kubernetes.Core.V1.Inputs.PersistentVolumeClaimSpecArgs
               {
-                AccessModes = 
+                AccessModes = new []
                 {
                   "string"
                 },
@@ -3135,13 +3135,13 @@ var component = new Foo.Component("component", new ()
                 },
                 Selector = new Kubernetes.Meta.V1.Inputs.LabelSelectorArgs
                 {
-                  MatchExpressions = 
+                  MatchExpressions = new []
                   {
                     new Kubernetes.Meta.V1.Inputs.LabelSelectorRequirementArgs
                     {
                       Key = "string",
                       Operator = "string",
-                      Values = 
+                      Values = new []
                       {
                         "string"
                       },
@@ -3162,11 +3162,11 @@ var component = new Foo.Component("component", new ()
             FsType = "string",
             Lun = 0,
             ReadOnly = true|false,
-            TargetWWNs = 
+            TargetWWNs = new []
             {
               "string"
             },
-            Wwids = 
+            Wwids = new []
             {
               "string"
             },
@@ -3222,7 +3222,7 @@ var component = new Foo.Component("component", new ()
             Iqn = "string",
             IscsiInterface = "string",
             Lun = 0,
-            Portals = 
+            Portals = new []
             {
               "string"
             },
@@ -3259,13 +3259,13 @@ var component = new Foo.Component("component", new ()
           Projected = new Kubernetes.Core.V1.Inputs.ProjectedVolumeSourceArgs
           {
             DefaultMode = 0,
-            Sources = 
+            Sources = new []
             {
               new Kubernetes.Core.V1.Inputs.VolumeProjectionArgs
               {
                 ConfigMap = new Kubernetes.Core.V1.Inputs.ConfigMapProjectionArgs
                 {
-                  Items = 
+                  Items = new []
                   {
                     new Kubernetes.Core.V1.Inputs.KeyToPathArgs
                     {
@@ -3279,7 +3279,7 @@ var component = new Foo.Component("component", new ()
                 },
                 DownwardAPI = new Kubernetes.Core.V1.Inputs.DownwardAPIProjectionArgs
                 {
-                  Items = 
+                  Items = new []
                   {
                     new Kubernetes.Core.V1.Inputs.DownwardAPIVolumeFileArgs
                     {
@@ -3301,7 +3301,7 @@ var component = new Foo.Component("component", new ()
                 },
                 Secret = new Kubernetes.Core.V1.Inputs.SecretProjectionArgs
                 {
-                  Items = 
+                  Items = new []
                   {
                     new Kubernetes.Core.V1.Inputs.KeyToPathArgs
                     {
@@ -3336,7 +3336,7 @@ var component = new Foo.Component("component", new ()
             FsType = "string",
             Image = "string",
             Keyring = "string",
-            Monitors = 
+            Monitors = new []
             {
               "string"
             },
@@ -3367,7 +3367,7 @@ var component = new Foo.Component("component", new ()
           Secret = new Kubernetes.Core.V1.Inputs.SecretVolumeSourceArgs
           {
             DefaultMode = 0,
-            Items = 
+            Items = new []
             {
               new Kubernetes.Core.V1.Inputs.KeyToPathArgs
               {
@@ -3402,7 +3402,7 @@ var component = new Foo.Component("component", new ()
     },
     Status = new Kubernetes.Core.V1.Inputs.PodStatusArgs
     {
-      Conditions = 
+      Conditions = new []
       {
         new Kubernetes.Core.V1.Inputs.PodConditionArgs
         {
@@ -3414,7 +3414,7 @@ var component = new Foo.Component("component", new ()
           Type = "string",
         }
       },
-      ContainerStatuses = 
+      ContainerStatuses = new []
       {
         new Kubernetes.Core.V1.Inputs.ContainerStatusArgs
         {
@@ -3471,7 +3471,7 @@ var component = new Foo.Component("component", new ()
           },
         }
       },
-      EphemeralContainerStatuses = 
+      EphemeralContainerStatuses = new []
       {
         new Kubernetes.Core.V1.Inputs.ContainerStatusArgs
         {
@@ -3529,7 +3529,7 @@ var component = new Foo.Component("component", new ()
         }
       },
       HostIP = "string",
-      InitContainerStatuses = 
+      InitContainerStatuses = new []
       {
         new Kubernetes.Core.V1.Inputs.ContainerStatusArgs
         {
@@ -3590,7 +3590,7 @@ var component = new Foo.Component("component", new ()
       NominatedNodeName = "string",
       Phase = "string",
       PodIP = "string",
-      PodIPs = 
+      PodIPs = new []
       {
         new Kubernetes.Core.V1.Inputs.PodIPArgs
         {

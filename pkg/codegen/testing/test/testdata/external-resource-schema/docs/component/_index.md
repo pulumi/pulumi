@@ -282,7 +282,7 @@ var component = new Example.Component("component", new ()
     CreationTimestamp = "string",
     DeletionGracePeriodSeconds = 0,
     DeletionTimestamp = "string",
-    Finalizers = 
+    Finalizers = new []
     {
       "string"
     },
@@ -291,7 +291,7 @@ var component = new Example.Component("component", new ()
     Labels = {
       ["string"] = "string"
     },
-    ManagedFields = 
+    ManagedFields = new []
     {
       new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
       {
@@ -306,7 +306,7 @@ var component = new Example.Component("component", new ()
     },
     Name = "string",
     Namespace = "string",
-    OwnerReferences = 
+    OwnerReferences = new []
     {
       new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
       {
@@ -322,7 +322,7 @@ var component = new Example.Component("component", new ()
     SelfLink = "string",
     Uid = "string",
   },
-  MetadataArray = 
+  MetadataArray = new []
   {
     new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
     {
@@ -333,7 +333,7 @@ var component = new Example.Component("component", new ()
       CreationTimestamp = "string",
       DeletionGracePeriodSeconds = 0,
       DeletionTimestamp = "string",
-      Finalizers = 
+      Finalizers = new []
       {
         "string"
       },
@@ -342,7 +342,7 @@ var component = new Example.Component("component", new ()
       Labels = {
         ["string"] = "string"
       },
-      ManagedFields = 
+      ManagedFields = new []
       {
         new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
         {
@@ -357,7 +357,7 @@ var component = new Example.Component("component", new ()
       },
       Name = "string",
       Namespace = "string",
-      OwnerReferences = 
+      OwnerReferences = new []
       {
         new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
         {
@@ -384,7 +384,7 @@ var component = new Example.Component("component", new ()
       CreationTimestamp = "string",
       DeletionGracePeriodSeconds = 0,
       DeletionTimestamp = "string",
-      Finalizers = 
+      Finalizers = new []
       {
         "string"
       },
@@ -393,7 +393,7 @@ var component = new Example.Component("component", new ()
       Labels = {
         ["string"] = "string"
       },
-      ManagedFields = 
+      ManagedFields = new []
       {
         new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
         {
@@ -408,7 +408,7 @@ var component = new Example.Component("component", new ()
       },
       Name = "string",
       Namespace = "string",
-      OwnerReferences = 
+      OwnerReferences = new []
       {
         new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
         {
@@ -434,7 +434,7 @@ var component = new Example.Component("component", new ()
     CreationTimestamp = "string",
     DeletionGracePeriodSeconds = 0,
     DeletionTimestamp = "string",
-    Finalizers = 
+    Finalizers = new []
     {
       "string"
     },
@@ -443,7 +443,7 @@ var component = new Example.Component("component", new ()
     Labels = {
       ["string"] = "string"
     },
-    ManagedFields = 
+    ManagedFields = new []
     {
       new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
       {
@@ -458,7 +458,7 @@ var component = new Example.Component("component", new ()
     },
     Name = "string",
     Namespace = "string",
-    OwnerReferences = 
+    OwnerReferences = new []
     {
       new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
       {
@@ -474,7 +474,7 @@ var component = new Example.Component("component", new ()
     SelfLink = "string",
     Uid = "string",
   },
-  RequiredMetadataArray = 
+  RequiredMetadataArray = new []
   {
     new Kubernetes.Meta.V1.Inputs.ObjectMetaArgs
     {
@@ -485,7 +485,7 @@ var component = new Example.Component("component", new ()
       CreationTimestamp = "string",
       DeletionGracePeriodSeconds = 0,
       DeletionTimestamp = "string",
-      Finalizers = 
+      Finalizers = new []
       {
         "string"
       },
@@ -494,7 +494,7 @@ var component = new Example.Component("component", new ()
       Labels = {
         ["string"] = "string"
       },
-      ManagedFields = 
+      ManagedFields = new []
       {
         new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
         {
@@ -509,7 +509,7 @@ var component = new Example.Component("component", new ()
       },
       Name = "string",
       Namespace = "string",
-      OwnerReferences = 
+      OwnerReferences = new []
       {
         new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
         {
@@ -536,7 +536,7 @@ var component = new Example.Component("component", new ()
       CreationTimestamp = "string",
       DeletionGracePeriodSeconds = 0,
       DeletionTimestamp = "string",
-      Finalizers = 
+      Finalizers = new []
       {
         "string"
       },
@@ -545,7 +545,7 @@ var component = new Example.Component("component", new ()
       Labels = {
         ["string"] = "string"
       },
-      ManagedFields = 
+      ManagedFields = new []
       {
         new Kubernetes.Meta.V1.Inputs.ManagedFieldsEntryArgs
         {
@@ -560,7 +560,7 @@ var component = new Example.Component("component", new ()
       },
       Name = "string",
       Namespace = "string",
-      OwnerReferences = 
+      OwnerReferences = new []
       {
         new Kubernetes.Meta.V1.Inputs.OwnerReferenceArgs
         {

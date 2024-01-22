@@ -49,12 +49,12 @@ const nursery = new plant.tree.v1.Nursery("nursery", {
 using Pulumi;
 using Plant = Pulumi.Plant;
 
-var nursery = new Plant.Tree.v1.Nursery("nursery", new () 
+var nursery = new Plant.Tree.V1.Nursery("nursery", new () 
 {
   Sizes = {
     ["string"] = "small"|"medium"|"large"
   },
-  Varieties = 
+  Varieties = new []
   {
     "Burgundy"|"Ruby"|"Tineke"
   },

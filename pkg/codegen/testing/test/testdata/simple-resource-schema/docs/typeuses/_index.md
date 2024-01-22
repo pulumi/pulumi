@@ -81,7 +81,7 @@ var typeUses = new Example.TypeUses("typeUses", new ()
   Foo = new Example.Inputs.ObjectArgs
   {
     Bar = "string",
-    Configs = 
+    Configs = new []
     {
       new Example.Inputs.ConfigMapArgs
       {
@@ -89,9 +89,9 @@ var typeUses = new Example.TypeUses("typeUses", new ()
       }
     },
     Foo = reference(example::Resource),
-    Others = 
+    Others = new []
     {
-      
+      new []
       {
         new Example.Inputs.SomeOtherObjectArgs
         {
@@ -100,7 +100,7 @@ var typeUses = new Example.TypeUses("typeUses", new ()
       }
     },
     StillOthers = {
-      ["string"] = 
+      ["string"] = new []
       {
         new Example.Inputs.SomeOtherObjectArgs
         {

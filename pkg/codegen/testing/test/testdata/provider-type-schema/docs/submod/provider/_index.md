@@ -46,7 +46,7 @@ const provider = new providerType.submod.provider("provider", {
 using Pulumi;
 using ProviderType = Pulumi.ProviderType;
 
-var provider = new ProviderType.Submod.provider("provider", new () 
+var provider = new ProviderType.Submod.Provider("provider", new () 
 {
   A = true|false,
 });

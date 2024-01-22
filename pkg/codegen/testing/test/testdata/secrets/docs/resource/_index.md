@@ -67,7 +67,7 @@ var resource = new Mypkg.Resource("resource", new ()
   {
     Foo = "string",
   },
-  ConfigArray = 
+  ConfigArray = new []
   {
     new Mypkg.Inputs.ConfigArgs
     {
@@ -81,7 +81,7 @@ var resource = new Mypkg.Resource("resource", new ()
     }
   },
   Foo = "string",
-  FooArray = 
+  FooArray = new []
   {
     "string"
   },

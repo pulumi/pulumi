@@ -46,7 +46,7 @@ const resource = new foo.nested.module.Resource("resource", {
 using Pulumi;
 using Foo = Pulumi.Foo;
 
-var resource = new Foo.Nested.module.Resource("resource", new () 
+var resource = new Foo.Nested.Module.Resource("resource", new () 
 {
   Bar = "string",
 });

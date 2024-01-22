@@ -46,7 +46,7 @@ const resource = new foo-bar.deeply.nested.module.Resource("resource", {
 using Pulumi;
 using Foo-bar = Pulumi.Foo-bar;
 
-var resource = new Foo-bar.Deeply.nested.module.Resource("resource", new () 
+var resource = new FooBar.Deeply.Nested.Module.Resource("resource", new () 
 {
   Baz = "string",
 });

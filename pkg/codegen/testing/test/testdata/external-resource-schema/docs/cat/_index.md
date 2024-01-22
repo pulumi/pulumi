@@ -66,7 +66,7 @@ var cat = new Example.Cat("cat", new ()
   {
     Age = 0,
     Name = reference(random:index/randomPet:RandomPet),
-    NameArray = 
+    NameArray = new []
     {
       reference(random:index/randomPet:RandomPet)
     },
@@ -74,7 +74,7 @@ var cat = new Example.Cat("cat", new ()
       ["string"] = reference(random:index/randomPet:RandomPet)
     },
     RequiredName = reference(random:index/randomPet:RandomPet),
-    RequiredNameArray = 
+    RequiredNameArray = new []
     {
       reference(random:index/randomPet:RandomPet)
     },

@@ -62,7 +62,7 @@ const moduleResource = new foobar.ModuleResource("moduleResource", {
 using Pulumi;
 using Foobar = Pulumi.Foobar;
 
-var moduleResource = new Foobar.ModuleResource("moduleResource", new () 
+var moduleResource = new FooBar.ModuleResource("moduleResource", new () 
 {
   Optional_bool = true|false,
   Optional_const = "string",

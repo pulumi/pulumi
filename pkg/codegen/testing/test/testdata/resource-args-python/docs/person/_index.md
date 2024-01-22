@@ -52,7 +52,7 @@ using Example = Pulumi.Example;
 var person = new Example.Person("person", new () 
 {
   Name = "string",
-  Pets = 
+  Pets = new []
   {
     new Example.Inputs.PetArgs
     {

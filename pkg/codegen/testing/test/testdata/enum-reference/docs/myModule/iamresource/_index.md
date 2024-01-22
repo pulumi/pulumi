@@ -56,11 +56,11 @@ var iamResource = new Example.MyModule.IamResource("iamResource", new ()
 {
   Config = new GoogleNative.Iam.V1.Inputs.AuditConfigArgs
   {
-    AuditLogConfigs = 
+    AuditLogConfigs = new []
     {
       new GoogleNative.Iam.V1.Inputs.AuditLogConfigArgs
       {
-        ExemptedMembers = 
+        ExemptedMembers = new []
         {
           "string"
         },

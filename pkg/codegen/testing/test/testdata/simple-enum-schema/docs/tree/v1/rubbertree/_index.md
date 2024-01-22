@@ -55,7 +55,7 @@ const rubberTree = new plant.tree.v1.RubberTree("rubberTree", {
 using Pulumi;
 using Plant = Pulumi.Plant;
 
-var rubberTree = new Plant.Tree.v1.RubberTree("rubberTree", new () 
+var rubberTree = new Plant.Tree.V1.RubberTree("rubberTree", new () 
 {
   Container = new Plant.Inputs.ContainerArgs
   {

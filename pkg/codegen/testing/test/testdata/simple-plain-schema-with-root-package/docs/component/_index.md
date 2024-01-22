@@ -88,7 +88,7 @@ var component = new Example.Component("component", new ()
     E = "string",
     F = "string",
   },
-  Baz = 
+  Baz = new []
   {
     new Example.Inputs.FooArgs
     {

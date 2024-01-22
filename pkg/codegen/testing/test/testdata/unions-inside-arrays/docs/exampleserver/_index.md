@@ -48,7 +48,7 @@ using Example = Pulumi.Example;
 
 var exampleServer = new Example.ExampleServer("exampleServer", new () 
 {
-  PropertiesCollection = 
+  PropertiesCollection = new []
   {
     
   },

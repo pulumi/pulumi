@@ -48,7 +48,7 @@ const moduleResource = new foo-bar.submodule1.ModuleResource("moduleResource", {
 using Pulumi;
 using Foo-bar = Pulumi.Foo-bar;
 
-var moduleResource = new Foo-bar.Submodule1.ModuleResource("moduleResource", new () 
+var moduleResource = new FooBar.Submodule1.ModuleResource("moduleResource", new () 
 {
   Thing = new FooBar.Inputs.TopLevelArgs
   {

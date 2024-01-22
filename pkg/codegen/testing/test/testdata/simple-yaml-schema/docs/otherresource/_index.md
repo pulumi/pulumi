@@ -49,7 +49,7 @@ using Example = Pulumi.Example;
 
 var otherResource = new Example.OtherResource("otherResource", new () 
 {
-  Bar = 
+  Bar = new []
   {
     "string"
   },
