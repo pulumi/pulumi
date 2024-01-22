@@ -139,6 +139,8 @@ type StepEventMetadata struct {
 	// Keys that changed with this step.
 	Diffs []string `json:"diffs,omitempty"`
 	// The diff for this step as a list of property paths and difference types.
+	// NOTE: We don't want to omitempty this field because we want to distinguish between
+	// a nil value and an empty map. See https://github.com/pulumi/pulumi/pull/15213 for details.
 	DetailedDiff map[string]PropertyDiff `json:"detailedDiff"`
 	// Logical is set if the step is a logical operation in the program.
 	Logical bool `json:"logical,omitempty"`
