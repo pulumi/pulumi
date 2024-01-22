@@ -139,7 +139,7 @@ type StepEventMetadata struct {
 	// Keys that changed with this step.
 	Diffs []string `json:"diffs,omitempty"`
 	// The diff for this step as a list of property paths and difference types.
-	DetailedDiff map[string]PropertyDiff `json:"detailedDiff,omitempty"`
+	DetailedDiff map[string]PropertyDiff `json:"detailedDiff"`
 	// Logical is set if the step is a logical operation in the program.
 	Logical bool `json:"logical,omitempty"`
 	// Provider actually performing the step.
