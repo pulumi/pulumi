@@ -900,7 +900,7 @@ var exampleResource = new Test.ExampleResource("exampleResource", new ()
   B = 0,
   C = 0.0,
   D = true|false,
-  E = 
+  E = new []
   {
     "string"
   },
@@ -909,7 +909,7 @@ var exampleResource = new Test.ExampleResource("exampleResource", new ()
     X = "string",
     Y = "string",
   },
-  G = 
+  G = new []
   {
     new Test.Inputs.ExampleObjectArgs
     {
@@ -928,7 +928,7 @@ var exampleResource = new Test.ExampleResource("exampleResource", new ()
     }
   },
   J = "FIRST"|"SECOND",
-  K = 
+  K = new []
   {
     "FIRST"|"SECOND"
   },
