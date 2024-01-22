@@ -50,6 +50,40 @@ const cat = new example.Cat("cat", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+cat = example.Cat("cat",
+  age=0,
+  pet=example.PetArgs(
+    age=0,
+    name=reference(random:index/randomPet:RandomPet),
+    name_array=[
+      reference(random:index/randomPet:RandomPet),
+    ],
+    name_map={
+      'string': reference(random:index/randomPet:RandomPet)
+    },
+    required_name=reference(random:index/randomPet:RandomPet),
+    required_name_array=[
+      reference(random:index/randomPet:RandomPet),
+    ],
+    required_name_map={
+      'string': reference(random:index/randomPet:RandomPet)
+    },
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

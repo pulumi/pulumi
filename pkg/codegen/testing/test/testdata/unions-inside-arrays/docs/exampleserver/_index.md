@@ -37,6 +37,25 @@ const exampleServer = new example.ExampleServer("exampleServer", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+exampleServer = example.ExampleServer("exampleServer",
+  properties_collection=[
+    ,
+  ]
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

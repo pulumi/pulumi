@@ -37,6 +37,23 @@ const registryGeoReplication = new registrygeoreplication.RegistryGeoReplication
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_registrygeoreplication as registrygeoreplication
+
+registryGeoReplication = registrygeoreplication.RegistryGeoReplication("registryGeoReplication",
+  resource_group=reference(azure-native:resources:ResourceGroup)
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

@@ -39,6 +39,25 @@ const moduleResource = new foo-bar.submodule1.ModuleResource("moduleResource", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_foo_bar as foo_bar
+
+moduleResource = foo_bar.submodule1.ModuleResource("moduleResource",
+  thing=foo_bar.TopLevelArgs(
+    buzz="string",
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

@@ -37,6 +37,23 @@ const resource = new foo-bar.deeply.nested.module.Resource("resource", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_foo_bar as foo_bar
+
+resource = foo_bar.deeply.nested.module.Resource("resource",
+  baz="string"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

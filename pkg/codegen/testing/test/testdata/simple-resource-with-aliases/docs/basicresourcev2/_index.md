@@ -37,6 +37,23 @@ const basicResourceV2 = new example.BasicResourceV2("basicResourceV2", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+basicResourceV2 = example.BasicResourceV2("basicResourceV2",
+  bar="string"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

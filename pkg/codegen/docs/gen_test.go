@@ -956,3 +956,68 @@ var bucket = new Test.S3.Bucket("bucket", new ()
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
+
+func TestCreationExampleSyntaxForPython(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxPython(exampleResource)
+	expected := `
+import pulumi
+import pulumi_test as test
+
+exampleResource = test.ExampleResource("exampleResource",
+  a="string",
+  b=0,
+  c=0.0,
+  d=True|False,
+  e=[
+    "string",
+  ],
+  f=test.ExampleObjectArgs(
+    x="string",
+    y="string",
+  ),
+  g=[
+    test.ExampleObjectArgs(
+      x="string",
+      y="string",
+    ),
+  ],
+  h={
+    'string': "string"
+  },
+  i={
+    'string': test.ExampleObjectArgs(
+      x="string",
+      y="string",
+    )
+  },
+  j="FIRST"|"SECOND",
+  k=[
+    "FIRST"|"SECOND",
+  ],
+  l=pulumi.StringAsset("Hello, world!"),
+  m=pulumi.FileAsset("./file.txt")
+)
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForPythonWithModule(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:s3:Bucket")
+	creationExample := genCreationExampleSyntaxPython(exampleResource)
+	expected := `
+import pulumi
+import pulumi_test as test
+
+bucket = test.s3.Bucket("bucket",
+  bucket_name="string"
+)
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}

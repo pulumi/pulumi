@@ -44,6 +44,30 @@ const resourceWithAssets = new example.ResourceWithAssets("resourceWithAssets", 
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+resourceWithAssets = example.ResourceWithAssets("resourceWithAssets",
+  archive=pulumi.FileAsset("./file.txt"),
+  nested=example.TypeWithAssetsArgs(
+    archive=pulumi.FileAsset("./file.txt"),
+    asset=pulumi.StringAsset("Hello, world!"),
+    plain_archive=pulumi.FileAsset("./file.txt"),
+    plain_asset=pulumi.StringAsset("Hello, world!"),
+  ),
+  source=pulumi.StringAsset("Hello, world!")
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

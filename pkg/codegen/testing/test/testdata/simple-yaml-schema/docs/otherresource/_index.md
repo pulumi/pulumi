@@ -38,6 +38,26 @@ const otherResource = new example.OtherResource("otherResource", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+otherResource = example.OtherResource("otherResource",
+  bar=[
+    "string",
+  ],
+  foo=reference(example::Resource)
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

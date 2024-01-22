@@ -1606,26 +1606,6 @@ func (mod *modContext) genResourceHeader(r *schema.Resource) header {
 	}
 }
 
-func (mod *modContext) genCreationExampleSyntaxTypeScript(r *schema.Resource) string {
-	return fmt.Sprintf("const %s = new %s(\"<resource_name>\", {...});", resourceName(r), resourceName(r))
-}
-
-func (mod *modContext) genCreationExampleSyntaxGo(r *schema.Resource) string {
-	return fmt.Sprintf("resource.New%s(ctx, \"<resource_name>\", &resource.%sArgs{...})", resourceName(r), resourceName(r))
-}
-
-func (mod *modContext) genCreationExampleSyntaxCSharp(r *schema.Resource) string {
-	return fmt.Sprintf("var %s = new %s(\"<resource_name>\", new %sArgs {...});", resourceName(r), resourceName(r), resourceName(r))
-}
-
-func (mod *modContext) genCreationExampleSyntaxPython(r *schema.Resource) string {
-	return fmt.Sprintf("%s = %s(\"<resource_name>\", ...)", resourceName(r), resourceName(r))
-}
-
-func (mod *modContext) genCreationExampleSyntaxJava(r *schema.Resource) string {
-	return fmt.Sprintf("var %s = new %s(\"<resource_name>\", new %sArgs {...});", resourceName(r), resourceName(r), resourceName(r))
-}
-
 func camelCase(s string) string {
 	if len(s) == 0 {
 		return s
@@ -1729,6 +1709,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			switch lang {
 			case "nodejs":
 				creationExampleSyntax["typescript"] = genCreationExampleSyntaxTypescript(r)
+			case "python":
+				creationExampleSyntax["python"] = genCreationExampleSyntaxPython(r)
 			case "csharp":
 				creationExampleSyntax["csharp"] = genCreationExampleSyntaxCSharp(r)
 			case "yaml":

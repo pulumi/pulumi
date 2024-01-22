@@ -37,6 +37,23 @@ const configurer = new metaprovider.Configurer("configurer", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_metaprovider as metaprovider
+
+configurer = metaprovider.Configurer("configurer",
+  tls_proxy="string"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

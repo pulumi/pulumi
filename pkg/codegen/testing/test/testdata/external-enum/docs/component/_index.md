@@ -38,6 +38,24 @@ const component = new example.Component("component", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+component = example.Component("component",
+  local_enum=pi|small,
+  remote_enum="MANAGEMENT_UNSPECIFIED"|"NONE"|"BASIC"|"COMPLETE"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

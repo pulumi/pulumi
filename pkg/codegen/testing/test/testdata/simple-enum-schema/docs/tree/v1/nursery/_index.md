@@ -40,6 +40,28 @@ const nursery = new plant.tree.v1.Nursery("nursery", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_plant as plant
+
+nursery = plant.tree.v1.Nursery("nursery",
+  sizes={
+    'string': "small"|"medium"|"large"
+  },
+  varieties=[
+    "Burgundy"|"Ruby"|"Tineke",
+  ]
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

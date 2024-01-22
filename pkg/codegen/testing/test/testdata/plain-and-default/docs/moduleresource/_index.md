@@ -53,6 +53,39 @@ const moduleResource = new foobar.ModuleResource("moduleResource", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_foobar as foobar
+
+moduleResource = foobar.ModuleResource("moduleResource",
+  optional_bool=True|False,
+  optional_const="string",
+  optional_enum=Four|Six|Eight,
+  optional_number=0.0,
+  optional_string="string",
+  plain_optional_bool=True|False,
+  plain_optional_const="string",
+  plain_optional_number=0.0,
+  plain_optional_string="string",
+  plain_required_bool=True|False,
+  plain_required_const="string",
+  plain_required_number=0.0,
+  plain_required_string="string",
+  required_bool=True|False,
+  required_enum=Four|Six|Eight,
+  required_number=0.0,
+  required_string="string"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

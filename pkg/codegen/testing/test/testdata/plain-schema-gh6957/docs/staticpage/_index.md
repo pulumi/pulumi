@@ -40,6 +40,26 @@ const staticPage = new xyz.StaticPage("staticPage", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_xyz as xyz
+
+staticPage = xyz.StaticPage("staticPage",
+  foo=xyz.FooArgs(
+    a=True|False,
+  ),
+  index_content="string"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

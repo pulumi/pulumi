@@ -52,6 +52,42 @@ const resource = new mypkg.Resource("resource", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_mypkg as mypkg
+
+resource = mypkg.Resource("resource",
+  config=mypkg.ConfigArgs(
+    foo="string",
+  ),
+  config_array=[
+    mypkg.ConfigArgs(
+      foo="string",
+    ),
+  ],
+  config_map={
+    'string': mypkg.ConfigArgs(
+      foo="string",
+    )
+  },
+  foo="string",
+  foo_array=[
+    "string",
+  ],
+  foo_map={
+    'string': "string"
+  }
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">

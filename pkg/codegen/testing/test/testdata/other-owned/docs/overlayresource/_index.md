@@ -40,6 +40,26 @@ const overlayResource = new example.OverlayResource("overlayResource", {
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+overlayResource = example.OverlayResource("overlayResource",
+  bar="SOME_ENUM_VALUE",
+  foo=example.ConfigMapOverlayArgs(
+    config="string",
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
