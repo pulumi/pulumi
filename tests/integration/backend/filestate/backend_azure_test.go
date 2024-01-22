@@ -39,8 +39,10 @@ func TestAzureLoginSasToken(t *testing.T) {
 		require.NoError(t, err)
 	})
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
-	assert.NotEmpty(t, os.Getenv("AZURE_STORAGE_SAS_TOKEN"),
-		"an azure storage SAS token needs to be set in the environment")
+	_, ok := os.LookupEnv("AZURE_STORAGE_SAS_TOKEN")
+	if !ok {
+		t.Skip("AZURE_STORAGE_SAS_TOKEN not set, skipping test")
+	}
 
 	t.Cleanup(func() {
 		err := exec.Command("pulumi", "logout").Run()
@@ -58,12 +60,12 @@ func TestAzureLoginAzLogin(t *testing.T) {
 		require.NoError(t, err)
 	})
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
-	assert.NotEmpty(t, os.Getenv("AZURE_CLIENT_ID"),
-		"an azure client id needs to be set in the environment")
-	assert.NotEmpty(t, os.Getenv("AZURE_CLIENT_SECRET"),
-		"an azure client secret needs to be set in the environment")
-	assert.NotEmpty(t, os.Getenv("AZURE_TENANT_ID"),
-		"an azure tenant id needs to be set in the environment")
+	_, clientIDSet := os.LookupEnv("AZURE_CLIENT_ID")
+	_, clientSecretSet := os.LookupEnv("AZURE_CLIENT_SECRET")
+	_, tenantIDSet := os.LookupEnv("AZURE_TENANT_ID")
+	if !clientIDSet || !clientSecretSet || !tenantIDSet {
+		t.Skip("AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, and AZURE_TENANT_ID not set, skipping test")
+	}
 
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
