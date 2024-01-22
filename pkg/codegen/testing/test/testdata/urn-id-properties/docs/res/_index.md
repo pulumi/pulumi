@@ -21,6 +21,24 @@ It's fine to use urn and id as input properties
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as urnid from "@pulumi/urnid";
+
+const res = new urnid.Res("res", {
+  id: "string",
+  urn: "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 

@@ -19,6 +19,23 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as metaprovider from "@pulumi/metaprovider";
+
+const configurer = new metaprovider.Configurer("configurer", {
+  tlsProxy: "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 

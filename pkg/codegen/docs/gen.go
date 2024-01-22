@@ -1718,16 +1718,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	if !r.IsProvider && len(r.InputProperties) > 0 {
 		for _, lang := range dctx.supportedLanguages {
 			switch lang {
-			//case "nodejs":
-			//	creationExampleSyntax["typescript"] = mod.genCreationExampleSyntaxTypeScript(r)
-			//case "go":
-			//	creationExampleSyntax["go"] = mod.genCreationExampleSyntaxGo(r)
-			//case "csharp":
-			//	creationExampleSyntax["csharp"] = mod.genCreationExampleSyntaxCSharp(r)
-			//case "python":
-			//	creationExampleSyntax["python"] = mod.genCreationExampleSyntaxPython(r)
-			//case "java":
-			//	creationExampleSyntax["java"] = mod.genCreationExampleSyntaxJava(r)
+			case "nodejs":
+				creationExampleSyntax["typescript"] = genCreationExampleSyntaxTypescript(r)
 			case "yaml":
 				creationExampleSyntax["yaml"] = genCreationExampleSyntaxYAML(r)
 			}

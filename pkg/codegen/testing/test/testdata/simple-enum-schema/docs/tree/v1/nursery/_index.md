@@ -19,6 +19,26 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as plant from "@pulumi/plant";
+
+const nursery = new plant.tree.v1.Nursery("nursery", {
+  sizes: {
+    "string": "small"|"medium"|"large"
+  },
+  varieties: ["Burgundy"|"Ruby"|"Tineke"],
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 

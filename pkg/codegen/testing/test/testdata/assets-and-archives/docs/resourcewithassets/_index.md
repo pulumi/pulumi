@@ -19,6 +19,30 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const resourceWithAssets = new example.ResourceWithAssets("resourceWithAssets", {
+  archive: new pulumi.asset.FileAsset("./file.txt"),
+  nested: {
+    archive: new pulumi.asset.FileAsset("./file.txt"),
+    asset: new pulumi.asset.StringAsset("Hello, world!"),
+    plainArchive: new pulumi.asset.FileAsset("./file.txt"),
+    plainAsset: new pulumi.asset.StringAsset("Hello, world!"),
+  },
+  source: new pulumi.asset.StringAsset("Hello, world!"),
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 

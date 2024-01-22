@@ -19,6 +19,23 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const basicResourceV3 = new example.BasicResourceV3("basicResourceV3", {
+  bar: "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 

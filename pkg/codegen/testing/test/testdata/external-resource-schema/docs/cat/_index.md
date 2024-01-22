@@ -19,6 +19,36 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const cat = new example.Cat("cat", {
+  age: 0,
+  pet: {
+    age: 0,
+    name: reference(random:index/randomPet:RandomPet),
+    nameArray: [reference(random:index/randomPet:RandomPet)],
+    nameMap: {
+      "string": reference(random:index/randomPet:RandomPet)
+    },
+    requiredName: reference(random:index/randomPet:RandomPet),
+    requiredNameArray: [reference(random:index/randomPet:RandomPet)],
+    requiredNameMap: {
+      "string": reference(random:index/randomPet:RandomPet)
+    },
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 

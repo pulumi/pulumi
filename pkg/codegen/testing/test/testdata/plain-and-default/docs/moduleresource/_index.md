@@ -19,6 +19,39 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as foobar from "@pulumi/foobar";
+
+const moduleResource = new foobar.ModuleResource("moduleResource", {
+  optional_bool: true|false,
+  optional_const: "string",
+  optional_enum: Four|Six|Eight,
+  optional_number: 0.0,
+  optional_string: "string",
+  plain_optional_bool: true|false,
+  plain_optional_const: "string",
+  plain_optional_number: 0.0,
+  plain_optional_string: "string",
+  plain_required_bool: true|false,
+  plain_required_const: "string",
+  plain_required_number: 0.0,
+  plain_required_string: "string",
+  required_bool: true|false,
+  required_enum: Four|Six|Eight,
+  required_number: 0.0,
+  required_string: "string",
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 

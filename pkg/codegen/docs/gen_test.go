@@ -752,6 +752,11 @@ func testSchemaForCreationExampleSyntax(t *testing.T) *schema.Package {
 					},
 				},
 			},
+			"test:s3:Bucket": {
+				InputProperties: map[string]schema.PropertySpec{
+					"bucketName": primitiveType("string"),
+				},
+			},
 		},
 		Types: map[string]schema.ComplexTypeSpec{
 			"test:index:ExampleObject": {
@@ -816,6 +821,65 @@ resources:
         Fn::StringAsset: "example content"
       m: 
         Fn::FileAsset: ./file.txt
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForTypescript(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxTypescript(exampleResource)
+	expected := `
+import * as pulumi from "@pulumi/pulumi";
+import * as test from "@pulumi/test";
+
+const exampleResource = new test.ExampleResource("exampleResource", {
+  a: "string",
+  b: 0,
+  c: 0.0,
+  d: true|false,
+  e: ["string"],
+  f: {
+    x: "string",
+    y: "string",
+  },
+  g: [{
+    x: "string",
+    y: "string",
+  }],
+  h: {
+    "string": "string"
+  },
+  i: {
+    "string": {
+      x: "string",
+      y: "string",
+    }
+  },
+  j: "FIRST"|"SECOND",
+  k: ["FIRST"|"SECOND"],
+  l: new pulumi.asset.StringAsset("Hello, world!"),
+  m: new pulumi.asset.FileAsset("./file.txt"),
+});
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForTypescriptWithModule(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:s3:Bucket")
+	creationExample := genCreationExampleSyntaxTypescript(exampleResource)
+	expected := `
+import * as pulumi from "@pulumi/pulumi";
+import * as test from "@pulumi/test";
+
+const bucket = new test.s3.Bucket("bucket", {
+  bucketName: "string",
+});
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }

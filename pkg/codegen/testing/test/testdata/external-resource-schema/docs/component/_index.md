@@ -19,6 +19,248 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="javascript,typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const component = new example.Component("component", {
+  metadata: {
+    annotations: {
+      "string": "string"
+    },
+    clusterName: "string",
+    creationTimestamp: "string",
+    deletionGracePeriodSeconds: 0,
+    deletionTimestamp: "string",
+    finalizers: ["string"],
+    generateName: "string",
+    generation: 0,
+    labels: {
+      "string": "string"
+    },
+    managedFields: [{
+      apiVersion: "string",
+      fieldsType: "string",
+      fieldsV1: ,
+      manager: "string",
+      operation: "string",
+      subresource: "string",
+      time: "string",
+    }],
+    name: "string",
+    namespace: "string",
+    ownerReferences: [{
+      apiVersion: "string",
+      blockOwnerDeletion: true|false,
+      controller: true|false,
+      kind: "string",
+      name: "string",
+      uid: "string",
+    }],
+    resourceVersion: "string",
+    selfLink: "string",
+    uid: "string",
+  },
+  metadataArray: [{
+    annotations: {
+      "string": "string"
+    },
+    clusterName: "string",
+    creationTimestamp: "string",
+    deletionGracePeriodSeconds: 0,
+    deletionTimestamp: "string",
+    finalizers: ["string"],
+    generateName: "string",
+    generation: 0,
+    labels: {
+      "string": "string"
+    },
+    managedFields: [{
+      apiVersion: "string",
+      fieldsType: "string",
+      fieldsV1: ,
+      manager: "string",
+      operation: "string",
+      subresource: "string",
+      time: "string",
+    }],
+    name: "string",
+    namespace: "string",
+    ownerReferences: [{
+      apiVersion: "string",
+      blockOwnerDeletion: true|false,
+      controller: true|false,
+      kind: "string",
+      name: "string",
+      uid: "string",
+    }],
+    resourceVersion: "string",
+    selfLink: "string",
+    uid: "string",
+  }],
+  metadataMap: {
+    "string": {
+      annotations: {
+        "string": "string"
+      },
+      clusterName: "string",
+      creationTimestamp: "string",
+      deletionGracePeriodSeconds: 0,
+      deletionTimestamp: "string",
+      finalizers: ["string"],
+      generateName: "string",
+      generation: 0,
+      labels: {
+        "string": "string"
+      },
+      managedFields: [{
+        apiVersion: "string",
+        fieldsType: "string",
+        fieldsV1: ,
+        manager: "string",
+        operation: "string",
+        subresource: "string",
+        time: "string",
+      }],
+      name: "string",
+      namespace: "string",
+      ownerReferences: [{
+        apiVersion: "string",
+        blockOwnerDeletion: true|false,
+        controller: true|false,
+        kind: "string",
+        name: "string",
+        uid: "string",
+      }],
+      resourceVersion: "string",
+      selfLink: "string",
+      uid: "string",
+    }
+  },
+  requiredMetadata: {
+    annotations: {
+      "string": "string"
+    },
+    clusterName: "string",
+    creationTimestamp: "string",
+    deletionGracePeriodSeconds: 0,
+    deletionTimestamp: "string",
+    finalizers: ["string"],
+    generateName: "string",
+    generation: 0,
+    labels: {
+      "string": "string"
+    },
+    managedFields: [{
+      apiVersion: "string",
+      fieldsType: "string",
+      fieldsV1: ,
+      manager: "string",
+      operation: "string",
+      subresource: "string",
+      time: "string",
+    }],
+    name: "string",
+    namespace: "string",
+    ownerReferences: [{
+      apiVersion: "string",
+      blockOwnerDeletion: true|false,
+      controller: true|false,
+      kind: "string",
+      name: "string",
+      uid: "string",
+    }],
+    resourceVersion: "string",
+    selfLink: "string",
+    uid: "string",
+  },
+  requiredMetadataArray: [{
+    annotations: {
+      "string": "string"
+    },
+    clusterName: "string",
+    creationTimestamp: "string",
+    deletionGracePeriodSeconds: 0,
+    deletionTimestamp: "string",
+    finalizers: ["string"],
+    generateName: "string",
+    generation: 0,
+    labels: {
+      "string": "string"
+    },
+    managedFields: [{
+      apiVersion: "string",
+      fieldsType: "string",
+      fieldsV1: ,
+      manager: "string",
+      operation: "string",
+      subresource: "string",
+      time: "string",
+    }],
+    name: "string",
+    namespace: "string",
+    ownerReferences: [{
+      apiVersion: "string",
+      blockOwnerDeletion: true|false,
+      controller: true|false,
+      kind: "string",
+      name: "string",
+      uid: "string",
+    }],
+    resourceVersion: "string",
+    selfLink: "string",
+    uid: "string",
+  }],
+  requiredMetadataMap: {
+    "string": {
+      annotations: {
+        "string": "string"
+      },
+      clusterName: "string",
+      creationTimestamp: "string",
+      deletionGracePeriodSeconds: 0,
+      deletionTimestamp: "string",
+      finalizers: ["string"],
+      generateName: "string",
+      generation: 0,
+      labels: {
+        "string": "string"
+      },
+      managedFields: [{
+        apiVersion: "string",
+        fieldsType: "string",
+        fieldsV1: ,
+        manager: "string",
+        operation: "string",
+        subresource: "string",
+        time: "string",
+      }],
+      name: "string",
+      namespace: "string",
+      ownerReferences: [{
+        apiVersion: "string",
+        blockOwnerDeletion: true|false,
+        controller: true|false,
+        kind: "string",
+        name: "string",
+        uid: "string",
+      }],
+      resourceVersion: "string",
+      selfLink: "string",
+      uid: "string",
+    }
+  },
+});
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 
 
