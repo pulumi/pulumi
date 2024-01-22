@@ -46,6 +46,12 @@ export class ResourceImport extends jspb.Message {
     setVersion(value: string): ResourceImport;
     getPlugindownloadurl(): string;
     setPlugindownloadurl(value: string): ResourceImport;
+    getLogicalName(): string;
+    setLogicalName(value: string): ResourceImport;
+    getIsComponent(): boolean;
+    setIsComponent(value: boolean): ResourceImport;
+    getIsRemote(): boolean;
+    setIsRemote(value: boolean): ResourceImport;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
@@ -64,6 +70,9 @@ export namespace ResourceImport {
         id: string,
         version: string,
         plugindownloadurl: string,
+        logicalName: string,
+        isComponent: boolean,
+        isRemote: boolean,
     }
 }
 

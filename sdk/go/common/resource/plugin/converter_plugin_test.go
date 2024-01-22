@@ -51,6 +51,9 @@ func (c *testConverterClient) ConvertState(
 				Id:                "test:id",
 				Version:           "test:version",
 				PluginDownloadURL: "test:pluginDownloadURL",
+				LogicalName:       "test:logicalName",
+				IsRemote:          true,
+				IsComponent:       true,
 			},
 		},
 		Diagnostics: c.diagnostics,
@@ -107,6 +110,9 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, "test:id", res.ID)
 	assert.Equal(t, "test:version", res.Version)
 	assert.Equal(t, "test:pluginDownloadURL", res.PluginDownloadURL)
+	assert.Equal(t, "test:logicalName", res.LogicalName)
+	assert.True(t, res.IsRemote)
+	assert.True(t, res.IsComponent)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)
