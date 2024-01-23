@@ -12,7 +12,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/tests/testprovider",
     visibility = ["//visibility:private"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_golang_protobuf//ptypes/empty",
         "//pkg/resource/provider:go_default_library",
         "//sdk/go/common/resource:go_default_library",

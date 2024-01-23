@@ -25,7 +25,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/pkg/v3/resource/deploy",
     visibility = ["//visibility:public"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_blang_semver//:semver",
         "@com_github_gofrs_uuid//:uuid",
         "@com_github_golang_protobuf//ptypes/empty",
@@ -74,7 +74,7 @@ go_test(
     ],
     embed = [":deploy"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_golang_protobuf//ptypes/empty",
         "//pkg/resource/deploy/deploytest:go_default_library",
         "//pkg/resource/deploy/providers:go_default_library",

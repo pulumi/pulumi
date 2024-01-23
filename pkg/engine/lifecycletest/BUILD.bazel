@@ -43,7 +43,7 @@ go_test(
     ],
     embed = [":lifecycletest"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_blang_semver//:semver",
         "@com_github_gofrs_uuid//:uuid",
         "@com_github_golang_protobuf//ptypes/empty",

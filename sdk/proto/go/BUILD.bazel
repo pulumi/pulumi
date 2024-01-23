@@ -20,7 +20,7 @@ go_library(
         "resource_grpc.pb.go",
         "source.pb.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/proto/go/codegen:go_default_library",

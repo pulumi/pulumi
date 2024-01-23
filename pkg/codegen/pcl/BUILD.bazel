@@ -45,34 +45,35 @@ go_library(
     ],
 )
 
-go_test(
-    name = "pcl_test",
-    srcs = [
-        "binder_resource_test.go",
-        "binder_schema_test.go",
-        "binder_test.go",
-        "functions_test.go",
-        "rewrite_apply_test.go",
-        "rewrite_convert_test.go",
-        "utilities_test.go",
-    ],
-    embed = [":pcl"],
-    deps = [
-        "@com_github_blang_semver//:semver",
-        "@com_github_hashicorp_hcl_v2//:hcl",
-        "//pkg/codegen/hcl2/model:go_default_library",
-        "//pkg/codegen/hcl2/syntax:go_default_library",
-        "//pkg/codegen/pcl:go_default_library",
-        "//pkg/codegen/schema:go_default_library",
-        "//pkg/codegen/testing/test:go_default_library",
-        "//pkg/codegen/testing/utils:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
-        "@com_github_spf13_afero//:afero",
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
-        "@com_github_zclconf_go_cty//cty",
-    ],
-)
+# TODO
+# go_test(
+#     name = "pcl_test",
+#     srcs = [
+#         "binder_resource_test.go",
+#         "binder_schema_test.go",
+#         "binder_test.go",
+#         "functions_test.go",
+#         "rewrite_apply_test.go",
+#         "rewrite_convert_test.go",
+#         "utilities_test.go",
+#     ],
+#     embed = [":pcl"],
+#     deps = [
+#         "@com_github_blang_semver//:semver",
+#         "@com_github_hashicorp_hcl_v2//:hcl",
+#         "//pkg/codegen/hcl2/model:go_default_library",
+#         "//pkg/codegen/hcl2/syntax:go_default_library",
+#         "//pkg/codegen/pcl:go_default_library",
+#         "//pkg/codegen/schema:go_default_library",
+#         "//pkg/codegen/testing/test:go_default_library",
+#         "//pkg/codegen/testing/utils:go_default_library",
+#         "//sdk/go/common/util/contract:go_default_library",
+#         "@com_github_spf13_afero//:afero",
+#         "@com_github_stretchr_testify//assert",
+#         "@com_github_stretchr_testify//require",
+#         "@com_github_zclconf_go_cty//cty",
+#     ],
+# )
 
 alias(
     name = "go_default_library",

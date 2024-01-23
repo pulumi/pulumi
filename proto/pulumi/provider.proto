@@ -14,10 +14,10 @@
 
 syntax = "proto3";
 
-import "pulumi/plugin.proto";
+import "proto/pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
-import "pulumi/source.proto";
+import "proto/pulumi/source.proto";
 
 package pulumirpc;
 

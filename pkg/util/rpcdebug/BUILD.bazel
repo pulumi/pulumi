@@ -21,7 +21,7 @@ go_test(
     srcs = ["interceptors_test.go"],
     embed = [":rpcdebug"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//:go_default_library",

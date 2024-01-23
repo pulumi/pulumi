@@ -16,7 +16,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto",
     visibility = ["//visibility:public"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_blang_semver//:semver",
         "@com_github_go_git_go_git_v5//:go-git",
         "@com_github_go_git_go_git_v5//config",

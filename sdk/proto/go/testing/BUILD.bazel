@@ -6,7 +6,7 @@ go_library(
         "language.pb.go",
         "language_grpc.pb.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go/testing",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing",
     visibility = ["//visibility:public"],
     deps = [
         "@org_golang_google_grpc//:go_default_library",

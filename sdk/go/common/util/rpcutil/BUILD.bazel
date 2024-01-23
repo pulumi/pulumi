@@ -13,7 +13,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil",
     visibility = ["//visibility:public"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_grpc_ecosystem_grpc_opentracing//go/otgrpc",
         "@com_github_hashicorp_go_multierror//:go-multierror",
         "@com_github_opentracing_opentracing_go//:opentracing-go",
@@ -78,7 +78,7 @@ go_test(
     srcs = ["writer_test.go"],
     embed = [":rpcutil"],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "@com_github_stretchr_testify//assert",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_x_term//:term",

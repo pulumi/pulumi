@@ -2238,10 +2238,16 @@ def go_deps():
         version = "v0.9.6",
     )
     go_repository(
+        name = "com_github_go_jose_go_jose_v3",
+	importpath = "github.com/go-jose/go-jose",
+	version = "v2.6.0",
+	sum = "h1:kY44+vlF5pTQ5yZ2TWIhzr48bA01bizxUfvt5Y0Z4nQ=",
+    )
+    go_repository(
         name = "com_github_hashicorp_vault_api",
         importpath = "github.com/hashicorp/vault/api",
-        sum = "h1:C7OL9YtOtwQbTKI9ogB0A1wffRbCN+rH/LLCHO3d8HM=",
-        version = "v1.8.2",
+        sum = "h1:ab7dI6W8DuCY7yCU8blo0UCYl2oHre/dloCmzMWg9w8=",
+        version = "v1.9.0",
     )
     go_repository(
         name = "com_github_hashicorp_vault_sdk",
@@ -2708,7 +2714,7 @@ def go_deps():
     go_repository(
         name = "com_github_mailru_easyjson",
         importpath = "github.com/mailru/easyjson",
-        sum = "h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=",
+        sum = "h1:UGYAvKxe3sBsedzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=",
         version = "v0.7.7",
     )
     go_repository(
@@ -3484,32 +3490,56 @@ def go_deps():
         importpath = "github.com/pulumi/esc",
         sum = "h1:4WV3X7OEVcChIwbSG+JxhZDdmq/q7lFPaSjHRYlPwmI=",
         version = "v0.5.6",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|\\@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|\\@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
 
     go_repository(
         name = "com_github_pulumi_pulumi_aws_sdk_v5",
         importpath = "github.com/pulumi/pulumi-aws/sdk/v5",
         version = "5.42.0",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
 
     go_repository(
         name = "com_github_pulumi_pulumi_azure_native_sdk",
         importpath = "github.com/pulumi/pulumi-azure-native/sdk",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
     go_repository(
         name = "com_github_pulumi_pulumi_azure_sdk_v4",
         importpath = "github.com/pulumi/pulumi-azure/sdk/v4",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
     go_repository(
         name = "com_github_pulumi_pulumi_java_pkg",
         importpath = "github.com/pulumi/pulumi-java/pkg",
         sum = "h1:c8mYsalnRXA2Ibgvv6scefOn6mW1Vb0UT0mcDqjsivQ=",
         version = "v0.9.8",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
 
     go_repository(
         name = "com_github_pulumi_pulumi_kubernetes_sdk_v3",
         importpath = "github.com/pulumi/pulumi-kubernetes/sdk/v3",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
 
     go_repository(
@@ -3523,6 +3553,10 @@ def go_deps():
         importpath = "github.com/pulumi/pulumi-random/sdk/v4",
         sum = "h1:ZlXB3mx1YvAjs+jm59rcpvfl1J7dpLOBOxUb5vEPkZk=",
         version = "v4.8.2",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
 
     go_repository(
@@ -3536,6 +3570,10 @@ def go_deps():
         importpath = "github.com/pulumi/pulumi-yaml",
         sum = "h1:W6BeUBLhDrJ2GSU0em1AUVelG9PBI4ABY61DdhJOO3E=",
         version = "v1.2.2",
+	patch_cmds = [
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_sdk_v3||' {} \\;",
+	  "find . -name BUILD.bazel -exec sed 's|@com_github_pulumi_pulumi_pkg_v3||' {} \\;",
+	]
     )
 
     go_repository(

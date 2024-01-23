@@ -23,8 +23,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/cmd/pulumi-test-language",
     visibility = ["//visibility:private"],
     deps = [
-        "//proto/pulumi:go",
-        "//proto/pulumi/testing",
+        "//sdk/proto/go:go_default_library",
+        "//sdk/proto/go/testing:go_default_library",
         "@com_github_blang_semver//:semver",
         "//pkg/backend:go_default_library",
         "//pkg/backend/display:go_default_library",
@@ -71,8 +71,8 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":pulumi-test-language_lib"],
     deps = [
-        "//proto/pulumi:go",
-        "//proto/pulumi/testing",
+        "//sdk/proto/go:go_default_library",
+        "//sdk/proto/go/testing:go_default_library",
         "//sdk/go/common/resource:go_default_library",
         "//sdk/go/common/util/rpcutil:go_default_library",
         "//sdk/go/common/workspace:go_default_library",

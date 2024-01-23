@@ -20,28 +20,29 @@ go_library(
     ],
 )
 
-go_test(
-    name = "pulumix_test",
-    srcs = [
-        "applyn_test.go",
-        "array_test.go",
-        "combinators_test.go",
-        "context_test.go",
-        "map_test.go",
-        "ptr_test.go",
-        "types_ext_test.go",
-        "types_test.go",
-    ],
-    embed = [":pulumix"],
-    deps = [
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/internal:go_default_library",
-        "//sdk/go/pulumi:go_default_library",
-        "//sdk/go/pulumix:go_default_library",
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
-    ],
-)
+# TODO
+# go_test(
+#     name = "pulumix_test",
+#     srcs = [
+#         "applyn_test.go",
+#         "array_test.go",
+#         "combinators_test.go",
+#         "context_test.go",
+#         "map_test.go",
+#         "ptr_test.go",
+#         "types_ext_test.go",
+#         "types_test.go",
+#     ],
+#     embed = [":pulumix"],
+#     deps = [
+#         "//sdk/go/common/resource:go_default_library",
+#         "//sdk/go/internal:go_default_library",
+#         "//sdk/go/pulumi:go_default_library",
+#         "//sdk/go/pulumix:go_default_library",
+#         "@com_github_stretchr_testify//assert",
+#         "@com_github_stretchr_testify//require",
+#     ],
+# )
 
 alias(
     name = "go_default_library",

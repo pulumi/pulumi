@@ -1,0 +1,1 @@
+- Fix grpc building/using generated proto stuff directly

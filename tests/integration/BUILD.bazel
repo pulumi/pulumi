@@ -7,7 +7,7 @@ go_test(
         "integration_util_test.go",
     ],
     deps = [
-        "//proto/pulumi:go",
+        "//sdk/proto/go:go_default_library",
         "//pkg/testing/integration:go_default_library",
         "//sdk/go/common/apitype:go_default_library",
         "//sdk/go/common/testing:go_default_library",

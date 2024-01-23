@@ -7,7 +7,7 @@ go_library(
         "npm.go",
         "yarn.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/nodejs/npm",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/nodejs/npm",
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/go/common/util/cmdutil:go_default_library",
