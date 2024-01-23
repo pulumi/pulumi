@@ -2133,7 +2133,7 @@ func TestPulumiCommand(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	pulumiCommand, err := NewPulumiCommand()
+	pulumiCommand, err := NewPulumiCommand(nil)
 	require.NoError(t, err, "failed to create pulumi command: %s", err)
 	ws, err := NewLocalWorkspace(ctx, Pulumi(pulumiCommand))
 	require.NoError(t, err, "failed to create workspace: %s", err)

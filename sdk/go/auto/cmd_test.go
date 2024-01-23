@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ func TestInstallDefaultRoot(t *testing.T) {
 
 	requestedVersion := semver.Version{Major: 3, Minor: 98, Patch: 0}
 
-	_, err := InstallPulumiCommand(context.Background(), PulumiCommandVersion(requestedVersion))
+	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Version: requestedVersion})
 
 	require.NoError(t, err)
 	homeDir, err := os.UserHomeDir()
@@ -49,16 +49,16 @@ func TestInstallDefaultRoot(t *testing.T) {
 func TestOptionDefaults(t *testing.T) {
 	t.Parallel()
 
-	opts := pulumiCommandOptions{}
+	opts := &PulumiCommandOptions{}
 
-	err := opts.applyDefaults()
+	opts, err := opts.withDefaults()
 
 	require.NoError(t, err)
 	homeDir, err := os.UserHomeDir()
 	require.NoError(t, err)
 	root := path.Join(homeDir, ".pulumi", "versions", sdk.Version.String())
-	require.Equal(t, root, opts.root)
-	require.Equal(t, sdk.Version, opts.version)
+	require.Equal(t, root, opts.Root)
+	require.Equal(t, sdk.Version, opts.Version)
 }
 
 func TestInstallTwice(t *testing.T) {
@@ -69,7 +69,7 @@ func TestInstallTwice(t *testing.T) {
 	defer os.RemoveAll(dir)
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
 
-	_, err = InstallPulumiCommand(context.Background(), PulumiCommandRoot(dir), PulumiCommandVersion(version))
+	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
 
 	require.NoError(t, err)
 	pulumiPath := path.Join(dir, "bin", "pulumi")
@@ -77,7 +77,7 @@ func TestInstallTwice(t *testing.T) {
 	require.NoError(t, err, "did not find pulumi binary in the expected path")
 	modTime1 := stat.ModTime()
 
-	_, err = InstallPulumiCommand(context.Background(), PulumiCommandRoot(dir), PulumiCommandVersion(version))
+	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
 
 	require.NoError(t, err)
 	stat, err = os.Stat(pulumiPath)
@@ -93,11 +93,11 @@ func TestErrorIncompatibleVersion(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	installedVersion := semver.Version{Major: 3, Minor: 98, Patch: 0}
-	_, err = InstallPulumiCommand(context.Background(), PulumiCommandVersion(installedVersion), PulumiCommandRoot(dir))
+	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: installedVersion})
 	require.NoError(t, err)
 	requestedVersion := semver.Version{Major: 3, Minor: 101, Patch: 0}
 
-	_, err = NewPulumiCommand(PulumiCommandVersion(requestedVersion), PulumiCommandRoot(dir))
+	_, err = NewPulumiCommand(&PulumiCommandOptions{Root: dir, Version: requestedVersion})
 
 	require.ErrorContains(t, err, "version requirement failed")
 }

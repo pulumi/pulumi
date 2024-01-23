@@ -850,7 +850,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	if lwOpts.PulumiCommand != nil {
 		pulumiCommand = lwOpts.PulumiCommand
 	} else {
-		p, err := NewPulumiCommand(skipVersionCheck(optOut))
+		p, err := NewPulumiCommand(&PulumiCommandOptions{skipVersionCheck: optOut})
 		if err != nil {
 			return nil, err
 		}
@@ -1041,18 +1041,19 @@ func Program(program pulumi.RunFunc) LocalWorkspaceOption {
 	})
 }
 
-// Pulumi is the PulumiCommand instance to use. If none is supplied, the
-// workspace will create an instance using the Pulumi CLI found in $PATH.
-func Pulumi(pulumi PulumiCommand) LocalWorkspaceOption {
-	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
-		lo.PulumiCommand = pulumi
-	})
-}
-
 // PulumiHome overrides the metadata directory for pulumi commands.
 func PulumiHome(dir string) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.PulumiHome = dir
+	})
+}
+
+// PulumiCommand is the PulumiCommand instance to use. If none is
+// supplied, the workspace will create an instance using the PulumiCommand
+// CLI found in $PATH.
+func Pulumi(pulumi PulumiCommand) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.PulumiCommand = pulumi
 	})
 }
 

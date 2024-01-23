@@ -47,6 +47,41 @@ type PulumiCommand interface {
 	Version() semver.Version
 }
 
+type PulumiCommandOptions struct {
+	// Version is the version to install or validate.
+	Version semver.Version
+	// Root sets the directory where the CLI should be installed to, or from
+	// where the CLI should be retrieved.
+	Root string
+	// skipVersionCheck is used to disable the validation of the found Pulumi
+	// binary.
+	skipVersionCheck bool
+}
+
+// withDefaults returns a new copy of the options with default values set.
+// Version defaults to the CLI version matching the current SDK release. Root
+// defaults to $HOME/.pulumi/versions/$VERSION.
+func (opts *PulumiCommandOptions) withDefaults() (*PulumiCommandOptions, error) {
+	newOpts := &PulumiCommandOptions{
+		Version:          opts.Version,
+		Root:             opts.Root,
+		skipVersionCheck: opts.skipVersionCheck,
+	}
+	if newOpts.Version.EQ(semver.Version{}) {
+		newOpts.Version = sdk.Version
+	}
+
+	if newOpts.Root == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		newOpts.Root = path.Join(home, ".pulumi", "versions", newOpts.Version.String())
+	}
+
+	return newOpts, nil
+}
+
 type pulumiCommand struct {
 	version semver.Version
 	command string
@@ -56,15 +91,13 @@ type pulumiCommand struct {
 // installation. PulumiCommandOptions can be used to configure things like the
 // the installation root or to validate that the version meets a minimum
 // requirement. By default the pulumi binary found in $PATH is used.
-func NewPulumiCommand(opts ...PulumiCommandOption) (PulumiCommand, error) {
-	pOpts := &pulumiCommandOptions{}
-	for _, opt := range opts {
-		opt.applyPulumiCommandOption(pOpts)
+func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
+	if opts == nil {
+		opts = &PulumiCommandOptions{}
 	}
-
 	command := "pulumi"
-	if pOpts.root != "" {
-		command = path.Join(pOpts.root, "bin", "pulumi")
+	if opts.Root != "" {
+		command = path.Join(opts.Root, "bin", "pulumi")
 	}
 
 	cmd := exec.Command(command, "version")
@@ -74,10 +107,10 @@ func NewPulumiCommand(opts ...PulumiCommandOption) (PulumiCommand, error) {
 	}
 	currentVersion := strings.TrimSpace(string(out))
 	min := minimumVersion
-	if pOpts.version.GT(min) {
-		min = pOpts.version
+	if opts.Version.GT(min) {
+		min = opts.Version
 	}
-	version, err := parseAndValidatePulumiVersion(min, currentVersion, pOpts.skipVersionCheck)
+	version, err := parseAndValidatePulumiVersion(min, currentVersion, opts.skipVersionCheck)
 	if err != nil {
 		return pulumiCommand{}, err
 	}
@@ -93,38 +126,32 @@ func NewPulumiCommand(opts ...PulumiCommandOption) (PulumiCommand, error) {
 // $HOME/.pulumi/versions/$VERSION. Use the option `PulumiCommandRoot` to
 // specify a different directory, and `PulumiCommandVersion` to install a
 // custom version.
-func InstallPulumiCommand(ctx context.Context, opts ...PulumiCommandOption) (
+func InstallPulumiCommand(ctx context.Context, opts *PulumiCommandOptions) (
 	PulumiCommand,
 	error,
 ) {
-	pOpts := &pulumiCommandOptions{}
-	for _, opt := range opts {
-		opt.applyPulumiCommandOption(pOpts)
+	if opts == nil {
+		opts = &PulumiCommandOptions{}
 	}
-	err := pOpts.applyDefaults()
+	opts, err := opts.withDefaults()
 	if err != nil {
 		return pulumiCommand{}, err
 	}
-	fullOpts := []PulumiCommandOption{
-		PulumiCommandRoot(pOpts.root),
-		PulumiCommandVersion(pOpts.version),
-		skipVersionCheck(pOpts.skipVersionCheck),
-	}
-	pulumi, err := NewPulumiCommand(fullOpts...)
+	pulumi, err := NewPulumiCommand(opts)
 	if err == nil {
 		// Found an installation and it satisfies the version requirement
 		return pulumi, nil
 	}
 	if runtime.GOOS == "windows" {
-		if err := installWindows(ctx, pOpts.version, pOpts.root); err != nil {
+		if err := installWindows(ctx, opts.Version, opts.Root); err != nil {
 			return pulumiCommand{}, err
 		}
 	} else {
-		if err := installPosix(ctx, pOpts.version, pOpts.root); err != nil {
+		if err := installPosix(ctx, opts.Version, opts.Root); err != nil {
 			return pulumiCommand{}, err
 		}
 	}
-	return NewPulumiCommand(fullOpts...)
+	return NewPulumiCommand(opts)
 }
 
 func downloadToTmpFile(ctx context.Context, url, filePattern string) (string, error) {
@@ -262,66 +289,6 @@ func (p pulumiCommand) Run(ctx context.Context,
 // The version of the current Pulumi CLI installation.
 func (p pulumiCommand) Version() semver.Version {
 	return p.version
-}
-
-type pulumiCommandOptions struct {
-	version          semver.Version
-	root             string
-	skipVersionCheck bool
-}
-
-// PulumiCommandOption is used configure a PulumiCommand at initialization and
-// installation time.
-type PulumiCommandOption interface {
-	applyPulumiCommandOption(*pulumiCommandOptions)
-}
-
-type pulumiCommandOption func(*pulumiCommandOptions)
-
-func (o pulumiCommandOption) applyPulumiCommandOption(opts *pulumiCommandOptions) {
-	o(opts)
-}
-
-// PulumiCommandVersion is the version to install or validate.
-func PulumiCommandVersion(version semver.Version) PulumiCommandOption {
-	return pulumiCommandOption(func(o *pulumiCommandOptions) {
-		o.version = version
-	})
-}
-
-// PulumiCommandRoot sets the directory where the CLI should be installed to,
-// or from where the CLI should be retrieved.
-func PulumiCommandRoot(root string) PulumiCommandOption {
-	return pulumiCommandOption(func(o *pulumiCommandOptions) {
-		o.root = root
-	})
-}
-
-// skipVersionCheck is used to disable the validation of the found Pulumi
-// binary.
-func skipVersionCheck(skip bool) PulumiCommandOption {
-	return pulumiCommandOption(func(o *pulumiCommandOptions) {
-		o.skipVersionCheck = skip
-	})
-}
-
-// applyDefaults sets default values for root and version if none have been
-// specified. Version defaults to the CLI version matching the current SDK
-// release. Root defaults to $HOME/.pulumi/versions/$VERSION.
-func (opts *pulumiCommandOptions) applyDefaults() error {
-	if opts.version.EQ(semver.Version{}) {
-		opts.version = sdk.Version
-	}
-
-	if opts.root == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-		opts.root = path.Join(home, ".pulumi", "versions", opts.version.String())
-	}
-
-	return nil
 }
 
 func withNonInteractiveArg(args []string) []string {
