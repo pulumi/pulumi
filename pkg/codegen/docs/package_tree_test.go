@@ -82,6 +82,58 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 	}
 
 	testCases := []testCase{
+
+		{
+			"index top module",
+			schema.PackageSpec{
+				Name:    "testindex",
+				Version: "0.0.1",
+				Resources: map[string]schema.ResourceSpec{
+					"testindex:index:Resource": {},
+				},
+			},
+			`[
+			 {
+			   "name": "Provider",
+			   "type": "resource",
+			   "link": "provider"
+			 },
+			 {
+			   "name": "Resource",
+			   "type": "resource",
+			   "link": "resource"
+			 }
+		       ]`,
+		},
+		{
+			"random",
+			schema.PackageSpec{
+				Name:    "random",
+				Version: "0.0.1",
+				Resources: map[string]schema.ResourceSpec{
+					"random:index/randomId:RandomId":             {},
+					"random:index/randomPassword:RandomPassword": {},
+				},
+			},
+			`
+			 [
+			  {
+			    "name": "Provider",
+			    "type": "resource",
+			    "link": "provider"
+			  },
+			  {
+			    "name": "RandomId",
+			    "type": "resource",
+			    "link": "randomid"
+			  },
+			  {
+			    "name": "RandomPassword",
+			    "type": "resource",
+			    "link": "randompassword"
+			  }
+			]`,
+		},
 		{
 			"14820",
 			schema.PackageSpec{
