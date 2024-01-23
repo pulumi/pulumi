@@ -211,6 +211,15 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 
 			write(strings.Join(cases, "|"))
 		case *schema.UnionType:
+			if isUnionOfObjects(valueType) {
+				possibleTypes := make([]string, len(valueType.ElementTypes))
+				for index, elem := range valueType.ElementTypes {
+					objectType := elem.(*schema.ObjectType)
+					_, _, typeName := decomposeToken(objectType.Token)
+					possibleTypes[index] = typeName
+				}
+				write("oneOf(" + strings.Join(possibleTypes, "|") + ")")
+			}
 			for _, elem := range valueType.ElementTypes {
 				if isPrimitiveType(elem) {
 					writeValue(elem)

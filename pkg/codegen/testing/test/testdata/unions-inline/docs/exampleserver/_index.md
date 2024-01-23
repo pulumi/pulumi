@@ -28,7 +28,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as example from "@pulumi/example";
 
 const exampleServer = new example.ExampleServer("exampleServer", {
-  properties: ,
+  properties: oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore),
 });
 
                 </code>
@@ -46,7 +46,7 @@ import pulumi
 import pulumi_example as example
 
 exampleServer = example.ExampleServer("exampleServer",
-  properties=
+  properties=oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore)
 )
 
                 </code>
@@ -65,7 +65,7 @@ using Example = Pulumi.Example;
 
 var exampleServer = new Example.ExampleServer("exampleServer", new () 
 {
-  Properties = ,
+  Properties = oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore),
 });
 
                 </code>
@@ -104,7 +104,7 @@ import java.util.List;
 import java.util.Map;
 
 var exampleServer = new ExampleServer("exampleServer", ExampleServerArgs.builder()
-  .properties()
+  .properties(oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore))
   .build());
 
                 </code>
@@ -124,7 +124,7 @@ resources:
   exampleServer:
     type: example:index:ExampleServer
     properties:
-      properties: 
+      properties: oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore)
 
                 </code>
             </pre>
