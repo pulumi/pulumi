@@ -69,6 +69,9 @@ on:
       AZURE_CLIENT_SECRET:
         required: false
         description: "Azure clients secret, needs to be rotated before 2025-12-21 (see the pulumi-test user in Azure portal)"
+      AZURE_STORAGE_SAS_TOKEN:
+        required: false
+        description: "Azure storage SAS token, required to run tests against Azure"
       GCP_SERVICE_ACCOUNT:
         required: false
         description: "GCP service account, required to run tests against GCP"
