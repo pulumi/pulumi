@@ -396,32 +396,36 @@ func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiPr
 	// bridge the same terraform provider. But as above the decisions here are based on what's locally
 	// installed so the user can manually edit their plugin cache to be the set of plugins they want to use.
 	for {
-		if len(l.plugins) == 0 {
+		// If we're in this loop we're looking for the mapping via legacy GetMapping("") calls. We shouldn't make these
+		// calls against providers who have told us the set they map against.
+
+		// Find a plugin that doesn't have any mapping information, we'll call GetMapping("") on it.
+		var pluginSpec *mapperPluginSpec
+		for idx, spec := range l.plugins {
+			spec := spec
+			contract.Assertf(spec.calledGetMappings, "GetMappings should have been called")
+			// If this plugin has mapping information then don't call GetMapping("") on it, if it had the right mapping it
+			// would have been picked up in the loop above.
+			if spec.mappings == nil {
+				pluginSpec = &spec
+
+				// We're going to call GetMapping("") on this plugin, it will never be needed again so remove it from
+				// the list by overwriting it with the plugin from the end and then shrinking the slice.
+				last := len(l.plugins) - 1
+				l.plugins[idx] = l.plugins[last]
+				l.plugins = l.plugins[0:last]
+				break
+			}
+		}
+
+		if pluginSpec == nil {
 			// No plugins left to look in, return that we don't have a mapping but first save that we'll never
 			// find a mapping for this provider key.
 			l.entries[provider] = []byte{}
 			return []byte{}, nil
 		}
 
-		// If we're in this loop we're looking for the mapping via legacy GetMapping("") calls. We shouldn't make these
-		// calls against providers who have told us the set they map against.
-
-		// Pop the first spec off the plugins list
-		pluginSpec := l.plugins[0]
-
-		contract.Assertf(pluginSpec.calledGetMappings, "GetMappings should have been called")
-		// If this plugin has mapping information then don't call GetMapping("") on it, if it had the right mapping it
-		// would have been picked up in the loop above.
-		if pluginSpec.mappings != nil {
-			// Put it back on the plugin list
-			l.plugins[0] = l.plugins[len(l.plugins)-1]
-			l.plugins[len(l.plugins)-1] = pluginSpec
-			continue
-		}
-		// We're going to call GetMapping("") on this plugin, it will never be needed again so remove it from the list.
-		l.plugins = l.plugins[1:]
-
-		data, mappedProvider, err := l.getMappingForPlugin(pluginSpec, "")
+		data, mappedProvider, err := l.getMappingForPlugin(*pluginSpec, "")
 		if err != nil {
 			return nil, err
 		}
