@@ -200,13 +200,73 @@ var component = new Example.Component("component", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "simple-plain-schema/example/"
+)
+
+component, err := example.NewComponent("component", &example.ComponentArgs{
+  A: true|false,
+  B: pulumi.BoolRef(true|false),
+  Bar: &example.FooArgs{
+    A: true|false,
+    B: pulumi.BoolRef(true|false),
+    C: 0,
+    D: pulumi.IntRef(0),
+    E: "string",
+    F: pulumi.StringRef("string"),
+  },
+  Baz: example.FooArray{
+    &example.FooArgs{
+      A: true|false,
+      B: pulumi.BoolRef(true|false),
+      C: 0,
+      D: pulumi.IntRef(0),
+      E: "string",
+      F: pulumi.StringRef("string"),
+    }
+  },
+  BazMap: example.FooMap{
+    "string": &example.FooArgs{
+      A: true|false,
+      B: pulumi.BoolRef(true|false),
+      C: 0,
+      D: pulumi.IntRef(0),
+      E: "string",
+      F: pulumi.StringRef("string"),
+    }
+  },
+  C: 0,
+  D: pulumi.IntRef(0),
+  E: "string",
+  F: pulumi.StringRef("string"),
+  Foo: &example.FooArgs{
+    A: true|false,
+    B: pulumi.BoolRef(true|false),
+    C: 0,
+    D: pulumi.IntRef(0),
+    E: "string",
+    F: pulumi.StringRef("string"),
+  },
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

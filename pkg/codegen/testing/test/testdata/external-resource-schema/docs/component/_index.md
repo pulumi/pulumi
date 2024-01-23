@@ -867,13 +867,297 @@ var component = new Example.Component("component", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
+)
+
+component, err := example.NewComponent("component", &example.ComponentArgs{
+  Metadata: &meta.v1.ObjectMetaArgs{
+    Annotations: pulumi.StringMap{
+      "string": pulumi.String("string")
+    },
+    ClusterName: pulumi.String("string"),
+    CreationTimestamp: pulumi.String("string"),
+    DeletionGracePeriodSeconds: pulumi.Int(0),
+    DeletionTimestamp: pulumi.String("string"),
+    Finalizers: pulumi.StringArray{
+      pulumi.String("string")
+    },
+    GenerateName: pulumi.String("string"),
+    Generation: pulumi.Int(0),
+    Labels: pulumi.StringMap{
+      "string": pulumi.String("string")
+    },
+    ManagedFields: meta.v1.ManagedFieldsEntryArray{
+      &meta.v1.ManagedFieldsEntryArgs{
+        ApiVersion: pulumi.String("string"),
+        FieldsType: pulumi.String("string"),
+        FieldsV1: ,
+        Manager: pulumi.String("string"),
+        Operation: pulumi.String("string"),
+        Subresource: pulumi.String("string"),
+        Time: pulumi.String("string"),
+      }
+    },
+    Name: pulumi.String("string"),
+    Namespace: pulumi.String("string"),
+    OwnerReferences: meta.v1.OwnerReferenceArray{
+      &meta.v1.OwnerReferenceArgs{
+        ApiVersion: pulumi.String("string"),
+        BlockOwnerDeletion: pulumi.Bool(true|false),
+        Controller: pulumi.Bool(true|false),
+        Kind: pulumi.String("string"),
+        Name: pulumi.String("string"),
+        Uid: pulumi.String("string"),
+      }
+    },
+    ResourceVersion: pulumi.String("string"),
+    SelfLink: pulumi.String("string"),
+    Uid: pulumi.String("string"),
+  },
+  MetadataArray: meta.v1.ObjectMetaArray{
+    &meta.v1.ObjectMetaArgs{
+      Annotations: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ClusterName: pulumi.String("string"),
+      CreationTimestamp: pulumi.String("string"),
+      DeletionGracePeriodSeconds: pulumi.Int(0),
+      DeletionTimestamp: pulumi.String("string"),
+      Finalizers: pulumi.StringArray{
+        pulumi.String("string")
+      },
+      GenerateName: pulumi.String("string"),
+      Generation: pulumi.Int(0),
+      Labels: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ManagedFields: meta.v1.ManagedFieldsEntryArray{
+        &meta.v1.ManagedFieldsEntryArgs{
+          ApiVersion: pulumi.String("string"),
+          FieldsType: pulumi.String("string"),
+          FieldsV1: ,
+          Manager: pulumi.String("string"),
+          Operation: pulumi.String("string"),
+          Subresource: pulumi.String("string"),
+          Time: pulumi.String("string"),
+        }
+      },
+      Name: pulumi.String("string"),
+      Namespace: pulumi.String("string"),
+      OwnerReferences: meta.v1.OwnerReferenceArray{
+        &meta.v1.OwnerReferenceArgs{
+          ApiVersion: pulumi.String("string"),
+          BlockOwnerDeletion: pulumi.Bool(true|false),
+          Controller: pulumi.Bool(true|false),
+          Kind: pulumi.String("string"),
+          Name: pulumi.String("string"),
+          Uid: pulumi.String("string"),
+        }
+      },
+      ResourceVersion: pulumi.String("string"),
+      SelfLink: pulumi.String("string"),
+      Uid: pulumi.String("string"),
+    }
+  },
+  MetadataMap: meta.v1.ObjectMetaMap{
+    "string": &meta.v1.ObjectMetaArgs{
+      Annotations: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ClusterName: pulumi.String("string"),
+      CreationTimestamp: pulumi.String("string"),
+      DeletionGracePeriodSeconds: pulumi.Int(0),
+      DeletionTimestamp: pulumi.String("string"),
+      Finalizers: pulumi.StringArray{
+        pulumi.String("string")
+      },
+      GenerateName: pulumi.String("string"),
+      Generation: pulumi.Int(0),
+      Labels: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ManagedFields: meta.v1.ManagedFieldsEntryArray{
+        &meta.v1.ManagedFieldsEntryArgs{
+          ApiVersion: pulumi.String("string"),
+          FieldsType: pulumi.String("string"),
+          FieldsV1: ,
+          Manager: pulumi.String("string"),
+          Operation: pulumi.String("string"),
+          Subresource: pulumi.String("string"),
+          Time: pulumi.String("string"),
+        }
+      },
+      Name: pulumi.String("string"),
+      Namespace: pulumi.String("string"),
+      OwnerReferences: meta.v1.OwnerReferenceArray{
+        &meta.v1.OwnerReferenceArgs{
+          ApiVersion: pulumi.String("string"),
+          BlockOwnerDeletion: pulumi.Bool(true|false),
+          Controller: pulumi.Bool(true|false),
+          Kind: pulumi.String("string"),
+          Name: pulumi.String("string"),
+          Uid: pulumi.String("string"),
+        }
+      },
+      ResourceVersion: pulumi.String("string"),
+      SelfLink: pulumi.String("string"),
+      Uid: pulumi.String("string"),
+    }
+  },
+  RequiredMetadata: &meta.v1.ObjectMetaArgs{
+    Annotations: pulumi.StringMap{
+      "string": pulumi.String("string")
+    },
+    ClusterName: pulumi.String("string"),
+    CreationTimestamp: pulumi.String("string"),
+    DeletionGracePeriodSeconds: pulumi.Int(0),
+    DeletionTimestamp: pulumi.String("string"),
+    Finalizers: pulumi.StringArray{
+      pulumi.String("string")
+    },
+    GenerateName: pulumi.String("string"),
+    Generation: pulumi.Int(0),
+    Labels: pulumi.StringMap{
+      "string": pulumi.String("string")
+    },
+    ManagedFields: meta.v1.ManagedFieldsEntryArray{
+      &meta.v1.ManagedFieldsEntryArgs{
+        ApiVersion: pulumi.String("string"),
+        FieldsType: pulumi.String("string"),
+        FieldsV1: ,
+        Manager: pulumi.String("string"),
+        Operation: pulumi.String("string"),
+        Subresource: pulumi.String("string"),
+        Time: pulumi.String("string"),
+      }
+    },
+    Name: pulumi.String("string"),
+    Namespace: pulumi.String("string"),
+    OwnerReferences: meta.v1.OwnerReferenceArray{
+      &meta.v1.OwnerReferenceArgs{
+        ApiVersion: pulumi.String("string"),
+        BlockOwnerDeletion: pulumi.Bool(true|false),
+        Controller: pulumi.Bool(true|false),
+        Kind: pulumi.String("string"),
+        Name: pulumi.String("string"),
+        Uid: pulumi.String("string"),
+      }
+    },
+    ResourceVersion: pulumi.String("string"),
+    SelfLink: pulumi.String("string"),
+    Uid: pulumi.String("string"),
+  },
+  RequiredMetadataArray: meta.v1.ObjectMetaArray{
+    &meta.v1.ObjectMetaArgs{
+      Annotations: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ClusterName: pulumi.String("string"),
+      CreationTimestamp: pulumi.String("string"),
+      DeletionGracePeriodSeconds: pulumi.Int(0),
+      DeletionTimestamp: pulumi.String("string"),
+      Finalizers: pulumi.StringArray{
+        pulumi.String("string")
+      },
+      GenerateName: pulumi.String("string"),
+      Generation: pulumi.Int(0),
+      Labels: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ManagedFields: meta.v1.ManagedFieldsEntryArray{
+        &meta.v1.ManagedFieldsEntryArgs{
+          ApiVersion: pulumi.String("string"),
+          FieldsType: pulumi.String("string"),
+          FieldsV1: ,
+          Manager: pulumi.String("string"),
+          Operation: pulumi.String("string"),
+          Subresource: pulumi.String("string"),
+          Time: pulumi.String("string"),
+        }
+      },
+      Name: pulumi.String("string"),
+      Namespace: pulumi.String("string"),
+      OwnerReferences: meta.v1.OwnerReferenceArray{
+        &meta.v1.OwnerReferenceArgs{
+          ApiVersion: pulumi.String("string"),
+          BlockOwnerDeletion: pulumi.Bool(true|false),
+          Controller: pulumi.Bool(true|false),
+          Kind: pulumi.String("string"),
+          Name: pulumi.String("string"),
+          Uid: pulumi.String("string"),
+        }
+      },
+      ResourceVersion: pulumi.String("string"),
+      SelfLink: pulumi.String("string"),
+      Uid: pulumi.String("string"),
+    }
+  },
+  RequiredMetadataMap: meta.v1.ObjectMetaMap{
+    "string": &meta.v1.ObjectMetaArgs{
+      Annotations: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ClusterName: pulumi.String("string"),
+      CreationTimestamp: pulumi.String("string"),
+      DeletionGracePeriodSeconds: pulumi.Int(0),
+      DeletionTimestamp: pulumi.String("string"),
+      Finalizers: pulumi.StringArray{
+        pulumi.String("string")
+      },
+      GenerateName: pulumi.String("string"),
+      Generation: pulumi.Int(0),
+      Labels: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ManagedFields: meta.v1.ManagedFieldsEntryArray{
+        &meta.v1.ManagedFieldsEntryArgs{
+          ApiVersion: pulumi.String("string"),
+          FieldsType: pulumi.String("string"),
+          FieldsV1: ,
+          Manager: pulumi.String("string"),
+          Operation: pulumi.String("string"),
+          Subresource: pulumi.String("string"),
+          Time: pulumi.String("string"),
+        }
+      },
+      Name: pulumi.String("string"),
+      Namespace: pulumi.String("string"),
+      OwnerReferences: meta.v1.OwnerReferenceArray{
+        &meta.v1.OwnerReferenceArgs{
+          ApiVersion: pulumi.String("string"),
+          BlockOwnerDeletion: pulumi.Bool(true|false),
+          Controller: pulumi.Bool(true|false),
+          Kind: pulumi.String("string"),
+          Name: pulumi.String("string"),
+          Uid: pulumi.String("string"),
+        }
+      },
+      ResourceVersion: pulumi.String("string"),
+      SelfLink: pulumi.String("string"),
+      Uid: pulumi.String("string"),
+    }
+  },
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

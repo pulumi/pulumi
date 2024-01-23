@@ -102,13 +102,41 @@ var rubberTree = new Plant.Tree.V1.RubberTree("rubberTree", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "dashed-import-schema/plant-provider/tree.v1"
+)
+
+rubberTree, err := tree.v1.NewRubberTree("rubberTree", &tree.v1.RubberTreeArgs{
+  Container: &plant.ContainerArgs{
+    Brightness: ContainerBrightnessZeroPointOne|ContainerBrightnessOne,
+    Color: ,
+    Material: pulumi.String("string"),
+    Size: ContainerSizeFourInch|ContainerSizeSixInch|ContainerSizeEightInch,
+  },
+  Diameter: DiameterSixinch|DiameterTwelveinch,
+  Farm: ,
+  Size: TreeSizeSmall|TreeSizeMedium|TreeSizeLarge,
+  Type: RubberTreeVarietyBurgundy|RubberTreeVarietyRuby|RubberTreeVarietyTineke,
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

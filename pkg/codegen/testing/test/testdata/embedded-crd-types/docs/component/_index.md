@@ -5330,13 +5330,1735 @@ var component = new Foo.Component("component", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "embedded-crd-types/foo/index"
+)
+
+component, err := foo.NewComponent("component", &foo.ComponentArgs{
+  EniConfig: crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpecMap{
+    "string": &crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpecArgs{
+      SecurityGroups: pulumi.StringArray{
+        pulumi.String("string")
+      },
+      Subnet: pulumi.String("string"),
+    }
+  },
+  Pod: &core.v1.PodArgs{
+    ApiVersion: pulumi.String("string"),
+    Kind: pulumi.String("string"),
+    Metadata: &meta.v1.ObjectMetaArgs{
+      Annotations: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ClusterName: pulumi.String("string"),
+      CreationTimestamp: pulumi.String("string"),
+      DeletionGracePeriodSeconds: pulumi.Int(0),
+      DeletionTimestamp: pulumi.String("string"),
+      Finalizers: pulumi.StringArray{
+        pulumi.String("string")
+      },
+      GenerateName: pulumi.String("string"),
+      Generation: pulumi.Int(0),
+      Labels: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      ManagedFields: meta.v1.ManagedFieldsEntryArray{
+        &meta.v1.ManagedFieldsEntryArgs{
+          ApiVersion: pulumi.String("string"),
+          FieldsType: pulumi.String("string"),
+          FieldsV1: ,
+          Manager: pulumi.String("string"),
+          Operation: pulumi.String("string"),
+          Subresource: pulumi.String("string"),
+          Time: pulumi.String("string"),
+        }
+      },
+      Name: pulumi.String("string"),
+      Namespace: pulumi.String("string"),
+      OwnerReferences: meta.v1.OwnerReferenceArray{
+        &meta.v1.OwnerReferenceArgs{
+          ApiVersion: pulumi.String("string"),
+          BlockOwnerDeletion: pulumi.Bool(true|false),
+          Controller: pulumi.Bool(true|false),
+          Kind: pulumi.String("string"),
+          Name: pulumi.String("string"),
+          Uid: pulumi.String("string"),
+        }
+      },
+      ResourceVersion: pulumi.String("string"),
+      SelfLink: pulumi.String("string"),
+      Uid: pulumi.String("string"),
+    },
+    Spec: &core.v1.PodSpecArgs{
+      ActiveDeadlineSeconds: pulumi.Int(0),
+      Affinity: &core.v1.AffinityArgs{
+        NodeAffinity: &core.v1.NodeAffinityArgs{
+          PreferredDuringSchedulingIgnoredDuringExecution: core.v1.PreferredSchedulingTermArray{
+            &core.v1.PreferredSchedulingTermArgs{
+              Preference: &core.v1.NodeSelectorTermArgs{
+                MatchExpressions: core.v1.NodeSelectorRequirementArray{
+                  &core.v1.NodeSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+                MatchFields: core.v1.NodeSelectorRequirementArray{
+                  &core.v1.NodeSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+              },
+              Weight: pulumi.Int(0),
+            }
+          },
+          RequiredDuringSchedulingIgnoredDuringExecution: &core.v1.NodeSelectorArgs{
+            NodeSelectorTerms: core.v1.NodeSelectorTermArray{
+              &core.v1.NodeSelectorTermArgs{
+                MatchExpressions: core.v1.NodeSelectorRequirementArray{
+                  &core.v1.NodeSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+                MatchFields: core.v1.NodeSelectorRequirementArray{
+                  &core.v1.NodeSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+              }
+            },
+          },
+        },
+        PodAffinity: &core.v1.PodAffinityArgs{
+          PreferredDuringSchedulingIgnoredDuringExecution: core.v1.WeightedPodAffinityTermArray{
+            &core.v1.WeightedPodAffinityTermArgs{
+              PodAffinityTerm: &core.v1.PodAffinityTermArgs{
+                LabelSelector: &meta.v1.LabelSelectorArgs{
+                  MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                    &meta.v1.LabelSelectorRequirementArgs{
+                      Key: pulumi.String("string"),
+                      Operator: pulumi.String("string"),
+                      Values: pulumi.StringArray{
+                        pulumi.String("string")
+                      },
+                    }
+                  },
+                  MatchLabels: pulumi.StringMap{
+                    "string": pulumi.String("string")
+                  },
+                },
+                NamespaceSelector: &meta.v1.LabelSelectorArgs{
+                  MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                    &meta.v1.LabelSelectorRequirementArgs{
+                      Key: pulumi.String("string"),
+                      Operator: pulumi.String("string"),
+                      Values: pulumi.StringArray{
+                        pulumi.String("string")
+                      },
+                    }
+                  },
+                  MatchLabels: pulumi.StringMap{
+                    "string": pulumi.String("string")
+                  },
+                },
+                Namespaces: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+                TopologyKey: pulumi.String("string"),
+              },
+              Weight: pulumi.Int(0),
+            }
+          },
+          RequiredDuringSchedulingIgnoredDuringExecution: core.v1.PodAffinityTermArray{
+            &core.v1.PodAffinityTermArgs{
+              LabelSelector: &meta.v1.LabelSelectorArgs{
+                MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                  &meta.v1.LabelSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+                MatchLabels: pulumi.StringMap{
+                  "string": pulumi.String("string")
+                },
+              },
+              NamespaceSelector: &meta.v1.LabelSelectorArgs{
+                MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                  &meta.v1.LabelSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+                MatchLabels: pulumi.StringMap{
+                  "string": pulumi.String("string")
+                },
+              },
+              Namespaces: pulumi.StringArray{
+                pulumi.String("string")
+              },
+              TopologyKey: pulumi.String("string"),
+            }
+          },
+        },
+        PodAntiAffinity: &core.v1.PodAntiAffinityArgs{
+          PreferredDuringSchedulingIgnoredDuringExecution: core.v1.WeightedPodAffinityTermArray{
+            &core.v1.WeightedPodAffinityTermArgs{
+              PodAffinityTerm: &core.v1.PodAffinityTermArgs{
+                LabelSelector: &meta.v1.LabelSelectorArgs{
+                  MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                    &meta.v1.LabelSelectorRequirementArgs{
+                      Key: pulumi.String("string"),
+                      Operator: pulumi.String("string"),
+                      Values: pulumi.StringArray{
+                        pulumi.String("string")
+                      },
+                    }
+                  },
+                  MatchLabels: pulumi.StringMap{
+                    "string": pulumi.String("string")
+                  },
+                },
+                NamespaceSelector: &meta.v1.LabelSelectorArgs{
+                  MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                    &meta.v1.LabelSelectorRequirementArgs{
+                      Key: pulumi.String("string"),
+                      Operator: pulumi.String("string"),
+                      Values: pulumi.StringArray{
+                        pulumi.String("string")
+                      },
+                    }
+                  },
+                  MatchLabels: pulumi.StringMap{
+                    "string": pulumi.String("string")
+                  },
+                },
+                Namespaces: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+                TopologyKey: pulumi.String("string"),
+              },
+              Weight: pulumi.Int(0),
+            }
+          },
+          RequiredDuringSchedulingIgnoredDuringExecution: core.v1.PodAffinityTermArray{
+            &core.v1.PodAffinityTermArgs{
+              LabelSelector: &meta.v1.LabelSelectorArgs{
+                MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                  &meta.v1.LabelSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+                MatchLabels: pulumi.StringMap{
+                  "string": pulumi.String("string")
+                },
+              },
+              NamespaceSelector: &meta.v1.LabelSelectorArgs{
+                MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                  &meta.v1.LabelSelectorRequirementArgs{
+                    Key: pulumi.String("string"),
+                    Operator: pulumi.String("string"),
+                    Values: pulumi.StringArray{
+                      pulumi.String("string")
+                    },
+                  }
+                },
+                MatchLabels: pulumi.StringMap{
+                  "string": pulumi.String("string")
+                },
+              },
+              Namespaces: pulumi.StringArray{
+                pulumi.String("string")
+              },
+              TopologyKey: pulumi.String("string"),
+            }
+          },
+        },
+      },
+      AutomountServiceAccountToken: pulumi.Bool(true|false),
+      Containers: core.v1.ContainerArray{
+        &core.v1.ContainerArgs{
+          Args: pulumi.StringArray{
+            pulumi.String("string")
+          },
+          Command: pulumi.StringArray{
+            pulumi.String("string")
+          },
+          Env: core.v1.EnvVarArray{
+            &core.v1.EnvVarArgs{
+              Name: pulumi.String("string"),
+              Value: pulumi.String("string"),
+              ValueFrom: &core.v1.EnvVarSourceArgs{
+                ConfigMapKeyRef: &core.v1.ConfigMapKeySelectorArgs{
+                  Key: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+                FieldRef: &core.v1.ObjectFieldSelectorArgs{
+                  ApiVersion: pulumi.String("string"),
+                  FieldPath: pulumi.String("string"),
+                },
+                ResourceFieldRef: &core.v1.ResourceFieldSelectorArgs{
+                  ContainerName: pulumi.String("string"),
+                  Divisor: pulumi.String("string"),
+                  Resource: pulumi.String("string"),
+                },
+                SecretKeyRef: &core.v1.SecretKeySelectorArgs{
+                  Key: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+              },
+            }
+          },
+          EnvFrom: core.v1.EnvFromSourceArray{
+            &core.v1.EnvFromSourceArgs{
+              ConfigMapRef: &core.v1.ConfigMapEnvSourceArgs{
+                Name: pulumi.String("string"),
+                Optional: pulumi.Bool(true|false),
+              },
+              Prefix: pulumi.String("string"),
+              SecretRef: &core.v1.SecretEnvSourceArgs{
+                Name: pulumi.String("string"),
+                Optional: pulumi.Bool(true|false),
+              },
+            }
+          },
+          Image: pulumi.String("string"),
+          ImagePullPolicy: pulumi.String("string"),
+          Lifecycle: &core.v1.LifecycleArgs{
+            PostStart: &core.v1.HandlerArgs{
+              Exec: &core.v1.ExecActionArgs{
+                Command: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+              },
+              HttpGet: &core.v1.HTTPGetActionArgs{
+                Host: pulumi.String("string"),
+                HttpHeaders: core.v1.HTTPHeaderArray{
+                  &core.v1.HTTPHeaderArgs{
+                    Name: pulumi.String("string"),
+                    Value: pulumi.String("string"),
+                  }
+                },
+                Path: pulumi.String("string"),
+                Port: ,
+                Scheme: pulumi.String("string"),
+              },
+              TcpSocket: &core.v1.TCPSocketActionArgs{
+                Host: pulumi.String("string"),
+                Port: ,
+              },
+            },
+            PreStop: &core.v1.HandlerArgs{
+              Exec: &core.v1.ExecActionArgs{
+                Command: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+              },
+              HttpGet: &core.v1.HTTPGetActionArgs{
+                Host: pulumi.String("string"),
+                HttpHeaders: core.v1.HTTPHeaderArray{
+                  &core.v1.HTTPHeaderArgs{
+                    Name: pulumi.String("string"),
+                    Value: pulumi.String("string"),
+                  }
+                },
+                Path: pulumi.String("string"),
+                Port: ,
+                Scheme: pulumi.String("string"),
+              },
+              TcpSocket: &core.v1.TCPSocketActionArgs{
+                Host: pulumi.String("string"),
+                Port: ,
+              },
+            },
+          },
+          LivenessProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Name: pulumi.String("string"),
+          Ports: core.v1.ContainerPortArray{
+            &core.v1.ContainerPortArgs{
+              ContainerPort: pulumi.Int(0),
+              HostIP: pulumi.String("string"),
+              HostPort: pulumi.Int(0),
+              Name: pulumi.String("string"),
+              Protocol: pulumi.String("string"),
+            }
+          },
+          ReadinessProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Resources: &core.v1.ResourceRequirementsArgs{
+            Limits: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+            Requests: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+          },
+          SecurityContext: &core.v1.SecurityContextArgs{
+            AllowPrivilegeEscalation: pulumi.Bool(true|false),
+            Capabilities: &core.v1.CapabilitiesArgs{
+              Add: pulumi.StringArray{
+                pulumi.String("string")
+              },
+              Drop: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            Privileged: pulumi.Bool(true|false),
+            ProcMount: pulumi.String("string"),
+            ReadOnlyRootFilesystem: pulumi.Bool(true|false),
+            RunAsGroup: pulumi.Int(0),
+            RunAsNonRoot: pulumi.Bool(true|false),
+            RunAsUser: pulumi.Int(0),
+            SeLinuxOptions: &core.v1.SELinuxOptionsArgs{
+              Level: pulumi.String("string"),
+              Role: pulumi.String("string"),
+              Type: pulumi.String("string"),
+              User: pulumi.String("string"),
+            },
+            SeccompProfile: &core.v1.SeccompProfileArgs{
+              LocalhostProfile: pulumi.String("string"),
+              Type: pulumi.String("string"),
+            },
+            WindowsOptions: &core.v1.WindowsSecurityContextOptionsArgs{
+              GmsaCredentialSpec: pulumi.String("string"),
+              GmsaCredentialSpecName: pulumi.String("string"),
+              HostProcess: pulumi.Bool(true|false),
+              RunAsUserName: pulumi.String("string"),
+            },
+          },
+          StartupProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Stdin: pulumi.Bool(true|false),
+          StdinOnce: pulumi.Bool(true|false),
+          TerminationMessagePath: pulumi.String("string"),
+          TerminationMessagePolicy: pulumi.String("string"),
+          Tty: pulumi.Bool(true|false),
+          VolumeDevices: core.v1.VolumeDeviceArray{
+            &core.v1.VolumeDeviceArgs{
+              DevicePath: pulumi.String("string"),
+              Name: pulumi.String("string"),
+            }
+          },
+          VolumeMounts: core.v1.VolumeMountArray{
+            &core.v1.VolumeMountArgs{
+              MountPath: pulumi.String("string"),
+              MountPropagation: pulumi.String("string"),
+              Name: pulumi.String("string"),
+              ReadOnly: pulumi.Bool(true|false),
+              SubPath: pulumi.String("string"),
+              SubPathExpr: pulumi.String("string"),
+            }
+          },
+          WorkingDir: pulumi.String("string"),
+        }
+      },
+      DnsConfig: &core.v1.PodDNSConfigArgs{
+        Nameservers: pulumi.StringArray{
+          pulumi.String("string")
+        },
+        Options: core.v1.PodDNSConfigOptionArray{
+          &core.v1.PodDNSConfigOptionArgs{
+            Name: pulumi.String("string"),
+            Value: pulumi.String("string"),
+          }
+        },
+        Searches: pulumi.StringArray{
+          pulumi.String("string")
+        },
+      },
+      DnsPolicy: pulumi.String("string"),
+      EnableServiceLinks: pulumi.Bool(true|false),
+      EphemeralContainers: core.v1.EphemeralContainerArray{
+        &core.v1.EphemeralContainerArgs{
+          Args: pulumi.StringArray{
+            pulumi.String("string")
+          },
+          Command: pulumi.StringArray{
+            pulumi.String("string")
+          },
+          Env: core.v1.EnvVarArray{
+            &core.v1.EnvVarArgs{
+              Name: pulumi.String("string"),
+              Value: pulumi.String("string"),
+              ValueFrom: &core.v1.EnvVarSourceArgs{
+                ConfigMapKeyRef: &core.v1.ConfigMapKeySelectorArgs{
+                  Key: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+                FieldRef: &core.v1.ObjectFieldSelectorArgs{
+                  ApiVersion: pulumi.String("string"),
+                  FieldPath: pulumi.String("string"),
+                },
+                ResourceFieldRef: &core.v1.ResourceFieldSelectorArgs{
+                  ContainerName: pulumi.String("string"),
+                  Divisor: pulumi.String("string"),
+                  Resource: pulumi.String("string"),
+                },
+                SecretKeyRef: &core.v1.SecretKeySelectorArgs{
+                  Key: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+              },
+            }
+          },
+          EnvFrom: core.v1.EnvFromSourceArray{
+            &core.v1.EnvFromSourceArgs{
+              ConfigMapRef: &core.v1.ConfigMapEnvSourceArgs{
+                Name: pulumi.String("string"),
+                Optional: pulumi.Bool(true|false),
+              },
+              Prefix: pulumi.String("string"),
+              SecretRef: &core.v1.SecretEnvSourceArgs{
+                Name: pulumi.String("string"),
+                Optional: pulumi.Bool(true|false),
+              },
+            }
+          },
+          Image: pulumi.String("string"),
+          ImagePullPolicy: pulumi.String("string"),
+          Lifecycle: &core.v1.LifecycleArgs{
+            PostStart: &core.v1.HandlerArgs{
+              Exec: &core.v1.ExecActionArgs{
+                Command: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+              },
+              HttpGet: &core.v1.HTTPGetActionArgs{
+                Host: pulumi.String("string"),
+                HttpHeaders: core.v1.HTTPHeaderArray{
+                  &core.v1.HTTPHeaderArgs{
+                    Name: pulumi.String("string"),
+                    Value: pulumi.String("string"),
+                  }
+                },
+                Path: pulumi.String("string"),
+                Port: ,
+                Scheme: pulumi.String("string"),
+              },
+              TcpSocket: &core.v1.TCPSocketActionArgs{
+                Host: pulumi.String("string"),
+                Port: ,
+              },
+            },
+            PreStop: &core.v1.HandlerArgs{
+              Exec: &core.v1.ExecActionArgs{
+                Command: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+              },
+              HttpGet: &core.v1.HTTPGetActionArgs{
+                Host: pulumi.String("string"),
+                HttpHeaders: core.v1.HTTPHeaderArray{
+                  &core.v1.HTTPHeaderArgs{
+                    Name: pulumi.String("string"),
+                    Value: pulumi.String("string"),
+                  }
+                },
+                Path: pulumi.String("string"),
+                Port: ,
+                Scheme: pulumi.String("string"),
+              },
+              TcpSocket: &core.v1.TCPSocketActionArgs{
+                Host: pulumi.String("string"),
+                Port: ,
+              },
+            },
+          },
+          LivenessProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Name: pulumi.String("string"),
+          Ports: core.v1.ContainerPortArray{
+            &core.v1.ContainerPortArgs{
+              ContainerPort: pulumi.Int(0),
+              HostIP: pulumi.String("string"),
+              HostPort: pulumi.Int(0),
+              Name: pulumi.String("string"),
+              Protocol: pulumi.String("string"),
+            }
+          },
+          ReadinessProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Resources: &core.v1.ResourceRequirementsArgs{
+            Limits: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+            Requests: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+          },
+          SecurityContext: &core.v1.SecurityContextArgs{
+            AllowPrivilegeEscalation: pulumi.Bool(true|false),
+            Capabilities: &core.v1.CapabilitiesArgs{
+              Add: pulumi.StringArray{
+                pulumi.String("string")
+              },
+              Drop: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            Privileged: pulumi.Bool(true|false),
+            ProcMount: pulumi.String("string"),
+            ReadOnlyRootFilesystem: pulumi.Bool(true|false),
+            RunAsGroup: pulumi.Int(0),
+            RunAsNonRoot: pulumi.Bool(true|false),
+            RunAsUser: pulumi.Int(0),
+            SeLinuxOptions: &core.v1.SELinuxOptionsArgs{
+              Level: pulumi.String("string"),
+              Role: pulumi.String("string"),
+              Type: pulumi.String("string"),
+              User: pulumi.String("string"),
+            },
+            SeccompProfile: &core.v1.SeccompProfileArgs{
+              LocalhostProfile: pulumi.String("string"),
+              Type: pulumi.String("string"),
+            },
+            WindowsOptions: &core.v1.WindowsSecurityContextOptionsArgs{
+              GmsaCredentialSpec: pulumi.String("string"),
+              GmsaCredentialSpecName: pulumi.String("string"),
+              HostProcess: pulumi.Bool(true|false),
+              RunAsUserName: pulumi.String("string"),
+            },
+          },
+          StartupProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Stdin: pulumi.Bool(true|false),
+          StdinOnce: pulumi.Bool(true|false),
+          TargetContainerName: pulumi.String("string"),
+          TerminationMessagePath: pulumi.String("string"),
+          TerminationMessagePolicy: pulumi.String("string"),
+          Tty: pulumi.Bool(true|false),
+          VolumeDevices: core.v1.VolumeDeviceArray{
+            &core.v1.VolumeDeviceArgs{
+              DevicePath: pulumi.String("string"),
+              Name: pulumi.String("string"),
+            }
+          },
+          VolumeMounts: core.v1.VolumeMountArray{
+            &core.v1.VolumeMountArgs{
+              MountPath: pulumi.String("string"),
+              MountPropagation: pulumi.String("string"),
+              Name: pulumi.String("string"),
+              ReadOnly: pulumi.Bool(true|false),
+              SubPath: pulumi.String("string"),
+              SubPathExpr: pulumi.String("string"),
+            }
+          },
+          WorkingDir: pulumi.String("string"),
+        }
+      },
+      HostAliases: core.v1.HostAliasArray{
+        &core.v1.HostAliasArgs{
+          Hostnames: pulumi.StringArray{
+            pulumi.String("string")
+          },
+          Ip: pulumi.String("string"),
+        }
+      },
+      HostIPC: pulumi.Bool(true|false),
+      HostNetwork: pulumi.Bool(true|false),
+      HostPID: pulumi.Bool(true|false),
+      Hostname: pulumi.String("string"),
+      ImagePullSecrets: core.v1.LocalObjectReferenceArray{
+        &core.v1.LocalObjectReferenceArgs{
+          Name: pulumi.String("string"),
+        }
+      },
+      InitContainers: core.v1.ContainerArray{
+        &core.v1.ContainerArgs{
+          Args: pulumi.StringArray{
+            pulumi.String("string")
+          },
+          Command: pulumi.StringArray{
+            pulumi.String("string")
+          },
+          Env: core.v1.EnvVarArray{
+            &core.v1.EnvVarArgs{
+              Name: pulumi.String("string"),
+              Value: pulumi.String("string"),
+              ValueFrom: &core.v1.EnvVarSourceArgs{
+                ConfigMapKeyRef: &core.v1.ConfigMapKeySelectorArgs{
+                  Key: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+                FieldRef: &core.v1.ObjectFieldSelectorArgs{
+                  ApiVersion: pulumi.String("string"),
+                  FieldPath: pulumi.String("string"),
+                },
+                ResourceFieldRef: &core.v1.ResourceFieldSelectorArgs{
+                  ContainerName: pulumi.String("string"),
+                  Divisor: pulumi.String("string"),
+                  Resource: pulumi.String("string"),
+                },
+                SecretKeyRef: &core.v1.SecretKeySelectorArgs{
+                  Key: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+              },
+            }
+          },
+          EnvFrom: core.v1.EnvFromSourceArray{
+            &core.v1.EnvFromSourceArgs{
+              ConfigMapRef: &core.v1.ConfigMapEnvSourceArgs{
+                Name: pulumi.String("string"),
+                Optional: pulumi.Bool(true|false),
+              },
+              Prefix: pulumi.String("string"),
+              SecretRef: &core.v1.SecretEnvSourceArgs{
+                Name: pulumi.String("string"),
+                Optional: pulumi.Bool(true|false),
+              },
+            }
+          },
+          Image: pulumi.String("string"),
+          ImagePullPolicy: pulumi.String("string"),
+          Lifecycle: &core.v1.LifecycleArgs{
+            PostStart: &core.v1.HandlerArgs{
+              Exec: &core.v1.ExecActionArgs{
+                Command: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+              },
+              HttpGet: &core.v1.HTTPGetActionArgs{
+                Host: pulumi.String("string"),
+                HttpHeaders: core.v1.HTTPHeaderArray{
+                  &core.v1.HTTPHeaderArgs{
+                    Name: pulumi.String("string"),
+                    Value: pulumi.String("string"),
+                  }
+                },
+                Path: pulumi.String("string"),
+                Port: ,
+                Scheme: pulumi.String("string"),
+              },
+              TcpSocket: &core.v1.TCPSocketActionArgs{
+                Host: pulumi.String("string"),
+                Port: ,
+              },
+            },
+            PreStop: &core.v1.HandlerArgs{
+              Exec: &core.v1.ExecActionArgs{
+                Command: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+              },
+              HttpGet: &core.v1.HTTPGetActionArgs{
+                Host: pulumi.String("string"),
+                HttpHeaders: core.v1.HTTPHeaderArray{
+                  &core.v1.HTTPHeaderArgs{
+                    Name: pulumi.String("string"),
+                    Value: pulumi.String("string"),
+                  }
+                },
+                Path: pulumi.String("string"),
+                Port: ,
+                Scheme: pulumi.String("string"),
+              },
+              TcpSocket: &core.v1.TCPSocketActionArgs{
+                Host: pulumi.String("string"),
+                Port: ,
+              },
+            },
+          },
+          LivenessProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Name: pulumi.String("string"),
+          Ports: core.v1.ContainerPortArray{
+            &core.v1.ContainerPortArgs{
+              ContainerPort: pulumi.Int(0),
+              HostIP: pulumi.String("string"),
+              HostPort: pulumi.Int(0),
+              Name: pulumi.String("string"),
+              Protocol: pulumi.String("string"),
+            }
+          },
+          ReadinessProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Resources: &core.v1.ResourceRequirementsArgs{
+            Limits: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+            Requests: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+          },
+          SecurityContext: &core.v1.SecurityContextArgs{
+            AllowPrivilegeEscalation: pulumi.Bool(true|false),
+            Capabilities: &core.v1.CapabilitiesArgs{
+              Add: pulumi.StringArray{
+                pulumi.String("string")
+              },
+              Drop: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            Privileged: pulumi.Bool(true|false),
+            ProcMount: pulumi.String("string"),
+            ReadOnlyRootFilesystem: pulumi.Bool(true|false),
+            RunAsGroup: pulumi.Int(0),
+            RunAsNonRoot: pulumi.Bool(true|false),
+            RunAsUser: pulumi.Int(0),
+            SeLinuxOptions: &core.v1.SELinuxOptionsArgs{
+              Level: pulumi.String("string"),
+              Role: pulumi.String("string"),
+              Type: pulumi.String("string"),
+              User: pulumi.String("string"),
+            },
+            SeccompProfile: &core.v1.SeccompProfileArgs{
+              LocalhostProfile: pulumi.String("string"),
+              Type: pulumi.String("string"),
+            },
+            WindowsOptions: &core.v1.WindowsSecurityContextOptionsArgs{
+              GmsaCredentialSpec: pulumi.String("string"),
+              GmsaCredentialSpecName: pulumi.String("string"),
+              HostProcess: pulumi.Bool(true|false),
+              RunAsUserName: pulumi.String("string"),
+            },
+          },
+          StartupProbe: &core.v1.ProbeArgs{
+            Exec: &core.v1.ExecActionArgs{
+              Command: pulumi.StringArray{
+                pulumi.String("string")
+              },
+            },
+            FailureThreshold: pulumi.Int(0),
+            HttpGet: &core.v1.HTTPGetActionArgs{
+              Host: pulumi.String("string"),
+              HttpHeaders: core.v1.HTTPHeaderArray{
+                &core.v1.HTTPHeaderArgs{
+                  Name: pulumi.String("string"),
+                  Value: pulumi.String("string"),
+                }
+              },
+              Path: pulumi.String("string"),
+              Port: ,
+              Scheme: pulumi.String("string"),
+            },
+            InitialDelaySeconds: pulumi.Int(0),
+            PeriodSeconds: pulumi.Int(0),
+            SuccessThreshold: pulumi.Int(0),
+            TcpSocket: &core.v1.TCPSocketActionArgs{
+              Host: pulumi.String("string"),
+              Port: ,
+            },
+            TerminationGracePeriodSeconds: pulumi.Int(0),
+            TimeoutSeconds: pulumi.Int(0),
+          },
+          Stdin: pulumi.Bool(true|false),
+          StdinOnce: pulumi.Bool(true|false),
+          TerminationMessagePath: pulumi.String("string"),
+          TerminationMessagePolicy: pulumi.String("string"),
+          Tty: pulumi.Bool(true|false),
+          VolumeDevices: core.v1.VolumeDeviceArray{
+            &core.v1.VolumeDeviceArgs{
+              DevicePath: pulumi.String("string"),
+              Name: pulumi.String("string"),
+            }
+          },
+          VolumeMounts: core.v1.VolumeMountArray{
+            &core.v1.VolumeMountArgs{
+              MountPath: pulumi.String("string"),
+              MountPropagation: pulumi.String("string"),
+              Name: pulumi.String("string"),
+              ReadOnly: pulumi.Bool(true|false),
+              SubPath: pulumi.String("string"),
+              SubPathExpr: pulumi.String("string"),
+            }
+          },
+          WorkingDir: pulumi.String("string"),
+        }
+      },
+      NodeName: pulumi.String("string"),
+      NodeSelector: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      Overhead: pulumi.StringMap{
+        "string": pulumi.String("string")
+      },
+      PreemptionPolicy: pulumi.String("string"),
+      Priority: pulumi.Int(0),
+      PriorityClassName: pulumi.String("string"),
+      ReadinessGates: core.v1.PodReadinessGateArray{
+        &core.v1.PodReadinessGateArgs{
+          ConditionType: pulumi.String("string"),
+        }
+      },
+      RestartPolicy: pulumi.String("string"),
+      RuntimeClassName: pulumi.String("string"),
+      SchedulerName: pulumi.String("string"),
+      SecurityContext: &core.v1.PodSecurityContextArgs{
+        FsGroup: pulumi.Int(0),
+        FsGroupChangePolicy: pulumi.String("string"),
+        RunAsGroup: pulumi.Int(0),
+        RunAsNonRoot: pulumi.Bool(true|false),
+        RunAsUser: pulumi.Int(0),
+        SeLinuxOptions: &core.v1.SELinuxOptionsArgs{
+          Level: pulumi.String("string"),
+          Role: pulumi.String("string"),
+          Type: pulumi.String("string"),
+          User: pulumi.String("string"),
+        },
+        SeccompProfile: &core.v1.SeccompProfileArgs{
+          LocalhostProfile: pulumi.String("string"),
+          Type: pulumi.String("string"),
+        },
+        SupplementalGroups: pulumi.IntArray{
+          pulumi.Int(0)
+        },
+        Sysctls: core.v1.SysctlArray{
+          &core.v1.SysctlArgs{
+            Name: pulumi.String("string"),
+            Value: pulumi.String("string"),
+          }
+        },
+        WindowsOptions: &core.v1.WindowsSecurityContextOptionsArgs{
+          GmsaCredentialSpec: pulumi.String("string"),
+          GmsaCredentialSpecName: pulumi.String("string"),
+          HostProcess: pulumi.Bool(true|false),
+          RunAsUserName: pulumi.String("string"),
+        },
+      },
+      ServiceAccount: pulumi.String("string"),
+      ServiceAccountName: pulumi.String("string"),
+      SetHostnameAsFQDN: pulumi.Bool(true|false),
+      ShareProcessNamespace: pulumi.Bool(true|false),
+      Subdomain: pulumi.String("string"),
+      TerminationGracePeriodSeconds: pulumi.Int(0),
+      Tolerations: core.v1.TolerationArray{
+        &core.v1.TolerationArgs{
+          Effect: pulumi.String("string"),
+          Key: pulumi.String("string"),
+          Operator: pulumi.String("string"),
+          TolerationSeconds: pulumi.Int(0),
+          Value: pulumi.String("string"),
+        }
+      },
+      TopologySpreadConstraints: core.v1.TopologySpreadConstraintArray{
+        &core.v1.TopologySpreadConstraintArgs{
+          LabelSelector: &meta.v1.LabelSelectorArgs{
+            MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+              &meta.v1.LabelSelectorRequirementArgs{
+                Key: pulumi.String("string"),
+                Operator: pulumi.String("string"),
+                Values: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+              }
+            },
+            MatchLabels: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+          },
+          MaxSkew: pulumi.Int(0),
+          TopologyKey: pulumi.String("string"),
+          WhenUnsatisfiable: pulumi.String("string"),
+        }
+      },
+      Volumes: core.v1.VolumeArray{
+        &core.v1.VolumeArgs{
+          AwsElasticBlockStore: &core.v1.AWSElasticBlockStoreVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            Partition: pulumi.Int(0),
+            ReadOnly: pulumi.Bool(true|false),
+            VolumeID: pulumi.String("string"),
+          },
+          AzureDisk: &core.v1.AzureDiskVolumeSourceArgs{
+            CachingMode: pulumi.String("string"),
+            DiskName: pulumi.String("string"),
+            DiskURI: pulumi.String("string"),
+            FsType: pulumi.String("string"),
+            Kind: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+          },
+          AzureFile: &core.v1.AzureFileVolumeSourceArgs{
+            ReadOnly: pulumi.Bool(true|false),
+            SecretName: pulumi.String("string"),
+            ShareName: pulumi.String("string"),
+          },
+          Cephfs: &core.v1.CephFSVolumeSourceArgs{
+            Monitors: pulumi.StringArray{
+              pulumi.String("string")
+            },
+            Path: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            SecretFile: pulumi.String("string"),
+            SecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+            User: pulumi.String("string"),
+          },
+          Cinder: &core.v1.CinderVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            SecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+            VolumeID: pulumi.String("string"),
+          },
+          ConfigMap: &core.v1.ConfigMapVolumeSourceArgs{
+            DefaultMode: pulumi.Int(0),
+            Items: core.v1.KeyToPathArray{
+              &core.v1.KeyToPathArgs{
+                Key: pulumi.String("string"),
+                Mode: pulumi.Int(0),
+                Path: pulumi.String("string"),
+              }
+            },
+            Name: pulumi.String("string"),
+            Optional: pulumi.Bool(true|false),
+          },
+          Csi: &core.v1.CSIVolumeSourceArgs{
+            Driver: pulumi.String("string"),
+            FsType: pulumi.String("string"),
+            NodePublishSecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+            ReadOnly: pulumi.Bool(true|false),
+            VolumeAttributes: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+          },
+          DownwardAPI: &core.v1.DownwardAPIVolumeSourceArgs{
+            DefaultMode: pulumi.Int(0),
+            Items: core.v1.DownwardAPIVolumeFileArray{
+              &core.v1.DownwardAPIVolumeFileArgs{
+                FieldRef: &core.v1.ObjectFieldSelectorArgs{
+                  ApiVersion: pulumi.String("string"),
+                  FieldPath: pulumi.String("string"),
+                },
+                Mode: pulumi.Int(0),
+                Path: pulumi.String("string"),
+                ResourceFieldRef: &core.v1.ResourceFieldSelectorArgs{
+                  ContainerName: pulumi.String("string"),
+                  Divisor: pulumi.String("string"),
+                  Resource: pulumi.String("string"),
+                },
+              }
+            },
+          },
+          EmptyDir: &core.v1.EmptyDirVolumeSourceArgs{
+            Medium: pulumi.String("string"),
+            SizeLimit: pulumi.String("string"),
+          },
+          Ephemeral: &core.v1.EphemeralVolumeSourceArgs{
+            ReadOnly: pulumi.Bool(true|false),
+            VolumeClaimTemplate: &core.v1.PersistentVolumeClaimTemplateArgs{
+              Metadata: &meta.v1.ObjectMetaArgs{
+                Annotations: pulumi.StringMap{
+                  "string": pulumi.String("string")
+                },
+                ClusterName: pulumi.String("string"),
+                CreationTimestamp: pulumi.String("string"),
+                DeletionGracePeriodSeconds: pulumi.Int(0),
+                DeletionTimestamp: pulumi.String("string"),
+                Finalizers: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+                GenerateName: pulumi.String("string"),
+                Generation: pulumi.Int(0),
+                Labels: pulumi.StringMap{
+                  "string": pulumi.String("string")
+                },
+                ManagedFields: meta.v1.ManagedFieldsEntryArray{
+                  &meta.v1.ManagedFieldsEntryArgs{
+                    ApiVersion: pulumi.String("string"),
+                    FieldsType: pulumi.String("string"),
+                    FieldsV1: ,
+                    Manager: pulumi.String("string"),
+                    Operation: pulumi.String("string"),
+                    Subresource: pulumi.String("string"),
+                    Time: pulumi.String("string"),
+                  }
+                },
+                Name: pulumi.String("string"),
+                Namespace: pulumi.String("string"),
+                OwnerReferences: meta.v1.OwnerReferenceArray{
+                  &meta.v1.OwnerReferenceArgs{
+                    ApiVersion: pulumi.String("string"),
+                    BlockOwnerDeletion: pulumi.Bool(true|false),
+                    Controller: pulumi.Bool(true|false),
+                    Kind: pulumi.String("string"),
+                    Name: pulumi.String("string"),
+                    Uid: pulumi.String("string"),
+                  }
+                },
+                ResourceVersion: pulumi.String("string"),
+                SelfLink: pulumi.String("string"),
+                Uid: pulumi.String("string"),
+              },
+              Spec: &core.v1.PersistentVolumeClaimSpecArgs{
+                AccessModes: pulumi.StringArray{
+                  pulumi.String("string")
+                },
+                DataSource: &core.v1.TypedLocalObjectReferenceArgs{
+                  ApiGroup: pulumi.String("string"),
+                  Kind: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                },
+                DataSourceRef: &core.v1.TypedLocalObjectReferenceArgs{
+                  ApiGroup: pulumi.String("string"),
+                  Kind: pulumi.String("string"),
+                  Name: pulumi.String("string"),
+                },
+                Resources: &core.v1.ResourceRequirementsArgs{
+                  Limits: pulumi.StringMap{
+                    "string": pulumi.String("string")
+                  },
+                  Requests: pulumi.StringMap{
+                    "string": pulumi.String("string")
+                  },
+                },
+                Selector: &meta.v1.LabelSelectorArgs{
+                  MatchExpressions: meta.v1.LabelSelectorRequirementArray{
+                    &meta.v1.LabelSelectorRequirementArgs{
+                      Key: pulumi.String("string"),
+                      Operator: pulumi.String("string"),
+                      Values: pulumi.StringArray{
+                        pulumi.String("string")
+                      },
+                    }
+                  },
+                  MatchLabels: pulumi.StringMap{
+                    "string": pulumi.String("string")
+                  },
+                },
+                StorageClassName: pulumi.String("string"),
+                VolumeMode: pulumi.String("string"),
+                VolumeName: pulumi.String("string"),
+              },
+            },
+          },
+          Fc: &core.v1.FCVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            Lun: pulumi.Int(0),
+            ReadOnly: pulumi.Bool(true|false),
+            TargetWWNs: pulumi.StringArray{
+              pulumi.String("string")
+            },
+            Wwids: pulumi.StringArray{
+              pulumi.String("string")
+            },
+          },
+          FlexVolume: &core.v1.FlexVolumeSourceArgs{
+            Driver: pulumi.String("string"),
+            FsType: pulumi.String("string"),
+            Options: pulumi.StringMap{
+              "string": pulumi.String("string")
+            },
+            ReadOnly: pulumi.Bool(true|false),
+            SecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+          },
+          Flocker: &core.v1.FlockerVolumeSourceArgs{
+            DatasetName: pulumi.String("string"),
+            DatasetUUID: pulumi.String("string"),
+          },
+          GcePersistentDisk: &core.v1.GCEPersistentDiskVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            Partition: pulumi.Int(0),
+            PdName: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+          },
+          GitRepo: &core.v1.GitRepoVolumeSourceArgs{
+            Directory: pulumi.String("string"),
+            Repository: pulumi.String("string"),
+            Revision: pulumi.String("string"),
+          },
+          Glusterfs: &core.v1.GlusterfsVolumeSourceArgs{
+            Endpoints: pulumi.String("string"),
+            Path: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+          },
+          HostPath: &core.v1.HostPathVolumeSourceArgs{
+            Path: pulumi.String("string"),
+            Type: pulumi.String("string"),
+          },
+          Iscsi: &core.v1.ISCSIVolumeSourceArgs{
+            ChapAuthDiscovery: pulumi.Bool(true|false),
+            ChapAuthSession: pulumi.Bool(true|false),
+            FsType: pulumi.String("string"),
+            InitiatorName: pulumi.String("string"),
+            Iqn: pulumi.String("string"),
+            IscsiInterface: pulumi.String("string"),
+            Lun: pulumi.Int(0),
+            Portals: pulumi.StringArray{
+              pulumi.String("string")
+            },
+            ReadOnly: pulumi.Bool(true|false),
+            SecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+            TargetPortal: pulumi.String("string"),
+          },
+          Name: pulumi.String("string"),
+          Nfs: &core.v1.NFSVolumeSourceArgs{
+            Path: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            Server: pulumi.String("string"),
+          },
+          PersistentVolumeClaim: &core.v1.PersistentVolumeClaimVolumeSourceArgs{
+            ClaimName: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+          },
+          PhotonPersistentDisk: &core.v1.PhotonPersistentDiskVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            PdID: pulumi.String("string"),
+          },
+          PortworxVolume: &core.v1.PortworxVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            VolumeID: pulumi.String("string"),
+          },
+          Projected: &core.v1.ProjectedVolumeSourceArgs{
+            DefaultMode: pulumi.Int(0),
+            Sources: core.v1.VolumeProjectionArray{
+              &core.v1.VolumeProjectionArgs{
+                ConfigMap: &core.v1.ConfigMapProjectionArgs{
+                  Items: core.v1.KeyToPathArray{
+                    &core.v1.KeyToPathArgs{
+                      Key: pulumi.String("string"),
+                      Mode: pulumi.Int(0),
+                      Path: pulumi.String("string"),
+                    }
+                  },
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+                DownwardAPI: &core.v1.DownwardAPIProjectionArgs{
+                  Items: core.v1.DownwardAPIVolumeFileArray{
+                    &core.v1.DownwardAPIVolumeFileArgs{
+                      FieldRef: &core.v1.ObjectFieldSelectorArgs{
+                        ApiVersion: pulumi.String("string"),
+                        FieldPath: pulumi.String("string"),
+                      },
+                      Mode: pulumi.Int(0),
+                      Path: pulumi.String("string"),
+                      ResourceFieldRef: &core.v1.ResourceFieldSelectorArgs{
+                        ContainerName: pulumi.String("string"),
+                        Divisor: pulumi.String("string"),
+                        Resource: pulumi.String("string"),
+                      },
+                    }
+                  },
+                },
+                Secret: &core.v1.SecretProjectionArgs{
+                  Items: core.v1.KeyToPathArray{
+                    &core.v1.KeyToPathArgs{
+                      Key: pulumi.String("string"),
+                      Mode: pulumi.Int(0),
+                      Path: pulumi.String("string"),
+                    }
+                  },
+                  Name: pulumi.String("string"),
+                  Optional: pulumi.Bool(true|false),
+                },
+                ServiceAccountToken: &core.v1.ServiceAccountTokenProjectionArgs{
+                  Audience: pulumi.String("string"),
+                  ExpirationSeconds: pulumi.Int(0),
+                  Path: pulumi.String("string"),
+                },
+              }
+            },
+          },
+          Quobyte: &core.v1.QuobyteVolumeSourceArgs{
+            Group: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            Registry: pulumi.String("string"),
+            Tenant: pulumi.String("string"),
+            User: pulumi.String("string"),
+            Volume: pulumi.String("string"),
+          },
+          Rbd: &core.v1.RBDVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            Image: pulumi.String("string"),
+            Keyring: pulumi.String("string"),
+            Monitors: pulumi.StringArray{
+              pulumi.String("string")
+            },
+            Pool: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            SecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+            User: pulumi.String("string"),
+          },
+          ScaleIO: &core.v1.ScaleIOVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            Gateway: pulumi.String("string"),
+            ProtectionDomain: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            SecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+            SslEnabled: pulumi.Bool(true|false),
+            StorageMode: pulumi.String("string"),
+            StoragePool: pulumi.String("string"),
+            System: pulumi.String("string"),
+            VolumeName: pulumi.String("string"),
+          },
+          Secret: &core.v1.SecretVolumeSourceArgs{
+            DefaultMode: pulumi.Int(0),
+            Items: core.v1.KeyToPathArray{
+              &core.v1.KeyToPathArgs{
+                Key: pulumi.String("string"),
+                Mode: pulumi.Int(0),
+                Path: pulumi.String("string"),
+              }
+            },
+            Optional: pulumi.Bool(true|false),
+            SecretName: pulumi.String("string"),
+          },
+          Storageos: &core.v1.StorageOSVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            ReadOnly: pulumi.Bool(true|false),
+            SecretRef: &core.v1.LocalObjectReferenceArgs{
+              Name: pulumi.String("string"),
+            },
+            VolumeName: pulumi.String("string"),
+            VolumeNamespace: pulumi.String("string"),
+          },
+          VsphereVolume: &core.v1.VsphereVirtualDiskVolumeSourceArgs{
+            FsType: pulumi.String("string"),
+            StoragePolicyID: pulumi.String("string"),
+            StoragePolicyName: pulumi.String("string"),
+            VolumePath: pulumi.String("string"),
+          },
+        }
+      },
+    },
+    Status: &core.v1.PodStatusArgs{
+      Conditions: core.v1.PodConditionArray{
+        &core.v1.PodConditionArgs{
+          LastProbeTime: pulumi.String("string"),
+          LastTransitionTime: pulumi.String("string"),
+          Message: pulumi.String("string"),
+          Reason: pulumi.String("string"),
+          Status: pulumi.String("string"),
+          Type: pulumi.String("string"),
+        }
+      },
+      ContainerStatuses: core.v1.ContainerStatusArray{
+        &core.v1.ContainerStatusArgs{
+          ContainerID: pulumi.String("string"),
+          Image: pulumi.String("string"),
+          ImageID: pulumi.String("string"),
+          LastState: &core.v1.ContainerStateArgs{
+            Running: &core.v1.ContainerStateRunningArgs{
+              StartedAt: pulumi.String("string"),
+            },
+            Terminated: &core.v1.ContainerStateTerminatedArgs{
+              ContainerID: pulumi.String("string"),
+              ExitCode: pulumi.Int(0),
+              FinishedAt: pulumi.String("string"),
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+              Signal: pulumi.Int(0),
+              StartedAt: pulumi.String("string"),
+            },
+            Waiting: &core.v1.ContainerStateWaitingArgs{
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+            },
+          },
+          Name: pulumi.String("string"),
+          Ready: pulumi.Bool(true|false),
+          RestartCount: pulumi.Int(0),
+          Started: pulumi.Bool(true|false),
+          State: &core.v1.ContainerStateArgs{
+            Running: &core.v1.ContainerStateRunningArgs{
+              StartedAt: pulumi.String("string"),
+            },
+            Terminated: &core.v1.ContainerStateTerminatedArgs{
+              ContainerID: pulumi.String("string"),
+              ExitCode: pulumi.Int(0),
+              FinishedAt: pulumi.String("string"),
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+              Signal: pulumi.Int(0),
+              StartedAt: pulumi.String("string"),
+            },
+            Waiting: &core.v1.ContainerStateWaitingArgs{
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+            },
+          },
+        }
+      },
+      EphemeralContainerStatuses: core.v1.ContainerStatusArray{
+        &core.v1.ContainerStatusArgs{
+          ContainerID: pulumi.String("string"),
+          Image: pulumi.String("string"),
+          ImageID: pulumi.String("string"),
+          LastState: &core.v1.ContainerStateArgs{
+            Running: &core.v1.ContainerStateRunningArgs{
+              StartedAt: pulumi.String("string"),
+            },
+            Terminated: &core.v1.ContainerStateTerminatedArgs{
+              ContainerID: pulumi.String("string"),
+              ExitCode: pulumi.Int(0),
+              FinishedAt: pulumi.String("string"),
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+              Signal: pulumi.Int(0),
+              StartedAt: pulumi.String("string"),
+            },
+            Waiting: &core.v1.ContainerStateWaitingArgs{
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+            },
+          },
+          Name: pulumi.String("string"),
+          Ready: pulumi.Bool(true|false),
+          RestartCount: pulumi.Int(0),
+          Started: pulumi.Bool(true|false),
+          State: &core.v1.ContainerStateArgs{
+            Running: &core.v1.ContainerStateRunningArgs{
+              StartedAt: pulumi.String("string"),
+            },
+            Terminated: &core.v1.ContainerStateTerminatedArgs{
+              ContainerID: pulumi.String("string"),
+              ExitCode: pulumi.Int(0),
+              FinishedAt: pulumi.String("string"),
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+              Signal: pulumi.Int(0),
+              StartedAt: pulumi.String("string"),
+            },
+            Waiting: &core.v1.ContainerStateWaitingArgs{
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+            },
+          },
+        }
+      },
+      HostIP: pulumi.String("string"),
+      InitContainerStatuses: core.v1.ContainerStatusArray{
+        &core.v1.ContainerStatusArgs{
+          ContainerID: pulumi.String("string"),
+          Image: pulumi.String("string"),
+          ImageID: pulumi.String("string"),
+          LastState: &core.v1.ContainerStateArgs{
+            Running: &core.v1.ContainerStateRunningArgs{
+              StartedAt: pulumi.String("string"),
+            },
+            Terminated: &core.v1.ContainerStateTerminatedArgs{
+              ContainerID: pulumi.String("string"),
+              ExitCode: pulumi.Int(0),
+              FinishedAt: pulumi.String("string"),
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+              Signal: pulumi.Int(0),
+              StartedAt: pulumi.String("string"),
+            },
+            Waiting: &core.v1.ContainerStateWaitingArgs{
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+            },
+          },
+          Name: pulumi.String("string"),
+          Ready: pulumi.Bool(true|false),
+          RestartCount: pulumi.Int(0),
+          Started: pulumi.Bool(true|false),
+          State: &core.v1.ContainerStateArgs{
+            Running: &core.v1.ContainerStateRunningArgs{
+              StartedAt: pulumi.String("string"),
+            },
+            Terminated: &core.v1.ContainerStateTerminatedArgs{
+              ContainerID: pulumi.String("string"),
+              ExitCode: pulumi.Int(0),
+              FinishedAt: pulumi.String("string"),
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+              Signal: pulumi.Int(0),
+              StartedAt: pulumi.String("string"),
+            },
+            Waiting: &core.v1.ContainerStateWaitingArgs{
+              Message: pulumi.String("string"),
+              Reason: pulumi.String("string"),
+            },
+          },
+        }
+      },
+      Message: pulumi.String("string"),
+      NominatedNodeName: pulumi.String("string"),
+      Phase: pulumi.String("string"),
+      PodIP: pulumi.String("string"),
+      PodIPs: core.v1.PodIPArray{
+        &core.v1.PodIPArgs{
+          Ip: pulumi.String("string"),
+        }
+      },
+      QosClass: pulumi.String("string"),
+      Reason: pulumi.String("string"),
+      StartTime: pulumi.String("string"),
+    },
+  },
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

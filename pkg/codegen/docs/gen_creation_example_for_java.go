@@ -3,42 +3,13 @@ package docs
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func javaNamespaceName(namespaces map[string]string, name string) string {
-	if ns, ok := namespaces[name]; ok {
-		return ns
-	}
-
-	// name could be a qualified module name so first split on /
-	parts := strings.Split(name, tokens.QNameDelimiter)
-	for i, part := range parts {
-		names := strings.Split(part, "-")
-		for j, name := range names {
-			names[j] = title(name, "csharp")
-		}
-		parts[i] = strings.Join(names, "")
-	}
-	return strings.Join(parts, ".")
-}
-
 func genCreationExampleSyntaxJava(r *schema.Resource) string {
-	pkgDef, _ := r.PackageReference.Definition()
-	csharpInfo, hasInfo := pkgDef.Language["csharp"].(dotnet.CSharpPackageInfo)
-	if !hasInfo {
-		csharpInfo = dotnet.CSharpPackageInfo{}
-	}
-	namespaces := make(map[string]map[string]string)
-	compatibilities := make(map[string]string)
-	packageNamespaces := csharpInfo.Namespaces
-	namespaces[pkgDef.Name] = packageNamespaces
-	compatibilities[pkgDef.Name] = csharpInfo.Compatibility
 	argumentTypeName := func(objectType *schema.ObjectType) string {
 		token := objectType.Token
 		_, _, member := decomposeToken(token)
@@ -154,7 +125,7 @@ func genCreationExampleSyntaxJava(r *schema.Resource) string {
 	mod = title(strings.ReplaceAll(mod, "/", "."), "java")
 	pkg = title(pkg, "java")
 
-	write("import com.pulumi.Pulumi;;\n")
+	write("import com.pulumi.Pulumi;\n")
 	write("import java.util.List;\n")
 	write("import java.util.Map;\n")
 	write("\n")

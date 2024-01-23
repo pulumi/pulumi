@@ -1029,7 +1029,7 @@ func TestCreationExampleSyntaxForJava(t *testing.T) {
 	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
 	creationExample := genCreationExampleSyntaxJava(exampleResource)
 	expected := `
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 
@@ -1042,14 +1042,12 @@ var exampleResource = new ExampleResource("exampleResource", ExampleResourceArgs
   .f(ExampleObjectArgs.builder()
     .x("string")
     .y("string")
-    .build()
-  ))
+    .build())
   .g(List.of(
     ExampleObjectArgs.builder()
       .x("string")
       .y("string")
       .build()
-    )
   ))
   .h(Map.ofEntries(
     Map.entry("string", "string")
@@ -1058,14 +1056,13 @@ var exampleResource = new ExampleResource("exampleResource", ExampleResourceArgs
     Map.entry("string", ExampleObjectArgs.builder()
       .x("string")
       .y("string")
-      .build()
-    ))
+      .build())
   ))
   .j("FIRST"|"SECOND")
   .k(List.of("FIRST"|"SECOND"))
   .l(new StringAsset("Hello, world!"))
   .m(new FileAsset("./file.txt"))
-.build());
+  .build());
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
@@ -1077,13 +1074,82 @@ func TestCreationExampleSyntaxForJavaWithModule(t *testing.T) {
 	exampleResource := getBoundResource(t, schema, "test:s3:Bucket")
 	creationExample := genCreationExampleSyntaxJava(exampleResource)
 	expected := `
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 
 var bucket = new Bucket("bucket", BucketArgs.builder()
   .bucketName("string")
-.build());
+  .build());
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForGo(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxGo(exampleResource)
+	expected := `
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi-test/sdk/v3/go/test"
+)
+
+exampleResource, err := test.NewExampleResource("exampleResource", &test.ExampleResourceArgs{
+  A: pulumi.String("string"),
+  B: pulumi.Int(0),
+  C: pulumi.Float64(0.0),
+  D: pulumi.Bool(true|false),
+  E: pulumi.StringArray{
+    pulumi.String("string")
+  },
+  F: &test.ExampleObjectArgs{
+    X: pulumi.String("string"),
+    Y: pulumi.String("string"),
+  },
+  G: test.ExampleObjectArray{
+    &test.ExampleObjectArgs{
+      X: pulumi.String("string"),
+      Y: pulumi.String("string"),
+    }
+  },
+  H: pulumi.StringMap{
+    "string": pulumi.String("string")
+  },
+  I: test.ExampleObjectMap{
+    "string": &test.ExampleObjectArgs{
+      X: pulumi.String("string"),
+      Y: pulumi.String("string"),
+    }
+  },
+  J: ExampleEnumFirst|ExampleEnumSecond,
+  K: test.ExampleEnumArray{
+    ExampleEnumFirst|ExampleEnumSecond
+  },
+  L: pulumi.NewStringAsset("Hello, world!"),
+  M: pulumi.NewFileArchive("./file.txt"),
+})
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForGoWithModule(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:s3:Bucket")
+	creationExample := genCreationExampleSyntaxGo(exampleResource)
+	expected := `
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi-test/sdk/v3/go/test/s3"
+)
+
+bucket, err := s3.NewBucket("bucket", &s3.BucketArgs{
+  BucketName: pulumi.String("string"),
+})
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }

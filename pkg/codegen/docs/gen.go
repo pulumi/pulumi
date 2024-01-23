@@ -1628,6 +1628,16 @@ func isPrimitiveType(t schema.Type) bool {
 	}
 }
 
+func isUnionOfObjects(schemaType *schema.UnionType) bool {
+	for _, elementType := range schemaType.ElementTypes {
+		if _, isObjectType := elementType.(*schema.ObjectType); !isObjectType {
+			return false
+		}
+	}
+
+	return true
+}
+
 func decomposeToken(token string) (string, string, string) {
 	components := strings.Split(token, ":")
 	if len(components) != 3 {
@@ -1717,6 +1727,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 				creationExampleSyntax["csharp"] = genCreationExampleSyntaxCSharp(r)
 			case "yaml":
 				creationExampleSyntax["yaml"] = genCreationExampleSyntaxYAML(r)
+			case "go":
+				creationExampleSyntax["go"] = genCreationExampleSyntaxGo(r)
 			}
 		}
 	}

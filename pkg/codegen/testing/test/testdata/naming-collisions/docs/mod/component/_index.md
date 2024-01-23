@@ -77,13 +77,33 @@ var component = new Example.Mod.Component("component", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "naming-collisions/example/mod"
+)
+
+component, err := mod.NewComponent("component", &mod.ComponentArgs{
+  Local: reference(example:mod:Component2),
+  Main: reference(example::MainComponent),
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

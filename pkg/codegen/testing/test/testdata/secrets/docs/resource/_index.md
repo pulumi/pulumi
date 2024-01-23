@@ -132,13 +132,51 @@ var resource = new Mypkg.Resource("resource", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "secrets/mypkg/"
+)
+
+resource, err := mypkg.NewResource("resource", &mypkg.ResourceArgs{
+  Config: &mypkg.ConfigArgs{
+    Foo: pulumi.String("string"),
+  },
+  ConfigArray: mypkg.ConfigArray{
+    &mypkg.ConfigArgs{
+      Foo: pulumi.String("string"),
+    }
+  },
+  ConfigMap: mypkg.ConfigMap{
+    "string": &mypkg.ConfigArgs{
+      Foo: pulumi.String("string"),
+    }
+  },
+  Foo: pulumi.String("string"),
+  FooArray: pulumi.StringArray{
+    pulumi.String("string")
+  },
+  FooMap: pulumi.StringMap{
+    "string": pulumi.String("string")
+  },
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

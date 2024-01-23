@@ -122,13 +122,48 @@ var moduleResource = new FooBar.ModuleResource("moduleResource", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "plain-and-default/foo/"
+)
+
+moduleResource, err := foobar.NewModuleResource("moduleResource", &foobar.ModuleResourceArgs{
+  Optional_bool: pulumi.Bool(true|false),
+  Optional_const: pulumi.String("string"),
+  Optional_enum: EnumThingFour|EnumThingSix|EnumThingEight,
+  Optional_number: pulumi.Float64(0.0),
+  Optional_string: pulumi.String("string"),
+  Plain_optional_bool: pulumi.BoolRef(true|false),
+  Plain_optional_const: pulumi.StringRef("string"),
+  Plain_optional_number: pulumi.Float64Ref(0.0),
+  Plain_optional_string: pulumi.StringRef("string"),
+  Plain_required_bool: true|false,
+  Plain_required_const: "string",
+  Plain_required_number: 0.0,
+  Plain_required_string: "string",
+  Required_bool: pulumi.Bool(true|false),
+  Required_enum: EnumThingFour|EnumThingSix|EnumThingEight,
+  Required_number: pulumi.Float64(0.0),
+  Required_string: pulumi.String("string"),
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

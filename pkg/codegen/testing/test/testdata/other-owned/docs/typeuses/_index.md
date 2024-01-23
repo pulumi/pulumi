@@ -163,13 +163,61 @@ var typeUses = new Example.TypeUses("typeUses", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/other-owned/go/example/"
+)
+
+typeUses, err := example.NewTypeUses("typeUses", &example.TypeUsesArgs{
+  Bar: &example.SomeOtherObjectArgs{
+    Baz: pulumi.String("string"),
+  },
+  Baz: &example.ObjectWithNodeOptionalInputsArgs{
+    Bar: pulumi.Int(0),
+    Foo: pulumi.String("string"),
+  },
+  Foo: &example.ObjectArgs{
+    Bar: pulumi.String("string"),
+    Configs: example.ConfigMapArray{
+      &example.ConfigMapArgs{
+        Config: pulumi.String("string"),
+      }
+    },
+    Foo: reference(example::Resource),
+    Others: []{
+      example.SomeOtherObjectArray{
+        &example.SomeOtherObjectArgs{
+          Baz: pulumi.String("string"),
+        }
+      }
+    },
+    StillOthers: map[string]{
+      "string": example.SomeOtherObjectArray{
+        &example.SomeOtherObjectArgs{
+          Baz: pulumi.String("string"),
+        }
+      }
+    },
+  },
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

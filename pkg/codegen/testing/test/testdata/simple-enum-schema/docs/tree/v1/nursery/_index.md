@@ -88,13 +88,37 @@ var nursery = new Plant.Tree.V1.Nursery("nursery", new ()
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "simple-enum-schema/plant/tree.v1"
+)
+
+nursery, err := tree.v1.NewNursery("nursery", &tree.v1.NurseryArgs{
+  Sizes: tree.v1.TreeSizeMap{
+    "string": TreeSize|TreeSize|TreeSize
+  },
+  Varieties: tree.v1.RubberTreeVarietyArray{
+    RubberTreeVariety|RubberTreeVariety|RubberTreeVariety
+  },
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

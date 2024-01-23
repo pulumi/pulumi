@@ -74,13 +74,32 @@ var registryGeoReplication = new Registrygeoreplication.RegistryGeoReplication("
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi-registrygeoreplication/sdk/go/registrygeoreplication/index"
+)
+
+registryGeoReplication, err := registrygeoreplication.NewRegistryGeoReplication("registryGeoReplication", &registrygeoreplication.RegistryGeoReplicationArgs{
+  ResourceGroup: reference(azure-native:resources:ResourceGroup),
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 

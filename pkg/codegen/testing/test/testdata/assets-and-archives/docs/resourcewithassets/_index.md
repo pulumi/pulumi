@@ -96,13 +96,39 @@ var resourceWithAssets = new Example.ResourceWithAssets("resourceWithAssets", ne
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="go">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-go" data-lang="go">
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "assets-and-archives/example/index"
+)
+
+resourceWithAssets, err := example.NewResourceWithAssets("resourceWithAssets", &example.ResourceWithAssetsArgs{
+  Archive: pulumi.NewFileArchive("./file.txt"),
+  Nested: &example.TypeWithAssetsArgs{
+    Archive: pulumi.NewFileArchive("./file.txt"),
+    Asset: pulumi.NewStringAsset("Hello, world!"),
+    PlainArchive: pulumi.NewFileArchive("./file.txt"),
+    PlainAsset: pulumi.NewStringAsset("Hello, world!"),
+  },
+  Source: pulumi.NewStringAsset("Hello, world!"),
+})
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
     <pulumi-choosable type="language" values="java">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-java" data-lang="java">
-import com.pulumi.Pulumi;;
+import com.pulumi.Pulumi;
 import java.util.List;
 import java.util.Map;
 
