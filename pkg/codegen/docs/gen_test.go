@@ -1021,3 +1021,69 @@ bucket = test.s3.Bucket("bucket",
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
+
+func TestCreationExampleSyntaxForJava(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxJava(exampleResource)
+	expected := `
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var exampleResource = new ExampleResource("exampleResource", ExampleResourceArgs.builder()
+  .a("string")
+  .b(0)
+  .c(0.0)
+  .d(true|false)
+  .e(List.of("string"))
+  .f(ExampleObjectArgs.builder()
+    .x("string")
+    .y("string")
+    .build()
+  ))
+  .g(List.of(
+    ExampleObjectArgs.builder()
+      .x("string")
+      .y("string")
+      .build()
+    )
+  ))
+  .h(Map.ofEntries(
+    Map.entry("string", "string")
+  ))
+  .i(Map.ofEntries(
+    Map.entry("string", ExampleObjectArgs.builder()
+      .x("string")
+      .y("string")
+      .build()
+    ))
+  ))
+  .j("FIRST"|"SECOND")
+  .k(List.of("FIRST"|"SECOND"))
+  .l(new StringAsset("Hello, world!"))
+  .m(new FileAsset("./file.txt"))
+.build());
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForJavaWithModule(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:s3:Bucket")
+	creationExample := genCreationExampleSyntaxJava(exampleResource)
+	expected := `
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var bucket = new Bucket("bucket", BucketArgs.builder()
+  .bucketName("string")
+.build());
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}

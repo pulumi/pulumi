@@ -3,66 +3,46 @@ package docs
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func pythonTokenToQualifiedName(pkg, module, member string) string {
-	components := strings.Split(module, "/")
-	for i, component := range components {
-		components[i] = python.PyName(component)
-	}
-	module = strings.Join(components, ".")
-	if module == "index" {
-		module = ""
+func javaNamespaceName(namespaces map[string]string, name string) string {
+	if ns, ok := namespaces[name]; ok {
+		return ns
 	}
 
-	if module != "" {
-		module = "." + module
+	// name could be a qualified module name so first split on /
+	parts := strings.Split(name, tokens.QNameDelimiter)
+	for i, part := range parts {
+		names := strings.Split(part, "-")
+		for j, name := range names {
+			names[j] = title(name, "csharp")
+		}
+		parts[i] = strings.Join(names, "")
 	}
-
-	return fmt.Sprintf("%s%s.%s", python.PyName(pkg), module, title(member, "python"))
+	return strings.Join(parts, ".")
 }
 
-func genCreationExampleSyntaxPython(r *schema.Resource) string {
+func genCreationExampleSyntaxJava(r *schema.Resource) string {
 	pkgDef, _ := r.PackageReference.Definition()
-	pythonInfo, hasInfo := pkgDef.Language["python"].(python.PackageInfo)
+	csharpInfo, hasInfo := pkgDef.Language["csharp"].(dotnet.CSharpPackageInfo)
 	if !hasInfo {
-		pythonInfo = python.PackageInfo{}
+		csharpInfo = dotnet.CSharpPackageInfo{}
 	}
+	namespaces := make(map[string]map[string]string)
 	compatibilities := make(map[string]string)
-	compatibilities[pkgDef.Name] = pythonInfo.Compatibility
+	packageNamespaces := csharpInfo.Namespaces
+	namespaces[pkgDef.Name] = packageNamespaces
+	compatibilities[pkgDef.Name] = csharpInfo.Compatibility
 	argumentTypeName := func(objectType *schema.ObjectType) string {
 		token := objectType.Token
-		pkg, _, member := decomposeToken(token)
-		module := pkgDef.TokenToModule(token)
-
-		if lang, ok := pkgDef.Language["python"]; ok {
-			pkgInfo := lang.(python.PackageInfo)
-			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-				module = m
-			}
-		}
-
-		return pythonTokenToQualifiedName(pkg, module, member) + "Args"
-	}
-
-	resourceTypeName := func(resourceToken string) string {
-		// Compute the resource type from the Pulumi type token.
-		pkg, module, member := decomposeToken(resourceToken)
-
-		if pythonLanguageInfo, ok := pkgDef.Language["python"]; ok {
-			if pythonInfo, ok := pythonLanguageInfo.(python.PackageInfo); ok {
-				if m, ok := pythonInfo.ModuleNameOverrides[module]; ok {
-					module = m
-				}
-			}
-		}
-
-		return pythonTokenToQualifiedName(pkg, module, member)
+		_, _, member := decomposeToken(token)
+		return member + "Args"
 	}
 
 	indentSize := 0
@@ -85,7 +65,7 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 	writeValue = func(valueType schema.Type) {
 		switch valueType {
 		case schema.BoolType:
-			write("True|False")
+			write("true|false")
 		case schema.IntType:
 			write("0")
 		case schema.NumberType:
@@ -93,44 +73,52 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 		case schema.StringType:
 			write("\"string\"")
 		case schema.ArchiveType:
-			write("pulumi.FileAsset(\"./file.txt\")")
+			write("new FileAsset(\"./file.txt\")")
 		case schema.AssetType:
-			write("pulumi.StringAsset(\"Hello, world!\")")
+			write("new StringAsset(\"Hello, world!\")")
 		}
 
 		switch valueType := valueType.(type) {
 		case *schema.ArrayType:
-			write("[\n")
-			indended(func() {
-				indent()
+			if isPrimitiveType(valueType.ElementType) {
+				write("List.of(")
 				writeValue(valueType.ElementType)
-				write(",\n")
-			})
-			indent()
-			write("]")
-		case *schema.MapType:
-			write("{\n")
-			indended(func() {
-				indent()
-				write("'string': ")
-				writeValue(valueType.ElementType)
-				write("\n")
-			})
-			indent()
-			write("}")
-		case *schema.ObjectType:
-			typeName := argumentTypeName(valueType)
-			write("%s(\n", typeName)
-			indended(func() {
-				for _, p := range valueType.Properties {
+				write(")")
+			} else {
+				write("List.of(\n")
+				indended(func() {
 					indent()
-					write("%s=", python.PyName(p.Name))
-					writeValue(p.Type)
-					write(",\n")
-				}
+					writeValue(valueType.ElementType)
+					write("\n")
+				})
+				indent()
+				write(")")
+			}
+
+		case *schema.MapType:
+			write("Map.ofEntries(\n")
+			indended(func() {
+				indent()
+				write("Map.entry(\"string\", ")
+				writeValue(valueType.ElementType)
+				write(")\n")
 			})
 			indent()
 			write(")")
+		case *schema.ObjectType:
+			typeName := argumentTypeName(valueType)
+			write("%s.builder()\n", typeName)
+			indended(func() {
+				for _, p := range valueType.Properties {
+					indent()
+					write(".%s(", p.Name)
+					writeValue(p.Type)
+					write(")\n")
+				}
+
+				indent()
+				write(".build()")
+			})
 		case *schema.ResourceType:
 			write("reference(%s)", valueType.Token)
 		case *schema.EnumType:
@@ -162,25 +150,25 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 		}
 	}
 
-	pkg, _, name := decomposeToken(r.Token)
-	pkg = python.PyName(pkg)
+	pkg, mod, name := decomposeToken(r.Token)
+	mod = title(strings.ReplaceAll(mod, "/", "."), "java")
+	pkg = title(pkg, "java")
 
-	write("import pulumi\n")
-	write("import pulumi_%s as %s\n", pkg, pkg)
+	write("import com.pulumi.Pulumi;;\n")
+	write("import java.util.List;\n")
+	write("import java.util.Map;\n")
 	write("\n")
-	write("%s = %s(\"%s\",\n", camelCase(name), resourceTypeName(r.Token), camelCase(name))
+	write("var %s = new %s(\"%s\", %sArgs.builder()\n", camelCase(name), name, camelCase(name), name)
 	indended(func() {
-		for index, p := range r.InputProperties {
+		for _, p := range r.InputProperties {
 			indent()
-			write("%s=", python.PyName(p.Name))
+			write(".%s(", p.Name)
 			writeValue(codegen.ResolvedType(p.Type))
-			if index < len(r.InputProperties)-1 {
-				write(",")
-			}
-			write("\n")
+			write(")\n")
 		}
+		indent()
+		write(".build());\n")
 	})
 
-	write(")\n")
 	return buffer.String()
 }

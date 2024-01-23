@@ -74,6 +74,19 @@
     </pulumi-choosable>
 </div>
 {{- end }}
+{{ if ne (index .CreationExampleSyntax "java") "" }}
+<div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+{{ htmlSafe .CreationExampleSyntax.java }}
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+{{- end }}
 {{ if ne (index .CreationExampleSyntax "yaml") "" }}
 <div>
     <pulumi-choosable type="language" values="yaml">

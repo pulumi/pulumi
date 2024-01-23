@@ -1709,6 +1709,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			switch lang {
 			case "nodejs":
 				creationExampleSyntax["typescript"] = genCreationExampleSyntaxTypescript(r)
+			case "java":
+				creationExampleSyntax["java"] = genCreationExampleSyntaxJava(r)
 			case "python":
 				creationExampleSyntax["python"] = genCreationExampleSyntaxPython(r)
 			case "csharp":

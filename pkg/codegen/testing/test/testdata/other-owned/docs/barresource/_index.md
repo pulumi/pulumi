@@ -76,6 +76,25 @@ var barResource = new Bar.BarResource("barResource", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var barResource = new BarResource("barResource", BarResourceArgs.builder()
+  .foo(reference(example::Resource))
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

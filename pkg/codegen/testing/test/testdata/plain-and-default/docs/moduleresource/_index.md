@@ -124,6 +124,41 @@ var moduleResource = new FooBar.ModuleResource("moduleResource", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var moduleResource = new ModuleResource("moduleResource", ModuleResourceArgs.builder()
+  .optional_bool(true|false)
+  .optional_const("string")
+  .optional_enum(Four|Six|Eight)
+  .optional_number(0.0)
+  .optional_string("string")
+  .plain_optional_bool(true|false)
+  .plain_optional_const("string")
+  .plain_optional_number(0.0)
+  .plain_optional_string("string")
+  .plain_required_bool(true|false)
+  .plain_required_const("string")
+  .plain_required_number(0.0)
+  .plain_required_string("string")
+  .required_bool(true|false)
+  .required_enum(Four|Six|Eight)
+  .required_number(0.0)
+  .required_string("string")
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

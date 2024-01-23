@@ -98,6 +98,32 @@ var resourceWithAssets = new Example.ResourceWithAssets("resourceWithAssets", ne
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var resourceWithAssets = new ResourceWithAssets("resourceWithAssets", ResourceWithAssetsArgs.builder()
+  .archive(new FileAsset("./file.txt"))
+  .nested(TypeWithAssetsArgs.builder()
+    .archive(new FileAsset("./file.txt"))
+    .asset(new StringAsset("Hello, world!"))
+    .plainArchive(new FileAsset("./file.txt"))
+    .plainAsset(new StringAsset("Hello, world!"))
+    .build())
+  .source(new StringAsset("Hello, world!"))
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

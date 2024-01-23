@@ -76,6 +76,25 @@ var exampleServer = new Example.ExampleServer("exampleServer", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var exampleServer = new ExampleServer("exampleServer", ExampleServerArgs.builder()
+  .properties()
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

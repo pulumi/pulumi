@@ -79,6 +79,26 @@ var component = new Example.Mod.Component("component", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var component = new Component("component", ComponentArgs.builder()
+  .local(reference(example:mod:Component2))
+  .main(reference(example::MainComponent))
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

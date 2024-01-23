@@ -76,6 +76,25 @@ var basicResourceV2 = new Example.BasicResourceV2("basicResourceV2", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var basicResourceV2 = new BasicResourceV2("basicResourceV2", BasicResourceV2Args.builder()
+  .bar("string")
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

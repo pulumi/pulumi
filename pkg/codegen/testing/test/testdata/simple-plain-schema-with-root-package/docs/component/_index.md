@@ -171,6 +171,56 @@ var component = new Example.Component("component", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var component = new Component("component", ComponentArgs.builder()
+  .a(true|false)
+  .b(true|false)
+  .bar(FooArgs.builder()
+    .a(true|false)
+    .b(true|false)
+    .c(0)
+    .d(0)
+    .e("string")
+    .f("string")
+    .build())
+  .baz(List.of(
+    FooArgs.builder()
+      .a(true|false)
+      .b(true|false)
+      .c(0)
+      .d(0)
+      .e("string")
+      .f("string")
+      .build()
+  ))
+  .c(0)
+  .d(0)
+  .e("string")
+  .f("string")
+  .foo(FooArgs.builder()
+    .a(true|false)
+    .b(true|false)
+    .c(0)
+    .d(0)
+    .e("string")
+    .f("string")
+    .build())
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

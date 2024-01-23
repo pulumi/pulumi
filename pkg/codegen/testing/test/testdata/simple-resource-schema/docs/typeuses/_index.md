@@ -165,6 +165,54 @@ var typeUses = new Example.TypeUses("typeUses", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var typeUses = new TypeUses("typeUses", TypeUsesArgs.builder()
+  .bar(SomeOtherObjectArgs.builder()
+    .baz("string")
+    .build())
+  .baz(ObjectWithNodeOptionalInputsArgs.builder()
+    .bar(0)
+    .foo("string")
+    .build())
+  .foo(ObjectArgs.builder()
+    .bar("string")
+    .configs(List.of(
+      ConfigMapArgs.builder()
+        .config("string")
+        .build()
+    ))
+    .foo(reference(example::Resource))
+    .others(List.of(
+      List.of(
+        SomeOtherObjectArgs.builder()
+          .baz("string")
+          .build()
+      )
+    ))
+    .stillOthers(Map.ofEntries(
+      Map.entry("string", List.of(
+        SomeOtherObjectArgs.builder()
+          .baz("string")
+          .build()
+      ))
+    ))
+    .build())
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

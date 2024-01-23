@@ -126,6 +126,38 @@ var cat = new Example.Cat("cat", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var cat = new Cat("cat", CatArgs.builder()
+  .age(0)
+  .pet(PetArgs.builder()
+    .age(0)
+    .name(reference(random:index/randomPet:RandomPet))
+    .nameArray(List.of(reference(random:index/randomPet:RandomPet)))
+    .nameMap(Map.ofEntries(
+      Map.entry("string", reference(random:index/randomPet:RandomPet))
+    ))
+    .requiredName(reference(random:index/randomPet:RandomPet))
+    .requiredNameArray(List.of(reference(random:index/randomPet:RandomPet)))
+    .requiredNameMap(Map.ofEntries(
+      Map.entry("string", reference(random:index/randomPet:RandomPet))
+    ))
+    .build())
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

@@ -86,6 +86,28 @@ var staticPage = new Xyz.StaticPage("staticPage", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var staticPage = new StaticPage("staticPage", StaticPageArgs.builder()
+  .foo(FooArgs.builder()
+    .a(true|false)
+    .build())
+  .indexContent("string")
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

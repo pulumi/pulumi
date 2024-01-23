@@ -134,6 +134,42 @@ var resource = new Mypkg.Resource("resource", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var resource = new Resource("resource", ResourceArgs.builder()
+  .config(ConfigArgs.builder()
+    .foo("string")
+    .build())
+  .configArray(List.of(
+    ConfigArgs.builder()
+      .foo("string")
+      .build()
+  ))
+  .configMap(Map.ofEntries(
+    Map.entry("string", ConfigArgs.builder()
+      .foo("string")
+      .build())
+  ))
+  .foo("string")
+  .fooArray(List.of("string"))
+  .fooMap(Map.ofEntries(
+    Map.entry("string", "string")
+  ))
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

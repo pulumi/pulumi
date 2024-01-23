@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func namespaceName(namespaces map[string]string, name string) string {
+func csharpNamespaceName(namespaces map[string]string, name string) string {
 	if ns, ok := namespaces[name]; ok {
 		return ns
 	}
@@ -28,7 +28,7 @@ func namespaceName(namespaces map[string]string, name string) string {
 	return strings.Join(parts, ".")
 }
 
-func propertyNameOverrides(properties []*schema.Property) map[string]string {
+func csharpPropertyNameOverrides(properties []*schema.Property) map[string]string {
 	overrides := make(map[string]string)
 	for _, property := range properties {
 		foundOverride := false
@@ -47,7 +47,7 @@ func propertyNameOverrides(properties []*schema.Property) map[string]string {
 	return overrides
 }
 
-func resolvePropertyName(property string, overrides map[string]string) string {
+func resolveCSharpPropertyName(property string, overrides map[string]string) string {
 	foundOverride, ok := overrides[property]
 	if ok {
 		return title(foundOverride, "csharp")
@@ -74,8 +74,8 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		pkg, _, member := decomposeToken(token)
 		module := pkgDef.TokenToModule(token)
 		resolvedNamespaces := namespaces[pkg]
-		rootNamespace := namespaceName(resolvedNamespaces, pkg)
-		namespace := namespaceName(resolvedNamespaces, module)
+		rootNamespace := csharpNamespaceName(resolvedNamespaces, pkg)
+		namespace := csharpNamespaceName(resolvedNamespaces, module)
 		if strings.ToLower(namespace) == "index" {
 			namespace = ""
 		}
@@ -102,9 +102,9 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		}
 
 		namespaces := namespaces[pkg]
-		rootNamespace := namespaceName(namespaces, pkg)
+		rootNamespace := csharpNamespaceName(namespaces, pkg)
 
-		namespace := namespaceName(namespaces, module)
+		namespace := csharpNamespaceName(namespaces, module)
 		if strings.ToLower(namespace) == "index" {
 			namespace = ""
 		}
@@ -182,11 +182,11 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 			write("new %s\n", typeName)
 			indent()
 			write("{\n")
-			overrides := propertyNameOverrides(valueType.Properties)
+			overrides := csharpPropertyNameOverrides(valueType.Properties)
 			indended(func() {
 				for _, p := range valueType.Properties {
 					indent()
-					write("%s = ", resolvePropertyName(p.Name, overrides))
+					write("%s = ", resolveCSharpPropertyName(p.Name, overrides))
 					writeValue(p.Type)
 					write(",\n")
 				}
@@ -234,11 +234,11 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 
 	write("\n")
 	write("var %s = new %s(\"%s\", new () \n{\n", camelCase(name), resourceName, camelCase(name))
-	inputPropertyOverrides := propertyNameOverrides(r.InputProperties)
+	inputPropertyOverrides := csharpPropertyNameOverrides(r.InputProperties)
 	indended(func() {
 		for _, p := range r.InputProperties {
 			indent()
-			write("%s = ", resolvePropertyName(p.Name, inputPropertyOverrides))
+			write("%s = ", resolveCSharpPropertyName(p.Name, inputPropertyOverrides))
 			writeValue(codegen.ResolvedType(p.Type))
 			write(",\n")
 		}

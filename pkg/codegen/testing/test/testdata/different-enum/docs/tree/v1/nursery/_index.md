@@ -90,6 +90,28 @@ var nursery = new Plant.Tree.V1.Nursery("nursery", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var nursery = new Nursery("nursery", NurseryArgs.builder()
+  .sizes(Map.ofEntries(
+    Map.entry("string", "small"|"medium"|"large")
+  ))
+  .varieties(List.of("Burgundy"|"Ruby"|"Tineke"))
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">

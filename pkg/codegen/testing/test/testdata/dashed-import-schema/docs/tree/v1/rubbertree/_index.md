@@ -104,6 +104,34 @@ var rubberTree = new Plant.Tree.V1.RubberTree("rubberTree", new ()
 
 
 <div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;;
+import java.util.List;
+import java.util.Map;
+
+var rubberTree = new RubberTree("rubberTree", RubberTreeArgs.builder()
+  .container(ContainerArgs.builder()
+    .brightness(ZeroPointOne|One)
+    .color("red"|"blue"|"yellow")
+    .material("string")
+    .size(FourInch|SixInch|EightInch)
+    .build())
+  .diameter(sixinch|twelveinch)
+  .farm("Pulumi Planters Inc."|"Plants'R'Us")
+  .size("small"|"medium"|"large")
+  .type("Burgundy"|"Ruby"|"Tineke")
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
     <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">
