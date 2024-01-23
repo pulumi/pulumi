@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Replace a deleted type used by Pulumi Cloud code.

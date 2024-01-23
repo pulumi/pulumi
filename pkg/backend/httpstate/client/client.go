@@ -642,8 +642,8 @@ func (pc *Client) CreateUpdate(
 		endpoint = "refresh"
 	case apitype.DestroyUpdate:
 		endpoint = "destroy"
-	case apitype.StackImportUpdate:
-		contract.Failf("Stack import updates are not supported")
+	case apitype.StackImportUpdate, apitype.RenameUpdate:
+		contract.Failf("%s updates are not supported", kind)
 	default:
 		contract.Failf("Unknown kind: %s", kind)
 	}
