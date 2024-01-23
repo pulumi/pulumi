@@ -39,6 +39,12 @@ func TestAzureLoginSasToken(t *testing.T) {
 		require.NoError(t, err)
 	})
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
+
+	// Make sure we use the SAS token for login here
+	t.Setenv("AZURE_CLIENT_ID", "")
+	t.Setenv("AZURE_CLIENT_SECRET", "")
+	t.Setenv("AZURE_TENANT_ID", "")
+
 	_, ok := os.LookupEnv("AZURE_STORAGE_SAS_TOKEN")
 	if !ok {
 		t.Skip("AZURE_STORAGE_SAS_TOKEN not set, skipping test")
@@ -67,6 +73,7 @@ func TestAzureLoginAzLogin(t *testing.T) {
 		t.Skip("AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, and AZURE_TENANT_ID not set, skipping test")
 	}
 
+	// Make sure we don't use the SAS token for login here
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
 	//nolint:gosec // this is a test
