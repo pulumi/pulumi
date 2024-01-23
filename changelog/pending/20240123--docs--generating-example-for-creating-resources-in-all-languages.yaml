@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: docs
+  description: Generating example for creating resources in all languages
