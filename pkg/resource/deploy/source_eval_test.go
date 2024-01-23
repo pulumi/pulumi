@@ -1249,40 +1249,67 @@ func TestRequestFromNodeJS(t *testing.T) {
 
 func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	t.Parallel()
+
+	sptr := func(s string) *string {
+		return &s
+	}
+
+	bptr := func(b bool) *bool {
+		return &b
+	}
+
+	makeAlias := func(parent *string, noParent *bool, name string) *pulumirpc.Alias {
+		spec := &pulumirpc.Alias_Spec{
+			Name: name,
+		}
+		if parent != nil {
+			spec.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: *parent}
+		}
+		if noParent != nil {
+			spec.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: *noParent}
+		}
+
+		return &pulumirpc.Alias{
+			Alias: &pulumirpc.Alias_Spec_{
+				Spec: spec,
+			},
+		}
+	}
+
 	tests := []struct {
 		name     string
-		input    resource.Alias
-		expected resource.Alias
+		input    *pulumirpc.Alias
+		expected *pulumirpc.Alias
 	}{
 		{
 			name:     `{Parent: "", NoParent: true} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: true},
-			expected: resource.Alias{Parent: "", NoParent: false},
+			input:    makeAlias(nil, bptr(true), ""),
+			expected: makeAlias(nil, nil, ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: false},
-			expected: resource.Alias{Parent: "", NoParent: true},
+			input:    makeAlias(sptr(""), nil, ""),
+			expected: makeAlias(nil, bptr(true), ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: false, Name: "name"},
-			expected: resource.Alias{Parent: "", NoParent: true, Name: "name"},
+			input:    makeAlias(sptr(""), nil, "name"),
+			expected: makeAlias(nil, bptr(true), "name"),
 		},
 		{
 			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: true, Name: "name"},
-			expected: resource.Alias{Parent: "", NoParent: false, Name: "name"},
+			input:    makeAlias(nil, bptr(true), "name"),
+			expected: makeAlias(nil, nil, "name"),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false} (no transform)`,
-			input:    resource.Alias{Parent: "foo", NoParent: false},
-			expected: resource.Alias{Parent: "foo", NoParent: false},
+			input:    makeAlias(sptr("foo"), nil, ""),
+			expected: makeAlias(sptr("foo"), nil, ""),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
-			input:    resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
-			expected: resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
+			input:    makeAlias(sptr("foo"), nil, "name"),
+			expected: makeAlias(sptr("foo"), nil, "name"),
 		},
 	}
 	for _, tt := range tests {
