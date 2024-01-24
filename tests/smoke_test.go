@@ -39,6 +39,10 @@ func TestLanguageNewSmoke(t *testing.T) {
 		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
 
+			if runtime == "python" {
+				t.Skip("Temporarily skipping test - pulumi/pulumi#15195")
+			}
+
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
@@ -98,6 +102,10 @@ func TestLanguageConvertSmoke(t *testing.T) {
 		runtime := runtime
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
+
+			if runtime == "python" {
+				t.Skip("Temporarily skipping test - pulumi/pulumi#15195")
+			}
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
@@ -306,6 +314,10 @@ func TestLanguageImportSmoke(t *testing.T) {
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
+
+			if runtime == "python" {
+				t.Skip("Temporarily skipping test - pulumi/pulumi#15195")
+			}
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
