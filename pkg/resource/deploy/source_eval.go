@@ -1305,25 +1305,51 @@ func requestFromNodeJS(ctx context.Context) bool {
 }
 
 // transformAliasForNodeJSCompat transforms the alias from the legacy Node.js values to properly specified values.
-func transformAliasForNodeJSCompat(alias *pulumirpc.Alias_Spec) {
-	// The original implementation in the Node.js SDK did not specify aliases correctly:
-	//
-	// - It did not set NoParent when it should have, but instead set Parent to empty.
-	// - It set NoParent to true and left Parent empty when both the alias and resource had no Parent specified.
-	//
-	// To maintain compatibility with such versions of the Node.js SDK, we transform these incorrectly
-	// specified aliases into properly specified ones that work with this implementation of the engine:
-	//
-	// - { Parent: "", NoParent: false } -> { Parent: "", NoParent: true }
-	// - { Parent: "", NoParent: true }  -> { Parent: "", NoParent: false }
-	switch parent := alias.Parent.(type) {
-	case *pulumirpc.Alias_Spec_NoParent:
-		alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: !parent.NoParent}
-	case *pulumirpc.Alias_Spec_ParentUrn:
-		if parent.ParentUrn == "" {
-			alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: true}
+func transformAliasForNodeJSCompat(alias *pulumirpc.Alias) *pulumirpc.Alias {
+	switch a := alias.Alias.(type) {
+	case *pulumirpc.Alias_Spec_:
+		// The original implementation in the Node.js SDK did not specify aliases correctly:
+		//
+		// - It did not set NoParent when it should have, but instead set Parent to empty.
+		// - It set NoParent to true and left Parent empty when both the alias and resource had no Parent specified.
+		//
+		// To maintain compatibility with such versions of the Node.js SDK, we transform these incorrectly
+		// specified aliases into properly specified ones that work with this implementation of the engine:
+		//
+		// - { Parent: "", NoParent: false } -> { Parent: "", NoParent: true }
+		// - { Parent: "", NoParent: true }  -> { Parent: "", NoParent: false }
+		spec := &pulumirpc.Alias_Spec{
+			Name:    a.Spec.Name,
+			Type:    a.Spec.Type,
+			Stack:   a.Spec.Stack,
+			Project: a.Spec.Project,
+		}
+
+		switch p := a.Spec.Parent.(type) {
+		case *pulumirpc.Alias_Spec_ParentUrn:
+			if p.ParentUrn == "" {
+				spec.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: true}
+			} else {
+				spec.Parent = p
+			}
+		case *pulumirpc.Alias_Spec_NoParent:
+			if p.NoParent {
+				spec.Parent = nil
+			} else {
+				spec.Parent = p
+			}
+		default:
+			spec.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: true}
+		}
+
+		return &pulumirpc.Alias{
+			Alias: &pulumirpc.Alias_Spec_{
+				Spec: spec,
+			},
 		}
 	}
+
+	return alias
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
@@ -1384,11 +1410,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	transformAliases := !req.GetAliasSpecs() && requestFromNodeJS(ctx)
 
 	for _, aliasObject := range req.GetAliases() {
-		aliasSpec := aliasObject.GetSpec()
-		if aliasSpec != nil {
-			if transformAliases {
-				transformAliasForNodeJSCompat(aliasSpec)
-			}
+		if transformAliases {
+			aliasObject = transformAliasForNodeJSCompat(aliasObject)
 		}
 		aliases = append(aliases, aliasObject)
 	}

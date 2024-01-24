@@ -15,6 +15,7 @@ return await Deployment.RunAsync(() =>
     return new Dictionary<string, object?>
     {
         ["bB-Beta_beta.💜⁉"] = resourceLexicalName.Id,
+        ["dD-Delta_delta.🔥⁉"] = resourceLexicalName.Id,
     };
 });
 

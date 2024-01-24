@@ -14,17 +14,19 @@
 
 import assert from "assert";
 import * as semver from "semver";
+import * as tmp from "tmp";
 import * as upath from "upath";
 
 import {
+    CommandResult,
     ConfigMap,
     EngineEvent,
     fullyQualifiedStackName,
     LocalWorkspace,
     OutputMap,
     ProjectSettings,
+    PulumiCommand,
     Stack,
-    parseAndValidatePulumiVersion,
 } from "../../automation";
 import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
@@ -1040,6 +1042,60 @@ describe("LocalWorkspace", () => {
         assert(ws.pulumiVersion);
         assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
     });
+    it("sets pulumi version when using a custom CLI instance", async () => {
+        const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
+        try {
+            const cmd = await PulumiCommand.get();
+            const ws = await LocalWorkspace.create({ pulumiCommand: cmd });
+            assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
+        } finally {
+            tmpDir.removeCallback();
+        }
+    });
+    it("throws when attempting to retrieve an invalid pulumi version", async () => {
+        const mockWithNoVersion = {
+            command: "pulumi",
+            version: null,
+            run: async () => new CommandResult("some output", "", 0),
+        };
+        const ws = await LocalWorkspace.create({
+            pulumiCommand: mockWithNoVersion,
+            envVars: {
+                PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
+            },
+        });
+        assert.throws(() => ws.pulumiVersion);
+    });
+    it("fails creation if remote operation is not supported", async () => {
+        const mockWithNoRemoteSupport = {
+            command: "pulumi",
+            version: new semver.SemVer("2.0.0"),
+            // We inspect the output of `pulumi preview --help` to determine
+            // if the CLI supports remote operations, see
+            // `LocalWorkspace.checkRemoteSupport`.
+            run: async () => new CommandResult("some output", "", 0),
+        };
+        await assert.rejects(LocalWorkspace.create({ pulumiCommand: mockWithNoRemoteSupport, remote: true }));
+    });
+    it("bypasses remote support check", async () => {
+        const mockWithNoRemoteSupport = {
+            command: "pulumi",
+            version: new semver.SemVer("2.0.0"),
+            // We inspect the output of `pulumi preview --help` to determine
+            // if the CLI supports remote operations, see
+            // `LocalWorkspace.checkRemoteSupport`.
+            run: async () => new CommandResult("some output", "", 0),
+        };
+        await assert.doesNotReject(
+            LocalWorkspace.create({
+                pulumiCommand: mockWithNoRemoteSupport,
+                remote: true,
+                envVars: {
+                    PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
+                },
+            }),
+        );
+    });
     it(`respects existing project settings`, async () => {
         const projectName = "correct_project";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
@@ -1099,100 +1155,6 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(Object.keys(config).length, 20);
             await stack.workspace.removeStack(stacks[i]);
         }
-    });
-});
-
-const MAJOR = /Major version mismatch./;
-const MINIMUM = /Minimum version requirement failed./;
-const PARSE = /Failed to parse/;
-
-describe(`checkVersionIsValid`, () => {
-    const versionTests = [
-        {
-            name: "higher_major",
-            currentVersion: "100.0.0",
-            expectError: MAJOR,
-            optOut: false,
-        },
-        {
-            name: "lower_major",
-            currentVersion: "1.0.0",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "higher_minor",
-            currentVersion: "v2.22.0",
-            expectError: null,
-            optOut: false,
-        },
-        {
-            name: "lower_minor",
-            currentVersion: "v2.1.0",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_higher_patch",
-            currentVersion: "v2.21.2",
-            expectError: null,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_equal_patch",
-            currentVersion: "v2.21.1",
-            expectError: null,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_lower_patch",
-            currentVersion: "v2.21.0",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_equal_patch_prerelease",
-            // Note that prerelease < release so this case will error
-            currentVersion: "v2.21.1-alpha.1234",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "opt_out_of_check_would_fail_otherwise",
-            currentVersion: "v2.20.0",
-            expectError: null,
-            optOut: true,
-        },
-        {
-            name: "opt_out_of_check_would_succeed_otherwise",
-            currentVersion: "v2.22.0",
-            expectError: null,
-            optOut: true,
-        },
-        {
-            name: "invalid_version",
-            currentVersion: "invalid",
-            expectError: PARSE,
-            optOut: false,
-        },
-        {
-            name: "invalid_version_opt_out",
-            currentVersion: "invalid",
-            expectError: null,
-            optOut: true,
-        },
-    ];
-    const minVersion = new semver.SemVer("v2.21.1");
-
-    versionTests.forEach((test) => {
-        it(`validates ${test.name} (${test.currentVersion})`, () => {
-            const validate = () => parseAndValidatePulumiVersion(minVersion, test.currentVersion, test.optOut);
-            if (test.expectError) {
-                assert.throws(validate, test.expectError);
-            } else {
-                assert.doesNotThrow(validate);
-            }
-        });
     });
 });
 

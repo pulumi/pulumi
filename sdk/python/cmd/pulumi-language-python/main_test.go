@@ -137,6 +137,13 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		cwd := t.TempDir()
 		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
+
+		// Install the local Pulumi SDK into the virtual environment.
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
+		assert.NoError(t, err)
+		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		assert.NoError(t, err)
+
 		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pulumi-random")
 		assert.NoError(t, err)
 		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pip-install-test")
@@ -146,7 +153,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NotEmpty(t, packages)
 		assert.Equal(t, 1, len(packages))
 		random := packages[0]
-		assert.Equal(t, "pulumi-random", random.Name)
+		assert.Equal(t, "pulumi_random", random.Name)
 		assert.NotEmpty(t, random.Location)
 	})
 	t.Run("pulumiplugin", func(t *testing.T) {

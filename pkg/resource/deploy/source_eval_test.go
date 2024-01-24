@@ -1249,25 +1249,67 @@ func TestRequestFromNodeJS(t *testing.T) {
 
 func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	t.Parallel()
+
+	sptr := func(s string) *string {
+		return &s
+	}
+
+	bptr := func(b bool) *bool {
+		return &b
+	}
+
+	makeAlias := func(parent *string, noParent *bool, name string) *pulumirpc.Alias {
+		spec := &pulumirpc.Alias_Spec{
+			Name: name,
+		}
+		if parent != nil {
+			spec.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: *parent}
+		}
+		if noParent != nil {
+			spec.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: *noParent}
+		}
+
+		return &pulumirpc.Alias{
+			Alias: &pulumirpc.Alias_Spec_{
+				Spec: spec,
+			},
+		}
+	}
+
 	tests := []struct {
 		name     string
-		input    *pulumirpc.Alias_Spec
-		expected *pulumirpc.Alias_Spec
+		input    *pulumirpc.Alias
+		expected *pulumirpc.Alias
 	}{
 		{
-			name:     `{Parent: ""} (transformed)`,
-			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: ""}},
-			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
+			name:     `{Parent: "", NoParent: true} (transformed)`,
+			input:    makeAlias(nil, bptr(true), ""),
+			expected: makeAlias(nil, nil, ""),
 		},
 		{
-			name:     `{NoParent: true} (transformed)`,
-			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
-			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: false}},
+			name:     `{Parent: "", NoParent: false} (transformed)`,
+			input:    makeAlias(sptr(""), nil, ""),
+			expected: makeAlias(nil, bptr(true), ""),
 		},
 		{
-			name:     `{NoParent: false} (transformed)`,
-			input:    &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: false}},
-			expected: &pulumirpc.Alias_Spec{Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true}},
+			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
+			input:    makeAlias(sptr(""), nil, "name"),
+			expected: makeAlias(nil, bptr(true), "name"),
+		},
+		{
+			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
+			input:    makeAlias(nil, bptr(true), "name"),
+			expected: makeAlias(nil, nil, "name"),
+		},
+		{
+			name:     `{Parent: "foo", NoParent: false} (no transform)`,
+			input:    makeAlias(sptr("foo"), nil, ""),
+			expected: makeAlias(sptr("foo"), nil, ""),
+		},
+		{
+			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
+			input:    makeAlias(sptr("foo"), nil, "name"),
+			expected: makeAlias(sptr("foo"), nil, "name"),
 		},
 	}
 	for _, tt := range tests {

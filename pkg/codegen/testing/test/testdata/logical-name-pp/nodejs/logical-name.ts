@@ -7,5 +7,6 @@ export = async () => {
     const resourceLexicalName = new random.RandomPet("aA-Alpha_alpha.🤯⁉️", {prefix: configLexicalName});
     return {
         "bB-Beta_beta.💜⁉": resourceLexicalName.id,
+        "dD-Delta_delta.🔥⁉": resourceLexicalName.id,
     };
 }
