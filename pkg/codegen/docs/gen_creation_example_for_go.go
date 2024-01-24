@@ -120,6 +120,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 		indentSize -= 2
 	}
 
+	seenTypes := codegen.NewStringSet()
 	var writeValue func(valueType schema.Type, plain bool, optional bool)
 	writeValue = func(valueType schema.Type, plain bool, optional bool) {
 		switch valueType {
@@ -199,6 +200,12 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 			indent()
 			write("}")
 		case *schema.ObjectType:
+			if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
+				write("type(%s)", valueType.Token)
+				return
+			}
+
+			seenTypes.Add(valueType.Token)
 			typeName := argumentTypeName(valueType)
 			write("&%s{\n", typeName)
 			indended(func() {
@@ -261,7 +268,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 		indent()
 		write("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n")
 		indent()
-		if importPath != "" {
+		if importPath != "" && strings.HasPrefix("github.com/pulumi/pulumi-", importPath) {
 			write("\"%s/%s\"\n", importPath, mod)
 		} else {
 			if mod == "index" || mod == "" {
@@ -271,6 +278,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 			}
 		}
 	})
+
 	write(")\n\n")
 	if mod == "index" || mod == "" {
 		mod = pkg

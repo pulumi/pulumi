@@ -783,6 +783,40 @@ func testSchemaForCreationExampleSyntax(t *testing.T) *schema.Package {
 	return pkg
 }
 
+func testSchemaWithRecursiveObjectType(t *testing.T) *schema.Package {
+	pkg := bindSchema(t, schema.PackageSpec{
+		Name: "test",
+		Resources: map[string]schema.ResourceSpec{
+			"test:index:ExampleResource": {
+				InputProperties: map[string]schema.PropertySpec{
+					"recursiveObject": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/test:example:Recursive",
+						},
+					},
+				},
+			},
+		},
+		Types: map[string]schema.ComplexTypeSpec{
+			"test:example:Recursive": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"anotherInput": primitiveType("string"),
+						"recursiveType": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/types/test:example:Recursive",
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	return pkg
+}
+
 func TestCreationExampleSyntaxForYAML(t *testing.T) {
 	t.Parallel()
 
@@ -794,7 +828,7 @@ name: example
 runtime: yaml
 resources:
   exampleResource:
-    type: test:index:ExampleResource
+    type: test:ExampleResource
     properties:
       a: "string"
       b: 0
@@ -821,6 +855,44 @@ resources:
         Fn::StringAsset: "example content"
       m: 
         Fn::FileAsset: ./file.txt
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleSyntaxForYAMLWithModule(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaForCreationExampleSyntax(t)
+	exampleResource := getBoundResource(t, schema, "test:s3:Bucket")
+	creationExample := genCreationExampleSyntaxYAML(exampleResource)
+	expected := `
+name: example
+runtime: yaml
+resources:
+  bucket:
+    type: test:s3:Bucket
+    properties:
+      bucketName: "string"
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleUsingRecursiveTypeForYAML(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaWithRecursiveObjectType(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxYAML(exampleResource)
+	expected := `
+name: example
+runtime: yaml
+resources:
+  exampleResource:
+    type: test:ExampleResource
+    properties:
+      recursiveObject: 
+        anotherInput: "string"
+        recursiveType: type(test:example:Recursive)
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
@@ -879,6 +951,26 @@ import * as test from "@pulumi/test";
 
 const bucket = new test.s3.Bucket("bucket", {
   bucketName: "string",
+});
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleUsingRecursiveTypeForTypescript(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaWithRecursiveObjectType(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxTypescript(exampleResource)
+	expected := `
+import * as pulumi from "@pulumi/pulumi";
+import * as test from "@pulumi/test";
+
+const exampleResource = new test.ExampleResource("exampleResource", {
+  recursiveObject: {
+    anotherInput: "string",
+    recursiveType: type(test:example:Recursive),
+  },
 });
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
@@ -957,6 +1049,28 @@ var bucket = new Test.S3.Bucket("bucket", new ()
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
 
+func TestCreationExampleUsingRecursiveTypeForCSharp(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaWithRecursiveObjectType(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxCSharp(exampleResource)
+	expected := `
+using Pulumi;
+using Test = Pulumi.Test;
+
+var exampleResource = new Test.ExampleResource("exampleResource", new () 
+{
+  RecursiveObject = new Test.Example.Inputs.RecursiveArgs
+  {
+    AnotherInput = "string",
+    RecursiveType = type(test:example:Recursive),
+  },
+});
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
 func TestCreationExampleSyntaxForPython(t *testing.T) {
 	t.Parallel()
 
@@ -1022,6 +1136,26 @@ bucket = test.s3.Bucket("bucket",
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
 }
 
+func TestCreationExampleUsingRecursiveTypeForPython(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaWithRecursiveObjectType(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxPython(exampleResource)
+	expected := `
+import pulumi
+import pulumi_test as test
+
+exampleResource = test.ExampleResource("exampleResource",
+  recursive_object=test.example.RecursiveArgs(
+    another_input="string",
+    recursive_type=type(test:example:Recursive),
+  )
+)
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
 func TestCreationExampleSyntaxForJava(t *testing.T) {
 	t.Parallel()
 
@@ -1080,6 +1214,27 @@ import java.util.Map;
 
 var bucket = new Bucket("bucket", BucketArgs.builder()
   .bucketName("string")
+  .build());
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleUsingRecursiveTypeForJava(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaWithRecursiveObjectType(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxJava(exampleResource)
+	expected := `
+import com.pulumi.Pulumi;
+import java.util.List;
+import java.util.Map;
+
+var exampleResource = new ExampleResource("exampleResource", ExampleResourceArgs.builder()
+  .recursiveObject(RecursiveArgs.builder()
+    .anotherInput("string")
+    .recursiveType(type(test:example:Recursive))
+    .build())
   .build());
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
@@ -1149,6 +1304,28 @@ import (
 
 bucket, err := s3.NewBucket("bucket", &s3.BucketArgs{
   BucketName: pulumi.String("string"),
+})
+`
+	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func TestCreationExampleUsingRecursiveTypeForGo(t *testing.T) {
+	t.Parallel()
+
+	schema := testSchemaWithRecursiveObjectType(t)
+	exampleResource := getBoundResource(t, schema, "test:index:ExampleResource")
+	creationExample := genCreationExampleSyntaxGo(exampleResource)
+	expected := `
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi-test/sdk/v3/go/test"
+)
+
+exampleResource, err := test.NewExampleResource("exampleResource", &test.ExampleResourceArgs{
+  RecursiveObject: &example.RecursiveArgs{
+    AnotherInput: pulumi.String("string"),
+    RecursiveType: type(test:example:Recursive),
+  },
 })
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)

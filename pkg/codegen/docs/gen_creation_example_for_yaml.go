@@ -8,6 +8,42 @@ import (
 	"strings"
 )
 
+// collapseToken converts an exact token to a token more suitable for
+// display. For example, it converts
+//
+//	  fizz:index/buzz:Buzz => fizz:Buzz
+//	  fizz:mode/buzz:Buzz  => fizz:mode:Buzz
+//		 foo:index:Bar	      => foo:Bar
+//		 foo::Bar             => foo:Bar
+//		 fizz:mod:buzz        => fizz:mod:buzz
+func collapseResourceTokenForYAML(token string) string {
+	tokenParts := strings.Split(token, ":")
+
+	if len(tokenParts) == 3 {
+		title := func(s string) string {
+			r := []rune(s)
+			if len(r) == 0 {
+				return ""
+			}
+			return strings.ToTitle(string(r[0])) + string(r[1:])
+		}
+		if mod := strings.Split(tokenParts[1], "/"); len(mod) == 2 && title(mod[1]) == tokenParts[2] {
+			// aws:s3/bucket:Bucket => aws:s3:Bucket
+			// We recourse to handle the case foo:index/bar:Bar => foo:index:Bar
+			tokenParts = []string{tokenParts[0], mod[0], tokenParts[2]}
+		}
+
+		if tokenParts[1] == "index" || tokenParts[1] == "" {
+			// foo:index:Bar => foo:Bar
+			// or
+			// foo::Bar => foo:Bar
+			tokenParts = []string{tokenParts[0], tokenParts[2]}
+		}
+	}
+
+	return strings.Join(tokenParts, ":")
+}
+
 func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 	indentSize := 0
 	buffer := bytes.Buffer{}
@@ -25,6 +61,7 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 		indentSize -= 2
 	}
 
+	seenTypes := codegen.NewStringSet()
 	var writeValue func(valueType schema.Type)
 	writeValue = func(valueType schema.Type) {
 		switch valueType {
@@ -74,6 +111,12 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 				}
 			})
 		case *schema.ObjectType:
+			if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
+				write("type(%s)", valueType.Token)
+				return
+			}
+
+			seenTypes.Add(valueType.Token)
 			write("\n")
 			indended(func() {
 				for index, p := range valueType.Properties {
@@ -131,7 +174,7 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 		write("%s:\n", camelCase(resourceName(r)))
 		indended(func() {
 			indent()
-			write("type: %s\n", r.Token)
+			write("type: %s\n", collapseResourceTokenForYAML(r.Token))
 			indent()
 			write("properties:\n")
 			indended(func() {

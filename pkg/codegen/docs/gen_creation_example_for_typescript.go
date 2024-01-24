@@ -26,6 +26,7 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 		indentSize -= 2
 	}
 
+	seenTypes := codegen.NewStringSet()
 	var writeValue func(valueType schema.Type)
 	writeValue = func(valueType schema.Type) {
 		switch valueType {
@@ -59,6 +60,12 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 			indent()
 			write("}")
 		case *schema.ObjectType:
+			if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
+				write("type(%s)", valueType.Token)
+				return
+			}
+
+			seenTypes.Add(valueType.Token)
 			write("{\n")
 			indended(func() {
 				for _, p := range valueType.Properties {

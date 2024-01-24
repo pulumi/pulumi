@@ -25,6 +25,8 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"html"
 	"html/template"
 	"path"
@@ -1639,12 +1641,21 @@ func isUnionOfObjects(schemaType *schema.UnionType) bool {
 }
 
 func decomposeToken(token string) (string, string, string) {
-	components := strings.Split(token, ":")
-	if len(components) != 3 {
-		return "", "", token
-	}
-	pkg, mod, name := components[0], components[1], components[2]
-	return pkg, mod, name
+	pkg, mod, member, _ := pcl.DecomposeToken(token, hcl.Range{})
+	return pkg, mod, member
+}
+
+func objectTypeHasRecursiveReference(objectType *schema.ObjectType) bool {
+	isRecursive := false
+	codegen.VisitTypeClosure(objectType.Properties, func(t schema.Type) {
+		if objectRef, ok := t.(*schema.ObjectType); ok {
+			if objectRef.Token == objectType.Token {
+				isRecursive = true
+			}
+		}
+	})
+
+	return isRecursive
 }
 
 // genResource is the entrypoint for generating a doc for a resource
