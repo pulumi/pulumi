@@ -2301,7 +2301,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					var err error
 					urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 						Parent:  parent,
-						Aliases: options.Aliases,
+						Aliases: aliasesFromAliases(options.Aliases),
 						Protect: options.Protect,
 					})
 					assert.NoError(t, err)
@@ -2451,7 +2451,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 			) (plugin.ConstructResult, error) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
-					Aliases: options.Aliases,
+					Aliases: aliasesFromAliases(options.Aliases),
 					Protect: options.Protect,
 				})
 				assert.NoError(t, err)
@@ -2633,7 +2633,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:       parent,
 					Protect:      options.Protect,
-					Aliases:      options.Aliases,
+					Aliases:      aliasesFromAliases(options.Aliases),
 					Dependencies: options.Dependencies,
 				})
 				assert.NoError(t, err)
@@ -2785,7 +2785,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
-					Aliases: options.Aliases,
+					Aliases: aliasesFromAliases(options.Aliases),
 					Protect: options.Protect,
 				})
 				assert.NoError(t, err)
@@ -2878,7 +2878,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
-					Aliases: options.Aliases,
+					Aliases: aliasesFromAliases(options.Aliases),
 					Protect: options.Protect,
 				})
 				assert.NoError(t, err)
@@ -4589,7 +4589,9 @@ func TestBadResourceOptionURNs(t *testing.T) {
 		{
 			name: "malformed alias urn",
 			opts: deploytest.ResourceOptions{
-				Aliases: []resource.Alias{{URN: "very-bad urn"}},
+				Aliases: []*pulumirpc.Alias{
+					makeUrnAlias("very-bad urn"),
+				},
 			},
 			assertFn: func(err error) {
 				assert.ErrorContains(t, err, "invalid alias URN: invalid URN \"very-bad urn\"")
@@ -4598,7 +4600,9 @@ func TestBadResourceOptionURNs(t *testing.T) {
 		{
 			name: "malformed alias parent urn",
 			opts: deploytest.ResourceOptions{
-				Aliases: []resource.Alias{{Parent: "very-bad urn"}},
+				Aliases: []*pulumirpc.Alias{
+					makeSpecAliasWithParent("", "", "", "", "very-bad urn"),
+				},
 			},
 			assertFn: func(err error) {
 				assert.ErrorContains(t, err, "invalid parent alias URN: invalid URN \"very-bad urn\"")

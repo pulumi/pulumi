@@ -1319,17 +1319,25 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		aliasSpec := aliasObject.GetSpec()
 		var alias resource.Alias
 		if aliasSpec != nil {
-			parentURN, err := resource.ParseOptionalURN(aliasSpec.GetParentUrn())
-			if err != nil {
-				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent alias URN: %s", err))
-			}
 			alias = resource.Alias{
-				Name:     aliasSpec.Name,
-				Type:     aliasSpec.Type,
-				Stack:    aliasSpec.Stack,
-				Project:  aliasSpec.Project,
-				Parent:   parentURN,
-				NoParent: aliasSpec.GetNoParent(),
+				Name:    aliasSpec.Name,
+				Type:    aliasSpec.Type,
+				Stack:   aliasSpec.Stack,
+				Project: aliasSpec.Project,
+			}
+			switch parent := aliasSpec.GetParent().(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				// Technically an SDK shouldn't set `parent` at all to specify the default parent, but both NodeJS and
+				// Python have buggy SDKs that set parent to an empty URN to specify the default parent. We handle this
+				// case here to maintain backward compatibility with older SDKs but it would be good to fix this to be
+				// strict in V4.
+				parentURN, err := resource.ParseOptionalURN(parent.ParentUrn)
+				if err != nil {
+					return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent alias URN: %s", err))
+				}
+				alias.Parent = parentURN
+			case *pulumirpc.Alias_Spec_NoParent:
+				alias.NoParent = parent.NoParent
 			}
 		} else {
 			urn, err := resource.ParseURN(aliasObject.GetUrn())
