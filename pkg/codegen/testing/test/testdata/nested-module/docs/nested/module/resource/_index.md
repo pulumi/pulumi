@@ -19,41 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as foo from "@pulumi/foo";
-
-const resource = new foo.nested.module.Resource("resource", {
-  bar: "string",
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_foo as foo
-
-resource = foo.nested.module.Resource("resource",
-  bar="string"
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -106,6 +71,42 @@ import java.util.Map;
 var resource = new Resource("resource", ResourceArgs.builder()
   .bar("string")
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_foo as foo
+
+resource = foo.nested.module.Resource("resource",
+  bar="string"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as foo from "@pulumi/foo";
+
+const resource = new foo.nested.module.Resource("resource", {
+  bar: "string",
+});
 
                 </code>
             </pre>

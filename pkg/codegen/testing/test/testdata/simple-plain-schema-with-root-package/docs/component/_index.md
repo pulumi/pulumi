@@ -19,101 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const component = new example.Component("component", {
-  a: true|false,
-  b: true|false,
-  bar: {
-    a: true|false,
-    b: true|false,
-    c: 0,
-    d: 0,
-    e: "string",
-    f: "string",
-  },
-  baz: [{
-    a: true|false,
-    b: true|false,
-    c: 0,
-    d: 0,
-    e: "string",
-    f: "string",
-  }],
-  c: 0,
-  d: 0,
-  e: "string",
-  f: "string",
-  foo: {
-    a: true|false,
-    b: true|false,
-    c: 0,
-    d: 0,
-    e: "string",
-    f: "string",
-  },
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-component = example.Component("component",
-  a=True|False,
-  b=True|False,
-  bar=example.FooArgs(
-    a=True|False,
-    b=True|False,
-    c=0,
-    d=0,
-    e="string",
-    f="string",
-  ),
-  baz=[
-    example.FooArgs(
-      a=True|False,
-      b=True|False,
-      c=0,
-      d=0,
-      e="string",
-      f="string",
-    ),
-  ],
-  c=0,
-  d=0,
-  e="string",
-  f="string",
-  foo=example.FooArgs(
-    a=True|False,
-    b=True|False,
-    c=0,
-    d=0,
-    e="string",
-    f="string",
-  )
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -263,6 +168,102 @@ var component = new Component("component", ComponentArgs.builder()
     .f("string")
     .build())
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+component = example.Component("component",
+  a=True|False,
+  b=True|False,
+  bar=example.FooArgs(
+    a=True|False,
+    b=True|False,
+    c=0,
+    d=0,
+    e="string",
+    f="string",
+  ),
+  baz=[
+    example.FooArgs(
+      a=True|False,
+      b=True|False,
+      c=0,
+      d=0,
+      e="string",
+      f="string",
+    ),
+  ],
+  c=0,
+  d=0,
+  e="string",
+  f="string",
+  foo=example.FooArgs(
+    a=True|False,
+    b=True|False,
+    c=0,
+    d=0,
+    e="string",
+    f="string",
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const component = new example.Component("component", {
+  a: true|false,
+  b: true|false,
+  bar: {
+    a: true|false,
+    b: true|false,
+    c: 0,
+    d: 0,
+    e: "string",
+    f: "string",
+  },
+  baz: [{
+    a: true|false,
+    b: true|false,
+    c: 0,
+    d: 0,
+    e: "string",
+    f: "string",
+  }],
+  c: 0,
+  d: 0,
+  e: "string",
+  f: "string",
+  foo: {
+    a: true|false,
+    b: true|false,
+    c: 0,
+    d: 0,
+    e: "string",
+    f: "string",
+  },
+});
 
                 </code>
             </pre>

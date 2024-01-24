@@ -19,71 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const cat = new example.Cat("cat", {
-  age: 0,
-  pet: {
-    age: 0,
-    name: reference(random:index/randomPet:RandomPet),
-    nameArray: [reference(random:index/randomPet:RandomPet)],
-    nameMap: {
-      "string": reference(random:index/randomPet:RandomPet)
-    },
-    requiredName: reference(random:index/randomPet:RandomPet),
-    requiredNameArray: [reference(random:index/randomPet:RandomPet)],
-    requiredNameMap: {
-      "string": reference(random:index/randomPet:RandomPet)
-    },
-  },
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-cat = example.Cat("cat",
-  age=0,
-  pet=example.PetArgs(
-    age=0,
-    name=reference(random:index/randomPet:RandomPet),
-    name_array=[
-      reference(random:index/randomPet:RandomPet),
-    ],
-    name_map={
-      'string': reference(random:index/randomPet:RandomPet)
-    },
-    required_name=reference(random:index/randomPet:RandomPet),
-    required_name_array=[
-      reference(random:index/randomPet:RandomPet),
-    ],
-    required_name_map={
-      'string': reference(random:index/randomPet:RandomPet)
-    },
-  )
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -186,6 +121,72 @@ var cat = new Cat("cat", CatArgs.builder()
     ))
     .build())
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+cat = example.Cat("cat",
+  age=0,
+  pet=example.PetArgs(
+    age=0,
+    name=reference(random:index/randomPet:RandomPet),
+    name_array=[
+      reference(random:index/randomPet:RandomPet),
+    ],
+    name_map={
+      'string': reference(random:index/randomPet:RandomPet)
+    },
+    required_name=reference(random:index/randomPet:RandomPet),
+    required_name_array=[
+      reference(random:index/randomPet:RandomPet),
+    ],
+    required_name_map={
+      'string': reference(random:index/randomPet:RandomPet)
+    },
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const cat = new example.Cat("cat", {
+  age: 0,
+  pet: {
+    age: 0,
+    name: reference(random:index/randomPet:RandomPet),
+    nameArray: [reference(random:index/randomPet:RandomPet)],
+    nameMap: {
+      "string": reference(random:index/randomPet:RandomPet)
+    },
+    requiredName: reference(random:index/randomPet:RandomPet),
+    requiredNameArray: [reference(random:index/randomPet:RandomPet)],
+    requiredNameMap: {
+      "string": reference(random:index/randomPet:RandomPet)
+    },
+  },
+});
 
                 </code>
             </pre>

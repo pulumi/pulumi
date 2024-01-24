@@ -19,69 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const moduleTest = new example.moduleTest("moduleTest", {
-  mod1: {
-    val: "string",
-  },
-  val: {
-    mod1: {
-      val: "string",
-    },
-    mod2: {
-      mod1: {
-        val: "string",
-      },
-      val: "string",
-    },
-    val: "string",
-  },
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-moduleTest = example.ModuleTest("moduleTest",
-  mod1=example.mod1.TypArgs(
-    val="string",
-  ),
-  val=example.TypArgs(
-    mod1=example.mod1.TypArgs(
-      val="string",
-    ),
-    mod2=example.mod2.TypArgs(
-      mod1=example.mod1.TypArgs(
-        val="string",
-      ),
-      val="string",
-    ),
-    val="string",
-  )
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -181,6 +118,70 @@ var moduleTest = new moduleTest("moduleTest", moduleTestArgs.builder()
     .val("string")
     .build())
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+moduleTest = example.ModuleTest("moduleTest",
+  mod1=example.mod1.TypArgs(
+    val="string",
+  ),
+  val=example.TypArgs(
+    mod1=example.mod1.TypArgs(
+      val="string",
+    ),
+    mod2=example.mod2.TypArgs(
+      mod1=example.mod1.TypArgs(
+        val="string",
+      ),
+      val="string",
+    ),
+    val="string",
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const moduleTest = new example.moduleTest("moduleTest", {
+  mod1: {
+    val: "string",
+  },
+  val: {
+    mod1: {
+      val: "string",
+    },
+    mod2: {
+      mod1: {
+        val: "string",
+      },
+      val: "string",
+    },
+    val: "string",
+  },
+});
 
                 </code>
             </pre>

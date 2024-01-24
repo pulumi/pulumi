@@ -22,85 +22,20 @@
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
 </div>
 {{- end }}
-{{ if ne (index .CreationExampleSyntax "typescript") "" }}
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-{{ htmlSafe (index .CreationExampleSyntax "typescript") }}
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-{{- end }}
-{{ if ne (index .CreationExampleSyntax "python") "" }}
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-{{ htmlSafe .CreationExampleSyntax.python }}
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-{{- end }}
-{{ if ne (index .CreationExampleSyntax "csharp") "" }}
-<div>
-    <pulumi-choosable type="language" values="csharp">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-csharp" data-lang="csharp">
-{{ htmlSafe .CreationExampleSyntax.csharp }}
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-{{- end }}
-{{ if ne (index .CreationExampleSyntax "go") "" }}
-<div>
-    <pulumi-choosable type="language" values="go">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-go" data-lang="go">
-{{ htmlSafe .CreationExampleSyntax.go }}
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-{{- end }}
-{{ if ne (index .CreationExampleSyntax "java") "" }}
-<div>
-    <pulumi-choosable type="language" values="java">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-java" data-lang="java">
-{{ htmlSafe .CreationExampleSyntax.java }}
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-{{- end }}
-{{ if ne (index .CreationExampleSyntax "yaml") "" }}
-<div>
-    <pulumi-choosable type="language" values="yaml">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-yaml" data-lang="yaml">
-{{ htmlSafe .CreationExampleSyntax.yaml }}
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-{{- end }}
 
+{{ range $lang, $code := .CreationExampleSyntax }}
+<div>
+    <pulumi-choosable type="language" values="{{$lang}}">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-{{$lang}}" data-lang="{{$lang}}">
+{{ htmlSafe $code }}
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+{{ end }}
 ## Definition of {{ .Header.Title }} {#create}{{ else }}
 ## Create {{ .Header.Title }} Resource {#create}
 {{- end }}

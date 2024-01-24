@@ -21,85 +21,6 @@ test new feature with resoruces
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const foo = new example.Foo("foo", {
-  argument: "string",
-  backupKubeClientSettings: {
-    burst: 0,
-    qps: 0.0,
-    recTest: type(example:index:KubeClientSettings),
-  },
-  kubeClientSettings: type(example:index:KubeClientSettings),
-  settings: {
-    answer: 0.0,
-    other: {
-      driver: "string",
-      pluginsPath: "string",
-      requiredArg: "string",
-    },
-    plainOther: {
-      driver: "string",
-      pluginsPath: "string",
-      requiredArg: "string",
-    },
-    question: "string",
-    recursive: type(example:index:LayeredType),
-    thinker: "string",
-  },
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-foo = example.Foo("foo",
-  argument="string",
-  backup_kube_client_settings=example.KubeClientSettingsArgs(
-    burst=0,
-    qps=0.0,
-    rec_test=type(example:index:KubeClientSettings),
-  ),
-  kube_client_settings=type(example:index:KubeClientSettings),
-  settings=example.LayeredTypeArgs(
-    answer=0.0,
-    other=example.HelmReleaseSettingsArgs(
-      driver="string",
-      plugins_path="string",
-      required_arg="string",
-    ),
-    plain_other=example.HelmReleaseSettingsArgs(
-      driver="string",
-      plugins_path="string",
-      required_arg="string",
-    ),
-    question="string",
-    recursive=type(example:index:LayeredType),
-    thinker="string",
-  )
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -222,6 +143,86 @@ var foo = new Foo("foo", FooArgs.builder()
     .thinker("string")
     .build())
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+foo = example.Foo("foo",
+  argument="string",
+  backup_kube_client_settings=example.KubeClientSettingsArgs(
+    burst=0,
+    qps=0.0,
+    rec_test=type(example:index:KubeClientSettings),
+  ),
+  kube_client_settings=type(example:index:KubeClientSettings),
+  settings=example.LayeredTypeArgs(
+    answer=0.0,
+    other=example.HelmReleaseSettingsArgs(
+      driver="string",
+      plugins_path="string",
+      required_arg="string",
+    ),
+    plain_other=example.HelmReleaseSettingsArgs(
+      driver="string",
+      plugins_path="string",
+      required_arg="string",
+    ),
+    question="string",
+    recursive=type(example:index:LayeredType),
+    thinker="string",
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const foo = new example.Foo("foo", {
+  argument: "string",
+  backupKubeClientSettings: {
+    burst: 0,
+    qps: 0.0,
+    recTest: type(example:index:KubeClientSettings),
+  },
+  kubeClientSettings: type(example:index:KubeClientSettings),
+  settings: {
+    answer: 0.0,
+    other: {
+      driver: "string",
+      pluginsPath: "string",
+      requiredArg: "string",
+    },
+    plainOther: {
+      driver: "string",
+      pluginsPath: "string",
+      requiredArg: "string",
+    },
+    question: "string",
+    recursive: type(example:index:LayeredType),
+    thinker: "string",
+  },
+});
 
                 </code>
             </pre>

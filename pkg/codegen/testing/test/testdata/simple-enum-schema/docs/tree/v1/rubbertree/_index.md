@@ -19,59 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as plant from "@pulumi/plant";
-
-const rubberTree = new plant.tree.v1.RubberTree("rubberTree", {
-  container: {
-    brightness: ZeroPointOne|One,
-    color: "red"|"blue"|"yellow",
-    material: "string",
-    size: FourInch|SixInch|EightInch,
-  },
-  diameter: sixinch|twelveinch,
-  farm: "Pulumi Planters Inc."|"Plants'R'Us",
-  size: "small"|"medium"|"large",
-  type: "Burgundy"|"Ruby"|"Tineke",
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_plant as plant
-
-rubberTree = plant.tree.v1.RubberTree("rubberTree",
-  container=plant.ContainerArgs(
-    brightness=ZeroPointOne|One,
-    color="red"|"blue"|"yellow",
-    material="string",
-    size=FourInch|SixInch|EightInch,
-  ),
-  diameter=sixinch|twelveinch,
-  farm="Pulumi Planters Inc."|"Plants'R'Us",
-  size="small"|"medium"|"large",
-  type="Burgundy"|"Ruby"|"Tineke"
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -152,6 +99,60 @@ var rubberTree = new RubberTree("rubberTree", RubberTreeArgs.builder()
   .size("small"|"medium"|"large")
   .type("Burgundy"|"Ruby"|"Tineke")
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_plant as plant
+
+rubberTree = plant.tree.v1.RubberTree("rubberTree",
+  container=plant.ContainerArgs(
+    brightness=ZeroPointOne|One,
+    color="red"|"blue"|"yellow",
+    material="string",
+    size=FourInch|SixInch|EightInch,
+  ),
+  diameter=sixinch|twelveinch,
+  farm="Pulumi Planters Inc."|"Plants'R'Us",
+  size="small"|"medium"|"large",
+  type="Burgundy"|"Ruby"|"Tineke"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as plant from "@pulumi/plant";
+
+const rubberTree = new plant.tree.v1.RubberTree("rubberTree", {
+  container: {
+    brightness: ZeroPointOne|One,
+    color: "red"|"blue"|"yellow",
+    material: "string",
+    size: FourInch|SixInch|EightInch,
+  },
+  diameter: sixinch|twelveinch,
+  farm: "Pulumi Planters Inc."|"Plants'R'Us",
+  size: "small"|"medium"|"large",
+  type: "Burgundy"|"Ruby"|"Tineke",
+});
 
                 </code>
             </pre>

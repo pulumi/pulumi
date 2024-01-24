@@ -21,43 +21,6 @@ It's fine to use urn and id as input properties
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as urnid from "@pulumi/urnid";
-
-const res = new urnid.Res("res", {
-  id: "string",
-  urn: "string",
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_urnid as urnid
-
-res = urnid.Res("res",
-  id="string",
-  urn="string"
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -113,6 +76,44 @@ var res = new Res("res", ResArgs.builder()
   .id("string")
   .urn("string")
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_urnid as urnid
+
+res = urnid.Res("res",
+  id="string",
+  urn="string"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as urnid from "@pulumi/urnid";
+
+const res = new urnid.Res("res", {
+  id: "string",
+  urn: "string",
+});
 
                 </code>
             </pre>

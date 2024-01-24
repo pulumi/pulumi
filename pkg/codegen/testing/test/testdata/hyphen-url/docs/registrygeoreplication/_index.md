@@ -19,41 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as registrygeoreplication from "@pulumi/registrygeoreplication";
-
-const registryGeoReplication = new registrygeoreplication.RegistryGeoReplication("registryGeoReplication", {
-  resourceGroup: reference(azure-native:resources:ResourceGroup),
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_registrygeoreplication as registrygeoreplication
-
-registryGeoReplication = registrygeoreplication.RegistryGeoReplication("registryGeoReplication",
-  resource_group=reference(azure-native:resources:ResourceGroup)
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -106,6 +71,42 @@ import java.util.Map;
 var registryGeoReplication = new RegistryGeoReplication("registryGeoReplication", RegistryGeoReplicationArgs.builder()
   .resourceGroup(reference(azure-native:resources:ResourceGroup))
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_registrygeoreplication as registrygeoreplication
+
+registryGeoReplication = registrygeoreplication.RegistryGeoReplication("registryGeoReplication",
+  resource_group=reference(azure-native:resources:ResourceGroup)
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as registrygeoreplication from "@pulumi/registrygeoreplication";
+
+const registryGeoReplication = new registrygeoreplication.RegistryGeoReplication("registryGeoReplication", {
+  resourceGroup: reference(azure-native:resources:ResourceGroup),
+});
 
                 </code>
             </pre>

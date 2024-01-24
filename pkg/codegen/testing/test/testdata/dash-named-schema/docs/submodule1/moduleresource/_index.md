@@ -19,45 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as foo-bar from "@pulumi/foo-bar";
-
-const moduleResource = new foo-bar.submodule1.ModuleResource("moduleResource", {
-  thing: {
-    buzz: "string",
-  },
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_foo_bar as foo_bar
-
-moduleResource = foo_bar.submodule1.ModuleResource("moduleResource",
-  thing=foo_bar.TopLevelArgs(
-    buzz="string",
-  )
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -117,6 +78,46 @@ var moduleResource = new ModuleResource("moduleResource", ModuleResourceArgs.bui
     .buzz("string")
     .build())
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_foo_bar as foo_bar
+
+moduleResource = foo_bar.submodule1.ModuleResource("moduleResource",
+  thing=foo_bar.TopLevelArgs(
+    buzz="string",
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as foo-bar from "@pulumi/foo-bar";
+
+const moduleResource = new foo-bar.submodule1.ModuleResource("moduleResource", {
+  thing: {
+    buzz: "string",
+  },
+});
 
                 </code>
             </pre>

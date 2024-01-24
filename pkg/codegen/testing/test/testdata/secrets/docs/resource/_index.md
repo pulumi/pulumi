@@ -19,75 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as mypkg from "@pulumi/mypkg";
-
-const resource = new mypkg.Resource("resource", {
-  config: {
-    foo: "string",
-  },
-  configArray: [{
-    foo: "string",
-  }],
-  configMap: {
-    "string": {
-      foo: "string",
-    }
-  },
-  foo: "string",
-  fooArray: ["string"],
-  fooMap: {
-    "string": "string"
-  },
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_mypkg as mypkg
-
-resource = mypkg.Resource("resource",
-  config=mypkg.ConfigArgs(
-    foo="string",
-  ),
-  config_array=[
-    mypkg.ConfigArgs(
-      foo="string",
-    ),
-  ],
-  config_map={
-    'string': mypkg.ConfigArgs(
-      foo="string",
-    )
-  },
-  foo="string",
-  foo_array=[
-    "string",
-  ],
-  foo_map={
-    'string': "string"
-  }
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -200,6 +131,76 @@ var resource = new Resource("resource", ResourceArgs.builder()
     Map.entry("string", "string")
   ))
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_mypkg as mypkg
+
+resource = mypkg.Resource("resource",
+  config=mypkg.ConfigArgs(
+    foo="string",
+  ),
+  config_array=[
+    mypkg.ConfigArgs(
+      foo="string",
+    ),
+  ],
+  config_map={
+    'string': mypkg.ConfigArgs(
+      foo="string",
+    )
+  },
+  foo="string",
+  foo_array=[
+    "string",
+  ],
+  foo_map={
+    'string': "string"
+  }
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as mypkg from "@pulumi/mypkg";
+
+const resource = new mypkg.Resource("resource", {
+  config: {
+    foo: "string",
+  },
+  configArray: [{
+    foo: "string",
+  }],
+  configMap: {
+    "string": {
+      foo: "string",
+    }
+  },
+  foo: "string",
+  fooArray: ["string"],
+  fooMap: {
+    "string": "string"
+  },
+});
 
                 </code>
             </pre>

@@ -19,55 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const resourceWithAssets = new example.ResourceWithAssets("resourceWithAssets", {
-  archive: new pulumi.asset.FileAsset("./file.txt"),
-  nested: {
-    archive: new pulumi.asset.FileAsset("./file.txt"),
-    asset: new pulumi.asset.StringAsset("Hello, world!"),
-    plainArchive: new pulumi.asset.FileAsset("./file.txt"),
-    plainAsset: new pulumi.asset.StringAsset("Hello, world!"),
-  },
-  source: new pulumi.asset.StringAsset("Hello, world!"),
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-resourceWithAssets = example.ResourceWithAssets("resourceWithAssets",
-  archive=pulumi.FileAsset("./file.txt"),
-  nested=example.TypeWithAssetsArgs(
-    archive=pulumi.FileAsset("./file.txt"),
-    asset=pulumi.StringAsset("Hello, world!"),
-    plain_archive=pulumi.FileAsset("./file.txt"),
-    plain_asset=pulumi.StringAsset("Hello, world!"),
-  ),
-  source=pulumi.StringAsset("Hello, world!")
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -142,6 +93,56 @@ var resourceWithAssets = new ResourceWithAssets("resourceWithAssets", ResourceWi
     .build())
   .source(new StringAsset("Hello, world!"))
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+resourceWithAssets = example.ResourceWithAssets("resourceWithAssets",
+  archive=pulumi.FileAsset("./file.txt"),
+  nested=example.TypeWithAssetsArgs(
+    archive=pulumi.FileAsset("./file.txt"),
+    asset=pulumi.StringAsset("Hello, world!"),
+    plain_archive=pulumi.FileAsset("./file.txt"),
+    plain_asset=pulumi.StringAsset("Hello, world!"),
+  ),
+  source=pulumi.StringAsset("Hello, world!")
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const resourceWithAssets = new example.ResourceWithAssets("resourceWithAssets", {
+  archive: new pulumi.asset.FileAsset("./file.txt"),
+  nested: {
+    archive: new pulumi.asset.FileAsset("./file.txt"),
+    asset: new pulumi.asset.StringAsset("Hello, world!"),
+    plainArchive: new pulumi.asset.FileAsset("./file.txt"),
+    plainAsset: new pulumi.asset.StringAsset("Hello, world!"),
+  },
+  source: new pulumi.asset.StringAsset("Hello, world!"),
+});
 
                 </code>
             </pre>

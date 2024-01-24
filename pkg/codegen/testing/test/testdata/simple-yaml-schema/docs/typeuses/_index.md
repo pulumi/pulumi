@@ -19,93 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const typeUses = new example.TypeUses("typeUses", {
-  bar: {
-    baz: "string",
-  },
-  baz: {
-    bar: 0,
-    foo: "string",
-  },
-  foo: {
-    bar: "string",
-    configs: [{
-      config: "string",
-    }],
-    foo: reference(example::Resource),
-    others: [[{
-      baz: "string",
-    }]],
-    stillOthers: {
-      "string": [{
-        baz: "string",
-      }]
-    },
-  },
-  qux: "Burgundy"|"Ruby"|"Tineke",
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-typeUses = example.TypeUses("typeUses",
-  bar=example.SomeOtherObjectArgs(
-    baz="string",
-  ),
-  baz=example.ObjectWithNodeOptionalInputsArgs(
-    bar=0,
-    foo="string",
-  ),
-  foo=example.ObjectArgs(
-    bar="string",
-    configs=[
-      example.ConfigMapArgs(
-        config="string",
-      ),
-    ],
-    foo=reference(example::Resource),
-    others=[
-      [
-        example.SomeOtherObjectArgs(
-          baz="string",
-        ),
-      ],
-    ],
-    still_others={
-      'string': [
-        example.SomeOtherObjectArgs(
-          baz="string",
-        ),
-      ]
-    },
-  ),
-  qux="Burgundy"|"Ruby"|"Tineke"
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -258,6 +171,94 @@ var typeUses = new TypeUses("typeUses", TypeUsesArgs.builder()
     .build())
   .qux("Burgundy"|"Ruby"|"Tineke")
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+typeUses = example.TypeUses("typeUses",
+  bar=example.SomeOtherObjectArgs(
+    baz="string",
+  ),
+  baz=example.ObjectWithNodeOptionalInputsArgs(
+    bar=0,
+    foo="string",
+  ),
+  foo=example.ObjectArgs(
+    bar="string",
+    configs=[
+      example.ConfigMapArgs(
+        config="string",
+      ),
+    ],
+    foo=reference(example::Resource),
+    others=[
+      [
+        example.SomeOtherObjectArgs(
+          baz="string",
+        ),
+      ],
+    ],
+    still_others={
+      'string': [
+        example.SomeOtherObjectArgs(
+          baz="string",
+        ),
+      ]
+    },
+  ),
+  qux="Burgundy"|"Ruby"|"Tineke"
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const typeUses = new example.TypeUses("typeUses", {
+  bar: {
+    baz: "string",
+  },
+  baz: {
+    bar: 0,
+    foo: "string",
+  },
+  foo: {
+    bar: "string",
+    configs: [{
+      config: "string",
+    }],
+    foo: reference(example::Resource),
+    others: [[{
+      baz: "string",
+    }]],
+    stillOthers: {
+      "string": [{
+        baz: "string",
+      }]
+    },
+  },
+  qux: "Burgundy"|"Ruby"|"Tineke",
+});
 
                 </code>
             </pre>

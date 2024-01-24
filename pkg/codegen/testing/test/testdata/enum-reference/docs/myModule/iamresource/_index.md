@@ -19,57 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const iamResource = new example.myModule.IamResource("iamResource", {
-  config: {
-    auditLogConfigs: [{
-      exemptedMembers: ["string"],
-      logType: "LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ",
-    }],
-    service: "string",
-  },
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-iamResource = example.my_module.IamResource("iamResource",
-  config=google_native.iam.v1.AuditConfigArgs(
-    audit_log_configs=[
-      google_native.iam.v1.AuditLogConfigArgs(
-        exempted_members=[
-          "string",
-        ],
-        log_type="LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ",
-      ),
-    ],
-    service="string",
-  )
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -154,6 +103,58 @@ var iamResource = new IamResource("iamResource", IamResourceArgs.builder()
     .service("string")
     .build())
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+iamResource = example.my_module.IamResource("iamResource",
+  config=google_native.iam.v1.AuditConfigArgs(
+    audit_log_configs=[
+      google_native.iam.v1.AuditLogConfigArgs(
+        exempted_members=[
+          "string",
+        ],
+        log_type="LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ",
+      ),
+    ],
+    service="string",
+  )
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const iamResource = new example.myModule.IamResource("iamResource", {
+  config: {
+    auditLogConfigs: [{
+      exemptedMembers: ["string"],
+      logType: "LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ",
+    }],
+    service: "string",
+  },
+});
 
                 </code>
             </pre>

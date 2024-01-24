@@ -19,43 +19,6 @@ no_edit_this_page: true
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
 
-<div>
-    <pulumi-choosable type="language" values="javascript,typescript">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-typescript" data-lang="typescript">
-import * as pulumi from "@pulumi/pulumi";
-import * as example from "@pulumi/example";
-
-const exampleServer = new example.ExampleServer("exampleServer", {
-  propertiesCollection: [oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore)],
-});
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
-
-<div>
-    <pulumi-choosable type="language" values="python">
-        <div class="highlight">
-            <pre class="chroma">
-                <code class="language-python" data-lang="python">
-import pulumi
-import pulumi_example as example
-
-exampleServer = example.ExampleServer("exampleServer",
-  properties_collection=[
-    oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore),
-  ]
-)
-
-                </code>
-            </pre>
-        </div>
-    </pulumi-choosable>
-</div>
 
 <div>
     <pulumi-choosable type="language" values="csharp">
@@ -115,6 +78,44 @@ var exampleServer = new ExampleServer("exampleServer", ExampleServerArgs.builder
     oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore)
   ))
   .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="python">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-python" data-lang="python">
+import pulumi
+import pulumi_example as example
+
+exampleServer = example.ExampleServer("exampleServer",
+  properties_collection=[
+    oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore),
+  ]
+)
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
+
+<div>
+    <pulumi-choosable type="language" values="typescript">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-typescript" data-lang="typescript">
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const exampleServer = new example.ExampleServer("exampleServer", {
+  propertiesCollection: [oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore)],
+});
 
                 </code>
             </pre>
