@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Adds pulumi:template tag to `pulumi new` created projects

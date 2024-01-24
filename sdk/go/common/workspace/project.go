@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
@@ -966,4 +967,33 @@ func save(path string, value interface{}, mkDirAll bool) error {
 
 	//nolint:gosec
 	return os.WriteFile(path, b, 0o644)
+}
+
+// To mitigate an import cycle, we define this here.
+const PulumiTagsConfigKey = "pulumi:tags"
+
+// AddConfigStackTags sets the project tags config to the given map of tags.
+func (proj *Project) AddConfigStackTags(tags map[string]string) {
+	if proj.Config == nil {
+		proj.Config = map[string]ProjectConfigType{}
+	}
+	configTags, has := proj.Config["pulumi:tags"]
+	if !has {
+		configTags = ProjectConfigType{
+			Value: map[string]string{},
+		}
+	}
+	if configTags.Value == nil {
+		configTags.Value = map[string]string{}
+	}
+
+	tagMap, ok := configTags.Value.(map[string]string)
+	if !ok {
+		logging.Warningf("overwriting non-object `%s` project config", "pulumi:tags")
+		tagMap = map[string]string{}
+	}
+	for k, v := range tags {
+		tagMap[k] = v
+	}
+	proj.Config["pulumi:tags"] = configTags
 }
