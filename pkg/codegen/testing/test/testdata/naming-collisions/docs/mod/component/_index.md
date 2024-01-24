@@ -84,7 +84,7 @@ var component = new Example.Mod.Component("component", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "naming-collisions/example/mod"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example/mod"
 )
 
 component, err := mod.NewComponent("component", &mod.ComponentArgs{

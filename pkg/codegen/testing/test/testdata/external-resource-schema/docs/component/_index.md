@@ -1433,7 +1433,7 @@ name: example
 runtime: yaml
 resources:
   component:
-    type: example::Component
+    type: example:Component
     properties:
       metadata: 
         annotations: 

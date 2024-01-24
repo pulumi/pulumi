@@ -103,7 +103,7 @@ var resourceWithAssets = new Example.ResourceWithAssets("resourceWithAssets", ne
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "assets-and-archives/example/index"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 resourceWithAssets, err := example.NewResourceWithAssets("resourceWithAssets", &example.ResourceWithAssetsArgs{
@@ -158,7 +158,7 @@ name: example
 runtime: yaml
 resources:
   resourceWithAssets:
-    type: example:index:ResourceWithAssets
+    type: example:ResourceWithAssets
     properties:
       archive: 
         Fn::FileAsset: ./file.txt

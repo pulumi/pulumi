@@ -16,72 +16,250 @@ test new feature with resoruces
 
 
 
-
 ## Creating a Foo Resource
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="javascript,typescript">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-typescript" data-lang="typescript">
-const Foo = new Foo("<resource_name>", {...});
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const foo = new example.Foo("foo", {
+  argument: "string",
+  backupKubeClientSettings: {
+    burst: 0,
+    qps: 0.0,
+    recTest: type(example:index:KubeClientSettings),
+  },
+  kubeClientSettings: type(example:index:KubeClientSettings),
+  settings: {
+    answer: 0.0,
+    other: {
+      driver: "string",
+      pluginsPath: "string",
+      requiredArg: "string",
+    },
+    plainOther: {
+      driver: "string",
+      pluginsPath: "string",
+      requiredArg: "string",
+    },
+    question: "string",
+    recursive: type(example:index:LayeredType),
+    thinker: "string",
+  },
+});
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="python">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-python" data-lang="python">
-Foo = Foo("<resource_name>", ...)
+import pulumi
+import pulumi_example as example
+
+foo = example.Foo("foo",
+  argument="string",
+  backup_kube_client_settings=example.KubeClientSettingsArgs(
+    burst=0,
+    qps=0.0,
+    rec_test=type(example:index:KubeClientSettings),
+  ),
+  kube_client_settings=type(example:index:KubeClientSettings),
+  settings=example.LayeredTypeArgs(
+    answer=0.0,
+    other=example.HelmReleaseSettingsArgs(
+      driver="string",
+      plugins_path="string",
+      required_arg="string",
+    ),
+    plain_other=example.HelmReleaseSettingsArgs(
+      driver="string",
+      plugins_path="string",
+      required_arg="string",
+    ),
+    question="string",
+    recursive=type(example:index:LayeredType),
+    thinker="string",
+  )
+)
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="csharp">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-csharp" data-lang="csharp">
-var Foo = new Foo("<resource_name>", new FooArgs {...});
+using Pulumi;
+using Example = Pulumi.Example;
+
+var foo = new Example.Foo("foo", new () 
+{
+  Argument = "string",
+  BackupKubeClientSettings = new Example.Inputs.KubeClientSettingsArgs
+  {
+    Burst = 0,
+    Qps = 0.0,
+    RecTest = type(example:index:KubeClientSettings),
+  },
+  KubeClientSettings = type(example:index:KubeClientSettings),
+  Settings = new Example.Inputs.LayeredTypeArgs
+  {
+    Answer = 0.0,
+    Other = new Example.Inputs.HelmReleaseSettingsArgs
+    {
+      Driver = "string",
+      PluginsPath = "string",
+      RequiredArg = "string",
+    },
+    PlainOther = new Example.Inputs.HelmReleaseSettingsArgs
+    {
+      Driver = "string",
+      PluginsPath = "string",
+      RequiredArg = "string",
+    },
+    Question = "string",
+    Recursive = type(example:index:LayeredType),
+    Thinker = "string",
+  },
+});
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="go">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-go" data-lang="go">
-resource.NewFoo(ctx, "<resource_name>", &resource.FooArgs{...})
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
+)
+
+foo, err := example.NewFoo("foo", &example.FooArgs{
+  Argument: pulumi.StringRef("string"),
+  BackupKubeClientSettings: &example.KubeClientSettingsArgs{
+    Burst: pulumi.Int(0),
+    Qps: pulumi.Float64(0.0),
+    RecTest: type(example:index:KubeClientSettings),
+  },
+  KubeClientSettings: type(example:index:KubeClientSettings),
+  Settings: &example.LayeredTypeArgs{
+    Answer: pulumi.Float64(0.0),
+    Other: &example.HelmReleaseSettingsArgs{
+      Driver: pulumi.String("string"),
+      PluginsPath: pulumi.String("string"),
+      RequiredArg: pulumi.String("string"),
+    },
+    PlainOther: &example.HelmReleaseSettingsArgs{
+      Driver: pulumi.String("string"),
+      PluginsPath: pulumi.String("string"),
+      RequiredArg: pulumi.String("string"),
+    },
+    Question: pulumi.String("string"),
+    Recursive: type(example:index:LayeredType),
+    Thinker: pulumi.String("string"),
+  },
+})
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;
+import java.util.List;
+import java.util.Map;
+
+var foo = new Foo("foo", FooArgs.builder()
+  .argument("string")
+  .backupKubeClientSettings(KubeClientSettingsArgs.builder()
+    .burst(0)
+    .qps(0.0)
+    .recTest(type(example:index:KubeClientSettings))
+    .build())
+  .kubeClientSettings(type(example:index:KubeClientSettings))
+  .settings(LayeredTypeArgs.builder()
+    .answer(0.0)
+    .other(HelmReleaseSettingsArgs.builder()
+      .driver("string")
+      .pluginsPath("string")
+      .requiredArg("string")
+      .build())
+    .plainOther(HelmReleaseSettingsArgs.builder()
+      .driver("string")
+      .pluginsPath("string")
+      .requiredArg("string")
+      .build())
+    .question("string")
+    .recursive(type(example:index:LayeredType))
+    .thinker("string")
+    .build())
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
-    <pulumi-choosable type="language" values="go">
+    <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-yaml" data-lang="yaml">
-Foo:
-  <resource_name>: ...
+name: example
+runtime: yaml
+resources:
+  foo:
+    type: example:Foo
+    properties:
+      argument: "string"
+      backupKubeClientSettings: 
+        burst: 0
+        qps: 0.0
+        recTest: type(example:index:KubeClientSettings)
+      kubeClientSettings: type(example:index:KubeClientSettings)
+      settings: 
+        answer: 0.0
+        other: 
+          driver: "string"
+          pluginsPath: "string"
+          requiredArg: "string"
+        plainOther: 
+          driver: "string"
+          pluginsPath: "string"
+          requiredArg: "string"
+        question: "string"
+        recursive: type(example:index:LayeredType)
+        thinker: "string"
+
                 </code>
             </pre>
         </div>

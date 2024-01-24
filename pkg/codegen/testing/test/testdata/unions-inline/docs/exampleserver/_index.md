@@ -81,7 +81,7 @@ var exampleServer = new Example.ExampleServer("exampleServer", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "unions-inline/example/index"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 exampleServer, err := example.NewExampleServer("exampleServer", &example.ExampleServerArgs{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   exampleServer:
-    type: example:index:ExampleServer
+    type: example:ExampleServer
     properties:
       properties: oneOf(ServerPropertiesForReplica|ServerPropertiesForRestore)
 

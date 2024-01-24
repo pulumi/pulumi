@@ -81,7 +81,7 @@ var pet = new Example.Pet("pet", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "resource-args-python/example/"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 pet, err := example.NewPet("pet", &example.PetArgs{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   pet:
-    type: example::Pet
+    type: example:Pet
     properties:
       name: "string"
 

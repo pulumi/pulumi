@@ -81,7 +81,7 @@ var configurer = new Metaprovider.Configurer("configurer", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider/index"
+  "github.com/pulumi/pulumi-metaprovider/sdk/v3/go/metaprovider"
 )
 
 configurer, err := metaprovider.NewConfigurer("configurer", &metaprovider.ConfigurerArgs{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   configurer:
-    type: metaprovider:index:Configurer
+    type: metaprovider:Configurer
     properties:
       tlsProxy: "string"
 

@@ -202,7 +202,7 @@ name: example
 runtime: yaml
 resources:
   cat:
-    type: example::Cat
+    type: example:Cat
     properties:
       age: 0
       pet: 

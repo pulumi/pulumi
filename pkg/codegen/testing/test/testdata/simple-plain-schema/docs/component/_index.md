@@ -207,7 +207,7 @@ var component = new Example.Component("component", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "simple-plain-schema/example/"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 component, err := example.NewComponent("component", &example.ComponentArgs{
@@ -330,7 +330,7 @@ name: example
 runtime: yaml
 resources:
   component:
-    type: example::Component
+    type: example:Component
     properties:
       a: True|False
       b: True|False

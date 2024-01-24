@@ -109,7 +109,7 @@ var rubberTree = new Plant.Tree.V1.RubberTree("rubberTree", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "simple-enum-schema/plant/tree.v1"
+  "github.com/pulumi/pulumi-plant/sdk/v3/go/plant/tree.v1"
 )
 
 rubberTree, err := tree.v1.NewRubberTree("rubberTree", &tree.v1.RubberTreeArgs{

@@ -139,7 +139,7 @@ var resource = new Mypkg.Resource("resource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "secrets/mypkg/"
+  "github.com/pulumi/pulumi-mypkg/sdk/v3/go/mypkg"
 )
 
 resource, err := mypkg.NewResource("resource", &mypkg.ResourceArgs{
@@ -216,7 +216,7 @@ name: example
 runtime: yaml
 resources:
   resource:
-    type: mypkg::Resource
+    type: mypkg:Resource
     properties:
       config: 
         foo: "string"

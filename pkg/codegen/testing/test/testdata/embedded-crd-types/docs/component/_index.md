@@ -5337,7 +5337,7 @@ var component = new Foo.Component("component", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "embedded-crd-types/foo/index"
+  "github.com/pulumi/pulumi-foo/sdk/v3/go/foo"
 )
 
 component, err := foo.NewComponent("component", &foo.ComponentArgs{
@@ -8668,7 +8668,7 @@ name: example
 runtime: yaml
 resources:
   component:
-    type: foo:index:Component
+    type: foo:Component
     properties:
       eniConfig: 
         "string": 

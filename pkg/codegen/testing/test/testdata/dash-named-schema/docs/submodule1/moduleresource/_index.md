@@ -88,7 +88,7 @@ var moduleResource = new FooBar.Submodule1.ModuleResource("moduleResource", new 
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "dash-named-schema/foo/submodule1"
+  "github.com/pulumi/pulumi-foo-bar/sdk/v3/go/foo-bar/submodule1"
 )
 
 moduleResource, err := submodule1.NewModuleResource("moduleResource", &submodule1.ModuleResourceArgs{

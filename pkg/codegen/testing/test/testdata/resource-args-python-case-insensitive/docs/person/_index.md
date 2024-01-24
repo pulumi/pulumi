@@ -96,7 +96,7 @@ var person = new Example.Person("person", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "resource-args-python-case-insensitive/example/"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 person, err := example.NewPerson("person", &example.PersonArgs{
@@ -147,7 +147,7 @@ name: example
 runtime: yaml
 resources:
   person:
-    type: example::Person
+    type: example:Person
     properties:
       name: "string"
       pets: [

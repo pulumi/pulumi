@@ -95,7 +95,7 @@ var nursery = new Plant.Tree.V1.Nursery("nursery", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "dashed-import-schema/plant-provider/tree.v1"
+  "github.com/pulumi/pulumi-plant/sdk/v3/go/plant/tree.v1"
 )
 
 nursery, err := tree.v1.NewNursery("nursery", &tree.v1.NurseryArgs{

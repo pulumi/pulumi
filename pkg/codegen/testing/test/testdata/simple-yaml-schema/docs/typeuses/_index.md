@@ -173,7 +173,7 @@ var typeUses = new Example.TypeUses("typeUses", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "simple-yaml-schema/example/"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 typeUses, err := example.NewTypeUses("typeUses", &example.TypeUsesArgs{
@@ -274,7 +274,7 @@ name: example
 runtime: yaml
 resources:
   typeUses:
-    type: example::TypeUses
+    type: example:TypeUses
     properties:
       bar: 
         baz: "string"

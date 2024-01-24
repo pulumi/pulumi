@@ -81,7 +81,7 @@ var registryGeoReplication = new Registrygeoreplication.RegistryGeoReplication("
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "github.com/pulumi/pulumi-registrygeoreplication/sdk/go/registrygeoreplication/index"
+  "github.com/pulumi/pulumi-registrygeoreplication/sdk/v3/go/registrygeoreplication"
 )
 
 registryGeoReplication, err := registrygeoreplication.NewRegistryGeoReplication("registryGeoReplication", &registrygeoreplication.RegistryGeoReplicationArgs{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   registryGeoReplication:
-    type: registrygeoreplication:index:RegistryGeoReplication
+    type: registrygeoreplication:RegistryGeoReplication
     properties:
       resourceGroup: reference(azure-native:resources:ResourceGroup)
 

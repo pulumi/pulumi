@@ -91,7 +91,7 @@ var staticPage = new Xyz.StaticPage("staticPage", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "plain-schema-gh6957/xyz/index"
+  "github.com/pulumi/pulumi-xyz/sdk/v3/go/xyz"
 )
 
 staticPage, err := xyz.NewStaticPage("staticPage", &xyz.StaticPageArgs{
@@ -138,7 +138,7 @@ name: example
 runtime: yaml
 resources:
   staticPage:
-    type: xyz:index:StaticPage
+    type: xyz:StaticPage
     properties:
       foo: 
         a: True|False

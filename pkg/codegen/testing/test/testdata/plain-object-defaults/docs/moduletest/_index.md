@@ -14,72 +14,202 @@ no_edit_this_page: true
 
 
 
-
 ## Creating a ModuleTest Resource
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="javascript,typescript">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-typescript" data-lang="typescript">
-const ModuleTest = new ModuleTest("<resource_name>", {...});
+import * as pulumi from "@pulumi/pulumi";
+import * as example from "@pulumi/example";
+
+const moduleTest = new example.moduleTest("moduleTest", {
+  mod1: {
+    val: "string",
+  },
+  val: {
+    mod1: {
+      val: "string",
+    },
+    mod2: {
+      mod1: {
+        val: "string",
+      },
+      val: "string",
+    },
+    val: "string",
+  },
+});
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="python">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-python" data-lang="python">
-ModuleTest = ModuleTest("<resource_name>", ...)
+import pulumi
+import pulumi_example as example
+
+moduleTest = example.ModuleTest("moduleTest",
+  mod1=example.mod1.TypArgs(
+    val="string",
+  ),
+  val=example.TypArgs(
+    mod1=example.mod1.TypArgs(
+      val="string",
+    ),
+    mod2=example.mod2.TypArgs(
+      mod1=example.mod1.TypArgs(
+        val="string",
+      ),
+      val="string",
+    ),
+    val="string",
+  )
+)
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="csharp">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-csharp" data-lang="csharp">
-var ModuleTest = new ModuleTest("<resource_name>", new ModuleTestArgs {...});
+using Pulumi;
+using Example = Pulumi.Example;
+
+var moduleTest = new Example.ModuleTest("moduleTest", new () 
+{
+  Mod1 = new Example.Mod1.Inputs.TypArgs
+  {
+    Val = "string",
+  },
+  Val = new Example.Inputs.TypArgs
+  {
+    Mod1 = new Example.Mod1.Inputs.TypArgs
+    {
+      Val = "string",
+    },
+    Mod2 = new Example.Mod2.Inputs.TypArgs
+    {
+      Mod1 = new Example.Mod1.Inputs.TypArgs
+      {
+        Val = "string",
+      },
+      Val = "string",
+    },
+    Val = "string",
+  },
+});
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
-
 
 <div>
     <pulumi-choosable type="language" values="go">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-go" data-lang="go">
-resource.NewModuleTest(ctx, "<resource_name>", &resource.ModuleTestArgs{...})
+import (
+  "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
+)
+
+moduleTest, err := example.NewmoduleTest("moduleTest", &example.moduleTestArgs{
+  Mod1: &mod1.typArgs{
+    Val: pulumi.String("string"),
+  },
+  Val: &example.typArgs{
+    Mod1: &mod1.typArgs{
+      Val: pulumi.String("string"),
+    },
+    Mod2: &mod2.typArgs{
+      Mod1: &mod1.typArgs{
+        Val: pulumi.String("string"),
+      },
+      Val: pulumi.String("string"),
+    },
+    Val: pulumi.String("string"),
+  },
+})
+
                 </code>
             </pre>
         </div>
     </pulumi-choosable>
 </div>
 
+<div>
+    <pulumi-choosable type="language" values="java">
+        <div class="highlight">
+            <pre class="chroma">
+                <code class="language-java" data-lang="java">
+import com.pulumi.Pulumi;
+import java.util.List;
+import java.util.Map;
+
+var moduleTest = new moduleTest("moduleTest", moduleTestArgs.builder()
+  .mod1(typArgs.builder()
+    .val("string")
+    .build())
+  .val(typArgs.builder()
+    .mod1(typArgs.builder()
+      .val("string")
+      .build())
+    .mod2(typArgs.builder()
+      .mod1(typArgs.builder()
+        .val("string")
+        .build())
+      .val("string")
+      .build())
+    .val("string")
+    .build())
+  .build());
+
+                </code>
+            </pre>
+        </div>
+    </pulumi-choosable>
+</div>
 
 <div>
-    <pulumi-choosable type="language" values="go">
+    <pulumi-choosable type="language" values="yaml">
         <div class="highlight">
             <pre class="chroma">
                 <code class="language-yaml" data-lang="yaml">
-ModuleTest:
-  <resource_name>: ...
+name: example
+runtime: yaml
+resources:
+  moduleTest:
+    type: example:moduleTest
+    properties:
+      mod1: 
+        val: "string"
+      val: 
+        mod1: 
+          val: "string"
+        mod2: 
+          mod1: 
+            val: "string"
+          val: "string"
+        val: "string"
+
                 </code>
             </pre>
         </div>

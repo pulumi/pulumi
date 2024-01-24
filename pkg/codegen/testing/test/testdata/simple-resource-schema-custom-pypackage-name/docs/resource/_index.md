@@ -81,7 +81,7 @@ var resource = new Example.Resource("resource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "simple-resource-schema-custom-pypackage-name/example/"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 resource, err := example.NewResource("resource", &example.ResourceArgs{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   resource:
-    type: example::Resource
+    type: example:Resource
     properties:
       bar: "string"
 

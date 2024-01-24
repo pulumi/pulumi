@@ -111,7 +111,7 @@ var iamResource = new Example.MyModule.IamResource("iamResource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "enum-reference/example/myModule"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example/myModule"
 )
 
 iamResource, err := myModule.NewIamResource("iamResource", &myModule.IamResourceArgs{

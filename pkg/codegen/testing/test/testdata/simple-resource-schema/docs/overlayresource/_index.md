@@ -91,7 +91,7 @@ var overlayResource = new Example.OverlayResource("overlayResource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "simple-resource-schema/example/"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 overlayResource, err := example.NewOverlayResource("overlayResource", &example.OverlayResourceArgs{
@@ -138,7 +138,7 @@ name: example
 runtime: yaml
 resources:
   overlayResource:
-    type: example::OverlayResource
+    type: example:OverlayResource
     properties:
       bar: SOME_ENUM_VALUE
       foo: 

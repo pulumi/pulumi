@@ -81,7 +81,7 @@ var barResource = new Bar.BarResource("barResource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/other-owned/go/example/"
+  "github.com/pulumi/pulumi-bar/sdk/v3/go/bar"
 )
 
 barResource, err := bar.NewBarResource("barResource", &bar.BarResourceArgs{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   barResource:
-    type: bar::BarResource
+    type: bar:BarResource
     properties:
       foo: reference(example::Resource)
 

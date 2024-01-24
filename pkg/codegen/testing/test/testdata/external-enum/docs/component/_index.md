@@ -84,7 +84,7 @@ var component = new Example.Component("component", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "external-enum/example/index"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 component, err := example.NewComponent("component", &example.ComponentArgs{
@@ -127,7 +127,7 @@ name: example
 runtime: yaml
 resources:
   component:
-    type: example:index:Component
+    type: example:Component
     properties:
       localEnum: pi|small
       remoteEnum: MANAGEMENT_UNSPECIFIED|NONE|BASIC|COMPLETE

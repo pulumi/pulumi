@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   overlay:
-    type: example::Overlay
+    type: example:Overlay
     properties:
       bar: "string"
 

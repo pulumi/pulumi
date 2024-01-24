@@ -81,7 +81,7 @@ var fooResource = new Foo.FooResource("fooResource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "simple-resource-schema/example/"
+  "github.com/pulumi/pulumi-foo/sdk/v3/go/foo"
 )
 
 fooResource, err := foo.NewFooResource("fooResource", &foo.FooResourceArgs{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   fooResource:
-    type: foo::FooResource
+    type: foo:FooResource
     properties:
       foo: reference(example::Resource)
 

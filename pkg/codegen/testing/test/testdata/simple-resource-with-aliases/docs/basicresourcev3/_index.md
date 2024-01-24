@@ -81,7 +81,7 @@ var basicResourceV3 = new Example.BasicResourceV3("basicResourceV3", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "simple-resource-with-aliases/example/index"
+  "github.com/pulumi/pulumi-example/sdk/v3/go/example"
 )
 
 basicResourceV3, err := example.NewBasicResourceV3("basicResourceV3", &example.BasicResourceV3Args{
@@ -122,7 +122,7 @@ name: example
 runtime: yaml
 resources:
   basicResourceV3:
-    type: example:index:BasicResourceV3
+    type: example:BasicResourceV3
     properties:
       bar: "string"
 

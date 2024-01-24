@@ -81,7 +81,7 @@ var provider = new ProviderType.Submod.Provider("provider", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "provider-type-schema/example/submod"
+  "github.com/pulumi/pulumi-providerType/sdk/v3/go/providerType/submod"
 )
 
 provider, err := submod.Newprovider("provider", &submod.providerArgs{

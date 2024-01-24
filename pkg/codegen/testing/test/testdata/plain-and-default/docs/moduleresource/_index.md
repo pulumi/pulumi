@@ -129,7 +129,7 @@ var moduleResource = new FooBar.ModuleResource("moduleResource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "plain-and-default/foo/"
+  "github.com/pulumi/pulumi-foobar/sdk/v3/go/foobar"
 )
 
 moduleResource, err := foobar.NewModuleResource("moduleResource", &foobar.ModuleResourceArgs{
@@ -202,7 +202,7 @@ name: example
 runtime: yaml
 resources:
   moduleResource:
-    type: foobar::ModuleResource
+    type: foobar:ModuleResource
     properties:
       optional_bool: True|False
       optional_const: "string"

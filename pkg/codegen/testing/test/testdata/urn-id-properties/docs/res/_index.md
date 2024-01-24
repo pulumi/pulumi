@@ -86,7 +86,7 @@ var res = new Urnid.Res("res", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "urn-id-properties/urnid/index"
+  "github.com/pulumi/pulumi-urnid/sdk/v3/go/urnid"
 )
 
 res, err := urnid.NewRes("res", &urnid.ResArgs{
@@ -129,7 +129,7 @@ name: example
 runtime: yaml
 resources:
   res:
-    type: urnid:index:Res
+    type: urnid:Res
     properties:
       id: "string"
       urn: "string"
