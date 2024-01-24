@@ -11,6 +11,7 @@ replace (
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.3
+	github.com/google/uuid v1.3.0
 	github.com/grapl-security/pulumi-hcp/sdk v0.1.14
 	github.com/hexops/autogold v1.3.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
@@ -96,7 +97,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/google/wire v0.5.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
