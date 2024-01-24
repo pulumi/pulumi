@@ -1,19 +1,28 @@
 package filestate
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func randomStackName() string {
+	b := make([]byte, 4)
+	_, err := rand.Read(b)
+	contract.AssertNoErrorf(err, "failed to generate random stack name")
+	return "test" + hex.EncodeToString(b)
+}
+
 func loginAndCreateStack(t *testing.T, cloudURL string) {
 	t.Helper()
 
-	stackName := uuid.New().String()
+	stackName := randomStackName()
 	out, err := exec.Command("pulumi", "login", cloudURL).CombinedOutput()
 	require.NoError(t, err, string(out))
 
