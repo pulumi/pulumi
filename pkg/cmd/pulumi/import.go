@@ -87,7 +87,9 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			ID:                resource.ID(res.ID),
 			Version:           res.Version,
 			PluginDownloadURL: res.PluginDownloadURL,
-			// TODO(https://github.com/pulumi/pulumi/issues/14532): Add Component, Remote, and LogicalName to ResourceImport
+			Component:         res.IsComponent,
+			Remote:            res.IsRemote,
+			LogicalName:       res.LogicalName,
 		}
 	}
 
