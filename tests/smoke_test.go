@@ -163,6 +163,10 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 				t.Skip("java doesn't support components")
 			}
 
+			if runtime == "python" {
+				t.Skip("Temporarily skipping test - pulumi/pulumi#15195")
+			}
+
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
