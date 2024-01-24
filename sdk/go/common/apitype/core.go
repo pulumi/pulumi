@@ -413,14 +413,10 @@ const (
 	VCSRepositoryRootTag StackTagName = "vcs:root"
 )
 
-// ConfigKey is the key for a configuration value. This is just a string, but we use a type alias to provide a richer
-// description of how the string is used in our apitype definitions.
-type ConfigKey = string
-
 const (
 	// PulumiTagsConfigKey sets additional tags for a stack on a deployment. This is additive to any
 	// tags that are already set on the stack.
-	PulumiTagsConfigKey ConfigKey = "pulumi:tags"
+	PulumiTagsConfigKey string = "pulumi:tags"
 )
 
 // Stack describes a Stack running on a Pulumi Cloud.

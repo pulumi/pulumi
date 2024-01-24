@@ -325,7 +325,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	proj.SetProjectTagsConfig(map[string]string{
+	proj.AddConfigStackTags(map[string]string{
 		apitype.ProjectTemplateTag: args.templateNameOrURL,
 	})
 

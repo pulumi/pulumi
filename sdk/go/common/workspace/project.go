@@ -970,8 +970,8 @@ func save(path string, value interface{}, mkDirAll bool) error {
 // To mitigate an import cycle, we define this here.
 const PulumiTagsConfigKey = "pulumi:tags"
 
-// SetProjectTagsConfig sets the project tags config to the given map of tags.
-func (proj *Project) SetProjectTagsConfig(tags map[string]string) {
+// AddConfigStackTags sets the project tags config to the given map of tags.
+func (proj *Project) AddConfigStackTags(tags map[string]string) {
 	if proj.Config == nil {
 		proj.Config = map[string]ProjectConfigType{}
 	}
