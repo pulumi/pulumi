@@ -1406,7 +1406,9 @@ func TestStreamInvoke(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -1466,7 +1468,9 @@ func TestStreamInvoke(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -1525,7 +1529,9 @@ func TestStreamInvoke(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -1600,7 +1606,9 @@ func TestStreamInvoke(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, reg, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -2319,7 +2327,9 @@ func TestInvoke(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2375,7 +2385,9 @@ func TestInvoke(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2452,7 +2464,9 @@ func TestCall(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2525,7 +2539,9 @@ func TestCall(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2610,7 +2626,9 @@ func TestCall(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2677,7 +2695,9 @@ func TestCall(t *testing.T) {
 				Pwd:         "/",
 				Program:     ".",
 				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
