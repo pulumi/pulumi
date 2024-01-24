@@ -154,7 +154,7 @@ func InstallPulumiCommand(ctx context.Context, opts *PulumiCommandOptions) (
 	return NewPulumiCommand(opts)
 }
 
-func downloadToTmpFile(ctx context.Context, url, filePattern string) (string, error) {
+func downloadToTmpFile(ctx context.Context, url, filePattern string) (_ string, err error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", err
@@ -173,23 +173,22 @@ func downloadToTmpFile(ctx context.Context, url, filePattern string) (string, er
 		return "", err
 	}
 	scriptPath := tmp.Name()
-	onErrorCleanup := func() {
-		os.Remove(scriptPath)
-	}
+	defer func() {
+		if err != nil {
+			os.Remove(scriptPath)
+		}
+	}()
 	// The permissions here are ignored because the tmp file already exists.
 	// We need to explicitly call chmod below to set the desired permissions.
 	err = os.WriteFile(scriptPath, scriptData, 0o600)
 	if err != nil {
-		onErrorCleanup()
 		return "", err
 	}
 	if err = tmp.Close(); err != nil {
-		onErrorCleanup()
 		return "", err
 	}
 	err = os.Chmod(scriptPath, 0o700)
 	if err != nil {
-		onErrorCleanup()
 		return "", err
 	}
 	return scriptPath, nil
