@@ -870,11 +870,12 @@ func (pkg *Package) TokenToModule(tok string) string {
 	case "providers":
 		return ""
 	default:
-		if pkg.moduleFormat == nil {
-			pkg.moduleFormat = defaultModuleFormat
+		format := pkg.moduleFormat
+		if format == nil {
+			format = defaultModuleFormat
 		}
 
-		matches := pkg.moduleFormat.FindStringSubmatch(components[1])
+		matches := format.FindStringSubmatch(components[1])
 		if len(matches) < 2 || strings.HasPrefix(matches[1], "index") {
 			return ""
 		}
