@@ -158,8 +158,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: tokens.MustParseStackName("test")},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -257,8 +260,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: tokens.MustParseStackName("test")},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -351,8 +357,11 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: tokens.MustParseStackName("test")},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -443,8 +452,11 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: tokens.MustParseStackName("test")},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -584,8 +596,11 @@ func TestDisableDefaultProviders(t *testing.T) {
 			t.Parallel()
 
 			runInfo := &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "test"},
-				Target: &Target{Name: tokens.MustParseStackName("test")},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "test"},
+				Target:      &Target{Name: tokens.MustParseStackName("test")},
 			}
 			if tt.disableDefault {
 				disableDefaultProviders(runInfo, "pkgA")
@@ -727,8 +742,11 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	}
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: tokens.MustParseStackName("test")},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -932,6 +950,9 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // for #2753.
 // func TestReadResourceAndInvokeVersion(t *testing.T) {
 // 	runInfo := &EvalRunInfo{
+//      ProjectRoot: "/",
+// 		Pwd:         "/",
+// 		Program:     ".",
 // 		Proj:   &workspace.Project{Name: "test"},
 // 		Target: &Target{Name: "test"},
 // 	}
@@ -1381,8 +1402,11 @@ func TestStreamInvoke(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -1438,8 +1462,11 @@ func TestStreamInvoke(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -1494,8 +1521,11 @@ func TestStreamInvoke(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -1566,8 +1596,11 @@ func TestStreamInvoke(t *testing.T) {
 		providerRegChan := make(chan *registerResourceEvent, 100)
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, reg, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -1644,7 +1677,10 @@ func TestStreamInvokeQuery(t *testing.T) {
 
 		mon, err := newQueryResourceMonitor(builtins, nil, nil, reg, plugctx,
 			providerRegErrChan, opentracing.SpanFromContext(cancel), &EvalRunInfo{
-				Proj: &workspace.Project{Name: "test"},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "test"},
 			})
 		require.NoError(t, err)
 
@@ -1702,7 +1738,10 @@ func TestStreamInvokeQuery(t *testing.T) {
 		providerRegErrChan := make(chan error)
 		mon, err := newQueryResourceMonitor(builtins, nil, nil, reg, plugctx,
 			providerRegErrChan, opentracing.SpanFromContext(cancel), &EvalRunInfo{
-				Proj: &workspace.Project{Name: "test"},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "test"},
 			})
 		require.NoError(t, err)
 
@@ -1777,7 +1816,10 @@ func TestEvalSource(t *testing.T) {
 				},
 
 				runinfo: &EvalRunInfo{
-					Proj: &workspace.Project{Name: "proj"},
+					ProjectRoot: "/",
+					Pwd:         "/",
+					Program:     ".",
+					Proj:        &workspace.Project{Name: "proj"},
 					Target: &Target{
 						Name: tokens.MustParseStackName("target-name"),
 						Config: config.Map{
@@ -1806,6 +1848,9 @@ func TestEvalSource(t *testing.T) {
 					Diag: &deploytest.NoopSink{},
 				},
 				runinfo: &EvalRunInfo{
+					ProjectRoot: "/",
+					Pwd:         "/",
+					Program:     ".",
 					Target: &Target{
 						Config: config.Map{
 							config.MustMakeKey("test", "secret"): config.NewSecureValue("secret"),
@@ -2270,8 +2315,11 @@ func TestInvoke(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2323,8 +2371,11 @@ func TestInvoke(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2397,8 +2448,11 @@ func TestCall(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2467,8 +2521,11 @@ func TestCall(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2549,8 +2606,11 @@ func TestCall(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{
@@ -2613,8 +2673,11 @@ func TestCall(t *testing.T) {
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "proj"},
-				Target: &Target{},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target:      &Target{},
 			},
 			plugctx: plugctx,
 		}, &providerSourceMock{

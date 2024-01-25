@@ -405,9 +405,9 @@ func (h *testHost) CloseProvider(provider plugin.Provider) error {
 	return nil
 }
 
-func (h *testHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
-) (plugin.LanguageRuntime, error) {
+// LanguageRuntime returns the language runtime initialized by the test host.
+// ProgramInfo is only used here for compatibility reasons and will be removed from this function.
+func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
 	if runtime != h.runtimeName {
 		return nil, fmt.Errorf("unexpected runtime %s", runtime)
 	}
@@ -771,7 +771,13 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
 	// plugin, so we can't show it back to the test.
-	err = languageClient.InstallDependencies(projectDir, ".")
+	programInfo := plugin.NewProgramInfo(
+		projectDir, /* rootDirectory */
+		projectDir, /* programDirectory */
+		"index",
+		map[string]interface{}{})
+
+	err = languageClient.InstallDependencies(programInfo)
 	if err != nil {
 		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
 	}

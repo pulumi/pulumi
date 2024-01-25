@@ -35,7 +35,8 @@ type updateInfo struct {
 }
 
 func (u *updateInfo) GetRoot() string {
-	return ""
+	// These tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
+	return "/"
 }
 
 func (u *updateInfo) GetProject() *workspace.Project {
