@@ -323,7 +323,8 @@ func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	}
 
 	installPlugin := func(pkg tokens.Package) *semver.Version {
-		// This will want to install the "gcp" package, but we're calling the pulumi name "pulumiProviderGcp" for this test.
+		// This will want to install the "gcp" package, but we're calling the pulumi name "pulumiProviderGcp"
+		// for this test.
 		assert.Equal(t, "gcp", string(pkg))
 		return nil
 	}

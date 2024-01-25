@@ -152,9 +152,16 @@ func NewPluginMapper(ws Workspace,
 	// We now have a list of plugin specs (i.e. a name and version), save that list because we don't want to
 	// iterate all the plugins now because the convert might not even ask for any mappings.
 	plugins := make([]mapperPluginSpec, 0)
-	for pkg, version := range latestVersions {
+	for _, plugin := range allPlugins {
+		if plugin.Kind != workspace.ResourcePlugin {
+			continue
+		}
+
+		version, has := latestVersions[plugin.Name]
+		contract.Assertf(has, "latest version should be in map")
+
 		plugins = append(plugins, mapperPluginSpec{
-			name:    tokens.Package(pkg),
+			name:    tokens.Package(plugin.Name),
 			version: version,
 		})
 	}
@@ -336,7 +343,7 @@ func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiPr
 		}
 	}
 
-	// Before we being the GetMappings loop below iff we've got a plugin at the head of the list which is the exact name
+	// Before we begin the GetMappings loop below iff we've got a plugin at the head of the list which is the exact name
 	// match we'll try that plugin first (GetMappings, and then GetMapping) as it will normally be right.
 	if len(l.plugins) > 0 && l.plugins[0].name == pulumiProviderPkg {
 		data, found, err := l.getMappingsForPlugin(&l.plugins[0], provider)
