@@ -408,7 +408,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "remoteAsset":
 		g.Fgenf(w, "new pulumi.asset.RemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
-		g.Fgenf(w, "Buffer.from(fs.readFileSync(%v, 'binary')).toString('base64')", expr.Args[0])
+		g.Fgenf(w, "fs.readFileSync(%v, { encoding: \"base64\" })", expr.Args[0])
 	case "filebase64sha256":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
