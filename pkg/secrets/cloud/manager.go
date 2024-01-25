@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Type is the type of secrets managed by this secrets provider
@@ -135,20 +134,6 @@ func (m *Manager) State() json.RawMessage               { return m.state }
 func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
 func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
 
-func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
-	info.EncryptionSalt = ""
-
-	var s cloudSecretsManagerState
-	err := json.Unmarshal(state, &s)
-	if err != nil {
-		return fmt.Errorf("unmarshalling cloud state: %w", err)
-	}
-
-	info.SecretsProvider = s.URL
-	info.EncryptedKey = base64.StdEncoding.EncodeToString(s.EncryptedKey)
-	return nil
-}
-
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for
 // envelope encryption of secrets values.
@@ -164,7 +149,19 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 	// it's used. newCloudSecretsManager will manage that but we need to check here as well to handle the
 	// #15329 regression.
 	dataKey := s.EncryptedKey
-	if strings.HasPrefix(s.URL, "azurekeyvault://") {
+	if len(dataKey) == 0 {
+		dataKey, err = generateNewDataKey(s.URL)
+		if err != nil {
+			return nil, err
+		}
+		// gocloud.dev versions before v0.28.0 wrapped the
+		// data key in a base64.RawURLEncoding before wrapping
+		// it again in base64.StdEncoding.  We keep emulating
+		// this here for compatibility.
+		if strings.HasPrefix(s.URL, "azurekeyvault://") {
+			dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
+		}
+	} else if strings.HasPrefix(s.URL, "azurekeyvault://") {
 		wrappedKey, err := base64.RawURLEncoding.DecodeString(string(dataKey))
 		if err != nil {
 			// https://github.com/pulumi/pulumi/issues/15329 resulted in some non-encoded keys being written
@@ -184,14 +181,9 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 	return newCloudSecretsManager(s.URL, dataKey)
 }
 
-func NewCloudSecretsManager(info *workspace.ProjectStack,
+func NewCloudSecretsManager(
 	secretsProvider string, rotateSecretsProvider bool,
 ) (secrets.Manager, error) {
-	// Only a passphrase provider has an encryption salt. So changing a secrets provider
-	// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
-	// as it's a legacy artifact and needs to be removed
-	info.EncryptionSalt = ""
-
 	var secretsManager *Manager
 
 	// Allow per-execution override of the secrets provider via an environment
@@ -201,30 +193,16 @@ func NewCloudSecretsManager(info *workspace.ProjectStack,
 		secretsProvider = override
 	}
 
-	// If we're rotating then just clear the key so we create a fresh one below
-	if rotateSecretsProvider {
-		info.EncryptedKey = ""
-	}
-
 	// if there is no key OR the secrets provider is changing
 	// then we need to generate the new key based on the new secrets provider
-	if info.EncryptedKey == "" || info.SecretsProvider != secretsProvider {
-		dataKey, err := generateNewDataKey(secretsProvider)
-		if err != nil {
-			return nil, err
-		}
-		// gocloud.dev versions before v0.28.0 wrapped the
-		// data key in a base64.RawURLEncoding before wrapping
-		// it again in base64.StdEncoding.  We keep emulating
-		// this here for compatibility.
-		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
-			dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
-		}
-		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
+	dataKey, err := generateNewDataKey(secretsProvider)
+	// gocloud.dev versions before v0.28.0 wrapped the
+	// data key in a base64.RawURLEncoding before wrapping
+	// it again in base64.StdEncoding.  We keep emulating
+	// this here for compatibility.
+	if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
+		dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
 	}
-	info.SecretsProvider = secretsProvider
-
-	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptedKey)
 	if err != nil {
 		return nil, err
 	}

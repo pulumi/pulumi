@@ -21,8 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -57,38 +55,27 @@ func getStackDecrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Decr
 func getStackSecretsManager(
 	s backend.Stack, ps *workspace.ProjectStack, fallbackManager secrets.Manager,
 ) (secrets.Manager, bool, error) {
-	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+	smTy, smState, err := secrets.GetConfig(ps)
+	if err != nil {
+		return nil, false, err
+	}
 
 	var sm secrets.Manager
-	var err error
-	if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-		sm, err = cloud.NewCloudSecretsManager(
-			ps, ps.SecretsProvider, false /* rotateSecretsProvider */)
-	} else if ps.EncryptionSalt != "" {
-		sm, err = passphrase.NewPromptingPassphraseSecretsManager(
-			ps, false /* rotateSecretsProvider */)
-	} else {
+	if smTy == "" {
 		if fallbackManager != nil {
 			sm = fallbackManager
-
-			// We need to ensure the fallback manager picked saves to the stack state. TODO: It would be
-			// really nice if the format of secrets state in the config file matched what managers reported
-			// for state. That would go well with the pluginification of secret providers as well, but for now
-			// just switch on the secret provider type and ask it to fill in the config file for us.
-			if sm.Type() == passphrase.Type {
-				err = passphrase.EditProjectStack(ps, sm.State())
-			} else if sm.Type() == cloud.Type {
-				err = cloud.EditProjectStack(ps, sm.State())
-			} else {
-				// Anything else assume we can just clear all the secret bits
-				ps.EncryptionSalt = ""
-				ps.SecretsProvider = ""
-				ps.EncryptedKey = ""
-			}
 		} else {
-			sm, err = s.DefaultSecretManager(ps)
+			sm, err = s.DefaultSecretManager()
 		}
+	} else {
+		sm, err = stack.DefaultSecretsProvider.OfType(smTy, smState)
 	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+	err = secrets.SetConfig(sm.Type(), sm.State(), ps)
 	if err != nil {
 		return nil, false, err
 	}
@@ -105,7 +92,7 @@ func needsSaveProjectStackAfterSecretManger(stack backend.Stack,
 	// secrets provider.
 	// If we do not check to see if the secrets provider has changed, then we will actually
 	// reload the configuration file to be sorted or an empty {} when creating a stack
-	// this is not the desired behaviour.
+	// this is not the desired behavior.
 	if old.EncryptedKey != new.EncryptedKey ||
 		old.EncryptionSalt != new.EncryptionSalt ||
 		old.SecretsProvider != new.SecretsProvider {

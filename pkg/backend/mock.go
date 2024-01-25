@@ -460,7 +460,7 @@ type MockStack struct {
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	ExportDeploymentF     func(ctx context.Context) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF     func(ctx context.Context, deployment *apitype.UntypedDeployment) error
-	DefaultSecretManagerF func(info *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManagerF func() (secrets.Manager, error)
 }
 
 var _ Stack = (*MockStack)(nil)
@@ -598,9 +598,9 @@ func (ms *MockStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 	panic("not implemented")
 }
 
-func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
+func (ms *MockStack) DefaultSecretManager() (secrets.Manager, error) {
 	if ms.DefaultSecretManagerF != nil {
-		return ms.DefaultSecretManagerF(info)
+		return ms.DefaultSecretManagerF()
 	}
 	panic("not implemented")
 }

@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -88,6 +89,10 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	t.Parallel()
 	// Don't check return values. Just check that GetLatestConfiguration() is called.
 	called := false
+	mockSecretManager := &secrets.MockSecretsManager{
+		TypeF:  func() string { return "test" },
+		StateF: func() json.RawMessage { return nil },
+	}
 	_, _, _ = getStackConfigurationOrLatest(
 		context.Background(),
 		&backend.MockStack{
@@ -99,8 +104,8 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
 			},
-			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
-				return nil, nil
+			DefaultSecretManagerF: func() (secrets.Manager, error) {
+				return mockSecretManager, nil
 			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
@@ -261,6 +266,8 @@ func TestCopyConfig(t *testing.T) {
 	}
 
 	mockSecretsManager := &secrets.MockSecretsManager{
+		TypeF:  func() string { return "test" },
+		StateF: func() json.RawMessage { return nil },
 		EncrypterF: func() (config.Encrypter, error) {
 			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
 			return encrypter, nil
@@ -291,7 +298,7 @@ func TestCopyConfig(t *testing.T) {
 				FullyQualifiedNameV: tokens.QName("org/project/" + name),
 			}
 		}
-		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		stack.DefaultSecretManagerF = func() (secrets.Manager, error) {
 			return mockSecretsManager, nil
 		}
 

@@ -36,8 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -487,21 +485,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return fmt.Errorf("unmarshaling deployment: %w", err)
 			}
 			if deployment.SecretsProviders != nil {
-				// TODO: It would be really nice if the format of secrets state in the config file matched
-				// what we kept in the statefile. That would go well with the pluginification of secret
-				// providers as well, but for now just switch on the secret provider type and ask it to fill in
-				// the config file for us.
-				if deployment.SecretsProviders.Type == passphrase.Type {
-					err = passphrase.EditProjectStack(ps, deployment.SecretsProviders.State)
-				} else if deployment.SecretsProviders.Type == cloud.Type {
-					err = cloud.EditProjectStack(ps, deployment.SecretsProviders.State)
-				} else {
-					// Anything else assume we can just clear all the secret bits
-					ps.EncryptionSalt = ""
-					ps.SecretsProvider = ""
-					ps.EncryptedKey = ""
-				}
-
+				err = secrets.SetConfig(deployment.SecretsProviders.Type, deployment.SecretsProviders.State, ps)
 				if err != nil {
 					return err
 				}

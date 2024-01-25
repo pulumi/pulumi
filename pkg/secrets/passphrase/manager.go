@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const Type = "passphrase"
@@ -113,19 +112,6 @@ func (sm *localSecretsManager) Decrypter() (config.Decrypter, error) {
 func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
 	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
 	return sm.crypter, nil
-}
-
-func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
-	info.EncryptedKey = ""
-	info.SecretsProvider = ""
-
-	var s localSecretsManagerState
-	err := json.Unmarshal(state, &s)
-	if err != nil {
-		return fmt.Errorf("unmarshalling passphrase state: %w", err)
-	}
-	info.EncryptionSalt = s.Salt
-	return nil
 }
 
 var (
@@ -266,38 +252,19 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 	}
 }
 
-func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
-	rotateSecretsProvider bool,
-) (secrets.Manager, error) {
-	if rotateSecretsProvider {
-		info.EncryptionSalt = ""
-	}
-
-	// If there are any other secrets providers set in the config, remove them, as the passphrase
-	// provider deals only with EncryptionSalt, not EncryptedKey or SecretsProvider.
-	info.EncryptedKey = ""
-	info.SecretsProvider = ""
-
-	// If we have a salt, we can just use it.
-	if info.EncryptionSalt != "" {
-		return newPromptingPassphraseSecretsManagerFromState(info.EncryptionSalt)
-	}
-
+func NewPromptingPassphraseSecretsManager(rotateSecretsProvider bool) (secrets.Manager, error) {
 	// Otherwise, prompt the user for a new passphrase.
-	state, sm, err := promptForNewPassphrase(rotateSecretsProvider)
+	sm, err := promptForNewPassphrase(rotateSecretsProvider)
 	if err != nil {
 		return nil, err
 	}
-
-	// Store the salt and save it.
-	info.EncryptionSalt = state
 
 	// Return the passphrase secrets manager.
 	return sm, nil
 }
 
 // promptForNewPassphrase prompts for a new passphrase, and returns the state and the secrets manager.
-func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
+func promptForNewPassphrase(rotate bool) (secrets.Manager, error) {
 	var phrase string
 
 	// Get a the passphrase from the user, ensuring that they match.
@@ -316,7 +283,7 @@ func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
 		first, _, err := readPassphrase(firstMessage, !rotate)
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 		secondMessage := "Re-enter your passphrase to confirm"
 		if rotate {
@@ -324,7 +291,7 @@ func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 		}
 		second, _, err := readPassphrase(secondMessage, !rotate)
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 
 		if first == second {
@@ -337,10 +304,10 @@ func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 
 	state, sm, err := NewPassphraseSecretsManager(phrase)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	setCachedSecretsManager(state, sm)
-	return state, sm, err
+	return sm, err
 }
 
 func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool, err error) {

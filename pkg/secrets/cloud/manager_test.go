@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/secrets"
@@ -32,10 +31,7 @@ import (
 // the main testing function, takes a kms url and tries to make a new secret manager out of it and encrypt and
 // decrypt data, this is used by the aws_test and azure_test files.
 func testURL(ctx context.Context, t *testing.T, url string) {
-	info := &workspace.ProjectStack{}
-	info.SecretsProvider = url
-
-	manager, err := NewCloudSecretsManager(info, url, false)
+	manager, err := NewCloudSecretsManager(url, false)
 	require.NoError(t, err)
 
 	enc, err := manager.Encrypter()
@@ -71,18 +67,17 @@ func TestSecretsProviderOverride(t *testing.T) {
 	// PULUMI_CLOUD_SECRET_OVERRIDE env var and it may interfere with other
 	// tests.
 
-	stackConfig := &workspace.ProjectStack{}
-
 	opener := &mockSecretsKeeperOpener{}
 	secrets.DefaultURLMux().RegisterKeeper("test", opener)
 
 	//nolint:paralleltest
 	t.Run("without override", func(t *testing.T) {
 		opener.wantURL = "test://foo"
-		_, createSecretsManagerError := NewCloudSecretsManager(stackConfig, "test://foo", false)
+
+		_, createSecretsManagerError := NewCloudSecretsManager("test://foo", false)
 		assert.Nil(t, createSecretsManagerError, "Creating the cloud secret manager should succeed")
 
-		_, createSecretsManagerError = NewCloudSecretsManager(stackConfig, "test://bar", false)
+		_, createSecretsManagerError = NewCloudSecretsManager("test://bar", false)
 		msg := "NewCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error"
 		assert.NotNil(t, createSecretsManagerError, msg)
 	})
@@ -95,9 +90,10 @@ func TestSecretsProviderOverride(t *testing.T) {
 		// Last argument here shouldn't matter anymore, since it gets overridden
 		// by the env var. Both calls should succeed.
 		msg := "creating the secrets manager should succeed regardless of secrets provider"
-		_, createSecretsManagerError := NewCloudSecretsManager(stackConfig, "test://foo", false)
+		_, createSecretsManagerError := NewCloudSecretsManager("test://foo", false)
 		assert.Nil(t, createSecretsManagerError, msg)
-		_, createSecretsManagerError = NewCloudSecretsManager(stackConfig, "test://bar", false)
+
+		_, createSecretsManagerError = NewCloudSecretsManager("test://bar", false)
 		assert.Nil(t, createSecretsManagerError, msg)
 	})
 }

@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -174,7 +175,7 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 }
 
 func createSecretsManager(
-	ctx context.Context, stack backend.Stack, secretsProvider string,
+	ctx context.Context, stk backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
@@ -188,7 +189,7 @@ func createSecretsManager(
 	// return early to avoid probing for the project and stack config files, which otherwise
 	// would fail when creating a stack from a directory that does not have a project file.
 	if isDefaultSecretsProvider && creatingStack {
-		if _, isCloud := stack.Backend().(httpstate.Backend); isCloud {
+		if _, isCloud := stk.Backend().(httpstate.Backend); isCloud {
 			return nil
 		}
 	}
@@ -197,28 +198,33 @@ func createSecretsManager(
 	if err != nil {
 		return err
 	}
-	ps, err := loadProjectStack(project, stack)
+	ps, err := loadProjectStack(project, stk)
+	if err != nil {
+		return err
+	}
+
+	var sm secrets.Manager
+	if isDefaultSecretsProvider {
+		sm, err = stk.DefaultSecretManager()
+	} else if secretsProvider == passphrase.Type {
+		sm, err = passphrase.NewPromptingPassphraseSecretsManager(rotateSecretsProvider)
+	} else {
+		// All other non-default secrets providers are handled by the cloud secrets provider which
+		// uses a URL schema to identify the provider
+		sm, err = cloud.NewCloudSecretsManager(secretsProvider, rotateSecretsProvider)
+	}
 	if err != nil {
 		return err
 	}
 
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
-	if isDefaultSecretsProvider {
-		_, err = stack.DefaultSecretManager(ps)
-	} else if secretsProvider == passphrase.Type {
-		_, err = passphrase.NewPromptingPassphraseSecretsManager(ps, rotateSecretsProvider)
-	} else {
-		// All other non-default secrets providers are handled by the cloud secrets provider which
-		// uses a URL schema to identify the provider
-		_, err = cloud.NewCloudSecretsManager(ps, secretsProvider, rotateSecretsProvider)
-	}
-	if err != nil {
-		return err
-	}
-
 	// Handle if the configuration changed any of EncryptedKey, etc
-	if needsSaveProjectStackAfterSecretManger(stack, oldConfig, ps) {
-		if err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); err != nil {
+	err = secrets.SetConfig(sm.Type(), sm.State(), ps)
+	if err != nil {
+		return fmt.Errorf("setting secrets config: %w", err)
+	}
+	if needsSaveProjectStackAfterSecretManger(stk, oldConfig, ps) {
+		if err = workspace.SaveProjectStack(stk.Ref().Name().Q(), ps); err != nil {
 			return fmt.Errorf("saving stack config: %w", err)
 		}
 	}
