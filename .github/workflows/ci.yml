@@ -161,6 +161,7 @@ jobs:
             "$CODEGEN_TESTS_FLAG" \
             --platform ubuntu-latest \
             --version-set current \
+            --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
