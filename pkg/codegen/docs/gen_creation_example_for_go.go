@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -258,7 +260,8 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 	pkg, mod, name := decomposeToken(r.Token)
 	mod = strings.ReplaceAll(mod, "/", ".")
 
-	pkgDef, _ := r.PackageReference.Definition()
+	pkgDef, err := r.PackageReference.Definition()
+	contract.Assertf(err == nil, "expected no error from getting package definition: %v", err)
 	importPath := ""
 	if goInfo, ok := pkgDef.Language["go"].(go_gen.GoPackageInfo); ok {
 		importPath = goInfo.ImportBasePath

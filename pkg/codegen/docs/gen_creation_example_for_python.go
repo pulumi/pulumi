@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -30,7 +32,8 @@ func pythonTokenToQualifiedName(pkg, module, member string) string {
 }
 
 func genCreationExampleSyntaxPython(r *schema.Resource) string {
-	pkgDef, _ := r.PackageReference.Definition()
+	pkgDef, err := r.PackageReference.Definition()
+	contract.Assertf(err == nil, "expected no error from getting package definition: %v", err)
 	pythonInfo, hasInfo := pkgDef.Language["python"].(python.PackageInfo)
 	if !hasInfo {
 		pythonInfo = python.PackageInfo{}

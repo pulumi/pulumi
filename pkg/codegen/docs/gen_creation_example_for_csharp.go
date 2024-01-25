@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -59,7 +61,8 @@ func resolveCSharpPropertyName(property string, overrides map[string]string) str
 }
 
 func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
-	pkgDef, _ := r.PackageReference.Definition()
+	pkgDef, err := r.PackageReference.Definition()
+	contract.Assertf(err == nil, "expected no error from getting package definition: %v", err)
 	csharpInfo, hasInfo := pkgDef.Language["csharp"].(dotnet.CSharpPackageInfo)
 	if !hasInfo {
 		csharpInfo = dotnet.CSharpPackageInfo{}
