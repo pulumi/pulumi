@@ -244,7 +244,6 @@ func TestConstructComponentConfigureProviderPython(t *testing.T) {
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
 	t.Parallel()
-	t.Skip("Temporarily skipping test - pulumi/pulumi#15195")
 
 	// Do not use integration.ProgramTest to avoid automatic venv
 	// handling by test harness; we actually are testing venv
