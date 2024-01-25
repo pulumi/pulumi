@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Remove an incorrect assert that resources must have inputs.

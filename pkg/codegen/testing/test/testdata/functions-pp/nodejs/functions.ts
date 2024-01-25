@@ -33,7 +33,7 @@ const fileMimeType = mimeType("./base64.txt");
 // using the filebase64 function
 const first = new aws.s3.BucketObject("first", {
     bucket: bucket.id,
-    source: new pulumi.asset.StringAsset(Buffer.from(fs.readFileSync("./base64.txt", 'binary')).toString('base64')),
+    source: new pulumi.asset.StringAsset(fs.readFileSync("./base64.txt", { encoding: "base64" })),
     contentType: fileMimeType,
     tags: {
         stack: currentStack,
