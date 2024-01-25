@@ -16,7 +16,6 @@ package backend
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -195,22 +194,22 @@ func GetEnvironmentTagsForCurrentStack(root string,
 	}
 
 	// Grab any `pulumi:tag` config values and use those to update the stack's tags.
-	configTags, has, err := cfg.Get(config.MustMakeKey("pulumi", "tags"), false)
-	contract.AssertNoErrorf(err, "Config.Get(\"pulumi:tags\") failed unexpectedly")
+	configTags, has, err := cfg.Get(config.MustParseKey(apitype.PulumiTagsConfigKey), false)
+	contract.AssertNoErrorf(err, "Config.Get(\"%s\") failed unexpectedly", apitype.PulumiTagsConfigKey)
 	if has {
 		configTagInterface, err := configTags.ToObject()
 		if err != nil {
-			return nil, errors.New("pulumi:tags must be an object of strings")
+			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
 		configTagObject, ok := configTagInterface.(map[string]interface{})
 		if !ok {
-			return nil, errors.New("pulumi:tags must be an object of strings")
+			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
 
 		for name, value := range configTagObject {
 			stringValue, ok := value.(string)
 			if !ok {
-				return nil, fmt.Errorf("pulumi:tags[%s] must be a string", name)
+				return nil, fmt.Errorf("%s[%s] must be a string", apitype.PulumiTagsConfigKey, name)
 			}
 
 			tags[name] = stringValue

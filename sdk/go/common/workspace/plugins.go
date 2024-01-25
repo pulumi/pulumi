@@ -2177,6 +2177,6 @@ func (bc *barCloser) Read(dest []byte) (int, error) {
 }
 
 func (bc *barCloser) Close() error {
-	bc.bar.Finish()
+	bc.bar.FinishPrint("\r")
 	return bc.readCloser.Close()
 }

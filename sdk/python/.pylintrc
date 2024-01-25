@@ -90,7 +90,9 @@ disable=raw-checker-failed,
         unsubscriptable-object,
         line-too-long,
         too-many-lines,
-        cyclic-import
+        cyclic-import,
+        duplicate-code,
+        broad-exception-raised
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -503,4 +505,4 @@ min-public-methods=2
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception".
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception

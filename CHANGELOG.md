@@ -1,5 +1,63 @@
 # Changelog
 
+## 3.103.1 (2024-01-25)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Include @types/semver as a dependency
+  [#15251](https://github.com/pulumi/pulumi/pull/15251)
+
+## 3.103.0 (2024-01-24)
+
+
+### Features
+
+- [engine] Allow import plugins to define components and logical names.
+  [#15199](https://github.com/pulumi/pulumi/pull/15199)
+
+- [cli/display] Incremental improvement on the output when installing plugins
+  [#15201](https://github.com/pulumi/pulumi/pull/15201)
+
+- [sdk] Bake the release version into the SDK
+  [#15185](https://github.com/pulumi/pulumi/pull/15185)
+
+- [sdk/go] Parse config paths strictly
+  [#15173](https://github.com/pulumi/pulumi/pull/15173)
+
+- [cli/new] Adds pulumi:template tag to `pulumi new` created projects
+  [#15056](https://github.com/pulumi/pulumi/pull/15056)
+
+- [auto/nodejs] Add new API to install the Pulumi CLI from the Automation API
+  [#14991](https://github.com/pulumi/pulumi/pull/14991)
+
+- [sdk/python] Add support for Python 3.12
+  [#15190](https://github.com/pulumi/pulumi/pull/15190)
+
+
+### Bug Fixes
+
+- [engine] Fix a bug where mapping lookup could sometimes lead to an infinite loop.
+  [#15200](https://github.com/pulumi/pulumi/pull/15200)
+
+- [engine] Remove an incorrect assert that resources must have inputs.
+  [#15197](https://github.com/pulumi/pulumi/pull/15197)
+
+- [cli/display] Improve output when installing policy packs
+  [#15186](https://github.com/pulumi/pulumi/pull/15186)
+
+- [sdk/go] Removes `omitempty` from StepEventMetadata.DetailedDiff
+  [#15213](https://github.com/pulumi/pulumi/pull/15213)
+
+- [sdk/go] Replace a deleted type used by Pulumi Cloud code.
+  [#15216](https://github.com/pulumi/pulumi/pull/15216)
+
+
+### Miscellaneous
+
+- [yaml] Upgrade yaml to v1.5.0
+  [#15214](https://github.com/pulumi/pulumi/pull/15214)
+
 ## 3.102.0 (2024-01-18)
 
 

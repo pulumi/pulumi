@@ -531,9 +531,6 @@ func TestPythonResourceArgs(t *testing.T) {
 	for f, contents := range files {
 		outfile := filepath.Join(outdir, f)
 		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
-		if outfile == filepath.Join(outdir, "setup.py") {
-			contents = []byte(strings.ReplaceAll(string(contents), "${VERSION}", "0.0.1"))
-		}
 		assert.NoError(t, os.WriteFile(outfile, contents, 0o600))
 	}
 	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))

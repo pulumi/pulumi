@@ -126,6 +126,9 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 			ID:                resource.Id,
 			Version:           resource.Version,
 			PluginDownloadURL: resource.PluginDownloadURL,
+			LogicalName:       resource.LogicalName,
+			IsRemote:          resource.IsRemote,
+			IsComponent:       resource.IsComponent,
 		}
 	}
 

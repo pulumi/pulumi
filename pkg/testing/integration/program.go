@@ -2198,6 +2198,10 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 	} else {
 		venvPath := "venv"
+		if cwd != projinfo.Root {
+			venvPath = filepath.Join(cwd, "venv")
+		}
+
 		if pt.opts.GetUseSharedVirtualEnv() {
 			requirementsPath := filepath.Join(cwd, "requirements.txt")
 			requirementsmd5, err := hashFile(requirementsPath)

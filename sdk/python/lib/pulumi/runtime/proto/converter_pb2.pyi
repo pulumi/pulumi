@@ -64,6 +64,9 @@ class ResourceImport(google.protobuf.message.Message):
     ID_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    LOGICAL_NAME_FIELD_NUMBER: builtins.int
+    IS_COMPONENT_FIELD_NUMBER: builtins.int
+    IS_REMOTE_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -74,6 +77,12 @@ class ResourceImport(google.protobuf.message.Message):
     """the provider version to use for the resource, if any."""
     pluginDownloadURL: builtins.str
     """the provider PluginDownloadURL to use for the resource, if any."""
+    logical_name: builtins.str
+    """the logical name of the resource."""
+    is_component: builtins.bool
+    """true if this is a component resource."""
+    is_remote: builtins.bool
+    """true if this is a remote resource. Ignored if is_component is false."""
     def __init__(
         self,
         *,
@@ -82,8 +91,11 @@ class ResourceImport(google.protobuf.message.Message):
         id: builtins.str = ...,
         version: builtins.str = ...,
         pluginDownloadURL: builtins.str = ...,
+        logical_name: builtins.str = ...,
+        is_component: builtins.bool = ...,
+        is_remote: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
 
