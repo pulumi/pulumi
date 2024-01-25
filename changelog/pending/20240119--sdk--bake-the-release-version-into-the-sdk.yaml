@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk
-  description: Bake the release version into the SDK
