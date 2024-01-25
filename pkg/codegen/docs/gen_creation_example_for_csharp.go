@@ -205,15 +205,15 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		case *schema.ResourceType:
 			write("reference(%s)", valueType.Token)
 		case *schema.EnumType:
-			cases := make([]string, 0, len(valueType.Elements))
-			for index, c := range valueType.Elements {
+			cases := make([]string, 0)
+			for _, c := range valueType.Elements {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
-					cases[index] = fmt.Sprintf("%q", stringCase)
+					cases = append(cases, fmt.Sprintf("%q", stringCase))
 				} else if intCase, ok := c.Value.(int); ok {
-					cases[index] = strconv.Itoa(intCase)
+					cases = append(cases, strconv.Itoa(intCase))
 				} else {
 					if c.Name != "" {
-						cases[index] = c.Name
+						cases = append(cases, c.Name)
 					}
 				}
 			}
