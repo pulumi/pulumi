@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Incremental improvement on the output when installing plugins
