@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.103.1 (2024-01-25)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Include @types/semver as a dependency
+  [#15251](https://github.com/pulumi/pulumi/pull/15251)
+
 ## 3.103.0 (2024-01-24)
 
 

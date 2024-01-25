@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Include @types/semver as a dependency
