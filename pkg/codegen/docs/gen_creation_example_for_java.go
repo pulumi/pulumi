@@ -3,6 +3,7 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -105,7 +106,7 @@ func genCreationExampleSyntaxJava(r *schema.Resource) string {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
 					cases[index] = fmt.Sprintf("%q", stringCase)
 				} else if intCase, ok := c.Value.(int); ok {
-					cases[index] = fmt.Sprintf("%d", intCase)
+					cases[index] = strconv.Itoa(intCase)
 				} else {
 					if c.Name != "" {
 						cases[index] = c.Name
@@ -137,10 +138,7 @@ func genCreationExampleSyntaxJava(r *schema.Resource) string {
 		}
 	}
 
-	pkg, mod, name := decomposeToken(r.Token)
-	mod = title(strings.ReplaceAll(mod, "/", "."), "java")
-	pkg = title(pkg, "java")
-
+	_, _, name := decomposeToken(r.Token)
 	write("import com.pulumi.Pulumi;\n")
 	write("import java.util.List;\n")
 	write("import java.util.Map;\n")

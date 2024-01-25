@@ -3,10 +3,11 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"strings"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )

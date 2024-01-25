@@ -3,8 +3,10 @@ package docs
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"strconv"
 	"strings"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -146,7 +148,7 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
 					cases[index] = fmt.Sprintf("%q", stringCase)
 				} else if intCase, ok := c.Value.(int); ok {
-					cases[index] = fmt.Sprintf("%d", intCase)
+					cases[index] = strconv.Itoa(intCase)
 				} else {
 					if c.Name != "" {
 						cases[index] = c.Name

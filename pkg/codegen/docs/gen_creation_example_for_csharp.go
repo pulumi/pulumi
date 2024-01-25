@@ -3,9 +3,11 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -203,12 +205,12 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		case *schema.ResourceType:
 			write("reference(%s)", valueType.Token)
 		case *schema.EnumType:
-			cases := make([]string, len(valueType.Elements))
+			cases := make([]string, 0, len(valueType.Elements))
 			for index, c := range valueType.Elements {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
 					cases[index] = fmt.Sprintf("%q", stringCase)
 				} else if intCase, ok := c.Value.(int); ok {
-					cases[index] = fmt.Sprintf("%d", intCase)
+					cases[index] = strconv.Itoa(intCase)
 				} else {
 					if c.Name != "" {
 						cases[index] = c.Name
@@ -241,8 +243,7 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 	}
 
 	resourceName := resourceTypeName(r.Token)
-	pkg, mod, name := decomposeToken(r.Token)
-	mod = title(strings.ReplaceAll(mod, "/", "."), "csharp")
+	pkg, _, name := decomposeToken(r.Token)
 	pkg = title(pkg, "csharp")
 
 	write("using Pulumi;\n")

@@ -25,13 +25,14 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"html"
 	"html/template"
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 
 	"github.com/golang/glog"
 
