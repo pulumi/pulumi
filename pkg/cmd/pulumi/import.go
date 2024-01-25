@@ -860,8 +860,8 @@ func newImportCmd() *cobra.Command {
 						return nil, nil, err
 					}
 					defer contract.IgnoreClose(pCtx.Host)
-
-					languagePlugin, err := ctx.Host.LanguageRuntime(cwd, cwd, proj.Runtime.Name(), nil)
+					programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 					if err != nil {
 						return nil, nil, err
 					}

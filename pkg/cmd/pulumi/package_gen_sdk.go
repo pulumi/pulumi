@@ -141,8 +141,8 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
 			defer contract.IgnoreClose(pCtx.Host)
-
-			languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
+			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 			if err != nil {
 				return err
 			}

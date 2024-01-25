@@ -142,7 +142,12 @@ func (src *querySource) forkRun() {
 func runLangPlugin(src *querySource) error {
 	rt := src.runinfo.Proj.Runtime.Name()
 	rtopts := src.runinfo.Proj.Runtime.Options()
-	langhost, err := src.plugctx.Host.LanguageRuntime(src.plugctx.Root, src.plugctx.Pwd, rt, rtopts)
+	programInfo := plugin.NewProgramInfo(
+		/* rootDirectory */ src.runinfo.ProjectRoot,
+		/* programDirectory */ src.runinfo.Pwd,
+		/* entryPoint */ src.runinfo.Program,
+		/* options */ rtopts)
+	langhost, err := src.plugctx.Host.LanguageRuntime(rt, programInfo)
 	if err != nil {
 		return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 	}
@@ -169,13 +174,13 @@ func runLangPlugin(src *querySource) error {
 		Stack:          name,
 		Project:        string(src.runinfo.Proj.Name),
 		Pwd:            src.runinfo.Pwd,
-		Program:        src.runinfo.Program,
 		Args:           src.runinfo.Args,
 		Config:         config,
 		DryRun:         true,
 		QueryMode:      true,
 		Parallel:       math.MaxInt32,
 		Organization:   organization,
+		Info:           programInfo,
 	})
 
 	// Check if we were asked to Bail.  This a special random constant used for that

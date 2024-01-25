@@ -82,9 +82,7 @@ func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 	return host.closeProvider(provider)
 }
 
-func (host *testPluginHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
-) (plugin.LanguageRuntime, error) {
+func (host *testPluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
 
@@ -102,7 +100,7 @@ func (host *testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
 	return nil
 }
 
-func (host *testPluginHost) GetRequiredPlugins(info plugin.ProgInfo,
+func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PluginInfo, error) {
 	return nil, nil

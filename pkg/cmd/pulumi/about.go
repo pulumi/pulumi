@@ -145,7 +145,8 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 				result.Plugins = plugins
 			}
 
-			lang, err := pluginContext.Host.LanguageRuntime(projinfo.Root, pwd, proj.Runtime.Name(), proj.Runtime.Options())
+			programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
+			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 			if err != nil {
 				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
@@ -161,8 +162,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 					}
 				}
 
-				progInfo := plugin.ProgInfo{Pwd: pwd, Program: program}
-				deps, err := lang.GetProgramDependencies(progInfo, transitiveDependencies)
+				deps, err := lang.GetProgramDependencies(programInfo, transitiveDependencies)
 				if err != nil {
 					addError(err, "Failed to get information about the Pulumi program's dependencies")
 				} else {
@@ -588,8 +588,8 @@ func getProjectPluginsSilently(
 	defer func() { os.Stdout = stdout }()
 	os.Stdout = w
 
-	return plugin.GetRequiredPlugins(ctx.Host, ctx.Root, plugin.ProgInfo{
-		Pwd:     pwd,
-		Program: main,
-	}, proj, plugin.AllPlugins)
+	programInfo := plugin.NewProgramInfo(ctx.Root, pwd, main, proj.Runtime.Options())
+	runtimeName := proj.Runtime.Name()
+	projectName := string(proj.Name)
+	return plugin.GetRequiredPlugins(ctx.Host, runtimeName, projectName, programInfo, plugin.AllPlugins)
 }

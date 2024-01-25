@@ -138,7 +138,8 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("LanguageRuntime", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.LanguageRuntime("", "", "", nil)
+			programInfo := plugin.NewProgramInfo("/", "/", ".", nil)
+			_, err := host.LanguageRuntime("", programInfo)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("SignalCancellation", func(t *testing.T) {
@@ -179,7 +180,8 @@ func TestPluginHostProvider(t *testing.T) {
 				closed: true,
 			},
 		}
-		_, err := host.GetRequiredPlugins(plugin.ProgInfo{}, 0)
+
+		_, err := host.GetRequiredPlugins(plugin.ProgramInfo{}, 0)
 		assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 	})
 	t.Run("Close", func(t *testing.T) {

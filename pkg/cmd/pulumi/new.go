@@ -373,7 +373,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	if !args.generateOnly {
 		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
+		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
 			projinfo,
 			nil,
 			cmdutil.Diag(),
@@ -388,7 +388,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 		defer pluginCtx.Close()
 
-		if err := installDependencies(pluginCtx, &proj.Runtime, pwd); err != nil {
+		if err := installDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
 			return err
 		}
 	}
@@ -791,12 +791,13 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, runtime.Name(), runtime.Options())
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
+	lang, err := ctx.Host.LanguageRuntime(runtime.Name(), programInfo)
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(ctx.Pwd, main); err != nil {
+	if err = lang.InstallDependencies(programInfo); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}

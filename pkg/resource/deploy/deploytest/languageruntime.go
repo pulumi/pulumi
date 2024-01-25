@@ -56,7 +56,7 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginSpec, error) {
+func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgramInfo) ([]workspace.PluginSpec, error) {
 	if p.closed {
 		return nil, ErrLanguageRuntimeIsClosed
 	}
@@ -91,7 +91,7 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
-func (p *languageRuntime) InstallDependencies(pwd, main string) error {
+func (p *languageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
 	if p.closed {
 		return ErrLanguageRuntimeIsClosed
 	}
@@ -106,7 +106,7 @@ func (p *languageRuntime) About() (plugin.AboutInfo, error) {
 }
 
 func (p *languageRuntime) GetProgramDependencies(
-	info plugin.ProgInfo, transitiveDependencies bool,
+	info plugin.ProgramInfo, transitiveDependencies bool,
 ) ([]plugin.DependencyInfo, error) {
 	if p.closed {
 		return nil, ErrLanguageRuntimeIsClosed

@@ -227,12 +227,13 @@ func installPolicyPackDependencies(ctx *plugin.Context,
 ) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, proj.Runtime.Name(), proj.Runtime.Options())
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, proj.Runtime.Options())
+	lang, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(ctx.Pwd, main); err != nil {
+	if err = lang.InstallDependencies(programInfo); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}

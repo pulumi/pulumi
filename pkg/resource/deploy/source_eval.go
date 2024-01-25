@@ -221,8 +221,15 @@ func (iter *evalSourceIterator) forkRun(
 		// Next, launch the language plugin.
 		run := func() error {
 			rt := iter.src.runinfo.Proj.Runtime.Name()
+
 			rtopts := iter.src.runinfo.Proj.Runtime.Options()
-			langhost, err := iter.src.plugctx.Host.LanguageRuntime(iter.src.plugctx.Root, iter.src.plugctx.Pwd, rt, rtopts)
+			programInfo := plugin.NewProgramInfo(
+				/* rootDirectory */ iter.src.runinfo.ProjectRoot,
+				/* programDirectory */ iter.src.runinfo.Pwd,
+				/* entryPoint */ iter.src.runinfo.Program,
+				/* options */ rtopts)
+
+			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, programInfo)
 			if err != nil {
 				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 			}
@@ -234,7 +241,6 @@ func (iter *evalSourceIterator) forkRun(
 				Stack:             iter.src.runinfo.Target.Name.String(),
 				Project:           string(iter.src.runinfo.Proj.Name),
 				Pwd:               iter.src.runinfo.Pwd,
-				Program:           iter.src.runinfo.Program,
 				Args:              iter.src.runinfo.Args,
 				Config:            config,
 				ConfigSecretKeys:  configSecretKeys,
@@ -242,6 +248,7 @@ func (iter *evalSourceIterator) forkRun(
 				DryRun:            iter.src.dryRun,
 				Parallel:          opts.Parallel,
 				Organization:      string(iter.src.runinfo.Target.Organization),
+				Info:              programInfo,
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
