@@ -93,7 +93,13 @@ type ProjectTemplateConfigValue struct {
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
-// ProjectBackend is a configuration for backend used by project
+// ProjectBackend is the configuration for where the backend state is stored. If unset, will use the
+// system's currently logged-in backend.
+//
+// Use the same URL format that is passed to "pulumi login", see
+// https://www.pulumi.com/docs/cli/commands/pulumi_login/
+//
+// To explicitly use the Pulumi Cloud backend, use URL "https://api.pulumi.com"
 type ProjectBackend struct {
 	// URL is optional field to explicitly set backend url
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
