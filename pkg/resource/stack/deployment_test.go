@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -282,7 +283,7 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 func TestCustomSerialization(t *testing.T) {
 	t.Parallel()
 
-	textAsset, err := resource.NewTextAsset("alpha beta gamma")
+	textAsset, err := rasset.FromText("alpha beta gamma")
 	assert.NoError(t, err)
 
 	strProp := resource.NewStringProperty("strProp")

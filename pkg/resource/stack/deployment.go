@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -590,15 +592,15 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			objmap := obj.Mappable()
 			if sig, hasSig := objmap[resource.SigKey]; hasSig {
 				switch sig {
-				case resource.AssetSig:
-					asset, isasset, err := resource.DeserializeAsset(objmap)
+				case asset.AssetSig:
+					asset, isasset, err := asset.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
 					contract.Assertf(isasset, "resource with asset signature is not an asset")
 					return resource.NewAssetProperty(asset), nil
-				case resource.ArchiveSig:
-					archive, isarchive, err := resource.DeserializeArchive(objmap)
+				case archive.ArchiveSig:
+					archive, isarchive, err := archive.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
