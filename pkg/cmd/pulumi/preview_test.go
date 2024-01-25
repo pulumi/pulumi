@@ -546,3 +546,50 @@ func TestBuildImportFile_regress_15002(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, importFile.Resources)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/15068
+// Creates an explicit provider and a resource that uses it.
+func TestBuildImportFile_regress_15068(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(events)
+
+	// Create the root stack.
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpCreate),
+	})
+
+	// And then create a provider resource
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{})
+	providerState.ID = providers.UnknownID
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, providerState),
+	})
+
+	// And then create a resource that has that provider
+	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
+	require.NoError(t, err)
+	state := makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{
+		Provider: &providerRef,
+	})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, state),
+	})
+
+	// Try and write another event to the channel, this will block if we haven't correctly closed the channel.
+	state = makeStateMetadata(t, "res2", "pkg:mod:typ", true, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, state),
+	})
+
+	// Finally, close the events channel to signal that we're done
+	close(events)
+
+	// This should error because we can't yet handle importing an explicit provider
+	_, err = importFilePromise.Result(context.Background())
+	assert.ErrorContains(
+		t, err,
+		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+
+			"with a new explicit provider \"urn:pulumi:stack::project::pulumi:providers:pkg::prov\"")
+}
