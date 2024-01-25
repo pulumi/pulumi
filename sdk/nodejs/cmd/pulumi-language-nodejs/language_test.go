@@ -93,7 +93,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 func TestLanguage(t *testing.T) {
 	t.Parallel()
-	t.Skip("Temporarily skipping test to unblock CI - pulumi/pulumi#15250")
 
 	engineAddress, engine := runTestingHost(t)
 
