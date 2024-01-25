@@ -93,7 +93,7 @@ type ProjectTemplateConfigValue struct {
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
-// Configure which state backend for the project to use. If unset, will use the
+// ProjectBackend is the configuration for where the backend state is stored. If unset, will use the
 // system's currently logged-in backend.
 //
 // Use the same URL format that is passed to "pulumi login", see
