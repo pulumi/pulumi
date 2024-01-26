@@ -292,6 +292,7 @@ func TestCalculateDeps(t *testing.T) {
 			// We expect three alphabetized deps,
 			// with semver and parver formatted differently from Pulumi.
 			// Pulumi should not have a version.
+			{"importlib-metadata>=6.0.0,<7.0.0; python_version < \"3.8\"", ""},
 			{"parver>=0.2.1", ""},
 			{"pulumi", ""},
 			{"semver>=2.8.1"},
@@ -304,6 +305,7 @@ func TestCalculateDeps(t *testing.T) {
 		},
 		expected: [][2]string{
 			{"foobar", "7.10.8"},
+			{"importlib-metadata>=6.0.0,<7.0.0; python_version < \"3.8\"", ""},
 			{"parver>=0.2.1", ""},
 			{"pulumi", ">=3.0.0,<4.0.0"},
 			{"semver>=2.8.1"},
@@ -317,6 +319,7 @@ func TestCalculateDeps(t *testing.T) {
 		expected: [][2]string{
 			// We expect three alphabetized deps,
 			// with semver and parver formatted differently from Pulumi.
+			{"importlib-metadata>=6.0.0,<7.0.0; python_version < \"3.8\"", ""},
 			{"parver>=0.2.1", ""},
 			{"pulumi", ">=3.0.0,<3.50.0"},
 			{"semver>=2.8.1"},
