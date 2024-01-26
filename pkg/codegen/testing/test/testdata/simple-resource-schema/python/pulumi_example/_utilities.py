@@ -8,7 +8,6 @@ import importlib.util
 import inspect
 import json
 import os
-import pkg_resources
 import sys
 import typing
 
@@ -18,6 +17,11 @@ from pulumi.runtime.sync_await import _sync_await
 
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
+
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    import importlib_metadata as metadata
 
 
 def get_env(*args):
@@ -72,7 +76,7 @@ def _get_semver_version():
     # to receive a valid semver string when receiving requests from the language host, so it's our
     # responsibility as the library to convert our own PEP440 version into a valid semver string.
 
-    pep440_version_string = pkg_resources.require(root_package)[0].version
+    pep440_version_string = metadata.version(root_package)
     pep440_version = PEP440Version.parse(pep440_version_string)
     (major, minor, patch) = pep440_version.release
     prerelease = None
