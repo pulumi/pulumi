@@ -289,7 +289,7 @@ func TestCalculateDeps(t *testing.T) {
 		// Test 1: Give no explicit deps.
 		inputDeps: map[string]string{},
 		expected: [][2]string{
-			// We expect three alphabetized deps,
+			// We expect four alphabetized deps,
 			// with semver and parver formatted differently from Pulumi.
 			// Pulumi should not have a version.
 			{"importlib-metadata>=6.0.0,<7.0.0; python_version < \"3.8\"", ""},
