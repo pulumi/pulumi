@@ -98,7 +98,7 @@ from pulumi.automation._remote_workspace import (
 
 from pulumi.automation._remote_stack import RemoteStack
 
-from ._cmd import CommandResult, OnOutput
+from ._cmd import CommandResult, OnOutput, PulumiCommand
 
 from ._config import ConfigMap, ConfigValue
 
@@ -175,6 +175,7 @@ from ._stack import (
 __all__ = [
     # _cmd
     "CommandResult",
+    "PulumiCommand",
     "OnOutput",
     # _config
     "ConfigMap",
