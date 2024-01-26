@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -76,7 +76,7 @@ func (opts *PulumiCommandOptions) withDefaults() (*PulumiCommandOptions, error) 
 		if err != nil {
 			return nil, err
 		}
-		newOpts.Root = path.Join(home, ".pulumi", "versions", newOpts.Version.String())
+		newOpts.Root = filepath.Join(home, ".pulumi", "versions", newOpts.Version.String())
 	}
 
 	return newOpts, nil
@@ -102,7 +102,7 @@ func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 	}
 	command := "pulumi"
 	if opts.Root != "" {
-		command = path.Join(opts.Root, "bin", "pulumi")
+		command = filepath.Join(opts.Root, "bin", "pulumi")
 	}
 
 	cmd := exec.Command(command, "version")
@@ -207,7 +207,7 @@ func installWindows(ctx context.Context, version semver.Version, root string) er
 	defer os.Remove(scriptPath)
 	command := "powershell.exe"
 	if os.Getenv("SystemRoot") != "" {
-		command = path.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+		command = filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
 	}
 	args := []string{
 		"-NoProfile",
@@ -265,8 +265,8 @@ func (p pulumiCommand) Run(ctx context.Context,
 	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = workdir
 	env := append(os.Environ(), additionalEnv...)
-	if path.IsAbs(p.command) {
-		pulumiBin := path.Dir(p.command)
+	if filepath.IsAbs(p.command) {
+		pulumiBin := filepath.Dir(p.command)
 		env = fixupPath(env, pulumiBin)
 	}
 	cmd.Env = env
