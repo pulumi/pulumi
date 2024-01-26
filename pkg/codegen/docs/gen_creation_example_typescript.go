@@ -3,6 +3,7 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strconv"
 	"strings"
 
@@ -10,43 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-// collapseToken converts an exact token to a token more suitable for
-// display. For example, it converts
-//
-//	  fizz:index/buzz:Buzz => fizz:Buzz
-//	  fizz:mode/buzz:Buzz  => fizz:mode:Buzz
-//		 foo:index:Bar	      => foo:Bar
-//		 foo::Bar             => foo:Bar
-//		 fizz:mod:buzz        => fizz:mod:buzz
-func collapseResourceTokenForYAML(token string) string {
-	tokenParts := strings.Split(token, ":")
-
-	if len(tokenParts) == 3 {
-		title := func(s string) string {
-			r := []rune(s)
-			if len(r) == 0 {
-				return ""
-			}
-			return strings.ToTitle(string(r[0])) + string(r[1:])
-		}
-		if mod := strings.Split(tokenParts[1], "/"); len(mod) == 2 && title(mod[1]) == tokenParts[2] {
-			// aws:s3/bucket:Bucket => aws:s3:Bucket
-			// We recourse to handle the case foo:index/bar:Bar => foo:index:Bar
-			tokenParts = []string{tokenParts[0], mod[0], tokenParts[2]}
-		}
-
-		if tokenParts[1] == "index" || tokenParts[1] == "" {
-			// foo:index:Bar => foo:Bar
-			// or
-			// foo::Bar => foo:Bar
-			tokenParts = []string{tokenParts[0], tokenParts[2]}
-		}
-	}
-
-	return strings.Join(tokenParts, ":")
-}
-
-func genCreationExampleSyntaxYAML(r *schema.Resource) string {
+func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 	indentSize := 0
 	buffer := bytes.Buffer{}
 	write := func(format string, args ...interface{}) {
@@ -68,7 +33,7 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 	writeValue = func(valueType schema.Type) {
 		switch valueType {
 		case schema.BoolType:
-			write("True|False")
+			write("true|false")
 		case schema.IntType:
 			write("0")
 		case schema.NumberType:
@@ -76,42 +41,26 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 		case schema.StringType:
 			write("\"string\"")
 		case schema.ArchiveType:
-			write("\n")
-			indended(func() {
-				indent()
-				write("Fn::FileAsset: ./file.txt")
-			})
+			write("new pulumi.asset.FileAsset(\"./file.txt\")")
 		case schema.AssetType:
-			write("\n")
-			indended(func() {
-				indent()
-				write("Fn::StringAsset: \"example content\"")
-			})
+			write("new pulumi.asset.StringAsset(\"Hello, world!\")")
 		}
 
 		switch valueType := valueType.(type) {
 		case *schema.ArrayType:
-			if isPrimitiveType(valueType.ElementType) {
-				write("[")
-				writeValue(valueType.ElementType)
-				write("]")
-			} else {
-				write("[")
-				writeValue(valueType.ElementType)
-				write("\n")
-				indent()
-				write("]")
-			}
+			write("[")
+			writeValue(valueType.ElementType)
+			write("]")
 		case *schema.MapType:
-			write("\n")
+			write("{\n")
 			indended(func() {
 				indent()
 				write("\"string\": ")
 				writeValue(valueType.ElementType)
-				if !isPrimitiveType(valueType.ElementType) {
-					write("\n")
-				}
+				write("\n")
 			})
+			indent()
+			write("}")
 		case *schema.ObjectType:
 			if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
 				write("type(%s)", valueType.Token)
@@ -119,17 +68,17 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 			}
 
 			seenTypes.Add(valueType.Token)
-			write("\n")
+			write("{\n")
 			indended(func() {
-				for index, p := range valueType.Properties {
+				for _, p := range valueType.Properties {
 					indent()
 					write("%s: ", p.Name)
 					writeValue(p.Type)
-					if index != len(valueType.Properties)-1 {
-						write("\n")
-					}
+					write(",\n")
 				}
 			})
+			indent()
+			write("}")
 		case *schema.ResourceType:
 			write("reference(%s)", valueType.Token)
 		case *schema.EnumType:
@@ -146,7 +95,7 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 				}
 			}
 
-			write(strings.Join(cases, "|"))
+			write(fmt.Sprintf("%q", strings.Join(cases, "|")))
 		case *schema.UnionType:
 			if isUnionOfObjects(valueType) {
 				possibleTypes := make([]string, len(valueType.ElementTypes))
@@ -157,6 +106,7 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 				}
 				write("oneOf(" + strings.Join(possibleTypes, "|") + ")")
 			}
+
 			for _, elem := range valueType.ElementTypes {
 				if isPrimitiveType(elem) {
 					writeValue(elem)
@@ -167,27 +117,38 @@ func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 			writeValue(valueType.ElementType)
 		case *schema.OptionalType:
 			writeValue(valueType.ElementType)
+		case *schema.TokenType:
+			writeValue(valueType.UnderlyingType)
 		}
 	}
 
-	write("name: example\nruntime: yaml\nresources:\n")
+	pkg, mod, name := decomposeToken(r.Token)
+	if strings.Contains(mod, tokens.QNameDelimiter) && len(strings.Split(mod, tokens.QNameDelimiter)) == 2 {
+		parts := strings.Split(mod, tokens.QNameDelimiter)
+		if strings.ToLower(parts[1]) == strings.ToLower(name) {
+			mod = parts[0]
+		}
+	}
+
+	mod = strings.Join(strings.Split(mod, tokens.QNameDelimiter), ".")
+	resourceType := fmt.Sprintf("%s.%s.%s", pkg, mod, name)
+	if mod == "" || mod == "index" {
+		resourceType = fmt.Sprintf("%s.%s", pkg, name)
+	}
+
+	write("import * as pulumi from \"@pulumi/pulumi\";\n")
+	write("import * as %s from \"@pulumi/%s\";\n", pkg, pkg)
+	write("\n")
+	write("const %s = new %s(\"%s\", {\n", camelCase(resourceName(r)), resourceType, camelCase(resourceName(r)))
 	indended(func() {
-		indent()
-		write("%s:\n", camelCase(resourceName(r)))
-		indended(func() {
+		for _, p := range r.InputProperties {
 			indent()
-			write("type: %s\n", collapseResourceTokenForYAML(r.Token))
-			indent()
-			write("properties:\n")
-			indended(func() {
-				for _, p := range r.InputProperties {
-					indent()
-					write("%s: ", p.Name)
-					writeValue(codegen.ResolvedType(p.Type))
-					write("\n")
-				}
-			})
-		})
+			write("%s: ", p.Name)
+			writeValue(codegen.ResolvedType(p.Type))
+			write(",\n")
+		}
 	})
+
+	write("});\n")
 	return buffer.String()
 }

@@ -282,18 +282,18 @@ resources:
   component:
     type: example:Component
     properties:
-      a: True|False
-      b: True|False
+      a: true|false
+      b: true|false
       bar: 
-        a: True|False
-        b: True|False
+        a: true|false
+        b: true|false
         c: 0
         d: 0
         e: "string"
         f: "string"
       baz: [
-        a: True|False
-        b: True|False
+        a: true|false
+        b: true|false
         c: 0
         d: 0
         e: "string"
@@ -304,8 +304,8 @@ resources:
       e: "string"
       f: "string"
       foo: 
-        a: True|False
-        b: True|False
+        a: true|false
+        b: true|false
         c: 0
         d: 0
         e: "string"

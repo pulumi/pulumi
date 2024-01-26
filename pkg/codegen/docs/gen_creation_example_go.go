@@ -3,6 +3,7 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -100,6 +101,12 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 	argumentTypeName := func(objectType *schema.ObjectType) string {
 		token := objectType.Token
 		pkg, mod, member := decomposeToken(token)
+		if strings.Contains(mod, tokens.QNameDelimiter) && len(strings.Split(mod, tokens.QNameDelimiter)) == 2 {
+			parts := strings.Split(mod, tokens.QNameDelimiter)
+			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+				mod = parts[0]
+			}
+		}
 		mod = normalizeGoModuleName(mod)
 		if mod == "index" || mod == "" {
 			return pkg + "." + member + "Args"
@@ -117,7 +124,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 		buffer.WriteString(strings.Repeat(" ", indentSize))
 	}
 
-	indended := func(f func()) {
+	indented := func(f func()) {
 		indentSize += 2
 		f()
 		indentSize -= 2
@@ -175,7 +182,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 			}
 
 			write("%s{\n", elementTypeName)
-			indended(func() {
+			indented(func() {
 				indent()
 				writeValue(valueType.ElementType, false, false)
 				write("\n")
@@ -193,7 +200,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 			}
 
 			write("%s{\n", elementTypeName)
-			indended(func() {
+			indented(func() {
 				indent()
 				write("\"string\": ")
 				writeValue(valueType.ElementType, false, false)
@@ -211,7 +218,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 			seenTypes.Add(valueType.Token)
 			typeName := argumentTypeName(valueType)
 			write("&%s{\n", typeName)
-			indended(func() {
+			indented(func() {
 				for _, p := range valueType.Properties {
 					indent()
 					write("%s: ", title(p.Name, "go"))
@@ -244,7 +251,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 			}
 
 			for _, elem := range valueType.ElementTypes {
-				if isPrimitiveType(elem) {
+				if isPrimitiveType(codegen.ResolvedType(elem)) {
 					writeValue(elem, false, false)
 					return
 				}
@@ -254,11 +261,18 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 			writeValue(valueType.ElementType, plain, optional)
 		case *schema.OptionalType:
 			writeValue(valueType.ElementType, plain, optional)
+		case *schema.TokenType:
+			writeValue(codegen.ResolvedType(valueType.UnderlyingType), plain, optional)
 		}
 	}
 
 	pkg, mod, name := decomposeToken(r.Token)
-	mod = strings.ReplaceAll(mod, "/", ".")
+	if strings.Contains(mod, tokens.QNameDelimiter) && len(strings.Split(mod, tokens.QNameDelimiter)) == 2 {
+		parts := strings.Split(mod, tokens.QNameDelimiter)
+		if strings.ToLower(parts[1]) == strings.ToLower(name) {
+			mod = parts[0]
+		}
+	}
 
 	pkgDef, err := r.PackageReference.Definition()
 	contract.Assertf(err == nil, "expected no error from getting package definition: %v", err)
@@ -268,7 +282,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 	}
 
 	write("import (\n")
-	indended(func() {
+	indented(func() {
 		indent()
 		write("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n")
 		indent()
@@ -290,7 +304,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 
 	mod = normalizeGoModuleName(mod)
 	write("%s, err := %s.New%s(\"%s\", &%s.%sArgs{\n", camelCase(name), mod, name, camelCase(name), mod, name)
-	indended(func() {
+	indented(func() {
 		for _, p := range r.InputProperties {
 			indent()
 			write("%s: ", title(p.Name, "go"))

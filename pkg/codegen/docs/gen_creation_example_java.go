@@ -10,7 +10,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
+func genCreationExampleSyntaxJava(r *schema.Resource) string {
+	argumentTypeName := func(objectType *schema.ObjectType) string {
+		token := objectType.Token
+		_, _, member := decomposeToken(token)
+		return member + "Args"
+	}
+
 	indentSize := 0
 	buffer := bytes.Buffer{}
 	write := func(format string, args ...interface{}) {
@@ -40,26 +46,38 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 		case schema.StringType:
 			write("\"string\"")
 		case schema.ArchiveType:
-			write("new pulumi.asset.FileAsset(\"./file.txt\")")
+			write("new FileAsset(\"./file.txt\")")
 		case schema.AssetType:
-			write("new pulumi.asset.StringAsset(\"Hello, world!\")")
+			write("new StringAsset(\"Hello, world!\")")
 		}
 
 		switch valueType := valueType.(type) {
 		case *schema.ArrayType:
-			write("[")
-			writeValue(valueType.ElementType)
-			write("]")
+			if isPrimitiveType(valueType.ElementType) {
+				write("List.of(")
+				writeValue(valueType.ElementType)
+				write(")")
+			} else {
+				write("List.of(\n")
+				indended(func() {
+					indent()
+					writeValue(valueType.ElementType)
+					write("\n")
+				})
+				indent()
+				write(")")
+			}
+
 		case *schema.MapType:
-			write("{\n")
+			write("Map.ofEntries(\n")
 			indended(func() {
 				indent()
-				write("\"string\": ")
+				write("Map.entry(\"string\", ")
 				writeValue(valueType.ElementType)
-				write("\n")
+				write(")\n")
 			})
 			indent()
-			write("}")
+			write(")")
 		case *schema.ObjectType:
 			if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
 				write("type(%s)", valueType.Token)
@@ -67,24 +85,26 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 			}
 
 			seenTypes.Add(valueType.Token)
-			write("{\n")
+			typeName := argumentTypeName(valueType)
+			write("%s.builder()\n", typeName)
 			indended(func() {
 				for _, p := range valueType.Properties {
 					indent()
-					write("%s: ", p.Name)
+					write(".%s(", p.Name)
 					writeValue(p.Type)
-					write(",\n")
+					write(")\n")
 				}
+
+				indent()
+				write(".build()")
 			})
-			indent()
-			write("}")
 		case *schema.ResourceType:
 			write("reference(%s)", valueType.Token)
 		case *schema.EnumType:
 			cases := make([]string, len(valueType.Elements))
 			for index, c := range valueType.Elements {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
-					cases[index] = fmt.Sprintf("%q", stringCase)
+					cases[index] = stringCase
 				} else if intCase, ok := c.Value.(int); ok {
 					cases[index] = strconv.Itoa(intCase)
 				} else {
@@ -94,7 +114,7 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 				}
 			}
 
-			write(strings.Join(cases, "|"))
+			write(fmt.Sprintf("%q", strings.Join(cases, "|")))
 		case *schema.UnionType:
 			if isUnionOfObjects(valueType) {
 				possibleTypes := make([]string, len(valueType.ElementTypes))
@@ -105,7 +125,6 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 				}
 				write("oneOf(" + strings.Join(possibleTypes, "|") + ")")
 			}
-
 			for _, elem := range valueType.ElementTypes {
 				if isPrimitiveType(elem) {
 					writeValue(elem)
@@ -116,29 +135,27 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 			writeValue(valueType.ElementType)
 		case *schema.OptionalType:
 			writeValue(valueType.ElementType)
+		case *schema.TokenType:
+			writeValue(valueType.UnderlyingType)
 		}
 	}
 
-	pkg, mod, name := decomposeToken(r.Token)
-	mod = strings.ReplaceAll(mod, "/", ".")
-	resourceType := fmt.Sprintf("%s.%s.%s", pkg, mod, name)
-	if mod == "" || mod == "index" {
-		resourceType = fmt.Sprintf("%s.%s", pkg, name)
-	}
-
-	write("import * as pulumi from \"@pulumi/pulumi\";\n")
-	write("import * as %s from \"@pulumi/%s\";\n", pkg, pkg)
+	_, _, name := decomposeToken(r.Token)
+	write("import com.pulumi.Pulumi;\n")
+	write("import java.util.List;\n")
+	write("import java.util.Map;\n")
 	write("\n")
-	write("const %s = new %s(\"%s\", {\n", camelCase(resourceName(r)), resourceType, camelCase(resourceName(r)))
+	write("var %s = new %s(\"%s\", %sArgs.builder()\n", camelCase(name), name, camelCase(name), name)
 	indended(func() {
 		for _, p := range r.InputProperties {
 			indent()
-			write("%s: ", p.Name)
+			write(".%s(", p.Name)
 			writeValue(codegen.ResolvedType(p.Type))
-			write(",\n")
+			write(")\n")
 		}
+		indent()
+		write(".build());\n")
 	})
 
-	write("});\n")
 	return buffer.String()
 }

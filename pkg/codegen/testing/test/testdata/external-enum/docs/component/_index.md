@@ -30,8 +30,8 @@ using Example = Pulumi.Example;
 
 var component = new Example.Component("component", new () 
 {
-  LocalEnum = pi|small,
-  RemoteEnum = "MANAGEMENT_UNSPECIFIED"|"NONE"|"BASIC"|"COMPLETE",
+  LocalEnum = "pi|small",
+  RemoteEnum = "MANAGEMENT_UNSPECIFIED|NONE|BASIC|COMPLETE",
 });
 
                 </code>
@@ -71,8 +71,8 @@ import java.util.List;
 import java.util.Map;
 
 var component = new Component("component", ComponentArgs.builder()
-  .localEnum(pi|small)
-  .remoteEnum("MANAGEMENT_UNSPECIFIED"|"NONE"|"BASIC"|"COMPLETE")
+  .localEnum("pi|small")
+  .remoteEnum("MANAGEMENT_UNSPECIFIED|NONE|BASIC|COMPLETE")
   .build());
 
                 </code>
@@ -90,8 +90,8 @@ import pulumi
 import pulumi_example as example
 
 component = example.Component("component",
-  local_enum=pi|small,
-  remote_enum="MANAGEMENT_UNSPECIFIED"|"NONE"|"BASIC"|"COMPLETE"
+  local_enum="pi|small",
+  remote_enum="MANAGEMENT_UNSPECIFIED|NONE|BASIC|COMPLETE"
 )
 
                 </code>
@@ -109,8 +109,8 @@ import * as pulumi from "@pulumi/pulumi";
 import * as example from "@pulumi/example";
 
 const component = new example.Component("component", {
-  localEnum: pi|small,
-  remoteEnum: "MANAGEMENT_UNSPECIFIED"|"NONE"|"BASIC"|"COMPLETE",
+  localEnum: "pi|small",
+  remoteEnum: "MANAGEMENT_UNSPECIFIED|NONE|BASIC|COMPLETE",
 });
 
                 </code>

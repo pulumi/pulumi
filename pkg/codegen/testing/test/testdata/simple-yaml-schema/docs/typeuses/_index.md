@@ -70,7 +70,7 @@ var typeUses = new Example.TypeUses("typeUses", new ()
       }
     },
   },
-  Qux = "Burgundy"|"Ruby"|"Tineke",
+  Qux = "Burgundy|Ruby|Tineke",
 });
 
                 </code>
@@ -169,7 +169,7 @@ var typeUses = new TypeUses("typeUses", TypeUsesArgs.builder()
       ))
     ))
     .build())
-  .qux("Burgundy"|"Ruby"|"Tineke")
+  .qux("Burgundy|Ruby|Tineke")
   .build());
 
                 </code>
@@ -217,7 +217,7 @@ typeUses = example.TypeUses("typeUses",
       ]
     },
   ),
-  qux="Burgundy"|"Ruby"|"Tineke"
+  qux="Burgundy|Ruby|Tineke"
 )
 
                 </code>
@@ -257,7 +257,7 @@ const typeUses = new example.TypeUses("typeUses", {
       }]
     },
   },
-  qux: "Burgundy"|"Ruby"|"Tineke",
+  qux: "Burgundy|Ruby|Tineke",
 });
 
                 </code>

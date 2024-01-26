@@ -32,15 +32,15 @@ var rubberTree = new Plant.Tree.V1.RubberTree("rubberTree", new ()
 {
   Container = new Plant.Inputs.ContainerArgs
   {
-    Brightness = ZeroPointOne|One,
-    Color = "red"|"blue"|"yellow",
+    Brightness = "ZeroPointOne|One",
+    Color = "red|blue|yellow",
     Material = "string",
-    Size = FourInch|SixInch|EightInch,
+    Size = "FourInch|SixInch|EightInch",
   },
-  Diameter = sixinch|twelveinch,
-  Farm = "Pulumi Planters Inc."|"Plants'R'Us",
-  Size = "small"|"medium"|"large",
-  Type = "Burgundy"|"Ruby"|"Tineke",
+  Diameter = "sixinch|twelveinch",
+  Farm = "Pulumi Planters Inc.|Plants'R'Us",
+  Size = "small|medium|large",
+  Type = "Burgundy|Ruby|Tineke",
 });
 
                 </code>
@@ -56,18 +56,18 @@ var rubberTree = new Plant.Tree.V1.RubberTree("rubberTree", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "github.com/pulumi/pulumi-plant/sdk/v3/go/plant/tree.v1"
+  "github.com/pulumi/pulumi-plant/sdk/v3/go/plant/tree/v1"
 )
 
 rubberTree, err := tree.v1.NewRubberTree("rubberTree", &tree.v1.RubberTreeArgs{
   Container: &plant.ContainerArgs{
     Brightness: ContainerBrightnessZeroPointOne|ContainerBrightnessOne,
-    Color: ,
+    Color: ContainerColor|ContainerColor|ContainerColor,
     Material: pulumi.String("string"),
     Size: ContainerSizeFourInch|ContainerSizeSixInch|ContainerSizeEightInch,
   },
   Diameter: DiameterSixinch|DiameterTwelveinch,
-  Farm: ,
+  Farm: Farm|Farm,
   Size: TreeSizeSmall|TreeSizeMedium|TreeSizeLarge,
   Type: RubberTreeVarietyBurgundy|RubberTreeVarietyRuby|RubberTreeVarietyTineke,
 })
@@ -89,15 +89,15 @@ import java.util.Map;
 
 var rubberTree = new RubberTree("rubberTree", RubberTreeArgs.builder()
   .container(ContainerArgs.builder()
-    .brightness(ZeroPointOne|One)
-    .color("red"|"blue"|"yellow")
+    .brightness("ZeroPointOne|One")
+    .color("red|blue|yellow")
     .material("string")
-    .size(FourInch|SixInch|EightInch)
+    .size("FourInch|SixInch|EightInch")
     .build())
-  .diameter(sixinch|twelveinch)
-  .farm("Pulumi Planters Inc."|"Plants'R'Us")
-  .size("small"|"medium"|"large")
-  .type("Burgundy"|"Ruby"|"Tineke")
+  .diameter("sixinch|twelveinch")
+  .farm("Pulumi Planters Inc.|Plants'R'Us")
+  .size("small|medium|large")
+  .type("Burgundy|Ruby|Tineke")
   .build());
 
                 </code>
@@ -116,15 +116,15 @@ import pulumi_plant as plant
 
 rubberTree = plant.tree.v1.RubberTree("rubberTree",
   container=plant.ContainerArgs(
-    brightness=ZeroPointOne|One,
-    color="red"|"blue"|"yellow",
+    brightness="ZeroPointOne|One",
+    color="red|blue|yellow",
     material="string",
-    size=FourInch|SixInch|EightInch,
+    size="FourInch|SixInch|EightInch",
   ),
-  diameter=sixinch|twelveinch,
-  farm="Pulumi Planters Inc."|"Plants'R'Us",
-  size="small"|"medium"|"large",
-  type="Burgundy"|"Ruby"|"Tineke"
+  diameter="sixinch|twelveinch",
+  farm="Pulumi Planters Inc.|Plants'R'Us",
+  size="small|medium|large",
+  type="Burgundy|Ruby|Tineke"
 )
 
                 </code>
@@ -143,15 +143,15 @@ import * as plant from "@pulumi/plant";
 
 const rubberTree = new plant.tree.v1.RubberTree("rubberTree", {
   container: {
-    brightness: ZeroPointOne|One,
-    color: "red"|"blue"|"yellow",
+    brightness: "ZeroPointOne|One",
+    color: "red|blue|yellow",
     material: "string",
-    size: FourInch|SixInch|EightInch,
+    size: "FourInch|SixInch|EightInch",
   },
-  diameter: sixinch|twelveinch,
-  farm: "Pulumi Planters Inc."|"Plants'R'Us",
-  size: "small"|"medium"|"large",
-  type: "Burgundy"|"Ruby"|"Tineke",
+  diameter: "sixinch|twelveinch",
+  farm: "Pulumi Planters Inc.|Plants'R'Us",
+  size: "small|medium|large",
+  type: "Burgundy|Ruby|Tineke",
 });
 
                 </code>

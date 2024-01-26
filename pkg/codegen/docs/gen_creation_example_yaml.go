@@ -10,13 +10,43 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func genCreationExampleSyntaxJava(r *schema.Resource) string {
-	argumentTypeName := func(objectType *schema.ObjectType) string {
-		token := objectType.Token
-		_, _, member := decomposeToken(token)
-		return member + "Args"
+// collapseToken converts an exact token to a token more suitable for
+// display. For example, it converts
+//
+//	  fizz:index/buzz:Buzz => fizz:Buzz
+//	  fizz:mode/buzz:Buzz  => fizz:mode:Buzz
+//		 foo:index:Bar	      => foo:Bar
+//		 foo::Bar             => foo:Bar
+//		 fizz:mod:buzz        => fizz:mod:buzz
+func collapseResourceTokenForYAML(token string) string {
+	tokenParts := strings.Split(token, ":")
+
+	if len(tokenParts) == 3 {
+		title := func(s string) string {
+			r := []rune(s)
+			if len(r) == 0 {
+				return ""
+			}
+			return strings.ToTitle(string(r[0])) + string(r[1:])
+		}
+		if mod := strings.Split(tokenParts[1], "/"); len(mod) == 2 && title(mod[1]) == tokenParts[2] {
+			// aws:s3/bucket:Bucket => aws:s3:Bucket
+			// We recourse to handle the case foo:index/bar:Bar => foo:index:Bar
+			tokenParts = []string{tokenParts[0], mod[0], tokenParts[2]}
+		}
+
+		if tokenParts[1] == "index" || tokenParts[1] == "" {
+			// foo:index:Bar => foo:Bar
+			// or
+			// foo::Bar => foo:Bar
+			tokenParts = []string{tokenParts[0], tokenParts[2]}
+		}
 	}
 
+	return strings.Join(tokenParts, ":")
+}
+
+func genCreationExampleSyntaxYAML(r *schema.Resource) string {
 	indentSize := 0
 	buffer := bytes.Buffer{}
 	write := func(format string, args ...interface{}) {
@@ -46,38 +76,42 @@ func genCreationExampleSyntaxJava(r *schema.Resource) string {
 		case schema.StringType:
 			write("\"string\"")
 		case schema.ArchiveType:
-			write("new FileAsset(\"./file.txt\")")
+			write("\n")
+			indended(func() {
+				indent()
+				write("Fn::FileAsset: ./file.txt")
+			})
 		case schema.AssetType:
-			write("new StringAsset(\"Hello, world!\")")
+			write("\n")
+			indended(func() {
+				indent()
+				write("Fn::StringAsset: \"example content\"")
+			})
 		}
 
 		switch valueType := valueType.(type) {
 		case *schema.ArrayType:
 			if isPrimitiveType(valueType.ElementType) {
-				write("List.of(")
+				write("[")
 				writeValue(valueType.ElementType)
-				write(")")
+				write("]")
 			} else {
-				write("List.of(\n")
-				indended(func() {
-					indent()
-					writeValue(valueType.ElementType)
-					write("\n")
-				})
+				write("[")
+				writeValue(valueType.ElementType)
+				write("\n")
 				indent()
-				write(")")
+				write("]")
 			}
-
 		case *schema.MapType:
-			write("Map.ofEntries(\n")
+			write("\n")
 			indended(func() {
 				indent()
-				write("Map.entry(\"string\", ")
+				write("\"string\": ")
 				writeValue(valueType.ElementType)
-				write(")\n")
+				if !isPrimitiveType(valueType.ElementType) {
+					write("\n")
+				}
 			})
-			indent()
-			write(")")
 		case *schema.ObjectType:
 			if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
 				write("type(%s)", valueType.Token)
@@ -85,18 +119,16 @@ func genCreationExampleSyntaxJava(r *schema.Resource) string {
 			}
 
 			seenTypes.Add(valueType.Token)
-			typeName := argumentTypeName(valueType)
-			write("%s.builder()\n", typeName)
+			write("\n")
 			indended(func() {
-				for _, p := range valueType.Properties {
+				for index, p := range valueType.Properties {
 					indent()
-					write(".%s(", p.Name)
+					write("%s: ", p.Name)
 					writeValue(p.Type)
-					write(")\n")
+					if index != len(valueType.Properties)-1 {
+						write("\n")
+					}
 				}
-
-				indent()
-				write(".build()")
 			})
 		case *schema.ResourceType:
 			write("reference(%s)", valueType.Token)
@@ -104,7 +136,7 @@ func genCreationExampleSyntaxJava(r *schema.Resource) string {
 			cases := make([]string, len(valueType.Elements))
 			for index, c := range valueType.Elements {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
-					cases[index] = fmt.Sprintf("%q", stringCase)
+					cases[index] = stringCase
 				} else if intCase, ok := c.Value.(int); ok {
 					cases[index] = strconv.Itoa(intCase)
 				} else {
@@ -135,25 +167,29 @@ func genCreationExampleSyntaxJava(r *schema.Resource) string {
 			writeValue(valueType.ElementType)
 		case *schema.OptionalType:
 			writeValue(valueType.ElementType)
+		case *schema.TokenType:
+			writeValue(valueType.UnderlyingType)
 		}
 	}
 
-	_, _, name := decomposeToken(r.Token)
-	write("import com.pulumi.Pulumi;\n")
-	write("import java.util.List;\n")
-	write("import java.util.Map;\n")
-	write("\n")
-	write("var %s = new %s(\"%s\", %sArgs.builder()\n", camelCase(name), name, camelCase(name), name)
+	write("name: example\nruntime: yaml\nresources:\n")
 	indended(func() {
-		for _, p := range r.InputProperties {
-			indent()
-			write(".%s(", p.Name)
-			writeValue(codegen.ResolvedType(p.Type))
-			write(")\n")
-		}
 		indent()
-		write(".build());\n")
+		write("%s:\n", camelCase(resourceName(r)))
+		indended(func() {
+			indent()
+			write("type: %s\n", collapseResourceTokenForYAML(r.Token))
+			indent()
+			write("properties:\n")
+			indended(func() {
+				for _, p := range r.InputProperties {
+					indent()
+					write("%s: ", p.Name)
+					writeValue(codegen.ResolvedType(p.Type))
+					write("\n")
+				}
+			})
+		})
 	})
-
 	return buffer.String()
 }

@@ -125,7 +125,7 @@ resources:
   provider:
     type: providerType:submod:provider
     properties:
-      a: True|False
+      a: true|false
 
                 </code>
             </pre>

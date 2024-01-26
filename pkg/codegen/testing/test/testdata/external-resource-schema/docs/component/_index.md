@@ -1461,8 +1461,8 @@ resources:
         namespace: "string"
         ownerReferences: [
           apiVersion: "string"
-          blockOwnerDeletion: True|False
-          controller: True|False
+          blockOwnerDeletion: true|false
+          controller: true|false
           kind: "string"
           name: "string"
           uid: "string"
@@ -1495,8 +1495,8 @@ resources:
         namespace: "string"
         ownerReferences: [
           apiVersion: "string"
-          blockOwnerDeletion: True|False
-          controller: True|False
+          blockOwnerDeletion: true|false
+          controller: true|false
           kind: "string"
           name: "string"
           uid: "string"
@@ -1531,8 +1531,8 @@ resources:
           namespace: "string"
           ownerReferences: [
             apiVersion: "string"
-            blockOwnerDeletion: True|False
-            controller: True|False
+            blockOwnerDeletion: true|false
+            controller: true|false
             kind: "string"
             name: "string"
             uid: "string"
@@ -1566,8 +1566,8 @@ resources:
         namespace: "string"
         ownerReferences: [
           apiVersion: "string"
-          blockOwnerDeletion: True|False
-          controller: True|False
+          blockOwnerDeletion: true|false
+          controller: true|false
           kind: "string"
           name: "string"
           uid: "string"
@@ -1600,8 +1600,8 @@ resources:
         namespace: "string"
         ownerReferences: [
           apiVersion: "string"
-          blockOwnerDeletion: True|False
-          controller: True|False
+          blockOwnerDeletion: true|false
+          controller: true|false
           kind: "string"
           name: "string"
           uid: "string"
@@ -1636,8 +1636,8 @@ resources:
           namespace: "string"
           ownerReferences: [
             apiVersion: "string"
-            blockOwnerDeletion: True|False
-            controller: True|False
+            blockOwnerDeletion: true|false
+            controller: true|false
             kind: "string"
             name: "string"
             uid: "string"

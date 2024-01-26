@@ -46,7 +46,7 @@ var resource = new Foo.Nested.Module.Resource("resource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "github.com/pulumi/pulumi-foo/sdk/v3/go/foo/nested.module"
+  "github.com/pulumi/pulumi-foo/sdk/v3/go/foo/nested/module"
 )
 
 resource, err := nested.module.NewResource("resource", &nested.module.ResourceArgs{

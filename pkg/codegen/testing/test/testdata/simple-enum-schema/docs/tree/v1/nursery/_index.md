@@ -31,11 +31,11 @@ using Plant = Pulumi.Plant;
 var nursery = new Plant.Tree.V1.Nursery("nursery", new () 
 {
   Sizes = {
-    ["string"] = "small"|"medium"|"large"
+    ["string"] = "small|medium|large"
   },
   Varieties = new []
   {
-    "Burgundy"|"Ruby"|"Tineke"
+    "Burgundy|Ruby|Tineke"
   },
 });
 
@@ -52,7 +52,7 @@ var nursery = new Plant.Tree.V1.Nursery("nursery", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "github.com/pulumi/pulumi-plant/sdk/v3/go/plant/tree.v1"
+  "github.com/pulumi/pulumi-plant/sdk/v3/go/plant/tree/v1"
 )
 
 nursery, err := tree.v1.NewNursery("nursery", &tree.v1.NurseryArgs{
@@ -81,9 +81,9 @@ import java.util.Map;
 
 var nursery = new Nursery("nursery", NurseryArgs.builder()
   .sizes(Map.ofEntries(
-    Map.entry("string", "small"|"medium"|"large")
+    Map.entry("string", "small|medium|large")
   ))
-  .varieties(List.of("Burgundy"|"Ruby"|"Tineke"))
+  .varieties(List.of("Burgundy|Ruby|Tineke"))
   .build());
 
                 </code>
@@ -102,10 +102,10 @@ import pulumi_plant as plant
 
 nursery = plant.tree.v1.Nursery("nursery",
   sizes={
-    'string': "small"|"medium"|"large"
+    'string': "small|medium|large"
   },
   varieties=[
-    "Burgundy"|"Ruby"|"Tineke",
+    "Burgundy|Ruby|Tineke",
   ]
 )
 
@@ -125,9 +125,9 @@ import * as plant from "@pulumi/plant";
 
 const nursery = new plant.tree.v1.Nursery("nursery", {
   sizes: {
-    "string": "small"|"medium"|"large"
+    "string": "small|medium|large"
   },
-  varieties: ["Burgundy"|"Ruby"|"Tineke"],
+  varieties: ["Burgundy|Ruby|Tineke"],
 });
 
                 </code>

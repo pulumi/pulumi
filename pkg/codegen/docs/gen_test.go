@@ -19,7 +19,11 @@
 package docs
 
 import (
+	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v3"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -833,7 +837,7 @@ resources:
       a: "string"
       b: 0
       c: 0.0
-      d: True|False
+      d: true|false
       e: ["string"]
       f: 
         x: "string"
@@ -930,8 +934,8 @@ const exampleResource = new test.ExampleResource("exampleResource", {
       y: "string",
     }
   },
-  j: "FIRST"|"SECOND",
-  k: ["FIRST"|"SECOND"],
+  j: "FIRST|SECOND",
+  k: ["FIRST|SECOND"],
   l: new pulumi.asset.StringAsset("Hello, world!"),
   m: new pulumi.asset.FileAsset("./file.txt"),
 });
@@ -1019,10 +1023,10 @@ var exampleResource = new Test.ExampleResource("exampleResource", new ()
       Y = "string",
     }
   },
-  J = "FIRST"|"SECOND",
+  J = "FIRST|SECOND",
   K = new []
   {
-    "FIRST"|"SECOND"
+    "FIRST|SECOND"
   },
   L = new StringAsset("Hello, world!"),
   M = new FileAsset("./file.txt"),
@@ -1108,9 +1112,9 @@ exampleResource = test.ExampleResource("exampleResource",
       y="string",
     )
   },
-  j="FIRST"|"SECOND",
+  j="FIRST|SECOND",
   k=[
-    "FIRST"|"SECOND",
+    "FIRST|SECOND",
   ],
   l=pulumi.StringAsset("Hello, world!"),
   m=pulumi.FileAsset("./file.txt")
@@ -1192,8 +1196,8 @@ var exampleResource = new ExampleResource("exampleResource", ExampleResourceArgs
       .y("string")
       .build())
   ))
-  .j("FIRST"|"SECOND")
-  .k(List.of("FIRST"|"SECOND"))
+  .j("FIRST|SECOND")
+  .k(List.of("FIRST|SECOND"))
   .l(new StringAsset("Hello, world!"))
   .m(new FileAsset("./file.txt"))
   .build());
@@ -1329,4 +1333,78 @@ exampleResource, err := test.NewExampleResource("exampleResource", &test.Example
 })
 `
 	assert.Equal(t, strings.TrimPrefix(expected, "\n"), creationExample)
+}
+
+func readSchemaFile(file string) (pkgSpec schema.PackageSpec) {
+	// Read in, decode, and import the schema.
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	if err != nil {
+		panic(err)
+	}
+
+	if strings.HasSuffix(file, ".json") {
+		if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
+			panic(err)
+		}
+	} else if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
+		if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
+			panic(err)
+		}
+	} else {
+		panic("unknown schema file extension while parsing " + file)
+	}
+
+	return pkgSpec
+}
+
+func TestCreationExampleForLambdaFunction(t *testing.T) {
+	t.Parallel()
+
+	pkgSpec := readSchemaFile("aws-5.16.2.json")
+	pkg := bindSchema(t, pkgSpec)
+	lambdaFunction := getBoundResource(t, pkg, "aws:lambda/function:Function")
+	exampleTypescript := genCreationExampleSyntaxTypescript(lambdaFunction)
+	examplePython := genCreationExampleSyntaxPython(lambdaFunction)
+	exampleCSharp := genCreationExampleSyntaxCSharp(lambdaFunction)
+	exampleGo := genCreationExampleSyntaxGo(lambdaFunction)
+	exampleJava := genCreationExampleSyntaxJava(lambdaFunction)
+	exampleYaml := genCreationExampleSyntaxYAML(lambdaFunction)
+
+	fullDocument :=
+		"### TypeScript\n\n" + "```typescript\n" + exampleTypescript + "```\n\n" +
+			"### Python\n\n" + "```python\n" + examplePython + "```\n\n" +
+			"### C#\n\n" + "```csharp\n" + exampleCSharp + "```\n\n" +
+			"### Go\n\n" + "```go\n" + exampleGo + "```\n\n" +
+			"### Java\n\n" + "```java\n" + exampleJava + "```\n\n" +
+			"### YAML\n\n" + "```yaml\n" + exampleYaml + "```\n\n"
+
+	expectedFileContent, err := os.ReadFile(filepath.Join("example_creation_testdata", "aws-lambda-function.md"))
+	assert.NoError(t, err)
+	assert.Equal(t, string(expectedFileContent), fullDocument)
+}
+
+func TestCreationExampleForKubernetesAppsDeployment(t *testing.T) {
+	t.Parallel()
+
+	pkgSpec := readSchemaFile("kubernetes-3.7.2.json")
+	pkg := bindSchema(t, pkgSpec)
+	deployment := getBoundResource(t, pkg, "kubernetes:apps/v1:Deployment")
+	exampleTypescript := genCreationExampleSyntaxTypescript(deployment)
+	examplePython := genCreationExampleSyntaxPython(deployment)
+	exampleCSharp := genCreationExampleSyntaxCSharp(deployment)
+	exampleGo := genCreationExampleSyntaxGo(deployment)
+	exampleJava := genCreationExampleSyntaxJava(deployment)
+	exampleYaml := genCreationExampleSyntaxYAML(deployment)
+
+	fullDocument :=
+		"### TypeScript\n\n" + "```typescript\n" + exampleTypescript + "```\n\n" +
+			"### Python\n\n" + "```python\n" + examplePython + "```\n\n" +
+			"### C#\n\n" + "```csharp\n" + exampleCSharp + "```\n\n" +
+			"### Go\n\n" + "```go\n" + exampleGo + "```\n\n" +
+			"### Java\n\n" + "```java\n" + exampleJava + "```\n\n" +
+			"### YAML\n\n" + "```yaml\n" + exampleYaml + "```\n\n"
+
+	expectedFileContent, err := os.ReadFile(filepath.Join("example_creation_testdata", "k8s-deployment.md"))
+	assert.NoError(t, err)
+	assert.Equal(t, string(expectedFileContent), fullDocument)
 }

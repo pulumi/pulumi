@@ -46,7 +46,7 @@ var resource = new FooBar.Deeply.Nested.Module.Resource("resource", new ()
                 <code class="language-go" data-lang="go">
 import (
   "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-  "github.com/pulumi/pulumi-foo-bar/sdk/v3/go/foo-bar/deeply.nested.module"
+  "github.com/pulumi/pulumi-foo-bar/sdk/v3/go/foo-bar/deeply/nested/module"
 )
 
 resource, err := deeply.nested.module.NewResource("resource", &deeply.nested.module.ResourceArgs{

@@ -2,6 +2,7 @@ package docs
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -63,14 +64,21 @@ func resolveCSharpPropertyName(property string, overrides map[string]string) str
 func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 	pkgDef, err := r.PackageReference.Definition()
 	contract.Assertf(err == nil, "expected no error from getting package definition: %v", err)
-	csharpInfo, hasInfo := pkgDef.Language["csharp"].(dotnet.CSharpPackageInfo)
-	if !hasInfo {
-		csharpInfo = dotnet.CSharpPackageInfo{}
-	}
 	namespaces := make(map[string]map[string]string)
 	compatibilities := make(map[string]string)
-	packageNamespaces := csharpInfo.Namespaces
-	namespaces[pkgDef.Name] = packageNamespaces
+	csharpInfo, hasInfo := pkgDef.Language["csharp"].(dotnet.CSharpPackageInfo)
+	if !hasInfo {
+		if csharpInfoRaw, ok := pkgDef.Language["csharp"].(json.RawMessage); ok {
+			err = json.Unmarshal(csharpInfoRaw, &csharpInfo)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			csharpInfo = dotnet.CSharpPackageInfo{}
+		}
+	}
+
+	namespaces[pkgDef.Name] = csharpInfo.Namespaces
 	compatibilities[pkgDef.Name] = csharpInfo.Compatibility
 	argumentTypeName := func(objectType *schema.ObjectType) string {
 		token := objectType.Token
@@ -78,6 +86,12 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		suffix := "Args"
 		pkg, _, member := decomposeToken(token)
 		module := pkgDef.TokenToModule(token)
+		if strings.Contains(module, tokens.QNameDelimiter) && len(strings.Split(module, tokens.QNameDelimiter)) == 2 {
+			parts := strings.Split(module, tokens.QNameDelimiter)
+			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+				module = parts[0]
+			}
+		}
 		resolvedNamespaces := namespaces[pkg]
 		rootNamespace := csharpNamespaceName(resolvedNamespaces, pkg)
 		namespace := csharpNamespaceName(resolvedNamespaces, module)
@@ -99,7 +113,12 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 	resourceTypeName := func(resourceToken string) string {
 		// Compute the resource type from the Pulumi type token.
 		pkg, module, member := decomposeToken(resourceToken)
-
+		if strings.Contains(module, tokens.QNameDelimiter) && len(strings.Split(module, tokens.QNameDelimiter)) == 2 {
+			parts := strings.Split(module, tokens.QNameDelimiter)
+			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+				module = parts[0]
+			}
+		}
 		if csharpLanguageInfo, ok := pkgDef.Language["csharp"]; ok {
 			if resourceInfo, ok := csharpLanguageInfo.(dotnet.CSharpResourceInfo); ok {
 				member = resourceInfo.Name
@@ -211,7 +230,7 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 			cases := make([]string, 0)
 			for _, c := range valueType.Elements {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
-					cases = append(cases, fmt.Sprintf("%q", stringCase))
+					cases = append(cases, stringCase)
 				} else if intCase, ok := c.Value.(int); ok {
 					cases = append(cases, strconv.Itoa(intCase))
 				} else {
@@ -221,7 +240,7 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 				}
 			}
 
-			write(strings.Join(cases, "|"))
+			write(fmt.Sprintf("%q", strings.Join(cases, "|")))
 		case *schema.UnionType:
 			if isUnionOfObjects(valueType) {
 				possibleTypes := make([]string, len(valueType.ElementTypes))
@@ -242,6 +261,8 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 			writeValue(valueType.ElementType)
 		case *schema.OptionalType:
 			writeValue(valueType.ElementType)
+		case *schema.TokenType:
+			writeValue(valueType.UnderlyingType)
 		}
 	}
 

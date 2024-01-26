@@ -2,7 +2,9 @@ package docs
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strconv"
 	"strings"
 
@@ -44,11 +46,26 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 		token := objectType.Token
 		pkg, _, member := decomposeToken(token)
 		module := pkgDef.TokenToModule(token)
-
+		if strings.Contains(module, tokens.QNameDelimiter) && len(strings.Split(module, tokens.QNameDelimiter)) == 2 {
+			parts := strings.Split(module, tokens.QNameDelimiter)
+			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+				module = parts[0]
+			}
+		}
 		if lang, ok := pkgDef.Language["python"]; ok {
-			pkgInfo := lang.(python.PackageInfo)
-			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-				module = m
+			if pkgInfo, ok := lang.(python.PackageInfo); ok {
+				if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+					module = m
+				}
+			}
+
+			if pkgInfo, ok := lang.(json.RawMessage); ok {
+				var moduleNameOverrides map[string]string
+				if err := json.Unmarshal(pkgInfo, &moduleNameOverrides); err == nil {
+					if m, ok := moduleNameOverrides[module]; ok {
+						module = m
+					}
+				}
 			}
 		}
 
@@ -58,7 +75,12 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 	resourceTypeName := func(resourceToken string) string {
 		// Compute the resource type from the Pulumi type token.
 		pkg, module, member := decomposeToken(resourceToken)
-
+		if strings.Contains(module, tokens.QNameDelimiter) && len(strings.Split(module, tokens.QNameDelimiter)) == 2 {
+			parts := strings.Split(module, tokens.QNameDelimiter)
+			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+				module = parts[0]
+			}
+		}
 		if pythonLanguageInfo, ok := pkgDef.Language["python"]; ok {
 			if pythonInfo, ok := pythonLanguageInfo.(python.PackageInfo); ok {
 				if m, ok := pythonInfo.ModuleNameOverrides[module]; ok {
@@ -149,7 +171,7 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 			cases := make([]string, len(valueType.Elements))
 			for index, c := range valueType.Elements {
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
-					cases[index] = fmt.Sprintf("%q", stringCase)
+					cases[index] = stringCase
 				} else if intCase, ok := c.Value.(int); ok {
 					cases[index] = strconv.Itoa(intCase)
 				} else {
@@ -159,7 +181,7 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 				}
 			}
 
-			write(strings.Join(cases, "|"))
+			write(fmt.Sprintf("%q", strings.Join(cases, "|")))
 		case *schema.UnionType:
 			if isUnionOfObjects(valueType) {
 				possibleTypes := make([]string, len(valueType.ElementTypes))
@@ -180,6 +202,8 @@ func genCreationExampleSyntaxPython(r *schema.Resource) string {
 			writeValue(valueType.ElementType)
 		case *schema.OptionalType:
 			writeValue(valueType.ElementType)
+		case *schema.TokenType:
+			writeValue(valueType.UnderlyingType)
 		}
 	}
 

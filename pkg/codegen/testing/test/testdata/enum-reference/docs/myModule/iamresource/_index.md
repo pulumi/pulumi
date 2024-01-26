@@ -40,7 +40,7 @@ var iamResource = new Example.MyModule.IamResource("iamResource", new ()
         {
           "string"
         },
-        LogType = "LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ",
+        LogType = "LOG_TYPE_UNSPECIFIED|ADMIN_READ|DATA_WRITE|DATA_READ",
       }
     },
     Service = "string",
@@ -97,7 +97,7 @@ var iamResource = new IamResource("iamResource", IamResourceArgs.builder()
     .auditLogConfigs(List.of(
       AuditLogConfigArgs.builder()
         .exemptedMembers(List.of("string"))
-        .logType("LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ")
+        .logType("LOG_TYPE_UNSPECIFIED|ADMIN_READ|DATA_WRITE|DATA_READ")
         .build()
     ))
     .service("string")
@@ -125,7 +125,7 @@ iamResource = example.my_module.IamResource("iamResource",
         exempted_members=[
           "string",
         ],
-        log_type="LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ",
+        log_type="LOG_TYPE_UNSPECIFIED|ADMIN_READ|DATA_WRITE|DATA_READ",
       ),
     ],
     service="string",
@@ -150,7 +150,7 @@ const iamResource = new example.myModule.IamResource("iamResource", {
   config: {
     auditLogConfigs: [{
       exemptedMembers: ["string"],
-      logType: "LOG_TYPE_UNSPECIFIED"|"ADMIN_READ"|"DATA_WRITE"|"DATA_READ",
+      logType: "LOG_TYPE_UNSPECIFIED|ADMIN_READ|DATA_WRITE|DATA_READ",
     }],
     service: "string",
   },

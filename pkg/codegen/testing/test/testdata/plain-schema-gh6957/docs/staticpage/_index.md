@@ -142,7 +142,7 @@ resources:
     type: xyz:StaticPage
     properties:
       foo: 
-        a: True|False
+        a: true|false
       indexContent: "string"
 
                 </code>
