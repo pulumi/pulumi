@@ -500,7 +500,7 @@ func newUpCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			// by default, we are going to suppress the permalink when using self-managed backends
+			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
 			if suppressPermalink != "false" && filestateBackend {
 				opts.Display.SuppressPermalink = true

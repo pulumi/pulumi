@@ -1034,7 +1034,7 @@ func buildStackName(stackName string) (string, error) {
 }
 
 // we only want to log a secrets decryption for a Pulumi Cloud backend project
-// we will allow any secrets provider to be used (Pulumi Cloud or self managed)
+// we will allow any secrets provider to be used (Pulumi Cloud or passphrase/cloud/etc)
 // we will log the message and not worry about the response. The types
 // of messages we will log here will range from single secret decryption events
 // to requesting a list of secrets in an individual event e.g. stack export
