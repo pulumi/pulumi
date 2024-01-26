@@ -113,8 +113,8 @@ type stepExecutor struct {
 	sawError promise.CompletionSource[struct{}]
 
 	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
-	// can be finalized at the end of the deployment via FinalizeStackOutputs. We do this so we can determine
-	// whether or not the deployment succeeded. If there were errors, we keep the old stack outputs.
+	// can be finalized at the end of the deployment. We do this so we can determine whether or not the
+	// deployment succeeded. If there were errors, we keep the old stack outputs.
 	stackOutputsEvent RegisterResourceOutputsEvent
 }
 
@@ -296,14 +296,6 @@ func (se *stepExecutor) WaitForCompletion() {
 	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): waiting for worker threads to exit")
 	se.workers.Wait()
 	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): worker threads all exited")
-}
-
-// FinalizeStackOutputs executes the RegisterResourceOutputsEvent for the stack resource's outputs.
-func (se *stepExecutor) FinalizeStackOutputs(errored bool) error {
-	if e := se.stackOutputsEvent; e != nil {
-		return se.executeRegisterResourceOutputs(e, errored, true /* finalizingStackOutputs */)
-	}
-	return nil
 }
 
 //

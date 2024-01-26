@@ -270,9 +270,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	stepExecutorError := ex.stepExec.Errored()
 
 	// Finalize the stack outputs.
-	errored := stepExecutorError != nil || ex.stepGen.Errored()
-	if finalizeErr := ex.stepExec.FinalizeStackOutputs(errored); finalizeErr != nil {
-		return nil, result.BailError(finalizeErr)
+	if e := ex.stepExec.stackOutputsEvent; e != nil {
+		errored := stepExecutorError != nil || ex.stepGen.Errored()
+		finalizingStackOutputs := true
+		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
+			return nil, result.BailError(err)
+		}
 	}
 
 	logging.V(4).Infof("deploymentExecutor.Execute(...): step executor has completed")
