@@ -574,26 +574,34 @@ class EngineEvent(BaseEvent):
             sequence=data.get("sequence", 0),
             timestamp=data.get("timestamp", 0),
             cancel_event=CancelEvent() if "cancelEvent" in data else None,
-            stdout_event=StdoutEngineEvent.from_json(stdout_event)
-            if stdout_event
-            else None,
-            diagnostic_event=DiagnosticEvent.from_json(diagnostic_event)
-            if diagnostic_event
-            else None,
-            prelude_event=PreludeEvent.from_json(prelude_event)
-            if prelude_event
-            else None,
-            summary_event=SummaryEvent.from_json(summary_event)
-            if summary_event
-            else None,
-            resource_pre_event=ResourcePreEvent.from_json(resource_pre_event)
-            if resource_pre_event
-            else None,
-            res_outputs_event=ResOutputsEvent.from_json(res_outputs_event)
-            if res_outputs_event
-            else None,
-            res_op_failed_event=ResOpFailedEvent.from_json(res_op_failed_event)
-            if res_op_failed_event
-            else None,
+            stdout_event=(
+                StdoutEngineEvent.from_json(stdout_event) if stdout_event else None
+            ),
+            diagnostic_event=(
+                DiagnosticEvent.from_json(diagnostic_event)
+                if diagnostic_event
+                else None
+            ),
+            prelude_event=(
+                PreludeEvent.from_json(prelude_event) if prelude_event else None
+            ),
+            summary_event=(
+                SummaryEvent.from_json(summary_event) if summary_event else None
+            ),
+            resource_pre_event=(
+                ResourcePreEvent.from_json(resource_pre_event)
+                if resource_pre_event
+                else None
+            ),
+            res_outputs_event=(
+                ResOutputsEvent.from_json(res_outputs_event)
+                if res_outputs_event
+                else None
+            ),
+            res_op_failed_event=(
+                ResOpFailedEvent.from_json(res_op_failed_event)
+                if res_op_failed_event
+                else None
+            ),
             policy_event=PolicyEvent.from_json(policy_event) if policy_event else None,
         )

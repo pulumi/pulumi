@@ -743,16 +743,20 @@ class Stack:
                 environment=summary_json["environment"],
                 config=summary_json["config"],
                 result=summary_json["result"],
-                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
-                if "endTime" in summary_json
-                else None,
+                end_time=(
+                    datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
+                    if "endTime" in summary_json
+                    else None
+                ),
                 version=summary_json["version"] if "version" in summary_json else None,
-                deployment=summary_json["Deployment"]
-                if "Deployment" in summary_json
-                else None,
-                resource_changes=summary_json["resourceChanges"]
-                if "resourceChanges" in summary_json
-                else None,
+                deployment=(
+                    summary_json["Deployment"] if "Deployment" in summary_json else None
+                ),
+                resource_changes=(
+                    summary_json["resourceChanges"]
+                    if "resourceChanges" in summary_json
+                    else None
+                ),
             )
             summaries.append(summary)
         return summaries

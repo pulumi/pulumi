@@ -168,9 +168,11 @@ def invoke(
         deserialized = rpc.deserialize_properties(ret_obj)
         # If typ is not None, call translate_output_properties to instantiate any output types.
         return (
-            rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
-            if typ
-            else deserialized,
+            (
+                rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
+                if typ
+                else deserialized
+            ),
             None,
         )
 
@@ -246,9 +248,9 @@ def call(
                     urn = await dep.urn.future()
                     if urn is not None:
                         urns.add(urn)
-                property_dependencies[
-                    key
-                ] = provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
+                property_dependencies[key] = (
+                    provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
+                )
 
             req = provider_pb2.CallRequest(
                 tok=tok,
