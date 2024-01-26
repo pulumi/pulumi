@@ -3,9 +3,10 @@ package docs
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strconv"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -125,7 +126,7 @@ func genCreationExampleSyntaxTypescript(r *schema.Resource) string {
 	pkg, mod, name := decomposeToken(r.Token)
 	if strings.Contains(mod, tokens.QNameDelimiter) && len(strings.Split(mod, tokens.QNameDelimiter)) == 2 {
 		parts := strings.Split(mod, tokens.QNameDelimiter)
-		if strings.ToLower(parts[1]) == strings.ToLower(name) {
+		if strings.EqualFold(parts[1], name) {
 			mod = parts[0]
 		}
 	}

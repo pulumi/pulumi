@@ -21,11 +21,12 @@ package docs
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
@@ -1370,13 +1371,12 @@ func TestCreationExampleForLambdaFunction(t *testing.T) {
 	exampleJava := genCreationExampleSyntaxJava(lambdaFunction)
 	exampleYaml := genCreationExampleSyntaxYAML(lambdaFunction)
 
-	fullDocument :=
-		"### TypeScript\n\n" + "```typescript\n" + exampleTypescript + "```\n\n" +
-			"### Python\n\n" + "```python\n" + examplePython + "```\n\n" +
-			"### C#\n\n" + "```csharp\n" + exampleCSharp + "```\n\n" +
-			"### Go\n\n" + "```go\n" + exampleGo + "```\n\n" +
-			"### Java\n\n" + "```java\n" + exampleJava + "```\n\n" +
-			"### YAML\n\n" + "```yaml\n" + exampleYaml + "```\n\n"
+	fullDocument := "### TypeScript\n\n" + "```typescript\n" + exampleTypescript + "```\n\n" +
+		"### Python\n\n" + "```python\n" + examplePython + "```\n\n" +
+		"### C#\n\n" + "```csharp\n" + exampleCSharp + "```\n\n" +
+		"### Go\n\n" + "```go\n" + exampleGo + "```\n\n" +
+		"### Java\n\n" + "```java\n" + exampleJava + "```\n\n" +
+		"### YAML\n\n" + "```yaml\n" + exampleYaml + "```\n\n"
 
 	expectedFileContent, err := os.ReadFile(filepath.Join("example_creation_testdata", "aws-lambda-function.md"))
 	assert.NoError(t, err)
@@ -1396,13 +1396,12 @@ func TestCreationExampleForKubernetesAppsDeployment(t *testing.T) {
 	exampleJava := genCreationExampleSyntaxJava(deployment)
 	exampleYaml := genCreationExampleSyntaxYAML(deployment)
 
-	fullDocument :=
-		"### TypeScript\n\n" + "```typescript\n" + exampleTypescript + "```\n\n" +
-			"### Python\n\n" + "```python\n" + examplePython + "```\n\n" +
-			"### C#\n\n" + "```csharp\n" + exampleCSharp + "```\n\n" +
-			"### Go\n\n" + "```go\n" + exampleGo + "```\n\n" +
-			"### Java\n\n" + "```java\n" + exampleJava + "```\n\n" +
-			"### YAML\n\n" + "```yaml\n" + exampleYaml + "```\n\n"
+	fullDocument := "### TypeScript\n\n" + "```typescript\n" + exampleTypescript + "```\n\n" +
+		"### Python\n\n" + "```python\n" + examplePython + "```\n\n" +
+		"### C#\n\n" + "```csharp\n" + exampleCSharp + "```\n\n" +
+		"### Go\n\n" + "```go\n" + exampleGo + "```\n\n" +
+		"### Java\n\n" + "```java\n" + exampleJava + "```\n\n" +
+		"### YAML\n\n" + "```yaml\n" + exampleYaml + "```\n\n"
 
 	expectedFileContent, err := os.ReadFile(filepath.Join("example_creation_testdata", "k8s-deployment.md"))
 	assert.NoError(t, err)

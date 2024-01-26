@@ -3,8 +3,9 @@ package docs
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -103,7 +104,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 		pkg, mod, member := decomposeToken(token)
 		if strings.Contains(mod, tokens.QNameDelimiter) && len(strings.Split(mod, tokens.QNameDelimiter)) == 2 {
 			parts := strings.Split(mod, tokens.QNameDelimiter)
-			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+			if strings.EqualFold(parts[1], member) {
 				mod = parts[0]
 			}
 		}
@@ -269,7 +270,7 @@ func genCreationExampleSyntaxGo(r *schema.Resource) string {
 	pkg, mod, name := decomposeToken(r.Token)
 	if strings.Contains(mod, tokens.QNameDelimiter) && len(strings.Split(mod, tokens.QNameDelimiter)) == 2 {
 		parts := strings.Split(mod, tokens.QNameDelimiter)
-		if strings.ToLower(parts[1]) == strings.ToLower(name) {
+		if strings.EqualFold(parts[1], name) {
 			mod = parts[0]
 		}
 	}

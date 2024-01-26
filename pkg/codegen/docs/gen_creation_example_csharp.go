@@ -88,7 +88,7 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		module := pkgDef.TokenToModule(token)
 		if strings.Contains(module, tokens.QNameDelimiter) && len(strings.Split(module, tokens.QNameDelimiter)) == 2 {
 			parts := strings.Split(module, tokens.QNameDelimiter)
-			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+			if strings.EqualFold(parts[1], member) {
 				module = parts[0]
 			}
 		}
@@ -115,7 +115,7 @@ func genCreationExampleSyntaxCSharp(r *schema.Resource) string {
 		pkg, module, member := decomposeToken(resourceToken)
 		if strings.Contains(module, tokens.QNameDelimiter) && len(strings.Split(module, tokens.QNameDelimiter)) == 2 {
 			parts := strings.Split(module, tokens.QNameDelimiter)
-			if strings.ToLower(parts[1]) == strings.ToLower(member) {
+			if strings.EqualFold(parts[1], member) {
 				module = parts[0]
 			}
 		}
