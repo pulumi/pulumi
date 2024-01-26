@@ -75,6 +75,7 @@ describe("automation/cmd", () => {
             await PulumiCommand.install({ version: installedVersion });
             const requestedVersion = new semver.SemVer("3.98.0");
             assert.rejects(PulumiCommand.get({ version: requestedVersion }));
+            assert.doesNotReject(PulumiCommand.get({ version: installedVersion, skipVersionCheck: true }));
         });
     });
 
