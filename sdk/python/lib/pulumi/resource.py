@@ -856,9 +856,7 @@ class Resource:
             action = (
                 "get"
                 if opts.urn is not None
-                else "read"
-                if opts.id is not None
-                else "register"
+                else "read" if opts.id is not None else "register"
             )
             raise ValueError(
                 f"Attempted to {action} resource {t} with a provider for '{self._provider.package}'"

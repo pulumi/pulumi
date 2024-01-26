@@ -877,9 +877,9 @@ def register_resource(
 
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
-                property_dependencies[
-                    key
-                ] = resource_pb2.RegisterResourceRequest.PropertyDependencies(urns=deps)
+                property_dependencies[key] = (
+                    resource_pb2.RegisterResourceRequest.PropertyDependencies(urns=deps)
+                )
 
             ignore_changes = _translate_ignore_changes(res, typ, opts.ignore_changes)
             additional_secret_outputs = _translate_additional_secret_outputs(

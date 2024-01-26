@@ -425,17 +425,21 @@ class LocalWorkspace(Workspace):
             stack = StackSummary(
                 name=stack_json["name"],
                 current=stack_json["current"],
-                update_in_progress=stack_json["updateInProgress"]
-                if "updateInProgress" in stack_json
-                else None,
-                last_update=datetime.strptime(
-                    stack_json["lastUpdate"], _DATETIME_FORMAT
-                )
-                if "lastUpdate" in stack_json
-                else None,
-                resource_count=stack_json["resourceCount"]
-                if "resourceCount" in stack_json
-                else None,
+                update_in_progress=(
+                    stack_json["updateInProgress"]
+                    if "updateInProgress" in stack_json
+                    else None
+                ),
+                last_update=(
+                    datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT)
+                    if "lastUpdate" in stack_json
+                    else None
+                ),
+                resource_count=(
+                    stack_json["resourceCount"]
+                    if "resourceCount" in stack_json
+                    else None
+                ),
                 url=stack_json["url"] if "url" in stack_json else None,
             )
             stack_list.append(stack)
@@ -475,11 +479,11 @@ class LocalWorkspace(Workspace):
                 last_used_time=datetime.strptime(
                     plugin_json["lastUsedTime"], _DATETIME_FORMAT
                 ),
-                install_time=datetime.strptime(
-                    plugin_json["installTime"], _DATETIME_FORMAT
-                )
-                if "installTime" in plugin_json
-                else None,
+                install_time=(
+                    datetime.strptime(plugin_json["installTime"], _DATETIME_FORMAT)
+                    if "installTime" in plugin_json
+                    else None
+                ),
                 version=plugin_json["version"] if "version" in plugin_json else None,
             )
             plugin_list.append(plugin)

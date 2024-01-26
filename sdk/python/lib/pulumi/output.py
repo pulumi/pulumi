@@ -300,9 +300,7 @@ class Output(Generic[T_co]):
                 # this. If we get an empty list we can't splat it as that results in a type error, so check
                 # that we have some values before splatting. If it's empty just call the `typ` constructor
                 # directly with no arguments.
-                lambda d: typ(**d)
-                if d
-                else typ()
+                lambda d: typ(**d) if d else typ()
             )
             return cast(Output[T_co], o_typ)
 
@@ -421,8 +419,7 @@ class Output(Generic[T_co]):
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[T]) -> "Output[Dict[str, T]]":
-        ...
+    def all(**kwargs: Input[T]) -> "Output[Dict[str, T]]": ...
 
     @staticmethod
     def all(*args: Input[T], **kwargs: Input[T]):
