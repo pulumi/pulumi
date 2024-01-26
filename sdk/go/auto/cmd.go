@@ -53,9 +53,9 @@ type PulumiCommandOptions struct {
 	// Root sets the directory where the CLI should be installed to, or from
 	// where the CLI should be retrieved.
 	Root string
-	// skipVersionCheck is used to disable the validation of the found Pulumi
+	// SkipVersionCheck is used to disable the validation of the found Pulumi
 	// binary.
-	skipVersionCheck bool
+	SkipVersionCheck bool
 }
 
 // withDefaults returns a new copy of the options with default values set.
@@ -65,7 +65,7 @@ func (opts *PulumiCommandOptions) withDefaults() (*PulumiCommandOptions, error) 
 	newOpts := &PulumiCommandOptions{
 		Version:          opts.Version,
 		Root:             opts.Root,
-		skipVersionCheck: opts.skipVersionCheck,
+		SkipVersionCheck: opts.SkipVersionCheck,
 	}
 	if newOpts.Version.EQ(semver.Version{}) {
 		newOpts.Version = sdk.Version
@@ -87,10 +87,15 @@ type pulumiCommand struct {
 	command string
 }
 
-// NewPulumiCommand creates a new PulumiCommand instance that uses a local CLI
-// installation. PulumiCommandOptions can be used to configure things like the
-// the installation root or to validate that the version meets a minimum
-// requirement. By default the pulumi binary found in $PATH is used.
+// NewPulumiCommand creates a Pulumi instance that uses the installation in
+// `opts.Root`.  Defaults to using the Pulumi binary found in $PATH if no
+// installation root is specified.  If `opts.Version` is specified, it
+// validates that the CLI is compatible with the requested version and throws
+// an error if not. This validation can be skipped by setting the environment
+// variable `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK` or setting
+// `opts.SkipVersionCheck` to `true`. Note that the environment variable
+// always takes precedence. If it is set it is not possible to re-enable the
+// validation with `opts.SkipVersionCheck`.
 func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 	if opts == nil {
 		opts = &PulumiCommandOptions{}
@@ -110,7 +115,8 @@ func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 	if opts.Version.GT(min) {
 		min = opts.Version
 	}
-	version, err := parseAndValidatePulumiVersion(min, currentVersion, opts.skipVersionCheck)
+	skipVersionCheck := opts.SkipVersionCheck || env.SkipVersionCheck.Value()
+	version, err := parseAndValidatePulumiVersion(min, currentVersion, skipVersionCheck)
 	if err != nil {
 		return pulumiCommand{}, err
 	}
@@ -123,9 +129,8 @@ func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 
 // InstallPulumiCommand downloads and installs the Pulumi CLI. By default the
 // CLI version matching the current SDK release is installed in
-// $HOME/.pulumi/versions/$VERSION. Use the option `PulumiCommandRoot` to
-// specify a different directory, and `PulumiCommandVersion` to install a
-// custom version.
+// $HOME/.pulumi/versions/$VERSION. Set `opts.Root` to specify a different
+// directory, and `opts.Version` to install a custom version.
 func InstallPulumiCommand(ctx context.Context, opts *PulumiCommandOptions) (
 	PulumiCommand,
 	error,

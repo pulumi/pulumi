@@ -97,9 +97,15 @@ func TestErrorIncompatibleVersion(t *testing.T) {
 	require.NoError(t, err)
 	requestedVersion := semver.Version{Major: 3, Minor: 101, Patch: 0}
 
+	// Try getting an incompatible version
 	_, err = NewPulumiCommand(&PulumiCommandOptions{Root: dir, Version: requestedVersion})
 
 	require.ErrorContains(t, err, "version requirement failed")
+
+	// Succeeds when disabling version check
+	_, err = NewPulumiCommand(&PulumiCommandOptions{Root: dir, Version: requestedVersion, SkipVersionCheck: true})
+
+	require.NoError(t, err)
 }
 
 func TestFixupPath(t *testing.T) {
