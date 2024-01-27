@@ -53,6 +53,7 @@ from . import log
 from .automation._server import LanguageServer
 from .runtime.settings import _GRPC_CHANNEL_OPTIONS
 from .runtime.proto import language_pb2_grpc
+from .runtime.settings import SETTINGS
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -68,7 +69,7 @@ def run(f: Callable[[], Optional[Awaitable[None]]]) -> None:
     loop = asyncio.get_event_loop()
 
     # Check if we have a monitor attached, start a language serveer and tell the user to connect to it.
-    if not os.environ.get("PULUMI_MONITOR"):
+    if not SETTINGS.monitor:
         server = grpc.server(
             futures.ThreadPoolExecutor(
                 max_workers=4
