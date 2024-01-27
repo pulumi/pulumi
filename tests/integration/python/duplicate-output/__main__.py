@@ -2,7 +2,10 @@
 
 import pulumi
 
-a = pulumi.Output.from_input([1, 2])
+def main():
+    a = pulumi.Output.from_input([1, 2])
 
-pulumi.export("export1", a)
-pulumi.export("export2", a)
+    pulumi.export("export1", a)
+    pulumi.export("export2", a)
+
+pulumi.run(main)

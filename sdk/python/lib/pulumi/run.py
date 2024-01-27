@@ -16,6 +16,7 @@ import asyncio
 import copy
 import os
 import warnings
+import subprocess
 from typing import (
     Awaitable,
     Optional,
@@ -47,21 +48,47 @@ from .runtime.settings import get_root_resource
 from .output import _is_prompt, _map_input, _map2_input, T, Output
 from . import urn as urn_util
 from . import log
+from .automation._server import LanguageServer
+import grpc
+from concurrent import futures
+from .runtime.settings import _GRPC_CHANNEL_OPTIONS
+from .runtime.proto import language_pb2_grpc
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
     from .runtime.stack import Stack
 
-def run(f : Awaitable[None]) -> None:
+
+def run(f: Callable[[], Optional[Awaitable[None]]]) -> None:
     """
     Runs a Pulumi program.
 
     :param f: an async function that runs a Pulumi program.
     """
-
-    # Check if we have a monitor attached, if not fail fast.
-    if not os.environ.get("PULUMI_MONITOR"):
-        raise Exception("Pulumi engine not attached; ensure you're running your Pulumi program via the `pulumi` CLI")
-
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(f)
+
+    # Check if we have a monitor attached, start a language serveer and tell the user to connect to it.
+    if not os.environ.get("PULUMI_MONITOR"):
+        server = grpc.server(
+            futures.ThreadPoolExecutor(
+                max_workers=4
+            ),  # pylint: disable=consider-using-with
+            options=_GRPC_CHANNEL_OPTIONS,
+        )
+        language_server = LanguageServer(f)
+        language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
+
+        port = server.add_insecure_port(address="127.0.0.1:0")
+        server.start()
+
+        cmd = os.environ.get("PULUMI_DEBUG_COMMAMD")
+        arg = f"--client=127.0.0.1:{port}"
+        if not cmd:
+            print(f"Connect via `pulumi {arg}`")
+            input("Press Enter to exit...")
+        else:
+            subprocess.run(cmd.split(" ") + [arg])
+    else:
+        awaitable = f()
+        if awaitable is not None:
+            loop.run_until_complete(awaitable)
