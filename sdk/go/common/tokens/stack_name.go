@@ -36,7 +36,7 @@ func (sn StackName) IsEmpty() bool {
 
 // String implements fmt.Stringer. This method panics if StackName was zero initialized.
 func (sn StackName) String() string {
-	if env.DisableValidation.Value() {
+	if !env.DisableValidation.Value() {
 		contract.Assertf(sn.str != "", "stack name must not be empty")
 	}
 	return sn.str
