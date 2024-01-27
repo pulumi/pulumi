@@ -44,7 +44,7 @@ def _get_running_tasks() -> List[asyncio.Task]:
     return pending
 
 
-async def run_pulumi_func(func: Callable):
+async def run_pulumi_func(func: Callable[[], None]):
     try:
         func()
     finally:
@@ -134,7 +134,11 @@ async def run_in_stack(func: Callable[[], Optional[Awaitable[None]]]):
     will end up as output properties on the resulting stack component in the checkpoint file.  This
     is meant for internal runtime use only and is used by the Python SDK entrypoint program.
     """
-    await run_pulumi_func(lambda: Stack(func))
+
+    def run() -> None:
+        Stack(func)
+
+    await run_pulumi_func(run)
 
 
 class Stack(ComponentResource):
@@ -161,7 +165,10 @@ class Stack(ComponentResource):
         set_root_resource(self)
         try:
             awaitable = func()
-            if awaitable is not None:
+            # This _should_ be an awaitable but old pulumi executors returned modules here, so we need to handle that
+            # with a type check rather than just `is not None`.
+            if isawaitable(awaitable):
+                print(awaitable)
                 _sync_await(awaitable)
         finally:
             self.register_outputs(massage(self.outputs, []))

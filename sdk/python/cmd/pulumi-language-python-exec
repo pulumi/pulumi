@@ -162,7 +162,7 @@ if __name__ == "__main__":
         user_program_abspath = os.path.abspath(args.PROGRAM)
         def run():
             try:
-                return runpy.run_path(args.PROGRAM, run_name='__main__')
+                runpy.run_path(args.PROGRAM, run_name='__main__')
             except ImportError as e:
                 def fix_module_file(m: str) -> str:
                     # Work around python 11 reporting "<frozen runpy>" rather
