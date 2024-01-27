@@ -530,7 +530,10 @@ func (proj *Project) TrustResourceDependencies() bool {
 func (proj *Project) Save(path string) error {
 	contract.Requiref(path != "", "path", "must not be empty")
 	contract.Requiref(proj != nil, "proj", "must not be nil")
-	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
+
+	err := proj.Validate()
+	contract.Requiref(err == nil, "proj", fmt.Sprintf("Validate(): %v", err))
+
 	return save(path, proj, false /*mkDirAll*/)
 }
 
