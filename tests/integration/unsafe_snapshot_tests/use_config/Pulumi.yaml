@@ -1,0 +1,4 @@
+name: use_config
+runtime: nodejs
+config:
+  pulumi:disable-checkpoints: true

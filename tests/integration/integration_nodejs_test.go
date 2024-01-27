@@ -1408,30 +1408,57 @@ func TestTSConfigOption(t *testing.T) {
 	e.RunCommand("pulumi", "preview")
 }
 
-// This tests that despite an exception, that the snapshot is still written.
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
+// These tests that despite an exception, that the snapshot is still written.
 func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Env: []string{
-			"PULUMI_EXPERIMENTAL=1",
-			"PULUMI_SKIP_CHECKPOINTS=1",
-		},
-		Quick: true,
-		// The program throws an exception and 1 resource fails to be created.
-		ExpectFailure: true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			// Ensure the checkpoint contains the 1003 other resources that were created
-			// - stack
-			// - provider
-			// - `base` resource
-			// - 1000 resources(via a for loop)
-			// - NOT a resource that failed to be created dependent on the `base` resource output
-			assert.NotNil(t, stackInfo.Deployment)
-			assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
-		},
+	t.Parallel()
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("Uses SKIP_CHECKPOINTS environment variable", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
+			Dependencies: []string{"@pulumi/pulumi"},
+			Env: []string{
+				"PULUMI_EXPERIMENTAL=1",
+				"PULUMI_SKIP_CHECKPOINTS=1",
+			},
+			Quick: true,
+			// The program throws an exception and 1 resource fails to be created.
+			ExpectFailure: true,
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Ensure the checkpoint contains the 1003 other resources that were created
+				// - stack
+				// - provider
+				// - `base` resource
+				// - 1000 resources(via a for loop)
+				// - NOT a resource that failed to be created dependent on the `base` resource output
+				assert.NotNil(t, stackInfo.Deployment)
+				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+			},
+		})
+	})
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("Uses pulumi:disable-checkpoints config value", func(t *testing.T) {
+		// The Pulumi.yaml file in unsafe_snapshot_tests/use_config has
+		// config:
+		//   pulumi:disable-checkpoints: true
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir:          filepath.Join("unsafe_snapshot_tests", "use_config"),
+			Dependencies: []string{"@pulumi/pulumi"},
+			Quick:        true,
+			// The program throws an exception and 1 resource fails to be created.
+			ExpectFailure: true,
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Ensure the checkpoint contains the 1003 other resources that were created
+				// - stack
+				// - provider
+				// - `base` resource
+				// - 1000 resources(via a for loop)
+				// - NOT a resource that failed to be created dependent on the `base` resource output
+				assert.NotNil(t, stackInfo.Deployment)
+				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+			},
+		})
 	})
 }
 
