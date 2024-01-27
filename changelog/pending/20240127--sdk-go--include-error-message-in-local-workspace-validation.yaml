@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: sdk/go
-  description: include error message in local workspace validation
+  description: Include error message in local workspace validation.
