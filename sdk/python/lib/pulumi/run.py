@@ -12,53 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import copy
 import os
-import warnings
 import subprocess
 from typing import (
     Awaitable,
     Optional,
-    List,
-    Any,
-    Mapping,
-    Sequence,
-    Union,
-    Set,
     Callable,
-    Tuple,
-    TYPE_CHECKING,
-    cast,
 )
 from concurrent import futures
 import grpc
-from . import _types
-from .metadata import get_project, get_stack
-from .runtime import known_types
-from .runtime.resource import (
-    _pkg_from_type,
-    get_resource,
-    register_resource,
-    register_resource_outputs,
-    read_resource,
-    collapse_alias_to_urn,
-    create_urn as create_urn_internal,
-    convert_providers,
-)
-from .runtime.settings import get_root_resource
-from .output import _is_prompt, _map_input, _map2_input, T, Output
-from . import urn as urn_util
-from . import log
 from .automation._server import LanguageServer
 from .runtime.settings import _GRPC_CHANNEL_OPTIONS
 from .runtime.proto import language_pb2_grpc
 from .runtime.settings import SETTINGS
 from .runtime.sync_await import _sync_await
-
-if TYPE_CHECKING:
-    from .output import Input, Inputs
-    from .runtime.stack import Stack
 
 
 def run(f: Callable[[], Optional[Awaitable[None]]]) -> None:
@@ -67,8 +34,6 @@ def run(f: Callable[[], Optional[Awaitable[None]]]) -> None:
 
     :param f: an async function that runs a Pulumi program.
     """
-    loop = asyncio.get_event_loop()
-
     # Check if we have a monitor attached, start a language server and tell the user to connect to it.
     if not SETTINGS.monitor:
         server = grpc.server(
