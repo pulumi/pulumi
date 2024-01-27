@@ -31,6 +31,8 @@ from typing import (
     TYPE_CHECKING,
     cast,
 )
+from concurrent import futures
+import grpc
 from . import _types
 from .metadata import get_project, get_stack
 from .runtime import known_types
@@ -49,8 +51,6 @@ from .output import _is_prompt, _map_input, _map2_input, T, Output
 from . import urn as urn_util
 from . import log
 from .automation._server import LanguageServer
-import grpc
-from concurrent import futures
 from .runtime.settings import _GRPC_CHANNEL_OPTIONS
 from .runtime.proto import language_pb2_grpc
 
@@ -87,7 +87,9 @@ def run(f: Callable[[], Optional[Awaitable[None]]]) -> None:
             print(f"Connect via `pulumi {arg}`")
             input("Press Enter to exit...")
         else:
-            subprocess.run(cmd.split(" ") + [arg])
+            check = subprocess.run(cmd.split(" ") + [arg], check=False)
+            if check.returncode != 0:
+                print(f"{cmd} {arg}: {check.returncode}")
     else:
         awaitable = f()
         if awaitable is not None:
