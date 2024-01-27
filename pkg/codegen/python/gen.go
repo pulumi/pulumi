@@ -3210,6 +3210,7 @@ func calculateDeps(requires map[string]string) ([][2]string, error) {
 	deps := []string{
 		"semver>=2.8.1",
 		"parver>=0.2.1",
+		"importlib-metadata>=6.0.0,<7.0.0; python_version < \"3.8\"",
 	}
 	for dep := range requires {
 		deps = append(deps, dep)

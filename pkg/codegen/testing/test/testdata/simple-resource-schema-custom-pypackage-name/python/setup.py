@@ -30,6 +30,7 @@ setup(name='custom_py_package',
           ]
       },
       install_requires=[
+          'importlib-metadata>=6.0.0,<7.0.0; python_version < "3.8"',
           'parver>=0.2.1',
           'pulumi',
           'semver>=2.8.1'

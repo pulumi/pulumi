@@ -30,6 +30,7 @@ setup(name='pulumi_foo',
           ]
       },
       install_requires=[
+          'importlib-metadata>=6.0.0,<7.0.0; python_version < "3.8"',
           'parver>=0.2.1',
           'pulumi>=3.0.0,<4.0.0',
           'pulumi-kubernetes>=3.0.0,<4.0.0',
