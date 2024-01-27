@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -38,6 +39,9 @@ func TestInstallDefaultRoot(t *testing.T) {
 	homeDir, err := os.UserHomeDir()
 	require.NoError(t, err)
 	pulumiBin := filepath.Join(homeDir, ".pulumi", "versions", requestedVersion.String(), "bin", "pulumi")
+	if runtime.GOOS == "windows" {
+		pulumiBin += ".exe"
+	}
 	_, err = os.Stat(pulumiBin)
 	require.NoError(t, err, "did not find pulumi binary in the expected path")
 	cmd := exec.Command(pulumiBin, "version")
@@ -73,6 +77,9 @@ func TestInstallTwice(t *testing.T) {
 
 	require.NoError(t, err)
 	pulumiPath := filepath.Join(dir, "bin", "pulumi")
+	if runtime.GOOS == "windows" {
+		pulumiPath += ".exe"
+	}
 	stat, err := os.Stat(pulumiPath)
 	require.NoError(t, err, "did not find pulumi binary in the expected path")
 	modTime1 := stat.ModTime()

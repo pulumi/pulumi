@@ -103,6 +103,9 @@ func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 	command := "pulumi"
 	if opts.Root != "" {
 		command = filepath.Join(opts.Root, "bin", "pulumi")
+		if runtime.GOOS == "windows" {
+			command += ".exe"
+		}
 	}
 
 	cmd := exec.Command(command, "version")
