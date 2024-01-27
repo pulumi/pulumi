@@ -1,0 +1,4 @@
+changes:
+  - type: feat
+    scope: auto
+    description: Add --lease-acquire-timeout flag to Pulumi commands which acquire a lock

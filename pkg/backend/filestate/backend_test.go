@@ -269,7 +269,7 @@ func TestCancel(t *testing.T) {
 	assert.NotNil(t, lb)
 
 	// Lock the stack and check CancelCurrentUpdate deletes the lock file
-	err = lb.Lock(ctx, aStackRef)
+	err = lb.Lock(ctx, aStackRef, 0)
 	assert.NoError(t, err)
 	// check the lock file exists
 	lockExists, err := lb.bucket.Exists(ctx, lb.lockPath(aStackRef))
@@ -291,14 +291,14 @@ func TestCancel(t *testing.T) {
 	assert.NotNil(t, lb)
 
 	// Lock the stack with this new backend, then check that checkForLocks on the first backend now errors
-	err = otherBackend.Lock(ctx, aStackRef)
+	err = otherBackend.Lock(ctx, aStackRef, 0)
 	assert.NoError(t, err)
-	err = lb.checkForLock(ctx, aStackRef)
+	err = lb.checkForLock(ctx, aStackRef, 0)
 	assert.Error(t, err)
 	// Now call CancelCurrentUpdate and check that checkForLocks no longer errors
 	err = lb.CancelCurrentUpdate(ctx, aStackRef)
 	assert.NoError(t, err)
-	err = lb.checkForLock(ctx, aStackRef)
+	err = lb.checkForLock(ctx, aStackRef, 0)
 	assert.NoError(t, err)
 }
 

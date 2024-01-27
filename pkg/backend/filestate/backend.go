@@ -680,7 +680,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 
-	err = b.Lock(ctx, stackRef)
+	err = b.Lock(ctx, stackRef, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -762,7 +762,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 		return false, err
 	}
 
-	err = b.Lock(ctx, localStackRef)
+	err = b.Lock(ctx, localStackRef, 0)
 	if err != nil {
 		return false, err
 	}
@@ -806,7 +806,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendReference,
 	newRef *localBackendReference,
 ) error {
-	err := b.Lock(ctx, oldRef)
+	err := b.Lock(ctx, oldRef, 0)
 	if err != nil {
 		return err
 	}
@@ -898,7 +898,7 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref(), op.Opts.LeaseAcquireTimeout)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -910,7 +910,7 @@ func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, result.Result) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref(), op.Opts.LeaseAcquireTimeout)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -923,7 +923,7 @@ func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref(), op.Opts.LeaseAcquireTimeout)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -935,7 +935,7 @@ func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
-	err := b.Lock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref(), op.Opts.LeaseAcquireTimeout)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -1231,7 +1231,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 		return err
 	}
 
-	err = b.Lock(ctx, localStackRef)
+	err = b.Lock(ctx, localStackRef, 0)
 	if err != nil {
 		return err
 	}
