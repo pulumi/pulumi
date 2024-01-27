@@ -68,7 +68,7 @@ def run(f: Callable[[], Optional[Awaitable[None]]]) -> None:
     """
     loop = asyncio.get_event_loop()
 
-    # Check if we have a monitor attached, start a language serveer and tell the user to connect to it.
+    # Check if we have a monitor attached, start a language server and tell the user to connect to it.
     if not SETTINGS.monitor:
         server = grpc.server(
             futures.ThreadPoolExecutor(
