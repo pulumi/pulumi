@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/filestate
+  description: Adds support for specifying bucket encryption headers when using the S3 backend
