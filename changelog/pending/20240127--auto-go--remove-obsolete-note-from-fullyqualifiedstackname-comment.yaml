@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: auto/go
+  description: Remove obsolete note from FullyQualifiedStackName comment.
