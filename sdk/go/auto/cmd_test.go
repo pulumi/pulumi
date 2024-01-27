@@ -18,7 +18,8 @@ import (
 	"context"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -37,7 +38,10 @@ func TestInstallDefaultRoot(t *testing.T) {
 	require.NoError(t, err)
 	homeDir, err := os.UserHomeDir()
 	require.NoError(t, err)
-	pulumiBin := path.Join(homeDir, ".pulumi", "versions", requestedVersion.String(), "bin", "pulumi")
+	pulumiBin := filepath.Join(homeDir, ".pulumi", "versions", requestedVersion.String(), "bin", "pulumi")
+	if runtime.GOOS == "windows" {
+		pulumiBin += ".exe"
+	}
 	_, err = os.Stat(pulumiBin)
 	require.NoError(t, err, "did not find pulumi binary in the expected path")
 	cmd := exec.Command(pulumiBin, "version")
@@ -56,7 +60,7 @@ func TestOptionDefaults(t *testing.T) {
 	require.NoError(t, err)
 	homeDir, err := os.UserHomeDir()
 	require.NoError(t, err)
-	root := path.Join(homeDir, ".pulumi", "versions", sdk.Version.String())
+	root := filepath.Join(homeDir, ".pulumi", "versions", sdk.Version.String())
 	require.Equal(t, root, opts.Root)
 	require.Equal(t, sdk.Version, opts.Version)
 }
@@ -72,7 +76,10 @@ func TestInstallTwice(t *testing.T) {
 	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
 
 	require.NoError(t, err)
-	pulumiPath := path.Join(dir, "bin", "pulumi")
+	pulumiPath := filepath.Join(dir, "bin", "pulumi")
+	if runtime.GOOS == "windows" {
+		pulumiPath += ".exe"
+	}
 	stat, err := os.Stat(pulumiPath)
 	require.NoError(t, err, "did not find pulumi binary in the expected path")
 	modTime1 := stat.ModTime()
