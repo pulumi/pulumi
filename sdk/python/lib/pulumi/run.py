@@ -54,6 +54,7 @@ from .automation._server import LanguageServer
 from .runtime.settings import _GRPC_CHANNEL_OPTIONS
 from .runtime.proto import language_pb2_grpc
 from .runtime.settings import SETTINGS
+from .runtime.sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -94,4 +95,5 @@ def run(f: Callable[[], Optional[Awaitable[None]]]) -> None:
     else:
         awaitable = f()
         if awaitable is not None:
-            loop.run_until_complete(awaitable)
+            # If we're in this case the event loop is already running, so we can just sync await
+            _sync_await(awaitable)
