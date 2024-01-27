@@ -16,6 +16,7 @@ import json
 import os
 import unittest
 from typing import List, Optional
+import asyncio
 
 import pytest
 
@@ -600,6 +601,48 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+
+    def test_stack_lifecycle_async_inline_program(self):
+        project_name = "async_inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(stack_name, program=async_pulumi_program, project_name=project_name)
+
+        stack_config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True)
+        }
+
+        try:
+            stack.set_all_config(stack_config)
+
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            preview_result = stack.preview()
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
+
+            # pulumi refresh
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
     def test_supports_stack_outputs(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
@@ -919,6 +962,14 @@ class TestLocalWorkspace(unittest.TestCase):
 
 
 def pulumi_program():
+    config = Config()
+    export("exp_static", "foo")
+    export("exp_cfg", config.get("bar"))
+    export("exp_secret", config.get_secret("buzz"))
+
+
+async def async_pulumi_program():
+    await asyncio.sleep(1)
     config = Config()
     export("exp_static", "foo")
     export("exp_cfg", config.get("bar"))
