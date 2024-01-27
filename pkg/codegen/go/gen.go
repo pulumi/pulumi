@@ -1550,7 +1550,7 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementArgsType, el
 
 func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *schema.EnumType, elementGoType string) {
 	pkg.genEnumInputInterface(w, name, enumType)
-
+	goPkgInfo := goPackageInfo(pkg.pkg)
 	typeName := cgstrings.Camel(name)
 	fmt.Fprintf(w, "var %sPtrType = reflect.TypeOf((**%s)(nil)).Elem()\n", typeName, name)
 	fmt.Fprintln(w)
@@ -1585,12 +1585,14 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	// ToOutput implementation for pulumix.Input.
-	fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
-	fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
-	fmt.Fprintf(w, "\t\tOutputState: in.To%sPtrOutputWithContext(ctx).OutputState,\n", name)
-	fmt.Fprintf(w, "\t}\n")
-	fmt.Fprintf(w, "}\n\n")
+	if goPkgInfo.Generics != GenericsSettingNone {
+		// ToOutput implementation for pulumix.Input.
+		fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
+		fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
+		fmt.Fprintf(w, "\t\tOutputState: in.To%sPtrOutputWithContext(ctx).OutputState,\n", name)
+		fmt.Fprintf(w, "\t}\n")
+		fmt.Fprintf(w, "}\n\n")
+	}
 }
 
 func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementArgsType, inputType, asFuncName string) {
@@ -2725,6 +2727,9 @@ func goPackageInfo(packageReference schema.PackageReference) GoPackageInfo {
 	contract.AssertNoErrorf(def.ImportLanguages(map[string]schema.Language{"go": Importer}),
 		"Could not import languages")
 	if info, ok := def.Language["go"].(GoPackageInfo); ok {
+		if info.Generics == "" {
+			info.Generics = GenericsSettingNone
+		}
 		return info
 	}
 	return GoPackageInfo{}
@@ -4706,7 +4711,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
+				if goPkgInfo.Generics != GenericsSettingNone {
+					imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
+				}
 			}
 
 			buffer := &bytes.Buffer{}

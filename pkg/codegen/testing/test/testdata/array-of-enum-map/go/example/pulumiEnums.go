@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type AnnotationStoreSchemaValueType string
@@ -182,12 +181,6 @@ func (in *annotationStoreSchemaValueTypePtr) ToAnnotationStoreSchemaValueTypePtr
 
 func (in *annotationStoreSchemaValueTypePtr) ToAnnotationStoreSchemaValueTypePtrOutputWithContext(ctx context.Context) AnnotationStoreSchemaValueTypePtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(AnnotationStoreSchemaValueTypePtrOutput)
-}
-
-func (in *annotationStoreSchemaValueTypePtr) ToOutput(ctx context.Context) pulumix.Output[*AnnotationStoreSchemaValueType] {
-	return pulumix.Output[*AnnotationStoreSchemaValueType]{
-		OutputState: in.ToAnnotationStoreSchemaValueTypePtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 // AnnotationStoreSchemaValueTypeMapInput is an input type that accepts AnnotationStoreSchemaValueTypeMap and AnnotationStoreSchemaValueTypeMapOutput values.
