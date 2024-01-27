@@ -532,7 +532,7 @@ func (proj *Project) Save(path string) error {
 	contract.Requiref(proj != nil, "proj", "must not be nil")
 
 	err := proj.Validate()
-	contract.Requiref(err == nil, "proj", fmt.Sprintf("Validate(): %v", err))
+	contract.Requiref(err == nil, "proj", "Validate(): %v", err)
 
 	return save(path, proj, false /*mkDirAll*/)
 }
