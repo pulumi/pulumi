@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -244,7 +245,7 @@ func TestNestedSecret(t *testing.T) {
 func TestRestoreElidedAssetContents(t *testing.T) {
 	t.Parallel()
 	textAsset := func(text string) resource.PropertyValue {
-		asset, err := resource.NewTextAsset(text)
+		asset, err := asset.FromText(text)
 		require.NoError(t, err)
 		return resource.NewAssetProperty(asset)
 	}

@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, List, Mapping, Optional
 
+from ._cmd import PulumiCommand
 from ._config import ConfigMap, ConfigValue
 from ._output import OutputMap
 from ._project_settings import ProjectSettings
@@ -149,6 +150,11 @@ class Workspace(ABC):
     pulumi_version: str
     """
     The version of the underlying Pulumi CLI/Engine.
+    """
+
+    pulumi_command: PulumiCommand
+    """
+    The underlying PulumiCommand instance that is used to execute CLI commands.
     """
 
     @abstractmethod

@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -1574,7 +1576,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetArgs
 		{
 			name:  "AssetArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
@@ -1584,7 +1586,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetInputArgs
 		{
 			name:  "AssetInputArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
@@ -1594,7 +1596,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// ArchiveArgs
 		{
 			name:  "ArchiveArgs no deps",
-			input: resource.NewArchiveProperty(&resource.Archive{Path: "path"}),
+			input: resource.NewArchiveProperty(&rarchive.Archive{Path: "path"}),
 			args:  &ArchiveArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewFileArchive("path"), actual)
@@ -1604,7 +1606,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// ArchiveInputArgs
 		{
 			name:  "ArchiveInputArgs no deps",
-			input: resource.NewArchiveProperty(&resource.Archive{Path: "path"}),
+			input: resource.NewArchiveProperty(&rarchive.Archive{Path: "path"}),
 			args:  &ArchiveInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewFileArchive("path"), actual)
@@ -1614,7 +1616,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetOrArchiveArgs
 		{
 			name:  "AssetOrArchiveArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
@@ -1624,7 +1626,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetOrArchiveInputArgs
 		{
 			name:  "AssetOrArchiveInputArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)

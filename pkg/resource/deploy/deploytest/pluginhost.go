@@ -382,9 +382,7 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
-) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -500,7 +498,8 @@ func (host *pluginHost) ResolvePlugin(
 	return match, nil
 }
 
-func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
+func (host *pluginHost) GetRequiredPlugins(
+	info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PluginSpec, error) {
 	return host.languageRuntime.GetRequiredPlugins(info)

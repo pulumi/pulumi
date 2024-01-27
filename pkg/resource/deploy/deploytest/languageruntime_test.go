@@ -45,7 +45,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("GetRequiredPlugins", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			_, err := p.GetRequiredPlugins(plugin.ProgInfo{})
+			_, err := p.GetRequiredPlugins(plugin.ProgramInfo{})
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 		t.Run("GetPluginInfo", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			err := p.InstallDependencies("", "")
+			err := p.InstallDependencies(plugin.ProgramInfo{})
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 		t.Run("About", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("GetProgramDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			_, err := p.GetProgramDependencies(plugin.ProgInfo{}, false)
+			_, err := p.GetProgramDependencies(plugin.ProgramInfo{}, false)
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 	})
@@ -94,7 +94,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
-			assert.NoError(t, p.InstallDependencies("", ""))
+			assert.NoError(t, p.InstallDependencies(plugin.ProgramInfo{}))
 		})
 		t.Run("About", func(t *testing.T) {
 			t.Parallel()
@@ -106,7 +106,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("GetProgramDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
-			res, err := p.GetProgramDependencies(plugin.ProgInfo{}, false)
+			res, err := p.GetProgramDependencies(plugin.ProgramInfo{}, false)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 		})

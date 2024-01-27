@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
 import grpc
 
-from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
+from ._cmd import CommandResult, OnOutput
 from ._config import ConfigValue, ConfigMap
 from .errors import StackAlreadyExistsError, StackNotFoundError
 from .events import OpMap, EngineEvent, SummaryEvent
@@ -743,16 +743,20 @@ class Stack:
                 environment=summary_json["environment"],
                 config=summary_json["config"],
                 result=summary_json["result"],
-                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
-                if "endTime" in summary_json
-                else None,
+                end_time=(
+                    datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
+                    if "endTime" in summary_json
+                    else None
+                ),
                 version=summary_json["version"] if "version" in summary_json else None,
-                deployment=summary_json["Deployment"]
-                if "Deployment" in summary_json
-                else None,
-                resource_changes=summary_json["resourceChanges"]
-                if "resourceChanges" in summary_json
-                else None,
+                deployment=(
+                    summary_json["Deployment"] if "Deployment" in summary_json else None
+                ),
+                resource_changes=(
+                    summary_json["resourceChanges"]
+                    if "resourceChanges" in summary_json
+                    else None
+                ),
             )
             summaries.append(summary)
         return summaries
@@ -808,7 +812,9 @@ class Stack:
         additional_args = self.workspace.serialize_args_for_op(self.name)
         args.extend(additional_args)
         args.extend(["--stack", self.name])
-        result = _run_pulumi_cmd(args, self.workspace.work_dir, envs, on_output)
+        result = self.workspace.pulumi_command.run(
+            args, self.workspace.work_dir, envs, on_output
+        )
         self.workspace.post_command_callback(self.name)
         return result
 

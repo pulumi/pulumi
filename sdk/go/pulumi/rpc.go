@@ -25,6 +25,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -308,7 +310,7 @@ func marshalInputImpl(v interface{},
 			if v.invalid {
 				return resource.PropertyValue{}, nil, errors.New("invalid asset")
 			}
-			return resource.NewAssetProperty(&resource.Asset{
+			return resource.NewAssetProperty(&rasset.Asset{
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
@@ -329,7 +331,7 @@ func marshalInputImpl(v interface{},
 					assets[k] = aa.V
 				}
 			}
-			return resource.NewArchiveProperty(&resource.Archive{
+			return resource.NewArchiveProperty(&rarchive.Archive{
 				Assets: assets,
 				Path:   v.Path(),
 				URI:    v.URI(),

@@ -18,13 +18,15 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/asset"
+	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -611,7 +613,7 @@ func filterPropertyValue(v resource.PropertyValue, debug bool) resource.Property
 	}
 }
 
-func filterAsset(v *resource.Asset, debug bool) *resource.Asset {
+func filterAsset(v *asset.Asset, debug bool) *asset.Asset {
 	if !v.IsText() {
 		return v
 	}
@@ -622,23 +624,23 @@ func filterAsset(v *resource.Asset, debug bool) *resource.Asset {
 	// that is something we want the receiver to see to display as part of
 	// progress/diffs/etc.
 	var text string
-	if asset.IsUserProgramCode(v) {
+	if codeasset.IsUserProgramCode(v) {
 		// also make sure we filter this in case there are any secrets in the code.
-		text = logging.FilterString(asset.MassageIfUserProgramCodeAsset(v, debug).Text)
+		text = logging.FilterString(codeasset.MassageIfUserProgramCodeAsset(v, debug).Text)
 	} else {
 		// We need to have some string here so that we preserve that this is a
 		// text-asset
 		text = "<contents elided>"
 	}
 
-	return &resource.Asset{
+	return &asset.Asset{
 		Sig:  v.Sig,
 		Hash: v.Hash,
 		Text: text,
 	}
 }
 
-func filterArchive(v *resource.Archive, debug bool) *resource.Archive {
+func filterArchive(v *archive.Archive, debug bool) *archive.Archive {
 	if !v.IsAssets() {
 		return v
 	}
@@ -646,15 +648,15 @@ func filterArchive(v *resource.Archive, debug bool) *resource.Archive {
 	assets := make(map[string]interface{})
 	for k, v := range v.Assets {
 		switch v := v.(type) {
-		case *resource.Asset:
+		case *asset.Asset:
 			assets[k] = filterAsset(v, debug)
-		case *resource.Archive:
+		case *archive.Archive:
 			assets[k] = filterArchive(v, debug)
 		default:
 			contract.Failf("Unrecognized asset map type %T", v)
 		}
 	}
-	return &resource.Archive{
+	return &archive.Archive{
 		Sig:    v.Sig,
 		Hash:   v.Hash,
 		Assets: assets,

@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,22 +139,30 @@ func TestGzip(t *testing.T) {
 	defer gzipCheckServer.Close()
 	client := newMockClient(gzipCheckServer)
 
+	identifier := StackIdentifier{
+		Stack: tokens.MustParseStackName("stack"),
+	}
+
 	// POST /import
-	_, err := client.ImportStackDeployment(context.Background(), StackIdentifier{}, nil)
+	_, err := client.ImportStackDeployment(context.Background(), identifier, nil)
 	assert.NoError(t, err)
 
 	tok := updateTokenStaticSource("")
 
 	// PATCH /checkpoint
-	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{}, nil, tok)
+	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
+		StackIdentifier: identifier,
+	}, nil, tok)
 	assert.NoError(t, err)
 
 	// POST /events/batch
-	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{}, apitype.EngineEventBatch{}, tok)
+	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{
+		StackIdentifier: identifier,
+	}, apitype.EngineEventBatch{}, tok)
 	assert.NoError(t, err)
 
 	// POST /events/batch
-	_, err = client.BulkDecryptValue(context.Background(), StackIdentifier{}, nil)
+	_, err = client.BulkDecryptValue(context.Background(), identifier, nil)
 	assert.NoError(t, err)
 }
 
@@ -200,7 +209,11 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	newlines := bytes.Count(indented, []byte{'\n'})
 
 	err = client.PatchUpdateCheckpointVerbatim(context.Background(),
-		UpdateIdentifier{}, sequenceNumber, indented, updateTokenStaticSource("token"))
+		UpdateIdentifier{
+			StackIdentifier: StackIdentifier{
+				Stack: tokens.MustParseStackName("stack"),
+			},
+		}, sequenceNumber, indented, updateTokenStaticSource("token"))
 	assert.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {

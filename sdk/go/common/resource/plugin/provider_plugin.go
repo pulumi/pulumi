@@ -36,6 +36,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -599,16 +601,16 @@ func traverseMap(m resource.PropertyMap, f func(resource.PropertyValue)) {
 // Those inputs may echo back the input assets and the engine writes them out to the state. We need to make sure that
 // we don't write out empty assets to the state, so we restore the asset contents from the original inputs.
 func restoreElidedAssetContents(original resource.PropertyMap, transformed resource.PropertyMap) {
-	isEmptyAsset := func(v *resource.Asset) bool {
+	isEmptyAsset := func(v *asset.Asset) bool {
 		return v.Text == "" && v.Path == "" && v.URI == ""
 	}
 
-	isEmptyArchive := func(v *resource.Archive) bool {
+	isEmptyArchive := func(v *archive.Archive) bool {
 		return v.Path == "" && v.URI == "" && v.Assets == nil
 	}
 
-	originalAssets := map[string]*resource.Asset{}
-	originalArchives := map[string]*resource.Archive{}
+	originalAssets := map[string]*asset.Asset{}
+	originalArchives := map[string]*archive.Archive{}
 
 	traverseMap(original, func(value resource.PropertyValue) {
 		if value.IsAsset() {

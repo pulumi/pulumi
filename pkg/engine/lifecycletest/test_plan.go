@@ -35,7 +35,8 @@ type updateInfo struct {
 }
 
 func (u *updateInfo) GetRoot() string {
-	return ""
+	// These tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
+	return "/"
 }
 
 func (u *updateInfo) GetProject() *workspace.Project {
@@ -467,9 +468,10 @@ func newTestBuilder(t *testing.T, snap *deploy.Snapshot) *testBuilder {
 }
 
 func (b *testBuilder) WithProvider(name string, version string, prov *deploytest.Provider) *testBuilder {
-	loader := deploytest.NewProviderLoader("pkgA", semver.MustParse(version), func() (plugin.Provider, error) {
-		return prov, nil
-	})
+	loader := deploytest.NewProviderLoader(
+		tokens.Package(name), semver.MustParse(version), func() (plugin.Provider, error) {
+			return prov, nil
+		})
 	b.loaders = append(b.loaders, loader)
 	return b
 }

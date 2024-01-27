@@ -223,8 +223,15 @@ func (iter *evalSourceIterator) forkRun(
 		// Next, launch the language plugin.
 		run := func() error {
 			rt := iter.src.runinfo.Proj.Runtime.Name()
+
 			rtopts := iter.src.runinfo.Proj.Runtime.Options()
-			langhost, err := iter.src.plugctx.Host.LanguageRuntime(iter.src.plugctx.Root, iter.src.plugctx.Pwd, rt, rtopts)
+			programInfo := plugin.NewProgramInfo(
+				/* rootDirectory */ iter.src.runinfo.ProjectRoot,
+				/* programDirectory */ iter.src.runinfo.Pwd,
+				/* entryPoint */ iter.src.runinfo.Program,
+				/* options */ rtopts)
+
+			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, programInfo)
 			if err != nil {
 				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 			}
@@ -236,7 +243,6 @@ func (iter *evalSourceIterator) forkRun(
 				Stack:             iter.src.runinfo.Target.Name.String(),
 				Project:           string(iter.src.runinfo.Proj.Name),
 				Pwd:               iter.src.runinfo.Pwd,
-				Program:           iter.src.runinfo.Program,
 				Args:              iter.src.runinfo.Args,
 				Config:            config,
 				ConfigSecretKeys:  configSecretKeys,
@@ -244,6 +250,7 @@ func (iter *evalSourceIterator) forkRun(
 				DryRun:            iter.src.dryRun,
 				Parallel:          opts.Parallel,
 				Organization:      string(iter.src.runinfo.Target.Organization),
+				Info:              programInfo,
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
@@ -1381,6 +1388,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
+
 	props, err := plugin.UnmarshalProperties(
 		req.GetObject(), plugin.MarshalOptions{
 			Label:              label,
@@ -1558,7 +1566,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			switch parent := aliasSpec.GetParent().(type) {
 			case *pulumirpc.Alias_Spec_ParentUrn:
-				parentURN, err := resource.ParseURN(parent.ParentUrn)
+				// Technically an SDK shouldn't set `parent` at all to specify the default parent, but both NodeJS and
+				// Python have buggy SDKs that set parent to an empty URN to specify the default parent. We handle this
+				// case here to maintain backward compatibility with older SDKs but it would be good to fix this to be
+				// strict in V4.
+				parentURN, err := resource.ParseOptionalURN(parent.ParentUrn)
 				if err != nil {
 					return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent alias URN: %s", err))
 				}

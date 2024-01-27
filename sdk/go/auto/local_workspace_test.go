@@ -19,6 +19,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,6 +58,29 @@ const (
 	agent         = "pulumi/pulumi/test"
 	pulumiTestOrg = "moolumi"
 )
+
+type mockPulumiCommand struct {
+	version  semver.Version
+	stdout   string
+	stderr   string
+	exitCode int
+	err      error
+}
+
+func (m *mockPulumiCommand) Version() semver.Version {
+	return m.version
+}
+
+func (m *mockPulumiCommand) Run(ctx context.Context,
+	workdir string,
+	stdin io.Reader,
+	additionalOutput []io.Writer,
+	additionalErrorOutput []io.Writer,
+	additionalEnv []string,
+	args ...string,
+) (string, string, int, error) {
+	return m.stdout, m.stderr, m.exitCode, m.err
+}
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	t.Parallel()
@@ -2105,112 +2129,44 @@ func TestPulumiVersion(t *testing.T) {
 	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
 }
 
-const (
-	PARSE   = `Unable to parse`
-	MAJOR   = `Major version mismatch.`
-	MINIMUM = `Minimum version requirement failed.`
-)
-
-var minVersionTests = []struct {
-	name           string
-	currentVersion string
-	expectedError  string
-	optOut         bool
-}{
-	{
-		"higher_major",
-		"100.0.0",
-		MAJOR,
-		false,
-	},
-	{
-		"lower_major",
-		"1.0.0",
-		MINIMUM,
-		false,
-	},
-	{
-		"higher_minor",
-		"2.2.0",
-		MINIMUM,
-		false,
-	},
-	{
-		"lower_minor",
-		"2.1.0",
-		MINIMUM,
-		false,
-	},
-	{
-		"equal_minor_higher_patch",
-		"2.2.2",
-		MINIMUM,
-		false,
-	},
-	{
-		"equal_minor_equal_patch",
-		"2.2.1",
-		MINIMUM,
-		false,
-	},
-	{
-		"equal_minor_lower_patch",
-		"2.2.0",
-		MINIMUM,
-		false,
-	},
-	{
-		"equal_minor_equal_patch_prerelease",
-		// Note that prerelease < release so this case will error
-		"2.21.1-alpha.1234",
-		MINIMUM,
-		false,
-	},
-	{
-		"opt_out_of_check_would_fail_otherwise",
-		"2.2.0",
-		"",
-		true,
-	},
-	{
-		"opt_out_of_check_would_succeed_otherwise",
-		"2.2.0",
-		"",
-		true,
-	},
-	{
-		"unparsable_version",
-		"invalid",
-		PARSE,
-		false,
-	},
-	{
-		"opt_out_unparsable_version",
-		"invalid",
-		"",
-		true,
-	},
-}
-
-func TestMinimumVersion(t *testing.T) {
+func TestPulumiCommand(t *testing.T) {
 	t.Parallel()
 
-	for _, tt := range minVersionTests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	ctx := context.Background()
+	pulumiCommand, err := NewPulumiCommand(nil)
+	require.NoError(t, err, "failed to create pulumi command: %s", err)
+	ws, err := NewLocalWorkspace(ctx, Pulumi(pulumiCommand))
+	require.NoError(t, err, "failed to create workspace: %s", err)
+	version := ws.PulumiVersion()
+	assert.NotEqual(t, "v0.0.0", version)
+	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
+}
 
-			minVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
+func TestClIWithoutRemoteSupport(t *testing.T) {
+	t.Parallel()
 
-			_, err := parseAndValidatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
+	// We inspect the output of `pulumi preview --help` to determine if the
+	// CLI supports remote operations. Set the output to `some output` to
+	// simulate a CLI version without remote support.
+	m := mockPulumiCommand{stdout: "some output"}
 
-			if tt.expectedError != "" {
-				assert.ErrorContains(t, err, tt.expectedError)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
+	_, err := NewLocalWorkspace(context.Background(), Pulumi(&m), remote(true))
+
+	require.ErrorContains(t, err, "does not support remote operations")
+}
+
+func TestByPassesRemoteCheck(t *testing.T) {
+	t.Parallel()
+
+	// We inspect the output of `pulumi preview --help` to determine if the
+	// CLI supports remote operations. Set the output to `some output` to
+	// simulate a CLI version without remote support.
+	m := mockPulumiCommand{stdout: "some output"}
+	envVars := map[string]string{"PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK": "true"}
+
+	_, err := NewLocalWorkspace(context.Background(), Pulumi(&m), EnvVars(envVars), remote(true))
+
+	require.NoError(t, err)
 }
 
 func TestProjectSettingsRespected(t *testing.T) {

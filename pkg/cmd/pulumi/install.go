@@ -75,20 +75,18 @@ func newInstallCmd() *cobra.Command {
 			// First make sure the language plugin is present.  We need this to load the required resource plugins.
 			// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 			runtime := proj.Runtime
-			lang, err := pctx.Host.LanguageRuntime(pctx.Root, pctx.Pwd, runtime.Name(), runtime.Options())
+			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
+			lang, err := pctx.Host.LanguageRuntime(runtime.Name(), programInfo)
 			if err != nil {
 				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
 			}
 
-			if err = lang.InstallDependencies(pwd, main); err != nil {
+			if err = lang.InstallDependencies(programInfo); err != nil {
 				return fmt.Errorf("installing dependencies: %w", err)
 			}
 
 			// Compute the set of plugins the current project needs.
-			installs, err := lang.GetRequiredPlugins(plugin.ProgInfo{
-				Pwd:     pwd,
-				Program: main,
-			})
+			installs, err := lang.GetRequiredPlugins(programInfo)
 			if err != nil {
 				return err
 			}

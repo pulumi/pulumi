@@ -32,6 +32,7 @@ ensure:: $(PYTHON).ensure .ensure.phony
 build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak 's/^VERSION = .*/VERSION = "$(PYPI_VERSION)"/g' $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
+	sed -i.bak 's/^_VERSION = .*/_VERSION = "$(VERSION)"/g' $(PYENVSRC)/pulumi/_version.py && rm $(PYENVSRC)/pulumi/_version.py.bak
 	cp ../../README.md $(PYENVSRC)
 	. venv/*/activate && cd $(PYENVSRC) && \
 		python setup.py build bdist_wheel --universal

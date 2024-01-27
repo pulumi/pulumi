@@ -279,7 +279,8 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
+			programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 			if err != nil {
 				return nil, err
 			}

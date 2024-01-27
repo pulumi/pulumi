@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Engine will now error if aliases request a parent with no URN.

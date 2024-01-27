@@ -20,6 +20,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -216,7 +219,7 @@ func (props PropertyMap) StableKeys() []PropertyKey {
 //
 //nolint:lll
 type PropertyValueType interface {
-	bool | float64 | string | *Asset | *Archive | Computed | Output | *Secret | ResourceReference | []PropertyValue | PropertyMap
+	bool | float64 | string | *asset.Asset | *archive.Archive | Computed | Output | *Secret | ResourceReference | []PropertyValue | PropertyMap
 }
 
 // NewProperty creates a new PropertyValue.
@@ -229,8 +232,8 @@ func NewBoolProperty(v bool) PropertyValue                           { return Pr
 func NewNumberProperty(v float64) PropertyValue                      { return PropertyValue{v} }
 func NewStringProperty(v string) PropertyValue                       { return PropertyValue{v} }
 func NewArrayProperty(v []PropertyValue) PropertyValue               { return PropertyValue{v} }
-func NewAssetProperty(v *Asset) PropertyValue                        { return PropertyValue{v} }
-func NewArchiveProperty(v *Archive) PropertyValue                    { return PropertyValue{v} }
+func NewAssetProperty(v *asset.Asset) PropertyValue                  { return PropertyValue{v} }
+func NewArchiveProperty(v *archive.Archive) PropertyValue            { return PropertyValue{v} }
 func NewObjectProperty(v PropertyMap) PropertyValue                  { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue                   { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue                       { return PropertyValue{v} }
@@ -316,9 +319,9 @@ func NewPropertyValueRepl(v interface{},
 		return NewProperty(t)
 	case string:
 		return NewProperty(t)
-	case *Asset:
+	case *asset.Asset:
 		return NewProperty(t)
-	case *Archive:
+	case *archive.Archive:
 		return NewProperty(t)
 	case Computed:
 		return NewProperty(t)
@@ -439,10 +442,10 @@ func (v PropertyValue) StringValue() string { return v.V.(string) }
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
 
 // AssetValue fetches the underlying asset value (panicking if it isn't an asset).
-func (v PropertyValue) AssetValue() *Asset { return v.V.(*Asset) }
+func (v PropertyValue) AssetValue() *asset.Asset { return v.V.(*asset.Asset) }
 
 // ArchiveValue fetches the underlying archive value (panicking if it isn't an archive).
-func (v PropertyValue) ArchiveValue() *Archive { return v.V.(*Archive) }
+func (v PropertyValue) ArchiveValue() *archive.Archive { return v.V.(*archive.Archive) }
 
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
@@ -490,13 +493,13 @@ func (v PropertyValue) IsArray() bool {
 
 // IsAsset returns true if the underlying value is an object.
 func (v PropertyValue) IsAsset() bool {
-	_, is := v.V.(*Asset)
+	_, is := v.V.(*asset.Asset)
 	return is
 }
 
 // IsArchive returns true if the underlying value is an object.
 func (v PropertyValue) IsArchive() bool {
-	_, is := v.V.(*Archive)
+	_, is := v.V.(*archive.Archive)
 	return is
 }
 
@@ -638,7 +641,7 @@ type Property struct {
 
 // SigKey is sometimes used to encode type identity inside of a map.  This is required when flattening into ordinary
 // maps, like we do when performing serialization, to ensure recoverability of type identities later on.
-const SigKey = "4dabf18193072939515e22adb298388d"
+const SigKey = sig.Key
 
 // HasSig checks to see if the given property map contains the specific signature match.
 func HasSig(obj PropertyMap, match string) bool {
@@ -649,13 +652,13 @@ func HasSig(obj PropertyMap, match string) bool {
 }
 
 // SecretSig is the unique secret signature.
-const SecretSig = "1b47061264138c4ac30d75fd1eb44270"
+const SecretSig = sig.Secret
 
 // ResourceReferenceSig is the unique resource reference signature.
-const ResourceReferenceSig = "5cf8f73096256a8f31e491e813e4eb8e"
+const ResourceReferenceSig = sig.ResourceReference
 
 // OutputValueSig is the unique output value signature.
-const OutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4"
+const OutputValueSig = sig.OutputValue
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"os"
 	"runtime"
 	"testing"
 
@@ -583,12 +584,15 @@ func TestStepGenerator(t *testing.T) {
 		})
 		t.Run("fail generateURN", func(t *testing.T) {
 			t.Parallel()
+			os.Setenv("PULUMI_DISABLE_VALIDATION", "true")
 			sg := &stepGenerator{
 				urns: map[resource.URN]bool{
-					"urn:pulumi:::::::": true,
+					"urn:pulumi:stack::::::": true,
 				},
 				deployment: &Deployment{
-					target: &Target{},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack"),
+					},
 					source: &nullSource{},
 					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
 				},
@@ -604,7 +608,9 @@ func TestStepGenerator(t *testing.T) {
 			sg := &stepGenerator{
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
-					target: &Target{},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack"),
+					},
 					source: &nullSource{},
 				},
 			}

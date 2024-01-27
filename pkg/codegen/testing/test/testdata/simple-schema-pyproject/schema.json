@@ -17,7 +17,8 @@
     "python": {
       "pyproject": {
         "enabled": true
-      }
+      },
+      "respectSchemaVersion": true
     }
   }
 }

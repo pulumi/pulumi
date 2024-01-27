@@ -93,9 +93,11 @@ func TestImporter(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			i := &importer{
 				deployment: &Deployment{
-					goals:  &goalMap{},
-					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
-					target: &Target{},
+					goals: &goalMap{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
 					source: &nullSource{},
 					providers: providers.NewRegistry(&mockHost{
 						ProviderF: func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
@@ -165,7 +167,9 @@ func TestImporter(t *testing.T) {
 					},
 					deployment: &Deployment{
 						source: &nullSource{},
-						target: &Target{},
+						target: &Target{
+							Name: tokens.MustParseStackName("stack-name"),
+						},
 						imports: []Import{
 							{},
 						},
@@ -192,7 +196,9 @@ func TestImporter(t *testing.T) {
 						// goals is left nil as nothing should be added to it.
 						goals:  nil,
 						source: &nullSource{},
-						target: &Target{},
+						target: &Target{
+							Name: tokens.MustParseStackName("stack-name"),
+						},
 						imports: []Import{
 							{},
 						},

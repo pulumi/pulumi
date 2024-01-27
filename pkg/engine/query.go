@@ -114,9 +114,10 @@ func newQuerySource(cancel context.Context, client deploy.BackendClient, q Query
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	return deploy.NewQuerySource(cancel, opts.plugctx, client, &deploy.EvalRunInfo{
-		Proj:    q.GetProject(),
-		Pwd:     opts.pwd,
-		Program: opts.main,
+		ProjectRoot: q.GetRoot(),
+		Proj:        q.GetProject(),
+		Pwd:         opts.pwd,
+		Program:     opts.main,
 	}, defaultProviderVersions, nil)
 }
 

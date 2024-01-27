@@ -65,6 +65,9 @@ func TestRunQuery_nocreate(t *testing.T) {
 	assert.NoError(t, err)
 
 	src, err := deploy.NewQuerySource(context.Background(), plugCtx, &deploytest.BackendClient{}, &deploy.EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
 		Proj: &workspace.Project{
 			Name: "query-program",
 		},
@@ -137,6 +140,9 @@ func TestRunQuery_call_invoke(t *testing.T) {
 	require.NoError(t, err)
 
 	src, err := deploy.NewQuerySource(context.Background(), plugCtx, &deploytest.BackendClient{}, &deploy.EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
 		Proj: &workspace.Project{
 			Name: "query-program",
 		},

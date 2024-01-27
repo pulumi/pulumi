@@ -346,16 +346,17 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
 
-		runtime, err := ctx.Host.LanguageRuntime(pluginDir, pluginDir, runtimeInfo.Name(), runtimeInfo.Options())
+		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
+		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
 		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
-			Pwd:     pwd,
-			Program: pluginDir,
-			Args:    pluginArgs,
-			Env:     env,
+			Info:             info,
+			WorkingDirectory: ctx.Pwd,
+			Args:             pluginArgs,
+			Env:              env,
 		})
 		if err != nil {
 			return nil, err

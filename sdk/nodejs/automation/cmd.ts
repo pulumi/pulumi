@@ -51,7 +51,6 @@ export interface PulumiCommandOptions {
     root?: string;
     /**
      * Skips the minimum CLI version check, see `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK`.
-     * @internal
      */
     skipVersionCheck?: boolean;
 }
@@ -64,12 +63,16 @@ export class PulumiCommand {
      * Defaults to using the pulumi binary found in $PATH if no installation
      * root is specified.  If `opts.version` is specified, it validates that
      * the CLI is compatible with the requested version and throws an error if
-     * not.
+     * not. This validation can be skipped by setting the environment variable
+     * `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK` or setting
+     * `opts.skipVersionCheck` to `true`. Note that the environment variable
+     * always takes precedence. If it is set it is not possible to re-enable
+     * the validation with `opts.skipVersionCheck`.
      */
     static async get(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
         const { stdout } = await exec(command, ["version"]);
-        const skipVersionCheck = opts?.skipVersionCheck !== undefined ? opts.skipVersionCheck : false;
+        const skipVersionCheck = !!opts?.skipVersionCheck || !!process.env[SKIP_VERSION_CHECK_VAR];
         let min = minimumVersion;
         if (opts?.version && semver.gt(opts.version, minimumVersion)) {
             min = opts.version;
@@ -83,6 +86,7 @@ export class PulumiCommand {
      *
      * @param opts.version the version of the CLI. Defaults to the CLI version matching the SDK version.
      * @param opts.root the directory to install the CLI in. Defaults to $HOME/.pulumi/versions/$VERSION.
+     * @param opts.skipVersionCheck skips the CLI version check.
      */
     static async install(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const optsWithDefaults = withDefaults(opts);

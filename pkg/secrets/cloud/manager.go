@@ -23,6 +23,7 @@ import (
 	"fmt"
 	netUrl "net/url"
 	"os"
+	"strings"
 
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
@@ -134,7 +135,15 @@ func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error
 	}
 
 	info.SecretsProvider = s.URL
-	info.EncryptedKey = base64.StdEncoding.EncodeToString(s.EncryptedKey)
+	dataKey := s.EncryptedKey
+	// gocloud.dev versions before v0.28.0 wrapped the
+	// data key in a base64.RawURLEncoding before wrapping
+	// it again in base64.StdEncoding.  We keep emulating
+	// this here for compatibility.
+	if strings.HasPrefix(s.URL, "azurekeyvault://") {
+		dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
+	}
+	info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
 	return nil
 }
 
@@ -143,11 +152,25 @@ func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error
 // envelope encryption of secrets values.
 func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s cloudSecretsManagerState
-	if err := json.Unmarshal(state, &s); err != nil {
+	err := json.Unmarshal(state, &s)
+	if err != nil {
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	return newCloudSecretsManager(s.URL, s.EncryptedKey)
+	// We're emulating gocloud.dev's old behaviour here.  Pre
+	// v0.28.0 it used to have an inner wrapping, which we keep
+	// for compatibility (see above).  However the newer version
+	// expects this to be unwrapped, before it's used, so let's do
+	// that here.
+	dataKey := s.EncryptedKey
+	if strings.HasPrefix(s.URL, "azurekeyvault://") {
+		dataKey, err = base64.RawURLEncoding.DecodeString(string(dataKey))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return newCloudSecretsManager(s.URL, dataKey)
 }
 
 func NewCloudSecretsManager(info *workspace.ProjectStack,
@@ -179,14 +202,33 @@ func NewCloudSecretsManager(info *workspace.ProjectStack,
 		if err != nil {
 			return nil, err
 		}
+		// gocloud.dev versions before v0.28.0 wrapped the
+		// data key in a base64.RawURLEncoding before wrapping
+		// it again in base64.StdEncoding.  We keep emulating
+		// this here for compatibility.
+		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
+			dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
+		}
 		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
 	}
 	info.SecretsProvider = secretsProvider
 
+	// We're emulating gocloud.dev's old behaviour here.  Pre
+	// v0.28.0 it used to have an inner wrapping, which we keep
+	// for compatibility (see above).  However the newer version
+	// expects this to be unwrapped, before it's used, so let's do
+	// that here.
 	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptedKey)
 	if err != nil {
 		return nil, err
 	}
+	if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
+		dataKey, err = base64.RawURLEncoding.DecodeString(string(dataKey))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	secretsManager, err = newCloudSecretsManager(secretsProvider, dataKey)
 	if err != nil {
 		return nil, err

@@ -102,6 +102,8 @@ type Workspace interface {
 	UnsetEnvVar(string)
 	// WorkDir returns the working directory to run Pulumi CLI commands.
 	WorkDir() string
+	// PulumiCommand returns the PulumiCommand instance that is used to run PulumiCommand CLI commands.
+	PulumiCommand() PulumiCommand
 	// PulumiHome returns the directory override for CLI metadata if set.
 	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 	PulumiHome() string

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/spf13/cobra"
@@ -64,8 +66,8 @@ func (cmd *packCmd) Run(ctx context.Context, args []string) error {
 	if v, err = semver.ParseTolerant(version); err != nil {
 		return fmt.Errorf("invalid version %q: %w", version, err)
 	}
-
-	languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
+	programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, "", nil)
+	languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 	if err != nil {
 		return err
 	}

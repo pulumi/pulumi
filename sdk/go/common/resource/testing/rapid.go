@@ -6,6 +6,8 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -187,17 +189,17 @@ func StringPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	})
 }
 
-// TextAssetGenerator generates textual *resource.Asset values.
-func TextAssetGenerator() *rapid.Generator[*resource.Asset] {
-	return rapid.Custom(func(t *rapid.T) *resource.Asset {
-		asset, err := resource.NewTextAsset(rapid.String().Draw(t, "text asset contents"))
+// TextAssetGenerator generates textual *asset.Asset values.
+func TextAssetGenerator() *rapid.Generator[*asset.Asset] {
+	return rapid.Custom(func(t *rapid.T) *asset.Asset {
+		asset, err := asset.FromText(rapid.String().Draw(t, "text asset contents"))
 		assert.NoError(t, err)
 		return asset
 	})
 }
 
-// AssetGenerator generates *resource.Asset values.
-func AssetGenerator() *rapid.Generator[*resource.Asset] {
+// AssetGenerator generates *asset.Asset values.
+func AssetGenerator() *rapid.Generator[*asset.Asset] {
 	return TextAssetGenerator()
 }
 
@@ -208,9 +210,9 @@ func AssetPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	})
 }
 
-// LiteralArchiveGenerator generates *resource.Archive values with literal archive contents.
-func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
-	return rapid.Custom(func(t *rapid.T) *resource.Archive {
+// LiteralArchiveGenerator generates *archive.Archive values with literal archive contents.
+func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
+	return rapid.Custom(func(t *rapid.T) *archive.Archive {
 		var contentsGenerator *rapid.Generator[map[string]interface{}]
 		if maxDepth > 0 {
 			contentsGenerator = rapid.MapOfN(
@@ -222,14 +224,14 @@ func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
 		} else {
 			contentsGenerator = rapid.Just(map[string]interface{}{})
 		}
-		archive, err := resource.NewAssetArchive(contentsGenerator.Draw(t, "literal archive contents"))
+		archive, err := archive.FromAssets(contentsGenerator.Draw(t, "literal archive contents"))
 		assert.NoError(t, err)
 		return archive
 	})
 }
 
-// ArchiveGenerator generates *resource.Archive values.
-func ArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
+// ArchiveGenerator generates *archive.Archive values.
+func ArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
 	return LiteralArchiveGenerator(maxDepth)
 }
 
