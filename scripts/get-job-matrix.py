@@ -377,7 +377,7 @@ def get_matrix(
     elif kind == JobKind.UNIT_TEST:
         makefile_tests = MAKEFILE_UNIT_TESTS
     elif kind == JobKind.ACCEPTANCE_TEST:
-        makefile_tests = []
+        makefile_tests = MAKEFILE_INTEGRATION_TESTS
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
     else:
