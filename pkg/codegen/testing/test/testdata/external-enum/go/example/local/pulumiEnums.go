@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type MyEnum float64
@@ -174,12 +173,6 @@ func (in *myEnumPtr) ToMyEnumPtrOutput() MyEnumPtrOutput {
 
 func (in *myEnumPtr) ToMyEnumPtrOutputWithContext(ctx context.Context) MyEnumPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(MyEnumPtrOutput)
-}
-
-func (in *myEnumPtr) ToOutput(ctx context.Context) pulumix.Output[*MyEnum] {
-	return pulumix.Output[*MyEnum]{
-		OutputState: in.ToMyEnumPtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 func init() {

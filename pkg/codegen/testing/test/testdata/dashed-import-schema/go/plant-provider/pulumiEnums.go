@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 // The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
@@ -185,12 +184,6 @@ func (in *cloudAuditOptionsLogNamePtr) ToCloudAuditOptionsLogNamePtrOutputWithCo
 	return pulumi.ToOutputWithContext(ctx, in).(CloudAuditOptionsLogNamePtrOutput)
 }
 
-func (in *cloudAuditOptionsLogNamePtr) ToOutput(ctx context.Context) pulumix.Output[*CloudAuditOptionsLogName] {
-	return pulumix.Output[*CloudAuditOptionsLogName]{
-		OutputState: in.ToCloudAuditOptionsLogNamePtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type ContainerBrightness float64
 
 const (
@@ -354,12 +347,6 @@ func (in *containerBrightnessPtr) ToContainerBrightnessPtrOutput() ContainerBrig
 
 func (in *containerBrightnessPtr) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(ContainerBrightnessPtrOutput)
-}
-
-func (in *containerBrightnessPtr) ToOutput(ctx context.Context) pulumix.Output[*ContainerBrightness] {
-	return pulumix.Output[*ContainerBrightness]{
-		OutputState: in.ToContainerBrightnessPtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 // plant container colors
@@ -530,12 +517,6 @@ func (in *containerColorPtr) ToContainerColorPtrOutputWithContext(ctx context.Co
 	return pulumi.ToOutputWithContext(ctx, in).(ContainerColorPtrOutput)
 }
 
-func (in *containerColorPtr) ToOutput(ctx context.Context) pulumix.Output[*ContainerColor] {
-	return pulumix.Output[*ContainerColor]{
-		OutputState: in.ToContainerColorPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 // plant container sizes
 type ContainerSize int
 
@@ -702,12 +683,6 @@ func (in *containerSizePtr) ToContainerSizePtrOutput() ContainerSizePtrOutput {
 
 func (in *containerSizePtr) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(ContainerSizePtrOutput)
-}
-
-func (in *containerSizePtr) ToOutput(ctx context.Context) pulumix.Output[*ContainerSize] {
-	return pulumix.Output[*ContainerSize]{
-		OutputState: in.ToContainerSizePtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 func init() {

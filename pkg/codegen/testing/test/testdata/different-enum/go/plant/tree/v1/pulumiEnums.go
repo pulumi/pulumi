@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type Diameter float64
@@ -176,12 +175,6 @@ func (in *diameterPtr) ToDiameterPtrOutputWithContext(ctx context.Context) Diame
 	return pulumi.ToOutputWithContext(ctx, in).(DiameterPtrOutput)
 }
 
-func (in *diameterPtr) ToOutput(ctx context.Context) pulumix.Output[*Diameter] {
-	return pulumix.Output[*Diameter]{
-		OutputState: in.ToDiameterPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type Farm string
 
 const (
@@ -345,12 +338,6 @@ func (in *farmPtr) ToFarmPtrOutput() FarmPtrOutput {
 
 func (in *farmPtr) ToFarmPtrOutputWithContext(ctx context.Context) FarmPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(FarmPtrOutput)
-}
-
-func (in *farmPtr) ToOutput(ctx context.Context) pulumix.Output[*Farm] {
-	return pulumix.Output[*Farm]{
-		OutputState: in.ToFarmPtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 // types of rubber trees
@@ -522,12 +509,6 @@ func (in *rubberTreeVarietyPtr) ToRubberTreeVarietyPtrOutput() RubberTreeVariety
 
 func (in *rubberTreeVarietyPtr) ToRubberTreeVarietyPtrOutputWithContext(ctx context.Context) RubberTreeVarietyPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(RubberTreeVarietyPtrOutput)
-}
-
-func (in *rubberTreeVarietyPtr) ToOutput(ctx context.Context) pulumix.Output[*RubberTreeVariety] {
-	return pulumix.Output[*RubberTreeVariety]{
-		OutputState: in.ToRubberTreeVarietyPtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 // RubberTreeVarietyArrayInput is an input type that accepts RubberTreeVarietyArray and RubberTreeVarietyArrayOutput values.
@@ -740,12 +721,6 @@ func (in *treeSizePtr) ToTreeSizePtrOutput() TreeSizePtrOutput {
 
 func (in *treeSizePtr) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(TreeSizePtrOutput)
-}
-
-func (in *treeSizePtr) ToOutput(ctx context.Context) pulumix.Output[*TreeSize] {
-	return pulumix.Output[*TreeSize]{
-		OutputState: in.ToTreeSizePtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 // TreeSizeMapInput is an input type that accepts TreeSizeMap and TreeSizeMapOutput values.

@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type ExampleEnum string
@@ -176,12 +175,6 @@ func (in *exampleEnumPtr) ToExampleEnumPtrOutputWithContext(ctx context.Context)
 	return pulumi.ToOutputWithContext(ctx, in).(ExampleEnumPtrOutput)
 }
 
-func (in *exampleEnumPtr) ToOutput(ctx context.Context) pulumix.Output[*ExampleEnum] {
-	return pulumix.Output[*ExampleEnum]{
-		OutputState: in.ToExampleEnumPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type ExampleEnumInputEnum string
 
 const (
@@ -347,12 +340,6 @@ func (in *exampleEnumInputEnumPtr) ToExampleEnumInputEnumPtrOutputWithContext(ct
 	return pulumi.ToOutputWithContext(ctx, in).(ExampleEnumInputEnumPtrOutput)
 }
 
-func (in *exampleEnumInputEnumPtr) ToOutput(ctx context.Context) pulumix.Output[*ExampleEnumInputEnum] {
-	return pulumix.Output[*ExampleEnumInputEnum]{
-		OutputState: in.ToExampleEnumInputEnumPtrOutputWithContext(ctx).OutputState,
-	}
-}
-
 type ResourceTypeEnum string
 
 const (
@@ -516,12 +503,6 @@ func (in *resourceTypeEnumPtr) ToResourceTypeEnumPtrOutput() ResourceTypeEnumPtr
 
 func (in *resourceTypeEnumPtr) ToResourceTypeEnumPtrOutputWithContext(ctx context.Context) ResourceTypeEnumPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(ResourceTypeEnumPtrOutput)
-}
-
-func (in *resourceTypeEnumPtr) ToOutput(ctx context.Context) pulumix.Output[*ResourceTypeEnum] {
-	return pulumix.Output[*ResourceTypeEnum]{
-		OutputState: in.ToResourceTypeEnumPtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 func init() {
