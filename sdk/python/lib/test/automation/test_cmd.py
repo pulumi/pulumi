@@ -79,6 +79,9 @@ def test_fixup_env():
     else:
         assert new_env["PATH"] == "/tmp/pulumi-install/bin:/usr/bin"
 
+def test_fail_on_windows():
+    if os.name == "nt":
+        pytest.fail("test should fail on windows!")
 
 MAJOR = "Major version mismatch."
 MINIMAL = "Minimum version requirement failed."

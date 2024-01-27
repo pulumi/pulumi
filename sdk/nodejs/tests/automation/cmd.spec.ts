@@ -77,6 +77,12 @@ describe("automation/cmd", () => {
             assert.rejects(PulumiCommand.get({ version: requestedVersion }));
             assert.doesNotReject(PulumiCommand.get({ version: installedVersion, skipVersionCheck: true }));
         });
+
+        it("fails on windows", async () => {
+            if (process.platform === "win32") {
+                assert.strictEqual(true, false);
+            }
+        });
     });
 
     describe(`checkVersionIsValid`, () => {

@@ -131,6 +131,14 @@ func TestFixupPathExistingPath(t *testing.T) {
 	require.Contains(t, env, "PATH=/pulumi-root/bin"+string(os.PathListSeparator)+"/usr/local/bin")
 }
 
+func TestWindowsFailure(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.FailNow()
+	}
+}
+
 const (
 	PARSE   = `Unable to parse`
 	MAJOR   = `Major version mismatch.`
