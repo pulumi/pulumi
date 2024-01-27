@@ -142,9 +142,6 @@ type Stack struct {
 // FullyQualifiedStackName returns a stack name formatted with the greatest possible specificity:
 // org/project/stack or user/project/stack
 // Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
-// Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
-// format, and instead only use the stack name without an org/user or project to qualify it.
-// See: https://github.com/pulumi/pulumi/issues/2522
 func FullyQualifiedStackName(org, project, stack string) string {
 	return fmt.Sprintf("%s/%s/%s", org, project, stack)
 }
