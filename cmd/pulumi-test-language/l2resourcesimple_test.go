@@ -243,7 +243,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := &languageTestServer{DisableSnapshotWriting: true}
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

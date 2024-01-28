@@ -266,7 +266,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := &languageTestServer{DisableSnapshotWriting: true}
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
