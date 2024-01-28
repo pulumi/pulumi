@@ -99,6 +99,9 @@ type languageTestServer struct {
 	cancel chan bool
 	done   chan error
 	addr   string
+
+	// Used by _bad snapshot_ tests to disable snapshot writing.
+	DisableSnapshotWriting bool
 }
 
 func (eng *languageTestServer) Address() string {
@@ -323,8 +326,8 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 
 // Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
 // write the new files instead.
-func doSnapshot(sourceDirectory, snapshotDirectory string) ([]string, error) {
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
+func doSnapshot(disableSnapshotWriting bool, sourceDirectory, snapshotDirectory string) ([]string, error) {
+	if !disableSnapshotWriting && cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 		// Write files
 		err := os.RemoveAll(snapshotDirectory)
 		if err != nil {
@@ -697,7 +700,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-		validations, err := doSnapshot(sdkTempDir, snapshotDir)
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir)
 		if err != nil {
 			return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg, err)
 		}
@@ -761,7 +764,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-	validations, err := doSnapshot(projectDir, snapshotDir)
+	validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
 	if err != nil {
 		return nil, fmt.Errorf("program snapshot validation: %w", err)
 	}
