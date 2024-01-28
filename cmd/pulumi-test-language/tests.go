@@ -31,6 +31,8 @@ type languageTest struct {
 	config config.Map
 	// TODO: This should be a function so we don't have to load all providers in memory all the time.
 	providers []plugin.Provider
+	// This can be used to set a main value for the test.
+	main string
 	// TODO: This should just return "string", if == "" then ok, else fail
 	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
 }
@@ -66,6 +68,21 @@ var languageTests = map[string]languageTest{
 
 			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
 			assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
+		},
+	},
+	"l1-main": {
+		main: "subdir",
+		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+			requireStackResource(l, res, changes)
+
+			// Check we have an output in the stack for true
+			require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+			stack := snap.Resources[0]
+			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+			outputs := stack.Outputs
+
+			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
 		},
 	},
 	// ==========

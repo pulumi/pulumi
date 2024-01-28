@@ -1,0 +1,3 @@
+name: l1-main
+runtime: nodejs
+main: subdir

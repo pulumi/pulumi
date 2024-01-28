@@ -104,15 +104,28 @@ func (h *L1EmptyLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
 	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Info.RootDirectory)
+		return fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
 	}
 	if req.Info.ProgramDirectory != req.Info.RootDirectory {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Info.ProgramDirectory)
+		return fmt.Errorf("unexpected program directory to install dependencies %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return fmt.Errorf("unexpected entry point to install dependencies %s", req.Info.EntryPoint)
 	}
 	return nil
 }
 
 func (h *L1EmptyLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
+		return nil, fmt.Errorf("unexpected root directory to run %s", req.Info.RootDirectory)
+	}
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
+		return nil, fmt.Errorf("unexpected program directory to run %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return nil, fmt.Errorf("unexpected entry point to run %s", req.Info.EntryPoint)
+	}
+
 	if !h.skipStack {
 		conn, err := grpc.Dial(
 			req.MonitorAddress,

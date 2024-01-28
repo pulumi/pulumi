@@ -748,7 +748,12 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Generate the project and read in the Pulumi.yaml
-	projectJSON := fmt.Sprintf(`{"name": "%s"}`, req.Test)
+	projectJSON := func() string {
+		if test.main == "" {
+			return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+		}
+		return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, test.main)
+	}()
 
 	// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 	diagnostics, err := languageClient.GenerateProject(
@@ -769,24 +774,30 @@ func (eng *languageTestServer) RunLanguageTest(
 		return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
 	}
 
-	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
-	// plugin, so we can't show it back to the test.
+	project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
+	if err != nil {
+		return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
+	}
+
+	info := &engine.Projinfo{Proj: project, Root: projectDir}
+	pwd, main, err := info.GetPwdMain()
+	if err != nil {
+		return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
+	}
+
 	programInfo := plugin.NewProgramInfo(
 		projectDir, /* rootDirectory */
-		projectDir, /* programDirectory */
-		"index",
+		pwd,        /* programDirectory */
+		main,
 		map[string]interface{}{})
 
+	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
+	// plugin, so we can't show it back to the test.
 	err = languageClient.InstallDependencies(programInfo)
 	if err != nil {
 		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
 	}
 	// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
-
-	project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
-	}
 
 	// Create a temp dir for the a filestate backend to run in for the test
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
