@@ -16,6 +16,9 @@ package main
 
 import (
 	"embed"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -23,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,8 +35,52 @@ type languageTest struct {
 	config config.Map
 	// TODO: This should be a function so we don't have to load all providers in memory all the time.
 	providers []plugin.Provider
+	// This is called before snapshots are created allowing the test to edit the generated code. This is useful for
+	// "main" tests.
+	setup func(projectDirectory string) error
 	// TODO: This should just return "string", if == "" then ok, else fail
 	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
+}
+
+func setupMain(main string) func(string) error {
+	return func(directory string) error {
+		// Move every file except Pulumi.yaml into a subdir.
+		subdir := filepath.Join(directory, main)
+		err := os.Mkdir(subdir, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+
+		files, err := os.ReadDir(directory)
+		if err != nil {
+			return fmt.Errorf("read directory: %w", err)
+		}
+
+		for _, file := range files {
+			if file.Name() == "Pulumi.yaml" || file.Name() == main {
+				continue
+			}
+
+			err = os.Rename(filepath.Join(directory, file.Name()), filepath.Join(subdir, file.Name()))
+			if err != nil {
+				return fmt.Errorf("move file %s: %w", file.Name(), err)
+			}
+		}
+
+		// Edit the Pulumi.yaml to point to the subdir.
+		projectPath := filepath.Join(directory, "Pulumi.yaml")
+		project, err := workspace.LoadProject(projectPath)
+		if err != nil {
+			return fmt.Errorf("read Pulumi.yaml: %w", err)
+		}
+		project.Main = main
+		err = project.Save(projectPath)
+		if err != nil {
+			return fmt.Errorf("save Pulumi.yaml: %w", err)
+		}
+
+		return nil
+	}
 }
 
 //go:embed testdata
@@ -66,6 +114,21 @@ var languageTests = map[string]languageTest{
 
 			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
 			assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
+		},
+	},
+	"l1-main": {
+		setup: setupMain("subdir"),
+		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+			requireStackResource(l, res, changes)
+
+			// Check we have an output in the stack for true
+			require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+			stack := snap.Resources[0]
+			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+			outputs := stack.Outputs
+
+			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
 		},
 	},
 	// ==========

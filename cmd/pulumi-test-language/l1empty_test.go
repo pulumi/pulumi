@@ -104,10 +104,13 @@ func (h *L1EmptyLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
 	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Info.RootDirectory)
+		return fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
 	}
 	if req.Info.ProgramDirectory != req.Info.RootDirectory {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Info.ProgramDirectory)
+		return fmt.Errorf("unexpected program directory to install dependencies %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return fmt.Errorf("unexpected entry point to install dependencies %s", req.Info.EntryPoint)
 	}
 	return nil
 }
@@ -266,7 +269,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := &languageTestServer{DisableSnapshotWriting: true}
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
