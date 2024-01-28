@@ -86,6 +86,9 @@ var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
 
 // Environment variables that affect the self-managed backend.
 var (
+	DiyBackendAcknowledgeLegacyWarning = env.Bool("DIY_BACKEND_ACKNOWLEDGE_LEGACY_WARNING",
+		"Disables the warning about legacy non-project mode being due to deprecate.")
+
 	SelfManagedStateNoLegacyWarning = env.Bool("SELF_MANAGED_STATE_NO_LEGACY_WARNING",
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.")
 

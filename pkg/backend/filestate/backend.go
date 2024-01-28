@@ -302,6 +302,12 @@ func newLocalBackend(
 	var projectMode bool
 	switch meta.Version {
 	case 0:
+		if !env.DiyBackendAcknowledgeLegacyWarning.Value() {
+			msg := "Legacy non-project mode support for DIY backends are due to be deprecated this year." +
+				" Please migrate to project mode by running 'pulumi state upgrade'." +
+				" You can disable this warning by setting PULUMI_DIY_BACKEND_ACKNOWLEDGE_LEGACY_WARNING to true."
+			d.Warningf(diag.RawMessage("", msg))
+		}
 		backend.store = newLegacyReferenceStore(wbucket)
 	case 1:
 		backend.store = newProjectReferenceStore(wbucket, backend.currentProject.Load)
