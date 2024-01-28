@@ -974,6 +974,27 @@ func (b *cloudBackend) CreateStack(
 	return stack, nil
 }
 
+func (b *cloudBackend) ListStackRequiredPolicies(ctx context.Context, stackRef backend.StackReference,
+) ([]engine.RequiredPolicy, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	apiRequiredPolicies, err := b.client.ListStackRequiredPolicies(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+
+	requiredPolicies := make([]engine.RequiredPolicy, 0, len(apiRequiredPolicies))
+
+	for _, policy := range apiRequiredPolicies {
+		requiredPolicies = append(requiredPolicies, newCloudRequiredPolicy(b.client, policy, stackID.Owner))
+	}
+
+	return requiredPolicies, nil
+}
+
 func (b *cloudBackend) ListStacks(
 	ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 	[]backend.StackSummary, backend.ContinuationToken, error,
