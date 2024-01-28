@@ -792,7 +792,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		projectDir, /* rootDirectory */
 		pwd,        /* programDirectory */
 		main,
-		map[string]interface{}{})
+		project.Runtime.Options())
 
 	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
 	// plugin, so we can't show it back to the test.
