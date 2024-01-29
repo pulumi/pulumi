@@ -9,6 +9,7 @@
 1574098198 4061 proto/google/protobuf/status.proto
 1405145341 1741 proto/pulumi/alias.proto
 4283367129 10425 proto/pulumi/analyzer.proto
+4184196451 1504 proto/pulumi/callback.proto
 2452746699 3822 proto/pulumi/codegen/hcl.proto
 3969512589 1575 proto/pulumi/codegen/loader.proto
 3592920431 1785 proto/pulumi/codegen/mapper.proto
@@ -18,6 +19,6 @@
 829031483 10232 proto/pulumi/language.proto
 2893249402 1992 proto/pulumi/plugin.proto
 545212422 24604 proto/pulumi/provider.proto
-2903108406 13833 proto/pulumi/resource.proto
+1492946908 15426 proto/pulumi/resource.proto
 607478140 1008 proto/pulumi/source.proto
 2565199107 2157 proto/pulumi/testing/language.proto

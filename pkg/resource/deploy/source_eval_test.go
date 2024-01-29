@@ -1898,7 +1898,8 @@ func TestResmonCancel(t *testing.T) {
 		done <- err
 	}()
 
-	assert.Equal(t, err, rm.Cancel())
+	// Cancel always returns nil or a joinErrors.
+	assert.Equal(t, errors.Join(err), rm.Cancel())
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
