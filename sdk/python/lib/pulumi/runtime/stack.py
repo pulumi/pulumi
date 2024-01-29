@@ -17,7 +17,7 @@ Support for automatic stack components.
 """
 import asyncio
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional
 
 from .. import log
 from ..resource import ComponentResource, Resource, ResourceTransformation
@@ -29,7 +29,7 @@ from .settings import (
     is_dry_run,
     set_root_resource,
 )
-from .sync_await import _all_tasks, _get_current_task
+from .sync_await import _all_tasks, _get_current_task, _sync_await
 
 if TYPE_CHECKING:
     from .. import Output
@@ -44,7 +44,7 @@ def _get_running_tasks() -> List[asyncio.Task]:
     return pending
 
 
-async def run_pulumi_func(func: Callable):
+async def run_pulumi_func(func: Callable[[], None]):
     try:
         func()
     finally:
@@ -128,13 +128,17 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
             break
 
 
-async def run_in_stack(func: Callable):
+async def run_in_stack(func: Callable[[], Optional[Awaitable[None]]]):
     """
     Run the given function inside of a new stack resource.  This ensures that any stack export calls
     will end up as output properties on the resulting stack component in the checkpoint file.  This
     is meant for internal runtime use only and is used by the Python SDK entrypoint program.
     """
-    await run_pulumi_func(lambda: Stack(func))
+
+    def run() -> None:
+        Stack(func)
+
+    await run_pulumi_func(run)
 
 
 class Stack(ComponentResource):
@@ -144,7 +148,7 @@ class Stack(ComponentResource):
 
     outputs: Dict[str, Any]
 
-    def __init__(self, func: Callable) -> None:
+    def __init__(self, func: Callable[[], Optional[Awaitable[None]]]) -> None:
         # Ensure we don't already have a stack registered.
         if get_root_resource() is not None:
             raise Exception("Only one root Pulumi Stack may be active at once")
@@ -153,11 +157,18 @@ class Stack(ComponentResource):
         name = f"{get_project()}-{get_stack()}"
         super().__init__("pulumi:pulumi:Stack", name, None, None)
 
-        # Invoke the function while this stack is active and then register its outputs.
+        # Invoke the function while this stack is active and then register its outputs. func might return an awaitable
+        # so we need to await it, ideally we'd do this in a standard way but alas back compatibility means we do
+        # everything in stack constructors, so we have to use sync_await here.
+
         self.outputs = {}
         set_root_resource(self)
         try:
-            func()
+            awaitable = func()
+            # This _should_ be an awaitable but old pulumi executors returned modules here, so we need to handle that
+            # with a type check rather than just `is not None`.
+            if isawaitable(awaitable):
+                _sync_await(awaitable)
         finally:
             self.register_outputs(massage(self.outputs, []))
             # Intentionally leave this resource installed in case subsequent async work uses it.

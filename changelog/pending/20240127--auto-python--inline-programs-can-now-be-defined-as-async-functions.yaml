@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Inline programs can now be defined as async functions.

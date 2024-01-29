@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, List, Mapping, Optional, Awaitable
 
 from ._cmd import PulumiCommand
 from ._config import ConfigMap, ConfigValue
@@ -23,7 +23,7 @@ from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
 from ._tag import TagMap
 
-PulumiFn = Callable[[], None]
+PulumiFn = Callable[[], Optional[Awaitable[None]]]
 
 
 class StackSummary:

@@ -33,7 +33,7 @@ class LanguageServer(LanguageRuntimeServicer):
     program: PulumiFn
 
     def __init__(self, program: PulumiFn) -> None:
-        self.program = program  # type: ignore
+        self.program = program
 
     @staticmethod
     def on_pulumi_exit():
