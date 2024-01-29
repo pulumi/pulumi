@@ -53,6 +53,29 @@
             "Subject": {
                 "Filename": "invalid-access-load",
                 "Start": {
+                    "Line": 4,
+                    "Column": 7,
+                    "Byte": 56
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 20,
+                    "Byte": 69
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unterminated interpolation",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
                     "Line": 5,
                     "Column": 7,
                     "Byte": 76
@@ -72,6 +95,29 @@
         {
             "Severity": 1,
             "Summary": "missing closing bracket in list index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 6,
+                    "Column": 7,
+                    "Byte": 96
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 17,
+                    "Byte": 106
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[3]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unterminated interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",

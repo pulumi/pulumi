@@ -289,9 +289,6 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 	case dest.Type().AssignableTo(exprType):
 		x, xdiags := ParseExpr(node)
 		diags.Extend(xdiags...)
-		if diags.HasErrors() {
-			return diags
-		}
 
 		xv := reflect.ValueOf(x)
 		if !xv.Type().AssignableTo(dest.Type()) {
@@ -303,9 +300,7 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 		panic(fmt.Errorf("unexpected field of type %T", dest.Interface()))
 	}
 
-	if !diags.HasErrors() {
-		dest.Set(v)
-	}
+	dest.Set(v)
 	return diags
 }
 
@@ -351,7 +346,6 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 			nodeError.Severity = hcl.DiagWarning
 			diags = append(diags, nodeError)
 		}
-
 	}
 
 	return diags

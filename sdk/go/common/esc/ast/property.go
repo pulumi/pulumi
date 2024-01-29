@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/pulumi/esc/syntax"
 )
@@ -77,6 +78,10 @@ func (p *PropertySubscript) rootName() string {
 	return p.Index.(string)
 }
 
+func terminatesName(c byte) bool {
+	return c == '.' || c == '[' || c == '}' || unicode.IsSpace(rune(c))
+}
+
 // parsePropertyAccess parses a property access into a PropertyAccess value.
 //
 // A property access string is essentially a Javascript property access expression in which all elements are literals.
@@ -110,30 +115,38 @@ func (p *PropertySubscript) rootName() string {
 func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAccess, syntax.Diagnostics) {
 	// TODO: diagnostic ranges
 
+	var diags syntax.Diagnostics
+
 	// We interpret the grammar above a little loosely in order to keep things simple. Specifically, we will accept
 	// something close to the following:
 	// pathElement := { '.' } ( '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']' | [a-zA-Z_$][a-zA-Z0-9_$] )
 	// path := { pathElement }
 	var accessors []PropertyAccessor
+outer:
 	for len(access) > 0 {
 		switch access[0] {
 		case '}':
 			// interpolation terminator
-			return access[1:], &PropertyAccess{Accessors: accessors}, nil
+			return access[1:], &PropertyAccess{Accessors: accessors}, diags
 		case '.':
 			if len(accessors) == 0 {
-				return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name")}
+				diags.Extend(syntax.NodeError(node, "the root property must be a string subscript or a name"))
 			}
 			access = access[1:]
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.
-			var indexNode interface{}
-			if len(access) > 1 && access[1] == '"' {
+			if len(access) == 1 {
+				access = access[1:]
+				break outer
+			}
+			if access[1] == '"' {
 				var propertyKey []byte
 				var i int
 				for i = 2; ; {
 					if i >= len(access) {
-						return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing quote in property name")}
+						diags.Extend(syntax.NodeError(node, "missing closing quote in property name"))
+						i = len(access)
+						break
 					} else if access[i] == '"' {
 						i++
 						break
@@ -145,37 +158,56 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 						i++
 					}
 				}
-				if i >= len(access) || access[i] != ']' {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing bracket in property access")}
+				if i != len(access) {
+					if access[i] == ']' {
+						i++
+					} else {
+						diags.Extend(syntax.NodeError(node, "missing closing bracket in property access"))
+					}
 				}
-				indexNode, access = string(propertyKey), access[i:]
+				accessors, access = append(accessors, &PropertySubscript{Index: string(propertyKey)}), access[i:]
 			} else {
 				// Look for a closing ']'
 				rbracket := strings.IndexRune(access, ']')
 				if rbracket == -1 {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "missing closing bracket in list index")}
-				}
+					diags.Extend(syntax.NodeError(node, "missing closing bracket in list index"))
 
-				index, err := strconv.ParseInt(access[1:rbracket], 10, 0)
-				if err != nil {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "invalid list index")}
+					// Look for an alternative terminator
+				search:
+					for i := 1; ; i++ {
+						if i == len(access) || terminatesName(access[i]) {
+							rbracket = i
+							break search
+						}
+					}
 				}
+				if rbracket != 1 {
+					index, err := strconv.ParseInt(access[1:rbracket], 10, 0)
+					if err != nil {
+						diags.Extend(syntax.NodeError(node, "invalid list index"))
+					}
 
-				if len(accessors) == 0 {
-					return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name")}
+					if len(accessors) == 0 {
+						diags.Extend(syntax.NodeError(node, "the root property must be a string subscript or a name"))
+					}
+
+					rbracket += 1
+					accessors = append(accessors, &PropertySubscript{Index: int(index)})
 				}
-
-				indexNode, access = int(index), access[rbracket:]
+				access = access[rbracket:]
 			}
-			accessors, access = append(accessors, &PropertySubscript{Index: indexNode}), access[1:]
 		default:
+			if unicode.IsSpace(rune(access[0])) {
+				break outer
+			}
+
 			for i := 0; ; i++ {
-				if i == len(access) || access[i] == '.' || access[i] == '[' || access[i] == '}' {
+				if i == len(access) || access[i] == '.' || access[i] == '[' || access[i] == '}' || unicode.IsSpace(rune(access[i])) {
 					propertyName := access[:i]
 					// Ensure the root property is not an integer
 					if len(accessors) == 0 {
 						if _, err := strconv.ParseInt(propertyName, 10, 0); err == nil {
-							return "", nil, syntax.Diagnostics{syntax.NodeError(node, "the root property must be a string subscript or a name")}
+							diags.Extend(syntax.NodeError(node, "the root property must be a string subscript or a name"))
 						}
 					}
 					accessors, access = append(accessors, &PropertyName{Name: propertyName}), access[i:]
@@ -184,5 +216,6 @@ func parsePropertyAccess(node syntax.Node, access string) (string, *PropertyAcce
 			}
 		}
 	}
-	return "", nil, syntax.Diagnostics{syntax.NodeError(node, "unterminated interpolation")}
+	diags.Extend(syntax.NodeError(node, "unterminated interpolation"))
+	return access, &PropertyAccess{Accessors: accessors}, diags
 }

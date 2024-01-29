@@ -174,10 +174,6 @@ func (n *InterpolateExpr) String() string {
 // string literal.
 func InterpolateSyntax(node *syntax.StringNode) (*InterpolateExpr, syntax.Diagnostics) {
 	parts, diags := parseInterpolate(node, node.Value())
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
 	for _, part := range parts {
 		if part.Value != nil && len(part.Value.Accessors) == 0 {
 			diags.Extend(syntax.NodeError(node, "Property access expressions cannot be empty"))
@@ -487,7 +483,7 @@ type JoinExpr struct {
 	Values    Expr
 }
 
-func JoinSyntax(node *syntax.ObjectNode, name *StringExpr, args *ArrayExpr, delimiter Expr, values Expr) *JoinExpr {
+func JoinSyntax(node *syntax.ObjectNode, name *StringExpr, args, delimiter, values Expr) *JoinExpr {
 	return &JoinExpr{
 		builtinNode: builtin(node, name, args),
 		Delimiter:   delimiter,
@@ -638,7 +634,8 @@ func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) 
 func parseOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
 	obj, ok := args.(*ObjectExpr)
 	if !ok {
-		return nil, syntax.Diagnostics{ExprError(args, "the argument to fn::open must be an object containing 'provider' and 'inputs'")}
+		diags := syntax.Diagnostics{ExprError(args, "the argument to fn::open must be an object containing 'provider' and 'inputs'")}
+		return OpenSyntax(node, name, args, nil, nil), diags
 	}
 
 	var providerExpr, inputs Expr
@@ -668,28 +665,25 @@ func parseOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, synt
 		diags.Extend(ExprError(obj, "missing provider inputs ('inputs')"))
 	}
 
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
 	return OpenSyntax(node, name, obj, provider, inputs), diags
 }
 
 func parseShortOpen(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
 	kvp := node.Index(0)
-	provider := strings.TrimPrefix(kvp.Key.Value(), "fn::open::")
+	provider := StringSyntaxValue(name.Syntax().(*syntax.StringNode), strings.TrimPrefix(kvp.Key.Value(), "fn::open::"))
 	if args == nil {
-		return nil, syntax.Diagnostics{ExprError(name, "missing provider inputs")}
+		diags := syntax.Diagnostics{ExprError(name, "missing provider inputs")}
+		return OpenSyntax(node, name, args, provider, nil), diags
 	}
-	p := name.Syntax().(*syntax.StringNode)
 
-	return OpenSyntax(node, name, args, StringSyntaxValue(p, provider), args), nil
+	return OpenSyntax(node, name, args, provider, args), nil
 }
 
 func parseJoin(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
 	list, ok := args.(*ArrayExpr)
 	if !ok || len(list.Elements) != 2 {
-		return nil, syntax.Diagnostics{ExprError(args, "the argument to fn::join must be a two-valued list")}
+		diags := syntax.Diagnostics{ExprError(args, "the argument to fn::join must be a two-valued list")}
+		return JoinSyntax(node, name, args, nil, nil), diags
 	}
 
 	return JoinSyntax(node, name, list, list.Elements[0], list.Elements[1]), nil
@@ -725,9 +719,10 @@ func parseSecret(node *syntax.ObjectNode, name *StringExpr, value Expr) (Expr, s
 		}
 	}
 
+	var diags syntax.Diagnostics
 	str, ok := value.(*StringExpr)
 	if !ok {
-		return nil, syntax.Diagnostics{ExprError(value, "secret values must be string literals")}
+		diags = syntax.Diagnostics{ExprError(value, "secret values must be string literals")}
 	}
-	return PlaintextSyntax(node, name, str), nil
+	return PlaintextSyntax(node, name, str), diags
 }

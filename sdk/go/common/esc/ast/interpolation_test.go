@@ -21,6 +21,128 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestInvalidInterpolations(t *testing.T) {
+	cases := []struct {
+		text  string
+		parts []Interpolation
+	}{
+		{
+			text: "${foo",
+			parts: []Interpolation{
+				{
+					Text: "",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertyName{Name: "foo"},
+						},
+					},
+				},
+			},
+		},
+		{
+			text: "${foo ",
+			parts: []Interpolation{
+				{
+					Text: "",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertyName{Name: "foo"},
+						},
+					},
+				},
+				{
+					Text: " ",
+				},
+			},
+		},
+		{
+			text: `${foo} ${["baz} bar`,
+			parts: []Interpolation{
+				{
+					Text: "",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertyName{Name: "foo"},
+						},
+					},
+				},
+				{
+					Text: " ",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertySubscript{Index: "baz} bar"},
+						},
+					},
+				},
+			},
+		},
+		{
+			text: `missing ${property[} subscript`,
+			parts: []Interpolation{
+				{
+					Text: "missing ",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertyName{Name: "property"},
+						},
+					},
+				},
+				{
+					Text: " subscript",
+				},
+			},
+		},
+		{
+			text: `${[bar].baz}`,
+			parts: []Interpolation{
+				{
+					Text: "",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertySubscript{Index: 0},
+							&PropertyName{Name: "baz"},
+						},
+					},
+				},
+			},
+		},
+		{
+			text: `${foo.`,
+			parts: []Interpolation{
+				{
+					Text: "",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertyName{Name: "foo"},
+						},
+					},
+				},
+			},
+		},
+		{
+			text: `${foo[`,
+			parts: []Interpolation{
+				{
+					Text: "",
+					Value: &PropertyAccess{
+						Accessors: []PropertyAccessor{
+							&PropertyName{Name: "foo"},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.text, func(t *testing.T) {
+			node := syntax.String(c.text)
+			parts, diags := parseInterpolate(node, c.text)
+			assert.NotEmpty(t, diags)
+			assert.Equal(t, c.parts, parts)
+		})
+	}
+}
+
 func TestEscapeInterpolationWorks(t *testing.T) {
 	t.Parallel()
 	node := syntax.String("Hello $${world}!")

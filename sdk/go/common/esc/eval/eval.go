@@ -66,10 +66,6 @@ func LoadYAMLBytes(filename string, source []byte) (*ast.EnvironmentDecl, syntax
 
 	t, tdiags := ast.ParseEnvironment(source, syn)
 	diags.Extend(tdiags...)
-	if tdiags.HasErrors() {
-		return nil, diags, nil
-	}
-
 	return t, diags, nil
 }
 
@@ -402,6 +398,9 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 		e.diags.Extend(diags...)
 		if err != nil {
 			e.errorf(decl.Environment, "%s", err.Error())
+			return
+		}
+		if diags.HasErrors() {
 			return
 		}
 

@@ -28,16 +28,15 @@ type Interpolation struct {
 func parseInterpolate(node syntax.Node, value string) ([]Interpolation, syntax.Diagnostics) {
 	var parts []Interpolation
 	var str strings.Builder
+	var diags syntax.Diagnostics
 	for len(value) > 0 {
 		switch {
 		case strings.HasPrefix(value, "$$"):
 			str.WriteByte('$')
 			value = value[2:]
 		case strings.HasPrefix(value, "${"):
-			rest, access, diags := parsePropertyAccess(node, value[2:])
-			if len(diags) != 0 {
-				return nil, diags
-			}
+			rest, access, accessDiags := parsePropertyAccess(node, value[2:])
+			diags.Extend(accessDiags...)
 			parts = append(parts, Interpolation{
 				Text:  str.String(),
 				Value: access,
@@ -53,5 +52,5 @@ func parseInterpolate(node syntax.Node, value string) ([]Interpolation, syntax.D
 	if str.Len() != 0 {
 		parts = append(parts, Interpolation{Text: str.String()})
 	}
-	return parts, nil
+	return parts, diags
 }
