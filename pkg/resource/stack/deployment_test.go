@@ -498,6 +498,23 @@ func TestSerializePropertyValue(t *testing.T) {
 	})
 }
 
+// Test that if ShowSecrets is set the encrypter is not called into at all.
+func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
+	t.Parallel()
+
+	crypter := config.NewPanicCrypter()
+
+	secret := resource.MakeSecret(resource.NewStringProperty("secret"))
+	_, err := SerializePropertyValue(secret, crypter, true)
+	assert.NoError(t, err)
+
+	secret = resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+		resource.MakeSecret(resource.NewStringProperty("secret")),
+	}))
+	_, err = SerializePropertyValue(secret, crypter, true)
+	assert.NoError(t, err)
+}
+
 func TestDeserializePropertyValue(t *testing.T) {
 	t.Parallel()
 

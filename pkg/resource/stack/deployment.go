@@ -449,19 +449,6 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		}
 		plaintext := string(bytes)
 
-		// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
-		// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
-		var ciphertext string
-		if cachingCrypter, ok := enc.(*cachingCrypter); ok {
-			ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
-		} else {
-			ciphertext, err = enc.EncryptValue(ctx, plaintext)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
-		}
-		contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
-
 		secret := apitype.SecretV1{
 			Sig: resource.SecretSig,
 		}
@@ -469,6 +456,19 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		if showSecrets {
 			secret.Plaintext = plaintext
 		} else {
+			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
+			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
+			var ciphertext string
+			if cachingCrypter, ok := enc.(*cachingCrypter); ok {
+				ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
+			} else {
+				ciphertext, err = enc.EncryptValue(ctx, plaintext)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
+			}
+			contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
+
 			secret.Ciphertext = ciphertext
 		}
 
