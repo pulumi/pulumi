@@ -168,7 +168,6 @@ class Stack(ComponentResource):
             # This _should_ be an awaitable but old pulumi executors returned modules here, so we need to handle that
             # with a type check rather than just `is not None`.
             if isawaitable(awaitable):
-                print(awaitable)
                 _sync_await(awaitable)
         finally:
             self.register_outputs(massage(self.outputs, []))

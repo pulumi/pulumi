@@ -8,7 +8,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 type Color string
@@ -174,12 +173,6 @@ func (in *colorPtr) ToColorPtrOutput() ColorPtrOutput {
 
 func (in *colorPtr) ToColorPtrOutputWithContext(ctx context.Context) ColorPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(ColorPtrOutput)
-}
-
-func (in *colorPtr) ToOutput(ctx context.Context) pulumix.Output[*Color] {
-	return pulumix.Output[*Color]{
-		OutputState: in.ToColorPtrOutputWithContext(ctx).OutputState,
-	}
 }
 
 func init() {

@@ -99,6 +99,9 @@ type languageTestServer struct {
 	cancel chan bool
 	done   chan error
 	addr   string
+
+	// Used by _bad snapshot_ tests to disable snapshot writing.
+	DisableSnapshotWriting bool
 }
 
 func (eng *languageTestServer) Address() string {
@@ -323,8 +326,8 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 
 // Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
 // write the new files instead.
-func doSnapshot(sourceDirectory, snapshotDirectory string) ([]string, error) {
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
+func doSnapshot(disableSnapshotWriting bool, sourceDirectory, snapshotDirectory string) ([]string, error) {
+	if !disableSnapshotWriting && cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 		// Write files
 		err := os.RemoveAll(snapshotDirectory)
 		if err != nil {
@@ -697,7 +700,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-		validations, err := doSnapshot(sdkTempDir, snapshotDir)
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir)
 		if err != nil {
 			return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg, err)
 		}
@@ -748,7 +751,12 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Generate the project and read in the Pulumi.yaml
-	projectJSON := fmt.Sprintf(`{"name": "%s"}`, req.Test)
+	projectJSON := func() string {
+		if test.main == "" {
+			return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+		}
+		return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, test.main)
+	}()
 
 	// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 	diagnostics, err := languageClient.GenerateProject(
@@ -761,7 +769,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-	validations, err := doSnapshot(projectDir, snapshotDir)
+	validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
 	if err != nil {
 		return nil, fmt.Errorf("program snapshot validation: %w", err)
 	}
@@ -769,24 +777,30 @@ func (eng *languageTestServer) RunLanguageTest(
 		return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
 	}
 
-	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
-	// plugin, so we can't show it back to the test.
+	project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
+	if err != nil {
+		return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
+	}
+
+	info := &engine.Projinfo{Proj: project, Root: projectDir}
+	pwd, main, err := info.GetPwdMain()
+	if err != nil {
+		return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
+	}
+
 	programInfo := plugin.NewProgramInfo(
 		projectDir, /* rootDirectory */
-		projectDir, /* programDirectory */
-		"index",
-		map[string]interface{}{})
+		pwd,        /* programDirectory */
+		main,
+		project.Runtime.Options())
 
+	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
+	// plugin, so we can't show it back to the test.
 	err = languageClient.InstallDependencies(programInfo)
 	if err != nil {
 		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
 	}
 	// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
-
-	project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
-	}
 
 	// Create a temp dir for the a filestate backend to run in for the test
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
