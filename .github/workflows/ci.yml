@@ -399,7 +399,7 @@ jobs:
     secrets: inherit
 
   test-collect-reports:
-    needs: [unit-test, integration-test, acceptance-test]
+    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -419,7 +419,7 @@ jobs:
           ls -lhR test-results
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
   test-collect-coverage:
-    needs: [unit-test, integration-test, acceptance-test]
+    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
     if: ${{ inputs.enable-coverage }}
     runs-on: ubuntu-latest
     steps:
@@ -455,7 +455,7 @@ jobs:
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
     name: Rebuild binaries
-    needs: [matrix, unit-test, integration-test, acceptance-test]
+    needs: [matrix, unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
     if: ${{ inputs.enable-coverage }}
     strategy:
       # To avoid tying up macOS runners:
