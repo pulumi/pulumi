@@ -2099,18 +2099,19 @@ func genPackageMetadata(
 
 	// Now create a standard Python package from the metadata.
 	fmt.Fprintf(w, "import errno\n")
+	fmt.Fprintf(w, "import os\n")
 	fmt.Fprintf(w, "from setuptools import setup, find_packages\n")
 	fmt.Fprintf(w, "from setuptools.command.install import install\n")
 	fmt.Fprintf(w, "from subprocess import check_call\n")
 	fmt.Fprintf(w, "\n\n")
 
 	// Create a constant for the version number to replace during build
-	version := "0.0.0"
+	version := "os.getenv(\"PULUMI_PYTHON_VERSION\", \"0.0.0\")"
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
-		version = pypiVersion(*pkg.Version)
+		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
-	fmt.Fprintf(w, "VERSION = \"%s\"\n", version)
+	fmt.Fprintf(w, "VERSION = %s\n", version)
 
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
@@ -3041,7 +3042,7 @@ func genPyprojectTOML(tool string,
 	version := "0.0.0"
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
-		version = pypiVersion(*pkg.Version)
+		version = PypiVersion(*pkg.Version)
 	}
 	schema.Project.Version = &version
 
