@@ -45,7 +45,7 @@ func newStackRenameCmd() *cobra.Command {
 			"'robot-co/new-project-name/production'. However in order to update the stack again, you would also need\n" +
 			"to update the name field of Pulumi.yaml, so the project names match.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}

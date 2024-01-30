@@ -50,7 +50,7 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
 			"The environment will be created in the same organization as the stack.",
 		Args: cmdutil.NoArgs,
-		Run:  cmdutil.RunFunc(impl.run),
+		Run:  cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error { return impl.run(cmd.Context(), args) }),
 	}
 
 	cmd.Flags().StringVar(
@@ -89,12 +89,10 @@ type configEnvInitCmd struct {
 	yes         bool
 }
 
-func (cmd *configEnvInitCmd) run(_ *cobra.Command, args []string) error {
+func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.yes && !cmd.parent.interactive {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
-
-	ctx := cmd.parent.ctx
 
 	opts := display.Options{Color: cmd.parent.color}
 

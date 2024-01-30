@@ -37,7 +37,7 @@ func newPackagePackCmd() *cobra.Command {
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return packCmd.Run(ctx, args)
 		}),
 	}

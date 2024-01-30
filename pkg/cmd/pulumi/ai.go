@@ -54,7 +54,7 @@ func newAICommand() *cobra.Command {
 		Hidden: !hasExperimentalCommands(),
 		Args:   cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			if len(args) == 0 {
 				return cmd.Help()
 			}

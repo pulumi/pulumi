@@ -634,7 +634,7 @@ func newImportCmd() *cobra.Command {
 			"type, parent and provider information for you and just require you to fill in resource\n" +
 			"IDs and any properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 
 			cwd, err := os.Getwd()
 			if err != nil {

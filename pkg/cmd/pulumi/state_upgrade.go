@@ -45,7 +45,7 @@ This only has an effect on self-managed backends.
 `,
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			if err := sucmd.Run(commandContext()); err != nil {
+			if err := sucmd.Run(cmd.Context()); err != nil {
 				return result.FromError(err)
 			}
 			return nil

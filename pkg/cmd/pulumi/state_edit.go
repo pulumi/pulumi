@@ -38,7 +38,6 @@ import (
 func newStateEditCommand() *cobra.Command {
 	var stackName string
 	stateEdit := &stateEditCmd{
-		Ctx:       commandContext(),
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
@@ -56,7 +55,7 @@ a preview showing a diff of the altered state.`,
 			if !cmdutil.Interactive() {
 				return result.Error("pulumi state edit must be run in interactive mode")
 			}
-			s, err := requireStack(commandContext(), stackName, stackLoadOnly, display.Options{
+			s, err := requireStack(cmd.Context(), stackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})

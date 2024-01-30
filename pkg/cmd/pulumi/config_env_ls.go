@@ -15,6 +15,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +31,7 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 		Short: "Lists imported environments.",
 		Long:  "Lists the environments imported into a stack's configuration.",
 		Args:  cmdutil.NoArgs,
-		Run:   cmdutil.RunFunc(impl.run),
+		Run:   cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error { return impl.run(cmd.Context(), args) }),
 	}
 
 	cmd.Flags().BoolVarP(
@@ -45,6 +47,6 @@ type configEnvLsCmd struct {
 	jsonOut *bool
 }
 
-func (cmd *configEnvLsCmd) run(_ *cobra.Command, _ []string) error {
-	return cmd.parent.listStackEnvironments(*cmd.jsonOut)
+func (cmd *configEnvLsCmd) run(ctx context.Context, _ []string) error {
+	return cmd.parent.listStackEnvironments(ctx, *cmd.jsonOut)
 }

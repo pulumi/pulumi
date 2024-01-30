@@ -47,7 +47,7 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return socmd.Run(commandContext(), args)
+			return socmd.Run(cmd.Context(), args)
 		}),
 	}
 

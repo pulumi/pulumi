@@ -293,7 +293,7 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff

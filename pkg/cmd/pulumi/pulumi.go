@@ -33,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	user "github.com/tweekmonster/luser"
 
 	"github.com/blang/semver"
@@ -45,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -148,7 +150,7 @@ func NewPulumiCmd() *cobra.Command {
 	var cwd string
 	var logFlow bool
 	var logToStderr bool
-	var tracing string
+	var tracingFlag string
 	var tracingHeaderFlag string
 	var profiling string
 	var verbose int
@@ -208,10 +210,28 @@ func NewPulumiCmd() *cobra.Command {
 			}
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
-			cmdutil.InitTracing("pulumi-cli", "pulumi", tracing)
-			if tracingHeaderFlag != "" {
-				tracingHeader = tracingHeaderFlag
+			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
+
+			ctx := cmd.Context()
+			if cmdutil.IsTracingEnabled() {
+				if cmdutil.TracingRootSpan != nil {
+					ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+				}
+
+				// This is used to control the contents of the tracing header.
+				tracingHeader := os.Getenv("PULUMI_TRACING_HEADER")
+				if tracingHeaderFlag != "" {
+					tracingHeader = tracingHeaderFlag
+				}
+
+				tracingOptions := tracing.Options{
+					PropagateSpans: true,
+					TracingHeader:  tracingHeader,
+				}
+				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
 			}
+			cmd.SetContext(ctx)
+
 			if logging.Verbose >= 11 {
 				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
 			}
@@ -234,7 +254,6 @@ func NewPulumiCmd() *cobra.Command {
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
 				go func() {
-					ctx := commandContext()
 					updateCheckResult <- checkForUpdate(ctx)
 					close(updateCheckResult)
 				}()
@@ -275,7 +294,7 @@ func NewPulumiCmd() *cobra.Command {
 		"Log to stderr instead of to files")
 	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
-	cmd.PersistentFlags().StringVar(&tracing, "tracing", "",
+	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")

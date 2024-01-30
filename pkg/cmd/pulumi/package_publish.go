@@ -39,7 +39,7 @@ func newPackagePublishCmd() *cobra.Command {
 		Short:  "Publish a package SDK to supported package registries.",
 		Hidden: !env.Dev.Value(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return publCmd.Run(ctx, args)
 		}),
 	}
