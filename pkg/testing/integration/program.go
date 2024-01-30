@@ -202,6 +202,8 @@ type ProgramTestOptions struct {
 	RetryFailedSteps bool
 	// SkipRefresh indicates that the refresh step should be skipped entirely.
 	SkipRefresh bool
+	// Require a preview after refresh to be a no-op (expect no changes). Has no effect if SkipRefresh is true.
+	RequireEmptyPreviewAfterRefresh bool
 	// SkipPreview indicates that the preview step should be skipped entirely.
 	SkipPreview bool
 	// SkipUpdate indicates that the update step should be skipped entirely.
@@ -526,6 +528,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.SkipRefresh {
 		opts.SkipRefresh = overrides.SkipRefresh
+	}
+	if overrides.RequireEmptyPreviewAfterRefresh {
+		opts.RequireEmptyPreviewAfterRefresh = overrides.RequireEmptyPreviewAfterRefresh
 	}
 	if overrides.SkipPreview {
 		opts.SkipPreview = overrides.SkipPreview
@@ -1533,6 +1538,20 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		}
 		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir, false); err != nil {
 			return err
+		}
+
+		// Perform another preview and expect no changes in it.
+		if pt.opts.RequireEmptyPreviewAfterRefresh {
+			preview := []string{"preview", "--non-interactive", "--expect-no-changes"}
+			if pt.opts.GetDebugUpdates() {
+				preview = append(preview, "-d")
+			}
+			if pt.opts.JSONOutput {
+				preview = append(preview, "--json")
+			}
+			if err := pt.runPulumiCommand("pulumi-preview-after-refresh", preview, dir, false); err != nil {
+				return err
+			}
 		}
 	}
 
