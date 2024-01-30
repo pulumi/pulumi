@@ -18,11 +18,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -87,7 +88,8 @@ func newPackageExampleCmd() *cobra.Command {
 
 			examplePclPath := filepath.Join(dir, "main.pp")
 			pcl := genCreationExampleSyntax(resourceSchema)
-			if err = os.WriteFile(examplePclPath, []byte(pcl), 0666); err != nil {
+			fileError := os.WriteFile(examplePclPath, []byte(pcl), 0666)
+			if fileError != nil {
 				return err
 			}
 
