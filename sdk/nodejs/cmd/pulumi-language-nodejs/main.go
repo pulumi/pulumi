@@ -1179,7 +1179,8 @@ func (host *nodeLanguageHost) GeneratePackage(
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
-	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles)
+
+	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}

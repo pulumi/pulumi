@@ -577,7 +577,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg, err)
 		}
 
-		diags, err = languageClient.GeneratePackage(sdkTempDir, string(schemaBytes), nil, grpcServer.Addr())
+		diags, err = languageClient.GeneratePackage(
+			sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, err)), nil
 		}

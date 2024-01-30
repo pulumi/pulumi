@@ -155,7 +155,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			}
 			defer contract.IgnoreClose(grpcServer)
 
-			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr())
+			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil)
 			if err != nil {
 				return err
 			}
