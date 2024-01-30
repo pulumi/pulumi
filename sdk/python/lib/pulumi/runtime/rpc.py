@@ -35,6 +35,8 @@ from typing import (
     Set,
     Union,
     cast,
+    get_args,
+    get_origin,
 )
 
 import six
@@ -157,9 +159,9 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 
     # If typ is a list, get the type for its values, to pass
     # along for each item.
-    origin = _types.get_origin(typ)
+    origin = get_origin(typ)
     if typ is list or origin in [list, List, Sequence, abc.Sequence]:
-        args = _types.get_args(typ)
+        args = get_args(typ)
         if len(args) == 1:
             return args[0]
 
@@ -535,9 +537,9 @@ async def serialize_property(
                 get_type = types.get
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
-                origin = _types.get_origin(typ)
+                origin = get_origin(typ)
                 if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
-                    args = _types.get_args(typ)
+                    args = get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         # pylint: disable=C3001
                         get_type = lambda k: args[1]
@@ -965,9 +967,9 @@ def translate_output_properties(
                 return _types.output_type_from_dict(typ, translated_values)
 
             # If typ is a dict, get the type for its values, to pass along for each key.
-            origin = _types.get_origin(typ)
+            origin = get_origin(typ)
             if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
-                args = _types.get_args(typ)
+                args = get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     # pylint: disable=C3001
                     get_type = lambda k: args[1]

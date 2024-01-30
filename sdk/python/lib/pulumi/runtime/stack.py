@@ -29,7 +29,7 @@ from .settings import (
     is_dry_run,
     set_root_resource,
 )
-from .sync_await import _all_tasks, _get_current_task, _sync_await
+from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .. import Output
@@ -37,9 +37,9 @@ if TYPE_CHECKING:
 
 def _get_running_tasks() -> List[asyncio.Task]:
     pending = []
-    for task in _all_tasks():
+    for task in asyncio.all_tasks():
         # Don't kill ourselves, that would be silly.
-        if not task == _get_current_task():
+        if not task == asyncio.current_task():
             pending.append(task)
     return pending
 
