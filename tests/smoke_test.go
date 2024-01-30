@@ -373,14 +373,10 @@ func TestPreviewImportFile(t *testing.T) {
 
 	expectedResources := []interface{}{
 		map[string]interface{}{
-			"id": "<PLACEHOLDER>",
-			// This isn't ideal, we don't really need to change the "name" here because it isn't used as a
-			// parent, but currently we generate unique names for all resources rather than just unique names
-			// for all parent resources.
-			"name":        "usernameRandomPet",
-			"logicalName": "username",
-			"type":        "random:index/randomPet:RandomPet",
-			"version":     "4.12.0",
+			"id":      "<PLACEHOLDER>",
+			"name":    "username",
+			"type":    "random:index/randomPet:RandomPet",
+			"version": "4.12.0",
 		},
 		map[string]interface{}{
 			"name":      "component",
@@ -388,8 +384,12 @@ func TestPreviewImportFile(t *testing.T) {
 			"component": true,
 		},
 		map[string]interface{}{
-			"id":      "<PLACEHOLDER>",
-			"name":    "username",
+			"id":          "<PLACEHOLDER>",
+			"logicalName": "username",
+			// This isn't ideal, we don't really need to change the "name" here because it isn't used as a
+			// parent, but currently we generate unique names for all resources rather than just unique names
+			// for all parent resources.
+			"name":    "usernameRandomPet",
 			"type":    "random:index/randomPet:RandomPet",
 			"version": "4.12.0",
 			"parent":  "component",
