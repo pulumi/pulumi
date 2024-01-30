@@ -43,8 +43,8 @@ var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new 
 
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 
-var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Experimental flag to skip saving state "+
-	"checkpoints and only save the final deployment. See #10668.", env.Needs(Experimental))
+var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Skip saving state checkpoints and only save "+
+	"the final deployment. See #10668.")
 
 var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself.")
 
