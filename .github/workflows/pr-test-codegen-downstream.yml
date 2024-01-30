@@ -31,7 +31,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
       strategy:
         matrix:
-          provider: ["aws", "gcp", "azure", "azuread", "random"]
+          provider: ["aws", "gcp", "azure", "azuread", "random", "keycloak"]
         fail-fast: false
       steps:
         - name: Trigger upgrade
@@ -42,6 +42,7 @@ jobs:
             event-type: upgrade-bridge
             client-payload: |-
               {
+                 "kind": "pulumi",
                  "target-pulumi-version": ${{ toJSON( github.event.pull_request.head.sha ) }},
                  "target-bridge-version": "",
                  "pr-reviewers": ${{ toJSON( github.triggering_actor || 'justinvp' ) }},
