@@ -434,6 +434,10 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 			write("{\n")
 			indended(func() {
 				for _, p := range valueType.Properties {
+					if p.DeprecationMessage != "" {
+						continue
+					}
+
 					indent()
 					write("%s = ", p.Name)
 					writeValue(p.Type)
@@ -447,6 +451,10 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 		case *schema.EnumType:
 			cases := make([]string, len(valueType.Elements))
 			for index, c := range valueType.Elements {
+				if c.DeprecationMessage != "" {
+					continue
+				}
+
 				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
 					cases[index] = stringCase
 				} else if intCase, ok := c.Value.(int); ok {
@@ -488,6 +496,10 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 	write("resource \"example\" %q {\n", r.Token)
 	indended(func() {
 		for _, p := range r.InputProperties {
+			if p.DeprecationMessage != "" {
+				continue
+			}
+
 			indent()
 			write("%s = ", p.Name)
 			writeValue(codegen.ResolvedType(p.Type))
