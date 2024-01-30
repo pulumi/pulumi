@@ -53,6 +53,7 @@ Subcommands of this command are useful to package authors during development.`,
 		newGenSdkCommand(),
 		newPackagePublishCmd(),
 		newPackagePackCmd(),
+		newPackageExampleCmd(),
 	)
 	return cmd
 }
