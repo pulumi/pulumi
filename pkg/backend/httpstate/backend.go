@@ -39,7 +39,7 @@ import (
 	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -152,9 +152,9 @@ func ValueOrDefaultURL(cloudURL string) string {
 	}
 
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
-	// to ignore the local cloud.
+	// to ignore the diy cloud.
 	if creds, err := workspace.GetStoredCredentials(); err == nil {
-		if creds.Current != "" && !filestate.IsFileStateBackendURL(creds.Current) {
+		if creds.Current != "" && !diy.IsDIYBackendURL(creds.Current) {
 			return creds.Current
 		}
 	}
@@ -1521,7 +1521,7 @@ func (b *cloudBackend) GetLogs(ctx context.Context,
 	if targetErr != nil {
 		return nil, targetErr
 	}
-	return filestate.GetLogsForTarget(target, logQuery)
+	return diy.GetLogsForTarget(target, logQuery)
 }
 
 // ExportDeployment exports a deployment _from_ the backend service.

@@ -737,7 +737,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	disableCheckpointBackups := env.SelfManagedDisableCheckpointBackups.Var().Name()
+	disableCheckpointBackups := env.DIYBackendDisableCheckpointBackups.Var().Name()
 	opts.Env = append(opts.Env, disableCheckpointBackups+"=1")
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.

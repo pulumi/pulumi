@@ -866,7 +866,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("gcp", func(t *testing.T) { integration.ProgramTest(t, &gcpTestOptions) })
 
-	// Also run with local backend
+	// Also run with local diy backend
 	//
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })

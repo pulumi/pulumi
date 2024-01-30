@@ -777,7 +777,7 @@ class Stack:
         Cancel stops a stack's currently running update. It returns an error if no update is currently running.
         Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
-        This command is not supported for local backends.
+        This command is not supported for diy backends.
         """
         self._run_pulumi_cmd_sync(["cancel", "--yes"])
 
@@ -903,9 +903,10 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
     Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
 
-    Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
+    Note that legacy diy backends (local file, S3, Azure Blob) do not support stack names in this
     format, and instead only use the stack name without an org/user or project to qualify it.
     See: https://github.com/pulumi/pulumi/issues/2522
+    Non-legacy diy backends do support the org/project/stack format but org must be set to "organization".
 
     :param org: The name of the org or user.
     :param project: The name of the project.

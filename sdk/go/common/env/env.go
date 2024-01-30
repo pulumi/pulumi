@@ -86,23 +86,23 @@ var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
 
 // Environment variables that affect the DIY backend.
 var (
-	SelfManagedStateNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
+	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
 
-	SelfManagedStateLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
+	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
 		env.Alternative("SELF_MANAGED_STATE_LEGACY_LAYOUT"))
 
-	SelfManagedGzip = env.Bool("DIY_BACKEND_GZIP",
+	DIYBackendGzip = env.Bool("DIY_BACKEND_GZIP",
 		"Enables gzip compression when writing state files.",
 		env.Alternative("SELF_MANAGED_STATE_GZIP"))
 
-	SelfManagedRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
+	DIYBackendRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
 		"If set every checkpoint will be duplicated to a timestamped file.",
 		env.Alternative("RETAIN_CHECKPOINTS"))
 
-	SelfManagedDisableCheckpointBackups = env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
+	DIYBackendDisableCheckpointBackups = env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
 		"If set checkpoint backups will not be written the to the backup folder.",
 		env.Alternative("DISABLE_CHECKPOINT_BACKUPS"))
 )

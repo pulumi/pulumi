@@ -366,7 +366,7 @@ func TestStackBackups(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs/nodejs")
 
 		// We're testing that backups are created so ensure backups aren't disabled.
-		disableCheckpointBackups := env.SelfManagedDisableCheckpointBackups.Var().Name()
+		disableCheckpointBackups := env.DIYBackendDisableCheckpointBackups.Var().Name()
 		if env := os.Getenv(disableCheckpointBackups); env != "" {
 			os.Unsetenv(disableCheckpointBackups)
 			defer os.Setenv(disableCheckpointBackups, env)
@@ -682,7 +682,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, "stack_dependencies", stackName)
-	gzipEnvVar := env.SelfManagedGzip.Var().Name()
+	gzipEnvVar := env.DIYBackendGzip.Var().Name()
 	switchGzipOff := func() { e.Setenv(gzipEnvVar, "0") }
 	switchGzipOn := func() { e.Setenv(gzipEnvVar, "1") }
 	pulumiUp := func() { e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview") }
@@ -834,7 +834,7 @@ func TestNewStackConflictingOrg(t *testing.T) {
 	project, err := resource.NewUniqueHex("test-name-", 8, -1)
 	require.NoError(t, err)
 
-	// `new` wants to work in an empty directory but our use of local filestate means we have a
+	// `new` wants to work in an empty directory but our use of local url means we have a
 	// ".pulumi" directory at root.
 	projectDir := filepath.Join(e.RootPath, project)
 	err = os.Mkdir(projectDir, 0o700)

@@ -338,14 +338,14 @@ func newPreviewCmd() *cobra.Command {
 				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, args[0], remoteArgs)
 			}
 
-			filestateBackend, err := isFilestateBackend(displayOpts)
+			isDIYBackend, err := isDIYBackend(displayOpts)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && filestateBackend {
+			if suppressPermalink != "false" && isDIYBackend {
 				displayOpts.SuppressPermalink = true
 			}
 

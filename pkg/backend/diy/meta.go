@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package diy
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 var pulumiMetaPath = filepath.Join(workspace.BookkeepingDir, "meta.yaml")
 
 // pulumiMeta holds the contents of the .pulumi/meta.yaml file
-// in a filestate backend.
+// in a diy backend.
 //
 // This file specifies metadata for the backend,
 // including a version number that the backend can use
@@ -59,7 +59,7 @@ type pulumiMeta struct {
 // If the bucket is empty, this will create a new metadata file
 // with the latest version number.
 // This can be overridden by setting the environment variable
-// "PULUMI_DIY_BACKEND_LEGACY_LAYOUT" to "1".
+// "PULUMI_diy_BACKEND_LEGACY_LAYOUT" to "1".
 // ensurePulumiMeta uses the provided 'getenv' function
 // to read the environment variable.
 func ensurePulumiMeta(ctx context.Context, b Bucket, e env.Env) (*pulumiMeta, error) {
@@ -92,7 +92,7 @@ func ensurePulumiMeta(ctx context.Context, b Bucket, e env.Env) (*pulumiMeta, er
 	if !useLegacy {
 		// Allow opting into legacy mode for new states
 		// by setting the environment variable.
-		useLegacy = e.GetBool(env.SelfManagedStateLegacyLayout)
+		useLegacy = e.GetBool(env.DIYBackendLegacyLayout)
 	}
 
 	if useLegacy {
@@ -160,7 +160,7 @@ func (m *pulumiMeta) WriteTo(ctx context.Context, b Bucket) error {
 	}
 
 	bs, err := yaml.Marshal(m)
-	contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiMeta to YAML")
+	contract.AssertNoErrorf(err, "Could not marshal diy.pulumiMeta to YAML")
 
 	if err := b.WriteAll(ctx, pulumiMetaPath, bs, nil); err != nil {
 		return fmt.Errorf("write %q: %w", pulumiMetaPath, err)

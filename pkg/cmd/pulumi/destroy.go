@@ -153,14 +153,14 @@ func newDestroyCmd() *cobra.Command {
 				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, args[0], remoteArgs)
 			}
 
-			filestateBackend, err := isFilestateBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && filestateBackend {
+			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 
@@ -175,7 +175,7 @@ func newDestroyCmd() *cobra.Command {
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
 				projectName, has := s.Ref().Project()
 				if !has {
-					// If the stack doesn't have a project name (legacy filestate) then leave this blank, as
+					// If the stack doesn't have a project name (legacy diy) then leave this blank, as
 					// we used to.
 					projectName = ""
 				}

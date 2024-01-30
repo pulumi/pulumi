@@ -690,7 +690,7 @@ Event: ${line}\n${e.toString()}`);
      * Cancel stops a stack's currently running update. It returns an error if no update is currently running.
      * Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
      * if a resource operation was pending when the update was canceled.
-     * This command is not supported for local backends.
+     * This command is not supported for diy backends.
      */
     async cancel(): Promise<void> {
         await this.runPulumiCmd(["cancel", "--yes"]);
@@ -769,9 +769,10 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
  * Returns a stack name formatted with the greatest possible specificity:
  * org/project/stack or user/project/stack
  * Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
- * Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
+ * Note that legacy diy backends (local file, S3, Azure Blob) do not support stack names in this
  * format, and instead only use the stack name without an org/user or project to qualify it.
  * See: https://github.com/pulumi/pulumi/issues/2522
+ * Non-legacy diy backends do support the org/project/stack format but org must be set to "organization".
  *
  * @param org The org (or user) that contains the Stack.
  * @param project The project that parents the Stack.

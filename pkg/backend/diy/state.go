@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package diy
 
 import (
 	"context"
@@ -49,25 +49,25 @@ import (
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
 
-type localQuery struct {
+type diyQuery struct {
 	root string
 	proj *workspace.Project
 }
 
-func (q *localQuery) GetRoot() string {
+func (q *diyQuery) GetRoot() string {
 	return q.root
 }
 
-func (q *localQuery) GetProject() *workspace.Project {
+func (q *diyQuery) GetProject() *workspace.Project {
 	return q.proj
 }
 
-// update is an implementation of engine.Update backed by local state.
+// update is an implementation of engine.Update backed by diy state.
 type update struct {
 	root    string
 	proj    *workspace.Project
 	target  *deploy.Target
-	backend *localBackend
+	backend *diyBackend
 }
 
 func (u *update) GetRoot() string {
@@ -82,17 +82,17 @@ func (u *update) GetTarget() *deploy.Target {
 	return u.target
 }
 
-func (b *localBackend) newQuery(
+func (b *diyBackend) newQuery(
 	ctx context.Context,
 	op backend.QueryOperation,
 ) (engine.QueryInfo, error) {
-	return &localQuery{root: op.Root, proj: op.Proj}, nil
+	return &diyQuery{root: op.Root, proj: op.Proj}, nil
 }
 
-func (b *localBackend) newUpdate(
+func (b *diyBackend) newUpdate(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
-	ref *localBackendReference,
+	ref *diyBackendReference,
 	op backend.UpdateOperation,
 ) (*update, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
@@ -113,10 +113,10 @@ func (b *localBackend) newUpdate(
 	}, nil
 }
 
-func (b *localBackend) getTarget(
+func (b *diyBackend) getTarget(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
-	ref *localBackendReference,
+	ref *diyBackendReference,
 	cfg config.Map,
 	dec config.Decrypter,
 ) (*deploy.Target, error) {
@@ -131,7 +131,7 @@ func (b *localBackend) getTarget(
 	}
 	return &deploy.Target{
 		Name:         ref.Name(),
-		Organization: "organization", // filestate has no organizations really, but we just always say it's "organization"
+		Organization: "organization", // diy has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
@@ -141,9 +141,9 @@ func (b *localBackend) getTarget(
 var errCheckpointNotFound = errors.New("checkpoint does not exist")
 
 // stackExists simply does a check that the checkpoint file we expect for this stack exists.
-func (b *localBackend) stackExists(
+func (b *diyBackend) stackExists(
 	ctx context.Context,
-	ref *localBackendReference,
+	ref *diyBackendReference,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
@@ -159,8 +159,8 @@ func (b *localBackend) stackExists(
 	return chkpath, nil
 }
 
-func (b *localBackend) getSnapshot(ctx context.Context,
-	secretsProvider secrets.Provider, ref *localBackendReference,
+func (b *diyBackend) getSnapshot(ctx context.Context,
+	secretsProvider secrets.Provider, ref *diyBackendReference,
 ) (*deploy.Snapshot, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
@@ -186,7 +186,7 @@ func (b *localBackend) getSnapshot(ctx context.Context,
 }
 
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func (b *localBackend) getCheckpoint(ctx context.Context, ref *localBackendReference) (*apitype.CheckpointV3, error) {
+func (b *diyBackend) getCheckpoint(ctx context.Context, ref *diyBackendReference) (*apitype.CheckpointV3, error) {
 	chkpath := b.stackPath(ctx, ref)
 	bytes, err := b.bucket.ReadAll(ctx, chkpath)
 	if err != nil {
@@ -200,9 +200,9 @@ func (b *localBackend) getCheckpoint(ctx context.Context, ref *localBackendRefer
 	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, bytes)
 }
 
-func (b *localBackend) saveCheckpoint(
+func (b *diyBackend) saveCheckpoint(
 	ctx context.Context,
-	ref *localBackendReference,
+	ref *diyBackendReference,
 	checkpoint *apitype.VersionedCheckpoint,
 ) (backupFile string, file string, _ error) {
 	// Make a serializable stack and then use the encoder to encode it.
@@ -281,7 +281,7 @@ func (b *localBackend) saveCheckpoint(
 	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", ref.FullyQualifiedName(), file, backupFile)
 
 	// And if we are retaining historical checkpoint information, write it out again
-	if b.Env.GetBool(env.SelfManagedRetainCheckpoints) {
+	if b.Env.GetBool(env.DIYBackendRetainCheckpoints) {
 		if err = b.bucket.WriteAll(ctx, fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
 			return backupFile, "", fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
 		}
@@ -290,9 +290,9 @@ func (b *localBackend) saveCheckpoint(
 	return backupFile, file, nil
 }
 
-func (b *localBackend) saveStack(
+func (b *diyBackend) saveStack(
 	ctx context.Context,
-	ref *localBackendReference, snap *deploy.Snapshot,
+	ref *diyBackendReference, snap *deploy.Snapshot,
 	sm secrets.Manager,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
@@ -321,7 +321,7 @@ func (b *localBackend) saveStack(
 }
 
 // removeStack removes information about a stack from the current workspace.
-func (b *localBackend) removeStack(ctx context.Context, ref *localBackendReference) error {
+func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Just make a backup of the file and don't write out anything new.
@@ -354,11 +354,11 @@ func backupTarget(ctx context.Context, bucket Bucket, file string, keepOriginal 
 }
 
 // backupStack copies the current Checkpoint file to ~/.pulumi/backups.
-func (b *localBackend) backupStack(ctx context.Context, ref *localBackendReference) error {
+func (b *diyBackend) backupStack(ctx context.Context, ref *diyBackendReference) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Exit early if backups are disabled.
-	if b.Env.GetBool(env.SelfManagedDisableCheckpointBackups) {
+	if b.Env.GetBool(env.DIYBackendDisableCheckpointBackups) {
 		return nil
 	}
 
@@ -387,7 +387,7 @@ func (b *localBackend) backupStack(ctx context.Context, ref *localBackendReferen
 	return b.bucket.WriteAll(ctx, filepath.Join(backupDir, backupFile), byts, nil)
 }
 
-func (b *localBackend) stackPath(ctx context.Context, ref *localBackendReference) string {
+func (b *diyBackend) stackPath(ctx context.Context, ref *diyBackendReference) string {
 	if ref == nil {
 		return StacksDir
 	}
@@ -430,11 +430,11 @@ func (b *localBackend) stackPath(ctx context.Context, ref *localBackendReference
 	return plainPath
 }
 
-// getHistory returns locally stored update history. The first element of the result will be
+// getHistory returns stored update history. The first element of the result will be
 // the most recent update record.
-func (b *localBackend) getHistory(
+func (b *diyBackend) getHistory(
 	ctx context.Context,
-	stack *localBackendReference,
+	stack *diyBackendReference,
 	pageSize int, page int,
 ) ([]backend.UpdateInfo, error) {
 	contract.Requiref(stack != nil, "stack", "must not be nil")
@@ -508,7 +508,7 @@ func (b *localBackend) getHistory(
 	return updates, nil
 }
 
-func (b *localBackend) renameHistory(ctx context.Context, oldName, newName *localBackendReference) error {
+func (b *diyBackend) renameHistory(ctx context.Context, oldName, newName *diyBackendReference) error {
 	contract.Requiref(oldName != nil, "oldName", "must not be nil")
 	contract.Requiref(newName != nil, "newName", "must not be nil")
 
@@ -552,7 +552,7 @@ func (b *localBackend) renameHistory(ctx context.Context, oldName, newName *loca
 }
 
 // addToHistory saves the UpdateInfo and makes a copy of the current Checkpoint file.
-func (b *localBackend) addToHistory(ctx context.Context, ref *localBackendReference, update backend.UpdateInfo) error {
+func (b *diyBackend) addToHistory(ctx context.Context, ref *diyBackendReference, update backend.UpdateInfo) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	dir := ref.HistoryDir()

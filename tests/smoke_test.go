@@ -42,7 +42,7 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			// `new` wants to work in an empty directory but our use of local filestate means we have a
+			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
 			projectDir := filepath.Join(e.RootPath, "project")
 			err := os.Mkdir(projectDir, 0o700)
@@ -306,7 +306,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			// `new` wants to work in an empty directory but our use of local filestate means we have a
+			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
 			projectDir := filepath.Join(e.RootPath, "project")
 			err := os.Mkdir(projectDir, 0o700)

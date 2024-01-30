@@ -1,4 +1,4 @@
-package filestate
+package diy
 
 import (
 	"context"
@@ -29,21 +29,21 @@ func TestWrappedBucket(t *testing.T) {
 		t.Skip("Skipping wrappedBucket tests because file paths won't be modified.")
 	}
 
-	// Initialize a filestate backend, using the default Pulumi directory.
+	// Initialize a diy backend, using the default Pulumi directory.
 	cloudURL := FilePathPrefix + "~"
 	ctx := context.Background()
 	b, err := New(ctx, nil, cloudURL, nil)
 	if err != nil {
-		t.Fatalf("Initializing new filestate backend: %v", err)
+		t.Fatalf("Initializing new diy backend: %v", err)
 	}
-	localBackend, ok := b.(*localBackend)
+	diyBackend, ok := b.(*diyBackend)
 	if !ok {
-		t.Fatalf("backend wasn't of type localBackend?")
+		t.Fatalf("backend wasn't of type diyBackend?")
 	}
 
-	wrappedBucket, ok := localBackend.bucket.(*wrappedBucket)
+	wrappedBucket, ok := diyBackend.bucket.(*wrappedBucket)
 	if !ok {
-		t.Fatalf("localBackend.bucket wasn't of type wrappedBucket?")
+		t.Fatalf("diyBackend.bucket wasn't of type wrappedBucket?")
 	}
 
 	// Perform basic file operations using wrappedBucket and verify that it will

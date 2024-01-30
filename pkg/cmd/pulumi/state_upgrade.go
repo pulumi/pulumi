@@ -24,7 +24,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -92,9 +92,9 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	lb, ok := b.(filestate.Backend)
+	lb, ok := b.(diy.Backend)
 	if !ok {
-		// Only the file state backend supports upgrades,
+		// Only the diy backend supports upgrades,
 		// but we don't want to error out here.
 		// Report the no-op.
 		fmt.Fprintln(cmd.Stdout, "Nothing to do")
@@ -109,7 +109,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		return nil
 	}
 
-	var opts filestate.UpgradeOptions
+	var opts diy.UpgradeOptions
 	// If we're in interactive mode, prompt for the project name
 	// for each stack that doesn't have one.
 	if cmdutil.Interactive() {

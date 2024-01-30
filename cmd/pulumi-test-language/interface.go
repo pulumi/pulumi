@@ -33,7 +33,7 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -802,15 +802,15 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
 
-	// Create a temp dir for the a filestate backend to run in for the test
+	// Create a temp dir for the a diy backend to run in for the test
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
 	err = os.MkdirAll(backendDir, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("create temp backend dir: %w", err)
 	}
-	testBackend, err := filestate.New(ctx, snk, "file://"+backendDir, project)
+	testBackend, err := diy.New(ctx, snk, "file://"+backendDir, project)
 	if err != nil {
-		return nil, fmt.Errorf("create filestate backend: %w", err)
+		return nil, fmt.Errorf("create diy backend: %w", err)
 	}
 
 	// Create a new stack for the test

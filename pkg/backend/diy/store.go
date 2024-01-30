@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package diy
 
 import (
 	"context"
@@ -36,15 +36,15 @@ import (
 // but we can't make a constant from filepath.Join.
 var (
 	// StacksDir is a path under the state's root directory
-	// where the filestate backend stores stack information.
+	// where the diy backend stores stack information.
 	StacksDir = filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
 
 	// HistoriesDir is a path under the state's root directory
-	// where the filestate backend stores histories for all stacks.
+	// where the diy backend stores histories for all stacks.
 	HistoriesDir = filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir)
 
 	// BackupsDir is a path under the state's root directory
-	// where the filestate backend stores backups of stacks.
+	// where the diy backend stores backups of stacks.
 	BackupsDir = filepath.Join(workspace.BookkeepingDir, workspace.BackupDir)
 )
 
@@ -61,29 +61,29 @@ type referenceStore interface {
 	// This is the path to the file without the extension.
 	// The real file path is StackBasePath + ".json"
 	// or StackBasePath + ".json.gz".
-	StackBasePath(*localBackendReference) string
+	StackBasePath(*diyBackendReference) string
 
 	// HistoryDir returns the path to the directory
 	// where history for this stack is stored.
 	//
 	// This must be under HistoriesDir.
-	HistoryDir(*localBackendReference) string
+	HistoryDir(*diyBackendReference) string
 
 	// BackupDir returns the path to the directory
 	// where backups for this stack are stored.
 	//
 	// This must be under BackupsDir.
-	BackupDir(*localBackendReference) string
+	BackupDir(*diyBackendReference) string
 
 	// ListReferences lists all stack references in the store.
-	ListReferences(context.Context) ([]*localBackendReference, error)
+	ListReferences(context.Context) ([]*diyBackendReference, error)
 
-	// ParseReference parses a localBackendReference from a string.
-	ParseReference(ref string) (*localBackendReference, error)
+	// ParseReference parses a diyBackendReference from a string.
+	ParseReference(ref string) (*diyBackendReference, error)
 
 	// ValidateReference verifies that the provided reference is valid
 	// returning an error if it is not.
-	ValidateReference(*localBackendReference) error
+	ValidateReference(*diyBackendReference) error
 }
 
 // projectReferenceStore is a referenceStore that stores stack
@@ -106,10 +106,10 @@ func newProjectReferenceStore(bucket Bucket, currentProject func() *workspace.Pr
 	}
 }
 
-// newReference builds a new localBackendReference with the provided arguments.
+// newReference builds a new diyBackendReference with the provided arguments.
 // This DOES NOT modify the underlying storage.
-func (p *projectReferenceStore) newReference(project tokens.Name, name tokens.StackName) *localBackendReference {
-	return &localBackendReference{
+func (p *projectReferenceStore) newReference(project tokens.Name, name tokens.StackName) *diyBackendReference {
+	return &diyBackendReference{
 		name:           name,
 		project:        project,
 		store:          p,
@@ -117,23 +117,23 @@ func (p *projectReferenceStore) newReference(project tokens.Name, name tokens.St
 	}
 }
 
-func (p *projectReferenceStore) StackBasePath(ref *localBackendReference) string {
+func (p *projectReferenceStore) StackBasePath(ref *diyBackendReference) string {
 	contract.Requiref(ref.project != "", "ref.project", "must not be empty")
 	// No need for NamePath for the StackName because it's already constrained to characters that are valid for filenames.
 	return filepath.Join(StacksDir, fsutil.NamePath(ref.project), ref.name.String())
 }
 
-func (p *projectReferenceStore) HistoryDir(stack *localBackendReference) string {
+func (p *projectReferenceStore) HistoryDir(stack *diyBackendReference) string {
 	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
 	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.project), stack.name.String())
 }
 
-func (p *projectReferenceStore) BackupDir(stack *localBackendReference) string {
+func (p *projectReferenceStore) BackupDir(stack *diyBackendReference) string {
 	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
 	return filepath.Join(BackupsDir, fsutil.NamePath(stack.project), stack.name.String())
 }
 
-func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
+func (p *projectReferenceStore) ParseReference(stackRef string) (*diyBackendReference, error) {
 	// We accept the following forms:
 	//
 	// 1. <stack-name>
@@ -163,7 +163,7 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 	// If the provided stack name didn't include the org or project,
 	// infer them from the local environment.
 	if org == "" {
-		// Filestate organization MUST always be "organization"
+		// diy organization MUST always be "organization"
 		org = "organization"
 	}
 
@@ -195,7 +195,7 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 	return p.newReference(tokens.Name(project), parsedName), nil
 }
 
-func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) error {
+func (p *projectReferenceStore) ValidateReference(ref *diyBackendReference) error {
 	if ref.project == "" {
 		return errors.New("bad stack reference, project was not set")
 	}
@@ -244,7 +244,7 @@ func (p *projectReferenceStore) ProjectExists(ctx context.Context, projectName s
 	return len(files) > 0, nil
 }
 
-func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*localBackendReference, error) {
+func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*diyBackendReference, error) {
 	// The first level of the bucket is the project name.
 	// The second level of the bucket is the stack name.
 	prefix := filepath.ToSlash(StacksDir) + "/"
@@ -255,7 +255,7 @@ func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*localBac
 		// returning only files under the prefix.
 	})
 
-	var stacks []*localBackendReference
+	var stacks []*diyBackendReference
 	for {
 		file, err := iter.Next(ctx)
 		if err != nil {
@@ -330,31 +330,31 @@ func newLegacyReferenceStore(b Bucket) *legacyReferenceStore {
 	}
 }
 
-// newReference builds a new localBackendReference with the provided arguments.
+// newReference builds a new diyBackendReference with the provided arguments.
 // This DOES NOT modify the underlying storage.
-func (p *legacyReferenceStore) newReference(name tokens.StackName) *localBackendReference {
-	return &localBackendReference{
+func (p *legacyReferenceStore) newReference(name tokens.StackName) *diyBackendReference {
+	return &diyBackendReference{
 		name:  name,
 		store: p,
 	}
 }
 
-func (p *legacyReferenceStore) StackBasePath(ref *localBackendReference) string {
+func (p *legacyReferenceStore) StackBasePath(ref *diyBackendReference) string {
 	contract.Requiref(ref.project == "", "ref.project", "must be empty")
 	return filepath.Join(StacksDir, ref.name.String())
 }
 
-func (p *legacyReferenceStore) HistoryDir(stack *localBackendReference) string {
+func (p *legacyReferenceStore) HistoryDir(stack *diyBackendReference) string {
 	contract.Requiref(stack.project == "", "ref.project", "must be empty")
 	return filepath.Join(HistoriesDir, stack.name.String())
 }
 
-func (p *legacyReferenceStore) BackupDir(stack *localBackendReference) string {
+func (p *legacyReferenceStore) BackupDir(stack *diyBackendReference) string {
 	contract.Requiref(stack.project == "", "ref.project", "must be empty")
 	return filepath.Join(BackupsDir, stack.name.String())
 }
 
-func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
+func (p *legacyReferenceStore) ParseReference(stackRef string) (*diyBackendReference, error) {
 	parsedName, err := tokens.ParseStackName(stackRef)
 	if err != nil {
 		return nil, err
@@ -362,19 +362,19 @@ func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendRef
 	return p.newReference(parsedName), nil
 }
 
-func (p *legacyReferenceStore) ValidateReference(ref *localBackendReference) error {
+func (p *legacyReferenceStore) ValidateReference(ref *diyBackendReference) error {
 	if ref.project != "" {
 		return errors.New("bad stack reference, project was set")
 	}
 	return nil
 }
 
-func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*localBackendReference, error) {
+func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*diyBackendReference, error) {
 	files, err := listBucket(ctx, p.bucket, StacksDir)
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
-	stacks := slice.Prealloc[*localBackendReference](len(files))
+	stacks := slice.Prealloc[*diyBackendReference](len(files))
 
 	for _, file := range files {
 		if file.IsDir {
