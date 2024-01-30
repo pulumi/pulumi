@@ -249,7 +249,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 			if len(output) > 0 {
 				fmt.Fprintf(errorWriter, "%s\n", string(output))
 			}
-			return fmt.Errorf("creating virtual environment at %s: %w", venvDir, err)
+			return fmt.Errorf("creating virtual environment at '%s': %w", venvDir, err)
 		}
 
 		printmsg("Finished creating virtual environment")
@@ -295,6 +295,8 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	}
 
 	printmsg("Updating pip, setuptools, and wheel in virtual environment...")
+
+	// activate virtual environment
 
 	err := runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
 	if err != nil {

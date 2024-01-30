@@ -226,7 +226,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// Prepare the virtual environment (if needed).
 	err = host.prepareVirtualEnvironment(ctx, req.Info.ProgramDirectory, opts.virtualenvPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("preparing virtual environment: %w", err)
 	}
 
 	validateVersion(ctx, opts.virtualenvPath)
@@ -250,6 +250,85 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}
 
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
+}
+
+func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	// ensure build is up-to-date
+	buildUpgradeCmd, err := python.Command(ctx, "-m", "pip", "install", "--upgrade", "build")
+	if err != nil {
+		return nil, err
+	}
+	buildUpgradeCmd.Stdout = os.Stdout
+	buildUpgradeCmd.Stderr = os.Stderr
+	err = buildUpgradeCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("install build tools: %w", err)
+	}
+
+	tmp, err := os.MkdirTemp("", "pulumi-python-pack")
+	if err != nil {
+		return nil, fmt.Errorf("create temporary directory: %w", err)
+	}
+
+	// translate the semver Version into a PEP440 version
+	version := "0.0.0"
+	if v, err := semver.Parse(req.Version); err == nil {
+		version = codegen.PypiVersion(v)
+	} else if req.Version != "" {
+		return nil, fmt.Errorf("invalid version: %w", err)
+	}
+
+	buildCmd, err := python.Command(ctx, "-m", "build", "--outdir", tmp)
+	if err != nil {
+		return nil, err
+	}
+	buildCmd.Dir = req.PackageDirectory
+	buildCmd.Env = os.Environ()
+	buildCmd.Env = append(buildCmd.Env, "PULUMI_PYTHON_VERSION="+version)
+
+	var stdout, stderr bytes.Buffer
+	buildCmd.Stdout = &stdout
+	buildCmd.Stderr = &stderr
+
+	err = buildCmd.Run()
+	logging.V(5).Infof("Pack stdout: %s", stdout.String())
+	logging.V(5).Infof("Pack stderr: %s", stderr.String())
+	if err != nil {
+		return nil, fmt.Errorf("run python build: %w\n%s\n%s", err, stdout.String(), stderr.String())
+	}
+
+	// prefer .whl but return .tar.gz if no .whl is found
+	files, err := os.ReadDir(tmp)
+	if err != nil {
+		return nil, fmt.Errorf("read temporary directory: %w", err)
+	}
+
+	var found string
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".whl") {
+			found = file.Name()
+			break
+		}
+		if strings.HasSuffix(file.Name(), ".tar.gz") {
+			found = file.Name()
+		}
+	}
+
+	// Copy the found file to the destination directory
+	if found == "" {
+		return nil, fmt.Errorf("no .whl or .tar.gz file found\n%s", stderr.String())
+	}
+
+	src := filepath.Join(tmp, found)
+	dst := filepath.Join(req.DestinationDirectory, found)
+	err = fsutil.CopyFile(dst, src, nil)
+	if err != nil {
+		return nil, fmt.Errorf("copy file: %w", err)
+	}
+
+	return &pulumirpc.PackResponse{
+		ArtifactPath: dst,
+	}, nil
 }
 
 func resolveVirtualEnvironmentPath(root, virtualenv string) string {
@@ -324,7 +403,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, p
 
 		if err := python.InstallDependenciesWithWriters(ctx,
 			pwd, virtualenv, true /*showOutput*/, infoWriter, errorWriter); err != nil {
-			return err
+			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
 
