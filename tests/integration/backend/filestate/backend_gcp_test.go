@@ -16,7 +16,10 @@ func TestGcpLogin(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Setenv("GOOGLE_PROJECT", "pulumi-ci-gcp-provider")
+	if _, ok := os.LookupEnv("GOOGLE_APPLICATION_CREDENTIALS"); !ok {
+		t.Skip("GOOGLE_APPLICATION_CREDENTIALS not set, skipping test")
+	}
+
 	cloudURL := "gs://pulumitesting"
 	loginAndCreateStack(t, cloudURL)
 }
