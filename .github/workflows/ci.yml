@@ -344,7 +344,7 @@ jobs:
 
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true # TODO: set to true here
+      is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -369,7 +369,7 @@ jobs:
 
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true # TODO: set to true here
+      is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -395,7 +395,7 @@ jobs:
 
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true # TODO: set to true here
+      is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
