@@ -140,7 +140,7 @@ func StringSyntaxValue(node *syntax.StringNode, value string) *StringExpr {
 
 // String creates a new string literal expression with the given value.
 func String(value string) *StringExpr {
-	return &StringExpr{Value: value}
+	return &StringExpr{exprNode: expr(syntax.String(value)), Value: value}
 }
 
 // An InterpolateExpr represents an interpolated string.
@@ -722,6 +722,7 @@ func parseSecret(node *syntax.ObjectNode, name *StringExpr, value Expr) (Expr, s
 	var diags syntax.Diagnostics
 	str, ok := value.(*StringExpr)
 	if !ok {
+		str = String("")
 		diags = syntax.Diagnostics{ExprError(value, "secret values must be string literals")}
 	}
 	return PlaintextSyntax(node, name, str), diags

@@ -207,35 +207,35 @@ func TestEval(t *testing.T) {
 				require.NoError(t, err)
 				sortEnvironmentDiagnostics(loadDiags)
 
-				expected := expectedData{LoadDiags: loadDiags}
-				if !loadDiags.HasErrors() {
-					check, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
-					sortEnvironmentDiagnostics(checkDiags)
+				check, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+				sortEnvironmentDiagnostics(checkDiags)
 
-					eval, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{}, &testEnvironments{basePath})
-					sortEnvironmentDiagnostics(evalDiags)
+				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{}, &testEnvironments{basePath})
+				sortEnvironmentDiagnostics(evalDiags)
 
-					var checkJSON any
-					var evalJSONRedacted any
-					var evalJSONRevealed any
-					if check != nil {
-						check = normalize(t, check)
-						checkJSON = esc.NewValue(check.Properties).ToJSON(true)
-					}
-					if eval != nil {
-						eval = normalize(t, eval)
-						evalJSONRedacted = esc.NewValue(eval.Properties).ToJSON(true)
-						evalJSONRevealed = esc.NewValue(eval.Properties).ToJSON(false)
-					}
-
-					expected.Check, expected.CheckDiags = check, checkDiags
-					expected.Eval, expected.EvalDiags = eval, evalDiags
-					expected.EvalJSONRedacted = evalJSONRedacted
-					expected.EvalJSONRevealed = evalJSONRevealed
-					expected.CheckJSON = checkJSON
+				var checkJSON any
+				var evalJSONRedacted any
+				var evalJSONRevealed any
+				if check != nil {
+					check = normalize(t, check)
+					checkJSON = esc.NewValue(check.Properties).ToJSON(true)
+				}
+				if actual != nil {
+					actual = normalize(t, actual)
+					evalJSONRedacted = esc.NewValue(actual.Properties).ToJSON(true)
+					evalJSONRevealed = esc.NewValue(actual.Properties).ToJSON(false)
 				}
 
-				bytes, err := json.MarshalIndent(expected, "", "    ")
+				bytes, err := json.MarshalIndent(expectedData{
+					LoadDiags:        loadDiags,
+					CheckDiags:       checkDiags,
+					EvalDiags:        evalDiags,
+					Check:            check,
+					Eval:             actual,
+					EvalJSONRedacted: evalJSONRedacted,
+					EvalJSONRevealed: evalJSONRevealed,
+					CheckJSON:        checkJSON,
+				}, "", "    ")
 				bytes = append(bytes, '\n')
 				require.NoError(t, err)
 
@@ -257,10 +257,6 @@ func TestEval(t *testing.T) {
 			require.NoError(t, err)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.LoadDiags, diags)
-
-			if diags.HasErrors() {
-				return
-			}
 
 			check, diags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
 			sortEnvironmentDiagnostics(diags)

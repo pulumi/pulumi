@@ -9,7 +9,9 @@
                         "Value": "foo"
                     },
                     "Value": {
-                        "Plaintext": null,
+                        "Plaintext": {
+                            "Value": ""
+                        },
                         "Ciphertext": null
                     }
                 },

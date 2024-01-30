@@ -183,6 +183,11 @@ func (e *evalContext) errorf(expr ast.Expr, format string, a ...any) {
 	e.error(expr, fmt.Sprintf(format, a...))
 }
 
+type exprNode interface {
+	ast.Expr
+	comparable
+}
+
 // declare creates an expr from an ast.Expr, sets its representation and initial schema, and attaches it to the given
 // base. declare is also responsible for recursively declaring child exprs. declare may issue errors for duplicate keys
 // in objects.
@@ -201,8 +206,16 @@ func (e *evalContext) errorf(expr ast.Expr, format string, a ...any) {
 // - ToJSONExpr                          -> toJSONExpr
 // - ArrayExpr                           -> arrayExpr
 // - ObjectExpr                          -> objectExpr
-func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
-	switch x := x.(type) {
+//
+// This is parameterized on the Expr type to avoid unintentionally creating non-nil ast.Expr values out of nil
+// pointers. Parameterization allows us to check for nil pointers explicitly.
+func declare[Expr exprNode](e *evalContext, path string, x Expr, base *value) *expr {
+	var zero Expr
+	if x == zero {
+		return newMissingExpr(path, base)
+	}
+
+	switch x := any(x).(type) {
 	case *ast.NullExpr:
 		return newExpr(path, &literalExpr{node: x}, schema.Null().Schema(), base)
 	case *ast.BooleanExpr:
@@ -233,48 +246,48 @@ func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 		property := &propertyAccess{accessors: accessors}
 		return newExpr(path, &symbolExpr{node: x, property: property}, schema.Always().Schema(), base)
 	case *ast.FromBase64Expr:
-		repr := &fromBase64Expr{node: x, string: e.declare("", x.String, nil)}
+		repr := &fromBase64Expr{node: x, string: declare(e, "", x.String, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.FromJSONExpr:
-		repr := &fromJSONExpr{node: x, string: e.declare("", x.String, nil)}
+		repr := &fromJSONExpr{node: x, string: declare(e, "", x.String, nil)}
 		return newExpr(path, repr, schema.Always(), base)
 	case *ast.JoinExpr:
 		repr := &joinExpr{
 			node:      x,
-			delimiter: e.declare("", x.Delimiter, nil),
-			values:    e.declare("", x.Values, nil),
+			delimiter: declare(e, "", x.Delimiter, nil),
+			values:    declare(e, "", x.Values, nil),
 		}
 		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.OpenExpr:
 		repr := &openExpr{
 			node:        x,
-			provider:    e.declare("", x.Provider, nil),
-			inputs:      e.declare("", x.Inputs, nil),
+			provider:    declare(e, "", x.Provider, nil),
+			inputs:      declare(e, "", x.Inputs, nil),
 			inputSchema: schema.Always().Schema(),
 		}
 		return newExpr(path, repr, schema.Always().Schema(), base)
 	case *ast.SecretExpr:
 		if x.Plaintext != nil {
-			repr := &secretExpr{node: x, plaintext: e.declare("", x.Plaintext, nil)}
+			repr := &secretExpr{node: x, plaintext: declare(e, "", x.Plaintext, nil)}
 			repr.plaintext.secret = true
 			return newExpr(path, repr, schema.String().Schema(), base)
 		}
-		repr := &secretExpr{node: x, ciphertext: e.declare("", x.Ciphertext, nil)}
+		repr := &secretExpr{node: x, ciphertext: declare(e, "", x.Ciphertext, nil)}
 		repr.ciphertext.secret = true
 		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.ToBase64Expr:
-		repr := &toBase64Expr{node: x, value: e.declare("", x.Value, nil)}
+		repr := &toBase64Expr{node: x, value: declare(e, "", x.Value, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.ToJSONExpr:
-		repr := &toJSONExpr{node: x, value: e.declare("", x.Value, nil)}
+		repr := &toJSONExpr{node: x, value: declare(e, "", x.Value, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.ToStringExpr:
-		repr := &toStringExpr{node: x, value: e.declare("", x.Value, nil)}
+		repr := &toStringExpr{node: x, value: declare(e, "", x.Value, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.ArrayExpr:
 		elements := make([]*expr, len(x.Elements))
 		for i, x := range x.Elements {
-			elements[i] = e.declare(fmt.Sprintf("%v[%d]", path, i), x, nil)
+			elements[i] = declare(e, fmt.Sprintf("%v[%d]", path, i), x, nil)
 		}
 		repr := &arrayExpr{node: x, elements: elements}
 		return newExpr(path, repr, schema.Array().Items(schema.Always()).Schema(), base)
@@ -285,7 +298,7 @@ func (e *evalContext) declare(path string, x ast.Expr, base *value) *expr {
 			if _, ok := properties[k]; ok {
 				e.errorf(entry.Key, "duplicate key %q", k)
 			} else {
-				properties[k] = e.declare(util.JoinKey(path, k), entry.Value, base.property(entry.Key, k))
+				properties[k] = declare(e, util.JoinKey(path, k), entry.Value, base.property(entry.Key, k))
 			}
 		}
 		repr := &objectExpr{node: x, properties: properties}
@@ -330,7 +343,7 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 		} else if _, ok := properties[key]; ok {
 			e.errorf(entry.Key, "duplicate key %q", key)
 		} else {
-			properties[key] = e.declare(key, entry.Value, e.base.property(entry.Key, key))
+			properties[key] = declare(e, key, entry.Value, e.base.property(entry.Key, key))
 		}
 	}
 
@@ -356,7 +369,7 @@ func (e *evalContext) evaluateImports() {
 	}
 	s := schema.Record(properties).Schema()
 
-	def := e.declare("", ast.Symbol(&ast.PropertyName{Name: "imports"}), nil)
+	def := declare(e, "", ast.Symbol(&ast.PropertyName{Name: "imports"}), nil)
 	def.schema, def.state = s, exprDone
 
 	val := &value{
@@ -400,9 +413,6 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 			e.errorf(decl.Environment, "%s", err.Error())
 			return
 		}
-		if diags.HasErrors() {
-			return
-		}
 
 		imp := newEvalContext(e.ctx, e.validating, name, env, dec, e.providers, e.environments, e.imports)
 		v, diags := imp.evaluate()
@@ -443,6 +453,8 @@ func (e *evalContext) evaluateExpr(x *expr) *value {
 
 	val := (*value)(nil)
 	switch repr := x.repr.(type) {
+	case *missingExpr:
+		val = &value{def: x, schema: x.schema, unknown: true}
 	case *literalExpr:
 		switch syntax := x.repr.syntax().(type) {
 		case *ast.NullExpr:
@@ -577,6 +589,18 @@ func (e *evalContext) evaluatePropertyAccess(x *expr, accessors []*propertyAcces
 // have been processed, the resolved expression is evaluated.
 func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor) *value {
 	receiver := e.root
+
+	// This can happen for invalid property accesses. No need to issue an error here--the parser has already done so.
+	if len(accessors) == 0 {
+		return &value{
+			def: &expr{
+				repr:  &literalExpr{node: x.repr.syntax()},
+				state: exprDone,
+			},
+			schema:  schema.Always().Schema(),
+			unknown: true,
+		}
+	}
 
 	// Check for an imports access.
 	if k, ok := e.objectKey(x.repr.syntax(), accessors[0].accessor, false); ok && k == "imports" {
@@ -817,6 +841,13 @@ func (e *evalContext) evaluateBuiltinSecret(x *expr, repr *secretExpr) *value {
 // validation, the result is an unknown value with the output schema.
 func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 	v := &value{def: x}
+
+	// Can happen if there are parse errors.
+	if repr.node.Provider == nil {
+		v.schema = schema.Always()
+		v.unknown = true
+		return v
+	}
 
 	provider, err := e.providers.LoadProvider(e.ctx, repr.node.Provider.GetValue())
 	if err != nil {

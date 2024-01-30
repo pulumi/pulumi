@@ -52,6 +52,11 @@ func newExpr(path string, repr exprRepr, s *schema.Schema, base *value) *expr {
 	return &expr{path: path, repr: repr, schema: s, base: base}
 }
 
+// newMissingExpr creates a new missing expression. Used in the case of parse errors.
+func newMissingExpr(path string, base *value) *expr {
+	return newExpr(path, &missingExpr{node: ast.Null()}, schema.Always(), base)
+}
+
 // convertRange converts an HCL2 range to an ESC range.
 func convertRange(r *hcl.Range, environment string) esc.Range {
 	rng := esc.Range{Environment: environment}
@@ -99,6 +104,8 @@ func (x *expr) export(environment string) esc.Expr {
 	}
 
 	switch repr := x.repr.(type) {
+	case *missingExpr:
+		// nothing to do
 	case *literalExpr:
 		switch syntax := x.repr.syntax().(type) {
 		case *ast.BooleanExpr:
@@ -274,6 +281,15 @@ type interpolation struct {
 
 type exprRepr interface {
 	syntax() ast.Expr
+}
+
+// missingExpr represents a missing value.
+type missingExpr struct {
+	node ast.Expr
+}
+
+func (x *missingExpr) syntax() ast.Expr {
+	return x.node
 }
 
 // literalExpr represents a literal value.
