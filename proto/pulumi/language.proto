@@ -210,6 +210,9 @@ message GeneratePackageRequest {
     map<string, bytes> extra_files = 3;
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 4;
+    // local dependencies to use instead of using the package system. This is a map of package name to a local
+    // path of a language specific artifact to use for the SDK for that package.
+    map<string, string> local_dependencies = 5;
 }
 
 message GeneratePackageResponse {

@@ -1165,7 +1165,27 @@ func (host *nodeLanguageHost) GeneratePackage(
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
-	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles)
+
+	// The local dependencies map is a map of package name to the path to the package, the path could be
+	// absolute or a relative path but we want to ensure we emit relative paths in the package.json.
+	for k, v := range req.LocalDependencies {
+		absPath := v
+		if !filepath.IsAbs(v) {
+			absPath, err = filepath.Abs(v)
+			if err != nil {
+				return nil, fmt.Errorf("absolute path of %s: %w", v, err)
+			}
+		}
+
+		relPath, err := filepath.Rel(req.Directory, absPath)
+		if err != nil {
+			return nil, fmt.Errorf("relative path of %s from %s: %w", absPath, req.Directory, err)
+		}
+
+		req.LocalDependencies[k] = relPath
+	}
+
+	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}

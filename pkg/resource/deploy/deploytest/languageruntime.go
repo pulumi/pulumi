@@ -124,7 +124,9 @@ func (p *languageRuntime) GenerateProject(string, string, string,
 	return nil, errors.New("GenerateProject is not supported")
 }
 
-func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte, string) (hcl.Diagnostics, error) {
+func (p *languageRuntime) GeneratePackage(
+	string, string, map[string][]byte, string, map[string]string,
+) (hcl.Diagnostics, error) {
 	return nil, errors.New("GeneratePackage is not supported")
 }
 

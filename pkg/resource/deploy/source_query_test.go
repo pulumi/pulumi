@@ -764,7 +764,7 @@ type mockLanguageRuntime struct {
 
 	GeneratePackageF func(
 		directory string, schema string,
-		extraFiles map[string][]byte, loaderTarget string,
+		extraFiles map[string][]byte, loaderTarget string, localDependencies map[string]string,
 	) (hcl.Diagnostics, error)
 
 	GenerateProgramF func(
@@ -853,10 +853,11 @@ func (rt *mockLanguageRuntime) GenerateProject(
 }
 
 func (rt *mockLanguageRuntime) GeneratePackage(
-	directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
+	directory string, schema string, extraFiles map[string][]byte,
+	loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
 	if rt.GeneratePackageF != nil {
-		return rt.GeneratePackageF(directory, schema, extraFiles, loaderTarget)
+		return rt.GeneratePackageF(directory, schema, extraFiles, loaderTarget, localDependencies)
 	}
 	panic("unimplemented")
 }

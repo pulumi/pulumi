@@ -140,7 +140,8 @@ type LanguageRuntime interface {
 
 	// GeneratePlugin generates an SDK package.
 	GeneratePackage(
-		directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
+		directory string, schema string, extraFiles map[string][]byte,
+		loaderTarget string, localDependencies map[string]string,
 	) (hcl.Diagnostics, error)
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program

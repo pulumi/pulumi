@@ -112,6 +112,9 @@ func (h *L2ResourceSimpleLanguageHost) GenerateProject(
 func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
+	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
+		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+	}
 	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-1.0.0") {
 		return nil, fmt.Errorf("unexpected directory %s", req.Directory)
 	}
