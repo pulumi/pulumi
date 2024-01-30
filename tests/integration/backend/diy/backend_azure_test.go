@@ -1,4 +1,4 @@
-package filestate
+package diy
 
 import (
 	"os"

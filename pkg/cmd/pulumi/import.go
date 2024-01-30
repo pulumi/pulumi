@@ -807,14 +807,14 @@ func newImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			filestateBackend, err := isFilestateBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && filestateBackend {
+			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package diy
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func TestEnsurePulumiMeta(t *testing.T) {
 
 	mkmap := func(value string) env.MapStore {
 		m := make(env.MapStore)
-		m[env.SelfManagedStateLegacyLayout.Var().Name()] = value
+		m[env.DIYBackendLegacyLayout.Var().Name()] = value
 		return m
 	}
 

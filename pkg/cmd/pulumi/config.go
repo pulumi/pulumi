@@ -1329,7 +1329,7 @@ func getStackConfigurationWithFallback(
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
-	// the correct decrypter for the local backend would involve prompting for a passphrase)
+	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
 			Environment: pulumiEnv,

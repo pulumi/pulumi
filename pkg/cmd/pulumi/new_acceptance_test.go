@@ -193,10 +193,10 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
-	fileStateDir := t.TempDir()
+	backendDir := t.TempDir()
 
 	// Now override to local filesystem backend
-	backendURL := "file://" + filepath.ToSlash(fileStateDir)
+	backendURL := "file://" + filepath.ToSlash(backendDir)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "how now brown cow")
 	t.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
 
@@ -218,7 +218,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 	// Expect the stack directory to have a checkpoint file for the stack.
 	_, err = os.Stat(filepath.Join(
-		fileStateDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
+		backendDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
 	assert.NoError(t, err)
 
 	b, err = currentBackend(ctx, nil, display.Options{})

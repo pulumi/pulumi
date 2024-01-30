@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package filestate implements the logic for interacting with a filestate backend such as AWS S3, Azure blob storage,
+// Package diy implements the logic for interacting with a diy backend such as AWS S3, Azure blob storage,
 // or GCP cloud storage.
-package filestate
+package diy

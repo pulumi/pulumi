@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package diy
 
 import (
 	"context"
@@ -20,25 +20,25 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 )
 
-// localSnapshotManager is a simple SnapshotManager implementation that persists snapshots
-// to disk on the local machine.
-type localSnapshotPersister struct {
+// diySnapshotPersister is a simple SnapshotManager implementation that persists snapshots
+// to blob storage.
+type diySnapshotPersister struct {
 	// TODO[pulumi/pulumi#12593]:
 	// Remove this once SnapshotPersister is updated to take a context.
 	ctx context.Context
 
-	ref     *localBackendReference
-	backend *localBackend
+	ref     *diyBackendReference
+	backend *diyBackend
 }
 
-func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
+func (sp *diySnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot, snapshot.SecretsManager)
 	return err
 }
 
-func (b *localBackend) newSnapshotPersister(
+func (b *diyBackend) newSnapshotPersister(
 	ctx context.Context,
-	ref *localBackendReference,
-) *localSnapshotPersister {
-	return &localSnapshotPersister{ctx: ctx, ref: ref, backend: b}
+	ref *diyBackendReference,
+) *diySnapshotPersister {
+	return &diySnapshotPersister{ctx: ctx, ref: ref, backend: b}
 }

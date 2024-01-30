@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filestate
+package diy
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func newLockContent() (*lockContent, error) {
 }
 
 // checkForLock looks for any existing locks for this stack, and returns a helpful diagnostic if there is one.
-func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackReference) error {
+func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackReference) error {
 	stackName := stackRef.FullyQualifiedName()
 	allFiles, err := listBucket(ctx, b.bucket, stackLockDir(stackName))
 	if err != nil {
@@ -108,7 +108,7 @@ func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackR
 	return nil
 }
 
-func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference) error {
+func (b *diyBackend) Lock(ctx context.Context, stackRef backend.StackReference) error {
 	//
 	err := b.checkForLock(ctx, stackRef)
 	if err != nil {
@@ -134,7 +134,7 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 	return nil
 }
 
-func (b *localBackend) Unlock(ctx context.Context, stackRef backend.StackReference) {
+func (b *diyBackend) Unlock(ctx context.Context, stackRef backend.StackReference) {
 	err := b.bucket.Delete(ctx, b.lockPath(stackRef))
 	if err != nil {
 		b.d.Errorf(
@@ -153,7 +153,7 @@ func stackLockDir(stack tokens.QName) string {
 	return path.Join(lockDir(), fsutil.QnamePath(stack))
 }
 
-func (b *localBackend) lockPath(stackRef backend.StackReference) string {
+func (b *diyBackend) lockPath(stackRef backend.StackReference) string {
 	contract.Requiref(stackRef != nil, "stack", "must not be nil")
 	return path.Join(stackLockDir(stackRef.FullyQualifiedName()), b.lockID+".json")
 }

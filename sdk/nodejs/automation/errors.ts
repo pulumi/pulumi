@@ -62,7 +62,7 @@ export class StackAlreadyExistsError extends CommandError {
 const notFoundRegex = new RegExp("no stack named.*found");
 const alreadyExistsRegex = new RegExp("stack.*already exists");
 const conflictText = "[409] Conflict: Another update is currently in progress.";
-const localBackendConflictText = "the stack is currently locked by";
+const diyBackendConflictText = "the stack is currently locked by";
 
 /** @internal */
 export function createCommandError(result: CommandResult): CommandError {
@@ -73,7 +73,7 @@ export function createCommandError(result: CommandResult): CommandError {
         ? new StackAlreadyExistsError(result)
         : stderr.indexOf(conflictText) >= 0
         ? new ConcurrentUpdateError(result)
-        : stderr.indexOf(localBackendConflictText) >= 0
+        : stderr.indexOf(diyBackendConflictText) >= 0
         ? new ConcurrentUpdateError(result)
         : new CommandError(result);
 }

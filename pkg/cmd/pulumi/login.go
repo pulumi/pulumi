@@ -25,7 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -105,13 +105,13 @@ func newLoginCmd() *cobra.Command {
 				if cloudURL != "" {
 					return errors.New("a URL may not be specified when --local mode is enabled")
 				}
-				cloudURL = filestate.FilePathPrefix + "~"
+				cloudURL = diy.FilePathPrefix + "~"
 			}
 
 			// If we're on Windows, and this is a local login path, then allow the user to provide
 			// backslashes as path separators.  We will normalize them here to forward slashes as that's
 			// what the gocloud blob system requires.
-			if strings.HasPrefix(cloudURL, filestate.FilePathPrefix) && os.PathSeparator != '/' {
+			if strings.HasPrefix(cloudURL, diy.FilePathPrefix) && os.PathSeparator != '/' {
 				cloudURL = filepath.ToSlash(cloudURL)
 			}
 
@@ -140,8 +140,8 @@ func newLoginCmd() *cobra.Command {
 			}
 
 			var be backend.Backend
-			if filestate.IsFileStateBackendURL(cloudURL) {
-				be, err = filestate.Login(ctx, cmdutil.Diag(), cloudURL, project)
+			if diy.IsDIYBackendURL(cloudURL) {
+				be, err = diy.Login(ctx, cmdutil.Diag(), cloudURL, project)
 				if defaultOrg != "" {
 					return errors.New("unable to set default org for this type of backend")
 				}

@@ -40,7 +40,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -102,7 +102,7 @@ func skipConfirmations() bool {
 // backendInstance is used to inject a backend mock from tests.
 var backendInstance backend.Backend
 
-func isFilestateBackend(opts display.Options) (bool, error) {
+func isDIYBackend(opts display.Options) (bool, error) {
 	if backendInstance != nil {
 		return false, nil
 	}
@@ -118,7 +118,7 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 		return false, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	return filestate.IsFileStateBackendURL(url), nil
+	return diy.IsDIYBackendURL(url), nil
 }
 
 func loginToCloud(
@@ -146,8 +146,8 @@ func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Projec
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(ctx, cmdutil.Diag(), url, project)
+	if diy.IsDIYBackendURL(url) {
+		return diy.New(ctx, cmdutil.Diag(), url, project)
 	}
 
 	insecure := workspace.GetCloudInsecure(url)
@@ -168,8 +168,8 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(ctx, cmdutil.Diag(), url, project)
+	if diy.IsDIYBackendURL(url) {
+		return diy.New(ctx, cmdutil.Diag(), url, project)
 	}
 
 	return loginToCloud(ctx, url, project, workspace.GetCloudInsecure(url), opts)

@@ -142,10 +142,10 @@ type Stack struct {
 // FullyQualifiedStackName returns a stack name formatted with the greatest possible specificity:
 // org/project/stack or user/project/stack
 // Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
-// Note that legacy filestate backends (local file, S3, Azure Blob) do not support stack names in this
+// Note that legacy diy backends (local file, S3, Azure Blob) do not support stack names in this
 // format, and instead only use the stack name without an org/user or project to qualify it.
-// See: https://github.com/pulumi/pulumi/issues/2522. Non-legacy filestate backends do support
-// the org/project/stack format but org must be set to "organization".
+// See: https://github.com/pulumi/pulumi/issues/2522.
+// Non-legacy diy backends do support the org/project/stack format but org must be set to "organization".
 func FullyQualifiedStackName(org, project, stack string) string {
 	return fmt.Sprintf("%s/%s/%s", org, project, stack)
 }
@@ -796,7 +796,7 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 // Cancel stops a stack's currently running update. It returns an error if no update is currently running.
 // Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
 // if a resource operation was pending when the update was canceled.
-// This command is not supported for local backends.
+// This command is not supported for diy backends.
 func (s *Stack) Cancel(ctx context.Context) error {
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(
 		ctx,
@@ -861,7 +861,7 @@ func (ur *UpResult) GetPermalink() (string, error) {
 var ErrParsePermalinkFailed = errors.New("failed to get permalink")
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the update
-// or refresh operation. This will error for alternate, local backends.
+// or refresh operation. This will error for alternate, diy backends.
 func GetPermalink(stdout string) (string, error) {
 	const permalinkSearchStr = `View Live: |View in Browser: |View in Browser \(Ctrl\+O\): |Permalink: `
 	startRegex := regexp.MustCompile(permalinkSearchStr)

@@ -1,4 +1,4 @@
-package filestate
+package diy
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 
 //nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -88,7 +88,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 func TestDrillError_legacy(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -106,7 +106,7 @@ func TestDrillError_legacy(t *testing.T) {
 func TestCancel_legacy(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -126,7 +126,7 @@ func TestCancel_legacy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Locking and lock checks are only part of the internal interface
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -145,10 +145,10 @@ func TestCancel_legacy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, lockExists)
 
-	// Make another filestate backend which will have a different lockId
+	// Make another diy backend which will have a different lockId
 	ob, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
-	otherBackend, ok := ob.(*localBackend)
+	otherBackend, ok := ob.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -167,14 +167,14 @@ func TestCancel_legacy(t *testing.T) {
 func TestRemoveMakesBackups_legacy(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
 	// Grab the bucket interface to test with
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -210,14 +210,14 @@ func TestRemoveMakesBackups_legacy(t *testing.T) {
 func TestRenameWorks_legacy(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
 	// Grab the bucket interface to test with
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -244,7 +244,7 @@ func TestRenameWorks_legacy(t *testing.T) {
 	bStackRefI, err := b.RenameStack(ctx, aStack, "b")
 	assert.NoError(t, err)
 	assert.Equal(t, "b", bStackRefI.String())
-	bStackRef := bStackRefI.(*localBackendReference)
+	bStackRef := bStackRefI.(*diyBackendReference)
 
 	// Check the new stack file now exists and the old one is gone
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, bStackRef))
@@ -260,7 +260,7 @@ func TestRenameWorks_legacy(t *testing.T) {
 	cStackRefI, err := b.RenameStack(ctx, bStack, "c")
 	assert.NoError(t, err)
 	assert.Equal(t, "c", cStackRefI.String())
-	cStackRef := cStackRefI.(*localBackendReference)
+	cStackRef := cStackRefI.(*diyBackendReference)
 
 	// Check the new stack file now exists and the old one is gone
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, cStackRef))
@@ -309,7 +309,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 		Deployment: json.RawMessage(data),
 	}
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -327,18 +327,18 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	// Ensure the file has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
 
 	// Grab the bucket interface to read the file with
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
-	chkpath := lb.stackPath(ctx, aStackRef.(*localBackendReference))
+	chkpath := lb.stackPath(ctx, aStackRef.(*diyBackendReference))
 	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
 	assert.NoError(t, err)
 	state := string(bytes)
 	assert.Contains(t, state, "<html@tags>")
 }
 
-func TestLocalBackendRejectsStackInitOptions_legacy(t *testing.T) {
+func TestDIYBackendRejectsStackInitOptions_legacy(t *testing.T) {
 	t.Parallel()
 
 	// Here, we provide options that illegally specify a team on a
@@ -346,17 +346,17 @@ func TestLocalBackendRejectsStackInitOptions_legacy(t *testing.T) {
 	// an error later when we call CreateStack.
 	illegalOptions := &backend.CreateStackOptions{Teams: []string{"red-team"}}
 
-	// • Create a mock local backend
+	// • Create a mock diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	dirURI := "file://" + filepath.ToSlash(tmpDir)
-	local, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
+	diy, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
 	// • Simulate `pulumi stack init`, passing non-nil init options
-	fakeStackRef, err := local.ParseStackReference("foobar")
+	fakeStackRef, err := diy.ParseStackReference("foobar")
 	assert.NoError(t, err)
-	_, err = local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+	_, err = diy.CreateStack(ctx, fakeStackRef, "", illegalOptions)
 	assert.ErrorIs(t, err, backend.ErrTeamsNotSupported)
 }
 

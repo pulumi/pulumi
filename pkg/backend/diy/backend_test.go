@@ -1,4 +1,4 @@
-package filestate
+package diy
 
 import (
 	"bytes"
@@ -166,7 +166,7 @@ func makeUntypedDeploymentTimestamp(
 
 //nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -226,7 +226,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 func TestDrillError(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -244,7 +244,7 @@ func TestDrillError(t *testing.T) {
 func TestCancel(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -264,7 +264,7 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Locking and lock checks are only part of the internal interface
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -283,10 +283,10 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, lockExists)
 
-	// Make another filestate backend which will have a different lockId
+	// Make another diy backend which will have a different lockId
 	ob, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
-	otherBackend, ok := ob.(*localBackend)
+	otherBackend, ok := ob.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -305,14 +305,14 @@ func TestCancel(t *testing.T) {
 func TestRemoveMakesBackups(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
 	// Grab the bucket interface to test with
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -348,14 +348,14 @@ func TestRemoveMakesBackups(t *testing.T) {
 func TestRenameWorks(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
 	// Grab the bucket interface to test with
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -382,7 +382,7 @@ func TestRenameWorks(t *testing.T) {
 	bStackRefI, err := b.RenameStack(ctx, aStack, "organization/project/b")
 	assert.NoError(t, err)
 	assert.Equal(t, "organization/project/b", bStackRefI.String())
-	bStackRef := bStackRefI.(*localBackendReference)
+	bStackRef := bStackRefI.(*diyBackendReference)
 
 	// Check the new stack file now exists and the old one is gone
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, bStackRef))
@@ -398,7 +398,7 @@ func TestRenameWorks(t *testing.T) {
 	cStackRefI, err := b.RenameStack(ctx, bStack, "organization/project/c")
 	assert.NoError(t, err)
 	assert.Equal(t, "organization/project/c", cStackRefI.String())
-	cStackRef := cStackRefI.(*localBackendReference)
+	cStackRef := cStackRefI.(*diyBackendReference)
 
 	// Check the new stack file now exists and the old one is gone
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, cStackRef))
@@ -418,14 +418,14 @@ func TestRenameWorks(t *testing.T) {
 func TestRenameProjectWorks(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
 	// Grab the bucket interface to test with
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
@@ -452,7 +452,7 @@ func TestRenameProjectWorks(t *testing.T) {
 	bStackRefI, err := b.RenameStack(ctx, aStack, "organization/newProject/b")
 	assert.NoError(t, err)
 	assert.Equal(t, "organization/newProject/b", bStackRefI.String())
-	bStackRef := bStackRefI.(*localBackendReference)
+	bStackRef := bStackRefI.(*diyBackendReference)
 
 	// Check the new stack file now exists and the old one is gone
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, bStackRef))
@@ -524,7 +524,7 @@ func TestHtmlEscaping(t *testing.T) {
 		Deployment: json.RawMessage(data),
 	}
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -542,35 +542,35 @@ func TestHtmlEscaping(t *testing.T) {
 	// Ensure the file has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
 
 	// Grab the bucket interface to read the file with
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
-	chkpath := lb.stackPath(ctx, aStackRef.(*localBackendReference))
+	chkpath := lb.stackPath(ctx, aStackRef.(*diyBackendReference))
 	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
 	assert.NoError(t, err)
 	state := string(bytes)
 	assert.Contains(t, state, "<html@tags>")
 }
 
-func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
+func TestDIYBackendRejectsStackInitOptions(t *testing.T) {
 	t.Parallel()
 	// Here, we provide options that illegally specify a team on a
 	// backend that does not support teams. We expect this to create
 	// an error later when we call CreateStack.
 	illegalOptions := &backend.CreateStackOptions{Teams: []string{"red-team"}}
 
-	// • Create a mock local backend
+	// • Create a mock diy backend
 	tmpDir := t.TempDir()
 	dirURI := "file://" + filepath.ToSlash(tmpDir)
-	local, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
+	diy, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
 	// • Simulate `pulumi stack init`, passing non-nil init options
-	fakeStackRef, err := local.ParseStackReference("organization/b/foobar")
+	fakeStackRef, err := diy.ParseStackReference("organization/b/foobar")
 	assert.NoError(t, err)
-	_, err = local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+	_, err = diy.CreateStack(ctx, fakeStackRef, "", illegalOptions)
 	assert.ErrorIs(t, err, backend.ErrTeamsNotSupported)
 }
 
@@ -584,12 +584,12 @@ func TestLegacyFolderStructure(t *testing.T) {
 	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte("{}"), os.ModePerm)
 	require.NoError(t, err)
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 	// Check the backend says it's NOT in project mode
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 	assert.IsType(t, &legacyReferenceStore{}, lb.store)
@@ -614,7 +614,7 @@ func TestLegacyFolderStructure(t *testing.T) {
 func TestListStacksFilter(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -648,9 +648,9 @@ func TestOptIntoLegacyFolderStructure(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	s := make(env.MapStore)
-	s[env.SelfManagedStateLegacyLayout.Var().Name()] = "true"
-	b, err := newLocalBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
-		&localBackendOptions{Env: env.NewEnv(s)},
+	s[env.DIYBackendLegacyLayout.Var().Name()] = "true"
+	b, err := newDIYBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
+		&diyBackendOptions{Env: env.NewEnv(s)},
 	)
 	require.NoError(t, err)
 
@@ -693,7 +693,7 @@ func TestStackReferenceString_currentProjectChange(t *testing.T) {
 }
 
 // Verifies that there's no data race in calling StackReference.String
-// and localBackend.SetCurrentProject concurrently.
+// and diyBackend.SetCurrentProject concurrently.
 func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 	t.Parallel()
 
@@ -717,7 +717,7 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 	// To exercise this data race, we'll have two goroutines.
 	// One goroutine will call StackReference.String repeatedly
 	// on all the stack references,
-	// and the other goroutine will call localBackend.SetCurrentProject
+	// and the other goroutine will call diyBackend.SetCurrentProject
 	// with all the projects.
 
 	var wg sync.WaitGroup
@@ -748,7 +748,7 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 func TestProjectFolderStructure(t *testing.T) {
 	t.Parallel()
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 
 	// Make a dummy file in the legacy location which isn't a stack file, we should still automatically turn
 	// this into project mode.
@@ -765,7 +765,7 @@ func TestProjectFolderStructure(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check the backend says it's in project mode
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 	assert.IsType(t, &projectReferenceStore{}, lb.store)
@@ -822,7 +822,7 @@ func TestProjectNameMustMatch(t *testing.T) {
 
 	chdir(t, projectDir)
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), proj)
@@ -921,8 +921,8 @@ func TestNew_legacyFileWarning(t *testing.T) {
 			var buff bytes.Buffer
 			sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
 
-			_, err = newLocalBackend(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil,
-				&localBackendOptions{Env: env.NewEnv(tt.env)})
+			_, err = newDIYBackend(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil,
+				&diyBackendOptions{Env: env.NewEnv(tt.env)})
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.wantOut, buff.String())
@@ -952,12 +952,12 @@ func TestLegacyUpgrade(t *testing.T) {
 	var output bytes.Buffer
 	sink := diag.DefaultSink(&output, &output, diag.FormatOptions{Color: colors.Never})
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	ctx := context.Background()
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 	// Check the backend says it's NOT in project mode
-	lb, ok := b.(*localBackend)
+	lb, ok := b.(*diyBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 	assert.IsType(t, &legacyReferenceStore{}, lb.store)
@@ -1267,7 +1267,7 @@ func TestUpgrade_manyFailures(t *testing.T) {
 	var output bytes.Buffer
 	sink := diag.DefaultSink(io.Discard, &output, diag.FormatOptions{Color: colors.Never})
 
-	// Login to a temp dir filestate backend
+	// Login to a temp dir diy backend
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
@@ -1285,13 +1285,13 @@ func TestCreateStack_gzip(t *testing.T) {
 	ctx := context.Background()
 
 	s := make(env.MapStore)
-	s[env.SelfManagedGzip.Var().Name()] = "true"
+	s[env.DIYBackendGzip.Var().Name()] = "true"
 
-	b, err := newLocalBackend(
+	b, err := newDIYBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
 		&workspace.Project{Name: "testproj"},
-		&localBackendOptions{Env: env.NewEnv(s)},
+		&diyBackendOptions{Env: env.NewEnv(s)},
 	)
 	require.NoError(t, err)
 
@@ -1313,13 +1313,13 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 	ctx := context.Background()
 
 	s := make(env.MapStore)
-	s[env.SelfManagedRetainCheckpoints.Var().Name()] = "true"
+	s[env.DIYBackendRetainCheckpoints.Var().Name()] = "true"
 
-	b, err := newLocalBackend(
+	b, err := newDIYBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
 		&workspace.Project{Name: "testproj"},
-		&localBackendOptions{Env: env.NewEnv(s)},
+		&diyBackendOptions{Env: env.NewEnv(s)},
 	)
 	require.NoError(t, err)
 

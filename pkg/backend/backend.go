@@ -76,7 +76,7 @@ type StackReference interface {
 	Name() tokens.StackName
 
 	// Project is the project name that this stack belongs to.
-	// For old filestate backends this will return false.
+	// For old diy backends this will return false.
 	Project() (tokens.Name, bool)
 
 	// Fully qualified name of the stack, including any organization, project, or other information.
