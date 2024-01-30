@@ -1374,17 +1374,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 
-		handledSecret := false
-		if res.IsProvider && !isStringType(prop.Type) {
-			if prop.Secret {
-				arg = fmt.Sprintf("pulumi.Output.secret(%s) if %s is not None else None", arg, arg)
-				handledSecret = true
-			} else {
-				arg = fmt.Sprintf("pulumi.Output.from_input(%s) if %s is not None else None", arg, arg)
-			}
-		}
 		name := PyName(prop.Name)
-		if prop.Secret && !handledSecret {
+		if prop.Secret {
 			fmt.Fprintf(w, "            __props__.__dict__[%[1]q] = None if %[2]s is None else pulumi.Output.secret(%[2]s)\n", name, arg)
 		} else {
 			fmt.Fprintf(w, "            __props__.__dict__[%q] = %s\n", name, arg)

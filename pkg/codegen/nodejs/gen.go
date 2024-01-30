@@ -793,9 +793,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				}
 			}
 
-			if r.IsProvider && !isStringType(prop.Type) {
-				arg = fmt.Sprintf("pulumi.output(%s)", arg)
-			}
 			fmt.Fprintf(w, "%sresourceInputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
 		}
 
