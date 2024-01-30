@@ -84,22 +84,27 @@ var ErrorOnDependencyCycles = env.Bool("ERROR_ON_DEPENDENCY_CYCLES",
 var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
 	"If set skip validating the version number reported by the CLI.")
 
-// Environment variables that affect the self-managed backend.
+// Environment variables that affect the DIY backend.
 var (
-	SelfManagedStateNoLegacyWarning = env.Bool("SELF_MANAGED_STATE_NO_LEGACY_WARNING",
-		"Disables the warning about legacy stack files mixed with project-scoped stack files.")
+	SelfManagedStateNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
+		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
+		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
 
-	SelfManagedStateLegacyLayout = env.Bool("SELF_MANAGED_STATE_LEGACY_LAYOUT",
-		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.")
+	SelfManagedStateLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
+		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
+		env.Alternative("SELF_MANAGED_STATE_LEGACY_LAYOUT"))
 
-	SelfManagedGzip = env.Bool("SELF_MANAGED_STATE_GZIP",
-		"Enables gzip compression when writing state files.")
+	SelfManagedGzip = env.Bool("DIY_BACKEND_GZIP",
+		"Enables gzip compression when writing state files.",
+		env.Alternative("SELF_MANAGED_STATE_GZIP"))
 
-	SelfManagedRetainCheckpoints = env.Bool("RETAIN_CHECKPOINTS",
-		"If set every checkpoint will be duplicated to a timestamped file.")
+	SelfManagedRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
+		"If set every checkpoint will be duplicated to a timestamped file.",
+		env.Alternative("RETAIN_CHECKPOINTS"))
 
-	SelfManagedDisableCheckpointBackups = env.Bool("DISABLE_CHECKPOINT_BACKUPS",
-		"If set checkpoint backups will not be written the to the backup folder.")
+	SelfManagedDisableCheckpointBackups = env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
+		"If set checkpoint backups will not be written the to the backup folder.",
+		env.Alternative("DISABLE_CHECKPOINT_BACKUPS"))
 )
 
 // Environment variables which affect Pulumi AI integrations

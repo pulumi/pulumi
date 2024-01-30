@@ -336,7 +336,7 @@ func newLocalBackend(
 		fmt.Fprintf(&msg, "  - %s\n", ref.Name())
 	}
 	msg.WriteString("Please run 'pulumi state upgrade' to migrate them to the new format.\n")
-	msg.WriteString("Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.")
+	msg.WriteString("Set PULUMI_DIY_BACKEND_NO_LEGACY_WARNING=1 to disable this warning.")
 	d.Warningf(diag.Message("", msg.String()))
 	return backend, nil
 }

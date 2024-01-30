@@ -885,7 +885,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 				"  - a\n" +
 				"  - b\n" +
 				"Please run 'pulumi state upgrade' to migrate them to the new format.\n" +
-				"Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.\n",
+				"Set PULUMI_DIY_BACKEND_NO_LEGACY_WARNING=1 to disable this warning.\n",
 		},
 		{
 			desc: "warning opt-out",
@@ -894,7 +894,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 				".pulumi/stacks/b.json": "{}",
 			},
 			env: map[string]string{
-				"PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING": "true",
+				"PULUMI_DIY_BACKEND_NO_LEGACY_WARNING": "true",
 			},
 		},
 	}
@@ -1301,7 +1301,7 @@ func TestCreateStack_gzip(t *testing.T) {
 	_, err = b.CreateStack(ctx, fooRef, "", nil)
 	require.NoError(t, err)
 
-	// With PULUMI_SELF_MANAGED_STATE_GZIP enabled,
+	// With PULUMI_DIY_BACKEND_GZIP enabled,
 	// we'll store state into gzipped files.
 	assert.FileExists(t, filepath.Join(stateDir, ".pulumi", "stacks", "testproj", "foo.json.gz"))
 }

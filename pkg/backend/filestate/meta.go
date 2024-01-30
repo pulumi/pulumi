@@ -59,7 +59,7 @@ type pulumiMeta struct {
 // If the bucket is empty, this will create a new metadata file
 // with the latest version number.
 // This can be overridden by setting the environment variable
-// "PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT" to "1".
+// "PULUMI_DIY_BACKEND_LEGACY_LAYOUT" to "1".
 // ensurePulumiMeta uses the provided 'getenv' function
 // to read the environment variable.
 func ensurePulumiMeta(ctx context.Context, b Bucket, e env.Env) (*pulumiMeta, error) {

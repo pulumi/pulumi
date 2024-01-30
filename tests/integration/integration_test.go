@@ -564,12 +564,22 @@ func TestDestroyStackRef_LocalProject(t *testing.T) {
 }
 
 //nolint:paralleltest // uses parallel programtest
-func TestDestroyStackRef_LocalNonProject(t *testing.T) {
+func TestDestroyStackRef_LocalNonProject_NewEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
+		e.DeleteIfNotFailed()
+	}()
+
+	t.Setenv("PULUMI_DIY_BACKEND_LEGACY_LAYOUT", "true")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	testDestroyStackRef(e, "")
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestDestroyStackRef_LocalNonProject_OldEnv(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		e.DeleteIfNotFailed()
 	}()
 
 	t.Setenv("PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT", "true")

@@ -11,11 +11,12 @@ func init() {
 	env.Global = env.MapStore{
 		"PULUMI_FOO": "1",
 		// "PULUMI_NOT_SET": explicitly not set
-		"FOO":           "bar",
-		"PULUMI_MY_INT": "3",
-		"PULUMI_SECRET": "hidden",
-		"PULUMI_SET":    "SET",
-		"UNSET":         "SET",
+		"FOO":                "bar",
+		"PULUMI_MY_INT":      "3",
+		"PULUMI_SECRET":      "hidden",
+		"PULUMI_SET":         "SET",
+		"UNSET":              "SET",
+		"PULUMI_ALTERNATIVE": "SET",
 	}
 }
 
@@ -27,6 +28,7 @@ var (
 	UnsetString = env.String("PULUMI_UNSET", "Should be unset", env.Needs(SomeFalse))
 	SetString   = env.String("SET", "Should be set", env.Needs(SomeBool))
 	AnInt       = env.Int("MY_INT", "Should be 3")
+	Alternative = env.String("NOT_ALTERNATIVE", "Should be set with alt name", env.Alternative("ALTERNATIVE"))
 )
 
 func TestInt(t *testing.T) {
@@ -58,4 +60,9 @@ func TestNeeds(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "", UnsetString.Value())
 	assert.Equal(t, "SET", SetString.Value())
+}
+
+func TestAlternative(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "SET", Alternative.Value())
 }

@@ -41,7 +41,7 @@ func newStateUpgradeCommand() *cobra.Command {
 		Short: "Migrates the current backend to the latest supported version",
 		Long: `Migrates the current backend to the latest supported version
 
-This only has an effect on self-managed backends.
+This only has an effect on DIY backends.
 `,
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
