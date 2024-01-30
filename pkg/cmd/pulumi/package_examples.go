@@ -385,7 +385,7 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 		buffer.WriteString(strings.Repeat(" ", indentSize))
 	}
 
-	indended := func(f func()) {
+	indented := func(f func()) {
 		indentSize += 2
 		f()
 		indentSize -= 2
@@ -416,7 +416,7 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 			write("]")
 		case *schema.MapType:
 			write("{\n")
-			indended(func() {
+			indented(func() {
 				indent()
 				write("\"string\" = ")
 				writeValue(valueType.ElementType)
@@ -432,7 +432,7 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 
 			seenTypes.Add(valueType.Token)
 			write("{\n")
-			indended(func() {
+			indented(func() {
 				for _, p := range valueType.Properties {
 					if p.DeprecationMessage != "" {
 						continue
@@ -468,14 +468,8 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 
 			write(fmt.Sprintf("%q", strings.Join(cases, "|")))
 		case *schema.UnionType:
-			if isUnionOfObjects(valueType) {
-				possibleTypes := make([]string, len(valueType.ElementTypes))
-				for index, elem := range valueType.ElementTypes {
-					objectType := elem.(*schema.ObjectType)
-					_, _, typeName := decomposeToken(objectType.Token)
-					possibleTypes[index] = typeName
-				}
-				write("notImplemented(\"" + strings.Join(possibleTypes, "|") + "\")")
+			if isUnionOfObjects(valueType) && len(valueType.ElementTypes) >= 1 {
+				writeValue(valueType.ElementTypes[0])
 			}
 
 			for _, elem := range valueType.ElementTypes {
@@ -494,7 +488,7 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 	}
 
 	write("resource \"example\" %q {\n", r.Token)
-	indended(func() {
+	indented(func() {
 		for _, p := range r.InputProperties {
 			if p.DeprecationMessage != "" {
 				continue
@@ -547,9 +541,4 @@ func objectTypeHasRecursiveReference(objectType *schema.ObjectType) bool {
 	})
 
 	return isRecursive
-}
-
-func decomposeToken(token string) (string, string, string) {
-	pkg, mod, member, _ := pcl.DecomposeToken(token, hcl.Range{})
-	return pkg, mod, member
 }
