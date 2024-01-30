@@ -116,7 +116,7 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
     "dotnet": "6",
     "go": "1.20.x",
-    "nodejs": "16.x",
+    "nodejs": "18.x",
     "python": "3.8.x",
 }
 
@@ -124,7 +124,7 @@ CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "8",
     "go": "1.21.x",
-    "nodejs": "20.x",
+    "nodejs": "21.x",
     "python": "3.12.x",
 }
 
