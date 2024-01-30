@@ -1248,6 +1248,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		t = tokens.Type(req.GetType())
 	}
 
+	// Take a copy of req.Providers so we don't mutate it
+	resolvedProviders := make(map[string]string, len(req.GetProviders()))
+	for k, v := range req.GetProviders() {
+		resolvedProviders[k] = v
+	}
+
 	// We handle updating the providers map to include the providers field of the parent if
 	// both the current resource and its parent is a component resource.
 	func() {
@@ -1257,11 +1263,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if parentsProviders, parentIsComponent := rm.componentProviders[parent]; !custom &&
 			parent != "" && parentIsComponent {
 			for k, v := range parentsProviders {
-				if req.Providers == nil {
-					req.Providers = map[string]string{}
-				}
-				if _, ok := req.Providers[k]; !ok {
-					req.Providers[k] = v
+				if _, ok := resolvedProviders[k]; !ok {
+					resolvedProviders[k] = v
 				}
 			}
 		}
@@ -1285,8 +1288,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		providerRefs = make(map[string]string, len(req.GetProviders()))
-		for name, provider := range req.GetProviders() {
+		providerRefs = make(map[string]string, len(resolvedProviders))
+		for name, provider := range resolvedProviders {
 			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
 			if err != nil {
 				return nil, err

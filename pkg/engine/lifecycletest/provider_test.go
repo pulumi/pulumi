@@ -1608,3 +1608,92 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	}
 	assert.NoError(t, err)
 }
+
+// TestComponentProvidersInheritance is to test that the `providers` map is propagated to child resources. The rules
+// around providers inheritances are _weird_. They are only used for remote construct calls, but they propagate through
+// any "component parent", not custom resource parents. This is probably just badly spec'd behavior from the first
+// release that we're now stuck with.
+func TestComponentProvidersInheritance(t *testing.T) {
+	t.Parallel()
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provURN, provID, _, err := monitor.RegisterResource("pulumi:providers:pkg", "provA", true)
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		aURN, _, _, err := monitor.RegisterResource("my_component", "resA", false, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": provRef.String()},
+		})
+		assert.NoError(t, err)
+
+		// resB _should_ see the explicit provider in it's construct options because it's parent is a component with
+		// providers set.
+		_, _, _, err = monitor.RegisterResource("pkg:index:component", "resB", false, deploytest.ResourceOptions{
+			Remote: true,
+			Parent: aURN,
+		})
+		assert.NoError(t, err)
+
+		cURN, _, _, err := monitor.RegisterResource("pkg:index:type", "resC", true, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": provRef.String()},
+		})
+		assert.NoError(t, err)
+
+		// resD _should NOT_ see the explicit provider in it's construct options because it's parent is a custom.
+		_, _, _, err = monitor.RegisterResource("pkg:index:component", "resD", false, deploytest.ResourceOptions{
+			Remote: true,
+			Parent: cURN,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string,
+					parent resource.URN, inputs resource.PropertyMap,
+					info plugin.ConstructInfo, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					assert.Equal(t, "pkg:index:component", typ)
+
+					if name == "resB" {
+						assert.Contains(t, options.Providers["pkgA"], "urn:pulumi:test::test::pulumi:providers:pkg::provA::")
+					} else {
+						assert.Equal(t, "resD", name)
+						assert.NotContains(t, options.Providers, "pkgA")
+					}
+
+					urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					assert.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN: urn,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+}

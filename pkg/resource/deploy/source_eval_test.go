@@ -2969,69 +2969,6 @@ func TestRegisterResource(t *testing.T) {
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		})
 	})
-	t.Run("parent is component provider", func(t *testing.T) {
-		t.Parallel()
-		t.Run("resource has no provider", func(t *testing.T) {
-			t.Parallel()
-			regChan := make(chan *registerResourceEvent, 1)
-			go func() {
-				evt := <-regChan
-				evt.done <- &RegisterResult{
-					State: &resource.State{},
-				}
-			}()
-			rm := &resmon{
-				regChan: regChan,
-				componentProviders: map[resource.URN]map[string]string{
-					"urn:pulumi:stack::project::type::foo": {
-						"urn:pulumi:stack::project::type::prov1": "",
-						"urn:pulumi:stack::project::type::prov2": "",
-					},
-				},
-			}
-			req := &pulumirpc.RegisterResourceRequest{
-				Parent: "urn:pulumi:stack::project::type::foo",
-			}
-			require.Nil(t, req.Providers)
-			_, err := rm.RegisterResource(context.Background(), req)
-			assert.NoError(t, err)
-			// Check request Providers mutated.
-			assert.NotNil(t, req.Providers)
-		})
-		t.Run("resource has a provider", func(t *testing.T) {
-			t.Parallel()
-			regChan := make(chan *registerResourceEvent, 1)
-			go func() {
-				evt := <-regChan
-				evt.done <- &RegisterResult{
-					State: &resource.State{},
-				}
-			}()
-			rm := &resmon{
-				regChan: regChan,
-				componentProviders: map[resource.URN]map[string]string{
-					"urn:pulumi:stack::project::type::foo": {
-						"urn:pulumi:stack::project::type::prov1": "",
-						"urn:pulumi:stack::project::type::prov2": "expected-value",
-					},
-				},
-			}
-			req := &pulumirpc.RegisterResourceRequest{
-				Provider: "urn:pulumi:stack::project::type::bar",
-				Parent:   "urn:pulumi:stack::project::type::foo",
-			}
-			require.Nil(t, req.Providers)
-			_, err := rm.RegisterResource(context.Background(), req)
-			assert.NoError(t, err)
-			// Check request Providers mutated.
-			assert.Equal(t,
-				map[string]string{
-					"urn:pulumi:stack::project::type::prov1": "",
-					"urn:pulumi:stack::project::type::prov2": "expected-value",
-				},
-				req.Providers)
-		})
-	})
 	t.Run("remote handles improper version", func(t *testing.T) {
 		t.Parallel()
 		regChan := make(chan *registerResourceEvent, 1)
