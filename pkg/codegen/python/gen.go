@@ -2446,16 +2446,6 @@ func (mod *modContext) pyType(typ schema.Type) string {
 	}
 }
 
-func isStringType(t schema.Type) bool {
-	t = codegen.UnwrapType(t)
-
-	for tt, ok := t.(*schema.TokenType); ok; tt, ok = t.(*schema.TokenType) {
-		t = tt.UnderlyingType
-	}
-
-	return t == schema.StringType
-}
-
 // pyPack returns the suggested package name for the given string.
 func pyPack(s string) string {
 	return "pulumi_" + strings.ReplaceAll(s, "-", "_")
