@@ -38,8 +38,6 @@ runtime: yaml`
 	t.Run("no imports", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -50,9 +48,10 @@ runtime: yaml`
 
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", env, nil, nil)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		err := ls.run(nil, nil)
+		ctx := context.Background()
+		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "This stack configuration has no environments listed. " +
@@ -64,8 +63,6 @@ runtime: yaml`
 	t.Run("no imports, json", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -76,9 +73,10 @@ runtime: yaml`
 
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", env, nil, nil)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
-		err := ls.run(nil, nil)
+		ctx := context.Background()
+		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "[]\n"
@@ -88,8 +86,6 @@ runtime: yaml`
 
 	t.Run("with imports", func(t *testing.T) {
 		t.Parallel()
-
-		ctx := context.Background()
 
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
@@ -108,9 +104,10 @@ runtime: yaml`
 
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		err := ls.run(nil, nil)
+		ctx := context.Background()
+		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = `ENVIRONMENTS
@@ -125,8 +122,6 @@ thirdEnv
 	t.Run("with imports, json", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -144,9 +139,10 @@ thirdEnv
 
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
-		err := ls.run(nil, nil)
+		ctx := context.Background()
+		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = `[
@@ -162,8 +158,6 @@ thirdEnv
 	t.Run("with imports", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -181,9 +175,10 @@ thirdEnv
 
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		err := ls.run(nil, nil)
+		ctx := context.Background()
+		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = `ENVIRONMENTS
@@ -198,8 +193,6 @@ thirdEnv
 	t.Run("repeated imports", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -218,9 +211,10 @@ thirdEnv
 
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
-		err := ls.run(nil, nil)
+		ctx := context.Background()
+		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = `[

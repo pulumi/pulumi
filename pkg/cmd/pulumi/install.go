@@ -44,7 +44,7 @@ func newInstallCmd() *cobra.Command {
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}

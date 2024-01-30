@@ -15,6 +15,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -30,7 +32,7 @@ func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 			"per the ESC merge rules. The list of stacks behaves as if it were the import list in an anonymous\n" +
 			"environment.",
 		Args: cmdutil.MinimumNArgs(1),
-		Run:  cmdutil.RunFunc(impl.run),
+		Run:  cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error { return impl.run(cmd.Context(), args) }),
 	}
 
 	cmd.Flags().BoolVar(
@@ -50,9 +52,10 @@ type configEnvAddCmd struct {
 	yes         bool
 }
 
-func (cmd *configEnvAddCmd) run(_ *cobra.Command, args []string) error {
-	return cmd.parent.editStackEnvironment(cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
-		stack.Environment = stack.Environment.Append(args...)
-		return nil
-	})
+func (cmd *configEnvAddCmd) run(ctx context.Context, args []string) error {
+	return cmd.parent.editStackEnvironment(
+		ctx, cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
+			stack.Environment = stack.Environment.Append(args...)
+			return nil
+		})
 }

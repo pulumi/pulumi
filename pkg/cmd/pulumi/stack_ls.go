@@ -57,7 +57,7 @@ func newStackLsCmd() *cobra.Command {
 			"'environment=production' or just 'gcp:project'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			cmdArgs := stackLSArgs{
 				jsonOut:    jsonOut,
 				allStacks:  allStacks,

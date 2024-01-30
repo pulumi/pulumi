@@ -64,7 +64,7 @@ func newAboutCmd() *cobra.Command {
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, transitiveDependencies, stack)
 			if jsonOut {
 				return printJSON(summary)

@@ -37,7 +37,7 @@ func newStackHistoryCmd() *cobra.Command {
 
 This command displays data about previous updates for a stack.`,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}

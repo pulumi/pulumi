@@ -92,7 +92,7 @@ func newDestroyCmd() *cobra.Command {
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {

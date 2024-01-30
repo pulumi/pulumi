@@ -503,7 +503,7 @@ func newNewCmd() *cobra.Command {
 			"Any missing but required information will be prompted for.\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}

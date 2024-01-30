@@ -142,7 +142,7 @@ by passing the --no-auto-submit flag.
 `,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)
 		},
 		),

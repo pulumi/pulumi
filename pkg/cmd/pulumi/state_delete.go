@@ -52,7 +52,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		Args:    cmdutil.MaximumNArgs(1),
 
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			yes = yes || skipConfirmations()
 			var urn resource.URN
 			if len(args) == 0 {

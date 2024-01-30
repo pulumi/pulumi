@@ -30,7 +30,6 @@ import (
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/pflag"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -47,7 +46,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
@@ -173,25 +171,6 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 	}
 
 	return loginToCloud(ctx, url, project, workspace.GetCloudInsecure(url), opts)
-}
-
-// This is used to control the contents of the tracing header.
-var tracingHeader = os.Getenv("PULUMI_TRACING_HEADER")
-
-func commandContext() context.Context {
-	ctx := context.Background()
-	if cmdutil.IsTracingEnabled() {
-		if cmdutil.TracingRootSpan != nil {
-			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
-		}
-
-		tracingOptions := tracing.Options{
-			PropagateSpans: true,
-			TracingHeader:  tracingHeader,
-		}
-		ctx = tracing.ContextWithOptions(ctx, tracingOptions)
-	}
-	return ctx
 }
 
 func createSecretsManager(

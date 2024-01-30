@@ -55,7 +55,7 @@ func newPluginInstallCmd() *cobra.Command {
 			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
 			"the plugin, though the result is not guaranteed.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return picmd.Run(ctx, args)
 		}),
 	}

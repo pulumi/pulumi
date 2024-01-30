@@ -58,14 +58,13 @@ runtime: yaml`
 	t.Run("no config", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForInitTest(ctx, stdin, &stdout, projectYAML, "", &newStackYAML, envDefMap{})
+		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, "", &newStackYAML, envDefMap{})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, yes: true}
-		err := init.run(nil, nil)
+		ctx := context.Background()
+		err := init.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "Creating environment test-stack for stack stack...\n" +
@@ -122,9 +121,9 @@ runtime: yaml`
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForInitTest(ctx, stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
+		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, yes: true}
-		err = init.run(nil, nil)
+		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "Creating environment test-stack for stack stack...\n" +
@@ -199,9 +198,9 @@ runtime: yaml`
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForInitTest(ctx, stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
+		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, showSecrets: true, yes: true}
-		err = init.run(nil, nil)
+		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "Creating environment test-stack for stack stack...\n" +
@@ -278,11 +277,11 @@ runtime: yaml`
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForInitTest(ctx, stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{
+		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{
 			"env": `{"values": {"pulumiConfig": {"app:tags": {"name": "project"}}}}`,
 		})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, showSecrets: true, yes: true}
-		err = init.run(nil, nil)
+		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
 		const expectedOut = "Creating environment test-stack for stack stack...\n" +
