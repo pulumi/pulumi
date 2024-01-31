@@ -151,47 +151,64 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	// Run the language plugin
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Init: func(srv *grpc.Server) error {
-			pythonExec := "../pulumi-language-python-exec"
-			host := newLanguageHost(pythonExec, engineAddress, "")
-			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-			return nil
-		},
-	})
-	require.NoError(t, err)
-
-	// Create a temp project dir for the test to run in
-	rootDir := t.TempDir()
-
-	// Prepare to run the tests
-	prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
-		LanguagePluginName:   "python",
-		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-		TemporaryDirectory:   rootDir,
-		SnapshotDirectory:    "./testdata",
-		CoreSdkDirectory:     "../../lib",
-	})
-	require.NoError(t, err)
-
-	// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+	// We should run the python tests twice. Once with TOML projects and once with setup.py.
 	//nolint:paralleltest // These aren't yet safe to run in parallel
-	for _, tt := range tests.Tests {
-		tt := tt
-		t.Run(tt, func(t *testing.T) {
-			result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
-				Token: prepare.Token,
-				Test:  tt,
-			})
+	for _, useToml := range []bool{false, true} {
+		cancel := make(chan bool)
 
-			require.NoError(t, err)
-			for _, msg := range result.Messages {
-				t.Log(msg)
-			}
-			t.Logf("stdout: %s", result.Stdout)
-			t.Logf("stderr: %s", result.Stderr)
-			assert.True(t, result.Success)
+		// Run the language plugin
+		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+			Init: func(srv *grpc.Server) error {
+				pythonExec := "../pulumi-language-python-exec"
+				host := newLanguageHost(pythonExec, engineAddress, "", useToml)
+				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+				return nil
+			},
+			Cancel: cancel,
 		})
+		require.NoError(t, err)
+
+		// Create a temp project dir for the test to run in
+		rootDir := t.TempDir()
+
+		snapshotDir := "./testdata/"
+		if useToml {
+			snapshotDir += "toml"
+		} else {
+			snapshotDir += "setuppy"
+		}
+
+		// Prepare to run the tests
+		prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+			LanguagePluginName:   "python",
+			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+			TemporaryDirectory:   rootDir,
+			SnapshotDirectory:    snapshotDir,
+			CoreSdkDirectory:     "../../lib",
+		})
+		require.NoError(t, err)
+
+		// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+		//nolint:paralleltest // These aren't yet safe to run in parallel
+		for _, tt := range tests.Tests {
+			tt := tt
+			t.Run(tt, func(t *testing.T) {
+				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+					Token: prepare.Token,
+					Test:  tt,
+				})
+
+				require.NoError(t, err)
+				for _, msg := range result.Messages {
+					t.Log(msg)
+				}
+				t.Logf("stdout: %s", result.Stdout)
+				t.Logf("stderr: %s", result.Stderr)
+				assert.True(t, result.Success)
+			})
+		}
+
+		close(cancel)
+		assert.NoError(t, <-handle.Done)
 	}
 }

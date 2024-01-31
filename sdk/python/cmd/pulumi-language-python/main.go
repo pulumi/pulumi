@@ -153,7 +153,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, false)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -180,6 +180,9 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+
+	// used by lanaguge conformace tests to enable the PyProject.Enabled schema option
+	useToml bool
 }
 
 type pythonOptions struct {
@@ -205,12 +208,13 @@ func parseOptions(root string, options map[string]interface{}) (pythonOptions, e
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing string,
+func newLanguageHost(exec, engineAddress, tracing string, useToml bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		useToml:       useToml,
 	}
 }
 
@@ -1236,6 +1240,17 @@ func (host *pythonLanguageHost) GeneratePackage(
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
+
+	if host.useToml {
+		var info codegen.PackageInfo
+		var ok bool
+		if info, ok = pkg.Language["python"].(codegen.PackageInfo); !ok {
+			info = codegen.PackageInfo{}
+		}
+		info.PyProject.Enabled = true
+		pkg.Language["python"] = info
+	}
+
 	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles)
 	if err != nil {
 		return nil, err
