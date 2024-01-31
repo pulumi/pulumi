@@ -127,6 +127,11 @@ outer:
 		switch access[0] {
 		case '}':
 			// interpolation terminator
+
+			// Handle the case of an empty, terminated access (`${}`)
+			if len(accessors) == 0 {
+				accessors = []PropertyAccessor{&PropertyName{Name: ""}}
+			}
 			return access[1:], &PropertyAccess{Accessors: accessors}, diags
 		case '.':
 			if len(accessors) == 0 {
@@ -215,6 +220,10 @@ outer:
 				}
 			}
 		}
+	}
+	// Handle the case of an empty, unterminated access (`${`)
+	if len(accessors) == 0 {
+		accessors = []PropertyAccessor{&PropertyName{Name: ""}}
 	}
 	diags.Extend(syntax.NodeError(node, "unterminated interpolation"))
 	return access, &PropertyAccess{Accessors: accessors}, diags

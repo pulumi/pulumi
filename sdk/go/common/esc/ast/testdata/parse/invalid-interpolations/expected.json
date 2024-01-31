@@ -11,6 +11,24 @@
                     "Value": {
                         "Elements": [
                             {
+                                "Property": {
+                                    "Accessors": [
+                                        {
+                                            "Name": ""
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "Property": {
+                                    "Accessors": [
+                                        {
+                                            "Name": ""
+                                        }
+                                    ]
+                                }
+                            },
+                            {
                                 "Parts": [
                                     {
                                         "Text": "unterminated ",
@@ -114,8 +132,8 @@
                 },
                 "End": {
                     "Line": 3,
-                    "Column": 35,
-                    "Byte": 60
+                    "Column": 9,
+                    "Byte": 34
                 }
             },
             "Context": null,
@@ -126,19 +144,19 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in list index",
+            "Summary": "unterminated interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 5,
                     "Column": 7,
-                    "Byte": 99
+                    "Byte": 51
                 },
                 "End": {
                     "Line": 5,
-                    "Column": 37,
-                    "Byte": 129
+                    "Column": 35,
+                    "Byte": 79
                 }
             },
             "Context": null,
@@ -149,26 +167,49 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing quote in property name",
+            "Summary": "missing closing bracket in list index",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 6,
+                    "Line": 7,
                     "Column": 7,
-                    "Byte": 136
+                    "Byte": 118
                 },
                 "End": {
-                    "Line": 6,
-                    "Column": 31,
-                    "Byte": 160
+                    "Line": 7,
+                    "Column": 37,
+                    "Byte": 148
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[3]"
+            "Path": "values.interpolations[4]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing quote in property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-interpolations",
+                "Start": {
+                    "Line": 8,
+                    "Column": 7,
+                    "Byte": 155
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 31,
+                    "Byte": 179
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.interpolations[5]"
         },
         {
             "Severity": 1,
@@ -177,21 +218,21 @@
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 6,
+                    "Line": 8,
                     "Column": 7,
-                    "Byte": 136
+                    "Byte": 155
                 },
                 "End": {
-                    "Line": 6,
+                    "Line": 8,
                     "Column": 31,
-                    "Byte": 160
+                    "Byte": 179
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[3]"
+            "Path": "values.interpolations[5]"
         },
         {
             "Severity": 1,
@@ -200,21 +241,21 @@
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 7,
+                    "Line": 9,
                     "Column": 7,
-                    "Byte": 167
+                    "Byte": 186
                 },
                 "End": {
-                    "Line": 7,
+                    "Line": 9,
                     "Column": 36,
-                    "Byte": 196
+                    "Byte": 215
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[4]"
+            "Path": "values.interpolations[6]"
         }
     ]
 }

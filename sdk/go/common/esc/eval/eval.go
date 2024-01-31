@@ -590,18 +590,6 @@ func (e *evalContext) evaluatePropertyAccess(x *expr, accessors []*propertyAcces
 func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor) *value {
 	receiver := e.root
 
-	// This can happen for invalid property accesses. No need to issue an error here--the parser has already done so.
-	if len(accessors) == 0 {
-		return &value{
-			def: &expr{
-				repr:  &literalExpr{node: x.repr.syntax()},
-				state: exprDone,
-			},
-			schema:  schema.Always().Schema(),
-			unknown: true,
-		}
-	}
-
 	// Check for an imports access.
 	if k, ok := e.objectKey(x.repr.syntax(), accessors[0].accessor, false); ok && k == "imports" {
 		accessors[0].value = e.myImports
