@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg/testing
-  description: Add RequireEmptyPreviewAfterRefresh option to ProgramTest

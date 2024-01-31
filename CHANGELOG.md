@@ -1,5 +1,66 @@
 # Changelog
 
+## 3.104.0 (2024-01-31)
+
+
+### Features
+
+- [backend] Allows the PULUMI_SKIP_CHECKPOINTS environment variable to be set without requiring the PULUMI_EXPERIMENTAL flag.
+  [#15318](https://github.com/pulumi/pulumi/pull/15318)
+
+- [auto/go] Add new API to install the Pulumi CLI from the Automation API
+  [#15049](https://github.com/pulumi/pulumi/pull/15049)
+
+- [auto/nodejs] Allow disabling version validation when using a custom PulumiCommand instance
+  [#15242](https://github.com/pulumi/pulumi/pull/15242)
+
+- [auto/python] Add new API to install the Pulumi CLI
+  [#15204](https://github.com/pulumi/pulumi/pull/15204)
+
+- [auto/python] Inline programs can now be defined as async functions.
+  [#15278](https://github.com/pulumi/pulumi/pull/15278)
+
+- [pkg/testing] Add RequireEmptyPreviewAfterRefresh option to ProgramTest
+
+
+### Bug Fixes
+
+- [engine] Fix a hang in preview --import-file.
+  [#15203](https://github.com/pulumi/pulumi/pull/15203)
+
+- [engine] Engine will now error if aliases request a parent with no URN.
+  [#15232](https://github.com/pulumi/pulumi/pull/15232)
+
+- [engine] Fix stack name validation when PULUMI_DISABLE_VALIDATION isn't set.
+  [#15245](https://github.com/pulumi/pulumi/pull/15245)
+
+- [engine] Fix a performance issue doing unneeded secret encryption.
+  [#15306](https://github.com/pulumi/pulumi/pull/15306)
+
+- [sdk/go] Include error message in local workspace validation.
+  [#15279](https://github.com/pulumi/pulumi/pull/15279)
+
+- [sdkgen/go] Remove pulumix references from generated enums
+  [#15280](https://github.com/pulumi/pulumi/pull/15280)
+
+- [programgen/nodejs] Fixes generated expression for filebase64 function to use fs.readFileSync directly with base64 encoding option
+  [#15253](https://github.com/pulumi/pulumi/pull/15253)
+
+- [sdkgen/python] Use importlib.metadata instead of pkg_resources
+  [#15266](https://github.com/pulumi/pulumi/pull/15266)
+
+
+### Miscellaneous
+
+- [auto/go] Remove obsolete note from FullyQualifiedStackName comment.
+  [#15281](https://github.com/pulumi/pulumi/pull/15281)
+
+- [backend/filestate] Upgrade gocloud.dev to the latest version
+  [#15202](https://github.com/pulumi/pulumi/pull/15202)
+
+- [sdk/python] Remove compatability code for Python 3.7 and below.
+  [#15276](https://github.com/pulumi/pulumi/pull/15276)
+
 ## 3.103.1 (2024-01-25)
 
 

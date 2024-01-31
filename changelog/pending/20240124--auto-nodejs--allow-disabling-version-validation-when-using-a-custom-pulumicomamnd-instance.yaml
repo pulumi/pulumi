@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Allow disabling version validation when using a custom PulumiCommand instance

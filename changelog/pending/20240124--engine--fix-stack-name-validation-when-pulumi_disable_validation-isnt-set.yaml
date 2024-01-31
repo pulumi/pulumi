@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix stack name validation when PULUMI_DISABLE_VALIDATION isn't set.
