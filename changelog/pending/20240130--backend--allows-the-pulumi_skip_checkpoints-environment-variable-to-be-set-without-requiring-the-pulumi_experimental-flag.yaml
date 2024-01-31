@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend
-  description: Allows the PULUMI_SKIP_CHECKPOINTS environment variable to be set without requiring the PULUMI_EXPERIMENTAL flag.

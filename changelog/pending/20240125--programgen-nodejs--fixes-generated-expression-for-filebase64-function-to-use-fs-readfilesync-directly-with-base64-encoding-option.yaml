@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/nodejs
-  description: Fixes generated expression for filebase64 function to use fs.readFileSync directly with base64 encoding option
