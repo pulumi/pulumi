@@ -919,12 +919,12 @@ func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (back
 	case !interactive && !yes && !skipPreview && !previewOnly:
 		return backend.UpdateOptions{},
 			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
-	case yes && previewOnly:
-		return backend.UpdateOptions{},
-			errors.New("--yes and --preview-only cannot be used together")
 	case skipPreview && previewOnly:
 		return backend.UpdateOptions{},
 			errors.New("--skip-preview and --preview-only cannot be used together")
+	case yes && previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("--yes and --preview-only cannot be used together")
 	default:
 		return backend.UpdateOptions{
 			AutoApprove: yes,
