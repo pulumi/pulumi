@@ -70,17 +70,26 @@ func DeleteResource(
 		}
 		numSameURN++
 	}
+	isUniqueURN := numSameURN <= 1
 
 	deleteSet := map[resource.URN]struct{}{}
+	dg := graph.NewDependencyGraph(snapshot.Resources)
 
-	isUniqueURN := numSameURN <= 1
-	// If there's only one resource (or fewer), determine dependencies to be deleted from state.
-	if isUniqueURN {
-		// condemnedRes.URN is unique. We can safely delete it by URN.
-		deleteSet[condemnedRes.URN] = struct{}{}
-		dg := graph.NewDependencyGraph(snapshot.Resources)
-
-		if deps := dg.DependingOn(condemnedRes, nil, true); len(deps) != 0 {
+	if deps := dg.DependingOn(condemnedRes, nil, true); len(deps) != 0 {
+		uniqueDependency := isUniqueURN
+		if !isUniqueURN {
+			for _, d := range deps {
+				if d.Provider != "" {
+					ref, err := providers.ParseReference(d.Provider)
+					contract.AssertNoErrorf(err, "cannot parse provider reference %q", d.Provider)
+					if ref.ID() == condemnedRes.ID {
+						uniqueDependency = true
+						break
+					}
+				}
+			}
+		}
+		if uniqueDependency {
 			if !targetDependents {
 				return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: deps}
 			}

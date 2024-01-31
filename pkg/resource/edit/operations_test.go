@@ -158,6 +158,46 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 	})
 }
 
+func TestDeletingDuplicateProviderURN(t *testing.T) {
+	t.Parallel()
+
+	// Create duplicate provider resources
+	pA := NewProviderResource("a", "p1", "0")
+	pB := NewProviderResource("a", "p2", "0")
+
+	// Create a resource that depends on the duplicate Provider.
+	b1 := NewResource("b", pA)
+
+	t.Run("do-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA, pB, b1,
+		})
+
+		err := DeleteResource(snap, pA, nil, true /* targetDependents */)
+		require.NoError(t, err)
+
+		assert.Equal(t, []*resource.State{
+			pB,
+		}, snap.Resources)
+
+		// Ensure that a pointer to pA is not in the list.
+		for _, s := range snap.Resources {
+			assert.False(t, s == pA)
+		}
+	})
+
+	t.Run("do-not-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA, pB, b1,
+		})
+
+		err := DeleteResource(snap, pA, nil, false /* targetDependents */)
+		require.Error(t, err)
+	})
+}
+
 func TestDeletingDependencies(t *testing.T) {
 	t.Parallel()
 

@@ -31,7 +31,7 @@ func newStateDeleteCommand() *cobra.Command {
 	var force bool // Force deletion of protected resources
 	var stack string
 	var yes bool
-	var targetDepenedents bool
+	var targetDependents bool
 
 	cmd := &cobra.Command{
 		Use:   "delete [resource URN]",
@@ -81,7 +81,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 						return edit.UnprotectResource(nil, res)
 					}
 				}
-				return edit.DeleteResource(snap, res, handleProtected, targetDepenedents)
+				return edit.DeleteResource(snap, res, handleProtected, targetDependents)
 			})
 			if err != nil {
 				switch e := err.(type) {
@@ -112,6 +112,6 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&force, "force", false, "Force deletion of protected resources")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
-	cmd.Flags().BoolVar(&targetDepenedents, "target-dependents", false, "Delete the URN and all its dependents")
+	cmd.Flags().BoolVar(&targetDependents, "target-dependents", false, "Delete the URN and all its dependents")
 	return cmd
 }
