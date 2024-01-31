@@ -163,7 +163,7 @@ func TestDeletingDuplicateProviderURN(t *testing.T) {
 
 	// Create duplicate provider resources
 	pA := NewProviderResource("a", "p1", "0")
-	pB := NewProviderResource("a", "p2", "0")
+	pB := NewProviderResource("a", "p1", "1")
 
 	// Create a resource that depends on the duplicate Provider.
 	b1 := NewResource("b", pA)
