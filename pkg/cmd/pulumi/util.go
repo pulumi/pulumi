@@ -914,16 +914,24 @@ func fprintJSON(w io.Writer, v interface{}) error {
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
 // is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
-func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
-	if !interactive && !yes {
+func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
+	switch {
+	case !interactive && !yes && !skipPreview && !previewOnly:
 		return backend.UpdateOptions{},
-			errors.New("--yes must be passed in non-interactive mode")
+			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
+	case yes && previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("--yes and --preview-only cannot be used together")
+	case skipPreview && previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("--skip-preview and --preview-only cannot be used together")
+	default:
+		return backend.UpdateOptions{
+			AutoApprove: yes,
+			SkipPreview: skipPreview,
+			PreviewOnly: previewOnly,
+		}, nil
 	}
-
-	return backend.UpdateOptions{
-		AutoApprove: yes,
-		SkipPreview: skipPreview,
-	}, nil
 }
 
 func checkDeploymentVersionError(err error, stackName string) error {

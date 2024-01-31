@@ -297,6 +297,8 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
+	PreviewOnly bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.

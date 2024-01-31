@@ -929,6 +929,19 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
+	if op.Opts.PreviewOnly {
+		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
+		opts := backend.ApplierOptions{
+			DryRun:   true,
+			ShowLink: true,
+		}
+
+		op.Opts.Engine.GeneratePlan = false
+		_, changes, res := b.apply(
+			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
+		return changes, res
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 

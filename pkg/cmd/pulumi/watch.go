@@ -68,7 +68,8 @@ func newWatchCmd() *cobra.Command {
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := cmd.Context()
 
-			opts, err := updateFlagsToOptions(false /* interactive */, true /* skippreview*/, true /* autoapprove*/)
+			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
+				false /* previewOnly */)
 			if err != nil {
 				return result.FromError(err)
 			}
