@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -49,28 +48,27 @@ type L2ResourceSimpleLanguageHost struct {
 func (h *L2ResourceSimpleLanguageHost) Pack(
 	ctx context.Context, req *pulumirpc.PackRequest,
 ) (*pulumirpc.PackResponse, error) {
-	if !strings.HasSuffix(req.PackageDirectory, "/sdk/dir") &&
-		req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "simple-1.0.0") {
-		return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
-	}
-
 	if req.DestinationDirectory != filepath.Join(h.tempDir, "artifacts") {
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.0" {
-		return nil, fmt.Errorf("unexpected version %s", req.Version)
-	}
-
-	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-1.0.0") {
+	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
+		if req.Version != "2.0.0" {
+			return nil, fmt.Errorf("unexpected version %s", req.Version)
+		}
 		return &pulumirpc.PackResponse{
-			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-1.0.0.sdk"),
+			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-2.0.0.sdk"),
+		}, nil
+	} else if req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "core") {
+		if req.Version != "1.0.1" {
+			return nil, fmt.Errorf("unexpected version %s", req.Version)
+		}
+		return &pulumirpc.PackResponse{
+			ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 		}, nil
 	}
 
-	return &pulumirpc.PackResponse{
-		ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
-	}, nil
+	return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
 }
 
 func (h *L2ResourceSimpleLanguageHost) GenerateProject(
@@ -79,7 +77,7 @@ func (h *L2ResourceSimpleLanguageHost) GenerateProject(
 	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
-	if req.LocalDependencies["simple"] != filepath.Join(h.tempDir, "artifacts", "simple-1.0.0.sdk") {
+	if req.LocalDependencies["simple"] != filepath.Join(h.tempDir, "artifacts", "simple-2.0.0.sdk") {
 		return nil, fmt.Errorf("unexpected simple sdk %s", req.LocalDependencies["simple"])
 	}
 	if !req.Strict {
@@ -112,7 +110,7 @@ func (h *L2ResourceSimpleLanguageHost) GenerateProject(
 func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
-	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-1.0.0") {
+	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
 		return nil, fmt.Errorf("unexpected directory %s", req.Directory)
 	}
 
@@ -140,7 +138,28 @@ func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 			{
 				Name:    "simple",
 				Kind:    string(workspace.ResourcePlugin),
-				Version: "1.0.0",
+				Version: "2.0.0",
+			},
+		},
+	}, nil
+}
+
+func (h *L2ResourceSimpleLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+		return nil, fmt.Errorf("unexpected directory to get program dependencies %s", req.Info.ProgramDirectory)
+	}
+
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: []*pulumirpc.DependencyInfo{
+			{
+				Name:    "pulumi_pulumi",
+				Version: "1.0.1",
+			},
+			{
+				Name:    "pulumi_simple",
+				Version: "2.0.0",
 			},
 		},
 	}, nil
@@ -372,5 +391,5 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	failureMessage := runResponse.Messages[0]
 	assert.Contains(t, failureMessage,
 		"expected no error, got Error: unexpected required plugins: "+
-			"actual Set{language-mock@<nil>}, expected Set{language-mock@<nil>, resource-simple@1.0.0}")
+			"actual Set{language-mock@<nil>}, expected Set{language-mock@<nil>, resource-simple@2.0.0}")
 }

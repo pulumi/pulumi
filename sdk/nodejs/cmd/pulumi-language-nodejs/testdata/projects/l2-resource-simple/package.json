@@ -5,7 +5,7 @@
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",
-		"@pulumi/pulumi": "../../artifacts/pulumi-pulumi-1.0.0.tgz",
-		"@pulumi/simple": "../../artifacts/pulumi-simple-1.0.0.tgz"
+		"@pulumi/pulumi": "../../artifacts/pulumi-pulumi-1.0.1.tgz",
+		"@pulumi/simple": "../../artifacts/pulumi-simple-2.0.0.tgz"
 	}
 }

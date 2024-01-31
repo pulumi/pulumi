@@ -14,10 +14,10 @@
 
 """The Pulumi Python SDK."""
 
+import os
 from setuptools import find_packages, setup
 
-VERSION = "3.0.0"
-
+VERSION = os.getenv("PULUMI_PYTHON_VERSION", "3.0.0")
 
 def readme():
     try:

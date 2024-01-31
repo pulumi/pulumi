@@ -73,7 +73,7 @@ func (h *RuntimeOptionsLanguageHost) Pack(
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.0" {
+	if req.Version != "1.0.1" {
 		return nil, fmt.Errorf("unexpected version %s", req.Version)
 	}
 
@@ -118,6 +118,34 @@ func (h *RuntimeOptionsLanguageHost) GenerateProject(
 	}
 
 	return &pulumirpc.GenerateProjectResponse{}, nil
+}
+
+func (h *RuntimeOptionsLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	err := assertOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
+		return nil, fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
+	}
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
+		return nil, fmt.Errorf("unexpected program directory to install dependencies %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return nil, fmt.Errorf("unexpected entry point to install dependencies %s", req.Info.EntryPoint)
+	}
+
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: []*pulumirpc.DependencyInfo{
+			{
+				Name:    "pulumi_pulumi",
+				Version: "1.0.1",
+			},
+		},
+	}, nil
 }
 
 func (h *RuntimeOptionsLanguageHost) InstallDependencies(

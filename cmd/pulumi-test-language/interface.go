@@ -536,8 +536,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("create artifacts directory: %w", err)
 	}
 
-	// Build the core SDK
-	version := semver.MustParse("1.0.0")
+	// Build the core SDK, use a slightly odd version so we can test dependencies later.
+	version := semver.MustParse("1.0.1")
 	coreArtifact, err := languageClient.Pack(
 		req.CoreSdkDirectory, version, filepath.Join(req.TemporaryDirectory, "artifacts"))
 	if err != nil {
@@ -801,6 +801,54 @@ func (eng *languageTestServer) RunLanguageTest(
 		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
 	}
 	// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
+
+	// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
+	// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
+	// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
+	// well.
+	dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
+	if err != nil {
+		return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
+	}
+	expectedDependencies := []plugin.DependencyInfo{
+		{Name: "pulumi", Version: semver.MustParse("1.0.1")},
+	}
+	for _, provider := range test.providers {
+		pkg := string(provider.Pkg())
+		version, err := getProviderVersion(provider)
+		if err != nil {
+			return nil, err
+		}
+		expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
+			Name:    pkg,
+			Version: version,
+		})
+	}
+	for _, expectedDependency := range expectedDependencies {
+		// We have to do some fuzzy matching by name here because the language plugin returns the name of the
+		// library, which is generally _not_ just the plugin name. e.g. "@pulumi/aws" for the nodejs aws library.
+
+		// found is the version we've found for this dependency, if any. We fuzzy match by name and then check version
+		// so this is just to give better error messages. For our main dependencies we should have a different version
+		// for every package, so the fuzzy check by name then exact check by version should be unique.
+		var found *semver.Version
+		for _, actual := range dependencies {
+			actual := actual
+			if strings.Contains(strings.ToLower(actual.Name), strings.ToLower(expectedDependency.Name)) {
+				found = &actual.Version
+				if expectedDependency.Version.Equals(actual.Version) {
+					break
+				}
+			}
+		}
+
+		if found == nil {
+			return makeTestResponse(fmt.Sprintf("missing expected dependency %s", expectedDependency.Name)), nil
+		} else if !expectedDependency.Version.Equals(*found) {
+			return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
+				expectedDependency.Name, found, expectedDependency.Version)), nil
+		}
+	}
 
 	// Create a temp dir for the a diy backend to run in for the test
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)

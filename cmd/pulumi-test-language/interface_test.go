@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -64,6 +65,53 @@ func TestNoInternalTests(t *testing.T) {
 	for _, name := range response.Tests {
 		if strings.HasPrefix(name, "internal-") {
 			assert.Fail(t, "test name %s must not be returned by GetLanguageTests", name)
+		}
+	}
+}
+
+// Ensure all providers have unique versions, we use this to make dependency checking a lot simpler.
+func TestUniqueProviderVersions(t *testing.T) {
+	t.Parallel()
+
+	versions := map[string]string{}
+
+	for _, test := range languageTests {
+		for _, provider := range test.providers {
+			pkg := string(provider.Pkg())
+			version, err := getProviderVersion(provider)
+			require.NoError(t, err)
+
+			vstr := version.String()
+
+			if v, ok := versions[vstr]; ok {
+				assert.Equal(t, pkg, v, "provider version %s is used by both %s and %s", vstr, pkg, v)
+			}
+			versions[vstr] = pkg
+		}
+	}
+}
+
+// Ensure all providers report the same version for schema and plugin info
+func TestProviderVersions(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range languageTests {
+		for _, provider := range test.providers {
+			pkg := string(provider.Pkg())
+			version, err := getProviderVersion(provider)
+			require.NoError(t, err)
+
+			schema, err := provider.GetSchema(0)
+			require.NoError(t, err)
+
+			var schemaJSON struct {
+				Version string `json:"version"`
+			}
+			err = json.Unmarshal(schema, &schemaJSON)
+			require.NoError(t, err)
+
+			assert.Equal(t, version.String(), schemaJSON.Version,
+				"provider %s reports different versions in schema %s and plugin info %s", pkg, version, schemaJSON.Version)
 		}
 	}
 }
