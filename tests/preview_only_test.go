@@ -68,4 +68,48 @@ func TestPreviewOnlyFlag(t *testing.T) {
 		// Remove the stack.
 		e.RunCommand("pulumi", "stack", "rm", "foo", "--yes")
 	})
+
+	t.Run("PreviewOnlyDestroy", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/single_resource")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "install")
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "foo")
+		e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+		// Try some invalid flag combinations.
+		_, stderr := e.RunCommandExpectError("pulumi", "destroy", "--preview-only", "--yes")
+		assert.Equal(t,
+			"error: --yes and --preview-only cannot be used together",
+			strings.Trim(stderr, "\r\n"))
+		_, stderr = e.RunCommandExpectError("pulumi", "destroy", "--skip-preview", "--preview-only")
+		assert.Equal(t,
+			"error: --skip-preview and --preview-only cannot be used together",
+			strings.Trim(stderr, "\r\n"))
+		_, stderr = e.RunCommandExpectError("pulumi", "destroy", "--non-interactive")
+		assert.Equal(t,
+			"error: --yes or --skip-preview or --preview-only must be passed in to proceed when running in non-interactive mode",
+			strings.Trim(stderr, "\r\n"))
+
+		// Now try just the flag.
+		stdout, stderr := e.RunCommand("pulumi", "destroy", "--preview-only")
+		assert.NotContains(t, stdout, "Do you want to perform this destroy?")
+		assert.NotContains(t, stdout, "The resources in the stack have been deleted")
+		// Make sure it works with --non-interactive too.
+		e.RunCommand("pulumi", "destroy", "--preview-only", "--non-interactive")
+
+		e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+		// Remove the stack.
+		e.RunCommand("pulumi", "stack", "rm", "foo", "--yes")
+	})
 }
