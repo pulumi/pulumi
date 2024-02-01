@@ -1816,3 +1816,67 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 		})
 	}
 }
+
+func TestUpgradeToOutputValues(t *testing.T) {
+	t.Parallel()
+
+	opts := MarshalOptions{
+		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true,
+	}
+	upgradeOpts := MarshalOptions{
+		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true, UpgradeToOutputValues: true,
+	}
+
+	pk := resource.PropertyKey("pk")
+	// Unknown
+	{
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), upgradeOpts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, opts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.False(t, propU.OutputValue().Known)
+		assert.False(t, propU.OutputValue().Secret)
+	}
+	{
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.False(t, propU.OutputValue().Known)
+		assert.False(t, propU.OutputValue().Secret)
+	}
+
+	// Secrets
+	{
+		elem := resource.NewStringProperty("hello")
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewSecretProperty(
+				&resource.Secret{Element: elem}), upgradeOpts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, opts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.True(t, propU.OutputValue().Known)
+		assert.True(t, propU.OutputValue().Secret)
+		assert.Equal(t, elem, propU.OutputValue().Element)
+	}
+	{
+		elem := resource.NewStringProperty("hello")
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewSecretProperty(
+				&resource.Secret{Element: elem}), opts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.True(t, propU.OutputValue().Known)
+		assert.True(t, propU.OutputValue().Secret)
+		assert.Equal(t, elem, propU.OutputValue().Element)
+	}
+}
