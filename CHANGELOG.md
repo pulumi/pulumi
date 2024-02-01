@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.104.1 (2024-02-01)
+
+
+### Bug Fixes
+
+- [backend/diy] Revert gocloud.dev upgrade
+  [#15333](https://github.com/pulumi/pulumi/pull/15333)
+
 ## 3.104.0 (2024-01-31)
 
 
