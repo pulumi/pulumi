@@ -8,8 +8,8 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 3,
-                    "Column": 7,
-                    "Byte": 36
+                    "Column": 9,
+                    "Byte": 38
                 },
                 "End": {
                     "Line": 3,
@@ -31,13 +31,13 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 4,
-                    "Column": 7,
-                    "Byte": 45
+                    "Column": 13,
+                    "Byte": 51
                 },
                 "End": {
                     "Line": 4,
-                    "Column": 20,
-                    "Byte": 58
+                    "Column": 19,
+                    "Byte": 57
                 }
             },
             "Context": null,
@@ -48,14 +48,14 @@
         },
         {
             "Severity": 1,
-            "Summary": "key subscript is missing closing quote '\"'",
+            "Summary": "subscript is missing closing bracket ']'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 5,
-                    "Column": 7,
-                    "Byte": 65
+                    "Column": 13,
+                    "Byte": 71
                 },
                 "End": {
                     "Line": 5,
@@ -71,14 +71,14 @@
         },
         {
             "Severity": 1,
-            "Summary": "subscript is missing closing bracket ']'",
+            "Summary": "key subscript is missing closing quote '\"'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 5,
-                    "Column": 7,
-                    "Byte": 65
+                    "Column": 14,
+                    "Byte": 72
                 },
                 "End": {
                     "Line": 5,
@@ -100,8 +100,8 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 5,
-                    "Column": 7,
-                    "Byte": 65
+                    "Column": 20,
+                    "Byte": 78
                 },
                 "End": {
                     "Line": 5,
@@ -123,8 +123,8 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 6,
-                    "Column": 7,
-                    "Byte": 85
+                    "Column": 20,
+                    "Byte": 98
                 },
                 "End": {
                     "Line": 6,
@@ -146,13 +146,13 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 7,
-                    "Column": 7,
-                    "Byte": 105
+                    "Column": 14,
+                    "Byte": 112
                 },
                 "End": {
                     "Line": 7,
-                    "Column": 17,
-                    "Byte": 115
+                    "Column": 16,
+                    "Byte": 114
                 }
             },
             "Context": null,
@@ -169,13 +169,13 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 8,
-                    "Column": 7,
-                    "Byte": 122
+                    "Column": 15,
+                    "Byte": 130
                 },
                 "End": {
                     "Line": 8,
-                    "Column": 27,
-                    "Byte": 142
+                    "Column": 25,
+                    "Byte": 140
                 }
             },
             "Context": null,
@@ -192,13 +192,13 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 10,
-                    "Column": 7,
-                    "Byte": 159
+                    "Column": 9,
+                    "Byte": 161
                 },
                 "End": {
                     "Line": 10,
-                    "Column": 13,
-                    "Byte": 165
+                    "Column": 11,
+                    "Byte": 163
                 }
             },
             "Context": null,
@@ -215,13 +215,13 @@
                 "Filename": "invalid-access-load",
                 "Start": {
                     "Line": 11,
-                    "Column": 7,
-                    "Byte": 172
+                    "Column": 10,
+                    "Byte": 175
                 },
                 "End": {
                     "Line": 11,
-                    "Column": 19,
-                    "Byte": 184
+                    "Column": 11,
+                    "Byte": 176
                 }
             },
             "Context": null,

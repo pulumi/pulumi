@@ -314,8 +314,8 @@
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 3,
-                    "Column": 7,
-                    "Byte": 32
+                    "Column": 9,
+                    "Byte": 34
                 },
                 "End": {
                     "Line": 3,
@@ -337,8 +337,8 @@
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 5,
-                    "Column": 7,
-                    "Byte": 51
+                    "Column": 12,
+                    "Byte": 56
                 },
                 "End": {
                     "Line": 5,
@@ -360,8 +360,8 @@
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 5,
-                    "Column": 7,
-                    "Byte": 51
+                    "Column": 13,
+                    "Byte": 57
                 },
                 "End": {
                     "Line": 5,
@@ -383,8 +383,8 @@
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 6,
-                    "Column": 7,
-                    "Byte": 64
+                    "Column": 35,
+                    "Byte": 92
                 },
                 "End": {
                     "Line": 6,
@@ -406,13 +406,13 @@
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 7,
-                    "Column": 7,
-                    "Byte": 99
+                    "Column": 25,
+                    "Byte": 117
                 },
                 "End": {
                     "Line": 7,
-                    "Column": 32,
-                    "Byte": 124
+                    "Column": 26,
+                    "Byte": 118
                 }
             },
             "Context": null,
@@ -423,19 +423,42 @@
         },
         {
             "Severity": 1,
+            "Summary": "subscript is missing closing bracket ']'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-interpolations",
+                "Start": {
+                    "Line": 8,
+                    "Column": 25,
+                    "Byte": 149
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 26,
+                    "Byte": 150
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.interpolations[5]"
+        },
+        {
+            "Severity": 1,
             "Summary": "numeric subscript must be a positive base-10 integer",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 8,
-                    "Column": 7,
-                    "Byte": 131
+                    "Column": 26,
+                    "Byte": 150
                 },
                 "End": {
                     "Line": 8,
-                    "Column": 37,
-                    "Byte": 161
+                    "Column": 26,
+                    "Byte": 150
                 }
             },
             "Context": null,
@@ -451,32 +474,9 @@
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 8,
-                    "Column": 7,
-                    "Byte": 131
-                },
-                "End": {
-                    "Line": 8,
-                    "Column": 37,
-                    "Byte": 161
-                }
-            },
-            "Context": null,
-            "Expression": null,
-            "EvalContext": null,
-            "Extra": null,
-            "Path": "values.interpolations[5]"
-        },
-        {
-            "Severity": 1,
-            "Summary": "key subscript is missing closing quote '\"'",
-            "Detail": "",
-            "Subject": {
-                "Filename": "invalid-interpolations",
-                "Start": {
                     "Line": 9,
-                    "Column": 7,
-                    "Byte": 168
+                    "Column": 24,
+                    "Byte": 185
                 },
                 "End": {
                     "Line": 9,
@@ -492,14 +492,14 @@
         },
         {
             "Severity": 1,
-            "Summary": "subscript is missing closing bracket ']'",
+            "Summary": "key subscript is missing closing quote '\"'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 9,
-                    "Column": 7,
-                    "Byte": 168
+                    "Column": 25,
+                    "Byte": 186
                 },
                 "End": {
                     "Line": 9,
@@ -521,8 +521,8 @@
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 9,
-                    "Column": 7,
-                    "Byte": 168
+                    "Column": 31,
+                    "Byte": 192
                 },
                 "End": {
                     "Line": 9,
@@ -544,13 +544,13 @@
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 10,
-                    "Column": 7,
-                    "Byte": 199
+                    "Column": 25,
+                    "Byte": 217
                 },
                 "End": {
                     "Line": 10,
-                    "Column": 36,
-                    "Byte": 228
+                    "Column": 34,
+                    "Byte": 226
                 }
             },
             "Context": null,

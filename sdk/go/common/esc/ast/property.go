@@ -100,12 +100,13 @@ type propertyAccessParser struct {
 	diags     syntax.Diagnostics
 }
 
-func (p *propertyAccessParser) error(msg string) {
-	p.diags.Extend(syntax.NodeError(p.parent, msg))
-}
-
-func (p *propertyAccessParser) errorf(f string, args ...any) {
-	p.error(fmt.Sprintf(f, args...))
+func (p *propertyAccessParser) error(start int, msg string) {
+	rng := p.rangeFrom(start)
+	if rng != nil {
+		p.diags.Extend(syntax.Error(rng, msg, p.parent.Syntax().Path()))
+	} else {
+		p.diags.Extend(syntax.NodeError(p.parent, msg))
+	}
 }
 
 // Returns a document range starting at start and ending at the current offset.
@@ -145,7 +146,7 @@ func (p *propertyAccessParser) parse() (int, string, *PropertyAccess, syntax.Dia
 	for {
 		c, ok := p.peek()
 		if !ok {
-			p.error("missing closing brace '}' in interpolation")
+			p.error(p.offset, "missing closing brace '}' in interpolation")
 			return p.finish(p.offset)
 		}
 
@@ -158,7 +159,7 @@ func (p *propertyAccessParser) parse() (int, string, *PropertyAccess, syntax.Dia
 			p.append(p.parseSubscript(p.next()))
 		default:
 			if unicode.IsSpace(rune(c)) {
-				p.error("missing closing brace '}' in interpolation")
+				p.error(p.offset, "missing closing brace '}' in interpolation")
 				return p.finish(p.offset)
 			}
 
@@ -193,7 +194,7 @@ func (p *propertyAccessParser) parseName(start int) *PropertyName {
 		b.WriteByte(c)
 	}
 	if b.Len() == 0 {
-		p.errorf("property name must not be empty")
+		p.error(start, "property name must not be empty")
 	}
 	return &PropertyName{Name: b.String(), AccessorRange: p.rangeFrom(start)}
 }
@@ -204,7 +205,7 @@ func (p *propertyAccessParser) parseName(start int) *PropertyName {
 func (p *propertyAccessParser) parseSubscript(start int) *PropertySubscript {
 	c, ok := p.peek()
 	if !ok {
-		p.error("subscript is missing closing bracket ']'")
+		p.error(start, "subscript is missing closing bracket ']'")
 		return &PropertySubscript{Index: "", AccessorRange: p.rangeFrom(start)}
 	}
 
@@ -218,7 +219,7 @@ func (p *propertyAccessParser) parseSubscript(start int) *PropertySubscript {
 
 	c, ok = p.peek()
 	if !ok || c != ']' {
-		p.error("subscript is missing closing bracket ']'")
+		p.error(start, "subscript is missing closing bracket ']'")
 	} else {
 		p.next()
 	}
@@ -234,14 +235,16 @@ func (p *propertyAccessParser) parseStringSubscript(start int) string {
 	for {
 		c, ok := p.peek()
 		if !ok {
-			p.error("key subscript is missing closing quote '\"'")
+			// skip the opening brace when reporting the error.
+			p.error(start+1, "key subscript is missing closing quote '\"'")
 			return propertyKey.String()
 		}
 		p.next()
 
 		if c == '"' {
 			if propertyKey.Len() == 0 {
-				p.error("key subscript must not be empty")
+				// skip the opening brace when reporting the error.
+				p.error(start+1, "key subscript must not be empty")
 			}
 			return propertyKey.String()
 		}
@@ -275,12 +278,13 @@ func (p *propertyAccessParser) parseIndexSubscript(start int) any {
 	indexStr := index.String()
 	num, err := strconv.ParseInt(indexStr, 10, 0)
 	if err != nil {
-		p.error("numeric subscript must be a positive base-10 integer")
+		// skip the opening brace when reporting the error.
+		p.error(start+1, "numeric subscript must be a positive base-10 integer")
 		return indexStr
 	}
 
 	if len(p.accessors) == 0 {
-		p.error("the first accessor must be a property name or key subscript, not a numeric subscript")
+		p.error(start, "the first accessor must be a property name or key subscript, not a numeric subscript")
 	}
 	return int(num)
 }
