@@ -212,6 +212,19 @@
                 "symbol": [
                     {
                         "key": "some_object",
+                        "range": {
+                            "environment": "merge-base",
+                            "begin": {
+                                "line": 40,
+                                "column": 19,
+                                "byte": 1005
+                            },
+                            "end": {
+                                "line": 40,
+                                "column": 30,
+                                "byte": 1016
+                            }
+                        },
                         "value": {
                             "environment": "merge-base",
                             "begin": {
@@ -1435,6 +1448,19 @@
                 "symbol": [
                     {
                         "key": "some_object",
+                        "range": {
+                            "environment": "merge-base",
+                            "begin": {
+                                "line": 40,
+                                "column": 19,
+                                "byte": 1005
+                            },
+                            "end": {
+                                "line": 40,
+                                "column": 30,
+                                "byte": 1016
+                            }
+                        },
                         "value": {
                             "environment": "merge-base",
                             "begin": {

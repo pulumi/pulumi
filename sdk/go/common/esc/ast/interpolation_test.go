@@ -17,9 +17,31 @@ package ast
 import (
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/esc/syntax"
 	"github.com/stretchr/testify/assert"
 )
+
+type SimpleScalar string
+
+func (s SimpleScalar) Range() *hcl.Range {
+	return &hcl.Range{
+		Start: hcl.Pos{},
+		End:   hcl.Pos{Byte: len(s)},
+	}
+}
+
+func (s SimpleScalar) Path() string {
+	return "test"
+}
+
+func (s SimpleScalar) ScalarRange(start, end int) *hcl.Range {
+	r := s.Range()
+	return &hcl.Range{
+		Start: hcl.Pos{Byte: r.Start.Byte + start},
+		End:   hcl.Pos{Byte: r.Start.Byte + end},
+	}
+}
 
 func mkInterp(text string, accessors ...PropertyAccessor) Interpolation {
 	return Interpolation{
@@ -35,12 +57,24 @@ func mkAccess(accessors ...PropertyAccessor) *PropertyAccess {
 	return &PropertyAccess{Accessors: accessors}
 }
 
-func mkPropertyName(name string) *PropertyName {
-	return &PropertyName{Name: name}
+func mkPropertyName(name string, start, end int) *PropertyName {
+	return &PropertyName{
+		Name: name,
+		AccessorRange: &hcl.Range{
+			Start: hcl.Pos{Byte: start},
+			End:   hcl.Pos{Byte: end},
+		},
+	}
 }
 
-func mkPropertySubscript[T string | int](index T) *PropertySubscript {
-	return &PropertySubscript{Index: index}
+func mkPropertySubscript[T string | int](index T, start, end int) *PropertySubscript {
+	return &PropertySubscript{
+		Index: index,
+		AccessorRange: &hcl.Range{
+			Start: hcl.Pos{Byte: start},
+			End:   hcl.Pos{Byte: end},
+		},
+	}
 }
 
 func TestInvalidInterpolations(t *testing.T) {
@@ -50,51 +84,51 @@ func TestInvalidInterpolations(t *testing.T) {
 	}{
 		{
 			text:  "${foo",
-			parts: []Interpolation{mkInterp("", mkPropertyName("foo"))},
+			parts: []Interpolation{mkInterp("", mkPropertyName("foo", 2, 5))},
 		},
 		{
 			text: "${foo ",
 			parts: []Interpolation{
-				mkInterp("", mkPropertyName("foo")),
+				mkInterp("", mkPropertyName("foo", 2, 5)),
 				mkInterp(" "),
 			},
 		},
 		{
 			text: `${foo} ${["baz} bar`,
 			parts: []Interpolation{
-				mkInterp("", mkPropertyName("foo")),
-				mkInterp(" ", mkPropertySubscript("baz} bar")),
+				mkInterp("", mkPropertyName("foo", 2, 5)),
+				mkInterp(" ", mkPropertySubscript("baz} bar", 9, 19)),
 			},
 		},
 		{
 			text: `missing ${property[} subscript`,
 			parts: []Interpolation{
-				mkInterp("missing ", mkPropertyName("property"), mkPropertySubscript("")),
+				mkInterp("missing ", mkPropertyName("property", 10, 18), mkPropertySubscript("", 18, 19)),
 				mkInterp(" subscript"),
 			},
 		},
 		{
 			text: `${[bar].baz}`,
 			parts: []Interpolation{
-				mkInterp("", mkPropertySubscript("bar"), mkPropertyName("baz")),
+				mkInterp("", mkPropertySubscript("bar", 2, 7), mkPropertyName("baz", 7, 11)),
 			},
 		},
 		{
 			text: `${foo.`,
 			parts: []Interpolation{
-				mkInterp("", mkPropertyName("foo"), mkPropertyName("")),
+				mkInterp("", mkPropertyName("foo", 2, 5), mkPropertyName("", 5, 6)),
 			},
 		},
 		{
 			text: `${foo[`,
 			parts: []Interpolation{
-				mkInterp("", mkPropertyName("foo"), mkPropertySubscript("")),
+				mkInterp("", mkPropertyName("foo", 2, 5), mkPropertySubscript("", 5, 6)),
 			},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.text, func(t *testing.T) {
-			node := syntax.String(c.text)
+			node := syntax.StringSyntax(SimpleScalar(c.text), c.text)
 			parts, diags := parseInterpolate(node, c.text)
 			assert.NotEmpty(t, diags)
 			assert.Equal(t, c.parts, parts)

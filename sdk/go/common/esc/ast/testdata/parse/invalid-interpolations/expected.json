@@ -14,7 +14,20 @@
                                 "Property": {
                                     "Accessors": [
                                         {
-                                            "Name": ""
+                                            "Name": "",
+                                            "AccessorRange": {
+                                                "Filename": "invalid-interpolations",
+                                                "Start": {
+                                                    "Line": 3,
+                                                    "Column": 9,
+                                                    "Byte": 34
+                                                },
+                                                "End": {
+                                                    "Line": 3,
+                                                    "Column": 9,
+                                                    "Byte": 34
+                                                }
+                                            }
                                         }
                                     ]
                                 }
@@ -23,7 +36,58 @@
                                 "Property": {
                                     "Accessors": [
                                         {
-                                            "Name": ""
+                                            "Name": "",
+                                            "AccessorRange": {
+                                                "Filename": "invalid-interpolations",
+                                                "Start": {
+                                                    "Line": 4,
+                                                    "Column": 9,
+                                                    "Byte": 43
+                                                },
+                                                "End": {
+                                                    "Line": 4,
+                                                    "Column": 10,
+                                                    "Byte": 44
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "Property": {
+                                    "Accessors": [
+                                        {
+                                            "Name": "foo",
+                                            "AccessorRange": {
+                                                "Filename": "invalid-interpolations",
+                                                "Start": {
+                                                    "Line": 5,
+                                                    "Column": 9,
+                                                    "Byte": 53
+                                                },
+                                                "End": {
+                                                    "Line": 5,
+                                                    "Column": 12,
+                                                    "Byte": 56
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "Name": "",
+                                            "AccessorRange": {
+                                                "Filename": "invalid-interpolations",
+                                                "Start": {
+                                                    "Line": 5,
+                                                    "Column": 12,
+                                                    "Byte": 56
+                                                },
+                                                "End": {
+                                                    "Line": 5,
+                                                    "Column": 13,
+                                                    "Byte": 57
+                                                }
+                                            }
                                         }
                                     ]
                                 }
@@ -35,7 +99,20 @@
                                         "Value": {
                                             "Accessors": [
                                                 {
-                                                    "Name": "interpolation"
+                                                    "Name": "interpolation",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 6,
+                                                            "Column": 22,
+                                                            "Byte": 79
+                                                        },
+                                                        "End": {
+                                                            "Line": 6,
+                                                            "Column": 35,
+                                                            "Byte": 92
+                                                        }
+                                                    }
                                                 }
                                             ]
                                         }
@@ -49,10 +126,36 @@
                                         "Value": {
                                             "Accessors": [
                                                 {
-                                                    "Name": "property"
+                                                    "Name": "property",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 7,
+                                                            "Column": 17,
+                                                            "Byte": 109
+                                                        },
+                                                        "End": {
+                                                            "Line": 7,
+                                                            "Column": 25,
+                                                            "Byte": 117
+                                                        }
+                                                    }
                                                 },
                                                 {
-                                                    "Name": ""
+                                                    "Name": "",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 7,
+                                                            "Column": 25,
+                                                            "Byte": 117
+                                                        },
+                                                        "End": {
+                                                            "Line": 7,
+                                                            "Column": 26,
+                                                            "Byte": 118
+                                                        }
+                                                    }
                                                 }
                                             ]
                                         }
@@ -70,10 +173,36 @@
                                         "Value": {
                                             "Accessors": [
                                                 {
-                                                    "Name": "property"
+                                                    "Name": "property",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 8,
+                                                            "Column": 17,
+                                                            "Byte": 141
+                                                        },
+                                                        "End": {
+                                                            "Line": 8,
+                                                            "Column": 25,
+                                                            "Byte": 149
+                                                        }
+                                                    }
                                                 },
                                                 {
-                                                    "Index": ""
+                                                    "Index": "",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 8,
+                                                            "Column": 25,
+                                                            "Byte": 149
+                                                        },
+                                                        "End": {
+                                                            "Line": 8,
+                                                            "Column": 26,
+                                                            "Byte": 150
+                                                        }
+                                                    }
                                                 }
                                             ]
                                         }
@@ -91,10 +220,36 @@
                                         "Value": {
                                             "Accessors": [
                                                 {
-                                                    "Name": "closing"
+                                                    "Name": "closing",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 9,
+                                                            "Column": 17,
+                                                            "Byte": 178
+                                                        },
+                                                        "End": {
+                                                            "Line": 9,
+                                                            "Column": 24,
+                                                            "Byte": 185
+                                                        }
+                                                    }
                                                 },
                                                 {
-                                                    "Index": "quote"
+                                                    "Index": "quote",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 9,
+                                                            "Column": 24,
+                                                            "Byte": 185
+                                                        },
+                                                        "End": {
+                                                            "Line": 9,
+                                                            "Column": 31,
+                                                            "Byte": 192
+                                                        }
+                                                    }
                                                 }
                                             ]
                                         }
@@ -108,10 +263,36 @@
                                         "Value": {
                                             "Accessors": [
                                                 {
-                                                    "Name": "integer"
+                                                    "Name": "integer",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 10,
+                                                            "Column": 17,
+                                                            "Byte": 209
+                                                        },
+                                                        "End": {
+                                                            "Line": 10,
+                                                            "Column": 24,
+                                                            "Byte": 216
+                                                        }
+                                                    }
                                                 },
                                                 {
-                                                    "Index": "subscript"
+                                                    "Index": "subscript",
+                                                    "AccessorRange": {
+                                                        "Filename": "invalid-interpolations",
+                                                        "Start": {
+                                                            "Line": 10,
+                                                            "Column": 24,
+                                                            "Byte": 216
+                                                        },
+                                                        "End": {
+                                                            "Line": 10,
+                                                            "Column": 35,
+                                                            "Byte": 227
+                                                        }
+                                                    }
                                                 }
                                             ]
                                         }
@@ -150,6 +331,29 @@
         },
         {
             "Severity": 1,
+            "Summary": "property name must not be empty",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-interpolations",
+                "Start": {
+                    "Line": 5,
+                    "Column": 7,
+                    "Byte": 51
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 13,
+                    "Byte": 57
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.interpolations[2]"
+        },
+        {
+            "Severity": 1,
             "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
@@ -161,8 +365,8 @@
                 },
                 "End": {
                     "Line": 5,
-                    "Column": 35,
-                    "Byte": 79
+                    "Column": 13,
+                    "Byte": 57
                 }
             },
             "Context": null,
@@ -173,19 +377,19 @@
         },
         {
             "Severity": 1,
-            "Summary": "property name must not be empty",
+            "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 6,
                     "Column": 7,
-                    "Byte": 86
+                    "Byte": 64
                 },
                 "End": {
                     "Line": 6,
-                    "Column": 32,
-                    "Byte": 111
+                    "Column": 35,
+                    "Byte": 92
                 }
             },
             "Context": null,
@@ -196,19 +400,19 @@
         },
         {
             "Severity": 1,
-            "Summary": "numeric subscript must be a positive base-10 integer",
+            "Summary": "property name must not be empty",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
                     "Line": 7,
                     "Column": 7,
-                    "Byte": 118
+                    "Byte": 99
                 },
                 "End": {
                     "Line": 7,
-                    "Column": 37,
-                    "Byte": 148
+                    "Column": 32,
+                    "Byte": 124
                 }
             },
             "Context": null,
@@ -219,26 +423,49 @@
         },
         {
             "Severity": 1,
-            "Summary": "subscript is missing closing bracket ']'",
+            "Summary": "numeric subscript must be a positive base-10 integer",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 7,
+                    "Line": 8,
                     "Column": 7,
-                    "Byte": 118
+                    "Byte": 131
                 },
                 "End": {
-                    "Line": 7,
+                    "Line": 8,
                     "Column": 37,
-                    "Byte": 148
+                    "Byte": 161
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[4]"
+            "Path": "values.interpolations[5]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "subscript is missing closing bracket ']'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-interpolations",
+                "Start": {
+                    "Line": 8,
+                    "Column": 7,
+                    "Byte": 131
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 37,
+                    "Byte": 161
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.interpolations[5]"
         },
         {
             "Severity": 1,
@@ -247,21 +474,21 @@
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 8,
+                    "Line": 9,
                     "Column": 7,
-                    "Byte": 155
+                    "Byte": 168
                 },
                 "End": {
-                    "Line": 8,
+                    "Line": 9,
                     "Column": 31,
-                    "Byte": 179
+                    "Byte": 192
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[5]"
+            "Path": "values.interpolations[6]"
         },
         {
             "Severity": 1,
@@ -270,21 +497,21 @@
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 8,
+                    "Line": 9,
                     "Column": 7,
-                    "Byte": 155
+                    "Byte": 168
                 },
                 "End": {
-                    "Line": 8,
+                    "Line": 9,
                     "Column": 31,
-                    "Byte": 179
+                    "Byte": 192
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[5]"
+            "Path": "values.interpolations[6]"
         },
         {
             "Severity": 1,
@@ -293,21 +520,21 @@
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 8,
+                    "Line": 9,
                     "Column": 7,
-                    "Byte": 155
+                    "Byte": 168
                 },
                 "End": {
-                    "Line": 8,
+                    "Line": 9,
                     "Column": 31,
-                    "Byte": 179
+                    "Byte": 192
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[5]"
+            "Path": "values.interpolations[6]"
         },
         {
             "Severity": 1,
@@ -316,21 +543,21 @@
             "Subject": {
                 "Filename": "invalid-interpolations",
                 "Start": {
-                    "Line": 9,
+                    "Line": 10,
                     "Column": 7,
-                    "Byte": 186
+                    "Byte": 199
                 },
                 "End": {
-                    "Line": 9,
+                    "Line": 10,
                     "Column": 36,
-                    "Byte": 215
+                    "Byte": 228
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "values.interpolations[6]"
+            "Path": "values.interpolations[7]"
         }
     ]
 }

@@ -182,6 +182,15 @@ func (e *evalContext) errorf(expr ast.Expr, format string, a ...any) {
 	e.error(expr, fmt.Sprintf(format, a...))
 }
 
+func (e *evalContext) accessorError(expr ast.Expr, accessor ast.PropertyAccessor, summary string) {
+	diag := ast.AccessorError(expr, accessor, summary)
+	e.diags.Extend(diag)
+}
+
+func (e *evalContext) accessorErrorf(expr ast.Expr, accessor ast.PropertyAccessor, format string, a ...any) {
+	e.accessorError(expr, accessor, fmt.Sprintf(format, a...))
+}
+
 type exprNode interface {
 	ast.Expr
 	comparable
@@ -618,7 +627,7 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor)
 				if receiver.base.isObject() {
 					return e.evaluateValueAccess(x.repr.syntax(), receiver.base, accessors)
 				}
-				e.errorf(x.repr.syntax(), "unknown property %q", key)
+				e.accessorErrorf(x.repr.syntax(), accessor.accessor, "unknown property %q", key)
 				return e.invalidPropertyAccess(x.repr.syntax(), accessors)
 			}
 			receiver = prop
@@ -672,12 +681,12 @@ func (e *evalContext) evaluateValueAccess(syntax ast.Expr, receiver *value, acce
 				if receiver.base.isObject() {
 					return e.evaluateValueAccess(syntax, receiver.base, accessors)
 				}
-				e.errorf(syntax, "unknown property %q", key)
+				e.accessorErrorf(syntax, accessor.accessor, "unknown property %q", key)
 				return e.invalidPropertyAccess(syntax, accessors)
 			}
 			receiver = prop
 		default:
-			e.errorf(syntax, "receiver must be an array or an object")
+			e.accessorError(syntax, accessor.accessor, "receiver must be an array or an object")
 			return e.invalidPropertyAccess(syntax, accessors)
 		}
 
@@ -713,7 +722,7 @@ func (e *evalContext) evaluateUnknownAccess(syntax ast.Expr, receiver *schema.Sc
 				}
 				receiver = receiver.Property(key)
 			default:
-				e.errorf(syntax, "receiver must be an array or an object")
+				e.accessorError(syntax, accessor.accessor, "receiver must be an array or an object")
 				return e.invalidPropertyAccess(syntax, accessors)
 			}
 		}
@@ -752,20 +761,20 @@ func (e *evalContext) invalidPropertyAccess(syntax ast.Expr, accessors []*proper
 func (e *evalContext) arrayIndex(expr ast.Expr, accessor ast.PropertyAccessor, len int) (int, bool) {
 	sub, ok := accessor.(*ast.PropertySubscript)
 	if !ok {
-		e.error(expr, "cannot access an array element using a property name")
+		e.accessorError(expr, accessor, "cannot access an array element using a property name")
 		return 0, false
 	}
 	index, ok := sub.Index.(int)
 	if !ok {
-		e.error(expr, "cannot access an array element using a property name")
+		e.accessorError(expr, accessor, "cannot access an array element using a property name")
 		return 0, false
 	}
 	if index < 0 {
-		e.error(expr, "array indices must not be negative")
+		e.accessorError(expr, accessor, "array indices must not be negative")
 		return 0, false
 	}
 	if len >= 0 && index >= len {
-		e.errorf(expr, "array index %v out-of-bounds for array of length %v", index, len)
+		e.accessorErrorf(expr, accessor, "array index %v out-of-bounds for array of length %v", index, len)
 		return 0, false
 	}
 	return index, true
@@ -781,7 +790,7 @@ func (e *evalContext) objectKey(expr ast.Expr, accessor ast.PropertyAccessor, mu
 		s, ok := a.Index.(string)
 		if !ok {
 			if must {
-				e.error(expr, "cannot access an object property using an integer index")
+				e.accessorError(expr, accessor, "cannot access an object property using an integer index")
 			}
 			return "", false
 		}

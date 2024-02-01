@@ -99,6 +99,19 @@
                                 "symbol": [
                                     {
                                         "key": "error",
+                                        "range": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 14,
+                                                "byte": 104
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 19,
+                                                "byte": 109
+                                            }
+                                        },
                                         "value": {
                                             "environment": "open-unknown",
                                             "begin": {
@@ -406,6 +419,19 @@
                                 "symbol": [
                                     {
                                         "key": "error",
+                                        "range": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 14,
+                                                "byte": 104
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 19,
+                                                "byte": 109
+                                            }
+                                        },
                                         "value": {
                                             "environment": "open-unknown",
                                             "begin": {

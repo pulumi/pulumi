@@ -75,6 +75,9 @@ type Accessor struct {
 
 	// The key of the property to access. Mutually exclusive with Index.
 	Key *string `json:"key,omitempty"`
+
+	// The range of the accessor.
+	Range Range `json:"range,omitempty"`
 }
 
 // A PropertyAccessor is a single accessor that is associated with a resolved value.

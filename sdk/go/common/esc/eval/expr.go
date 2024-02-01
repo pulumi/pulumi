@@ -74,16 +74,16 @@ func (x *expr) defRange(environment string) esc.Range {
 	return convertRange(x.repr.syntax().Syntax().Syntax().Range(), environment)
 }
 
-func exportAccessor(accessor ast.PropertyAccessor) esc.Accessor {
+func exportAccessor(accessor ast.PropertyAccessor, environment string) esc.Accessor {
 	switch a := accessor.(type) {
 	case *ast.PropertyName:
-		return esc.Accessor{Key: &a.Name}
+		return esc.Accessor{Key: &a.Name, Range: convertRange(accessor.Range(), environment)}
 	case *ast.PropertySubscript:
 		switch index := a.Index.(type) {
 		case string:
-			return esc.Accessor{Key: &index}
+			return esc.Accessor{Key: &index, Range: convertRange(accessor.Range(), environment)}
 		case int:
-			return esc.Accessor{Index: &index}
+			return esc.Accessor{Index: &index, Range: convertRange(accessor.Range(), environment)}
 		}
 	}
 	panic(fmt.Errorf("invalid property accessor %#v", accessor))
@@ -123,7 +123,7 @@ func (x *expr) export(environment string) esc.Expr {
 				value = make([]esc.PropertyAccessor, len(p.value.accessors))
 				for i, a := range p.value.accessors {
 					value[i] = esc.PropertyAccessor{
-						Accessor: exportAccessor(a.accessor),
+						Accessor: exportAccessor(a.accessor, environment),
 						Value:    a.value.def.defRange(environment),
 					}
 				}
@@ -138,13 +138,13 @@ func (x *expr) export(environment string) esc.Expr {
 		value := make([]esc.PropertyAccessor, len(repr.property.accessors))
 		for i, a := range repr.property.accessors {
 			value[i] = esc.PropertyAccessor{
-				Accessor: exportAccessor(a.accessor),
+				Accessor: exportAccessor(a.accessor, environment),
 				Value:    a.value.def.defRange(environment),
 			}
 		}
 		ex.Symbol = value
 	case *accessExpr:
-		accessor := exportAccessor(repr.accessor)
+		accessor := exportAccessor(repr.accessor, environment)
 		if _, ok := repr.receiver.def.repr.(*accessExpr); ok {
 			ex = repr.receiver.def.export(environment)
 			ex.Access.Accessors = append(ex.Access.Accessors, accessor)

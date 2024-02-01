@@ -223,7 +223,20 @@
                                 },
                                 "accessors": [
                                     {
-                                        "key": "baz"
+                                        "key": "baz",
+                                        "range": {
+                                            "environment": "merge-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
                                     }
                                 ]
                             }
@@ -293,10 +306,36 @@
                                         },
                                         "accessors": [
                                             {
-                                                "key": "baz"
+                                                "key": "baz",
+                                                "range": {
+                                                    "environment": "merge-unknown",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                }
                                             },
                                             {
-                                                "key": "qux"
+                                                "key": "qux",
+                                                "range": {
+                                                    "environment": "merge-unknown",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                }
                                             }
                                         ]
                                     }
@@ -354,7 +393,20 @@
                                 },
                                 "accessors": [
                                     {
-                                        "key": "foo"
+                                        "key": "foo",
+                                        "range": {
+                                            "environment": "merge-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
                                     }
                                 ]
                             }

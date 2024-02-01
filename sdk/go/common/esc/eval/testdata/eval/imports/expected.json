@@ -461,6 +461,19 @@
                         "symbol": [
                             {
                                 "key": "imports",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 13,
+                                        "byte": 192
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    }
+                                },
                                 "value": {
                                     "environment": "imports",
                                     "begin": {
@@ -477,6 +490,19 @@
                             },
                             {
                                 "key": "c",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    }
+                                },
                                 "value": {
                                     "environment": "imports",
                                     "begin": {
@@ -493,6 +519,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 26,
+                                        "byte": 205
+                                    }
+                                },
                                 "value": {
                                     "environment": "c",
                                     "begin": {
@@ -570,6 +609,19 @@
                         "symbol": [
                             {
                                 "key": "some_object",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 12,
+                                        "byte": 218
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    }
+                                },
                                 "value": {
                                     "environment": "imports",
                                     "begin": {
@@ -586,6 +638,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 27,
+                                        "byte": 233
+                                    }
+                                },
                                 "value": {
                                     "environment": "b",
                                     "begin": {
@@ -1598,6 +1663,19 @@
                         "symbol": [
                             {
                                 "key": "imports",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 13,
+                                        "byte": 192
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    }
+                                },
                                 "value": {
                                     "environment": "imports",
                                     "begin": {
@@ -1614,6 +1692,19 @@
                             },
                             {
                                 "key": "c",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    }
+                                },
                                 "value": {
                                     "environment": "imports",
                                     "begin": {
@@ -1630,6 +1721,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 26,
+                                        "byte": 205
+                                    }
+                                },
                                 "value": {
                                     "environment": "c",
                                     "begin": {
@@ -1707,6 +1811,19 @@
                         "symbol": [
                             {
                                 "key": "some_object",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 12,
+                                        "byte": 218
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    }
+                                },
                                 "value": {
                                     "environment": "imports",
                                     "begin": {
@@ -1723,6 +1840,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 27,
+                                        "byte": 233
+                                    }
+                                },
                                 "value": {
                                     "environment": "b",
                                     "begin": {

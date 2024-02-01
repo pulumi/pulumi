@@ -163,6 +163,19 @@
                                                 "symbol": [
                                                     {
                                                         "key": "password",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-combine",
                                                             "begin": {
@@ -197,6 +210,19 @@
                                                 "symbol": [
                                                     {
                                                         "key": "open",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-combine",
                                                             "begin": {
@@ -213,6 +239,19 @@
                                                     },
                                                     {
                                                         "key": "foo",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-combine",
                                                             "begin": {
@@ -292,6 +331,19 @@
                                         "value": [
                                             {
                                                 "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -313,6 +365,19 @@
                                         "value": [
                                             {
                                                 "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -329,6 +394,19 @@
                                             },
                                             {
                                                 "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -404,6 +482,19 @@
                                         "value": [
                                             {
                                                 "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -425,6 +516,19 @@
                                         "value": [
                                             {
                                                 "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -441,6 +545,19 @@
                                             },
                                             {
                                                 "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -516,6 +633,19 @@
                                         "value": [
                                             {
                                                 "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -537,6 +667,19 @@
                                         "value": [
                                             {
                                                 "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -553,6 +696,19 @@
                                             },
                                             {
                                                 "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1074,6 +1230,19 @@
                                                 "symbol": [
                                                     {
                                                         "key": "password",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-combine",
                                                             "begin": {
@@ -1111,6 +1280,19 @@
                                                 "symbol": [
                                                     {
                                                         "key": "open",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-combine",
                                                             "begin": {
@@ -1127,6 +1309,19 @@
                                                     },
                                                     {
                                                         "key": "foo",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-combine",
                                                             "begin": {
@@ -1206,6 +1401,19 @@
                                         "value": [
                                             {
                                                 "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1227,6 +1435,19 @@
                                         "value": [
                                             {
                                                 "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1243,6 +1464,19 @@
                                             },
                                             {
                                                 "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1318,6 +1552,19 @@
                                         "value": [
                                             {
                                                 "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1339,6 +1586,19 @@
                                         "value": [
                                             {
                                                 "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1355,6 +1615,19 @@
                                             },
                                             {
                                                 "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1430,6 +1703,19 @@
                                         "value": [
                                             {
                                                 "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1451,6 +1737,19 @@
                                         "value": [
                                             {
                                                 "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {
@@ -1467,6 +1766,19 @@
                                             },
                                             {
                                                 "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-combine",
                                                     "begin": {

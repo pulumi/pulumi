@@ -22,6 +22,19 @@
                 "symbol": [
                     {
                         "key": "unmarshalled_secret_array",
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 10,
+                                "column": 29,
+                                "byte": 305
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 54,
+                                "byte": 330
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -38,6 +51,19 @@
                     },
                     {
                         "index": 0,
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 10,
+                                "column": 54,
+                                "byte": 330
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 57,
+                                "byte": 333
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -75,6 +101,19 @@
                 "symbol": [
                     {
                         "key": "unmarshalled_secret_object",
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 11,
+                                "column": 30,
+                                "byte": 364
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 56,
+                                "byte": 390
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -91,6 +130,19 @@
                     },
                     {
                         "key": "haha",
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 11,
+                                "column": 56,
+                                "byte": 390
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 61,
+                                "byte": 395
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -292,6 +344,19 @@
                         "symbol": [
                             {
                                 "key": "secret_array",
+                                "range": {
+                                    "environment": "secret-objects",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 21,
+                                        "byte": 263
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 33,
+                                        "byte": 275
+                                    }
+                                },
                                 "value": {
                                     "environment": "secret-objects",
                                     "begin": {
@@ -378,6 +443,19 @@
                         "symbol": [
                             {
                                 "key": "secret_object",
+                                "range": {
+                                    "environment": "secret-objects",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 21,
+                                        "byte": 129
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 34,
+                                        "byte": 142
+                                    }
+                                },
                                 "value": {
                                     "environment": "secret-objects",
                                     "begin": {
@@ -729,6 +807,19 @@
                 "symbol": [
                     {
                         "key": "unmarshalled_secret_array",
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 10,
+                                "column": 29,
+                                "byte": 305
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 54,
+                                "byte": 330
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -745,6 +836,19 @@
                     },
                     {
                         "index": 0,
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 10,
+                                "column": 54,
+                                "byte": 330
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 57,
+                                "byte": 333
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -782,6 +886,19 @@
                 "symbol": [
                     {
                         "key": "unmarshalled_secret_object",
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 11,
+                                "column": 30,
+                                "byte": 364
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 56,
+                                "byte": 390
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -798,6 +915,19 @@
                     },
                     {
                         "key": "haha",
+                        "range": {
+                            "environment": "secret-objects",
+                            "begin": {
+                                "line": 11,
+                                "column": 56,
+                                "byte": 390
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 61,
+                                "byte": 395
+                            }
+                        },
                         "value": {
                             "environment": "secret-objects",
                             "begin": {
@@ -999,6 +1129,19 @@
                         "symbol": [
                             {
                                 "key": "secret_array",
+                                "range": {
+                                    "environment": "secret-objects",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 21,
+                                        "byte": 263
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 33,
+                                        "byte": 275
+                                    }
+                                },
                                 "value": {
                                     "environment": "secret-objects",
                                     "begin": {
@@ -1085,6 +1228,19 @@
                         "symbol": [
                             {
                                 "key": "secret_object",
+                                "range": {
+                                    "environment": "secret-objects",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 21,
+                                        "byte": 129
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 34,
+                                        "byte": 142
+                                    }
+                                },
                                 "value": {
                                     "environment": "secret-objects",
                                     "begin": {

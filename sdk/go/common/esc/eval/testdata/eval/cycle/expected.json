@@ -106,6 +106,19 @@
                         "symbol": [
                             {
                                 "key": "a",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 10,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -122,6 +135,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 13,
+                                        "byte": 25
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -197,6 +223,19 @@
                         "symbol": [
                             {
                                 "key": "c",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 10,
+                                        "byte": 41
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -213,6 +252,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 44
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -288,6 +340,19 @@
                         "symbol": [
                             {
                                 "key": "b",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 60
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -304,6 +369,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 63
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -592,6 +670,19 @@
                         "symbol": [
                             {
                                 "key": "a",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 10,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -608,6 +699,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 13,
+                                        "byte": 25
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -683,6 +787,19 @@
                         "symbol": [
                             {
                                 "key": "c",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 10,
+                                        "byte": 41
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -699,6 +816,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 44
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -774,6 +904,19 @@
                         "symbol": [
                             {
                                 "key": "b",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 60
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {
@@ -790,6 +933,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 63
+                                    }
+                                },
                                 "value": {
                                     "environment": "cycle",
                                     "begin": {

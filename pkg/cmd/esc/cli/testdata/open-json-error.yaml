@@ -9,5 +9,5 @@ stdout: |
   > esc open test --format json
 stderr: |
   > esc open test --format json
-  test:3:14: unknown property "foo"
+  test:3:16: unknown property "foo"
   test:4:31: expected string, got object

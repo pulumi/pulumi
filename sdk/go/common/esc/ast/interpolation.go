@@ -29,13 +29,14 @@ func parseInterpolate(node syntax.Node, value string) ([]Interpolation, syntax.D
 	var parts []Interpolation
 	var str strings.Builder
 	var diags syntax.Diagnostics
+	offset := 0
 	for len(value) > 0 {
 		switch {
 		case strings.HasPrefix(value, "$$"):
 			str.WriteByte('$')
-			value = value[2:]
+			value, offset = value[2:], offset+2
 		case strings.HasPrefix(value, "${"):
-			rest, access, accessDiags := parsePropertyAccess(node, value[2:])
+			end, rest, access, accessDiags := parsePropertyAccess(node, offset+2, value[2:])
 
 			diags.Extend(accessDiags...)
 			parts = append(parts, Interpolation{
@@ -44,10 +45,10 @@ func parseInterpolate(node syntax.Node, value string) ([]Interpolation, syntax.D
 			})
 			str.Reset()
 
-			value = rest
+			value, offset = rest, end
 		default:
 			str.WriteByte(value[0])
-			value = value[1:]
+			value, offset = value[1:], offset+1
 		}
 	}
 	if str.Len() != 0 {

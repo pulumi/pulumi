@@ -35,6 +35,12 @@ func (noSyntax) Path() string {
 	return ""
 }
 
+type Scalar interface {
+	Syntax
+
+	ScalarRange(start, end int) *hcl.Range
+}
+
 type Trivia interface {
 	Syntax
 

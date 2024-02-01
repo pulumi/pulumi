@@ -54,6 +54,31 @@ func (s YAMLSyntax) Path() string {
 	return s.path
 }
 
+func (s YAMLSyntax) ScalarRange(start, end int) *hcl.Range {
+	if s.rng == nil || s.Kind != yaml.ScalarNode {
+		return nil
+	}
+
+	// #237: handle other string styles
+	if s.rng.Start.Line != s.rng.End.Line || (s.Style != 0 && s.Style != yaml.FlowStyle) {
+		return nil
+	}
+
+	startPos := s.rng.Start
+	startPos.Byte += start
+	startPos.Column += uniseg.StringWidth(s.Value[:start])
+
+	endPos := s.rng.Start
+	endPos.Byte += end
+	endPos.Column += uniseg.StringWidth(s.Value[:end])
+
+	return &hcl.Range{
+		Filename: s.rng.Filename,
+		Start:    startPos,
+		End:      endPos,
+	}
+}
+
 func (s YAMLSyntax) HeadComment() string {
 	return s.Node.HeadComment
 }

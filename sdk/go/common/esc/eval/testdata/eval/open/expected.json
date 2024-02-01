@@ -103,6 +103,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 12,
+                                        "byte": 222
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 16,
+                                        "byte": 226
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -119,6 +132,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 16,
+                                        "byte": 226
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 20,
+                                        "byte": 230
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -153,6 +179,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 13,
+                                        "byte": 244
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 17,
+                                        "byte": 248
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -169,6 +208,19 @@
                             },
                             {
                                 "key": "list",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 17,
+                                        "byte": 248
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 22,
+                                        "byte": 253
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -185,6 +237,19 @@
                             },
                             {
                                 "index": 0,
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 22,
+                                        "byte": 253
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 25,
+                                        "byte": 256
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -219,6 +284,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 15,
+                                        "byte": 272
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 19,
+                                        "byte": 276
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -235,6 +313,19 @@
                             },
                             {
                                 "key": "object",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 19,
+                                        "byte": 276
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 26,
+                                        "byte": 283
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -251,6 +342,19 @@
                             },
                             {
                                 "key": "key",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 26,
+                                        "byte": 283
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 30,
+                                        "byte": 287
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -285,6 +389,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 13,
+                                        "byte": 205
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 17,
+                                        "byte": 209
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -982,6 +1099,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 12,
+                                        "byte": 222
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 16,
+                                        "byte": 226
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -998,6 +1128,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 16,
+                                        "byte": 226
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 20,
+                                        "byte": 230
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -1035,6 +1178,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 13,
+                                        "byte": 244
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 17,
+                                        "byte": 248
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -1051,6 +1207,19 @@
                             },
                             {
                                 "key": "list",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 17,
+                                        "byte": 248
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 22,
+                                        "byte": 253
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -1067,6 +1236,19 @@
                             },
                             {
                                 "index": 0,
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 22,
+                                        "byte": 253
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 25,
+                                        "byte": 256
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -1104,6 +1286,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 15,
+                                        "byte": 272
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 19,
+                                        "byte": 276
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -1120,6 +1315,19 @@
                             },
                             {
                                 "key": "object",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 19,
+                                        "byte": 276
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 26,
+                                        "byte": 283
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -1136,6 +1344,19 @@
                             },
                             {
                                 "key": "key",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 26,
+                                        "byte": 283
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 30,
+                                        "byte": 287
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {
@@ -1214,6 +1435,19 @@
                         "symbol": [
                             {
                                 "key": "test",
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 13,
+                                        "byte": 205
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 17,
+                                        "byte": 209
+                                    }
+                                },
                                 "value": {
                                     "environment": "open",
                                     "begin": {

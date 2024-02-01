@@ -52,16 +52,31 @@ func (x *exprNode) Syntax() syntax.Node {
 	return x.syntax
 }
 
+func exprPosition(expr Expr) (*hcl.Range, string) {
+	if expr != nil {
+		if syntax := expr.Syntax(); syntax != nil {
+			return syntax.Syntax().Range(), syntax.Syntax().Path()
+		}
+	}
+	return nil, ""
+}
+
 // ExprError creates an error-level diagnostic associated with the given expression. If the expression is non-nil and
 // has an underlying syntax node, the error will cover the underlying textual range.
 func ExprError(expr Expr, summary string) *syntax.Diagnostic {
-	var rng *hcl.Range
-	if expr != nil {
-		if syntax := expr.Syntax(); syntax != nil {
-			rng = syntax.Syntax().Range()
-		}
+	rng, path := exprPosition(expr)
+	return syntax.Error(rng, summary, path)
+}
+
+// AccessorError creates an error-level diagnostic associated with the given expression and accessor. If the accessor
+// has range information, the error will cover its textual range. Otherwise, the error will cover the textual range of
+// the parent expression.
+func AccessorError(parent Expr, accessor PropertyAccessor, summary string) *syntax.Diagnostic {
+	rng, path := exprPosition(parent)
+	if r := accessor.Range(); r != nil {
+		rng = r
 	}
-	return syntax.Error(rng, summary, expr.Syntax().Syntax().Path())
+	return syntax.Error(rng, summary, path)
 }
 
 // A NullExpr represents a null literal.

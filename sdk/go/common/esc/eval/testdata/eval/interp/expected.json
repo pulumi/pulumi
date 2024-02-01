@@ -192,6 +192,19 @@
                         "symbol": [
                             {
                                 "key": "a",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 10,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -208,6 +221,19 @@
                             },
                             {
                                 "key": "q",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 13,
+                                        "byte": 25
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -373,6 +399,19 @@
                         "symbol": [
                             {
                                 "key": "a",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 77
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 78
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -389,6 +428,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 78
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 80
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -563,6 +615,19 @@
                                 "symbol": [
                                     {
                                         "key": "b",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 11,
+                                                "byte": 104
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 12,
+                                                "byte": 105
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -579,6 +644,19 @@
                                     },
                                     {
                                         "key": "p",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 12,
+                                                "byte": 105
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 14,
+                                                "byte": 107
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -618,6 +696,19 @@
                                         "value": [
                                             {
                                                 "key": "c",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 11,
+                                                        "column": 18,
+                                                        "byte": 126
+                                                    },
+                                                    "end": {
+                                                        "line": 11,
+                                                        "column": 19,
+                                                        "byte": 127
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -634,6 +725,19 @@
                                             },
                                             {
                                                 "key": "b",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 11,
+                                                        "column": 19,
+                                                        "byte": 127
+                                                    },
+                                                    "end": {
+                                                        "line": 11,
+                                                        "column": 21,
+                                                        "byte": 129
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -674,6 +778,19 @@
                                         "value": [
                                             {
                                                 "key": "c",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 11,
+                                                        "byte": 141
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 12,
+                                                        "byte": 142
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -690,6 +807,19 @@
                                             },
                                             {
                                                 "key": "a",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 12,
+                                                        "byte": 142
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 14,
+                                                        "byte": 144
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -706,6 +836,19 @@
                                             },
                                             {
                                                 "index": 0,
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 14,
+                                                        "byte": 144
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 17,
+                                                        "byte": 147
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -803,6 +946,19 @@
                                 "symbol": [
                                     {
                                         "key": "a",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 11,
+                                                "byte": 184
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 12,
+                                                "byte": 185
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -819,6 +975,19 @@
                                     },
                                     {
                                         "key": "u",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 12,
+                                                "byte": 185
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 14,
+                                                "byte": 187
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -835,6 +1004,19 @@
                                     },
                                     {
                                         "key": "\"baz",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 14,
+                                                "byte": 187
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 23,
+                                                "byte": 196
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -872,6 +1054,19 @@
                                 "symbol": [
                                     {
                                         "key": "34",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 16,
+                                                "column": 11,
+                                                "byte": 208
+                                            },
+                                            "end": {
+                                                "line": 16,
+                                                "column": 17,
+                                                "byte": 214
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -909,6 +1104,19 @@
                                 "symbol": [
                                     {
                                         "key": "35",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 11,
+                                                "byte": 226
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 17,
+                                                "byte": 232
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -925,6 +1133,19 @@
                                     },
                                     {
                                         "key": "okay",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 17,
+                                                "byte": 232
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 22,
+                                                "byte": 237
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -1656,6 +1877,19 @@
                         "symbol": [
                             {
                                 "key": "a",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 10,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -1672,6 +1906,19 @@
                             },
                             {
                                 "key": "q",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 13,
+                                        "byte": 25
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -1837,6 +2084,19 @@
                         "symbol": [
                             {
                                 "key": "a",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 77
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 78
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -1853,6 +2113,19 @@
                             },
                             {
                                 "key": "p",
+                                "range": {
+                                    "environment": "interp",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 78
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 80
+                                    }
+                                },
                                 "value": {
                                     "environment": "interp",
                                     "begin": {
@@ -2027,6 +2300,19 @@
                                 "symbol": [
                                     {
                                         "key": "b",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 11,
+                                                "byte": 104
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 12,
+                                                "byte": 105
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -2043,6 +2329,19 @@
                                     },
                                     {
                                         "key": "p",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 12,
+                                                "byte": 105
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 14,
+                                                "byte": 107
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -2082,6 +2381,19 @@
                                         "value": [
                                             {
                                                 "key": "c",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 11,
+                                                        "column": 18,
+                                                        "byte": 126
+                                                    },
+                                                    "end": {
+                                                        "line": 11,
+                                                        "column": 19,
+                                                        "byte": 127
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -2098,6 +2410,19 @@
                                             },
                                             {
                                                 "key": "b",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 11,
+                                                        "column": 19,
+                                                        "byte": 127
+                                                    },
+                                                    "end": {
+                                                        "line": 11,
+                                                        "column": 21,
+                                                        "byte": 129
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -2138,6 +2463,19 @@
                                         "value": [
                                             {
                                                 "key": "c",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 11,
+                                                        "byte": 141
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 12,
+                                                        "byte": 142
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -2154,6 +2492,19 @@
                                             },
                                             {
                                                 "key": "a",
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 12,
+                                                        "byte": 142
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 14,
+                                                        "byte": 144
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -2170,6 +2521,19 @@
                                             },
                                             {
                                                 "index": 0,
+                                                "range": {
+                                                    "environment": "interp",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 14,
+                                                        "byte": 144
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 17,
+                                                        "byte": 147
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "interp",
                                                     "begin": {
@@ -2267,6 +2631,19 @@
                                 "symbol": [
                                     {
                                         "key": "a",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 11,
+                                                "byte": 184
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 12,
+                                                "byte": 185
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -2283,6 +2660,19 @@
                                     },
                                     {
                                         "key": "u",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 12,
+                                                "byte": 185
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 14,
+                                                "byte": 187
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -2299,6 +2689,19 @@
                                     },
                                     {
                                         "key": "\"baz",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 15,
+                                                "column": 14,
+                                                "byte": 187
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 23,
+                                                "byte": 196
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -2336,6 +2739,19 @@
                                 "symbol": [
                                     {
                                         "key": "34",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 16,
+                                                "column": 11,
+                                                "byte": 208
+                                            },
+                                            "end": {
+                                                "line": 16,
+                                                "column": 17,
+                                                "byte": 214
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -2373,6 +2789,19 @@
                                 "symbol": [
                                     {
                                         "key": "35",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 11,
+                                                "byte": 226
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 17,
+                                                "byte": 232
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {
@@ -2389,6 +2818,19 @@
                                     },
                                     {
                                         "key": "okay",
+                                        "range": {
+                                            "environment": "interp",
+                                            "begin": {
+                                                "line": 17,
+                                                "column": 17,
+                                                "byte": 232
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 22,
+                                                "byte": 237
+                                            }
+                                        },
                                         "value": {
                                             "environment": "interp",
                                             "begin": {

@@ -53,6 +53,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 39,
+                                        "column": 9,
+                                        "byte": 895
+                                    },
+                                    "end": {
+                                        "line": 39,
+                                        "column": 13,
+                                        "byte": 899
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -69,6 +82,19 @@
                             },
                             {
                                 "key": "record",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 39,
+                                        "column": 13,
+                                        "byte": 899
+                                    },
+                                    "end": {
+                                        "line": 39,
+                                        "column": 20,
+                                        "byte": 906
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -85,6 +111,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 39,
+                                        "column": 20,
+                                        "byte": 906
+                                    },
+                                    "end": {
+                                        "line": 39,
+                                        "column": 24,
+                                        "byte": 910
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -122,6 +161,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 40,
+                                        "column": 9,
+                                        "byte": 920
+                                    },
+                                    "end": {
+                                        "line": 40,
+                                        "column": 13,
+                                        "byte": 924
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -138,6 +190,19 @@
                             },
                             {
                                 "key": "tuple",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 40,
+                                        "column": 13,
+                                        "byte": 924
+                                    },
+                                    "end": {
+                                        "line": 40,
+                                        "column": 19,
+                                        "byte": 930
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -154,6 +219,19 @@
                             },
                             {
                                 "index": 0,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 40,
+                                        "column": 19,
+                                        "byte": 930
+                                    },
+                                    "end": {
+                                        "line": 40,
+                                        "column": 22,
+                                        "byte": 933
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -188,6 +266,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 9,
+                                        "byte": 943
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 13,
+                                        "byte": 947
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -204,6 +295,19 @@
                             },
                             {
                                 "key": "map",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 13,
+                                        "byte": 947
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 17,
+                                        "byte": 951
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -220,6 +324,19 @@
                             },
                             {
                                 "key": "hello",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 17,
+                                        "byte": 951
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 23,
+                                        "byte": 957
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -254,6 +371,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 9,
+                                        "byte": 967
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 13,
+                                        "byte": 971
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -270,6 +400,19 @@
                             },
                             {
                                 "key": "array",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 13,
+                                        "byte": 971
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 19,
+                                        "byte": 977
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -286,6 +429,19 @@
                             },
                             {
                                 "index": 1,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 19,
+                                        "byte": 977
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 22,
+                                        "byte": 980
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -320,6 +476,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 9,
+                                        "byte": 990
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 13,
+                                        "byte": 994
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -336,6 +505,19 @@
                             },
                             {
                                 "key": "array",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 13,
+                                        "byte": 994
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 19,
+                                        "byte": 1000
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -352,6 +534,19 @@
                             },
                             {
                                 "index": 2,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 19,
+                                        "byte": 1000
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 22,
+                                        "byte": 1003
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -368,6 +563,19 @@
                             },
                             {
                                 "key": "some",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 22,
+                                        "byte": 1003
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 27,
+                                        "byte": 1008
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -402,6 +610,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 9,
+                                        "byte": 1018
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 13,
+                                        "byte": 1022
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -418,6 +639,19 @@
                             },
                             {
                                 "key": "array",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 13,
+                                        "byte": 1022
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 19,
+                                        "byte": 1028
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -434,6 +668,19 @@
                             },
                             {
                                 "index": 3,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 19,
+                                        "byte": 1028
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 22,
+                                        "byte": 1031
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -450,6 +697,19 @@
                             },
                             {
                                 "index": 0,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 22,
+                                        "byte": 1031
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 25,
+                                        "byte": 1034
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -1171,6 +1431,19 @@
                         "symbol": [
                             {
                                 "key": "source",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 37,
+                                        "column": 25,
+                                        "byte": 867
+                                    },
+                                    "end": {
+                                        "line": 37,
+                                        "column": 31,
+                                        "byte": 873
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4544,6 +4817,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 39,
+                                        "column": 9,
+                                        "byte": 895
+                                    },
+                                    "end": {
+                                        "line": 39,
+                                        "column": 13,
+                                        "byte": 899
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4560,6 +4846,19 @@
                             },
                             {
                                 "key": "record",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 39,
+                                        "column": 13,
+                                        "byte": 899
+                                    },
+                                    "end": {
+                                        "line": 39,
+                                        "column": 20,
+                                        "byte": 906
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4576,6 +4875,19 @@
                             },
                             {
                                 "key": "foo",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 39,
+                                        "column": 20,
+                                        "byte": 906
+                                    },
+                                    "end": {
+                                        "line": 39,
+                                        "column": 24,
+                                        "byte": 910
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4613,6 +4925,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 40,
+                                        "column": 9,
+                                        "byte": 920
+                                    },
+                                    "end": {
+                                        "line": 40,
+                                        "column": 13,
+                                        "byte": 924
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4629,6 +4954,19 @@
                             },
                             {
                                 "key": "tuple",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 40,
+                                        "column": 13,
+                                        "byte": 924
+                                    },
+                                    "end": {
+                                        "line": 40,
+                                        "column": 19,
+                                        "byte": 930
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4645,6 +4983,19 @@
                             },
                             {
                                 "index": 0,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 40,
+                                        "column": 19,
+                                        "byte": 930
+                                    },
+                                    "end": {
+                                        "line": 40,
+                                        "column": 22,
+                                        "byte": 933
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4682,6 +5033,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 9,
+                                        "byte": 943
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 13,
+                                        "byte": 947
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4698,6 +5062,19 @@
                             },
                             {
                                 "key": "map",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 13,
+                                        "byte": 947
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 17,
+                                        "byte": 951
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4714,6 +5091,19 @@
                             },
                             {
                                 "key": "hello",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 17,
+                                        "byte": 951
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 23,
+                                        "byte": 957
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4751,6 +5141,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 9,
+                                        "byte": 967
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 13,
+                                        "byte": 971
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4767,6 +5170,19 @@
                             },
                             {
                                 "key": "array",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 13,
+                                        "byte": 971
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 19,
+                                        "byte": 977
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4783,6 +5199,19 @@
                             },
                             {
                                 "index": 1,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 19,
+                                        "byte": 977
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 22,
+                                        "byte": 980
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4820,6 +5249,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 9,
+                                        "byte": 990
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 13,
+                                        "byte": 994
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4836,6 +5278,19 @@
                             },
                             {
                                 "key": "array",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 13,
+                                        "byte": 994
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 19,
+                                        "byte": 1000
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4852,6 +5307,19 @@
                             },
                             {
                                 "index": 2,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 19,
+                                        "byte": 1000
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 22,
+                                        "byte": 1003
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4868,6 +5336,19 @@
                             },
                             {
                                 "key": "some",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 43,
+                                        "column": 22,
+                                        "byte": 1003
+                                    },
+                                    "end": {
+                                        "line": 43,
+                                        "column": 27,
+                                        "byte": 1008
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4905,6 +5386,19 @@
                         "symbol": [
                             {
                                 "key": "sink",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 9,
+                                        "byte": 1018
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 13,
+                                        "byte": 1022
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4921,6 +5415,19 @@
                             },
                             {
                                 "key": "array",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 13,
+                                        "byte": 1022
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 19,
+                                        "byte": 1028
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4937,6 +5444,19 @@
                             },
                             {
                                 "index": 3,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 19,
+                                        "byte": 1028
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 22,
+                                        "byte": 1031
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -4953,6 +5473,19 @@
                             },
                             {
                                 "index": 0,
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 44,
+                                        "column": 22,
+                                        "byte": 1031
+                                    },
+                                    "end": {
+                                        "line": 44,
+                                        "column": 25,
+                                        "byte": 1034
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {
@@ -5850,6 +6383,19 @@
                         "symbol": [
                             {
                                 "key": "source",
+                                "range": {
+                                    "environment": "schema",
+                                    "begin": {
+                                        "line": 37,
+                                        "column": 25,
+                                        "byte": 867
+                                    },
+                                    "end": {
+                                        "line": 37,
+                                        "column": 31,
+                                        "byte": 873
+                                    }
+                                },
                                 "value": {
                                     "environment": "schema",
                                     "begin": {

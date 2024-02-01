@@ -253,6 +253,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -371,6 +384,19 @@
                                         "symbol": [
                                             {
                                                 "key": "missing",
+                                                "range": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-errs",
                                                     "begin": {
@@ -519,6 +545,19 @@
                                                 "symbol": [
                                                     {
                                                         "key": "number",
+                                                        "range": {
+                                                            "environment": "builtin-errs",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-errs",
                                                             "begin": {
@@ -594,6 +633,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -668,6 +720,19 @@
                                 "symbol": [
                                     {
                                         "key": "number",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -737,6 +802,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -806,6 +884,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -1317,6 +1408,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -1435,6 +1539,19 @@
                                         "symbol": [
                                             {
                                                 "key": "missing",
+                                                "range": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
                                                 "value": {
                                                     "environment": "builtin-errs",
                                                     "begin": {
@@ -1583,6 +1700,19 @@
                                                 "symbol": [
                                                     {
                                                         "key": "number",
+                                                        "range": {
+                                                            "environment": "builtin-errs",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
                                                         "value": {
                                                             "environment": "builtin-errs",
                                                             "begin": {
@@ -1658,6 +1788,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -1732,6 +1875,19 @@
                                 "symbol": [
                                     {
                                         "key": "number",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -1801,6 +1957,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
@@ -1870,6 +2039,19 @@
                                 "symbol": [
                                     {
                                         "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
                                         "value": {
                                             "environment": "builtin-errs",
                                             "begin": {
