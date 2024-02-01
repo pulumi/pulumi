@@ -546,6 +546,7 @@ func newImportCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
+	var previewOnly bool
 	var showConfig bool
 	var skipPreview bool
 	var suppressOutputs bool
@@ -779,7 +780,7 @@ func newImportCmd() *cobra.Command {
 					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
+			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -1026,6 +1027,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
+	cmd.PersistentFlags().BoolVar(
+		&previewOnly, "preview-only", false,
+		"Only show a preview of the import, but don't perform the import itself")
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not calculate a preview before performing the import")
