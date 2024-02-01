@@ -162,34 +162,64 @@ func TestDeletingDuplicateProviderURN(t *testing.T) {
 	t.Parallel()
 
 	// Create duplicate provider resources
-	pA := NewProviderResource("a", "p1", "0")
-	pB := NewProviderResource("a", "p1", "1")
+	pA0 := NewProviderResource("a", "p1", "0")
+	pA1 := NewProviderResource("a", "p1", "1")
 
 	// Create a resource that depends on the duplicate Provider.
-	b1 := NewResource("b", pA)
-	b2 := NewResource("b", pB)
+	b1 := NewResource("b", pA0)
+	b2 := NewResource("b", pA1)
 
-	c := NewResource("c", pB, b1.URN)
+	c := NewResource("c", pA1, b1.URN)
 
 	t.Run("do-target-dependents", func(t *testing.T) {
 		t.Parallel()
 		snap := NewSnapshot([]*resource.State{
-			pA, pB, b1, b2, c,
+			pA0, pA1, b1, b2, c,
 		})
 
-		err := DeleteResource(snap, pA, nil, true /* targetDependents */)
+		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
 		require.NoError(t, err)
+
+		// assert.Equals does a deep equals with the expected list.
+		assert.Equal(t, []*resource.State{
+			pA1, b2, c,
+		}, snap.Resources)
 	})
 
 	t.Run("do-not-target-dependents", func(t *testing.T) {
 		t.Parallel()
 		snap := NewSnapshot([]*resource.State{
-			pA, pB, b1, b2, c,
+			pA0, pA1, b1, b2, c,
 		})
 
-		err := DeleteResource(snap, pA, nil, false /* targetDependents */)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Can't delete resource \"urn:pulumi:test::test::pulumi:providers:a::p1\" due to dependent resources", pA.URN)
+		err := DeleteResource(snap, pA0, nil, false /* targetDependents */)
+		require.ErrorContains(t, err,
+			"Can't delete resource \"urn:pulumi:test::test::pulumi:providers:a::p1\" due to dependent resources")
+	})
+
+	t.Run("do-target-dependents-one-intermediate", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b1, c,
+		})
+
+		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
+		require.NoError(t, err)
+		// assert.Equals does a deep equals with the expected list.
+		assert.Equal(t, []*resource.State{
+			pA1,
+		}, snap.Resources)
+	})
+
+	t.Run("do-target-dependents-one-intermediate", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b1, c,
+		})
+
+		err := DeleteResource(snap, pA0, nil, false /* targetDependents */)
+		require.ErrorContains(t, err,
+			"Can't delete resource \"urn:pulumi:test::test::pulumi:providers:a::p1\" due to dependent resources")
 	})
 }
 
