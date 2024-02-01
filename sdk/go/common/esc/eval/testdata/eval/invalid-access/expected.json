@@ -3848,6 +3848,18 @@
                     },
                     "type": "object"
                 },
+                "otherObject": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
                 "string": {
                     "type": "string",
                     "const": "esc"
@@ -3860,6 +3872,7 @@
                 "myObject",
                 "object",
                 "open",
+                "otherObject",
                 "string"
             ]
         }
@@ -8106,6 +8119,18 @@
                         "tuple"
                     ]
                 },
+                "otherObject": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
                 "string": {
                     "type": "string",
                     "const": "esc"
@@ -8118,6 +8143,7 @@
                 "myObject",
                 "object",
                 "open",
+                "otherObject",
                 "string"
             ]
         }

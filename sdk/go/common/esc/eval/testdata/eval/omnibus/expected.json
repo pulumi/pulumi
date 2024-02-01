@@ -1358,6 +1358,20 @@
                     "type": "string",
                     "const": "hunter2"
                 },
+                "strings": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
                 "toBase64": {
                     "type": "string"
                 },
@@ -1378,6 +1392,7 @@
                 "open",
                 "open2",
                 "secret",
+                "strings",
                 "toBase64",
                 "toJSON",
                 "toString"
@@ -3515,6 +3530,20 @@
                     "type": "string",
                     "const": "hunter2"
                 },
+                "strings": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
                 "toBase64": {
                     "type": "string"
                 },
@@ -3535,6 +3564,7 @@
                 "open",
                 "open2",
                 "secret",
+                "strings",
                 "toBase64",
                 "toJSON",
                 "toString"

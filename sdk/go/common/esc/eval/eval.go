@@ -112,12 +112,11 @@ func evalEnvironment(
 
 	s := schema.Never().Schema()
 	if v != nil {
-		object := v.repr.(map[string]*value)
-		properties := make(map[string]schema.Builder, len(object))
-		for k, v := range object {
-			properties[k] = v.schema
+		if v.base != nil {
+			s = mergedSchema(v.base.schema, v.schema)
+		} else {
+			s = v.schema
 		}
-		s = schema.Record(properties).Schema()
 	}
 
 	return &esc.Environment{

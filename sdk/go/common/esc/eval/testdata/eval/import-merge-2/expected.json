@@ -149,7 +149,29 @@
             }
         },
         "schema": {
-            "type": "object"
+            "properties": {
+                "alpha": {
+                    "type": "string",
+                    "const": "beta"
+                },
+                "some_object": {
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "alpha",
+                "some_object"
+            ]
         }
     },
     "checkJson": {
@@ -345,7 +367,39 @@
             }
         },
         "schema": {
-            "type": "object"
+            "properties": {
+                "alpha": {
+                    "type": "string",
+                    "const": "beta"
+                },
+                "some_object": {
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "gamma"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "beta",
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "alpha",
+                "some_object"
+            ]
         }
     },
     "evalJsonRedacted": {

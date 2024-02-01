@@ -1060,6 +1060,10 @@
                     "items": false,
                     "type": "array"
                 },
+                "some_number": {
+                    "type": "number",
+                    "const": 42
+                },
                 "some_object": {
                     "properties": {
                         "alpha": {
@@ -1109,6 +1113,7 @@
             "type": "object",
             "required": [
                 "some_list",
+                "some_number",
                 "some_object",
                 "some_string"
             ]
@@ -2192,6 +2197,10 @@
                     "items": false,
                     "type": "array"
                 },
+                "some_number": {
+                    "type": "number",
+                    "const": 42
+                },
                 "some_object": {
                     "properties": {
                         "alpha": {
@@ -2241,6 +2250,7 @@
             "type": "object",
             "required": [
                 "some_list",
+                "some_number",
                 "some_object",
                 "some_string"
             ]
