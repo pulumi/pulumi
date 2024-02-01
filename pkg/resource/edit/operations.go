@@ -72,33 +72,19 @@ func DeleteResource(
 	}
 	isUniqueURN := numSameURN <= 1
 
-	deleteSet := map[resource.URN]struct{}{}
+	deleteSet := make(map[resource.URN][]*resource.State)
 	dg := graph.NewDependencyGraph(snapshot.Resources)
 
-	if deps := dg.DependingOn(condemnedRes, nil, true); len(deps) != 0 {
-		uniqueDependency := isUniqueURN
-		if !isUniqueURN {
-			for _, d := range deps {
-				if d.Provider != "" {
-					ref, err := providers.ParseReference(d.Provider)
-					contract.AssertNoErrorf(err, "cannot parse provider reference %q", d.Provider)
-					if ref.ID() == condemnedRes.ID {
-						uniqueDependency = true
-						break
-					}
-				}
-			}
+	deps := dg.DependingOnUniquely(condemnedRes)
+	if len(deps) != 0 {
+		if !targetDependents {
+			return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: deps}
 		}
-		if uniqueDependency {
-			if !targetDependents {
-				return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: deps}
+		for _, dep := range deps {
+			if err := handleProtected(dep); err != nil {
+				return err
 			}
-			for _, dep := range deps {
-				if err := handleProtected(dep); err != nil {
-					return err
-				}
-				deleteSet[dep.URN] = struct{}{}
-			}
+			deleteSet[dep.URN] = append(deleteSet[dep.URN], dep)
 		}
 	}
 
@@ -106,15 +92,17 @@ func DeleteResource(
 	// not condemnedRes.
 	newSnapshot := slice.Prealloc[*resource.State](len(snapshot.Resources))
 	var children []*resource.State
+search:
 	for _, res := range snapshot.Resources {
 		if res == condemnedRes {
 			// Skip condemned resource.
 			continue
 		}
 
-		if _, inDeleteSet := deleteSet[res.URN]; inDeleteSet {
-			//  Skip resources to be deleted.
-			continue
+		for _, v := range deleteSet[res.URN] {
+			if v == res {
+				continue search
+			}
 		}
 
 		// While iterating, keep track of the set of resources that are parented to our

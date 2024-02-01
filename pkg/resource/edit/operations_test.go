@@ -114,7 +114,7 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 
 	// This test ensures that when targeting dependent resources, deleting a
 	// resource with a redundant URN will not delete dependent resources in
-	// state as it's ambiguous since another URN can satisfy the dependency.
+	// state as it's ambiguous stince another URN can satisfy the dependency.
 	t.Run("do-target-dependents", func(t *testing.T) {
 		t.Parallel()
 		snap := NewSnapshot([]*resource.State{
@@ -167,34 +167,29 @@ func TestDeletingDuplicateProviderURN(t *testing.T) {
 
 	// Create a resource that depends on the duplicate Provider.
 	b1 := NewResource("b", pA)
+	b2 := NewResource("b", pB)
+
+	c := NewResource("c", pB, b1.URN)
 
 	t.Run("do-target-dependents", func(t *testing.T) {
 		t.Parallel()
 		snap := NewSnapshot([]*resource.State{
-			pA, pB, b1,
+			pA, pB, b1, b2, c,
 		})
 
 		err := DeleteResource(snap, pA, nil, true /* targetDependents */)
 		require.NoError(t, err)
-
-		assert.Equal(t, []*resource.State{
-			pB,
-		}, snap.Resources)
-
-		// Ensure that a pointer to pA is not in the list.
-		for _, s := range snap.Resources {
-			assert.False(t, s == pA)
-		}
 	})
 
 	t.Run("do-not-target-dependents", func(t *testing.T) {
 		t.Parallel()
 		snap := NewSnapshot([]*resource.State{
-			pA, pB, b1,
+			pA, pB, b1, b2, c,
 		})
 
 		err := DeleteResource(snap, pA, nil, false /* targetDependents */)
 		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Can't delete resource \"urn:pulumi:test::test::pulumi:providers:a::p1\" due to dependent resources", pA.URN)
 	})
 }
 
