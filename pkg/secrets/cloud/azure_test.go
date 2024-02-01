@@ -16,6 +16,7 @@ package cloud
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -122,4 +123,113 @@ func TestAzureKeyVaultExistingState(t *testing.T) {
 	plaintext, err := dec.DecryptValue(ctx, ciphertext)
 	require.NoError(t, err)
 	assert.Equal(t, "plaintext", plaintext)
+
+	assert.JSONEq(t, cloudState, string(manager.State()))
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestAzureKeyEditProjectStack(t *testing.T) {
+	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
+	url := "azurekeyvault://" + keyName
+
+	//nolint:lll // this is a base64 encoded key
+	encryptedKeyBase64 := "cnNKWVp1N3Noa0xtT3pwcVhzdW9NcGhqeXBHc1dpc1B4M211UDNZQjU1dkpoZTZobkxLSVN1RUZoRS01ZzMza00xcHVfN3dWRE0tR211UUx4bmJBN0J3ZVRjaHFMUm02WldyQ1NwUmdONHhGN29YYlFUYkRCbzZ6YkNUaEIzNEE5bEdJMDFiVXhSMTU3Q01vY2hkanBDVkZfVjNGRm9VTXBrYUtHMEQzWWZUWDhHNTA0SjNETFlQVmFVOXkzUFhEUkoxdUpfcTZhMWo2djd3OXAxbHhINXhTSEhYaEZEVFRFQWRzOGFjSW9zYWRORnFiUjFHWlZ2b0dqaFVHS2ZKMnkxQVI1dnpNNDhHbnlHTlU4b2tEcTRrZVUtYXZ2QnptTzhHOWhkZUpnS3F3UjBDZFNqY1hPS1E0TnA5WlNfeT"
+	stackConfig := &workspace.ProjectStack{}
+	stackConfig.EncryptedKey = encryptedKeyBase64
+	manager, err := NewCloudSecretsManager(stackConfig, url, false)
+	require.NoError(t, err)
+
+	newConfig := &workspace.ProjectStack{}
+	err = EditProjectStack(newConfig, manager.State())
+	require.NoError(t, err)
+
+	assert.Equal(t, stackConfig.EncryptedKey, newConfig.EncryptedKey)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/15329
+//
+//nolint:paralleltest // mutates environment variables
+func TestAzureKeyVaultExistingKeyState(t *testing.T) {
+	ctx := context.Background()
+	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
+	url := "azurekeyvault://" + keyName
+
+	//nolint:lll // this is a base64 encoded key
+	encryptedKeyBase64 := "aHROMWFlam5qX0xjVTl3WVhQdzU1alJVbWVvaFU3UENfbzk3dDU2d2FRdUJvYWR1Z0pwdHhiRDU1akRuWFFUdFVPeWNMdlFlemh1UE9IN0txV21RU3NYZDJha0xscWp5RFFTNGQtQ2lhOXRJOGgtSnd0ZHAyOWdkNEx1ejBjVmRvY3NSUlZhdnhtZkNnMTd2TG9vZ0tfbG02Wi1VYnl2Z0xraGNRVzl0T0s2c3BScjdQX2E4NzRaMV8zeTQyb3lLUWx6U1RlYnNmS0xRRDBoZENsT0VSaGlTTHRxazlzMnlKTGpEZ2Q4VUVTSnFzaG9XY2JkVFBnX2NXcWpnQVVjSTRhOEllckE2Z0Y5YXh1eW9DVndoaS1GNGJiN1NPRW5MTEVhZUtIVTZjVFFHeGFoLV9FeVlwTEZKX3dxYzNsRDZ4aU1RdVh0blQ2WG9tZXQ0V3NQMmVn"
+	stackConfig := &workspace.ProjectStack{}
+	stackConfig.EncryptedKey = encryptedKeyBase64
+	manager, err := NewCloudSecretsManager(stackConfig, url, false)
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	// Now create a new manager from the state of the old one.
+	newManager, err := NewCloudSecretsManagerFromState(manager.State())
+	require.NoError(t, err)
+
+	dec, err := newManager.Decrypter()
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
+}
+
+// Test to auto-fix the regressions from https://github.com/pulumi/pulumi/issues/15329
+//
+//nolint:paralleltest // mutates environment variables
+func TestAzureKeyVaultAutoFix15329(t *testing.T) {
+	ctx := context.Background()
+	// https://github.com/pulumi/pulumi/issues/15329 result in keys like the following being written to state. We can auto-detect these because they aren't valid base64.
+	//nolint:lll // this includes a base64 encoded key
+	encryptedKey := "nLdkXrvtOYvgaVHn8FrdALMtFjgV67KoGIb6kWwz5Weo/yxAVyK7Rl0rtNxoIDnOvkvRQdCDTSrq1q8w6XZU/cvZ5FQMTMN3l1I28r7YV4HIBzDxx0G964DrfUSlxh1GhpQogcLiYor9MCGEidd5BdAqxKMHZJXUGJLCoUuuA3kWBwkeAowstpkumfXzxgxocq2BIkrfPqkfSetmLQajhBNn9dAIgxhaIaM+ubjOAFHkvYlrujE8dY7b2wNVa2ua/3tYfyIBYyg8jFRdOjxXXpXs7cZcRD3oQxa3F1DxYPl/IxuQdyHWxvmYH9SXVKn/B1z7JcOraZDTAptDgc3B0Q=="
+	cloudState := fmt.Sprintf(`{
+		"url": "azurekeyvault://pulumi-testing.vault.azure.net/keys/test-key",
+		"encryptedkey": "%s"
+}
+`, encryptedKey)
+
+	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	dec, err := manager.Decrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
+
+	// This should now write out a _fixed_ key to state
+	stackConfig := &workspace.ProjectStack{}
+	err = EditProjectStack(stackConfig, manager.State())
+	require.NoError(t, err)
+
+	// This is the actual expected key we want, it's the same as the one above but with the base64 encoding fixed so it's double wrapped as we expect.
+	//nolint:lll // this includes a base64 encoded key
+	expectedKey := "bkxka1hydnRPWXZnYVZIbjhGcmRBTE10RmpnVjY3S29HSWI2a1d3ejVXZW9feXhBVnlLN1JsMHJ0TnhvSURuT3ZrdlJRZENEVFNycTFxOHc2WFpVX2N2WjVGUU1UTU4zbDFJMjhyN1lWNEhJQnpEeHgwRzk2NERyZlVTbHhoMUdocFFvZ2NMaVlvcjlNQ0dFaWRkNUJkQXF4S01IWkpYVUdKTENvVXV1QTNrV0J3a2VBb3dzdHBrdW1mWHp4Z3hvY3EyQklrcmZQcWtmU2V0bUxRYWpoQk5uOWRBSWd4aGFJYU0tdWJqT0FGSGt2WWxydWpFOGRZN2Iyd05WYTJ1YV8zdFlmeUlCWXlnOGpGUmRPanhYWHBYczdjWmNSRDNvUXhhM0YxRHhZUGxfSXh1UWR5SFd4dm1ZSDlTWFZLbl9CMXo3SmNPcmFaRFRBcHREZ2MzQjBR"
+	assert.Equal(t, expectedKey, stackConfig.EncryptedKey)
+}
+
+// Test that the auto-fix for #15329 doesn't ruin error messages for invalid data
+//
+//nolint:paralleltest // mutates environment variables
+func TestAzureKeyVaultKeyError(t *testing.T) {
+	cloudState := `{
+		"url": "azurekeyvault://pulumi-testing.vault.azure.net/keys/test-key",
+		"encryptedkey": "not base64 data"
+}
+`
+
+	_, err := NewCloudSecretsManagerFromState([]byte(cloudState))
+	require.ErrorContains(t, err, "unmarshalling state: illegal base64 data at input byte 3")
 }
