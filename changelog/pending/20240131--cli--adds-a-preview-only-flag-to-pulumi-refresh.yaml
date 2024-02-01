@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Adds a `preview-only` flag to `pulumi refresh`.
