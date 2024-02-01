@@ -114,7 +114,7 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 
 	// This test ensures that when targeting dependent resources, deleting a
 	// resource with a redundant URN will not delete dependent resources in
-	// state as it's ambiguous stince another URN can satisfy the dependency.
+	// state as it's ambiguous since another URN can satisfy the dependency.
 	t.Run("do-target-dependents", func(t *testing.T) {
 		t.Parallel()
 		snap := NewSnapshot([]*resource.State{
