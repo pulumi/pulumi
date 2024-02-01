@@ -36,6 +36,7 @@ func parseInterpolate(node syntax.Node, value string) ([]Interpolation, syntax.D
 			value = value[2:]
 		case strings.HasPrefix(value, "${"):
 			rest, access, accessDiags := parsePropertyAccess(node, value[2:])
+
 			diags.Extend(accessDiags...)
 			parts = append(parts, Interpolation{
 				Text:  str.String(),

@@ -50,6 +50,9 @@
                                             "Accessors": [
                                                 {
                                                     "Name": "property"
+                                                },
+                                                {
+                                                    "Name": ""
                                                 }
                                             ]
                                         }
@@ -68,6 +71,9 @@
                                             "Accessors": [
                                                 {
                                                     "Name": "property"
+                                                },
+                                                {
+                                                    "Index": ""
                                                 }
                                             ]
                                         }
@@ -105,7 +111,7 @@
                                                     "Name": "integer"
                                                 },
                                                 {
-                                                    "Index": 0
+                                                    "Index": "subscript"
                                                 }
                                             ]
                                         }
@@ -167,7 +173,30 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in list index",
+            "Summary": "missing property name",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-interpolations",
+                "Start": {
+                    "Line": 6,
+                    "Column": 7,
+                    "Byte": 86
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 32,
+                    "Byte": 111
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.interpolations[3]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "invalid list index",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -190,7 +219,53 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing quote in property name",
+            "Summary": "missing closing bracket in subscript",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-interpolations",
+                "Start": {
+                    "Line": 7,
+                    "Column": 7,
+                    "Byte": 118
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 37,
+                    "Byte": 148
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.interpolations[4]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing quote in subscript",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-interpolations",
+                "Start": {
+                    "Line": 8,
+                    "Column": 7,
+                    "Byte": 155
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 31,
+                    "Byte": 179
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.interpolations[5]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing bracket in subscript",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",

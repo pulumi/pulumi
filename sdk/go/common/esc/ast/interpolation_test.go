@@ -21,115 +21,74 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func mkInterp(text string, accessors ...PropertyAccessor) Interpolation {
+	return Interpolation{
+		Text:  text,
+		Value: mkAccess(accessors...),
+	}
+}
+
+func mkAccess(accessors ...PropertyAccessor) *PropertyAccess {
+	if len(accessors) == 0 {
+		return nil
+	}
+	return &PropertyAccess{Accessors: accessors}
+}
+
+func mkPropertyName(name string) *PropertyName {
+	return &PropertyName{Name: name}
+}
+
+func mkPropertySubscript[T string | int](index T) *PropertySubscript {
+	return &PropertySubscript{Index: index}
+}
+
 func TestInvalidInterpolations(t *testing.T) {
 	cases := []struct {
 		text  string
 		parts []Interpolation
 	}{
 		{
-			text: "${foo",
-			parts: []Interpolation{
-				{
-					Text: "",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertyName{Name: "foo"},
-						},
-					},
-				},
-			},
+			text:  "${foo",
+			parts: []Interpolation{mkInterp("", mkPropertyName("foo"))},
 		},
 		{
 			text: "${foo ",
 			parts: []Interpolation{
-				{
-					Text: "",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertyName{Name: "foo"},
-						},
-					},
-				},
-				{
-					Text: " ",
-				},
+				mkInterp("", mkPropertyName("foo")),
+				mkInterp(" "),
 			},
 		},
 		{
 			text: `${foo} ${["baz} bar`,
 			parts: []Interpolation{
-				{
-					Text: "",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertyName{Name: "foo"},
-						},
-					},
-				},
-				{
-					Text: " ",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertySubscript{Index: "baz} bar"},
-						},
-					},
-				},
+				mkInterp("", mkPropertyName("foo")),
+				mkInterp(" ", mkPropertySubscript("baz} bar")),
 			},
 		},
 		{
 			text: `missing ${property[} subscript`,
 			parts: []Interpolation{
-				{
-					Text: "missing ",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertyName{Name: "property"},
-						},
-					},
-				},
-				{
-					Text: " subscript",
-				},
+				mkInterp("missing ", mkPropertyName("property"), mkPropertySubscript("")),
+				mkInterp(" subscript"),
 			},
 		},
 		{
 			text: `${[bar].baz}`,
 			parts: []Interpolation{
-				{
-					Text: "",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertySubscript{Index: 0},
-							&PropertyName{Name: "baz"},
-						},
-					},
-				},
+				mkInterp("", mkPropertySubscript("bar"), mkPropertyName("baz")),
 			},
 		},
 		{
 			text: `${foo.`,
 			parts: []Interpolation{
-				{
-					Text: "",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertyName{Name: "foo"},
-						},
-					},
-				},
+				mkInterp("", mkPropertyName("foo"), mkPropertyName("")),
 			},
 		},
 		{
 			text: `${foo[`,
 			parts: []Interpolation{
-				{
-					Text: "",
-					Value: &PropertyAccess{
-						Accessors: []PropertyAccessor{
-							&PropertyName{Name: "foo"},
-						},
-					},
-				},
+				mkInterp("", mkPropertyName("foo"), mkPropertySubscript("")),
 			},
 		},
 	}

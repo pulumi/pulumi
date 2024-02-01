@@ -25,7 +25,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in property access",
+            "Summary": "missing closing bracket in subscript",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -48,7 +48,30 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing quote in property name",
+            "Summary": "missing closing quote in subscript",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 5,
+                    "Column": 7,
+                    "Byte": 65
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 20,
+                    "Byte": 78
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing bracket in subscript",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -117,30 +140,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in list index",
-            "Detail": "",
-            "Subject": {
-                "Filename": "invalid-access-load",
-                "Start": {
-                    "Line": 7,
-                    "Column": 7,
-                    "Byte": 105
-                },
-                "End": {
-                    "Line": 7,
-                    "Column": 17,
-                    "Byte": 115
-                }
-            },
-            "Context": null,
-            "Expression": null,
-            "EvalContext": null,
-            "Extra": null,
-            "Path": "values.propertyAccessTest[4]"
-        },
-        {
-            "Severity": 1,
-            "Summary": "unterminated interpolation",
+            "Summary": "missing closing bracket in subscript",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -209,7 +209,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "the root property must be a string subscript or a name",
+            "Summary": "missing property name",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -229,29 +229,6 @@
             "EvalContext": null,
             "Extra": null,
             "Path": "values.propertyAccessTest[8]"
-        },
-        {
-            "Severity": 1,
-            "Summary": "the root property must be a string subscript or a name",
-            "Detail": "",
-            "Subject": {
-                "Filename": "invalid-access-load",
-                "Start": {
-                    "Line": 12,
-                    "Column": 7,
-                    "Byte": 191
-                },
-                "End": {
-                    "Line": 12,
-                    "Column": 16,
-                    "Byte": 200
-                }
-            },
-            "Context": null,
-            "Expression": null,
-            "EvalContext": null,
-            "Extra": null,
-            "Path": "values.propertyAccessTest[9]"
         },
         {
             "Severity": 1,
@@ -833,7 +810,7 @@
                                 }
                             },
                             {
-                                "index": 0,
+                                "key": "notAnIndex",
                                 "value": {
                                     "environment": "invalid-access-load",
                                     "begin": {
@@ -936,6 +913,22 @@
                         "symbol": [
                             {
                                 "key": "2",
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            },
+                            {
+                                "key": "",
                                 "value": {
                                     "environment": "invalid-access-load",
                                     "begin": {
@@ -1871,7 +1864,7 @@
                                 }
                             },
                             {
-                                "index": 0,
+                                "key": "notAnIndex",
                                 "value": {
                                     "environment": "invalid-access-load",
                                     "begin": {
@@ -1974,6 +1967,22 @@
                         "symbol": [
                             {
                                 "key": "2",
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            },
+                            {
+                                "key": "",
                                 "value": {
                                     "environment": "invalid-access-load",
                                     "begin": {
