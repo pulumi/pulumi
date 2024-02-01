@@ -2,7 +2,7 @@
     "loadDiags": [
         {
             "Severity": 1,
-            "Summary": "unterminated interpolation",
+            "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -25,7 +25,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in subscript",
+            "Summary": "subscript is missing closing bracket ']'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -48,7 +48,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing quote in subscript",
+            "Summary": "key subscript is missing closing quote '\"'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -71,7 +71,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in subscript",
+            "Summary": "subscript is missing closing bracket ']'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -94,7 +94,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "unterminated interpolation",
+            "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -117,7 +117,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "unterminated interpolation",
+            "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -140,7 +140,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in subscript",
+            "Summary": "subscript is missing closing bracket ']'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -163,7 +163,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "invalid list index",
+            "Summary": "numeric subscript must be a positive base-10 integer",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -186,7 +186,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "the root property must be a string subscript or a name",
+            "Summary": "the first accessor must be a property name or key subscript, not a numeric subscript",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -209,7 +209,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing property name",
+            "Summary": "property name must not be empty",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-access-load",
@@ -229,29 +229,6 @@
             "EvalContext": null,
             "Extra": null,
             "Path": "values.propertyAccessTest[8]"
-        },
-        {
-            "Severity": 1,
-            "Summary": "the root property must be a string subscript or a name",
-            "Detail": "",
-            "Subject": {
-                "Filename": "invalid-access-load",
-                "Start": {
-                    "Line": 13,
-                    "Column": 7,
-                    "Byte": 207
-                },
-                "End": {
-                    "Line": 13,
-                    "Column": 14,
-                    "Byte": 214
-                }
-            },
-            "Context": null,
-            "Expression": null,
-            "EvalContext": null,
-            "Extra": null,
-            "Path": "values.propertyAccessTest[10]"
         }
     ],
     "checkDiags": [

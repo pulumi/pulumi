@@ -127,7 +127,7 @@
     "diags": [
         {
             "Severity": 1,
-            "Summary": "unterminated interpolation",
+            "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -150,7 +150,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "unterminated interpolation",
+            "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -173,7 +173,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing property name",
+            "Summary": "property name must not be empty",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -196,7 +196,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "invalid list index",
+            "Summary": "numeric subscript must be a positive base-10 integer",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -219,7 +219,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in subscript",
+            "Summary": "subscript is missing closing bracket ']'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -242,7 +242,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing quote in subscript",
+            "Summary": "key subscript is missing closing quote '\"'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -265,7 +265,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "missing closing bracket in subscript",
+            "Summary": "subscript is missing closing bracket ']'",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -288,7 +288,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "unterminated interpolation",
+            "Summary": "missing closing brace '}' in interpolation",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
@@ -311,7 +311,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "invalid list index",
+            "Summary": "numeric subscript must be a positive base-10 integer",
             "Detail": "",
             "Subject": {
                 "Filename": "invalid-interpolations",
