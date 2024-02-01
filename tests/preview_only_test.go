@@ -102,7 +102,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 			strings.Trim(stderr, "\r\n"))
 
 		// Now try just the flag.
-		stdout, stderr := e.RunCommand("pulumi", "destroy", "--preview-only")
+		stdout, _ := e.RunCommand("pulumi", "destroy", "--preview-only")
 		assert.NotContains(t, stdout, "Do you want to perform this destroy?")
 		assert.NotContains(t, stdout, "The resources in the stack have been deleted")
 		// Make sure it works with --non-interactive too.
