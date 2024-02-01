@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.104.2 (2024-02-01)
+
+
+### Bug Fixes
+
+- [backend/diy] Upgrade gocloud.dev and fix an issue with azurekeyvault keys.
+  [#15334](https://github.com/pulumi/pulumi/pull/15334)
+
 ## 3.104.1 (2024-02-01)
 
 
