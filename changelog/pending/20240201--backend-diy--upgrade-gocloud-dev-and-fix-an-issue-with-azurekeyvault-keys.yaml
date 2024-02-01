@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/diy
+  description: Upgrade gocloud.dev and fix an issue with azurekeyvault keys.
