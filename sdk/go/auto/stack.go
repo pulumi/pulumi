@@ -456,6 +456,102 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	return res, nil
 }
 
+func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (PreviewResult, error) {
+	var res PreviewResult
+
+	refreshOpts := &optrefresh.Options{}
+	for _, o := range opts {
+		o.ApplyOption(refreshOpts)
+	}
+
+	args := slice.Prealloc[string](len(refreshOpts.Target))
+
+	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
+	args = append(args, "refresh", "--preview-only")
+	if refreshOpts.Message != "" {
+		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
+	}
+	if refreshOpts.ExpectNoChanges {
+		args = append(args, "--expect-no-changes")
+	}
+	for _, tURN := range refreshOpts.Target {
+		args = append(args, "--target="+tURN)
+	}
+	if refreshOpts.Parallel > 0 {
+		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
+	}
+	if refreshOpts.UserAgent != "" {
+		args = append(args, "--exec-agent="+refreshOpts.UserAgent)
+	}
+	if refreshOpts.Color != "" {
+		args = append(args, "--color="+refreshOpts.Color)
+	}
+
+	// Apply the remote args, if needed.
+	args = append(args, s.remoteArgs()...)
+
+	execKind := constant.ExecKindAutoLocal
+	if s.Workspace().Program() != nil {
+		execKind = constant.ExecKindAutoInline
+	}
+	args = append(args, "--exec-kind="+execKind)
+
+	var summaryEvents []apitype.SummaryEvent
+	eventChannel := make(chan events.EngineEvent)
+	eventsDone := make(chan bool)
+	go func() {
+		for {
+			event, ok := <-eventChannel
+			if !ok {
+				close(eventsDone)
+				return
+			}
+			if event.SummaryEvent != nil {
+				summaryEvents = append(summaryEvents, *event.SummaryEvent)
+			}
+		}
+	}()
+
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, refreshOpts.EventStreams...)
+
+	t, err := tailLogs("refresh", eventChannels)
+	if err != nil {
+		return res, fmt.Errorf("failed to tail logs: %w", err)
+	}
+	defer t.Close()
+	args = append(args, "--event-log", t.Filename)
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		refreshOpts.ProgressStreams,      /* additionalOutputs */
+		refreshOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
+	if err != nil {
+		return res, newAutoError(fmt.Errorf("failed to preview refresh: %w", err), stdout, stderr, code)
+	}
+
+	// Close the file watcher wait for all events to send
+	t.Close()
+	<-eventsDone
+
+	if len(summaryEvents) == 0 {
+		return res, newAutoError(errors.New("failed to get preview refresh summary"), stdout, stderr, code)
+	}
+	if len(summaryEvents) > 1 {
+		return res, newAutoError(errors.New("got multiple preview refresh summaries"), stdout, stderr, code)
+	}
+
+	res = PreviewResult{
+		ChangeSummary: summaryEvents[0].ResourceChanges,
+		StdOut:        stdout,
+		StdErr:        stderr,
+	}
+
+	return res, nil
+}
+
 // Refresh compares the current stack’s resource state with the state known to exist in the actual
 // cloud provider. Any such changes are adopted into the current stack.
 func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (RefreshResult, error) {

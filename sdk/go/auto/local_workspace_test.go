@@ -953,6 +953,15 @@ func TestNewStackInlineSource(t *testing.T) {
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 2, steps)
 
+	// -- pulumi refresh --preview-only --
+
+	pref, err := s.PreviewRefresh(ctx, optrefresh.UserAgent(agent))
+	if err != nil {
+		t.Errorf("preview-only refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, 1, pref.ChangeSummary[apitype.OpSame])
+
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
