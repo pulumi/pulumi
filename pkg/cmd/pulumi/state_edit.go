@@ -43,6 +43,7 @@ func newStateEditCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "edit",
 		// TODO(dixler) Add test for unicode round-tripping before unhiding.
+		// TODO(fraser) This needs tests _in general_ it is currently basically untested.
 		Hidden: !hasExperimentalCommands(),
 		Short:  "Edit the current stack's state in your EDITOR",
 		Long: `[EXPERIMENTAL] Edit the current stack's state in your EDITOR
@@ -55,14 +56,15 @@ a preview showing a diff of the altered state.`,
 			if !cmdutil.Interactive() {
 				return result.Error("pulumi state edit must be run in interactive mode")
 			}
-			s, err := requireStack(cmd.Context(), stackName, stackLoadOnly, display.Options{
+			ctx := cmd.Context()
+			s, err := requireStack(ctx, stackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
 				return result.FromError(err)
 			}
-			if err := stateEdit.Run(s); err != nil {
+			if err := stateEdit.Run(ctx, s); err != nil {
 				return result.FromError(err)
 			}
 			return nil
@@ -78,12 +80,11 @@ type stateEditCmd struct {
 	Stdin     io.Reader
 	Stdout    io.Writer
 	Colorizer colors.Colorization
-	Ctx       context.Context
 }
 
 type snapshotBuffer struct {
 	Name     func() string
-	Snapshot func() (*deploy.Snapshot, error)
+	Snapshot func(ctx context.Context) (*deploy.Snapshot, error)
 	Reset    func() error
 	Cleanup  func()
 }
@@ -102,12 +103,12 @@ func newSnapshotBuffer(fileExt string, sf snapshotEncoder, snap *deploy.Snapshot
 	}
 	t := &snapshotBuffer{
 		Name: func() string { return tempFile.Name() },
-		Snapshot: func() (*deploy.Snapshot, error) {
+		Snapshot: func(ctx context.Context) (*deploy.Snapshot, error) {
 			b, err := os.ReadFile(tempFile.Name())
 			if err != nil {
 				return nil, err
 			}
-			return sf.TextToSnapshot(snapshotText(b))
+			return sf.TextToSnapshot(ctx, snapshotText(b))
 		},
 		Reset: func() error {
 			return os.WriteFile(tempFile.Name(), originalText, 0o600)
@@ -123,7 +124,9 @@ func newSnapshotBuffer(fileExt string, sf snapshotEncoder, snap *deploy.Snapshot
 	return t, nil
 }
 
-func (cmd *stateEditCmd) Run(s backend.Stack) error {
+func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
+	contract.Requiref(ctx != nil, "ctx", "must not be nil")
+
 	if cmd.Stdin == nil {
 		cmd.Stdin = os.Stdin
 	}
@@ -131,7 +134,7 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 		cmd.Stdout = os.Stdout
 	}
 
-	snap, err := s.Snapshot(cmd.Ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}
@@ -139,9 +142,7 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 		return errors.New("old snapshot expected to be non-nil")
 	}
 
-	sf := &jsonSnapshotEncoder{
-		ctx: cmd.Ctx,
-	}
+	sf := &jsonSnapshotEncoder{}
 	f, err := newSnapshotBuffer(".json", sf, snap)
 	if err != nil {
 		return err
@@ -164,7 +165,7 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 
 		var msg string
 		var options []string
-		news, err := cmd.validateAndPrintState(f)
+		news, err := cmd.validateAndPrintState(ctx, f)
 		if err != nil {
 			cmdutil.Diag().Errorf(diag.Message("", "provided state is not valid: %v"), err)
 			msg = "Received invalid state. What would you like to do?"
@@ -186,7 +187,7 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 
 		switch response := promptUser(msg, options, edit, cmd.Colorizer); response {
 		case accept:
-			return saveSnapshot(cmd.Ctx, s, news, false /* force */)
+			return saveSnapshot(ctx, s, news, false /* force */)
 		case edit:
 			continue
 		case reset:
@@ -200,8 +201,10 @@ func (cmd *stateEditCmd) Run(s backend.Stack) error {
 	}
 }
 
-func (cmd *stateEditCmd) validateAndPrintState(f *snapshotBuffer) (*deploy.Snapshot, error) {
-	news, err := f.Snapshot()
+func (cmd *stateEditCmd) validateAndPrintState(ctx context.Context, f *snapshotBuffer) (*deploy.Snapshot, error) {
+	contract.Requiref(ctx != nil, "ctx", "must not be nil")
+
+	news, err := f.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -212,9 +215,7 @@ func (cmd *stateEditCmd) validateAndPrintState(f *snapshotBuffer) (*deploy.Snaps
 	}
 
 	// Display state in JSON to match JSON-like diffs in the update display.
-	json := &jsonSnapshotEncoder{
-		ctx: cmd.Ctx,
-	}
+	json := &jsonSnapshotEncoder{}
 	previewText, err := json.SnapshotToText(news)
 	if err != nil {
 		// This should not fail as we have already verified the integrity of the snapshot.
