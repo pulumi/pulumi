@@ -58,6 +58,7 @@ func newDestroyCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
+	var previewOnly bool
 	var refresh string
 	var showConfig bool
 	var showReplacementSteps bool
@@ -101,12 +102,13 @@ func newDestroyCmd() *cobra.Command {
 
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
-			if !interactive && !yes {
+			if !interactive && !yes && !previewOnly {
 				return result.FromError(
-					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
+					errors.New("--yes or --skip-preview or --preview-only " +
+						"must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
+			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -291,7 +293,7 @@ func newDestroyCmd() *cobra.Command {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
 			} else if res == nil && len(*targets) == 0 {
-				if !jsonDisplay && !remove {
+				if !jsonDisplay && !remove && !previewOnly {
 					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
@@ -354,6 +356,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
+	cmd.PersistentFlags().BoolVar(
+		&previewOnly, "preview-only", false,
+		"Only show a preview of the destroy, but don't perform the destroy itself")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
