@@ -109,6 +109,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/blang/semver"
 	"github.com/nxadm/tail"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -458,6 +459,11 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (PreviewResult, error) {
 	var res PreviewResult
+
+	// 3.105.0 added this flag (https://github.com/pulumi/pulumi/releases/tag/v3.105.0)
+	if s.Workspace().PulumiCommand().Version().LT(semver.Version{Major: 3, Minor: 105}) {
+		return res, fmt.Errorf("PreviewRefresh requires Pulumi CLI version >= 3.105.0")
+	}
 
 	refreshOpts := &optrefresh.Options{}
 	for _, o := range opts {
