@@ -386,6 +386,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, "--plan="+upOpts.Plan)
 	}
+	if upOpts.Refresh {
+		sharedArgs = append(sharedArgs, "--refresh")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)

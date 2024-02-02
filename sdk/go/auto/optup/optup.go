@@ -122,6 +122,13 @@ func ShowSecrets(show bool) Option {
 	})
 }
 
+// Refresh will refresh the stack's state before the update.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -166,6 +173,8 @@ type Options struct {
 	PolicyPackConfigs []string
 	// Show config secrets when they appear.
 	ShowSecrets *bool
+	// Refresh will refresh the stack's state before the update.
+	Refresh bool
 }
 
 type optionFunc func(*Options)
