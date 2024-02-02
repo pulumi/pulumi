@@ -464,37 +464,7 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 		o.ApplyOption(refreshOpts)
 	}
 
-	args := slice.Prealloc[string](len(refreshOpts.Target))
-
-	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
-	args = append(args, "refresh", "--preview-only")
-	if refreshOpts.Message != "" {
-		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
-	}
-	if refreshOpts.ExpectNoChanges {
-		args = append(args, "--expect-no-changes")
-	}
-	for _, tURN := range refreshOpts.Target {
-		args = append(args, "--target="+tURN)
-	}
-	if refreshOpts.Parallel > 0 {
-		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
-	}
-	if refreshOpts.UserAgent != "" {
-		args = append(args, "--exec-agent="+refreshOpts.UserAgent)
-	}
-	if refreshOpts.Color != "" {
-		args = append(args, "--color="+refreshOpts.Color)
-	}
-
-	// Apply the remote args, if needed.
-	args = append(args, s.remoteArgs()...)
-
-	execKind := constant.ExecKindAutoLocal
-	if s.Workspace().Program() != nil {
-		execKind = constant.ExecKindAutoInline
-	}
-	args = append(args, "--exec-kind="+execKind)
+	args := refreshOptsToCmd(refreshOpts, s, true /*isPreview*/)
 
 	var summaryEvents []apitype.SummaryEvent
 	eventChannel := make(chan events.EngineEvent)
@@ -562,46 +532,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		o.ApplyOption(refreshOpts)
 	}
 
-	args := slice.Prealloc[string](len(refreshOpts.Target))
-
-	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
-	args = append(args, "refresh", "--yes", "--skip-preview")
-	if refreshOpts.Message != "" {
-		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
-	}
-	if refreshOpts.ExpectNoChanges {
-		args = append(args, "--expect-no-changes")
-	}
-	for _, tURN := range refreshOpts.Target {
-		args = append(args, "--target="+tURN)
-	}
-	if refreshOpts.Parallel > 0 {
-		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
-	}
-	if refreshOpts.UserAgent != "" {
-		args = append(args, "--exec-agent="+refreshOpts.UserAgent)
-	}
-	if refreshOpts.Color != "" {
-		args = append(args, "--color="+refreshOpts.Color)
-	}
-	execKind := constant.ExecKindAutoLocal
-	if s.Workspace().Program() != nil {
-		execKind = constant.ExecKindAutoInline
-	}
-	args = append(args, "--exec-kind="+execKind)
-
-	if len(refreshOpts.EventStreams) > 0 {
-		eventChannels := refreshOpts.EventStreams
-		t, err := tailLogs("refresh", eventChannels)
-		if err != nil {
-			return res, fmt.Errorf("failed to tail logs: %w", err)
-		}
-		defer t.Close()
-		args = append(args, "--event-log", t.Filename)
-	}
-
-	// Apply the remote args, if needed.
-	args = append(args, s.remoteArgs()...)
+	args := refreshOptsToCmd(refreshOpts, s, false /*isPreview*/)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
@@ -639,6 +570,47 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 
 	return res, nil
+}
+
+func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string {
+	args := slice.Prealloc[string](len(o.Target))
+
+	args = debug.AddArgs(&o.DebugLogOpts, args)
+	args = append(args, "refresh")
+	if isPreview {
+		args = append(args, "--preview-only")
+	} else {
+		args = append(args, "--yes", "--skip-preview")
+	}
+	if o.Message != "" {
+		args = append(args, fmt.Sprintf("--message=%q", o.Message))
+	}
+	if o.ExpectNoChanges {
+		args = append(args, "--expect-no-changes")
+	}
+	for _, tURN := range o.Target {
+		args = append(args, "--target="+tURN)
+	}
+	if o.Parallel > 0 {
+		args = append(args, fmt.Sprintf("--parallel=%d", o.Parallel))
+	}
+	if o.UserAgent != "" {
+		args = append(args, "--exec-agent="+o.UserAgent)
+	}
+	if o.Color != "" {
+		args = append(args, "--color="+o.Color)
+	}
+
+	// Apply the remote args, if needed.
+	args = append(args, s.remoteArgs()...)
+
+	execKind := constant.ExecKindAutoLocal
+	if s.Workspace().Program() != nil {
+		execKind = constant.ExecKindAutoInline
+	}
+	args = append(args, "--exec-kind="+execKind)
+
+	return args
 }
 
 // Destroy deletes all resources in a stack, leaving all history and configuration intact.
