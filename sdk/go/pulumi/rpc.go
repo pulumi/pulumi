@@ -596,6 +596,154 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 	}
 }
 
+// unmarshalPropertyMap is used to turn the values in a resource.PropertyMap into sensible runtime types. This tries to
+// keep things as plain types where possible (e.g. a string property value will just be a `pulumi.String`, not an
+// `OutputString`). It will use `pulumi.Output` for values that are either Computed (will always be a
+// `pulumi.AnyOutput`), secret, or an output property value.
+func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	var unmarshal func(resource.PropertyValue) (Input, error)
+	unmarshal = func(v resource.PropertyValue) (Input, error) {
+		switch {
+		case v.IsNull():
+			return nil, nil
+		case v.IsBool():
+			return Bool(v.BoolValue()), nil
+		case v.IsNumber():
+			return Float64(v.NumberValue()), nil
+		case v.IsString():
+			return String(v.StringValue()), nil
+		case v.IsArray():
+			a := v.ArrayValue()
+			r := make(Array, len(a))
+			for i, v := range a {
+				uv, err := unmarshal(v)
+				if err != nil {
+					return nil, err
+				}
+				r[i] = uv
+			}
+			return r, nil
+		case v.IsObject():
+			m := v.ObjectValue()
+			return unmarshalPropertyMap(ctx, m)
+		case v.IsAsset():
+			asset := v.AssetValue()
+			switch {
+			case asset.IsPath():
+				return NewFileAsset(asset.Path), nil
+			case asset.IsText():
+				return NewStringAsset(asset.Text), nil
+			case asset.IsURI():
+				return NewRemoteAsset(asset.URI), nil
+			}
+			return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
+		case v.IsArchive():
+			archive := v.ArchiveValue()
+			secret := false
+			switch {
+			case archive.IsAssets():
+				as := make(map[string]interface{})
+				for k, v := range archive.Assets {
+					a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
+					secret = secret || asecret
+					if err != nil {
+						return nil, err
+					}
+					as[k] = a
+				}
+				return NewAssetArchive(as), nil
+			case archive.IsPath():
+				return NewFileArchive(archive.Path), nil
+			case archive.IsURI():
+				return NewRemoteArchive(archive.URI), nil
+			}
+			return nil, errors.New("expected archive to be one of Assets, File, or Remote; got none")
+		case v.IsResourceReference():
+			resRef := v.ResourceReferenceValue()
+			res := ctx.newDependencyResource(URN(resRef.URN))
+
+			output := ctx.newOutput(reflect.TypeOf((*ResourceOutput)(nil)).Elem())
+			internal.ResolveOutput(output, res, true, false, nil /* deps */)
+			return output, nil
+
+		case v.IsComputed():
+			typ := reflect.TypeOf((*any)(nil)).Elem()
+			typ = getOutputType(typ)
+			output := ctx.newOutput(typ)
+			internal.ResolveOutput(output, nil, false, false, nil /* deps */)
+			return output, nil
+		case v.IsSecret():
+			element, err := unmarshal(v.SecretValue().Element)
+			if err != nil {
+				return nil, err
+			}
+			return ToSecret(element), nil
+		case v.IsOutput():
+			deps := make([]internal.Resource, len(v.OutputValue().Dependencies))
+			for i, dep := range v.OutputValue().Dependencies {
+				deps[i] = ctx.newDependencyResource(URN(dep))
+			}
+
+			known := v.OutputValue().Known
+			secret := v.OutputValue().Secret
+
+			// If the output is known, we can unmarshal it directly else it's nil
+			typ := anyOutputType
+			var element interface{}
+			if v.OutputValue().Known {
+				var err error
+				element, err = unmarshal(v.OutputValue().Element)
+				if err != nil {
+					return nil, err
+				}
+
+				// Return an output of the type of the inner value, except for nil which should type as Output[any].
+				if element != nil {
+					// element will be an Input/Output type like pulumi.String or pulumi.AnyOutput. We want
+					// the inner value to assign to the output below. If the inner value is an output itself
+					// this collapses it to a single output value, this probably isn't ideal but nested
+					// outputs are really hard to support wihout generics.
+					o := ToOutput(element)
+					if o != nil {
+						typ = reflect.TypeOf(o)
+
+						innerValue, innerKnown, innerSecret, innerDeps, err := awaitWithContext(ctx.Context(), o)
+						if err != nil {
+							return nil, err
+						}
+						element = innerValue
+						known = known && innerKnown
+						secret = secret || innerSecret
+						for _, dep := range innerDeps {
+							deps = append(deps, dep)
+						}
+					}
+				}
+			}
+
+			output := ctx.newOutput(typ)
+			internal.ResolveOutput(output, element, known, secret, deps)
+			return output, nil
+		}
+
+		return nil, fmt.Errorf("unknown property value %v", v)
+	}
+
+	m := make(Map)
+	for k, v := range v {
+		uv, err := unmarshal(v)
+		if err != nil {
+			return nil, err
+		}
+		m[string(k)] = uv
+	}
+	return m, nil
+}
+
 // unmarshalOutput unmarshals a single output variable into its runtime representation.
 // returning a bool that indicates secretness
 func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value) (bool, error) {

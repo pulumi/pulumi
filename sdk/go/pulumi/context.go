@@ -42,6 +42,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -50,18 +51,21 @@ var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOU
 type workGroup = internal.WorkGroup
 
 type contextState struct {
-	info        RunInfo
-	stack       Resource
-	exports     map[string]Input
-	monitor     pulumirpc.ResourceMonitorClient
-	monitorConn *grpc.ClientConn
-	engine      pulumirpc.EngineClient
-	engineConn  *grpc.ClientConn
+	info          RunInfo
+	stack         Resource
+	exports       map[string]Input
+	monitor       pulumirpc.ResourceMonitorClient
+	monitorConn   *grpc.ClientConn
+	engine        pulumirpc.EngineClient
+	engineConn    *grpc.ClientConn
+	callbacksLock sync.Mutex
+	callbacks     *callbackServer
 
 	keepResources       bool       // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues    bool       // true if outputs should be marshaled as strongly-type output values.
 	supportsDeletedWith bool       // true if deletedWith supported by pulumi
 	supportsAliasSpecs  bool       // true if full alias specification is supported by pulumi
+	supportsTransforms  bool       // true if remote transforms are supported by pulumi
 	rpcs                int        // the number of outstanding RPC requests.
 	rpcsDone            *sync.Cond // an event signaling completion of RPCs.
 	rpcsLock            sync.Mutex // a lock protecting the RPC count and event.
@@ -152,6 +156,12 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	supportsTransforms, err := supportsFeature("transforms")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
 		info:                info,
 		exports:             make(map[string]Input),
@@ -163,6 +173,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		keepOutputValues:    keepOutputValues,
 		supportsDeletedWith: supportsDeletedWith,
 		supportsAliasSpecs:  supportsAliasSpecs,
+		supportsTransforms:  supportsTransforms,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -280,6 +291,231 @@ func (ctx *Context) IsConfigSecret(key string) bool {
 		}
 	}
 	return false
+}
+
+// registerTransform starts up a callback server if not already running and registers the given transform.
+func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback, error) {
+	if !ctx.state.supportsTransforms {
+		return nil, fmt.Errorf("the Pulumi CLI does not support transforms. Please update the Pulumi CLI")
+	}
+
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		var rpcReq pulumirpc.TransformRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+
+		// Unmarshal the resource inputs.
+		properties, err := plugin.UnmarshalProperties(rpcReq.Properties, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling transform protobuf properties: %w", err)
+		}
+
+		props, err := unmarshalPropertyMap(ctx, properties)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling transform properties: %w", err)
+		}
+
+		// Unmarshal the resource options.
+		var parent Resource
+		if rpcReq.Parent != "" {
+			parent = ctx.newDependencyResource(URN(rpcReq.Parent))
+		}
+
+		var opts ResourceOptions
+		if rpcReq.Options != nil {
+			opts.AdditionalSecretOutputs = rpcReq.Options.AdditionalSecretOutputs
+			opts.Aliases = slice.Map(rpcReq.Options.Aliases, func(a *pulumirpc.Alias) Alias {
+				switch v := a.GetAlias().(type) {
+				case *pulumirpc.Alias_Urn:
+					return Alias{URN: URN(v.Urn)}
+				case *pulumirpc.Alias_Spec_:
+					alias := Alias{
+						Name:    String(v.Spec.Name),
+						Type:    String(v.Spec.Type),
+						Stack:   String(v.Spec.Stack),
+						Project: String(v.Spec.Project),
+					}
+
+					switch p := v.Spec.Parent.(type) {
+					case *pulumirpc.Alias_Spec_NoParent:
+						alias.NoParent = Bool(p.NoParent)
+					case *pulumirpc.Alias_Spec_ParentUrn:
+						alias.ParentURN = URN(p.ParentUrn)
+					}
+					return alias
+				}
+				return Alias{}
+			})
+			if rpcReq.Options.CustomTimeouts != nil {
+				opts.CustomTimeouts = &CustomTimeouts{
+					Create: rpcReq.Options.CustomTimeouts.Create,
+					Update: rpcReq.Options.CustomTimeouts.Update,
+					Delete: rpcReq.Options.CustomTimeouts.Delete,
+				}
+			}
+			if rpcReq.Options.DeleteBeforeReplace != nil {
+				opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
+			}
+			opts.DependsOn = slice.Map(rpcReq.Options.DependsOn, func(d string) Resource {
+				return ctx.newDependencyResource(URN(d))
+			})
+			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+			opts.Parent = parent
+			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+			opts.Protect = rpcReq.Options.Protect
+			if rpcReq.Options.Provider != "" {
+				opts.Provider = ctx.newDependencyProviderResourceFromRef(rpcReq.Options.Provider)
+			}
+			if rpcReq.Options.Providers != nil {
+				opts.Providers = make([]ProviderResource, 0, len(rpcReq.Options.Providers))
+				for _, p := range rpcReq.Options.Providers {
+					opts.Providers = append(opts.Providers, ctx.newDependencyProviderResourceFromRef(p))
+				}
+			}
+			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
+			opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
+			opts.Version = rpcReq.Options.Version
+		}
+
+		args := &XResourceTransformArgs{
+			Custom: rpcReq.Custom,
+			Type:   rpcReq.Type,
+			Name:   rpcReq.Name,
+			Props:  props,
+			Opts:   opts,
+		}
+
+		res := t(args)
+		rpcRes := &pulumirpc.TransformResponse{
+			Properties: nil,
+			Options:    nil,
+		}
+
+		if res != nil {
+			umProperties := res.Props
+			if umProperties == nil {
+				umProperties = Map{}
+			}
+			mProperties, _, err := marshalInput(umProperties, anyType, true)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling properties: %w", err)
+			}
+
+			properties = resource.PropertyMap{}
+			if mProperties.IsObject() {
+				properties = mProperties.ObjectValue()
+			}
+
+			rpcRes.Properties, err = plugin.MarshalProperties(
+				properties,
+				ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+					KeepSecrets:   true,
+					KeepResources: ctx.state.keepResources,
+				}),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling properties: %w", err)
+			}
+
+			// Marshal the resource options
+			alias, err := ctx.mapAliases(res.Opts.Aliases, rpcReq.Type, rpcReq.Name, parent)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling aliases: %w", err)
+			}
+
+			// It's an error to try and change the parent and the engine doesn't even let you send it back so
+			// sanity check that here.
+			if opts.Parent != parent {
+				return nil, fmt.Errorf("cannot change parent in transform")
+			}
+
+			rpcRes.Options = &pulumirpc.TransformResourceOptions{
+				AdditionalSecretOutputs: res.Opts.AdditionalSecretOutputs,
+				Aliases:                 alias,
+			}
+
+			if opts.CustomTimeouts != nil {
+				rpcRes.Options.CustomTimeouts = &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+					Create: opts.CustomTimeouts.Create,
+					Update: opts.CustomTimeouts.Update,
+					Delete: opts.CustomTimeouts.Delete,
+				}
+			}
+
+			if opts.DeleteBeforeReplace {
+				v := true
+				rpcRes.Options.DeleteBeforeReplace = &v
+			}
+
+			marshalToUrn := func(resource Resource) (string, error) {
+				urn, _, _, err := resource.URN().awaitURN(ctx.ctx)
+				if err != nil {
+					return "", err
+				}
+				return string(urn), nil
+			}
+
+			rpcRes.Options.DependsOn, err = slice.MapError(opts.DependsOn, marshalToUrn)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling dependsOn: %w", err)
+			}
+			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
+			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
+			rpcRes.Options.Protect = opts.Protect
+			if opts.Provider != nil {
+				rpcRes.Options.Provider, err = marshalToUrn(opts.Provider)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling provider: %w", err)
+				}
+			}
+			if opts.Providers != nil {
+				rpcRes.Options.Providers = make(map[string]string)
+				for _, p := range opts.Providers {
+					urn, err := marshalToUrn(p)
+					if err != nil {
+						return nil, fmt.Errorf("marshaling providers: %w", err)
+					}
+
+					rpcRes.Options.Providers[p.getPackage()] = urn
+				}
+			}
+			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
+			rpcRes.Options.RetainOnDelete = opts.RetainOnDelete
+			rpcRes.Options.Version = opts.Version
+		}
+
+		return rpcRes, nil
+	}
+
+	err := func() error {
+		ctx.state.callbacksLock.Lock()
+		defer ctx.state.callbacksLock.Unlock()
+		if ctx.state.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.state.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.state.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	return cb, nil
 }
 
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
@@ -635,7 +871,9 @@ func (ctx *Context) ReadResource(
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
+	var transformations []ResourceTransformation
+	var err error
+	props, options, transformations, err = applyTransformations(t, name, props, resource, opts, options)
 	if err != nil {
 		return err
 	}
@@ -918,6 +1156,17 @@ func (ctx *Context) registerResource(
 			ctx.endRPC(err)
 		}()
 
+		// Register the transform functions
+		transforms := make([]*pulumirpc.Callback, 0, len(options.XTransforms))
+		for _, t := range options.XTransforms {
+			var cb *pulumirpc.Callback
+			cb, err = ctx.registerTransform(t)
+			if err != nil {
+				return
+			}
+			transforms = append(transforms, cb)
+		}
+
 		// Prepare the inputs for an impending operation.
 		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote, custom)
 		if err != nil {
@@ -978,6 +1227,7 @@ func (ctx *Context) registerResource(
 				RetainOnDelete:          inputs.retainOnDelete,
 				DeletedWith:             inputs.deletedWith,
 				SourcePosition:          sourcePosition,
+				Transforms:              transforms,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1849,6 +2099,19 @@ func (ctx *Context) Export(name string, value Input) {
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
 	ctx.state.stack.addTransformation(t)
 	return nil
+}
+
+// XRegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
+//
+// Experimental.
+func (ctx *Context) XRegisterStackTransform(t XResourceTransform) error {
+	cb, err := ctx.registerTransform(t)
+	if err != nil {
+		return err
+	}
+
+	_, err = ctx.state.monitor.RegisterStackTransform(ctx.ctx, cb)
+	return err
 }
 
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
