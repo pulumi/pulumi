@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -441,6 +442,7 @@ func genCreationExampleSyntax(r *schema.Resource, requiredPropertiesOnly bool) s
 			seenTypes.Add(valueType.Token)
 			write("{\n")
 			indented(func() {
+				sortPropertiesByRequiredFirst(valueType.Properties)
 				for _, p := range valueType.Properties {
 					if p.DeprecationMessage != "" {
 						continue
@@ -507,6 +509,7 @@ func genCreationExampleSyntax(r *schema.Resource, requiredPropertiesOnly bool) s
 
 	write("resource \"example\" %q {\n", r.Token)
 	indented(func() {
+		sortPropertiesByRequiredFirst(r.InputProperties)
 		for _, p := range r.InputProperties {
 			if p.DeprecationMessage != "" {
 				continue
@@ -525,6 +528,12 @@ func genCreationExampleSyntax(r *schema.Resource, requiredPropertiesOnly bool) s
 
 	write("}")
 	return buffer.String()
+}
+
+func sortPropertiesByRequiredFirst(props []*schema.Property) {
+	sort.Slice(props, func(i, j int) bool {
+		return props[i].IsRequired() && !props[j].IsRequired()
+	})
 }
 
 func isPrimitiveType(t schema.Type) bool {
