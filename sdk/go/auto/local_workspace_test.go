@@ -921,7 +921,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	}
 
 	// -- pulumi up --
-	res, err := s.Up(ctx, optup.UserAgent(agent))
+	res, err := s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -943,7 +943,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
 	wg := collectEvents(prevCh, &previewEvents)
-	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent))
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent), optpreview.Refresh())
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -951,7 +951,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
-	assert.Equal(t, 1, steps)
+	assert.Equal(t, 2, steps)
 
 	// -- pulumi refresh --
 
@@ -965,7 +965,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent))
+	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Adds support for `--refresh` to Stack.Up(), Stack.Preview() and Stack.Destroy() via go automation api

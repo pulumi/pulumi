@@ -94,6 +94,13 @@ func ShowSecrets(show bool) Option {
 	})
 }
 
+// Refresh will run a refresh before the destroy.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -126,6 +133,8 @@ type Options struct {
 	Color string
 	// Show config secrets when they appear.
 	ShowSecrets *bool
+	// Refresh will run a refresh before the destroy.
+	Refresh bool
 }
 
 type optionFunc func(*Options)
