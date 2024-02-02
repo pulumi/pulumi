@@ -963,16 +963,6 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
-	// -- pulumi up --refresh --
-
-	//upRes, err := s.Up(ctx, optup.Refresh())
-	//if err != nil {
-	//	t.Errorf("up failed, err: %v", err)
-	//	t.FailNow()
-	//}
-	//assert.Equal(t, "update", upRes.Summary.Kind)
-	//assert.Equal(t, "succeeded", upRes.Summary.Result)
-
 	// -- pulumi destroy --
 
 	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
