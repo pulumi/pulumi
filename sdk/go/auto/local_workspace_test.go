@@ -943,7 +943,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
 	wg := collectEvents(prevCh, &previewEvents)
-	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent))
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent), optpreview.Refresh())
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -975,7 +975,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent))
+	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()

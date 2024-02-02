@@ -115,6 +115,13 @@ func Plan(path string) Option {
 	})
 }
 
+// Refresh will run a refresh before the preview.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -157,6 +164,8 @@ type Options struct {
 	PolicyPacks []string
 	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
 	PolicyPackConfigs []string
+	// Refresh will run a refresh before the preview.
+	Refresh bool
 }
 
 type optionFunc func(*Options)

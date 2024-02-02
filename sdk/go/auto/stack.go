@@ -264,6 +264,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, "--save-plan="+preOpts.Plan)
 	}
+	if preOpts.Refresh {
+		sharedArgs = append(sharedArgs, "--refresh")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -572,6 +575,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	if destroyOpts.Color != "" {
 		args = append(args, "--color="+destroyOpts.Color)
+	}
+	if destroyOpts.Refresh {
+		args = append(args, "--refresh")
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
