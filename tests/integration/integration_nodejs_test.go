@@ -36,6 +36,7 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestPrintfNodeJS tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
@@ -1322,6 +1323,99 @@ func TestESMTSCompiled(t *testing.T) {
 		RunBuild:     true,
 		Quick:        true,
 	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNpmWorkspace(t *testing.T) {
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with npm
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "npm-and-yarn-workspaces"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestYarnWorkspace(t *testing.T) {
+	t.Setenv("PULUMI_PREFER_YARN", "true")
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with yarn
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "npm-and-yarn-workspaces"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+		NoParallel:      true, // mutates environment variables
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNestedPackageJSON(t *testing.T) {
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with npm
+		// workspaces.
+		return nil
+	}
+	dir := filepath.Join("nodejs", "npm-and-yarn-not-a-workspace")
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             dir,
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+
+	// There is no node_modules directory in the parent directory
+	parent := filepath.Dir(dir)
+	_, err := os.Stat(filepath.Join(parent, "node_modules"))
+	require.True(t, os.IsNotExist(err))
+
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
 // Test that the resource stopwatch doesn't contain a negative time.
