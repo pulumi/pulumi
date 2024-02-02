@@ -109,7 +109,7 @@ func newConvertCmd() *cobra.Command {
 			"\n" +
 			"The source program to convert will default to the current working directory.\n" +
 			"\n" +
-			"Valid source languages: yaml, terraform, bicep, arm\n" +
+			"Valid source languages: yaml, terraform, bicep, arm, kubernetes\n" +
 			"\n" +
 			"Valid target languages: typescript, python, csharp, go, java, yaml" +
 			"\n" +
