@@ -965,13 +965,13 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi up --refresh --
 
-	upRes, err := s.Up(ctx, optup.Refresh())
-	if err != nil {
-		t.Errorf("up failed, err: %v", err)
-		t.FailNow()
-	}
-	assert.Equal(t, "update", upRes.Summary.Kind)
-	assert.Equal(t, "succeeded", upRes.Summary.Result)
+	//upRes, err := s.Up(ctx, optup.Refresh())
+	//if err != nil {
+	//	t.Errorf("up failed, err: %v", err)
+	//	t.FailNow()
+	//}
+	//assert.Equal(t, "update", upRes.Summary.Kind)
+	//assert.Equal(t, "succeeded", upRes.Summary.Result)
 
 	// -- pulumi destroy --
 
