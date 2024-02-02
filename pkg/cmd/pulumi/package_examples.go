@@ -53,6 +53,7 @@ func newPackageExampleCmd() *cobra.Command {
 	var outDir string
 	var language string
 	var generateOnly bool
+	var requiredPropertiesOnly bool
 	var mappings []string
 	var strict bool
 
@@ -86,10 +87,9 @@ func newPackageExampleCmd() *cobra.Command {
 
 			defer os.RemoveAll(dir)
 
-			examplePclPath := filepath.Join(dir, "main.pp")
-			pcl := genCreationExampleSyntax(resourceSchema)
-			fileError := os.WriteFile(examplePclPath, []byte(pcl), 0666)
-			if fileError != nil {
+			code := genCreationExampleSyntax(resourceSchema, requiredPropertiesOnly)
+			path := filepath.Join(dir, "main.pp")
+			if err = os.WriteFile(path, []byte(code), 0o600); err != nil {
 				return err
 			}
 
@@ -117,6 +117,10 @@ func newPackageExampleCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		//nolint:lll
 		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
+
+	cmd.PersistentFlags().BoolVar(
+		//nolint:lll
+		&requiredPropertiesOnly, "required-properties-only", false, "Generate the example program with only the required properties")
 
 	cmd.PersistentFlags().StringSliceVar(
 		//nolint:lll
@@ -374,7 +378,7 @@ func runExamples(
 	return nil
 }
 
-func genCreationExampleSyntax(r *schema.Resource) string {
+func genCreationExampleSyntax(r *schema.Resource, requiredPropertiesOnly bool) string {
 	indentSize := 0
 	buffer := bytes.Buffer{}
 	write := func(format string, args ...interface{}) {
@@ -395,6 +399,10 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 	var writeValue func(valueType schema.Type)
 	writeValue = func(valueType schema.Type) {
 		switch valueType {
+		case schema.AnyType:
+			write("\"any\"")
+		case schema.JSONType:
+			write("\"{}\"")
 		case schema.BoolType:
 			write("false")
 		case schema.IntType:
@@ -438,6 +446,10 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 						continue
 					}
 
+					if requiredPropertiesOnly && !p.IsRequired() {
+						continue
+					}
+
 					indent()
 					write("%s = ", p.Name)
 					writeValue(p.Type)
@@ -466,7 +478,11 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 				}
 			}
 
-			write(fmt.Sprintf("%q", strings.Join(cases, "|")))
+			if len(cases) > 0 {
+				write(fmt.Sprintf("%q", cases[0]))
+			} else {
+				write("null")
+			}
 		case *schema.UnionType:
 			if isUnionOfObjects(valueType) && len(valueType.ElementTypes) >= 1 {
 				writeValue(valueType.ElementTypes[0])
@@ -478,6 +494,8 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 					return
 				}
 			}
+			write("null")
+
 		case *schema.InputType:
 			writeValue(valueType.ElementType)
 		case *schema.OptionalType:
@@ -491,6 +509,10 @@ func genCreationExampleSyntax(r *schema.Resource) string {
 	indented(func() {
 		for _, p := range r.InputProperties {
 			if p.DeprecationMessage != "" {
+				continue
+			}
+
+			if requiredPropertiesOnly && !p.IsRequired() {
 				continue
 			}
 
