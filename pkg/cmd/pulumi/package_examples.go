@@ -69,6 +69,7 @@ func newPackageExampleCmd() *cobra.Command {
 			}
 
 			var resourceSchema *schema.Resource
+			var functionSchema *schema.Function
 			for _, r := range pkg.Resources {
 				if r.Token == resourceToken {
 					resourceSchema = r
@@ -77,7 +78,17 @@ func newPackageExampleCmd() *cobra.Command {
 			}
 
 			if resourceSchema == nil {
-				return fmt.Errorf("resource %q not found in schema", resourceToken)
+				// only if we couldn't find a resource schema, look for a function schema
+				for _, f := range pkg.Functions {
+					if f.Token == resourceToken {
+						functionSchema = f
+						break
+					}
+				}
+			}
+
+			if resourceSchema == nil && functionSchema == nil {
+				return fmt.Errorf("could not find resource or function token %q in schema", resourceToken)
 			}
 
 			// create a temp directory
@@ -88,7 +99,18 @@ func newPackageExampleCmd() *cobra.Command {
 
 			defer os.RemoveAll(dir)
 
-			code := genCreationExampleSyntax(resourceSchema, requiredPropertiesOnly)
+			generator := &exampleGenerator{
+				indentSize:             0,
+				requiredPropertiesOnly: requiredPropertiesOnly,
+			}
+
+			var code string
+			if resourceSchema != nil {
+				code = generator.exampleResource(resourceSchema)
+			} else {
+				code = generator.exampleInvoke(functionSchema)
+			}
+
 			path := filepath.Join(dir, "main.pp")
 			if err = os.WriteFile(path, []byte(code), 0o600); err != nil {
 				return err
@@ -379,154 +401,199 @@ func runExamples(
 	return nil
 }
 
-func genCreationExampleSyntax(r *schema.Resource, requiredPropertiesOnly bool) string {
-	indentSize := 0
-	buffer := bytes.Buffer{}
+type exampleGenerator struct {
+	indentSize             int
+	requiredPropertiesOnly bool
+}
+
+func (g *exampleGenerator) indented(f func()) {
+	g.indentSize += 2
+	f()
+	g.indentSize -= 2
+}
+
+func (g *exampleGenerator) indent(buffer *bytes.Buffer) {
+	buffer.WriteString(strings.Repeat(" ", g.indentSize))
+}
+
+func (g *exampleGenerator) write(buffer *bytes.Buffer, format string, args ...interface{}) {
+	buffer.WriteString(fmt.Sprintf(format, args...))
+}
+
+func (g *exampleGenerator) writeValue(
+	buffer *bytes.Buffer,
+	valueType schema.Type,
+	seenTypes codegen.StringSet,
+) {
 	write := func(format string, args ...interface{}) {
-		buffer.WriteString(fmt.Sprintf(format, args...))
+		g.write(buffer, format, args...)
 	}
 
-	indent := func() {
-		buffer.WriteString(strings.Repeat(" ", indentSize))
+	writeValue := func(valueType schema.Type) {
+		g.writeValue(buffer, valueType, seenTypes)
 	}
 
-	indented := func(f func()) {
-		indentSize += 2
-		f()
-		indentSize -= 2
+	switch valueType {
+	case schema.AnyType:
+		write("\"any\"")
+	case schema.JSONType:
+		write("\"{}\"")
+	case schema.BoolType:
+		write("false")
+	case schema.IntType:
+		write("0")
+	case schema.NumberType:
+		write("0.0")
+	case schema.StringType:
+		write("\"string\"")
+	case schema.ArchiveType:
+		write("fileArchive(\"./path/to/archive\")")
+	case schema.AssetType:
+		write("stringAsset(\"content\")")
 	}
 
-	seenTypes := codegen.NewStringSet()
-	var writeValue func(valueType schema.Type)
-	writeValue = func(valueType schema.Type) {
-		switch valueType {
-		case schema.AnyType:
-			write("\"any\"")
-		case schema.JSONType:
-			write("\"{}\"")
-		case schema.BoolType:
-			write("false")
-		case schema.IntType:
-			write("0")
-		case schema.NumberType:
-			write("0.0")
-		case schema.StringType:
-			write("\"string\"")
-		case schema.ArchiveType:
-			write("fileArchive(\"./path/to/archive\")")
-		case schema.AssetType:
-			write("stringAsset(\"content\")")
+	switch valueType := valueType.(type) {
+	case *schema.ArrayType:
+		write("[")
+		writeValue(valueType.ElementType)
+		write("]")
+	case *schema.MapType:
+		write("{\n")
+		g.indented(func() {
+			g.indent(buffer)
+			write("\"string\" = ")
+			writeValue(valueType.ElementType)
+			write("\n")
+		})
+		g.indent(buffer)
+		write("}")
+	case *schema.ObjectType:
+		if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
+			write("notImplemented(%q)", valueType.Token)
+			return
 		}
 
-		switch valueType := valueType.(type) {
-		case *schema.ArrayType:
-			write("[")
-			writeValue(valueType.ElementType)
-			write("]")
-		case *schema.MapType:
-			write("{\n")
-			indented(func() {
-				indent()
-				write("\"string\" = ")
-				writeValue(valueType.ElementType)
-				write("\n")
-			})
-			indent()
-			write("}")
-		case *schema.ObjectType:
-			if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
-				write("notImplemented(%q)", valueType.Token)
-				return
-			}
-
-			seenTypes.Add(valueType.Token)
-			write("{\n")
-			indented(func() {
-				sortPropertiesByRequiredFirst(valueType.Properties)
-				for _, p := range valueType.Properties {
-					if p.DeprecationMessage != "" {
-						continue
-					}
-
-					if requiredPropertiesOnly && !p.IsRequired() {
-						continue
-					}
-
-					indent()
-					write("%s = ", p.Name)
-					writeValue(p.Type)
-					write("\n")
-				}
-			})
-			indent()
-			write("}")
-		case *schema.ResourceType:
-			write("notImplemented(%q)", valueType.Token)
-		case *schema.EnumType:
-			cases := make([]string, len(valueType.Elements))
-			for index, c := range valueType.Elements {
-				if c.DeprecationMessage != "" {
+		seenTypes.Add(valueType.Token)
+		write("{\n")
+		g.indented(func() {
+			sortPropertiesByRequiredFirst(valueType.Properties)
+			for _, p := range valueType.Properties {
+				if p.DeprecationMessage != "" {
 					continue
 				}
 
-				if stringCase, ok := c.Value.(string); ok && stringCase != "" {
-					cases[index] = stringCase
-				} else if intCase, ok := c.Value.(int); ok {
-					cases[index] = strconv.Itoa(intCase)
-				} else {
-					if c.Name != "" {
-						cases[index] = c.Name
-					}
+				if g.requiredPropertiesOnly && !p.IsRequired() {
+					continue
 				}
+
+				g.indent(buffer)
+				write("%s = ", p.Name)
+				writeValue(p.Type)
+				write("\n")
+			}
+		})
+		g.indent(buffer)
+		write("}")
+	case *schema.ResourceType:
+		write("notImplemented(%q)", valueType.Token)
+	case *schema.EnumType:
+		cases := make([]string, len(valueType.Elements))
+		for index, c := range valueType.Elements {
+			if c.DeprecationMessage != "" {
+				continue
 			}
 
-			if len(cases) > 0 {
-				write(fmt.Sprintf("%q", cases[0]))
+			if stringCase, ok := c.Value.(string); ok && stringCase != "" {
+				cases[index] = stringCase
+			} else if intCase, ok := c.Value.(int); ok {
+				cases[index] = strconv.Itoa(intCase)
 			} else {
-				write("null")
-			}
-		case *schema.UnionType:
-			if isUnionOfObjects(valueType) && len(valueType.ElementTypes) >= 1 {
-				writeValue(valueType.ElementTypes[0])
-			}
-
-			for _, elem := range valueType.ElementTypes {
-				if isPrimitiveType(elem) {
-					writeValue(elem)
-					return
+				if c.Name != "" {
+					cases[index] = c.Name
 				}
 			}
-			write("null")
-
-		case *schema.InputType:
-			writeValue(valueType.ElementType)
-		case *schema.OptionalType:
-			writeValue(valueType.ElementType)
-		case *schema.TokenType:
-			writeValue(valueType.UnderlyingType)
 		}
-	}
 
-	write("resource \"example\" %q {\n", r.Token)
-	indented(func() {
+		if len(cases) > 0 {
+			write(fmt.Sprintf("%q", cases[0]))
+		} else {
+			write("null")
+		}
+	case *schema.UnionType:
+		if isUnionOfObjects(valueType) && len(valueType.ElementTypes) >= 1 {
+			writeValue(valueType.ElementTypes[0])
+		}
+
+		for _, elem := range valueType.ElementTypes {
+			if isPrimitiveType(elem) {
+				writeValue(elem)
+				return
+			}
+		}
+		write("null")
+
+	case *schema.InputType:
+		writeValue(valueType.ElementType)
+	case *schema.OptionalType:
+		writeValue(valueType.ElementType)
+	case *schema.TokenType:
+		writeValue(valueType.UnderlyingType)
+	}
+}
+
+func (g *exampleGenerator) exampleResource(r *schema.Resource) string {
+	buffer := bytes.Buffer{}
+	seenTypes := codegen.NewStringSet()
+	g.write(&buffer, "resource \"example\" %q {\n", r.Token)
+	g.indented(func() {
 		sortPropertiesByRequiredFirst(r.InputProperties)
 		for _, p := range r.InputProperties {
 			if p.DeprecationMessage != "" {
 				continue
 			}
 
-			if requiredPropertiesOnly && !p.IsRequired() {
+			if g.requiredPropertiesOnly && !p.IsRequired() {
 				continue
 			}
 
-			indent()
-			write("%s = ", p.Name)
-			writeValue(codegen.ResolvedType(p.Type))
-			write("\n")
+			g.indent(&buffer)
+			g.write(&buffer, "%s = ", p.Name)
+			g.writeValue(&buffer, codegen.ResolvedType(p.Type), seenTypes)
+			g.write(&buffer, "\n")
 		}
 	})
 
-	write("}")
+	g.write(&buffer, "}")
+	return buffer.String()
+}
+
+func (g *exampleGenerator) exampleInvoke(function *schema.Function) string {
+	buffer := bytes.Buffer{}
+	seenTypes := codegen.NewStringSet()
+	g.write(&buffer, "example = invoke(\"%s\", {\n", function.Token)
+	g.indented(func() {
+		if function.Inputs == nil {
+			return
+		}
+
+		sortPropertiesByRequiredFirst(function.Inputs.Properties)
+		for _, p := range function.Inputs.Properties {
+			if p.DeprecationMessage != "" {
+				continue
+			}
+
+			if g.requiredPropertiesOnly && !p.IsRequired() {
+				continue
+			}
+
+			g.indent(&buffer)
+			g.write(&buffer, "%s = ", p.Name)
+			g.writeValue(&buffer, codegen.ResolvedType(p.Type), seenTypes)
+			g.write(&buffer, "\n")
+		}
+	})
+
+	g.write(&buffer, "})")
 	return buffer.String()
 }
 
