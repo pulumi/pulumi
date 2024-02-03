@@ -316,34 +316,6 @@ class ProviderServicer(ResourceProviderServicer):
         response = await self._invoke_response(result)
         return response
 
-    async def CheckConfig(  # pylint: disable=invalid-overridden-method
-        self, request, context
-    ) -> proto.CheckResponse:
-        # CheckConfig is not currently implemented.
-        # Just return the news as if we're OK with them, which is the default behavior.
-        #
-        # Note: We're not using `context.set_code(grpc.StatusCode.UNIMPLEMENTED)` as grpcio
-        # 1.58.0 through 1.60.0 has a bug that causes the UNIMPLEMENTED error to be written
-        # to stderr, which users will see. 1.60.1 should include a fix for the stderr
-        # regression, but it hasn't been released yet. Once 1.60.1 is released, we can
-        # depend on that version and go back to returning UNIMPLEMENTED (in this case
-        # simply not implementing the method here).
-        return proto.CheckResponse(inputs=request.news)
-
-    async def DiffConfig(  # pylint: disable=invalid-overridden-method
-        self, request, context
-    ) -> proto.DiffResponse:
-        # DiffConfig is not currently implemented.
-        # Just return DIFF_UNKNOWN, which is the default behavior.
-        #
-        # Note: We're not using `context.set_code(grpc.StatusCode.UNIMPLEMENTED)` as grpcio
-        # 1.58.0 through 1.60.0 has a bug that causes the UNIMPLEMENTED error to be written
-        # to stderr, which users will see. 1.60.1 should include a fix for the stderr
-        # regression, but it hasn't been released yet. Once 1.60.1 is released, we can
-        # depend on that version and go back to returning UNIMPLEMENTED (in this case
-        # simply not implementing the method here).
-        return proto.DiffResponse(changes=proto.DiffResponse.DIFF_UNKNOWN)
-
     async def Configure(  # pylint: disable=invalid-overridden-method
         self, request, context
     ) -> proto.ConfigureResponse:

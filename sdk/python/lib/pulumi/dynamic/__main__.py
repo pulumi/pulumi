@@ -58,26 +58,18 @@ def get_provider(props) -> ResourceProvider:
 
 class DynamicResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
-        # CheckConfig is not implemented by the dynamic provider.
-        # Just return the news as if we're OK with them, which is the default behavior.
-        #
-        # Note: We're not using `context.set_code(grpc.StatusCode.UNIMPLEMENTED)` as grpcio
-        # 1.58.0 through 1.60.0 has a bug that causes the UNIMPLEMENTED error to be written
-        # to stderr, which users will see. 1.60.1 should include a fix for the stderr
-        # regression, but it hasn't been released yet. Once 1.60.1 is released, we can
-        # depend on that version and go back to returning UNIMPLEMENTED.
-        return proto.CheckResponse(inputs=request.news)
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("CheckConfig is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "CheckConfig is not implemented by the dynamic provider"
+        )
 
     def DiffConfig(self, request, context):
-        # DiffConfig is not implemented by the dynamic provider.
-        # Just return DIFF_UNKNOWN, which is the default behavior.
-        #
-        # Note: We're not using `context.set_code(grpc.StatusCode.UNIMPLEMENTED)` as grpcio
-        # 1.58.0 through 1.60.0 has a bug that causes the UNIMPLEMENTED error to be written
-        # to stderr, which users will see. 1.60.1 should include a fix for the stderr
-        # regression, but it hasn't been released yet. Once 1.60.1 is released, we can
-        # depend on that version and go back to returning UNIMPLEMENTED.
-        return proto.DiffResponse(changes=proto.DiffResponse.DIFF_UNKNOWN)
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("DiffConfig is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "DiffConfig is not implemented by the dynamic provider"
+        )
 
     def Invoke(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
