@@ -19,7 +19,7 @@ def readme():
 
 
 setup(name='pulumi_providerType',
-      python_requires='>=3.7',
+      python_requires='>=3.8',
       version=VERSION,
       long_description=readme(),
       long_description_content_type='text/markdown',
@@ -31,7 +31,6 @@ setup(name='pulumi_providerType',
           ]
       },
       install_requires=[
-          'importlib-metadata>=6.0.0,<7.0.0; python_version < "3.8"',
           'parver>=0.2.1',
           'pulumi',
           'semver>=2.8.1'
