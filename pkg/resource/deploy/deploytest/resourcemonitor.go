@@ -394,8 +394,10 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 ) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepResources: true,
+		KeepUnknowns:     true,
+		KeepResources:    true,
+		KeepSecrets:      true,
+		KeepOutputValues: true,
 	})
 	if err != nil {
 		return nil, nil, nil, err
@@ -419,8 +421,10 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 
 	// unmarshal outputs
 	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepResources: true,
+		KeepUnknowns:     true,
+		KeepResources:    true,
+		KeepSecrets:      true,
+		KeepOutputValues: true,
 	})
 	if err != nil {
 		return nil, nil, nil, err
