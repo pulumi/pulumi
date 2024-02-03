@@ -366,6 +366,13 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 			repository = "pulumi-yaml"
 		}
 	}
+
+	if kind == BoilerplatePlugin {
+		if name == "terraform-bridge" {
+			repository = "ci-mgmt"
+		}
+	}
+
 	if len(parts) == 2 {
 		repository = parts[1]
 	}
@@ -1504,6 +1511,8 @@ const (
 	ResourcePlugin PluginKind = "resource"
 	// ConverterPlugin is a plugin that can be used to convert from other ecosystems to Pulumi.
 	ConverterPlugin PluginKind = "converter"
+	// BoilerplatePlugin is a plugin that can be used to create packages to extend Pulumi.
+	BoilerplatePlugin PluginKind = "boilerplate"
 )
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.

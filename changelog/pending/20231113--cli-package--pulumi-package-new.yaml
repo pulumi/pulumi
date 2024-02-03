@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Adds `pulumi package new`, which generates a Pulumi package from a boilerplate plugin.
