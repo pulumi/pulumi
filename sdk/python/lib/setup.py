@@ -40,7 +40,7 @@ setup(name='pulumi',
               'py.typed'
           ]
       },
-      python_requires='>=3.7',
+      python_requires='>=3.8',
       # Keep this list in sync with Pipfile
       install_requires=[
           'protobuf~=4.21',

@@ -2,7 +2,7 @@
 
 The Pulumi Python SDK (pulumi) is the core package used when writing Pulumi programs in Python. It contains everything that you’ll need in order to interact with Pulumi resource providers and express infrastructure using Python code. Pulumi resource providers all depend on this library and express their resources in terms of the types defined in this module.
 
-The Pulumi Python SDK requires [Python version 3.7 or greater](https://www.python.org/downloads/) through official python installer
+The Pulumi Python SDK requires a [supported version](https://devguide.python.org/versions/#versions) of Python.
 
 note:
 pip is required to install dependencies. If you installed Python from source, with an installer from [python.org](https://python.org/), or via [Homebrew](https://brew.sh/) you should already have pip. If Python is installed using your OS package manager, you may have to install pip separately, see [Installing pip/setuptools/wheel with Linux Package Managers](https://packaging.python.org/guides/installing-using-linux-tools/). For example, on Debian/Ubuntu you must run sudo apt install python3-venv python3-pip.
