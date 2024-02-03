@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: docs
+  description: Add kubernetes as a supported pulumi convert language
