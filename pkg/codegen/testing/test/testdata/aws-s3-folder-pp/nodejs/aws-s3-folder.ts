@@ -21,15 +21,15 @@ for (const range of fs.readdirSync(siteDir).map((v, k) => ({key: k, value: v})))
 // Set the access policy for the bucket so all objects are readable
 const bucketPolicy = new aws.s3.BucketPolicy("bucketPolicy", {
     bucket: siteBucket.id,
-    policy: siteBucket.id.apply(id => JSON.stringify({
+    policy: pulumi.jsonStringify({
         Version: "2012-10-17",
         Statement: [{
             Effect: "Allow",
             Principal: "*",
             Action: ["s3:GetObject"],
-            Resource: [`arn:aws:s3:::${id}/*`],
+            Resource: [pulumi.interpolate`arn:aws:s3:::${siteBucket.id}/*`],
         }],
-    })),
+    }),
 });
 export const bucketName = siteBucket.bucket;
 export const websiteUrl = siteBucket.websiteEndpoint;

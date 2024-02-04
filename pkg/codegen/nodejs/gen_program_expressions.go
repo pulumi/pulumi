@@ -31,7 +31,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 		expr = g.awaitInvokes(expr)
 	}
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
+	skipToJSONWhenRewritingApplies := true
+	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), !g.asyncMain, skipToJSONWhenRewritingApplies)
 	if typ != nil {
 		var convertDiags hcl.Diagnostics
 		expr, convertDiags = pcl.RewriteConversions(expr, typ)
@@ -476,7 +477,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fromBase64":
 		g.Fgenf(w, "Buffer.from(%v, \"base64\").toString(\"utf8\")", expr.Args[0])
 	case "toJSON":
-		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgenf(w, "pulumi.jsonStringify(%v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
+		}
 	case "sha1":
 		g.Fgenf(w, "crypto.createHash('sha1').update(%v).digest('hex')", expr.Args[0])
 	case "stack":

@@ -374,3 +374,6 @@ const (
 	RandomSchema      SchemaVersion = "4.11.2"
 	EksSchema         SchemaVersion = "0.37.1"
 )
+
+// PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
+const PulumiDotnetSDKVersion = "3.59.0"

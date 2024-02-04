@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet,nodejs,python
+  description: Emit Output-returning JSON serialization methods without rewriting applies for top-level function expression

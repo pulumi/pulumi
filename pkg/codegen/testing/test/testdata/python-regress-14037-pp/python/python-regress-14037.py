@@ -15,7 +15,7 @@ db_users = []
 for range in [{"key": k, "value": v} for [k, v] in enumerate(data)]:
     db_users.append(aws.secretsmanager.SecretVersion(f"dbUsers-{range['key']}",
         secret_id="mySecret",
-        secret_string=user[range["value"]].result.apply(lambda result: json.dumps({
+        secret_string=pulumi.Output.json_dumps({
             "username": range["value"],
-            "password": result,
-        }))))
+            "password": user[range["value"]].result,
+        })))
