@@ -19,7 +19,7 @@ def readme():
 
 
 setup(name='pulumi_urnid',
-      python_requires='>=3.7',
+      python_requires='>=3.8',
       version=VERSION,
       description="Test urn and id in valid locations",
       long_description=readme(),
@@ -32,7 +32,6 @@ setup(name='pulumi_urnid',
           ]
       },
       install_requires=[
-          'importlib-metadata>=6.0.0,<7.0.0; python_version < "3.8"',
           'parver>=0.2.1',
           'pulumi',
           'semver>=2.8.1'
