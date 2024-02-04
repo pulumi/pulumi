@@ -22,7 +22,7 @@ class ProviderCertmanagerArgs:
         pulumi.set(__self__, "mtls_key_pem", mtls_key_pem)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="mtlsCertPem")
     def mtls_cert_pem(self) -> pulumi.Input[str]:
         return pulumi.get(self, "mtls_cert_pem")
 
@@ -31,7 +31,7 @@ class ProviderCertmanagerArgs:
         pulumi.set(self, "mtls_cert_pem", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="mtlsKeyPem")
     def mtls_key_pem(self) -> pulumi.Input[str]:
         return pulumi.get(self, "mtls_key_pem")
 

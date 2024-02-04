@@ -4,100 +4,100 @@
   "resources": {
     "foobar::ModuleResource": {
       "properties": {
-        "optional_bool": {
+        "optionalBool": {
           "type": "boolean"
         }
       },
       "inputProperties": {
-        "plain_optional_const": {
+        "plainOptionalConst": {
           "type": "string",
           "const": "val",
           "default": "another",
           "plain": true
         },
-        "plain_optional_string": {
+        "plainOptionalString": {
           "type": "string",
           "default": "buzzer",
           "plain": true
         },
-        "plain_optional_bool": {
+        "plainOptionalBool": {
           "type": "boolean",
           "default": true,
           "plain": true
         },
-        "plain_optional_number": {
+        "plainOptionalNumber": {
           "type": "number",
           "default": 42,
           "plain": true
         },
-        "plain_required_string": {
+        "plainRequiredString": {
           "type": "string",
           "default": "buzzer",
           "plain": true
         },
-        "plain_required_bool": {
+        "plainRequiredBool": {
           "type": "boolean",
           "default": true,
           "plain": true
         },
-        "plain_required_number": {
+        "plainRequiredNumber": {
           "type": "number",
           "default": 42,
           "plain": true
         },
-        "optional_const": {
+        "optionalConst": {
           "type": "string",
           "const": "val",
           "default": "another"
         },
-        "optional_string": {
+        "optionalString": {
           "type": "string",
           "default": "buzzer"
         },
-        "optional_bool": {
+        "optionalBool": {
           "type": "boolean",
           "default": true
         },
-        "optional_number": {
+        "optionalNumber": {
           "type": "number",
           "default": 42
         },
-        "optional_enum": {
+        "optionalEnum": {
           "$ref": "#/types/foobar::EnumThing",
           "default": 8
         },
-        "plain_required_const": {
+        "plainRequiredConst": {
           "type": "string",
           "const": "val",
           "default": "another",
           "plain": true
         },
-        "required_string": {
+        "requiredString": {
           "type": "string",
           "default": "buzzer"
         },
-        "required_bool": {
+        "requiredBool": {
           "type": "boolean",
           "default": true
         },
-        "required_number": {
+        "requiredNumber": {
           "type": "number",
           "default": 42
         },
-        "required_enum": {
+        "requiredEnum": {
           "$ref": "#/types/foobar::EnumThing",
           "default": 4
         }
       },
       "requiredInputs": [
-        "plain_required_string",
-        "plain_required_bool",
-        "plain_required_number",
-        "plain_required_const",
-        "required_string",
-        "required_bool",
-        "required_number",
-        "required_enum"
+        "plainRequiredString",
+        "plainRequiredBool",
+        "plainRequiredNumber",
+        "plainRequiredConst",
+        "requiredString",
+        "requiredBool",
+        "requiredNumber",
+        "requiredEnum"
       ],
       "type": "object"
     }
