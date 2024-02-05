@@ -202,15 +202,28 @@ func TestEval(t *testing.T) {
 			envBytes, err := os.ReadFile(envPath)
 			require.NoError(t, err)
 
+			contextValues := map[string]esc.Value{
+				"pulumi": esc.NewValue(map[string]esc.Value{
+					"user": esc.NewValue(map[string]esc.Value{
+						"id": esc.NewValue("USER_123"),
+					}),
+				}),
+				"environment": esc.NewValue(map[string]esc.Value{
+					"name": esc.NewValue("TEST_ENVIRONMENT"),
+				}),
+			}
+
 			if accept() {
 				env, loadDiags, err := LoadYAMLBytes(e.Name(), envBytes)
 				require.NoError(t, err)
 				sortEnvironmentDiagnostics(loadDiags)
 
-				check, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+				check, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{},
+					&testEnvironments{basePath}, contextValues)
 				sortEnvironmentDiagnostics(checkDiags)
 
-				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{}, &testEnvironments{basePath})
+				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{},
+					&testEnvironments{basePath}, contextValues)
 				sortEnvironmentDiagnostics(evalDiags)
 
 				var checkJSON any
@@ -258,11 +271,13 @@ func TestEval(t *testing.T) {
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.LoadDiags, diags)
 
-			check, diags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{}, &testEnvironments{basePath})
+			check, diags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{},
+				&testEnvironments{basePath}, contextValues)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
-			actual, diags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{}, &testEnvironments{basePath})
+			actual, diags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{},
+				&testEnvironments{basePath}, contextValues)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
 

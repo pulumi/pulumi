@@ -77,8 +77,9 @@ func EvalEnvironment(
 	decrypter Decrypter,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
+	context map[string]esc.Value,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, false, name, env, decrypter, providers, environments)
+	return evalEnvironment(ctx, false, name, env, decrypter, providers, environments, context)
 }
 
 // CheckEnvironment symbolically evaluates the given environment. Calls to fn::open are not invoked, and instead
@@ -89,8 +90,9 @@ func CheckEnvironment(
 	env *ast.EnvironmentDecl,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
+	context map[string]esc.Value,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, true, name, env, nil, providers, environments)
+	return evalEnvironment(ctx, true, name, env, nil, providers, environments, context)
 }
 
 // evalEnvironment evaluates an environment and exports the result of evaluation.
@@ -102,12 +104,13 @@ func evalEnvironment(
 	decrypter Decrypter,
 	providers ProviderLoader,
 	envs EnvironmentLoader,
+	context map[string]esc.Value,
 ) (*esc.Environment, syntax.Diagnostics) {
 	if env == nil || (len(env.Values.GetEntries()) == 0 && len(env.Imports.GetElements()) == 0) {
 		return nil, nil
 	}
 
-	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*imported{})
+	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*imported{}, context)
 	v, diags := ec.evaluate()
 
 	s := schema.Never().Schema()
@@ -133,15 +136,17 @@ type imported struct {
 
 // An evalContext carries the state necessary to evaluate an environment.
 type evalContext struct {
-	ctx          context.Context      // the cancellation context for evaluation
-	validating   bool                 // true if we are only checking the environment
-	name         string               // the name of the environment
-	env          *ast.EnvironmentDecl // the root of the environment AST
-	decrypter    Decrypter            // the decrypter to use for the environment
-	providers    ProviderLoader       // the provider loader to use
-	environments EnvironmentLoader    // the environment loader to use
-	imports      map[string]*imported // the shared set of imported environments
+	ctx           context.Context      // the cancellation context for evaluation
+	validating    bool                 // true if we are only checking the environment
+	name          string               // the name of the environment
+	env           *ast.EnvironmentDecl // the root of the environment AST
+	decrypter     Decrypter            // the decrypter to use for the environment
+	providers     ProviderLoader       // the provider loader to use
+	environments  EnvironmentLoader    // the environment loader to use
+	imports       map[string]*imported // the shared set of imported environments
+	contextValues map[string]esc.Value // evaluation context used for interpolation
 
+	myContext *value // evaluated context to be used to interpolate properties
 	myImports *value // directly-imported environments
 	root      *expr  // the root expression
 	base      *value // the base value
@@ -158,16 +163,18 @@ func newEvalContext(
 	providers ProviderLoader,
 	environments EnvironmentLoader,
 	imports map[string]*imported,
+	contextValues map[string]esc.Value,
 ) *evalContext {
 	return &evalContext{
-		ctx:          ctx,
-		validating:   validating,
-		name:         name,
-		env:          env,
-		decrypter:    decrypter,
-		providers:    providers,
-		environments: environments,
-		imports:      imports,
+		ctx:           ctx,
+		validating:    validating,
+		name:          name,
+		env:           env,
+		decrypter:     decrypter,
+		providers:     providers,
+		environments:  environments,
+		imports:       imports,
+		contextValues: contextValues,
 	}
 }
 
@@ -329,6 +336,8 @@ func (e *evalContext) isReserveTopLevelKey(k string) bool {
 func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	// Evaluate imports. We do this prior to declaration so that we can plumb base values as part of declaration.
 	e.evaluateImports()
+	// Evaliate context. We prepare the context values to later evaluate interpolations.
+	e.evaluateContext()
 
 	// Build the root value. We do this manually b/c the AST uses a declaration rather than an expression for the
 	// root.
@@ -358,6 +367,11 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	// Evaluate the root value and return.
 	v := e.evaluateExpr(e.root)
 	return v, e.diags
+}
+
+func (e *evalContext) evaluateContext() {
+	def := declare(e, "", ast.Symbol(&ast.PropertyName{Name: "context"}), nil)
+	e.myContext = unexport(esc.NewValue(e.contextValues), def)
 }
 
 // evaluateImports evaluates an environment's imports.
@@ -422,7 +436,7 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 			return
 		}
 
-		imp := newEvalContext(e.ctx, e.validating, name, env, dec, e.providers, e.environments, e.imports)
+		imp := newEvalContext(e.ctx, e.validating, name, env, dec, e.providers, e.environments, e.imports, e.contextValues)
 		v, diags := imp.evaluate()
 		e.diags.Extend(diags...)
 
@@ -598,10 +612,18 @@ func (e *evalContext) evaluatePropertyAccess(x *expr, accessors []*propertyAcces
 func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor) *value {
 	receiver := e.root
 
+	k, ok := e.objectKey(x.repr.syntax(), accessors[0].accessor, false)
+
 	// Check for an imports access.
-	if k, ok := e.objectKey(x.repr.syntax(), accessors[0].accessor, false); ok && k == "imports" {
+	if ok && k == "imports" {
 		accessors[0].value = e.myImports
 		return e.evaluateValueAccess(x.repr.syntax(), e.myImports, accessors[1:])
+	}
+
+	// Check for context interpolation.
+	if ok && k == "context" {
+		accessors[0].value = e.myContext
+		return e.evaluateValueAccess(x.repr.syntax(), e.myContext, accessors[1:])
 	}
 
 	for len(accessors) > 0 {

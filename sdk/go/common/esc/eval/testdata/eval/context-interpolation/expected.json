@@ -1,0 +1,545 @@
+{
+    "check": {
+        "exprs": {
+            "data": {
+                "range": {
+                    "environment": "context-interpolation",
+                    "begin": {
+                        "line": 2,
+                        "column": 9,
+                        "byte": 16
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 62,
+                        "byte": 69
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "interpolate": [
+                    {
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 18,
+                                        "byte": 25
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "environment",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 18,
+                                        "byte": 25
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 30,
+                                        "byte": 37
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "name",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 30,
+                                        "byte": 37
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 35,
+                                        "byte": 42
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": "-",
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 39,
+                                        "byte": 46
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 46,
+                                        "byte": 53
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "pulumi",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 46,
+                                        "byte": 53
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 53,
+                                        "byte": 60
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "user",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 53,
+                                        "byte": 60
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 58,
+                                        "byte": 65
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "id",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 58,
+                                        "byte": 65
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 61,
+                                        "byte": 68
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "data": {
+                "value": "TEST_ENVIRONMENT-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "context-interpolation",
+                        "begin": {
+                            "line": 2,
+                            "column": 9,
+                            "byte": 16
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 62,
+                            "byte": 69
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "data": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "data"
+            ]
+        }
+    },
+    "checkJson": {
+        "data": "TEST_ENVIRONMENT-USER_123"
+    },
+    "eval": {
+        "exprs": {
+            "data": {
+                "range": {
+                    "environment": "context-interpolation",
+                    "begin": {
+                        "line": 2,
+                        "column": 9,
+                        "byte": 16
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 62,
+                        "byte": 69
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "interpolate": [
+                    {
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 18,
+                                        "byte": 25
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "environment",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 18,
+                                        "byte": 25
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 30,
+                                        "byte": 37
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "name",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 30,
+                                        "byte": 37
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 35,
+                                        "byte": 42
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": "-",
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 39,
+                                        "byte": 46
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 46,
+                                        "byte": 53
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "pulumi",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 46,
+                                        "byte": 53
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 53,
+                                        "byte": 60
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "user",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 53,
+                                        "byte": 60
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 58,
+                                        "byte": 65
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "id",
+                                "range": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 58,
+                                        "byte": 65
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 61,
+                                        "byte": 68
+                                    }
+                                },
+                                "value": {
+                                    "environment": "context-interpolation",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "data": {
+                "value": "TEST_ENVIRONMENT-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "context-interpolation",
+                        "begin": {
+                            "line": 2,
+                            "column": 9,
+                            "byte": 16
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 62,
+                            "byte": 69
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "data": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "data"
+            ]
+        }
+    },
+    "evalJsonRedacted": {
+        "data": "TEST_ENVIRONMENT-USER_123"
+    },
+    "evalJSONRevealed": {
+        "data": "TEST_ENVIRONMENT-USER_123"
+    }
+}
