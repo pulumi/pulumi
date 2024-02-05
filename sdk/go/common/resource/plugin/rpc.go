@@ -149,7 +149,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 		if opts.RejectUnknowns {
 			return nil, fmt.Errorf("unexpected unknown property value for %q", key)
 		} else if opts.KeepUnknowns {
-			if opts.UpgradeToOutputValues {
+			if opts.KeepOutputValues && opts.UpgradeToOutputValues {
 				output := resource.NewObjectProperty(resource.PropertyMap{
 					resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
 				})
@@ -193,7 +193,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
 			return MarshalPropertyValue(key, v.SecretValue().Element, opts)
 		}
-		if opts.UpgradeToOutputValues {
+		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
 			output := resource.NewObjectProperty(resource.PropertyMap{
 				resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
 				"secret":        resource.NewBoolProperty(true),
@@ -425,6 +425,13 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 					id = idProp.StringValue()
 				case idProp.IsComputed():
 					// Leave the ID empty to indicate that it is unknown.
+				case idProp.IsOutput():
+					if idProp.OutputValue().Known {
+						if !idProp.OutputValue().Element.IsString() {
+							return nil, fmt.Errorf("malformed resource reference for %q: id not a string", key)
+						}
+						id = idProp.OutputValue().Element.StringValue()
+					}
 				default:
 					return nil, fmt.Errorf("malformed resource reference for %q: id not a string", key)
 				}
@@ -540,7 +547,7 @@ func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.Prop
 		elem, unknown = resource.NewObjectProperty(make(resource.PropertyMap)), true
 	}
 	if unknown {
-		if opts.UpgradeToOutputValues {
+		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
 			return resource.NewOutputProperty(resource.Output{
 				Element: elem,
 			}), true
@@ -557,7 +564,7 @@ func unmarshalSecretPropertyValue(v resource.PropertyValue, opts MarshalOptions)
 		return &v
 	}
 	var s resource.PropertyValue
-	if opts.UpgradeToOutputValues {
+	if opts.KeepOutputValues && opts.UpgradeToOutputValues {
 		s = resource.NewOutputProperty(resource.Output{
 			Element: v,
 			Secret:  true,
