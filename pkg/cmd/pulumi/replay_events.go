@@ -41,6 +41,7 @@ func newReplayEventsCmd() *cobra.Command {
 	var showSames bool
 	var showReads bool
 	var suppressOutputs bool
+	var suppressProgress bool
 	var debug bool
 
 	var delay time.Duration
@@ -89,6 +90,7 @@ func newReplayEventsCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				ShowReads:            showReads,
 				SuppressOutputs:      suppressOutputs,
+				SuppressProgress:     suppressProgress,
 				IsInteractive:        cmdutil.Interactive(),
 				Type:                 displayType,
 				JSONDisplay:          jsonDisplay,
@@ -150,6 +152,9 @@ func newReplayEventsCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
 
 	cmd.PersistentFlags().DurationVar(&delay, "delay", time.Duration(0),
 		"Delay display by the given duration. Useful for attaching a debugger.")

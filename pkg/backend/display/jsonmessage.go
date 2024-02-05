@@ -109,7 +109,7 @@ func newInteractiveMessageRenderer(term terminal.Terminal, opts Options) progres
 func newNonInteractiveRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
-		nil, opts.Color, 1 /*timesPerSecond*/)
+		nil, opts.Color, 1 /*timesPerSecond*/, opts.SuppressProgress)
 	ticker.Stop()
 
 	r := newMessageRenderer(stdout, opts, false)
