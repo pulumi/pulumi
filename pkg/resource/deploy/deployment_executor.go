@@ -271,7 +271,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// Finalize the stack outputs.
 	if e := ex.stepExec.stackOutputsEvent; e != nil {
-		errored := stepExecutorError != nil || ex.stepGen.Errored()
+		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored()
 		finalizingStackOutputs := true
 		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
 			return nil, result.BailError(err)
