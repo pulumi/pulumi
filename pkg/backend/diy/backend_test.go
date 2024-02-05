@@ -44,6 +44,8 @@ func TestMassageBlobPath(t *testing.T) {
 	t.Parallel()
 
 	testMassagePath := func(t *testing.T, s string, want string) {
+		t.Helper()
+
 		massaged, err := massageBlobPath(s)
 		assert.NoError(t, err)
 		assert.Equal(t, want, massaged,
@@ -56,6 +58,8 @@ func TestMassageBlobPath(t *testing.T) {
 
 		testMassagePath(t, "asdf-123", "asdf-123")
 	})
+
+	noTmpDirSuffix := "?no_tmp_dir=true"
 
 	// The home directory is converted into the user's actual home directory.
 	// Which requires even more tweaks to work on Windows.
@@ -76,7 +80,7 @@ func TestMassageBlobPath(t *testing.T) {
 			t.Run("NormalizeDirSeparator", func(t *testing.T) {
 				t.Parallel()
 
-				testMassagePath(t, FilePathPrefix+`C:\Users\steve\`, FilePathPrefix+"/C:/Users/steve")
+				testMassagePath(t, FilePathPrefix+`C:\Users\steve\`, FilePathPrefix+"/C:/Users/steve"+noTmpDirSuffix)
 			})
 
 			newHomeDir := "/" + filepath.ToSlash(homeDir)
@@ -84,8 +88,8 @@ func TestMassageBlobPath(t *testing.T) {
 			homeDir = newHomeDir
 		}
 
-		testMassagePath(t, FilePathPrefix+"~", FilePathPrefix+homeDir)
-		testMassagePath(t, FilePathPrefix+"~/alpha/beta", FilePathPrefix+homeDir+"/alpha/beta")
+		testMassagePath(t, FilePathPrefix+"~", FilePathPrefix+homeDir+noTmpDirSuffix)
+		testMassagePath(t, FilePathPrefix+"~/alpha/beta", FilePathPrefix+homeDir+"/alpha/beta"+noTmpDirSuffix)
 	})
 
 	t.Run("MakeAbsolute", func(t *testing.T) {
@@ -101,7 +105,26 @@ func TestMassageBlobPath(t *testing.T) {
 			expected = "/" + expected // A leading slash is added on Windows.
 		}
 
-		testMassagePath(t, FilePathPrefix+"/1/2/3/../4/..", FilePathPrefix+expected)
+		testMassagePath(t, FilePathPrefix+"/1/2/3/../4/..", FilePathPrefix+expected+noTmpDirSuffix)
+	})
+
+	t.Run("AlreadySuffixedWithNoTmpDir", func(t *testing.T) {
+		t.Parallel()
+
+		testMassagePath(t, FilePathPrefix+"/1?no_tmp_dir=yes", FilePathPrefix+"/1?no_tmp_dir=yes")
+	})
+
+	t.Run("AlreadySuffixedWithOtherQuery", func(t *testing.T) {
+		t.Parallel()
+
+		testMassagePath(t, FilePathPrefix+"/1?foo=bar", FilePathPrefix+"/1?foo=bar&no_tmp_dir=true")
+	})
+
+	t.Run("NoTmpDirFalseStripped", func(t *testing.T) {
+		t.Parallel()
+
+		testMassagePath(t, FilePathPrefix+"/1?no_tmp_dir=false", FilePathPrefix+"/1")
+		testMassagePath(t, FilePathPrefix+"/1?foo=bar&no_tmp_dir=false", FilePathPrefix+"/1?foo=bar")
 	})
 }
 
