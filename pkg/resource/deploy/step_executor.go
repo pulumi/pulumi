@@ -188,14 +188,14 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	urn := e.URN()
 
 	if finalizingStackOutputs {
-		contract.Assertf(urn.Type() == resource.RootStackType, "expected a stack resource urn, got %v", urn)
+		contract.Assertf(urn.QualifiedType() == resource.RootStackType, "expected a stack resource urn, got %v", urn)
 	}
 
 	// If we're not finalizing and we've received an event for the stack's outputs, save the event for finalization
 	// later. We finalize stack outputs at the end of the deployment, so we can determine whether or not the
 	// deployment succeeded. If the deployment was successful, we use the new stack outputs. If there were errors,
 	// we keep the old stack outputs.
-	if !finalizingStackOutputs && urn.Type() == resource.RootStackType {
+	if !finalizingStackOutputs && urn.QualifiedType() == resource.RootStackType {
 		se.stackOutputsEvent = e
 		e.Done()
 		return nil
