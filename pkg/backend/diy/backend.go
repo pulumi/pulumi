@@ -519,7 +519,7 @@ func massageBlobPath(path string) (string, error) {
 	// See also https://github.com/pulumi/pulumi/issues/15352
 	url, err := url.Parse(path)
 	if err != nil {
-		return "", fmt.Errorf("Could not parse the provided URL: %w", err)
+		return "", fmt.Errorf("parsing the provided URL: %w", err)
 	}
 	query := url.Query()
 	if query.Get("no_tmp_dir") == "" {
