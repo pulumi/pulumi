@@ -17,6 +17,8 @@ import (
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
+	t.Helper()
+
 	parser := syntax.NewParser()
 	err := parser.ParseFile(strings.NewReader(text), name)
 	if err != nil {

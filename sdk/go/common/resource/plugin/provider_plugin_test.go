@@ -590,17 +590,17 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 }
 
 // newTestContext builds a *Context for use in tests.
-func newTestContext(t testing.TB) *Context {
-	t.Helper()
+func newTestContext(tb testing.TB) *Context {
+	tb.Helper()
 
 	cwd, err := os.Getwd()
-	require.NoError(t, err, "get working directory")
+	require.NoError(tb, err, "get working directory")
 
-	sink := diagtest.LogSink(t)
+	sink := diagtest.LogSink(tb)
 	ctx, err := NewContext(
 		sink, sink,
 		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */)
-	require.NoError(t, err, "build context")
+	require.NoError(tb, err, "build context")
 
 	return ctx
 }

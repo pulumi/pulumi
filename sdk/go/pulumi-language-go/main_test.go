@@ -401,6 +401,8 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
+	t.Helper()
+
 	host := newLanguageHost("0.0.0.0:0", progDir, "")
 	ctx := context.Background()
 

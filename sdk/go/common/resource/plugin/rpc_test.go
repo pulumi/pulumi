@@ -1642,6 +1642,8 @@ func pbList(elems ...*structpb.Value) *structpb.Value {
 }
 
 func assertValidProtobufValue(t *testing.T, value *structpb.Value) {
+	t.Helper()
+
 	err := walkValueSelfWithDescendants(value, "", func(path string, v *structpb.Value) error {
 		return nil
 	})

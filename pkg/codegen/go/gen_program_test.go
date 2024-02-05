@@ -47,6 +47,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Extension:  "go",
 			OutputFile: "main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				t.Helper()
 				Check(t, path, dependencies, "../../../../../../../sdk")
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -460,6 +461,8 @@ func TestSecondLastIndex(t *testing.T) {
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
+	t.Helper()
+
 	path := filepath.Join(testdataPath, testFile)
 	contents, err := os.ReadFile(path)
 	require.NoErrorf(t, err, "could not read %v: %v", path, err)
@@ -502,6 +505,8 @@ func parseAndBindProgram(t *testing.T,
 	name string,
 	options ...pcl.BindOption,
 ) (*pcl.Program, hcl.Diagnostics, error) {
+	t.Helper()
+
 	parser := syntax.NewParser()
 	err := parser.ParseFile(strings.NewReader(text), name)
 	if err != nil {

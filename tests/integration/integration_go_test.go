@@ -74,6 +74,7 @@ func TestNoEmitExitStatus(t *testing.T) {
 		Quick:         true,
 		SkipRefresh:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			// ensure exit status is not emitted by the program
 			assert.NotContains(t, stderr.String(), "exit status")
 		},
@@ -93,6 +94,7 @@ func TestPanickingProgram(t *testing.T) {
 		Quick:         true,
 		SkipRefresh:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			assert.Contains(t, stderr.String(), "panic: great sadness\n")
 		},
 	})
@@ -125,6 +127,7 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		SkipRefresh:   true,
 		NoParallel:    true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			assert.Contains(t, stderr.String(), "panic: great sadness\n")
 		},
 	})
@@ -146,6 +149,7 @@ func TestNoLogError(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			errorCount := strings.Count(stderr.String()+stdout.String(), "  error: ")
 
 			// ensure `  error: ` is only being shown once by the program
@@ -172,6 +176,8 @@ func TestGoRunEnvFlag(t *testing.T) {
 		Quick:         true,
 		SkipRefresh:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// ensure exit status IS emitted by the program as it indicates `go run` was used
 			assert.Contains(t, stderr.String(), "exit status")
 		},
@@ -260,6 +266,8 @@ func TestConfigMissingGo(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotEmpty(t, stackInfo.Events)
 			text1 := "Missing required configuration variable 'config_missing_go:notFound'"
 			text2 := "\tplease set a value using the command `pulumi config set --secret config_missing_go:notFound <value>`"
@@ -429,6 +437,8 @@ func TestConfigSecretsWarnGo(t *testing.T) {
 			{Key: "names3[1]", Value: "secret2", Path: true, Secret: true},
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotEmpty(t, stackInfo.Events)
 			//nolint:lll
 			expectedWarnings := []string{
@@ -600,6 +610,8 @@ func TestConstructSlowGo(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
@@ -661,6 +673,8 @@ func TestConstructPlainGo(t *testing.T) {
 func optsForConstructPlainGo(
 	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
 ) *integration.ProgramTestOptions {
+	t.Helper()
+
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "go"),
@@ -670,6 +684,8 @@ func optsForConstructPlainGo(
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
@@ -719,6 +735,8 @@ func TestConstructMethodsGo(t *testing.T) {
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 
 					// TODO[pulumi/pulumi#12471]: Only the Go SDK has been fixed such that rehydrated
@@ -794,6 +812,7 @@ func TestConstructProviderGo(t *testing.T) {
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
 			})
@@ -817,6 +836,8 @@ func TestGetResourceGo(t *testing.T) {
 			"bar": "this super secret is encrypted",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stack.Outputs)
 			assert.Equal(t, float64(2), stack.Outputs["getPetLength"])
 
@@ -942,6 +963,7 @@ func TestProjectMainGo(t *testing.T) {
 		Dir:          "project_main/go",
 		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			// Simple runtime validation that just ensures the checkpoint was written and read.
 			assert.NotNil(t, stackInfo.Deployment)
 		},

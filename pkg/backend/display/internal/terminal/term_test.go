@@ -18,6 +18,8 @@ type ansiCase struct {
 }
 
 func (c ansiCase) run(t *testing.T) {
+	t.Helper()
+
 	t.Run(c.in, func(t *testing.T) {
 		t.Parallel()
 

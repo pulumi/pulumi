@@ -23,6 +23,8 @@ import (
 )
 
 func testTraverse(t *testing.T, receiver Traversable, traverser hcl.Traverser, expected Traversable, expectDiags bool) {
+	t.Helper()
+
 	actual, diags := receiver.Traverse(traverser)
 	assert.Equal(t, expected, actual)
 	if expectDiags {
@@ -567,6 +569,8 @@ func TestInputType(t *testing.T) {
 }
 
 func assertUnified(t *testing.T, expectedSafe, expectedUnsafe Type, types ...Type) {
+	t.Helper()
+
 	actualSafe, actualUnsafe := UnifyTypes(types...)
 	assert.Equal(t, expectedSafe, actualSafe)
 	assert.Equal(t, expectedUnsafe, actualUnsafe)

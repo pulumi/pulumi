@@ -61,6 +61,8 @@ var names = NameTable{
 }
 
 func renderExpr(t *testing.T, x model.Expression) resource.PropertyValue {
+	t.Helper()
+
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
 		return renderLiteralValue(t, x)
@@ -81,6 +83,8 @@ func renderExpr(t *testing.T, x model.Expression) resource.PropertyValue {
 }
 
 func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) resource.PropertyValue {
+	t.Helper()
+
 	switch x.Value.Type() {
 	case cty.Bool:
 		return resource.NewBoolProperty(x.Value.True())
@@ -96,6 +100,8 @@ func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) resource.
 }
 
 func renderTemplate(t *testing.T, x *model.TemplateExpression) resource.PropertyValue {
+	t.Helper()
+
 	if len(x.Parts) == 1 {
 		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
@@ -107,6 +113,8 @@ func renderTemplate(t *testing.T, x *model.TemplateExpression) resource.Property
 }
 
 func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) resource.PropertyValue {
+	t.Helper()
+
 	obj := resource.PropertyMap{}
 	for _, item := range x.Items {
 		kv := renderExpr(t, item.Key)
@@ -119,6 +127,8 @@ func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) resource.Prop
 }
 
 func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) resource.PropertyValue {
+	t.Helper()
+
 	if !assert.Len(t, x.Traversal, 1) {
 		return resource.NewNullProperty()
 	}
@@ -135,6 +145,8 @@ func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) resou
 }
 
 func renderTupleCons(t *testing.T, x *model.TupleConsExpression) resource.PropertyValue {
+	t.Helper()
+
 	arr := make([]resource.PropertyValue, len(x.Expressions))
 	for i, x := range x.Expressions {
 		arr[i] = renderExpr(t, x)
@@ -143,6 +155,8 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) resource.Proper
 }
 
 func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.PropertyValue {
+	t.Helper()
+
 	switch x.Name {
 	case "fileArchive":
 		if !assert.Len(t, x.Args, 1) {
@@ -174,6 +188,8 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.
 }
 
 func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
+	t.Helper()
+
 	inputs := resource.PropertyMap{}
 	for _, attr := range r.Inputs {
 		inputs[resource.PropertyKey(attr.Name)] = renderExpr(t, attr.Value)

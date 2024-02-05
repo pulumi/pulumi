@@ -102,6 +102,8 @@ func TestRoundtripEnum(t *testing.T) {
 	t.Parallel()
 
 	assertEnum := func(t *testing.T, pkg *Package) {
+		t.Helper()
+
 		typ, ok := pkg.GetType("enum:index:Color")
 		assert.True(t, ok)
 		enum, ok := typ.(*EnumType)
@@ -137,6 +139,8 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	t.Parallel()
 
 	assertPlainnessFromType := func(t *testing.T, pkg *Package) {
+		t.Helper()
+
 		exampleType, ok := pkg.GetType("plain-properties:index:ExampleType")
 		assert.True(t, ok)
 		exampleObjectType, ok := exampleType.(*ObjectType)
@@ -163,6 +167,8 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	}
 
 	assertPlainnessFromResource := func(t *testing.T, pkg *Package) {
+		t.Helper()
+
 		exampleResource, ok := pkg.GetResource("plain-properties:index:ExampleResource")
 		assert.True(t, ok)
 

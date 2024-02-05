@@ -17,6 +17,8 @@ var Dirs = []string{
 }
 
 func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+	t.Helper()
+
 	randomResName := "testprovider:index:Random"
 	foundRes1 := false
 	foundRes2Child := false

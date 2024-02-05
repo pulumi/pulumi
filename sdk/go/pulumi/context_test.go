@@ -115,6 +115,8 @@ func NewLoggingTestResource(
 	input StringInput,
 	opts ...ResourceOption,
 ) (*LoggingTestResource, error) {
+	t.Helper()
+
 	resource := &LoggingTestResource{}
 	err := ctx.RegisterComponentResource("test:go:NewLoggingTestResource", name, resource, opts...)
 	if err != nil {
@@ -266,6 +268,8 @@ type Prov struct {
 
 // Invoke the creation
 func (pr *Prov) i(ctx *Context, t *testing.T) ProviderResource {
+	t.Helper()
+
 	if pr == nil {
 		return nil
 	}
@@ -285,6 +289,8 @@ type Res struct {
 
 // Invoke the creation
 func (rs *Res) i(ctx *Context, t *testing.T) Resource {
+	t.Helper()
+
 	if rs == nil {
 		return nil
 	}

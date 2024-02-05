@@ -40,6 +40,7 @@ func TestAccMinimal(t *testing.T) {
 				"secret": "this is my secret message",
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				// Simple runtime validation that just ensures the checkpoint was written and read.
 				assert.NotNil(t, stackInfo.Deployment)
 			},
@@ -91,6 +92,8 @@ func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				for _, res := range stackInfo.Deployment.Resources {
 					if !providers.IsProviderType(res.Type) && res.Parent == "" {
 						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
@@ -109,6 +112,8 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				for _, res := range stackInfo.Deployment.Resources {
 					if !providers.IsProviderType(res.Type) && res.Parent == "" {
 						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
@@ -152,6 +157,8 @@ func TestAccDynamicProviderSecrets(t *testing.T) {
 				"password": "s3cret",
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				// Ensure the __provider input (and corresponding output) was marked secret
 				dynRes := stackInfo.Deployment.Resources[2]
 				for _, providerVal := range []interface{}{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
@@ -210,6 +217,8 @@ func TestAccFormattable(t *testing.T) {
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "formattable"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
 				assert.False(t, strings.Contains(stdout, "MISSING"))
@@ -234,6 +243,8 @@ func TestAccSecrets(t *testing.T) {
 			},
 			Quick: true,
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				assert.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
 
 				isEncrypted := func(v interface{}) bool {

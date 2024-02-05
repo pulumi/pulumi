@@ -213,6 +213,8 @@ func TestProjectLoadJSON(t *testing.T) {
 }
 
 func deleteFile(t *testing.T, file *os.File) {
+	t.Helper()
+
 	if file != nil {
 		err := os.Remove(file.Name())
 		assert.NoError(t, err, "Error while deleting file")
@@ -220,6 +222,8 @@ func deleteFile(t *testing.T, file *os.File) {
 }
 
 func loadProjectFromText(t *testing.T, content string) (*Project, error) {
+	t.Helper()
+
 	tmp, err := os.CreateTemp("", "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
@@ -230,6 +234,8 @@ func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 }
 
 func loadProjectStackFromText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
+	t.Helper()
+
 	tmp, err := os.CreateTemp("", "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
@@ -240,6 +246,8 @@ func loadProjectStackFromText(t *testing.T, project *Project, content string) (*
 }
 
 func loadProjectStackFromJSONText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
+	t.Helper()
+
 	tmp, err := os.CreateTemp("", "*.json")
 	assert.NoError(t, err)
 	path := tmp.Name()
@@ -358,6 +366,8 @@ config:
 }
 
 func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
+	t.Helper()
+
 	parsedKey, err := config.ParseKey(key)
 	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]
@@ -368,6 +378,8 @@ func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
 }
 
 func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) interface{} {
+	t.Helper()
+
 	parsedKey, err := config.ParseKey(key)
 	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]

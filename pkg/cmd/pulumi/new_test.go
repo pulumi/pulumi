@@ -37,6 +37,8 @@ import (
 
 // mockBackendInstance sets the backendInstance for the test and cleans it up after.
 func mockBackendInstance(t *testing.T, b backend.Backend) {
+	t.Helper()
+
 	t.Cleanup(func() {
 		backendInstance = nil
 	})

@@ -54,6 +54,7 @@ func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			// ensure `  error: ` is only being shown once by the program
 			assert.NotContains(t, stdout.String()+stderr.String(), "Traceback")
 		},
@@ -83,6 +84,8 @@ func TestStackOutputsPython(t *testing.T) {
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
 			assert.NotNil(t, stackInfo.Deployment)
@@ -143,6 +146,8 @@ func TestConfigMissingPython(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotEmpty(t, stackInfo.Events)
 			text1 := "Missing required configuration variable 'config_missing_py:notFound'"
 			text2 := "\tplease set a value using the command `pulumi config set --secret config_missing_py:notFound <value>`"
@@ -228,6 +233,8 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 			{Key: "names2[1]", Value: "secret2", Path: true, Secret: true},
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotEmpty(t, stackInfo.Events)
 			//nolint:lll
 			expectedWarnings := []string{
@@ -351,6 +358,8 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// The program exports three resources:
 			//   1. One named `withSecret` who's prefix property should be secret, specified via `pulumi.secret()`.
 			//   2. One named `withSecretAdditional` who's prefix property should be a secret, specified via
@@ -410,6 +419,8 @@ func TestPython3NotInstalled(t *testing.T) {
 		ExpectFailure: true,
 		Stderr:        stderr,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			output := stderr.String()
 			assert.Contains(t, output, expectedError)
 		},
@@ -426,6 +437,8 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			urnOut := stack.Outputs["urn"].(string)
 			urn := resource.URN(urnOut)
 			typ := urn.Type().String()
@@ -467,6 +480,8 @@ func TestEnumOutputsPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stack.Outputs)
 
 			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
@@ -488,6 +503,8 @@ func TestPythonPylint(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			randomURN := stack.Outputs["random_urn"].(string)
 			assert.NotEmpty(t, randomURN)
 
@@ -571,6 +588,8 @@ func TestPythonStackTruncate(t *testing.T) {
 				ExpectFailure: true,
 				// We need to validate that the failure has a truncated stack trace
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// Ensure that we have a non-empty list of events.
 					assert.NotEmpty(t, stackInfo.Events)
 
@@ -630,6 +649,8 @@ func TestConstructSlowPython(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
@@ -691,6 +712,8 @@ func TestConstructPlainPython(t *testing.T) {
 func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
 	env ...string,
 ) *integration.ProgramTestOptions {
+	t.Helper()
+
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "python"),
@@ -700,6 +723,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
@@ -748,6 +772,7 @@ func TestConstructMethodsPython(t *testing.T) {
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
 			})
@@ -782,6 +807,8 @@ func TestConstructComponentWithIdOutputPython(t *testing.T) {
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			component := findResource("testcomponent:index:Component", stackInfo.Deployment.Resources)
 			require.NotNil(t, component, "component should be present in the deployment")
 			require.NotNil(t, component.Outputs, "component should have outputs")
@@ -855,6 +882,7 @@ func TestConstructProviderPython(t *testing.T) {
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
 			})
@@ -886,6 +914,8 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				sawMagicStringMessage := false
 				for _, evt := range stack.Events {
 					if evt.DiagnosticEvent != nil {
@@ -909,6 +939,8 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				sawMagicString := false
 				sawFoo := false
 				sawBar := false
@@ -943,6 +975,8 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				sawUrn := false
 				for _, evt := range stack.Events {
 					if evt.DiagnosticEvent != nil {
@@ -966,6 +1000,8 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				sawMagicStringMessage := false
 				for _, evt := range stack.Events {
 					if evt.DiagnosticEvent != nil {
@@ -993,6 +1029,8 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			Quick:                    true,
 			Stderr:                   stderr,
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				output := stderr.String()
 				assert.Contains(t, output, expectedError)
 			},
@@ -1013,6 +1051,8 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			Quick:                    true,
 			Stderr:                   stderr,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				output := stderr.String()
 				assert.Contains(t, output, expectedError)
 				sawFoo := false
@@ -1052,6 +1092,8 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			Quick:                    true,
 			Stderr:                   stderr,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				output := stderr.String()
 				assert.Contains(t, output, expectedError)
 				sawFoo := false
@@ -1180,6 +1222,8 @@ func TestDuplicateOutputPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			expected := []interface{}{float64(1), float64(2)}
 			assert.Equal(t, expected, stack.Outputs["export1"])
 			assert.Equal(t, expected, stack.Outputs["export2"])
@@ -1209,6 +1253,8 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 		},
 		Stdout: stdout,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Contains(
 				t, stdout.String(),
 				"RuntimeError: We have detected a circular dependency involving a resource of type "+

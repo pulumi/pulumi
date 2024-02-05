@@ -258,7 +258,9 @@ func (p *TestPlan) GetProject() workspace.Project {
 	}
 }
 
-func (p *TestPlan) GetTarget(t testing.TB, snapshot *deploy.Snapshot) deploy.Target {
+func (p *TestPlan) GetTarget(tb testing.TB, snapshot *deploy.Snapshot) deploy.Target {
+	tb.Helper()
+
 	stack, _, _ := p.getNames()
 
 	cfg := p.Config
@@ -273,23 +275,25 @@ func (p *TestPlan) GetTarget(t testing.TB, snapshot *deploy.Snapshot) deploy.Tar
 		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
 		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
 		// cause state changes from the preview to persist even when doing an update.
-		Snapshot: CloneSnapshot(t, snapshot),
+		Snapshot: CloneSnapshot(tb, snapshot),
 	}
 }
 
 // CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
-func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
-	t.Helper()
+func CloneSnapshot(tb testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
+	tb.Helper()
 	if snap != nil {
 		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
-		assert.True(t, reflect.DeepEqual(*snap, copiedSnap))
+		assert.True(tb, reflect.DeepEqual(*snap, copiedSnap))
 		return &copiedSnap
 	}
 
 	return snap
 }
 
-func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
+func (p *TestPlan) Run(tb testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
+	tb.Helper()
+
 	project := p.GetProject()
 	snap := snapshot
 	for _, step := range p.Steps {
@@ -298,36 +302,36 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 		// cause state changes from the preview to persist even when doing an update.
 		// GetTarget ALWAYS clones the snapshot, so the previewTarget.Snapshot != target.Snapshot
 		if !step.SkipPreview {
-			previewTarget := p.GetTarget(t, snap)
+			previewTarget := p.GetTarget(tb, snap)
 			// Don't run validate on the preview step
 			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
-				assert.Error(t, err)
+				assert.Error(tb, err)
 				continue
 			}
 
-			assert.NoError(t, err)
+			assert.NoError(tb, err)
 		}
 
 		var err error
-		target := p.GetTarget(t, snap)
+		target := p.GetTarget(tb, snap)
 		snap, err = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
-			assert.Error(t, err)
+			assert.Error(tb, err)
 			continue
 		}
 
 		if err != nil {
 			if result.IsBail(err) {
-				t.Logf("Got unexpected bail result: %v", err)
-				t.FailNow()
+				tb.Logf("Got unexpected bail result: %v", err)
+				tb.FailNow()
 			} else {
-				t.Logf("Got unexpected error result: %v", err)
-				t.FailNow()
+				tb.Logf("Got unexpected error result: %v", err)
+				tb.FailNow()
 			}
 		}
 
-		assert.NoError(t, err)
+		assert.NoError(tb, err)
 	}
 
 	return snap
@@ -335,6 +339,8 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 
 // resCount is the expected number of resources registered during this test.
 func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
+	t.Helper()
+
 	return []TestStep{
 		// Initial update
 		{
@@ -460,6 +466,8 @@ type testBuilder struct {
 }
 
 func newTestBuilder(t *testing.T, snap *deploy.Snapshot) *testBuilder {
+	t.Helper()
+
 	return &testBuilder{
 		t:       t,
 		snap:    snap,

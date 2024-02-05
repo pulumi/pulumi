@@ -15,6 +15,8 @@ func ParseAndBindProgram(t *testing.T,
 	name string,
 	options ...pcl.BindOption,
 ) (*pcl.Program, hcl.Diagnostics, error) {
+	t.Helper()
+
 	parser := syntax.NewParser()
 	err := parser.ParseFile(strings.NewReader(text), name)
 	if err != nil {

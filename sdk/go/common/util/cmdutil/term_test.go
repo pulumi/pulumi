@@ -403,6 +403,8 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 }
 
 func lookPathOrSkip(t *testing.T, name string) string {
+	t.Helper()
+
 	path, err := exec.LookPath(name)
 	if err != nil {
 		t.Skipf("Skipping test: %q not found: %v", name, err)

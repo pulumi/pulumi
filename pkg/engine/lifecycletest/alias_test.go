@@ -144,6 +144,8 @@ func makeSpecAliasWithNoParent(name, typ, project, stack string, parent bool) *p
 }
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
+	t.Helper()
+
 	for _, r := range resources {
 		r := r
 		_, _, _, err := monitor.RegisterResource(r.t, r.name, true, deploytest.ResourceOptions{

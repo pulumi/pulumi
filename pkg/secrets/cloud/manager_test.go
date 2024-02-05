@@ -32,6 +32,8 @@ import (
 // the main testing function, takes a kms url and tries to make a new secret manager out of it and encrypt and
 // decrypt data, this is used by the aws_test and azure_test files.
 func testURL(ctx context.Context, t *testing.T, url string) {
+	t.Helper()
+
 	info := &workspace.ProjectStack{}
 	info.SecretsProvider = url
 
@@ -53,6 +55,8 @@ func testURL(ctx context.Context, t *testing.T, url string) {
 }
 
 func randomName(t *testing.T) string {
+	t.Helper()
+
 	name := ""
 	letters := "abcdefghijklmnopqrstuvwxyz"
 	for i := 0; i < 32; i++ {

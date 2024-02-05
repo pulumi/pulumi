@@ -26,6 +26,8 @@ type test struct {
 }
 
 func testFormatter(t *testing.T, tests []test) {
+	t.Helper()
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run("", func(t *testing.T) {

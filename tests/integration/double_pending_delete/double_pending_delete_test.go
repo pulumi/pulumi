@@ -26,6 +26,8 @@ func TestDoublePendingDelete(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					assert.NotNil(t, stackInfo.Deployment)
 
 					// Four resources in this deployment: the root resource, A, B, and A (pending delete)
@@ -53,6 +55,8 @@ func TestDoublePendingDelete(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// There is still two pending delete resources in this snapshot.
 					assert.NotNil(t, stackInfo.Deployment)
 
@@ -83,6 +87,8 @@ func TestDoublePendingDelete(t *testing.T) {
 				Dir:      "step4",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// We should have cleared out all of the pending deletes now.
 					assert.NotNil(t, stackInfo.Deployment)
 

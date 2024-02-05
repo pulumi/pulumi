@@ -526,6 +526,7 @@ func TestResourceOptionMergingTransformations(t *testing.T) {
 }
 
 func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []ResourceTransformation) {
+	t.Helper()
 	assert.Equal(t, len(t1), len(t2))
 	for i := range t1 {
 		p1 := reflect.ValueOf(t1[i]).Pointer()
@@ -1215,6 +1216,7 @@ func assertHasDeps(
 	res Resource,
 	expectedDeps ...Resource,
 ) {
+	t.Helper()
 	name := res.getName()
 	resDeps := depTracker.dependencies(urn(t, ctx, res))
 
@@ -1239,6 +1241,8 @@ func outputDependingOnResource(res Resource, isKnown bool) IntOutput {
 }
 
 func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {
+	t.Helper()
+
 	var res testRes
 	err := ctx.RegisterResource(fmt.Sprintf("test:resource:%stype", name), name, nil, &res, opts...)
 	assert.NoError(t, err)
@@ -1246,6 +1250,8 @@ func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption)
 }
 
 func urn(t *testing.T, ctx *Context, res Resource) URN {
+	t.Helper()
+
 	urn, _, _, err := res.URN().awaitURN(ctx.ctx)
 	if err != nil {
 		t.Fatal(err)

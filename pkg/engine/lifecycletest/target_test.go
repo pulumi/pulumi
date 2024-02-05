@@ -76,6 +76,8 @@ func destroySpecificTargets(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool),
 ) {
+	t.Helper()
+
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -187,6 +189,8 @@ func TestUpdateTarget(t *testing.T) {
 }
 
 func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDependents bool, expectedUpdates int) {
+	t.Helper()
+
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -305,6 +309,8 @@ func contains(list []string, entry string) bool {
 }
 
 func updateInvalidTarget(t *testing.T) {
+	t.Helper()
+
 	p := &TestPlan{}
 
 	_, old, programF := generateComplexTestDependencyGraph(t, p)
@@ -738,6 +744,8 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 
 	[]resource.URN, *deploy.Snapshot, deploytest.LanguageRuntimeFactory,
 ) {
+	t.Helper()
+
 	resTypeComponent := tokens.Type("pkgA:index:Component")
 	resTypeResource := tokens.Type("pkgA:index:Resource")
 
@@ -870,6 +878,8 @@ func destroySpecificTargetsWithChildren(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool),
 ) {
+	t.Helper()
+
 	p := &TestPlan{}
 
 	urns, old, programF := generateParentedTestDependencyGraph(t, p)

@@ -18,6 +18,8 @@ import (
 )
 
 func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+	t.Helper()
+
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -50,6 +52,8 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 }
 
 func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+	t.Helper()
+
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -67,12 +71,15 @@ func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath 
 }
 
 func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+	t.Helper()
+
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				t.Helper()
 				Check(t, path, dependencies, "../../../../../../../sdk")
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {

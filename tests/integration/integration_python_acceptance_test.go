@@ -85,12 +85,15 @@ func TestDynamicPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			randomVal = stack.Outputs["random_val"].(string)
 		},
 		EditDirs: []integration.EditDir{{
 			Dir:      filepath.Join("dynamic", "python", "step1"),
 			Additive: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
 
 				// Regression testing the workaround for https://github.com/pulumi/pulumi/issues/8265
@@ -170,6 +173,8 @@ func TestConstructPython(t *testing.T) {
 func optsForConstructPython(
 	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
 ) *integration.ProgramTestOptions {
+	t.Helper()
+
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component", "python"),
@@ -183,6 +188,8 @@ func optsForConstructPython(
 		Quick:               true,
 		UseSharedVirtualEnv: boolPointer(false),
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
@@ -248,6 +255,8 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	// handling by the pulumi CLI itself.
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
+		t.Helper()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {

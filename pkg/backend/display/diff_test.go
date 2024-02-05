@@ -70,6 +70,8 @@ func loadEvents(path string) (events []engine.Event, err error) {
 }
 
 func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool) {
+	t.Helper()
+
 	events, err := loadEvents(path)
 	require.NoError(t, err)
 

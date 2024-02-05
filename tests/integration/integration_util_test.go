@@ -78,6 +78,8 @@ func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
 }
 
 func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
+	t.Helper()
+
 	return integration.LocalDependency{
 		Package: "testcomponent",
 		Path:    filepath.Join("construct_component_slow", "testcomponent"),
@@ -85,6 +87,8 @@ func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
 }
 
 func testComponentProviderSchema(t *testing.T, path string) {
+	t.Helper()
+
 	runComponentSetup(t, "component_provider_schema")
 
 	tests := []struct {
@@ -153,6 +157,8 @@ func testComponentProviderSchema(t *testing.T, path string) {
 
 // Test remote component inputs properly handle unknowns.
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
+
 	const testDir = "construct_component_unknown"
 	runComponentSetup(t, testDir)
 
@@ -192,6 +198,8 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 
 // Test methods properly handle unknowns.
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
+
 	const testDir = "construct_component_methods_unknown"
 	runComponentSetup(t, testDir)
 	tests := []struct {
@@ -230,6 +238,8 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 }
 
 func runComponentSetup(t *testing.T, testDir string) {
+	t.Helper()
+
 	ptesting.YarnInstallMutex.Lock()
 	defer ptesting.YarnInstallMutex.Unlock()
 
@@ -258,7 +268,9 @@ func runComponentSetup(t *testing.T, testDir string) {
 	require.False(t, t.Failed(), "component setup failed")
 }
 
-func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
+func synchronouslyDo(tb testing.TB, lockfile string, timeout time.Duration, fn func()) {
+	tb.Helper()
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -275,7 +287,7 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 			}
 
 			defer func() {
-				assert.NoError(t, mutex.Unlock())
+				assert.NoError(tb, mutex.Unlock())
 			}()
 			break
 		}
@@ -290,7 +302,7 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 
 	select {
 	case <-ctx.Done():
-		t.Fatalf("timed out waiting for lock on %s", lockfile)
+		tb.Fatalf("timed out waiting for lock on %s", lockfile)
 	case <-lockWait:
 		// waited for fn, success.
 	}
@@ -338,6 +350,8 @@ func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
 
 // Test methods that create resources.
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
+
 	const testDir = "construct_component_methods_resources"
 	runComponentSetup(t, testDir)
 
@@ -366,6 +380,8 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				LocalProviders: localProviders,
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
 					var hasExpectedResource bool
@@ -388,6 +404,8 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 
 // Test failures returned from methods are observed.
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
+
 	const testDir = "construct_component_methods_errors"
 	runComponentSetup(t, testDir)
 
@@ -421,6 +439,8 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 				Stderr:         stderr,
 				ExpectFailure:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					output := stderr.String()
 					assert.Contains(t, output, expectedError)
 				},
@@ -431,6 +451,8 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 
 // Tests methods work when there is an explicit provider for another provider set on the component.
 func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
+
 	const testDir = "construct_component_methods_provider"
 	runComponentSetup(t, testDir)
 
@@ -462,6 +484,8 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 				LocalProviders: []integration.LocalDependency{localProvider, testProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message1"])
 					assert.Equal(t, "Hi There, Bob!", stackInfo.Outputs["message2"])
 				},
@@ -471,6 +495,8 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 }
 
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
+
 	const testDir = "construct_component_output_values"
 	runComponentSetup(t, testDir)
 
@@ -507,6 +533,8 @@ var previewSummaryRegex = regexp.MustCompile(
 	`{\s+"steps": \[[\s\S]+],\s+"duration": \d+,\s+"changeSummary": {[\s\S]+}\s+}`)
 
 func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output string) {
+	t.Helper()
+
 	evtJSON := bytes.Buffer{}
 	encoder := json.NewEncoder(&evtJSON)
 	encoder.SetEscapeHTML(false)
@@ -518,6 +546,8 @@ func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output str
 // printfTestValidation is used by the TestPrintfXYZ test cases in the language-specific test
 // files. It validates that there are a precise count of expected stdout/stderr lines in the test output.
 func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+	t.Helper()
+
 	var foundStdout int
 	var foundStderr int
 	for _, ev := range stack.Events {
@@ -534,6 +564,8 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 }
 
 func testConstructProviderExplicit(t *testing.T, lang string, dependencies []string) {
+	t.Helper()
+
 	const testDir = "construct_component_provider_explicit"
 	runComponentSetup(t, testDir)
 
@@ -547,6 +579,8 @@ func testConstructProviderExplicit(t *testing.T, lang string, dependencies []str
 		Quick:          true,
 		NoParallel:     true, // already called by tests
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 			assert.Equal(t, "hello world", stackInfo.Outputs["nestedMessage"])
 		},
@@ -567,6 +601,8 @@ func testConstructComponentConfigureProviderCommonOptions() integration.ProgramT
 		Quick:                    false, // intentional, need to test preview here
 		AllowEmptyPreviewChanges: true,  // Pulumi will warn that provider has unknowns in its config
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Contains(t, stackInfo.Outputs, "keyAlgo")
 			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo"])
 			assert.Contains(t, stackInfo.Outputs, "keyAlgo2")

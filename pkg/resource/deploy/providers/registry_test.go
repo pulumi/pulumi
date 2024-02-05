@@ -168,6 +168,8 @@ type providerLoader struct {
 }
 
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
+	t.Helper()
+
 	return &testPluginHost{
 		t: t,
 		provider: func(pkg tokens.Package, ver *semver.Version) (plugin.Provider, error) {
@@ -198,6 +200,8 @@ func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 func newLoader(t *testing.T, pkg, version string,
 	load func(tokens.Package, semver.Version) (plugin.Provider, error),
 ) *providerLoader {
+	t.Helper()
+
 	var ver semver.Version
 	if version != "" {
 		v, err := semver.ParseTolerant(version)
@@ -214,6 +218,8 @@ func newLoader(t *testing.T, pkg, version string,
 }
 
 func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.PropertyMap) error) *providerLoader {
+	t.Helper()
+
 	if config == nil {
 		config = func(resource.PropertyMap) error {
 			return nil

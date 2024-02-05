@@ -28,10 +28,12 @@ import (
 //
 // Messages are prefixed with [stdout] or [stderr]
 // to indicate which stream they were written to.
-func LogSink(t testing.TB) diag.Sink {
+func LogSink(tb testing.TB) diag.Sink {
+	tb.Helper()
+
 	return diag.DefaultSink(
-		iotest.LogWriterPrefixed(t, "[stdout] "),
-		iotest.LogWriterPrefixed(t, "[stderr] "),
+		iotest.LogWriterPrefixed(tb, "[stdout] "),
+		iotest.LogWriterPrefixed(tb, "[stderr] "),
 		diag.FormatOptions{
 			// Don't colorize test output.
 			Color: colors.Never,

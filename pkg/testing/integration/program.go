@@ -704,6 +704,8 @@ func GetLogs(
 	stackInfo RuntimeValidationStackInfo,
 	query operations.LogQuery,
 ) *[]operations.LogEntry {
+	t.Helper()
+
 	snap, err := stack.DeserializeDeploymentV3(
 		context.Background(),
 		*stackInfo.Deployment,
@@ -730,6 +732,8 @@ func GetLogs(
 }
 
 func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
+	t.Helper()
+
 	// If we're just listing tests, simply print this test's directory.
 	if listDirs {
 		fmt.Printf("%s\n", opts.Dir)
@@ -839,6 +843,8 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	t.Helper()
+
 	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
@@ -849,6 +855,8 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 
 // ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
 func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
+	t.Helper()
+
 	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
 	return pt
@@ -872,6 +880,8 @@ type ProgramTester struct {
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
+	t.Helper()
+
 	stackName := opts.GetStackName()
 	maxStepTries := 1
 	if opts.RetryFailedSteps {
@@ -887,6 +897,8 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 
 // MakeTempBackend creates a temporary backend directory which will clean up on test exit.
 func MakeTempBackend(t *testing.T) string {
+	t.Helper()
+
 	tempDir := t.TempDir()
 	return "file://" + filepath.ToSlash(tempDir)
 }

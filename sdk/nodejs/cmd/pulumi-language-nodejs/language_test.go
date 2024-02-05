@@ -65,6 +65,8 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 }
 
 func runEngine(t *testing.T) string {
+	t.Helper()
+
 	// Run a gRPC server that implements the Pulumi engine RPC interface. But all we do is forward logs on to T.
 	engine := &hostEngine{t: t}
 	stop := make(chan bool)
@@ -84,6 +86,8 @@ func runEngine(t *testing.T) string {
 }
 
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
+	t.Helper()
+
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"

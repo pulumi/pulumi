@@ -403,6 +403,8 @@ func TestParseAuthURL(t *testing.T) {
 
 	//nolint: gosec
 	generateSSHKey := func(t *testing.T, passphrase string) string {
+		t.Helper()
+
 		r := rand.New(rand.NewSource(0))
 		key, err := rsa.GenerateKey(r, 256)
 		require.NoError(t, err)

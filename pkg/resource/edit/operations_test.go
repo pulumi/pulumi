@@ -364,6 +364,7 @@ func TestDeleteProtected(t *testing.T) {
 		{
 			"root-protected",
 			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				t.Helper()
 				a.Protect = true
 				protectedCount := 0
 				err := DeleteResource(snap, a, func(s *resource.State) error {
@@ -379,6 +380,7 @@ func TestDeleteProtected(t *testing.T) {
 		{
 			"root-and-branch",
 			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				t.Helper()
 				a.Protect = true
 				b.Protect = true
 				c.Protect = true
@@ -398,6 +400,7 @@ func TestDeleteProtected(t *testing.T) {
 		{
 			"branch",
 			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				t.Helper()
 				b.Protect = true
 				c.Protect = true
 				protectedCount := 0
@@ -414,6 +417,7 @@ func TestDeleteProtected(t *testing.T) {
 		{
 			"no-permission-root",
 			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				t.Helper()
 				c.Protect = true
 				err := DeleteResource(snap, c, nil, false).(ResourceProtectedError)
 				assert.Equal(t, ResourceProtectedError{
@@ -424,6 +428,7 @@ func TestDeleteProtected(t *testing.T) {
 		{
 			"no-permission-branch",
 			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				t.Helper()
 				c.Protect = true
 				err := DeleteResource(snap, b, nil, true).(ResourceProtectedError)
 				assert.Equal(t, ResourceProtectedError{

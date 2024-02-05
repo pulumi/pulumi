@@ -9,6 +9,8 @@ import (
 )
 
 func testPrintf(t *testing.T, ins ...interface{}) {
+	t.Helper()
+
 	const f = "%v %v %v"
 	expected := fmt.Sprintf(f, "foo", 42, true)
 

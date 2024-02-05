@@ -138,6 +138,8 @@ func TestNestedConstructGo(t *testing.T) {
 func optsForConstructGo(
 	t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
 ) *integration.ProgramTestOptions {
+	t.Helper()
+
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join(dir, "go"),
@@ -150,6 +152,8 @@ func optsForConstructGo(
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]

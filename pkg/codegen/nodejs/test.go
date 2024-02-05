@@ -14,6 +14,8 @@ import (
 )
 
 func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
+	t.Helper()
+
 	dir := filepath.Dir(path)
 
 	removeFile := func(name string) {
@@ -57,12 +59,16 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 }
 
 func TypeCheck(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
+	t.Helper()
+
 	dir := filepath.Dir(path)
 
 	typeCheckGeneratedPackage(t, dir, linkLocal)
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
+	t.Helper()
+
 	// NOTE: previous attempt used npm. It may be more popular and
 	// better target than yarn, however our build uses yarn in
 	// other places at the moment, and yarn does not run into the
@@ -82,6 +88,8 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 
 // Returns the nodejs equivalent to the hcl2 package names provided.
 func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
+	t.Helper()
+
 	result := make(map[string]string, len(deps))
 	for _, d := range deps.SortedValues() {
 		pkgName := "@pulumi/" + d
@@ -110,12 +118,15 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 }
 
 func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+	t.Helper()
+
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "nodejs",
 			Extension:  "ts",
 			OutputFile: "index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				t.Helper()
 				Check(t, path, dependencies, true)
 			},
 			GenProgram: GenerateProgram,

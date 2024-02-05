@@ -85,9 +85,11 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	}
 }
 
-func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin.Context, error) {
-	sink := diagtest.LogSink(t)
-	statusSink := diagtest.LogSink(t)
+func newTestPluginContext(tb testing.TB, program deploytest.ProgramFunc) (*plugin.Context, error) {
+	tb.Helper()
+
+	sink := diagtest.LogSink(tb)
+	statusSink := diagtest.LogSink(tb)
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
 	return plugin.NewContext(sink, statusSink, host, nil, "", nil, false, nil)

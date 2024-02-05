@@ -38,6 +38,8 @@ const (
 func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
 	opts ...RemoteWorkspaceOption) (RemoteStack, error),
 ) {
+	t.Helper()
+
 	ctx := context.Background()
 
 	const stack = "owner/project/stack"
@@ -138,6 +140,8 @@ func testRemoteStackGitSource(
 	fn func(ctx context.Context, stackName string, repo GitRepo, opts ...RemoteWorkspaceOption) (RemoteStack, error),
 	useCommitHash bool,
 ) {
+	t.Helper()
+
 	// This test requires the service with access to Pulumi Deployments.
 	// Set PULUMI_ACCESS_TOKEN to an access token with access to Pulumi Deployments
 	// and set PULUMI_TEST_DEPLOYMENTS_API to any value to enable the test.

@@ -181,6 +181,8 @@ func AssertHTTPResultWithRetry(
 	maxWait time.Duration,
 	check func(string) bool,
 ) bool {
+	t.Helper()
+
 	hostname, ok := output.(string)
 	if !assert.True(t, ok, fmt.Sprintf("expected `%s` output", output)) {
 		return false

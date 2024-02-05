@@ -28,6 +28,7 @@ import (
 )
 
 func getAzureCaller(ctx context.Context, t *testing.T) *azidentity.DefaultAzureCredential {
+	t.Helper()
 	credentials, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		t.Logf("Skipping, could not load azure config: %s", err)
@@ -37,6 +38,7 @@ func getAzureCaller(ctx context.Context, t *testing.T) *azidentity.DefaultAzureC
 }
 
 func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.DefaultAzureCredential) string {
+	t.Helper()
 	url := "pulumi-testing.vault.azure.net"
 	keysClient, err := azkeys.NewClient("https://"+url, credentials, nil)
 	require.NoError(t, err)

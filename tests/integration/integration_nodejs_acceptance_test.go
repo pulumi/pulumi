@@ -111,6 +111,8 @@ func TestConstructNode(t *testing.T) {
 func optsForConstructNode(
 	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
 ) *integration.ProgramTestOptions {
+	t.Helper()
+
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
@@ -122,6 +124,8 @@ func optsForConstructNode(
 		// verify that additional flags don't cause the component provider hang
 		UpdateCommandlineFlags: []string{"--logflow", "--logtostderr"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]

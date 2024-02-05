@@ -30,6 +30,8 @@ import (
 )
 
 func getAwsCaller(t *testing.T) (context.Context, aws.Config, *sts.GetCallerIdentityOutput) {
+	t.Helper()
+
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -48,6 +50,8 @@ func getAwsCaller(t *testing.T) (context.Context, aws.Config, *sts.GetCallerIden
 }
 
 func createKey(ctx context.Context, t *testing.T, cfg aws.Config) *kms.CreateKeyOutput {
+	t.Helper()
+
 	kmsClient := kms.NewFromConfig(cfg)
 	keyName := "test-key-" + randomName(t)
 	key, err := kmsClient.CreateKey(ctx, &kms.CreateKeyInput{Description: &keyName})

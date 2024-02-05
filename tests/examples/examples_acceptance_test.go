@@ -38,6 +38,8 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 				"secret": "this is my secret message",
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				// Simple runtime validation that just ensures the checkpoint was written and read.
 				assert.NotNil(t, stackInfo.Deployment)
 			},
@@ -71,6 +73,8 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "formattable"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
 				assert.False(t, strings.Contains(stdout, "MISSING"))
@@ -84,6 +88,8 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 }
 
 func getCwd(t *testing.T) string {
+	t.Helper()
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.FailNow()

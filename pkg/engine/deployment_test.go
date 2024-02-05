@@ -67,7 +67,9 @@ type testContext struct {
 	firedEvents []Event
 }
 
-func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
+func makeTestContext(tb testing.TB, cancelCtx *cancel.Context) *testContext {
+	tb.Helper()
+
 	events := make(chan Event)
 	journal := NewJournal()
 
@@ -94,9 +96,11 @@ func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 	return ctx
 }
 
-func (ctx *testContext) makeEventEmitter(t testing.TB) eventEmitter {
+func (ctx *testContext) makeEventEmitter(tb testing.TB) eventEmitter {
+	tb.Helper()
+
 	emitter, err := makeQueryEventEmitter(ctx.events)
-	assert.NoError(t, err)
+	assert.NoError(tb, err)
 	return emitter
 }
 
@@ -106,9 +110,11 @@ func (ctx *testContext) Close() error {
 	return nil
 }
 
-func makePluginHost(t testing.TB, program deploytest.ProgramFunc) plugin.Host {
-	sink := diagtest.LogSink(t)
-	statusSink := diagtest.LogSink(t)
+func makePluginHost(tb testing.TB, program deploytest.ProgramFunc) plugin.Host {
+	tb.Helper()
+
+	sink := diagtest.LogSink(tb)
+	statusSink := diagtest.LogSink(tb)
 	lang := deploytest.NewLanguageRuntime(program)
 	return deploytest.NewPluginHost(sink, statusSink, lang)
 }

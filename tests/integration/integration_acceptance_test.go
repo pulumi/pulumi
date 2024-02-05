@@ -146,6 +146,8 @@ func TestJSONOutputWithStreamingPreview(t *testing.T) {
 		JSONOutput:   true,
 		Env:          []string{"PULUMI_ENABLE_STREAMING_JSON_PREVIEW=1"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			output := stdout.String()
 
 			// Check that the previewSummary is *not* present.

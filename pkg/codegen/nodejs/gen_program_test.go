@@ -29,6 +29,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Extension:  "ts",
 			OutputFile: "index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				t.Helper()
 				Check(t, path, dependencies, true)
 			},
 			GenProgram: GenerateProgram,

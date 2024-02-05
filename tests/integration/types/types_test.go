@@ -25,6 +25,8 @@ func TestPythonTypes(t *testing.T) {
 					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 				},
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					for _, res := range []string{"", "2", "3", "4"} {
 						assert.Equal(t, "hello", stack.Outputs[fmt.Sprintf("res%s_first_value", res)])
 						assert.Equal(t, 42.0, stack.Outputs[fmt.Sprintf("res%s_second_value", res)])

@@ -83,6 +83,8 @@ func TestEngineEvents(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// Ensure that we have a non-empty list of events.
 			assert.NotEmpty(t, stackInfo.Events)
 
@@ -107,6 +109,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		Dir:          "project_main/nodejs",
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			// Simple runtime validation that just ensures the checkpoint was written and read.
 			assert.NotNil(t, stackInfo.Deployment)
 		},
@@ -214,6 +217,8 @@ func TestStackOutputsNodeJS(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
 			assert.NotNil(t, stackInfo.Deployment)
@@ -264,6 +269,8 @@ func TestStackOutputsDisplayed(t *testing.T) {
 		Verbose:      true,
 		Stdout:       stdout,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			output := stdout.String()
 
 			// ensure we get the outputs info both for the normal update, and for the no-change update.
@@ -286,6 +293,8 @@ func TestStackOutputsSuppressed(t *testing.T) {
 		Stdout:                 stdout,
 		UpdateCommandlineFlags: []string{"--suppress-outputs"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			output := stdout.String()
 			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
 			assert.NotContains(t, output, "Outputs:\n    foo: 42\n    xyz: \"ABC\"\n")
@@ -302,6 +311,8 @@ func TestStackParenting(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// Ensure the checkpoint contains resources parented correctly.  This should look like this:
 			//
 			//     A      F
@@ -367,6 +378,8 @@ func TestStackDependencyGraph(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
@@ -432,6 +445,8 @@ func TestConfigMissingJS(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotEmpty(t, stackInfo.Events)
 			text1 := "Missing required configuration variable 'config_missing_js:notFound'"
 			text2 := "\tplease set a value using the command `pulumi config set --secret config_missing_js:notFound <value>`"
@@ -519,6 +534,8 @@ func TestConfigSecretsWarnNodeJS(t *testing.T) {
 			{Key: "names2[1]", Value: "secret2", Path: true, Secret: true},
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotEmpty(t, stackInfo.Events)
 			//nolint:lll
 			expectedWarnings := []string{
@@ -604,6 +621,8 @@ func TestExplicitProvider(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 
@@ -680,6 +699,8 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// The program exports three resources:
 			//   1. One named `withSecret` who's prefix property should be secret, specified via `pulumi.secret()`.
 			//   2. One named `withSecretAdditional` who's prefix property should be a secret, specified via
@@ -733,6 +754,8 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 				Additive:        true,
 				ExpectNoChanges: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					_, isString := stackInfo.Outputs["refNormal"].(string)
 					assert.Truef(t, isString, "referenced non-secret output was not a string")
 
@@ -761,6 +784,8 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 
 	workingTestOptions := testOptions.With(integration.ProgramTestOptions{
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 			secretsProvider := stackInfo.Deployment.SecretsProviders
 			assert.NotNil(t, secretsProvider)
@@ -779,6 +804,8 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 
 	brokenTestOptions := testOptions.With(integration.ProgramTestOptions{
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			secretsProvider := stackInfo.Deployment.SecretsProviders
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
@@ -824,6 +851,8 @@ func TestCloudSecretProvider(t *testing.T) {
 			"mysecret": "THISISASECRET",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			secretsProvider := stackInfo.Deployment.SecretsProviders
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "cloud")
@@ -890,6 +919,8 @@ func TestEnumOutputNode(t *testing.T) {
 		Dir:          filepath.Join("enums", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stack.Outputs)
 			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
 			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
@@ -916,6 +947,8 @@ func TestConstructSlowNode(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
@@ -969,12 +1002,15 @@ func TestConstructPlainNode(t *testing.T) {
 func optsForConstructPlainNode(
 	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
 ) *integration.ProgramTestOptions {
+	t.Helper()
+
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component_plain", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
@@ -1021,6 +1057,7 @@ func TestConstructMethodsNode(t *testing.T) {
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
 			})
@@ -1081,6 +1118,7 @@ func TestConstructProviderNode(t *testing.T) {
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
 			})
@@ -1095,6 +1133,8 @@ func TestGetResourceNode(t *testing.T) {
 		Dependencies:             []string{"@pulumi/pulumi"},
 		AllowEmptyPreviewChanges: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.NotNil(t, stack.Outputs)
 			assert.Equal(t, "foo", stack.Outputs["foo"])
 
@@ -1139,6 +1179,8 @@ func TestConstructNodeErrorApply(t *testing.T) {
 		Stderr:        stderr,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			output := stderr.String()
 			assert.Contains(t, output, expectedError)
 		},
@@ -1170,6 +1212,8 @@ func TestNodejsStackTruncate(t *testing.T) {
 				ExpectFailure: true,
 				// We need to validate that the failure has a truncated stack trace
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// Ensure that we have a non-empty list of events.
 					assert.NotEmpty(t, stackInfo.Events)
 
@@ -1282,6 +1326,8 @@ func TestESMTSNestedSrc(t *testing.T) {
 			"test": "hello world",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Len(t, stack.Outputs, 1)
 			test, ok := stack.Outputs["test"]
 			assert.True(t, ok)
@@ -1297,6 +1343,8 @@ func TestESMTSDefaultExport(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Len(t, stack.Outputs, 1)
 			helloWorld, ok := stack.Outputs["helloWorld"]
 			assert.True(t, ok)
@@ -1425,6 +1473,8 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 			// The program throws an exception and 1 resource fails to be created.
 			ExpectFailure: true,
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				// Ensure the checkpoint contains the 1003 other resources that were created
 				// - stack
 				// - provider
@@ -1450,6 +1500,8 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 			// The program throws an exception and 1 resource fails to be created.
 			ExpectFailure: true,
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
+
 				// Ensure the checkpoint contains the 1003 other resources that were created
 				// - stack
 				// - provider
@@ -1499,6 +1551,8 @@ func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
 		Dir:          filepath.Join("dynamic", "nodejs-resource-type-name"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			urnOut := stack.Outputs["urn"].(string)
 			urn := resource.URN(urnOut)
 			typ := urn.Type().String()
@@ -1516,6 +1570,8 @@ func TestErrorCreateDynamicNode(t *testing.T) {
 		Dependencies:  []string{"@pulumi/pulumi"},
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			foundError := false
 			for _, event := range stack.Events {
 				if event.ResOpFailedEvent != nil {
@@ -1543,6 +1599,8 @@ func TestRegression12301Node(t *testing.T) {
 			return os.Rename(jsonPath, newPath)
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Len(t, stack.Outputs, 1)
 			assert.Contains(t, stack.Outputs, "bar")
 			assert.Equal(t, 3.0, stack.Outputs["bar"].(float64))
@@ -1561,6 +1619,8 @@ func TestPulumiConfig(t *testing.T) {
 			"pulumi-nodejs:id": "testing123",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Len(t, stack.Outputs, 1)
 			assert.Contains(t, stack.Outputs, "rid")
 			assert.Equal(t, "testing123", stack.Outputs["rid"].(string))
@@ -1588,6 +1648,8 @@ func TestUndefinedStackOutputNode(t *testing.T) {
 		Dir:          filepath.Join("nodejs", "undefined-stack-output"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			assert.Equal(t, nil, stack.Outputs["nil"])
 			assert.Equal(t, []interface{}{0.0, nil, nil}, stack.Outputs["list"])
 			assert.Equal(t, map[string]interface{}{

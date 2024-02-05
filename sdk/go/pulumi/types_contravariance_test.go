@@ -26,6 +26,8 @@ import (
 
 // asAnySlice converts []T to []interface{} by reflection, simulating covariance.
 func asAnySlice(t *testing.T, values interface{}) []interface{} {
+	t.Helper()
+
 	v := reflect.ValueOf(values)
 	// use reflect.valueOf to iterate over items of values
 	require.Equalf(t, v.Kind(), reflect.Slice, "expected a slice, got %v", v.Type())

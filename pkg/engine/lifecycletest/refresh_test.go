@@ -306,6 +306,8 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 
 // Looks up the provider ID in newResources and sets "Provider" to reference that in every resource in oldResources.
 func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, provURN resource.URN) {
+	t.Helper()
+
 	for _, r := range newResources {
 		if r.URN == provURN {
 			provRef, err := providers.NewReference(r.URN, r.ID)
@@ -319,6 +321,8 @@ func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, 
 }
 
 func validateRefreshDeleteCombination(t *testing.T, names []string, targets []string) {
+	t.Helper()
+
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -483,6 +487,8 @@ func TestRefreshBasics(t *testing.T) {
 }
 
 func validateRefreshBasicsCombination(t *testing.T, names []string, targets []string) {
+	t.Helper()
+
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"

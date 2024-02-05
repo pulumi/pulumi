@@ -25,6 +25,7 @@ import (
 )
 
 func createGCPKey(ctx context.Context, t *testing.T) string {
+	t.Helper()
 	keyName := "test-key-" + randomName(t)
 
 	parent := "projects/pulumi-development/locations/global/keyRings/pulumi-testing"

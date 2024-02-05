@@ -54,6 +54,8 @@ func TestPropertyNameDiffs(t *testing.T) {
 				},
 				Quick: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					require.NotNil(t, stackInfo.Deployment)
 					res, err := getResource(stackInfo, "a")
 					assert.NoError(t, err)
@@ -65,6 +67,8 @@ func TestPropertyNameDiffs(t *testing.T) {
 						Dir:      "step2",
 						Additive: true,
 						ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+							t.Helper()
+
 							require.NotNil(t, stackInfo.Deployment)
 							_, err := getResource(stackInfo, "a")
 							assert.NoError(t, err)

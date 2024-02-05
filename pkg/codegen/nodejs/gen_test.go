@@ -41,11 +41,14 @@ func TestGeneratePackageThree(t *testing.T) {
 }
 
 func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
+	t.Helper()
+
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "nodejs",
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": func(t *testing.T, pwd string) {
+				t.Helper()
 				typeCheckGeneratedPackage(t, pwd, true)
 			},
 			"nodejs/test": testGeneratedPackage,
@@ -56,6 +59,8 @@ func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 
 // Runs unit tests against the generated code.
 func testGeneratedPackage(t *testing.T, pwd string) {
+	t.Helper()
+
 	// Some tests have do not have mocha as a dependency.
 	hasMocha := false
 	for _, c := range getYarnCommands(t, pwd) {
@@ -95,6 +100,8 @@ func testGeneratedPackage(t *testing.T, pwd string) {
 
 // Get the commands runnable with yarn run
 func getYarnCommands(t *testing.T, pwd string) []string {
+	t.Helper()
+
 	cmd := exec.Command("yarn", "run", "--json")
 	cmd.Dir = pwd
 	out, err := cmd.Output()

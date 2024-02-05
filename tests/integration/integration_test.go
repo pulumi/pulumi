@@ -617,6 +617,8 @@ func TestJSONOutput(t *testing.T) {
 		Verbose:      true,
 		JSONOutput:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			output := stdout.String()
 
 			// Check that the previewSummary is present.
@@ -634,6 +636,8 @@ func TestProviderDownloadURL(t *testing.T) {
 	t.Parallel()
 
 	validate := func(t *testing.T, stdout []byte) {
+		t.Helper()
+
 		deployment := &apitype.UntypedDeployment{}
 		err := json.Unmarshal(stdout, deployment)
 		assert.NoError(t, err)
@@ -815,6 +819,8 @@ description: A Pulumi program testing passphrase config.
 // Language-specific tests should call this function with the
 // appropriate parameters.
 func testConstructProviderPropagation(t *testing.T, lang string, deps []string) {
+	t.Helper()
+
 	const (
 		testDir      = "construct_component_provider_propagation"
 		componentDir = "testcomponent-go"
@@ -833,6 +839,8 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 		Quick:      true,
 		NoParallel: true, // already called by tests
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			gotProviders := make(map[string]string) // resource name => provider name
 
 			for _, res := range stackInfo.Deployment.Resources {
@@ -857,6 +865,8 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 
 // Test to validate that various resource options are propagated for MLCs.
 func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
+	t.Helper()
+
 	const (
 		testDir      = "construct_component_resource_options"
 		componentDir = "testcomponent-go"
@@ -864,6 +874,8 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 	runComponentSetup(t, testDir)
 
 	validate := func(t *testing.T, resources []apitype.ResourceV3) {
+		t.Helper()
+
 		urns := make(map[string]resource.URN) // name => URN
 		for _, res := range resources {
 			urns[res.URN.Name()] = res.URN
@@ -914,6 +926,7 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 		DestroyExcludeProtected: true, // test contains protected resources
 		SkipStackRemoval:        true, // protected resources prevent stack removal
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			validate(t, stackInfo.Deployment.Resources)
 		},
 	})
@@ -992,6 +1005,7 @@ func TestParentRename_issue13179(t *testing.T) {
 		SkipRefresh: true,
 		Quick:       true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			for _, res := range stackInfo.Deployment.Resources {
 				if res.URN.Name() == "parent" {
 					parentURN = res.URN

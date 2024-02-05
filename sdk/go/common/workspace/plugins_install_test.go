@@ -61,6 +61,7 @@ func createTGZ(files map[string][]byte) ([]byte, error) {
 }
 
 func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
+	t.Helper()
 	if files == nil {
 		files = map[string][]byte{}
 	}
@@ -78,6 +79,8 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 }
 
 func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginSpec) {
+	t.Helper()
+
 	tarball := prepareTestPluginTGZ(t, files)
 
 	dir := t.TempDir()
@@ -94,6 +97,8 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 }
 
 func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginInfo {
+	t.Helper()
+
 	info, err := os.Stat(filepath.Join(dir, plugin.Dir()))
 	assert.NoError(t, err)
 	assert.True(t, info.IsDir())
@@ -126,6 +131,8 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 }
 
 func testDeletePlugin(t *testing.T, plugin PluginInfo) {
+	t.Helper()
+
 	paths := []string{
 		plugin.Path,
 		plugin.Path + ".partial",
@@ -150,6 +157,8 @@ func testDeletePlugin(t *testing.T, plugin PluginInfo) {
 }
 
 func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte) {
+	t.Helper()
+
 	// Skip during short test runs since this test involves downloading dependencies.
 	if testing.Short() {
 		t.Skip("Skipped in short test run")

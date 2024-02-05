@@ -26,6 +26,7 @@ linters:
     - misspell
     - nolintlint
     - nakedret
+    - thelper
     - unconvert
     - unused
     - paralleltest
@@ -66,6 +67,15 @@ linters-settings:
       alias: testingrpc
     - pkg: github.com/deckarep/golang-set/v2
       alias: mapset
+  thelper:
+    test:
+      first: false
+    benchmark:
+      first: false
+    tb:
+      first: false
+    fuzz:
+      first: false
 
 issues:
   exclude-rules:

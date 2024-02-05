@@ -822,6 +822,8 @@ func TestProjectFolderStructure(t *testing.T) {
 }
 
 func chdir(t *testing.T, dir string) {
+	t.Helper()
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(dir)) // Set directory

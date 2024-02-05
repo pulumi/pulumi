@@ -10,6 +10,8 @@ import (
 )
 
 func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader {
+	b.Helper()
+
 	cwd, err := os.Getwd()
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)

@@ -71,6 +71,8 @@ type StepSummary struct {
 }
 
 func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step) bool {
+	t.Helper()
+
 	assert.Equal(t, len(expected), len(actual))
 	for _, exp := range expected {
 		act := actual[0]
@@ -84,6 +86,8 @@ func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step)
 }
 
 func ExpectDiagMessage(t *testing.T, messagePattern string) ValidateFunc {
+	t.Helper()
+
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
@@ -110,6 +114,8 @@ func ExpectDiagMessage(t *testing.T, messagePattern string) ValidateFunc {
 }
 
 func pickURN(t *testing.T, urns []resource.URN, names []string, target string) resource.URN {
+	t.Helper()
+
 	assert.Equal(t, len(urns), len(names))
 	assert.Contains(t, names, target)
 
@@ -1614,6 +1620,8 @@ type DiffFunc = func(urn resource.URN, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error)
 
 func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
+	t.Helper()
+
 	t.Run(name, func(t *testing.T) {
 		t.Parallel()
 
@@ -2508,6 +2516,8 @@ type updateContext struct {
 }
 
 func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateContext, error) {
+	t.Helper()
+
 	ctx := &updateContext{
 		resmon:       make(chan *deploytest.ResourceMonitor),
 		programErr:   make(chan error),

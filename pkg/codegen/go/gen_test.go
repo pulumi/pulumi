@@ -131,6 +131,8 @@ func inferModuleName(codeDir string) string {
 }
 
 func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+	t.Helper()
+
 	sdk, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
 	require.NoError(t, err)
 
@@ -154,6 +156,8 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 }
 
 func testGeneratedPackage(t *testing.T, codeDir string) {
+	t.Helper()
+
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
@@ -435,6 +439,7 @@ func TestTokenToResource(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			t.Helper()
 			t.Parallel()
 
 			actual := tt.pkg.tokenToResource(tt.token)
@@ -444,6 +449,8 @@ func TestTokenToResource(t *testing.T) {
 }
 
 func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
+	t.Helper()
+
 	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{})
 	assert.NoError(t, err)
 	return importedPkg

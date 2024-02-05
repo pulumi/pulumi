@@ -26,6 +26,8 @@ func commentString(trivia []Trivia) string {
 }
 
 func validateTokenLeadingTrivia(t *testing.T, token Token) {
+	t.Helper()
+
 	// There is nowhere to attach leading trivia to template control sequences.
 	if token.Raw.Type == hclsyntax.TokenTemplateControl {
 		assert.Len(t, token.LeadingTrivia, 0)
@@ -39,6 +41,8 @@ func validateTokenLeadingTrivia(t *testing.T, token Token) {
 }
 
 func validateTokenTrailingTrivia(t *testing.T, token Token) {
+	t.Helper()
+
 	trailingText := commentString(token.TrailingTrivia)
 	if trailingText != "" && !assert.Equal(t, string(token.Raw.Bytes), trailingText) {
 		t.Logf("trailing trivia mismatch for token @ %v", token.Range())
@@ -46,11 +50,15 @@ func validateTokenTrailingTrivia(t *testing.T, token Token) {
 }
 
 func validateTokenTrivia(t *testing.T, token Token) {
+	t.Helper()
+
 	validateTokenLeadingTrivia(t, token)
 	validateTokenTrailingTrivia(t, token)
 }
 
 func validateTrivia(t *testing.T, tokens ...interface{}) {
+	t.Helper()
+
 	for _, te := range tokens {
 		switch te := te.(type) {
 		case Token:
@@ -83,6 +91,8 @@ func validateTrivia(t *testing.T, tokens ...interface{}) {
 func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr, n *hclsyntax.LiteralValueExpr,
 	tokens *LiteralValueTokens,
 ) {
+	t.Helper()
+
 	index := -1
 	for i := range template.Parts {
 		if template.Parts[i] == n {

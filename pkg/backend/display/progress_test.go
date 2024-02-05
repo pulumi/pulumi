@@ -37,6 +37,8 @@ import (
 )
 
 func testProgressEvents(t *testing.T, path string, accept, interactive bool, width, height int, raw bool) {
+	t.Helper()
+
 	events, err := loadEvents(path)
 	require.NoError(t, err)
 

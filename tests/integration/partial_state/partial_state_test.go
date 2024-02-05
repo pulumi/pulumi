@@ -26,6 +26,8 @@ func TestPartialState(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// The first update tries to create a resource with state 4. This fails partially.
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
@@ -46,6 +48,8 @@ func TestPartialState(t *testing.T) {
 				Dir:      "step2",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// The next update deletes the resource. We should successfully delete it.
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 1, len(stackInfo.Deployment.Resources))
@@ -57,6 +61,8 @@ func TestPartialState(t *testing.T) {
 				Dir:      "step3",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// Step 3 creates a resource with state 5, which succeeds.
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
@@ -76,6 +82,8 @@ func TestPartialState(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// Step 4 updates the resource to have state 4, which fails partially.
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))

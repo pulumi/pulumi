@@ -266,7 +266,9 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 	return tsf()
 }
 
-func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
+func generateSnapshots(tb testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
+	tb.Helper()
+
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
@@ -275,7 +277,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			DryRun:      info.DryRun,
 			MonitorAddr: info.MonitorAddress,
 		})
-		assert.NoError(t, err)
+		assert.NoError(tb, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			type Dummy struct {
@@ -320,20 +322,21 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			},
 		},
 	}
-	p.Run(t, nil)
+	p.Run(tb, nil)
 
 	snaps := make([]*apitype.DeploymentV3, len(journalEntries))
 	for i := range journalEntries {
 		snap, err := journalEntries[:i].Snap(nil)
-		require.NoError(t, err)
+		require.NoError(tb, err)
 		deployment, err := stack.SerializeDeployment(snap, nil, true)
-		require.NoError(t, err)
+		require.NoError(tb, err)
 		snaps[i] = deployment
 	}
 	return snaps
 }
 
 func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
+	t.Helper()
 	t.Parallel()
 
 	dds := newDeploymentDiffState(0)
@@ -356,6 +359,7 @@ func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 }
 
 func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
+	t.Helper()
 	t.Parallel()
 
 	ctx := context.Background()
@@ -377,6 +381,8 @@ func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 }
 
 func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
+	b.Helper()
+
 	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
 		wireSize, verbatimSize, diffs, verbatims := 0, 0, 0, 0
@@ -451,6 +457,8 @@ func (c dynamicStackCase) getName() string {
 
 //nolint:gosec
 func (c dynamicStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
+	tb.Helper()
+
 	r := rand.New(rand.NewSource(int64(c.seed)))
 	return generateSnapshots(tb, r, c.resourceCount, c.resourcePayloadBytes)
 }
@@ -511,6 +519,8 @@ func (c recordedStackCase) getName() string {
 }
 
 func (c recordedStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
+	tb.Helper()
+
 	f, err := os.Open(filepath.Join("testdata", string(c)))
 	require.NoError(tb, err)
 	defer contract.IgnoreClose(f)

@@ -389,6 +389,8 @@ func testGenerateExpression(
 	scope *model.Scope,
 	gen func(w io.Writer, g *generator, e model.Expression),
 ) {
+	t.Helper()
+
 	t.Run(hcl2Expr, func(t *testing.T) {
 		t.Parallel()
 

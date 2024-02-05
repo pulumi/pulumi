@@ -49,6 +49,8 @@ type stateOptions struct {
 func makeStateMetadata(
 	t *testing.T, name string, typ tokens.Type, custom bool, opts stateOptions,
 ) engine.StepEventStateMetadata {
+	t.Helper()
+
 	var provider string
 	if opts.Provider != nil {
 		provider = opts.Provider.String()
@@ -85,6 +87,8 @@ func makeMetadata(op display.StepOp, state engine.StepEventStateMetadata) engine
 
 // Adds a default provider for the given type if appropriate (i.e. the type token is pkg:mod:typ).
 func addDefaultProvider(t *testing.T, typ tokens.Type, events chan<- engine.Event) string {
+	t.Helper()
+
 	pkg := typ.Package()
 	if pkg != "" {
 		state := makeStateMetadata(t, "default_1_2_3", providers.MakeProviderType(pkg), true, stateOptions{

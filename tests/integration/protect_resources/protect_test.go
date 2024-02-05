@@ -22,6 +22,8 @@ func TestProtectedResources(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
+
 			// A single synthetic stack and a single "eternal" resource.
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
@@ -38,6 +40,8 @@ func TestProtectedResources(t *testing.T) {
 				Dir:      "step2",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// An update to "eternal"; should still be there.
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
@@ -56,6 +60,8 @@ func TestProtectedResources(t *testing.T) {
 				// This step will fail because the resource is protected.
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// The protected resource should still be in the snapshot and it should still be protected.
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
@@ -72,6 +78,8 @@ func TestProtectedResources(t *testing.T) {
 				Dir:      "step4",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// "eternal" should now be unprotected.
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
@@ -88,6 +96,8 @@ func TestProtectedResources(t *testing.T) {
 				Dir:      "step5",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
+
 					// Finally, "eternal" should be deleted.
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 1, len(stackInfo.Deployment.Resources))

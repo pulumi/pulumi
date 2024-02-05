@@ -39,6 +39,8 @@ import (
 // chdir temporarily changes the current directory of the program.
 // It restores it to the original directory when the test is done.
 func chdir(t *testing.T, dir string) {
+	t.Helper()
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(dir)) // Set directory
@@ -76,6 +78,8 @@ func TestYarnInstall(t *testing.T) {
 }
 
 func testInstall(t *testing.T, expectedBin string, production bool) {
+	t.Helper()
+
 	// To test this functionality without actually hitting NPM,
 	// we'll spin up a local HTTP server that implements a subset
 	// of the NPM registry API.
@@ -135,12 +139,12 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 //
 // See https://github.com/npm/registry/blob/master/docs/REGISTRY-API.md for
 // details on the protocol.
-func fakeNPMRegistry(t testing.TB) string {
-	t.Helper()
+func fakeNPMRegistry(tb testing.TB) string {
+	tb.Helper()
 
 	// The server needs the tarball's SHA-1 hash so we'll build it in
 	// advance.
-	tarball, tarballSHA1 := tarballOf(t,
+	tarball, tarballSHA1 := tarballOf(tb,
 		// The bare minimum files needed by NPM.
 		"package/package.json", `{
 			"name": "@pulumi/pulumi",
@@ -150,7 +154,7 @@ func fakeNPMRegistry(t testing.TB) string {
 	var srv *httptest.Server
 	// Separate assignment so we can access srv.URL in the handler.
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Logf("[fakeNPMRegistry] %v %v", r.Method, r.URL.Path)
+		tb.Logf("[fakeNPMRegistry] %v %v", r.Method, r.URL.Path)
 
 		if r.Method != http.MethodGet {
 			// We only expect GET requests.
@@ -180,7 +184,7 @@ func fakeNPMRegistry(t testing.TB) string {
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.Header().Set("Content-Length", strconv.Itoa(len(tarball)))
 			_, err := w.Write(tarball)
-			if !assert.NoError(t, err) {
+			if !assert.NoError(tb, err) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 
@@ -188,7 +192,7 @@ func fakeNPMRegistry(t testing.TB) string {
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
-	t.Cleanup(srv.Close)
+	tb.Cleanup(srv.Close)
 	return srv.URL
 }
 
@@ -197,10 +201,10 @@ func fakeNPMRegistry(t testing.TB) string {
 //
 // The files are specified as a list of pairs of paths and contents.
 // The paths are relative to the root of the archive.
-func tarballOf(t testing.TB, pairs ...string) (data []byte, sha string) {
-	t.Helper()
+func tarballOf(tb testing.TB, pairs ...string) (data []byte, sha string) {
+	tb.Helper()
 
-	require.True(t, len(pairs)%2 == 0, "pairs must be a list of path/contents pairs")
+	require.True(tb, len(pairs)%2 == 0, "pairs must be a list of path/contents pairs")
 
 	var buff bytes.Buffer // raw .tar.gz bytes
 	hash := sha1.New()    //nolint:gosec // this is what NPM wants
@@ -212,26 +216,26 @@ func tarballOf(t testing.TB, pairs ...string) (data []byte, sha string) {
 
 	for i := 0; i < len(pairs); i += 2 {
 		path, contents := pairs[i], pairs[i+1]
-		require.NoError(t, tarw.WriteHeader(&tar.Header{
+		require.NoError(tb, tarw.WriteHeader(&tar.Header{
 			Name: path,
 			Mode: 0o600,
 			Size: int64(len(contents)),
 		}), "WriteHeader(%q)", path)
 		_, err := tarw.Write([]byte(contents))
-		require.NoError(t, err, "WriteContents(%q)", path)
+		require.NoError(tb, err, "WriteContents(%q)", path)
 	}
 
 	// Closing the writers will flush them and write the final tarball bytes.
-	require.NoError(t, tarw.Close())
-	require.NoError(t, gzipw.Close())
+	require.NoError(tb, tarw.Close())
+	require.NoError(tb, gzipw.Close())
 
 	return buff.Bytes(), hex.EncodeToString(hash.Sum(nil))
 }
 
 // writeFile creates a file at the given path with the given contents.
-func writeFile(t testing.TB, path, contents string) {
-	t.Helper()
+func writeFile(tb testing.TB, path, contents string) {
+	tb.Helper()
 
-	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
-	require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
+	require.NoError(tb, os.MkdirAll(filepath.Dir(path), 0o700))
+	require.NoError(tb, os.WriteFile(path, []byte(contents), 0o600))
 }

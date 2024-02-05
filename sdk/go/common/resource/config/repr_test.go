@@ -33,6 +33,8 @@ import (
 
 // mapPaths returns the set of all possible paths in c.
 func mapPaths(t *testing.T, c Map) []Key {
+	t.Helper()
+
 	//nolint:prealloc
 	var paths []Key
 	for k, v := range c {

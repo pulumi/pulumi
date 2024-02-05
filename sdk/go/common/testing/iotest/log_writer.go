@@ -53,15 +53,19 @@ var _ io.Writer = (*logWriter)(nil)
 //
 // The returned writer is safe for concurrent use
 // from multiple parallel tests.
-func LogWriter(t testing.TB) io.Writer {
-	return LogWriterPrefixed(t, "")
+func LogWriter(tb testing.TB) io.Writer {
+	tb.Helper()
+
+	return LogWriterPrefixed(tb, "")
 }
 
 // LogWriterPrefixed is a variant of LogWriter
 // that prepends the given prefix to each line.
-func LogWriterPrefixed(t testing.TB, prefix string) io.Writer {
-	w := logWriter{t: t, prefix: prefix}
-	t.Cleanup(w.flush)
+func LogWriterPrefixed(tb testing.TB, prefix string) io.Writer {
+	tb.Helper()
+
+	w := logWriter{t: tb, prefix: prefix}
+	tb.Cleanup(w.flush)
 	return &w
 }
 

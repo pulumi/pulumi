@@ -30,6 +30,8 @@ import (
 )
 
 func chdir(t *testing.T, dir string) {
+	t.Helper()
+
 	cwd, err := os.Getwd()
 	assert.NoError(t, err)
 	assert.NoError(t, os.Chdir(dir)) // Set directory
@@ -248,6 +250,8 @@ func promptMock(name string, stackName string) promptForValueFunc {
 }
 
 func loadProject(t *testing.T, dir string) *workspace.Project {
+	t.Helper()
+
 	path, err := workspace.DetectProjectPathFrom(dir)
 	assert.NoError(t, err)
 	proj, err := workspace.LoadProject(path)
@@ -256,6 +260,8 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 }
 
 func currentUser(t *testing.T) string {
+	t.Helper()
+
 	ctx := context.Background()
 	b, err := currentBackend(ctx, nil, display.Options{})
 	assert.NoError(t, err)
@@ -265,12 +271,16 @@ func currentUser(t *testing.T) string {
 }
 
 func loadStackName(t *testing.T) string {
+	t.Helper()
+
 	w, err := workspace.New()
 	require.NoError(t, err)
 	return w.Settings().Stack
 }
 
 func removeStack(t *testing.T, dir, name string) {
+	t.Helper()
+
 	project := loadProject(t, dir)
 	ctx := context.Background()
 	b, err := currentBackend(ctx, project, display.Options{})
@@ -284,6 +294,8 @@ func removeStack(t *testing.T, dir, name string) {
 }
 
 func skipIfShortOrNoPulumiAccessToken(t *testing.T) {
+	t.Helper()
+
 	_, ok := os.LookupEnv("PULUMI_ACCESS_TOKEN")
 	if !ok {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")

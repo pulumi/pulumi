@@ -29,6 +29,8 @@ import (
 // not. This can lead to asserts especially on macos where TmpDir will have returned /var/folders/XX, but
 // after sym link resolution that is /private/var/folders/XX.
 func mkTempDir(t *testing.T) string {
+	t.Helper()
+
 	tmpDir := t.TempDir()
 	result, err := filepath.EvalSymlinks(tmpDir)
 	assert.NoError(t, err)
@@ -62,6 +64,8 @@ func TestDetectProjectAndPath(t *testing.T) {
 func TestProjectStackPath(t *testing.T) {
 	expectedPath := func(expectedPath string) func(t *testing.T, projectDir, path string, err error) {
 		return func(t *testing.T, projectDir, path string, err error) {
+			t.Helper()
+
 			assert.NoError(t, err)
 			assert.Equal(t, filepath.Join(projectDir, expectedPath), path)
 		}
@@ -87,6 +91,7 @@ func TestProjectStackPath(t *testing.T) {
 		"WithBoth",
 		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacksA\nstackConfigDir: stacksB\n",
 		func(t *testing.T, projectDir, path string, err error) {
+			t.Helper()
 			errorMsg := "Should not use both config and stackConfigDir to define the stack directory. " +
 				"Use only stackConfigDir instead."
 			assert.EqualError(t, err, errorMsg)

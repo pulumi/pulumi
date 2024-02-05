@@ -711,6 +711,8 @@ func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codege
 // CheckVersion checks for an expected package version
 // Todo: support checking multiple package expected versions
 func CheckVersion(t *testing.T, dir, depFilePath string, expectedVersionMap map[string]PkgVersionInfo) {
+	t.Helper()
+
 	depFile, err := os.Open(depFilePath)
 	require.NoError(t, err)
 	defer depFile.Close()
@@ -757,6 +759,8 @@ func CheckVersion(t *testing.T, dir, depFilePath string, expectedVersionMap map[
 }
 
 func GenProjectCleanUp(t *testing.T, dir, depFilePath, outfilePath string) {
+	t.Helper()
+
 	os.Remove(depFilePath)
 	os.Remove(outfilePath)
 	os.Remove(dir + "/.gitignore")

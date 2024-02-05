@@ -366,6 +366,8 @@ func TestDIYBackendRejectsStackInitOptions_legacy(t *testing.T) {
 //
 // Returns the directory that was marked.
 func markLegacyStore(t *testing.T, dir string) string {
+	t.Helper()
+
 	metaPath := filepath.Join(dir, pulumiMetaPath)
 	require.NoError(t, os.MkdirAll(filepath.Dir(metaPath), 0o755))
 	require.NoError(t, os.WriteFile(metaPath, []byte(`version: 0`), 0o600))

@@ -34,6 +34,8 @@ func await(out Output) (interface{}, bool, bool, []Resource, error) {
 }
 
 func assertApplied(t *testing.T, out Output) {
+	t.Helper()
+
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
@@ -718,6 +720,8 @@ func TestDeps(t *testing.T) {
 }
 
 func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
+	t.Helper()
+
 	var wg1, wg2 workGroup
 
 	o1 := internal.NewOutput(&wg1, anyOutputType)

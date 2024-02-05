@@ -15,6 +15,8 @@ import (
 )
 
 func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNames ...string) {
+	t.Helper()
+
 	// Build the lookup table of expected resource names.
 	expectedNamesTable := make(map[string]struct{})
 	for _, n := range expectedNames {
@@ -54,6 +56,7 @@ func TestSteps(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			assert.NotNil(t, stackInfo.Deployment)
 			validateResources(t, stackInfo.Deployment.Resources, "a", "b", "c", "d")
 		},
@@ -62,6 +65,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step2",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "b", "c", "e")
 				},
@@ -70,6 +74,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step3",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
@@ -78,6 +83,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step4",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
@@ -86,6 +92,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step5",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
@@ -94,6 +101,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step6",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources)
 				},
