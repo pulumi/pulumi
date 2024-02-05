@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/python
+  description: Upgrade grpcio to 1.60.1
