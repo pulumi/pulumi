@@ -515,8 +515,29 @@ func massageBlobPath(path string) (string, error) {
 		return path, nil
 	}
 
+	// We need to set no_tmp_dir to a value to avoid using the system temp directory.
+	// See also https://github.com/pulumi/pulumi/issues/15352
+	url, err := url.Parse(path)
+	if err != nil {
+		return "", fmt.Errorf("parsing the provided URL: %w", err)
+	}
+	query := url.Query()
+	if query.Get("no_tmp_dir") == "" {
+		query.Set("no_tmp_dir", "true")
+	} else if query.Get("no_tmp_dir") == "false" {
+		// If no_tmp_dir is set to false, we strip it out.  The library will default to false if
+		// the parameter is not present, but will consider any value being set as true.
+		query.Del("no_tmp_dir")
+	}
+	queryString := ""
+	if len(query) > 0 {
+		queryString = "?" + query.Encode()
+	}
+
 	// Strip off the "file://" portion so we can examine and determine what to do with the rest.
 	path = strings.TrimPrefix(path, FilePathPrefix)
+	// Strip off the query parameter, since we're computing that separately.
+	path = strings.Split(path, "?")[0]
 
 	// We need to specially handle ~.  The shell doesn't take care of this for us, and later
 	// functions we run into can't handle this either.
@@ -536,7 +557,7 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
-	path, err := filepath.Abs(path)
+	path, err = filepath.Abs(path)
 	if err != nil {
 		return "", fmt.Errorf("An IO error occurred while building the absolute path: %w", err)
 	}
@@ -548,7 +569,7 @@ func massageBlobPath(path string) (string, error) {
 		path = "/" + path
 	}
 
-	return FilePathPrefix + path, nil
+	return FilePathPrefix + path + queryString, nil
 }
 
 func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
