@@ -16,7 +16,7 @@ import (
 type ModuleResource struct {
 	pulumi.CustomResourceState
 
-	Optional_bool pulumix.Output[*bool] `pulumi:"optional_bool"`
+	OptionalBool pulumix.Output[*bool] `pulumi:"optionalBool"`
 }
 
 // NewModuleResource registers a new resource with the given unique name, arguments, and options.
@@ -26,54 +26,54 @@ func NewModuleResource(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Optional_bool == nil {
-		args.Optional_bool = pulumix.Ptr(true)
+	if args.OptionalBool == nil {
+		args.OptionalBool = pulumix.Ptr(true)
 	}
-	args.Optional_const = pulumix.Ptr("val")
-	if args.Optional_enum == nil {
-		args.Optional_enum = pulumix.Ptr(EnumThing(8))
+	args.OptionalConst = pulumix.Ptr("val")
+	if args.OptionalEnum == nil {
+		args.OptionalEnum = pulumix.Ptr(EnumThing(8))
 	}
-	if args.Optional_number == nil {
-		args.Optional_number = pulumix.Ptr(42.0)
+	if args.OptionalNumber == nil {
+		args.OptionalNumber = pulumix.Ptr(42.0)
 	}
-	if args.Optional_string == nil {
-		args.Optional_string = pulumix.Ptr("buzzer")
+	if args.OptionalString == nil {
+		args.OptionalString = pulumix.Ptr("buzzer")
 	}
-	if args.Plain_optional_bool == nil {
-		plain_optional_bool_ := true
-		args.Plain_optional_bool = &plain_optional_bool_
+	if args.PlainOptionalBool == nil {
+		plainOptionalBool_ := true
+		args.PlainOptionalBool = &plainOptionalBool_
 	}
-	plain_optional_const_ := "val"
-	args.Plain_optional_const = &plain_optional_const_
-	if args.Plain_optional_number == nil {
-		plain_optional_number_ := 42.0
-		args.Plain_optional_number = &plain_optional_number_
+	plainOptionalConst_ := "val"
+	args.PlainOptionalConst = &plainOptionalConst_
+	if args.PlainOptionalNumber == nil {
+		plainOptionalNumber_ := 42.0
+		args.PlainOptionalNumber = &plainOptionalNumber_
 	}
-	if args.Plain_optional_string == nil {
-		plain_optional_string_ := "buzzer"
-		args.Plain_optional_string = &plain_optional_string_
+	if args.PlainOptionalString == nil {
+		plainOptionalString_ := "buzzer"
+		args.PlainOptionalString = &plainOptionalString_
 	}
-	if internal.IsZero(args.Plain_required_bool) {
-		args.Plain_required_bool = true
+	if internal.IsZero(args.PlainRequiredBool) {
+		args.PlainRequiredBool = true
 	}
-	args.Plain_required_const = "val"
-	if internal.IsZero(args.Plain_required_number) {
-		args.Plain_required_number = 42.0
+	args.PlainRequiredConst = "val"
+	if internal.IsZero(args.PlainRequiredNumber) {
+		args.PlainRequiredNumber = 42.0
 	}
-	if internal.IsZero(args.Plain_required_string) {
-		args.Plain_required_string = "buzzer"
+	if internal.IsZero(args.PlainRequiredString) {
+		args.PlainRequiredString = "buzzer"
 	}
-	if args.Required_bool == nil {
-		args.Required_bool = pulumix.Val(true)
+	if args.RequiredBool == nil {
+		args.RequiredBool = pulumix.Val(true)
 	}
-	if args.Required_enum == nil {
-		args.Required_enum = pulumix.Val(EnumThing(4))
+	if args.RequiredEnum == nil {
+		args.RequiredEnum = pulumix.Val(EnumThing(4))
 	}
-	if args.Required_number == nil {
-		args.Required_number = pulumix.Val(42.0)
+	if args.RequiredNumber == nil {
+		args.RequiredNumber = pulumix.Val(42.0)
 	}
-	if args.Required_string == nil {
-		args.Required_string = pulumix.Val("buzzer")
+	if args.RequiredString == nil {
+		args.RequiredString = pulumix.Val("buzzer")
 	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ModuleResource
@@ -108,44 +108,44 @@ func (ModuleResourceState) ElementType() reflect.Type {
 }
 
 type moduleResourceArgs struct {
-	Optional_bool         *bool      `pulumi:"optional_bool"`
-	Optional_const        *string    `pulumi:"optional_const"`
-	Optional_enum         *EnumThing `pulumi:"optional_enum"`
-	Optional_number       *float64   `pulumi:"optional_number"`
-	Optional_string       *string    `pulumi:"optional_string"`
-	Plain_optional_bool   *bool      `pulumi:"plain_optional_bool"`
-	Plain_optional_const  *string    `pulumi:"plain_optional_const"`
-	Plain_optional_number *float64   `pulumi:"plain_optional_number"`
-	Plain_optional_string *string    `pulumi:"plain_optional_string"`
-	Plain_required_bool   bool       `pulumi:"plain_required_bool"`
-	Plain_required_const  string     `pulumi:"plain_required_const"`
-	Plain_required_number float64    `pulumi:"plain_required_number"`
-	Plain_required_string string     `pulumi:"plain_required_string"`
-	Required_bool         bool       `pulumi:"required_bool"`
-	Required_enum         EnumThing  `pulumi:"required_enum"`
-	Required_number       float64    `pulumi:"required_number"`
-	Required_string       string     `pulumi:"required_string"`
+	OptionalBool        *bool      `pulumi:"optionalBool"`
+	OptionalConst       *string    `pulumi:"optionalConst"`
+	OptionalEnum        *EnumThing `pulumi:"optionalEnum"`
+	OptionalNumber      *float64   `pulumi:"optionalNumber"`
+	OptionalString      *string    `pulumi:"optionalString"`
+	PlainOptionalBool   *bool      `pulumi:"plainOptionalBool"`
+	PlainOptionalConst  *string    `pulumi:"plainOptionalConst"`
+	PlainOptionalNumber *float64   `pulumi:"plainOptionalNumber"`
+	PlainOptionalString *string    `pulumi:"plainOptionalString"`
+	PlainRequiredBool   bool       `pulumi:"plainRequiredBool"`
+	PlainRequiredConst  string     `pulumi:"plainRequiredConst"`
+	PlainRequiredNumber float64    `pulumi:"plainRequiredNumber"`
+	PlainRequiredString string     `pulumi:"plainRequiredString"`
+	RequiredBool        bool       `pulumi:"requiredBool"`
+	RequiredEnum        EnumThing  `pulumi:"requiredEnum"`
+	RequiredNumber      float64    `pulumi:"requiredNumber"`
+	RequiredString      string     `pulumi:"requiredString"`
 }
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
-	Optional_bool         pulumix.Input[*bool]
-	Optional_const        pulumix.Input[*string]
-	Optional_enum         pulumix.Input[*EnumThing]
-	Optional_number       pulumix.Input[*float64]
-	Optional_string       pulumix.Input[*string]
-	Plain_optional_bool   *bool
-	Plain_optional_const  *string
-	Plain_optional_number *float64
-	Plain_optional_string *string
-	Plain_required_bool   bool
-	Plain_required_const  string
-	Plain_required_number float64
-	Plain_required_string string
-	Required_bool         pulumix.Input[bool]
-	Required_enum         pulumix.Input[EnumThing]
-	Required_number       pulumix.Input[float64]
-	Required_string       pulumix.Input[string]
+	OptionalBool        pulumix.Input[*bool]
+	OptionalConst       pulumix.Input[*string]
+	OptionalEnum        pulumix.Input[*EnumThing]
+	OptionalNumber      pulumix.Input[*float64]
+	OptionalString      pulumix.Input[*string]
+	PlainOptionalBool   *bool
+	PlainOptionalConst  *string
+	PlainOptionalNumber *float64
+	PlainOptionalString *string
+	PlainRequiredBool   bool
+	PlainRequiredConst  string
+	PlainRequiredNumber float64
+	PlainRequiredString string
+	RequiredBool        pulumix.Input[bool]
+	RequiredEnum        pulumix.Input[EnumThing]
+	RequiredNumber      pulumix.Input[float64]
+	RequiredString      pulumix.Input[string]
 }
 
 func (ModuleResourceArgs) ElementType() reflect.Type {
@@ -172,8 +172,8 @@ func (o ModuleResourceOutput) ToOutput(ctx context.Context) pulumix.Output[Modul
 	}
 }
 
-func (o ModuleResourceOutput) Optional_bool() pulumix.Output[*bool] {
-	value := pulumix.Apply[ModuleResource](o, func(v ModuleResource) pulumix.Output[*bool] { return v.Optional_bool })
+func (o ModuleResourceOutput) OptionalBool() pulumix.Output[*bool] {
+	value := pulumix.Apply[ModuleResource](o, func(v ModuleResource) pulumix.Output[*bool] { return v.OptionalBool })
 	return pulumix.Flatten[*bool, pulumix.Output[*bool]](value)
 }
 

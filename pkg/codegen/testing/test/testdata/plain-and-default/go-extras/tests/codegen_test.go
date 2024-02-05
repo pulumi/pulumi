@@ -17,14 +17,13 @@ package codegentest
 import (
 	"context"
 	"fmt"
+	"plain-and-default/foo"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
-
-	"plain-and-default/foo"
 )
 
 type mocks int
@@ -41,20 +40,20 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 func TestDefaults(t *testing.T) {
 	pulumiTest(t, "explicit false", func(ctx *pulumi.Context) error {
 		output, err := foo.NewModuleResource(ctx, "test", &foo.ModuleResourceArgs{
-			Optional_bool: pulumi.Bool(false),
+			OptionalBool: pulumi.Bool(false),
 		})
 		assert.NoError(t, err)
-		assert.Equalf(t, *waitOut(t, output.Optional_bool).(*bool), false,
+		assert.Equalf(t, *waitOut(t, output.OptionalBool).(*bool), false,
 			"Value has been set to false, make sure it doesn't change.")
 		return nil
 	})
 
 	pulumiTest(t, "explicit true", func(ctx *pulumi.Context) error {
 		output, err := foo.NewModuleResource(ctx, "test", &foo.ModuleResourceArgs{
-			Optional_bool: pulumi.Bool(true),
+			OptionalBool: pulumi.Bool(true),
 		})
 		assert.NoError(t, err)
-		assert.Equalf(t, *waitOut(t, output.Optional_bool).(*bool), true,
+		assert.Equalf(t, *waitOut(t, output.OptionalBool).(*bool), true,
 			"Value has been set to true, make sure it doesn't change.")
 		return nil
 	})
@@ -62,7 +61,7 @@ func TestDefaults(t *testing.T) {
 	pulumiTest(t, "default value", func(ctx *pulumi.Context) error {
 		output, err := foo.NewModuleResource(ctx, "test", &foo.ModuleResourceArgs{})
 		assert.NoError(t, err)
-		assert.Equalf(t, *waitOut(t, output.Optional_bool).(*bool), true,
+		assert.Equalf(t, *waitOut(t, output.OptionalBool).(*bool), true,
 			"Default value is true, and the value has not been specified")
 		return nil
 	})

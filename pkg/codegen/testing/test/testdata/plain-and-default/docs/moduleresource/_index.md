@@ -234,112 +234,112 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="plain_required_bool_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_bool_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>bool</a>
+        <span id="plainrequiredbool_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredbool_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_number_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>number</a>
+        <span id="plainrequirednumber_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequirednumber_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_string_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>string</a>
+        <span id="plainrequiredstring_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredstring_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_bool_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>bool</a>
+        <span id="requiredbool_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredbool_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_enum_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>enum</a>
+        <span id="requiredenum_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredenum_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_number_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>number</a>
+        <span id="requirednumber_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednumber_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_string_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>string</a>
+        <span id="requiredstring_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredstring_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_bool_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>bool</a>
+        <span id="optionalbool_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalbool_csharp" style="color: inherit; text-decoration: inherit;">Optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_enum_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
+        <span id="optionalenum_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalenum_csharp" style="color: inherit; text-decoration: inherit;">Optional<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_number_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>number</a>
+        <span id="optionalnumber_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalnumber_csharp" style="color: inherit; text-decoration: inherit;">Optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_string_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>string</a>
+        <span id="optionalstring_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalstring_csharp" style="color: inherit; text-decoration: inherit;">Optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_bool_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>bool</a>
+        <span id="plainoptionalbool_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalbool_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_number_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>number</a>
+        <span id="plainoptionalnumber_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalnumber_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_string_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>string</a>
+        <span id="plainoptionalstring_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalstring_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -352,112 +352,112 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="plain_required_bool_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_bool_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>bool</a>
+        <span id="plainrequiredbool_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredbool_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_number_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>number</a>
+        <span id="plainrequirednumber_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequirednumber_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_string_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>string</a>
+        <span id="plainrequiredstring_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredstring_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_bool_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>bool</a>
+        <span id="requiredbool_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredbool_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_enum_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>enum</a>
+        <span id="requiredenum_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredenum_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_number_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>number</a>
+        <span id="requirednumber_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednumber_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_string_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>string</a>
+        <span id="requiredstring_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredstring_go" style="color: inherit; text-decoration: inherit;">Required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_bool_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>bool</a>
+        <span id="optionalbool_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalbool_go" style="color: inherit; text-decoration: inherit;">Optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_enum_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
+        <span id="optionalenum_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalenum_go" style="color: inherit; text-decoration: inherit;">Optional<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_number_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>number</a>
+        <span id="optionalnumber_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalnumber_go" style="color: inherit; text-decoration: inherit;">Optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_string_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>string</a>
+        <span id="optionalstring_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalstring_go" style="color: inherit; text-decoration: inherit;">Optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_bool_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>bool</a>
+        <span id="plainoptionalbool_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalbool_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_number_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>number</a>
+        <span id="plainoptionalnumber_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalnumber_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_string_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>string</a>
+        <span id="plainoptionalstring_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalstring_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -470,112 +470,112 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <pulumi-choosable type="language" values="java">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="plain_required_bool_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_bool_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>bool</a>
+        <span id="plainrequiredbool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredbool_java" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_number_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>number</a>
+        <span id="plainrequirednumber_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequirednumber_java" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_string_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>string</a>
+        <span id="plainrequiredstring_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredstring_java" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_bool_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_java" style="color: inherit; text-decoration: inherit;">required_<wbr>bool</a>
+        <span id="requiredbool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredbool_java" style="color: inherit; text-decoration: inherit;">required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_enum_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_java" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
+        <span id="requiredenum_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredenum_java" style="color: inherit; text-decoration: inherit;">required<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_number_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_java" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
+        <span id="requirednumber_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednumber_java" style="color: inherit; text-decoration: inherit;">required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_string_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_java" style="color: inherit; text-decoration: inherit;">required_<wbr>string</a>
+        <span id="requiredstring_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredstring_java" style="color: inherit; text-decoration: inherit;">required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_bool_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
+        <span id="optionalbool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalbool_java" style="color: inherit; text-decoration: inherit;">optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_enum_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
+        <span id="optionalenum_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalenum_java" style="color: inherit; text-decoration: inherit;">optional<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_number_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
+        <span id="optionalnumber_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalnumber_java" style="color: inherit; text-decoration: inherit;">optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_string_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
+        <span id="optionalstring_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalstring_java" style="color: inherit; text-decoration: inherit;">optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_bool_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>bool</a>
+        <span id="plainoptionalbool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalbool_java" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_number_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>number</a>
+        <span id="plainoptionalnumber_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalnumber_java" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_string_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>string</a>
+        <span id="plainoptionalstring_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalstring_java" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -588,112 +588,112 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="plain_required_bool_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_bool_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>bool</a>
+        <span id="plainrequiredbool_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredbool_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_number_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>number</a>
+        <span id="plainrequirednumber_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequirednumber_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_string_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>string</a>
+        <span id="plainrequiredstring_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredstring_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_bool_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>bool</a>
+        <span id="requiredbool_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredbool_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_enum_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
+        <span id="requiredenum_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredenum_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_number_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
+        <span id="requirednumber_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednumber_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_string_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>string</a>
+        <span id="requiredstring_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredstring_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_bool_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
+        <span id="optionalbool_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalbool_nodejs" style="color: inherit; text-decoration: inherit;">optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_enum_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
+        <span id="optionalenum_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalenum_nodejs" style="color: inherit; text-decoration: inherit;">optional<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_number_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
+        <span id="optionalnumber_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalnumber_nodejs" style="color: inherit; text-decoration: inherit;">optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_string_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
+        <span id="optionalstring_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalstring_nodejs" style="color: inherit; text-decoration: inherit;">optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_bool_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>bool</a>
+        <span id="plainoptionalbool_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalbool_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_number_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>number</a>
+        <span id="plainoptionalnumber_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalnumber_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_string_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>string</a>
+        <span id="plainoptionalstring_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalstring_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -824,112 +824,112 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <pulumi-choosable type="language" values="yaml">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="plain_required_bool_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_bool_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>bool</a>
+        <span id="plainrequiredbool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredbool_yaml" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_number_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>number</a>
+        <span id="plainrequirednumber_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequirednumber_yaml" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="plain_required_string_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>string</a>
+        <span id="plainrequiredstring_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainrequiredstring_yaml" style="color: inherit; text-decoration: inherit;">plain<wbr>Required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_bool_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>bool</a>
+        <span id="requiredbool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredbool_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_enum_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
+        <span id="requiredenum_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredenum_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">4 | 6 | 8</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_number_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
+        <span id="requirednumber_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednumber_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
-        <span id="required_string_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>string</a>
+        <span id="requiredstring_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredstring_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_bool_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
+        <span id="optionalbool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalbool_yaml" style="color: inherit; text-decoration: inherit;">optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_enum_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
+        <span id="optionalenum_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalenum_yaml" style="color: inherit; text-decoration: inherit;">optional<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">4 | 6 | 8</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_number_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
+        <span id="optionalnumber_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalnumber_yaml" style="color: inherit; text-decoration: inherit;">optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="optional_string_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
+        <span id="optionalstring_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalstring_yaml" style="color: inherit; text-decoration: inherit;">optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_bool_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>bool</a>
+        <span id="plainoptionalbool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalbool_yaml" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>Bool</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_number_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>number</a>
+        <span id="plainoptionalnumber_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalnumber_yaml" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>Number</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
-        <span id="plain_optional_string_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>string</a>
+        <span id="plainoptionalstring_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainoptionalstring_yaml" style="color: inherit; text-decoration: inherit;">plain<wbr>Optional<wbr>String</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>

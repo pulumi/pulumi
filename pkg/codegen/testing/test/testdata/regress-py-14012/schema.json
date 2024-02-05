@@ -11,16 +11,16 @@
     "types": {
         "foo:index:ProviderCertmanager": {
             "properties": {
-                "mtls_cert_pem": {
+                "mtlsCertPem": {
                     "type": "string"
                 },
-                "mtls_key_pem": {
+                "mtlsKeyPem": {
                     "type": "string"
                 }
             },
             "required": [
-                "mtls_cert_pem",
-                "mtls_key_pem"
+                "mtlsCertPem",
+                "mtlsKeyPem"
             ],
             "type": "object"
         }

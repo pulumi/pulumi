@@ -12,8 +12,8 @@ namespace Pulumi.FooBar
     [FooBarResourceType("foobar::ModuleResource")]
     public partial class ModuleResource : global::Pulumi.CustomResource
     {
-        [Output("optional_bool")]
-        public Output<bool?> Optional_bool { get; private set; } = null!;
+        [Output("optionalBool")]
+        public Output<bool?> OptionalBool { get; private set; } = null!;
 
 
         /// <summary>
@@ -36,9 +36,9 @@ namespace Pulumi.FooBar
         private static ModuleResourceArgs MakeArgs(ModuleResourceArgs args)
         {
             args ??= new ModuleResourceArgs();
-            args.Optional_const = "val";
-            args.Plain_optional_const = "val";
-            args.Plain_required_const = "val";
+            args.OptionalConst = "val";
+            args.PlainOptionalConst = "val";
+            args.PlainRequiredConst = "val";
             return args;
         }
 
@@ -69,76 +69,76 @@ namespace Pulumi.FooBar
 
     public sealed class ModuleResourceArgs : global::Pulumi.ResourceArgs
     {
-        [Input("optional_bool")]
-        public Input<bool>? Optional_bool { get; set; }
+        [Input("optionalBool")]
+        public Input<bool>? OptionalBool { get; set; }
 
-        [Input("optional_const")]
-        public Input<string>? Optional_const { get; set; }
+        [Input("optionalConst")]
+        public Input<string>? OptionalConst { get; set; }
 
-        [Input("optional_enum")]
-        public Input<Pulumi.FooBar.EnumThing>? Optional_enum { get; set; }
+        [Input("optionalEnum")]
+        public Input<Pulumi.FooBar.EnumThing>? OptionalEnum { get; set; }
 
-        [Input("optional_number")]
-        public Input<double>? Optional_number { get; set; }
+        [Input("optionalNumber")]
+        public Input<double>? OptionalNumber { get; set; }
 
-        [Input("optional_string")]
-        public Input<string>? Optional_string { get; set; }
+        [Input("optionalString")]
+        public Input<string>? OptionalString { get; set; }
 
-        [Input("plain_optional_bool")]
-        public bool? Plain_optional_bool { get; set; }
+        [Input("plainOptionalBool")]
+        public bool? PlainOptionalBool { get; set; }
 
-        [Input("plain_optional_const")]
-        public string? Plain_optional_const { get; set; }
+        [Input("plainOptionalConst")]
+        public string? PlainOptionalConst { get; set; }
 
-        [Input("plain_optional_number")]
-        public double? Plain_optional_number { get; set; }
+        [Input("plainOptionalNumber")]
+        public double? PlainOptionalNumber { get; set; }
 
-        [Input("plain_optional_string")]
-        public string? Plain_optional_string { get; set; }
+        [Input("plainOptionalString")]
+        public string? PlainOptionalString { get; set; }
 
-        [Input("plain_required_bool", required: true)]
-        public bool Plain_required_bool { get; set; }
+        [Input("plainRequiredBool", required: true)]
+        public bool PlainRequiredBool { get; set; }
 
-        [Input("plain_required_const", required: true)]
-        public string Plain_required_const { get; set; } = null!;
+        [Input("plainRequiredConst", required: true)]
+        public string PlainRequiredConst { get; set; } = null!;
 
-        [Input("plain_required_number", required: true)]
-        public double Plain_required_number { get; set; }
+        [Input("plainRequiredNumber", required: true)]
+        public double PlainRequiredNumber { get; set; }
 
-        [Input("plain_required_string", required: true)]
-        public string Plain_required_string { get; set; } = null!;
+        [Input("plainRequiredString", required: true)]
+        public string PlainRequiredString { get; set; } = null!;
 
-        [Input("required_bool", required: true)]
-        public Input<bool> Required_bool { get; set; } = null!;
+        [Input("requiredBool", required: true)]
+        public Input<bool> RequiredBool { get; set; } = null!;
 
-        [Input("required_enum", required: true)]
-        public Input<Pulumi.FooBar.EnumThing> Required_enum { get; set; } = null!;
+        [Input("requiredEnum", required: true)]
+        public Input<Pulumi.FooBar.EnumThing> RequiredEnum { get; set; } = null!;
 
-        [Input("required_number", required: true)]
-        public Input<double> Required_number { get; set; } = null!;
+        [Input("requiredNumber", required: true)]
+        public Input<double> RequiredNumber { get; set; } = null!;
 
-        [Input("required_string", required: true)]
-        public Input<string> Required_string { get; set; } = null!;
+        [Input("requiredString", required: true)]
+        public Input<string> RequiredString { get; set; } = null!;
 
         public ModuleResourceArgs()
         {
-            Optional_bool = true;
-            Optional_const = "another";
-            Optional_enum = Pulumi.FooBar.EnumThing.Eight;
-            Optional_number = 42;
-            Optional_string = "buzzer";
-            Plain_optional_bool = true;
-            Plain_optional_const = "another";
-            Plain_optional_number = 42;
-            Plain_optional_string = "buzzer";
-            Plain_required_bool = true;
-            Plain_required_const = "another";
-            Plain_required_number = 42;
-            Plain_required_string = "buzzer";
-            Required_bool = true;
-            Required_enum = Pulumi.FooBar.EnumThing.Four;
-            Required_number = 42;
-            Required_string = "buzzer";
+            OptionalBool = true;
+            OptionalConst = "another";
+            OptionalEnum = Pulumi.FooBar.EnumThing.Eight;
+            OptionalNumber = 42;
+            OptionalString = "buzzer";
+            PlainOptionalBool = true;
+            PlainOptionalConst = "another";
+            PlainOptionalNumber = 42;
+            PlainOptionalString = "buzzer";
+            PlainRequiredBool = true;
+            PlainRequiredConst = "another";
+            PlainRequiredNumber = 42;
+            PlainRequiredString = "buzzer";
+            RequiredBool = true;
+            RequiredEnum = Pulumi.FooBar.EnumThing.Four;
+            RequiredNumber = 42;
+            RequiredString = "buzzer";
         }
         public static new ModuleResourceArgs Empty => new ModuleResourceArgs();
     }

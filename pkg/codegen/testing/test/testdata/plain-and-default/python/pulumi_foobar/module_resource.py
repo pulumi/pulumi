@@ -97,7 +97,7 @@ class ModuleResourceArgs:
             pulumi.set(__self__, "plain_optional_string", plain_optional_string)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainRequiredBool")
     def plain_required_bool(self) -> bool:
         return pulumi.get(self, "plain_required_bool")
 
@@ -106,7 +106,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_required_bool", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainRequiredConst")
     def plain_required_const(self) -> str:
         return pulumi.get(self, "plain_required_const")
 
@@ -115,7 +115,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_required_const", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainRequiredNumber")
     def plain_required_number(self) -> float:
         return pulumi.get(self, "plain_required_number")
 
@@ -124,7 +124,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_required_number", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainRequiredString")
     def plain_required_string(self) -> str:
         return pulumi.get(self, "plain_required_string")
 
@@ -133,7 +133,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_required_string", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="requiredBool")
     def required_bool(self) -> pulumi.Input[bool]:
         return pulumi.get(self, "required_bool")
 
@@ -142,7 +142,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "required_bool", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="requiredEnum")
     def required_enum(self) -> pulumi.Input['EnumThing']:
         return pulumi.get(self, "required_enum")
 
@@ -151,7 +151,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "required_enum", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="requiredNumber")
     def required_number(self) -> pulumi.Input[float]:
         return pulumi.get(self, "required_number")
 
@@ -160,7 +160,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "required_number", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="requiredString")
     def required_string(self) -> pulumi.Input[str]:
         return pulumi.get(self, "required_string")
 
@@ -169,7 +169,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "required_string", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="optionalBool")
     def optional_bool(self) -> Optional[pulumi.Input[bool]]:
         return pulumi.get(self, "optional_bool")
 
@@ -178,7 +178,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "optional_bool", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="optionalConst")
     def optional_const(self) -> Optional[pulumi.Input[str]]:
         return pulumi.get(self, "optional_const")
 
@@ -187,7 +187,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "optional_const", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="optionalEnum")
     def optional_enum(self) -> Optional[pulumi.Input['EnumThing']]:
         return pulumi.get(self, "optional_enum")
 
@@ -196,7 +196,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "optional_enum", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="optionalNumber")
     def optional_number(self) -> Optional[pulumi.Input[float]]:
         return pulumi.get(self, "optional_number")
 
@@ -205,7 +205,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "optional_number", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="optionalString")
     def optional_string(self) -> Optional[pulumi.Input[str]]:
         return pulumi.get(self, "optional_string")
 
@@ -214,7 +214,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "optional_string", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainOptionalBool")
     def plain_optional_bool(self) -> Optional[bool]:
         return pulumi.get(self, "plain_optional_bool")
 
@@ -223,7 +223,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_optional_bool", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainOptionalConst")
     def plain_optional_const(self) -> Optional[str]:
         return pulumi.get(self, "plain_optional_const")
 
@@ -232,7 +232,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_optional_const", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainOptionalNumber")
     def plain_optional_number(self) -> Optional[float]:
         return pulumi.get(self, "plain_optional_number")
 
@@ -241,7 +241,7 @@ class ModuleResourceArgs:
         pulumi.set(self, "plain_optional_number", value)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="plainOptionalString")
     def plain_optional_string(self) -> Optional[str]:
         return pulumi.get(self, "plain_optional_string")
 
@@ -420,7 +420,7 @@ class ModuleResource(pulumi.CustomResource):
         return ModuleResource(resource_name, opts=opts, __props__=__props__)
 
     @property
-    @pulumi.getter
+    @pulumi.getter(name="optionalBool")
     def optional_bool(self) -> pulumi.Output[Optional[bool]]:
         return pulumi.get(self, "optional_bool")
 
