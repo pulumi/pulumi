@@ -260,6 +260,36 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 	})
 }
 
+// TestStackOutputsProgramErrorNodeJS ensures that prior stack outputs aren't overwritten when a
+// program error occurs during an update.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "nodejs")
+
+	validate := func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		assert.Equal(t, map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}, stackInfo.RootResource.Outputs)
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join(d, "step1"),
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  true,
+		ExtraRuntimeValidation: validate,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:                    filepath.Join(d, "step2"),
+				Additive:               true,
+				ExpectFailure:          true,
+				ExtraRuntimeValidation: validate,
+			},
+		},
+	})
+}
+
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
 func TestStackOutputsJSON(t *testing.T) {
 	t.Parallel()
