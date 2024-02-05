@@ -75,7 +75,7 @@ func DeleteResource(
 	deleteSet := make(map[resource.URN][]*resource.State)
 	dg := graph.NewDependencyGraph(snapshot.Resources)
 
-	deps := dg.DependingOnUniquely(condemnedRes)
+	deps := dg.OnlyDependsOn(condemnedRes)
 	if len(deps) != 0 {
 		if !targetDependents {
 			return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: deps}

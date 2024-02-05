@@ -82,13 +82,13 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	return dependents
 }
 
-// DependingOnUniquely returns a slice containing all resources that directly or indirectly
+// OnlyDependsOn returns a slice containing all resources that directly or indirectly
 // depend upon *only* the given resource.  Resources that also depend on another resource with
 // the same URN will not be included in the returned slice.  The returned slice is guaranteed
 // to be in topological order with respect to the snapshot dependency graph.
 //
-// The time complexity of DependingOnUniquely is linear with respect to the number of resources.
-func (dg *DependencyGraph) DependingOnUniquely(res *resource.State) []*resource.State {
+// The time complexity of OnlyDependsOn is linear with respect to the number of resources.
+func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
 	// topological order.
 	var dependents []*resource.State
@@ -126,10 +126,10 @@ func (dg *DependencyGraph) DependingOnUniquely(res *resource.State) []*resource.
 	// the graph that we actually want to operate upon. Edges in the snapshot graph
 	// originate in a resource and go to that resource's dependencies.
 	//
-	// The `DependingOnUniquely` is simpler when operating on the reverse of the snapshot graph,
+	// The `OnlyDependsOn` is simpler when operating on the reverse of the snapshot graph,
 	// where edges originate in a resource and go to resources that depend on that resource.
-	// In this graph, `DependingOn` for a resource is the set of resources that are reachable from the
-	// given resource.
+	// In this graph, `OnlyDependsOn` for a resource is the set of resources that are reachable from the
+	// given resource, and only from the given resource.
 	//
 	// To accomplish this without building up an entire graph data structure, we'll do a linear
 	// scan of the resource list starting at the requested resource and ending at the end of
