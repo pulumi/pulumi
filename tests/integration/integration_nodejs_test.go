@@ -230,12 +230,12 @@ func TestStackOutputsNodeJS(t *testing.T) {
 	})
 }
 
-// TestStackOutputsErrorNodeJS ensures that prior stack outputs aren't overwritten when an
-// error occurs during an update.
+// TestStackOutputsResourceErrorNodeJS ensures that prior stack outputs aren't overwritten when a
+// resource operation error occurs during an update.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestStackOutputsErrorNodeJS(t *testing.T) {
-	d := filepath.Join("stack_outputs_error", "nodejs")
+func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "nodejs")
 
 	validate := func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		assert.Equal(t, map[string]interface{}{
