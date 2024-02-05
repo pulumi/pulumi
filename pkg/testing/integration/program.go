@@ -165,6 +165,8 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
+	// Automatically use the latest dev version of pulumi SDKs and providers if available.
+	InstallDevReleases bool
 	// List of environments to create in order.
 	CreateEnvironments []Environment
 	// List of environments to use.
@@ -477,6 +479,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Overrides != nil {
 		opts.Overrides = overrides.Overrides
+	}
+	if overrides.InstallDevReleases {
+		opts.InstallDevReleases = overrides.InstallDevReleases
 	}
 	if len(overrides.CreateEnvironments) != 0 {
 		opts.CreateEnvironments = append(opts.CreateEnvironments, overrides.CreateEnvironments...)
@@ -2113,6 +2118,31 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
+	}
+
+	// If dev versions were requested, we need to update the
+	// package.json to use them.  Note that Overrides take
+	// priority over installing dev versions.
+	if pt.opts.InstallDevReleases {
+		packageJSON, err := readPackageJSON(cwd)
+		if err != nil {
+			return err
+		}
+		for _, section := range []string{"dependencies", "devDependencies"} {
+			if _, has := packageJSON[section]; has {
+				entries := packageJSON[section].(map[string]interface{})
+				for _, entry := range entries {
+					if str, ok := entry.(string); ok {
+						if strings.HasPrefix(str, "@pulumi") {
+							err := exec.Command("yarn", "upgrade", str+"@dev").Run()
+							if err != nil {
+								return err
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
