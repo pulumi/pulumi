@@ -52,8 +52,14 @@ func (x *exprNode) Syntax() syntax.Node {
 	return x.syntax
 }
 
-func exprPosition(expr Expr) (*hcl.Range, string) {
-	if expr != nil {
+type exprConstraint interface {
+	Expr
+	comparable
+}
+
+func exprPosition[T exprConstraint](expr T) (*hcl.Range, string) {
+	var zero T
+	if expr != zero {
 		if syntax := expr.Syntax(); syntax != nil {
 			return syntax.Syntax().Range(), syntax.Syntax().Path()
 		}
