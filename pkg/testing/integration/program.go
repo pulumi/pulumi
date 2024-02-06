@@ -2135,13 +2135,13 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		for _, section := range []string{"dependencies", "devDependencies"} {
 			if _, has := packageJSON[section]; has {
 				entries := packageJSON[section].(map[string]interface{})
-				for _, entry := range entries {
-					if str, ok := entry.(string); ok {
-						if strings.HasPrefix(str, "@pulumi") {
-							err := exec.Command("yarn", "upgrade", str+"@dev").Run()
-							if err != nil {
-								return err
-							}
+				for entry := range entries {
+					if strings.HasPrefix(entry, "@pulumi") {
+						cmd := exec.Command("yarn", "add", entry+"@dev")
+						cmd.Dir = cwd
+						err := cmd.Run()
+						if err != nil {
+							return err
 						}
 					}
 				}
