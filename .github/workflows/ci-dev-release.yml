@@ -142,7 +142,12 @@ jobs:
       - name: Move artifacts to the right place
         run: |
           mkdir -p artifacts
-          mv artifacts.tmp/artifacts-nodejs-sdk/*.tgz artifacts
+          (
+            cd artifacts.tmp/artifacts-nodejs-sdk
+            for file in *.tgz ; do
+              mv -vT "$file" "../../artifacts/sdk-nodejs-$file"
+            done
+          )
       - name: Publish nodejs release
         run: |
           make -C sdk/nodejs publish
@@ -170,14 +175,15 @@ jobs:
       - name: Move artifacts to the right place
         run: |
           mkdir -p artifacts
-          mv artifacts.tmp/artifacts-python-sdk/*.whl artifacts
           version="${{ inputs.version }}"
           # Python dev versions have a suffix of "a<sha>".
           dev_version="a${{ needs.gather-info.outputs.dev-sha }}"
+          mkdir -p artifacts
           (
-            cd artifacts
-            for file in *.whl; do
-              mv "$file" "${file//$version/$dev_version}"
+            cd artifacts.tmp/artifacts-python-sdk
+            for file in *.whl ; do
+              new_name="${file//$version/$dev_version}"
+              mv -vT "$file" "../../artifacts/sdk-python-$new_name"
             done
           )
 
