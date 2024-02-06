@@ -425,7 +425,9 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 	} else {
 		bytes, dec, err := e.environments.LoadEnvironment(e.ctx, name)
 		if err != nil {
-			e.errorf(decl.Environment, "%s", err.Error())
+			if decl.Environment != nil {
+				e.errorf(decl.Environment, "%s", err.Error())
+			}
 			return
 		}
 
