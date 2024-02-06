@@ -17,6 +17,7 @@ package ast
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -59,7 +60,7 @@ type exprConstraint interface {
 
 func exprPosition[T exprConstraint](expr T) (*hcl.Range, string) {
 	var zero T
-	if expr != zero {
+	if expr != zero && !reflect.ValueOf(expr).IsNil() {
 		if syntax := expr.Syntax(); syntax != nil {
 			return syntax.Syntax().Range(), syntax.Syntax().Path()
 		}
