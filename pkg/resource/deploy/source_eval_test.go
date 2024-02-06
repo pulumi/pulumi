@@ -3332,3 +3332,92 @@ func TestRegisterResource(t *testing.T) {
 		})
 	})
 }
+
+func TestDowngradeOutputValues(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		input    resource.PropertyMap
+		expected resource.PropertyMap
+	}{
+		{
+			"plain",
+			resource.PropertyMap{
+				"foo": resource.NewStringProperty("hello"),
+				"bar": resource.NewNumberProperty(42),
+			},
+			resource.PropertyMap{
+				"foo": resource.NewStringProperty("hello"),
+				"bar": resource.NewNumberProperty(42),
+			},
+		},
+		{
+			"secret",
+			resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+			},
+			resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+			},
+		},
+		{
+			"output",
+			resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("hello"),
+					Known:   true,
+				}),
+			},
+			resource.PropertyMap{
+				"foo": resource.NewStringProperty("hello"),
+			},
+		},
+		{
+			"secret output",
+			resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("hello"),
+					Known:   true,
+					Secret:  true,
+				}),
+			},
+			resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+			},
+		},
+		{
+			"unknown output",
+			resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{}),
+			},
+			resource.PropertyMap{
+				"foo": resource.MakeComputed(resource.NewStringProperty("")),
+			},
+		},
+		{
+			"unknown resource reference",
+			resource.PropertyMap{
+				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+					URN: "urn:pulumi:stack::project::package:module:resource::name",
+					ID:  resource.NewOutputProperty(resource.Output{}),
+				}),
+			},
+			resource.PropertyMap{
+				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+					URN: "urn:pulumi:stack::project::package:module:resource::name",
+					ID:  resource.MakeComputed(resource.NewStringProperty("")),
+				}),
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := downgradeOutputValues(tt.input)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}

@@ -4783,3 +4783,90 @@ func TestAutomaticDiff(t *testing.T) {
 		})
 	assert.NoError(t, err)
 }
+
+// Test that the engine only sends OutputValues for Construct and Call
+func TestConstructCallSecretsUnknowns(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", inputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					// Assert that "foo" is secret and "bar" is unknown
+					foo := inputs["foo"]
+					assert.True(t, foo.IsOutput())
+					assert.True(t, foo.OutputValue().Known)
+					assert.True(t, foo.OutputValue().Secret)
+
+					bar := inputs["bar"]
+					assert.True(t, bar.IsOutput())
+					assert.False(t, bar.OutputValue().Known)
+					assert.False(t, bar.OutputValue().Secret)
+
+					urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					assert.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN: urn,
+					}, nil
+				},
+				CallF: func(monitor *deploytest.ResourceMonitor,
+					tok tokens.ModuleMember, args resource.PropertyMap,
+					info plugin.CallInfo, options plugin.CallOptions,
+				) (plugin.CallResult, error) {
+					// Assert that "foo" is secret and "bar" is unknown
+					foo := args["foo"]
+					assert.True(t, foo.IsOutput())
+					assert.True(t, foo.OutputValue().Known)
+					assert.True(t, foo.OutputValue().Secret)
+
+					bar := args["bar"]
+					assert.True(t, bar.IsOutput())
+					assert.False(t, bar.OutputValue().Known)
+					assert.False(t, bar.OutputValue().Secret)
+
+					return plugin.CallResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		inputs := resource.PropertyMap{
+			"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
+			"bar": resource.MakeComputed(resource.NewStringProperty("")),
+		}
+
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, "", "")
+		assert.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+}

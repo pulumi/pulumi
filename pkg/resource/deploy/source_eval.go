@@ -822,13 +822,12 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 
 	args, err := plugin.UnmarshalProperties(
 		req.GetArgs(), plugin.MarshalOptions{
-			Label:         label,
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: true,
-			// To initially scope the use of this new feature, we only keep output values when unmarshaling
-			// properties for RegisterResource (when remote is true for multi-lang components) and Call.
-			KeepOutputValues: true,
+			Label:                 label,
+			KeepUnknowns:          true,
+			KeepSecrets:           true,
+			KeepResources:         true,
+			KeepOutputValues:      true,
+			UpgradeToOutputValues: true,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
@@ -1363,14 +1362,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	props, err := plugin.UnmarshalProperties(
 		req.GetObject(), plugin.MarshalOptions{
-			Label:              label,
-			KeepUnknowns:       true,
-			ComputeAssetHashes: true,
-			KeepSecrets:        true,
-			KeepResources:      true,
-			// To initially scope the use of this new feature, we only keep output values when unmarshaling
-			// properties for RegisterResource (when remote is true for multi-lang components) and Call.
-			KeepOutputValues: remote,
+			Label:                 label,
+			KeepUnknowns:          true,
+			ComputeAssetHashes:    true,
+			KeepSecrets:           true,
+			KeepResources:         true,
+			KeepOutputValues:      true,
+			UpgradeToOutputValues: true,
 		})
 	if err != nil {
 		return nil, err
@@ -1428,6 +1426,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var deleteBeforeReplace *bool
 	if deleteBeforeReplaceValue || req.GetDeleteBeforeReplaceDefined() {
 		deleteBeforeReplace = &deleteBeforeReplaceValue
+	}
+
+	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
+	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
+	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
+	// dependencies down to `Computed` and `Secret` or their plain values. We only do this for non-remote resources.
+	// Remote resources already deal with `OutputValue`s and even though it would be more consistent to downgrade them
+	// here it would be a break change.
+	if !remote {
+		props = downgradeOutputValues(props)
 	}
 
 	logging.V(5).Infof(
@@ -1824,4 +1832,55 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp inter
 	case "/pulumirpc.ResourceMonitor/RegisterResource":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.RegisterResourceRequest).Type)
 	}
+}
+
+// downgradeOutputValues recursively replaces all Output values with `Computed`, `Secret`, or their plain
+// value. This loses all dependency information.
+func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
+	var downgradeOutputPropertyValue func(v resource.PropertyValue) resource.PropertyValue
+
+	downgradeOutputPropertyValue = func(v resource.PropertyValue) resource.PropertyValue {
+		if v.IsOutput() {
+			output := v.OutputValue()
+			var result resource.PropertyValue
+			if output.Known {
+				result = downgradeOutputPropertyValue(output.Element)
+			} else {
+				result = resource.MakeComputed(resource.NewStringProperty(""))
+			}
+			if output.Secret {
+				result = resource.MakeSecret(result)
+			}
+			return result
+		}
+		if v.IsObject() {
+			return resource.NewObjectProperty(downgradeOutputValues(v.ObjectValue()))
+		}
+		if v.IsArray() {
+			var result []resource.PropertyValue
+			for _, elem := range v.ArrayValue() {
+				result = append(result, downgradeOutputPropertyValue(elem))
+			}
+			return resource.NewArrayProperty(result)
+		}
+		if v.IsSecret() {
+			return resource.MakeSecret(downgradeOutputPropertyValue(v.SecretValue().Element))
+		}
+		if v.IsResourceReference() {
+			ref := v.ResourceReferenceValue()
+			return resource.NewResourceReferenceProperty(
+				resource.ResourceReference{
+					URN:            ref.URN,
+					ID:             downgradeOutputPropertyValue(ref.ID),
+					PackageVersion: ref.PackageVersion,
+				})
+		}
+		return v
+	}
+
+	result := make(resource.PropertyMap)
+	for k, pv := range v {
+		result[k] = downgradeOutputPropertyValue(pv)
+	}
+	return result
 }
