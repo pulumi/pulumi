@@ -408,7 +408,12 @@ func (e *evalContext) evaluateImports() {
 //
 // Each environment in the import closure is only evaluated once.
 func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.ImportDecl) {
-	name := decl.Environment.GetValue()
+	// If the import does not have a name, there's nothing we can do. This can happen for environments
+	// with parse errors.
+	if decl.Environment == nil {
+		return
+	}
+	name := decl.Environment.Value
 
 	merge := true
 	if decl.Meta != nil && decl.Meta.Merge != nil {
@@ -425,9 +430,7 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 	} else {
 		bytes, dec, err := e.environments.LoadEnvironment(e.ctx, name)
 		if err != nil {
-			if decl.Environment != nil {
-				e.errorf(decl.Environment, "%s", err.Error())
-			}
+			e.errorf(decl.Environment, "%s", err.Error())
 			return
 		}
 
