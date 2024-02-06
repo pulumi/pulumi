@@ -150,12 +150,16 @@ jobs:
           PULUMI_VERSION: ${{ needs.gather-info.outputs.dev-version }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GIT_REF: ${{ inputs.ref }}
+
 
   python-dev-sdk-release:
     needs: [gather-info, build-release, sdk-check-release]
     runs-on: ubuntu-latest
 #    if: ${{ needs.sdk-check-release.outputs.python-release }} # TODO: enable this after testing
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Make artifacts directory
         run: |
           mkdir -p artifacts.tmp
