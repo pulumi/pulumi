@@ -862,13 +862,14 @@ type yarnLockTree struct {
 	Children []yarnLockTree `json:"children"`
 }
 
-func parseYarnLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
+func parseYarnLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
 	ex, err := executable.FindExecutable("yarn")
 	if err != nil {
 		return nil, fmt.Errorf("found %s but no yarn executable: %w", path, err)
 	}
 	cmdArgs := []string{"list", "--json"}
 	cmd := exec.Command(ex, cmdArgs...)
+	cmd.Dir = programDirectory
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
@@ -922,13 +923,14 @@ type npmPackage struct {
 	Resolved string `json:"resolved"`
 }
 
-func parseNpmLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
+func parseNpmLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
 	ex, err := executable.FindExecutable("npm")
 	if err != nil {
 		return nil, fmt.Errorf("found %s but not npm: %w", path, err)
 	}
 	cmdArgs := []string{"ls", "--json", "--depth=0"}
 	cmd := exec.Command(ex, cmdArgs...)
+	cmd.Dir = programDirectory
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf(`failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
@@ -1006,12 +1008,12 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	var result []*pulumirpc.DependencyInfo
 
 	if _, err = os.Stat(yarnFile); err == nil {
-		result, err = parseYarnLockFile(yarnFile)
+		result, err = parseYarnLockFile(req.Info.ProgramDirectory, yarnFile)
 		if err != nil {
 			return nil, err
 		}
 	} else if _, err = os.Stat(npmFile); err == nil {
-		result, err = parseNpmLockFile(npmFile)
+		result, err = parseNpmLockFile(req.Info.ProgramDirectory, npmFile)
 		if err != nil {
 			return nil, err
 		}
@@ -1262,6 +1264,35 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		err = yarnTscCmd.Run()
 		if err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
+		}
+
+		// Safely remove mockpackage dependency see [pulumi/pulumi#9026]
+		// Need to copy in the yarn.lock to do this
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "yarn.lock"),
+			filepath.Join(req.PackageDirectory, "yarn.lock"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy yarn.lock: %w", err)
+		}
+
+		err = writeString("$ yarn remove mockpackage\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		yarnRmCmd := exec.Command(yarn, "remove", "mockpackage")
+		yarnRmCmd.Dir = filepath.Join(req.PackageDirectory, "bin")
+		yarnRmCmd.Stdout = os.Stdout
+		yarnRmCmd.Stderr = os.Stderr
+		err = yarnRmCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("yarn remove mockpackage: %w", err)
+		}
+
+		// Cleanup the lock file, it's not needed anymore except for this mockpackage hackery
+		err = os.Remove(filepath.Join(req.PackageDirectory, "bin", "yarn.lock"))
+		if err != nil {
+			return nil, fmt.Errorf("remove yarn.lock: %w", err)
 		}
 
 		// "tsc" doesn't copy in the "proto" directory of .js files.

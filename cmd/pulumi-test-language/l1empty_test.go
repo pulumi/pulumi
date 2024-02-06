@@ -54,7 +54,7 @@ func (h *L1EmptyLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.0" {
+	if req.Version != "1.0.1" {
 		return nil, fmt.Errorf("unexpected version %s", req.Version)
 	}
 
@@ -98,6 +98,28 @@ func (h *L1EmptyLanguageHost) GenerateProject(
 	}
 
 	return &pulumirpc.GenerateProjectResponse{}, nil
+}
+
+func (h *L1EmptyLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
+		return nil, fmt.Errorf("unexpected directory to get program dependencies %s", req.Info.ProgramDirectory)
+	}
+
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: []*pulumirpc.DependencyInfo{
+			{
+				Name:    "pulumi_pulumi",
+				Version: "1.0.1",
+			},
+			// Return some other random dependency to make sure we can handle it.
+			{
+				Name:    "random_dep",
+				Version: "0.4.0",
+			},
+		},
+	}, nil
 }
 
 func (h *L1EmptyLanguageHost) InstallDependencies(

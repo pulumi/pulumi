@@ -55,7 +55,7 @@ func (p *badProvider) GetSchema(version int) ([]byte, error) {
 
 	pkg := schema.PackageSpec{
 		Name:    "simple",
-		Version: "1.0.0",
+		Version: "3.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"simple:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -88,8 +88,8 @@ func (p *badProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resourc
 	if !version.IsString() {
 		return nil, makeCheckFailure("version", "version is not a string"), nil
 	}
-	if version.StringValue() != "1.0.0" {
-		return nil, makeCheckFailure("version", "version is not 1.0.0"), nil
+	if version.StringValue() != "3.0.0" {
+		return nil, makeCheckFailure("version", "version is not 3.0.0"), nil
 	}
 
 	if len(newInputs) != 1 {
@@ -104,7 +104,7 @@ func (p *badProvider) Configure(inputs resource.PropertyMap) error {
 }
 
 func (p *badProvider) GetPluginInfo() (workspace.PluginInfo, error) {
-	ver := semver.MustParse("1.0.0")
+	ver := semver.MustParse("3.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
