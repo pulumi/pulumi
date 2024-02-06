@@ -1821,10 +1821,10 @@ func TestUpgradeToOutputValues(t *testing.T) {
 	t.Parallel()
 
 	opts := MarshalOptions{
-		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true,
+		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true, KeepResources: true,
 	}
 	upgradeOpts := MarshalOptions{
-		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true, UpgradeToOutputValues: true,
+		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true, KeepResources: true, UpgradeToOutputValues: true,
 	}
 
 	pk := resource.PropertyKey("pk")
@@ -1878,5 +1878,65 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		assert.True(t, propU.OutputValue().Known)
 		assert.True(t, propU.OutputValue().Secret)
 		assert.Equal(t, elem, propU.OutputValue().Element)
+	}
+
+	// Resource reference
+	{
+		elem := resource.ResourceReference{
+			URN: resource.CreateURN("name", "type", "", "project", "stack"),
+			ID:  resource.MakeComputed(resource.NewStringProperty("")),
+		}
+		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), upgradeOpts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, opts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsResourceReference())
+		assert.Equal(t, elem.URN, propU.ResourceReferenceValue().URN)
+		id := propU.ResourceReferenceValue().ID
+		// ResourceReferences are always Computed even if output upgrades are turned on.
+		assert.True(t, id.IsComputed())
+	}
+	{
+		elem := resource.ResourceReference{
+			URN: resource.CreateURN("name", "type", "", "project", "stack"),
+			ID:  resource.MakeComputed(resource.NewStringProperty("")),
+		}
+		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), opts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsResourceReference())
+		assert.Equal(t, elem.URN, propU.ResourceReferenceValue().URN)
+		id := propU.ResourceReferenceValue().ID
+		assert.True(t, id.IsComputed())
+	}
+
+	// Some SDKs send the unknown string value instead of "" for the unknown ID
+	{
+		urn := string(resource.CreateURN("name", "type", "", "project", "stack"))
+		prop := &structpb.Value{
+			Kind: &structpb.Value_StructValue{
+				StructValue: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						resource.SigKey: {
+							Kind: &structpb.Value_StringValue{StringValue: resource.ResourceReferenceSig},
+						},
+						"urn": {
+							Kind: &structpb.Value_StringValue{StringValue: urn},
+						},
+						"id": {
+							Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+						},
+					},
+				},
+			},
+		}
+
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsResourceReference())
+		assert.Equal(t, resource.URN(urn), propU.ResourceReferenceValue().URN)
+		id := propU.ResourceReferenceValue().ID
+		assert.True(t, id.IsComputed())
 	}
 }
