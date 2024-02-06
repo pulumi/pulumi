@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -35,6 +36,9 @@ import (
 	"testing"
 	"time"
 
+	gogit "github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/storage/memory"
 	multierror "github.com/hashicorp/go-multierror"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
@@ -2413,6 +2417,26 @@ func GoPath() (string, error) {
 	return gopath, nil
 }
 
+func getDefaultBranch(githubURL string) (string, error) {
+	storer := memory.NewStorage()
+	remoteConfig := &gitconfig.RemoteConfig{
+		URLs: []string{githubURL},
+	}
+
+	remote := gogit.NewRemote(storer, remoteConfig)
+	// TODO: Use context to cancel the operation if it takes too long
+	refs, err := remote.List(&gogit.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	for _, ref := range refs {
+		if ref.Name() == "HEAD" {
+			return ref.Target().Short(), nil
+		}
+	}
+	return "", fmt.Errorf("could not find default branch for %s", githubURL)
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -2438,6 +2462,35 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		err = pt.runCommand("go-mod-init", []string{goBin, "mod", "init"}, cwd)
 		if err != nil {
 			return err
+		}
+	}
+
+	// install dev dependencies if requested
+	if pt.opts.InstallDevReleases {
+		modFile := filepath.Join(cwd, "go.mod")
+		modData, err := os.ReadFile(modFile)
+		if err != nil {
+			return fmt.Errorf("error reading go.mod: %w", err)
+		}
+		file, err := modfile.Parse("go.mod", modData, nil)
+		if err != nil {
+			return fmt.Errorf("error parsing go.mod: %w", err)
+		}
+		for _, dep := range file.Require {
+			if strings.HasPrefix(dep.Mod.Path, "github.com/pulumi/") {
+				split := strings.Split(dep.Mod.Path, "/")
+				if len(split) < 3 {
+					return fmt.Errorf("invalid module path %s", dep.Mod.Path)
+				}
+				defaultBranch, err := getDefaultBranch("https://github.com/" + path.Join(split[1], split[2]))
+				if err != nil {
+					return err
+				}
+				err = pt.runCommand("go-get-dev-deps", []string{goBin, "get", "-u", dep.Mod.Path + "@" + defaultBranch}, cwd)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
