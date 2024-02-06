@@ -20,6 +20,7 @@ import (
 	sha256 "crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"flag"
 	"fmt"
@@ -2618,6 +2619,48 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	if localNuget == "" {
 		home := os.Getenv("HOME")
 		localNuget = filepath.Join(home, ".pulumi-dev", "nuget")
+	}
+
+	if pt.opts.InstallDevReleases {
+		csproj, err := filepath.Glob(filepath.Join(cwd, "*.csproj"))
+		if err != nil {
+			return fmt.Errorf("failed to find .csproj file: %w", err)
+		}
+		if len(csproj) != 1 {
+			return fmt.Errorf("expected to find exactly one .csproj file in %s, but found %d", cwd, len(csproj))
+		}
+		// parse the csproj xml file
+		csprojFile, err := os.Open(csproj[0])
+		if err != nil {
+			return fmt.Errorf("failed to open csproj file: %w", err)
+		}
+		defer contract.IgnoreClose(csprojFile)
+		type Project struct {
+			ItemGroup []struct {
+				PackageReference []struct {
+					Include string `xml:"Include,attr"`
+				} `xml:"PackageReference"`
+			} `xml:"ItemGroup"`
+		}
+		var project Project
+		if err := xml.NewDecoder(csprojFile).Decode(&project); err != nil {
+			return fmt.Errorf("failed to decode csproj file: %w", err)
+		}
+		for _, itemGroup := range project.ItemGroup {
+			for _, packageReference := range itemGroup.PackageReference {
+				if strings.HasPrefix(packageReference.Include, "Pulumi") {
+					err = pt.runCommand("dotnet-add-package",
+						[]string{
+							dotNetBin, "add", "package", packageReference.Include,
+							"--prerelease",
+						},
+						cwd)
+					if err != nil {
+						return fmt.Errorf("failed to add package %s: %w", packageReference.Include, err)
+					}
+				}
+			}
+		}
 	}
 
 	for _, dep := range pt.opts.Dependencies {
