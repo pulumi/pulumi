@@ -1063,6 +1063,8 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 					enums[lang] = langEnumValues
 				}
 
+				fmt.Printf("enums: %v \n", enums)
+
 				typs = append(typs, docNestedType{
 					Name:       wbr(name),
 					AnchorID:   strings.ToLower(name),
