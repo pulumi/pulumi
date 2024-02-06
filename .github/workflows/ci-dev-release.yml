@@ -126,7 +126,7 @@ jobs:
 
 
   nodejs-dev-sdk-release:
-    needs: [gather-info, build-release, sdk-check-release]
+    needs: [gather-info, build-release, sdk-check-release, matrix]
     runs-on: ubuntu-latest
 #    if: ${{ needs.sdk-check-release.outputs.nodejs-release }} #TODO: enable this after testing
     steps:
@@ -148,6 +148,15 @@ jobs:
               mv -vT "$file" "../../artifacts/sdk-nodejs-$file"
             done
           )
+      - name: Set up Node ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
+          registry-url: https://registry.npmjs.org
+          always-auth: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish nodejs release
         run: |
           make -C sdk/nodejs publish
@@ -182,11 +191,13 @@ jobs:
           (
             cd artifacts.tmp/artifacts-python-sdk
             for file in *.whl ; do
-              new_name="${file//$version/$dev_version}"
+              new_name="${file//-$version/$dev_version}"
               mv -vT "$file" "../../artifacts/sdk-python-$new_name"
             done
           )
-
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Publish python release
         run: |
           make -C sdk/python publish
