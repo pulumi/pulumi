@@ -2274,8 +2274,11 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
-		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
-			[]string{"python", "-m", "pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
+		command := []string{"python", "-m", "pip", "install", "-r", "requirements.txt"}
+		if pt.opts.InstallDevReleases {
+			command = []string{"python", "-m", "pip", "install", "--pre", "-r", "requirements.txt"}
+		}
+		if err := pt.runVirtualEnvCommand("virtualenv-pip-install", command, cwd); err != nil {
 			return err
 		}
 	}
@@ -2309,7 +2312,11 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 	// Install the package's dependencies. We do this by running `pip` inside the virtualenv that `pipenv` has created.
 	// We don't use `pipenv install` because we don't want a lock file and prefer the similar model of `pip install`
 	// which matches what our customers do
-	err := pt.runPipenvCommand("pipenv-install", []string{"run", "pip", "install", "-r", "requirements.txt"}, cwd)
+	command := []string{"run", "pip", "install", "-r", "requirements.txt"}
+	if pt.opts.InstallDevReleases {
+		command = []string{"run", "pip", "install", "--pre", "-r", "requirements.txt"}
+	}
+	err := pt.runPipenvCommand("pipenv-install", command, cwd)
 	if err != nil {
 		return err
 	}
