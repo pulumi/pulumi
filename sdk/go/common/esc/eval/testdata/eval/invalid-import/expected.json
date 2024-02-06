@@ -1,0 +1,148 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "import must be a string or an object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-import",
+                "Start": {
+                    "Line": 2,
+                    "Column": 4,
+                    "Byte": 12
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 4,
+                    "Byte": 12
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0]"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "invalid-import",
+                    "begin": {
+                        "line": 4,
+                        "column": 8,
+                        "byte": 29
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 11,
+                        "byte": 32
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "invalid-import",
+                        "begin": {
+                            "line": 4,
+                            "column": 8,
+                            "byte": 29
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 11,
+                            "byte": 32
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        }
+    },
+    "checkJson": {
+        "foo": "bar"
+    },
+    "eval": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "invalid-import",
+                    "begin": {
+                        "line": 4,
+                        "column": 8,
+                        "byte": 29
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 11,
+                        "byte": 32
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "invalid-import",
+                        "begin": {
+                            "line": 4,
+                            "column": 8,
+                            "byte": 29
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 11,
+                            "byte": 32
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        }
+    },
+    "evalJsonRedacted": {
+        "foo": "bar"
+    },
+    "evalJSONRevealed": {
+        "foo": "bar"
+    }
+}

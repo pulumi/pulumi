@@ -55,7 +55,7 @@ func (x *exprNode) Syntax() syntax.Node {
 
 func exprPosition(expr Expr) (*hcl.Range, string) {
 	inner := reflect.ValueOf(expr)
-	if !inner.IsZero() {
+	if inner.IsValid() && !inner.IsZero() {
 		if syntax := expr.Syntax(); syntax != nil {
 			return syntax.Syntax().Range(), syntax.Syntax().Path()
 		}
