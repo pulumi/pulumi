@@ -5139,3 +5139,131 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 		test(t, deploytest.WithoutGrpc)
 	})
 }
+
+// Test that the engine uses output values for deps if accept_output_values is set.
+func TestAcceptOutputValues(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					outputs := resource.PropertyMap{
+						"bar":     resource.NewStringProperty("some result"),
+						"secret":  resource.MakeSecret(resource.NewStringProperty("some secret")),
+						"unknown": resource.MakeComputed(resource.NewStringProperty("")),
+					}
+					return "created-id", outputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					urn, _, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					assert.NoError(t, err)
+
+					// Expect an input "foo" with a dependency
+					foo := inputs["foo"]
+					assert.True(t, foo.IsOutput())
+					assert.Len(t, foo.OutputValue().Dependencies, 1)
+
+					urnC, _, _, _, err := monitor.RegisterResource("pkgA:m:typC", name+"-resC", true, deploytest.ResourceOptions{
+						Inputs: inputs,
+						Parent: urn,
+					})
+					assert.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN: urn,
+						Outputs: resource.PropertyMap{
+							"baz":     resource.NewStringProperty("some result"),
+							"secret":  resource.MakeSecret(resource.NewStringProperty("some secret")),
+							"unknown": resource.MakeComputed(resource.NewStringProperty("")),
+						},
+						OutputDependencies: map[resource.PropertyKey][]resource.URN{
+							// Pretend baz is an output depending on the dependencies of "foo" + resC
+							"baz": {foo.OutputValue().Dependencies[0], urnC},
+							// Assume the other two just depend on resC
+							"secret":  {urnC},
+							"unknown": {urnC},
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Register a custom resource A
+		urnA, _, stateA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			AcceptOutputValues: true,
+		})
+		assert.NoError(t, err)
+
+		// The result should be outputs depending on the URN
+		assert.True(t, stateA["bar"].IsOutput())
+		assert.True(t, stateA["bar"].OutputValue().Known)
+		assert.False(t, stateA["bar"].OutputValue().Secret)
+		assert.Equal(t, resource.NewStringProperty("some result"), stateA["bar"].OutputValue().Element)
+		assert.Equal(t, urnA, stateA["bar"].OutputValue().Dependencies[0])
+
+		assert.True(t, stateA["secret"].IsOutput())
+		assert.True(t, stateA["secret"].OutputValue().Known)
+		assert.True(t, stateA["secret"].OutputValue().Secret)
+		assert.Equal(t, resource.NewStringProperty("some secret"), stateA["secret"].OutputValue().Element)
+		assert.Equal(t, urnA, stateA["secret"].OutputValue().Dependencies[0])
+
+		assert.True(t, stateA["unknown"].IsOutput())
+		assert.False(t, stateA["unknown"].OutputValue().Known)
+		assert.False(t, stateA["unknown"].OutputValue().Secret)
+		assert.Equal(t, urnA, stateA["unknown"].OutputValue().Dependencies[0])
+
+		// Now construct a remote resource B using an output from A
+		urnB, _, stateB, _, err := monitor.RegisterResource("pkgA:m:typB", "resB", false, deploytest.ResourceOptions{
+			AcceptOutputValues: true,
+			Remote:             true,
+			Inputs: resource.PropertyMap{
+				"foo": stateA["bar"],
+			},
+		})
+		assert.NoError(t, err)
+
+		urnC := resource.CreateURN("resB-resC", "pkgA:m:typC", urnB, "test", "test")
+
+		assert.True(t, stateB["baz"].IsOutput())
+		assert.True(t, stateB["baz"].OutputValue().Known)
+		assert.False(t, stateB["baz"].OutputValue().Secret)
+		assert.Equal(t, resource.NewStringProperty("some result"), stateB["baz"].OutputValue().Element)
+		// Baz is special, it should depend on urnA and urnC
+		assert.ElementsMatch(t, []resource.URN{urnA, urnC}, stateB["baz"].OutputValue().Dependencies)
+
+		assert.True(t, stateB["secret"].IsOutput())
+		assert.True(t, stateB["secret"].OutputValue().Known)
+		assert.True(t, stateB["secret"].OutputValue().Secret)
+		assert.Equal(t, resource.NewStringProperty("some secret"), stateB["secret"].OutputValue().Element)
+		assert.Equal(t, urnC, stateB["secret"].OutputValue().Dependencies[0])
+
+		assert.True(t, stateB["unknown"].IsOutput())
+		assert.False(t, stateB["unknown"].OutputValue().Known)
+		assert.False(t, stateB["unknown"].OutputValue().Secret)
+		assert.Equal(t, urnC, stateB["unknown"].OutputValue().Dependencies[0])
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, snap)
+}

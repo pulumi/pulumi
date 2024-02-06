@@ -1431,7 +1431,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     pulumi_alias_pb.Alias.toObject, includeInstance),
     deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
     aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+    acceptOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 31, false)
   };
 
   if (includeInstance) {
@@ -1597,6 +1598,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 31:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -1830,6 +1835,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       29,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getAcceptOutputValues();
+  if (f) {
+    writer.writeBool(
+      31,
+      f
     );
   }
 };
@@ -2902,6 +2914,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearSourceposition = function
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.hasSourceposition = function() {
   return jspb.Message.getField(this, 29) != null;
+};
+
+
+/**
+ * optional bool accept_output_values = 31;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getAcceptOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 31, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setAcceptOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 31, value);
 };
 
 

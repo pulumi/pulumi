@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -1359,15 +1360,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		aliases = append(aliases, alias)
 	}
 
-	dependencies := []resource.URN{}
-	for _, dependingURN := range req.GetDependencies() {
-		urn, err := resource.ParseURN(dependingURN)
-		if err != nil {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
-		}
-		dependencies = append(dependencies, urn)
-	}
-
 	props, err := plugin.UnmarshalProperties(
 		req.GetObject(), plugin.MarshalOptions{
 			Label:                 label,
@@ -1381,6 +1373,33 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	dependencies := []resource.URN{}
+	for _, dependingURN := range req.GetDependencies() {
+		urn, err := resource.ParseURN(dependingURN)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
+		}
+		dependencies = append(dependencies, urn)
+	}
+
+	propertyDependencies := map[resource.PropertyKey][]resource.URN{}
+	for pk, pd := range req.GetPropertyDependencies() {
+		var deps []resource.URN
+		for _, d := range pd.Urns {
+			urn, err := resource.ParseURN(d)
+			if err != nil {
+				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency on property %s URN: %s", pk, err))
+			}
+			deps = append(deps, urn)
+		}
+		propertyDependencies[resource.PropertyKey(pk)] = deps
+	}
+
+	// Transfer the parsed dependencies and property dependencies to the propertyMap.
+	props = setOutputDependencies(
+		props, propertyDependencies, dependencies, remote, req.GetAcceptOutputValues() && !rm.disableOutputValues)
+
 	if providers.IsProviderType(t) {
 		if req.GetVersion() != "" {
 			version, err := semver.Parse(req.GetVersion())
@@ -1406,29 +1425,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
-	if len(req.GetPropertyDependencies()) == 0 && !remote {
-		// If this request did not specify property dependencies, treat each property as depending on every resource
-		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
-		// support remote already support passing property dependencies, so there's no need to backfill here.
-		for pk := range props {
-			propertyDependencies[pk] = dependencies
-		}
-	} else {
-		// Otherwise, unmarshal the per-property dependency information.
-		for pk, pd := range req.GetPropertyDependencies() {
-			var deps []resource.URN
-			for _, d := range pd.Urns {
-				urn, err := resource.ParseURN(d)
-				if err != nil {
-					return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency on property %s URN: %s", pk, err))
-				}
-				deps = append(deps, urn)
-			}
-			propertyDependencies[resource.PropertyKey(pk)] = deps
-		}
-	}
-
 	additionalSecretOutputs := req.GetAdditionalSecretOutputs()
 
 	var deleteBeforeReplace *bool
@@ -1436,11 +1432,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		deleteBeforeReplace = &deleteBeforeReplaceValue
 	}
 
+	// Before we downgrade the properties we need to get all the property dependencies
+	propertyDependencies = getPropertiesDependencies(props)
+
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
 	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
 	// dependencies down to `Computed` and `Secret` or their plain values. We only do this for non-remote resources.
-	// Remote resources already deal with `OutputValue`s and even though it would be more consistent to downgrade them
+	// Remote resources already deal with `OutputValue`s and even though it would be more consistent to downgrade all
 	// here it would be a break change.
 	if !remote {
 		props = downgradeOutputValues(props)
@@ -1457,6 +1456,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var result *RegisterResult
 
 	var outputDeps map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies
+	var outputs resource.PropertyMap
 	if remote {
 		provider, ok := rm.providers.GetProvider(providerRef)
 		if providers.IsDenyDefaultsProvider(providerRef) {
@@ -1515,7 +1515,50 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			for i, d := range deps {
 				urns[i] = string(d)
 			}
-			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
+		}
+
+		if !req.AcceptOutputValues {
+			// If the SDK doesn't support output values then send the filled in property dependencies back.
+			outputs = constructResult.Outputs
+			outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
+			for k, deps := range constructResult.OutputDependencies {
+				urns := make([]string, len(deps))
+				for i, d := range deps {
+					urns[i] = string(d)
+				}
+				outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
+			}
+		} else {
+			// The SDK does support output values so we want to refill the output deps onto them here.
+			outputs = resource.PropertyMap{}
+			for k, v := range constructResult.Outputs {
+				deps := constructResult.OutputDependencies[k]
+
+				var output resource.Output
+				if v.IsOutput() {
+					output = v.OutputValue()
+					output.Dependencies = append(output.Dependencies, result.State.URN)
+				} else if v.IsComputed() {
+					output = resource.Output{
+						Dependencies: deps,
+					}
+				} else if v.IsSecret() {
+					output = resource.Output{
+						Element:      v.SecretValue().Element,
+						Known:        true,
+						Secret:       true,
+						Dependencies: deps,
+					}
+				} else {
+					output = resource.Output{
+						Element:      v,
+						Known:        true,
+						Secret:       false,
+						Dependencies: deps,
+					}
+				}
+				outputs[k] = resource.NewOutputProperty(output)
+			}
 		}
 
 	} else {
@@ -1588,6 +1631,40 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			rm.resGoals[result.State.URN] = *goal
 			rm.resGoalsLock.Unlock()
 		}
+
+		// For a custom resource _every_ property is an output property, and we can save SDKs (that support it) some work by
+		// returning output values with the dependency information already attached.
+		outputs = result.State.Outputs
+		if req.AcceptOutputValues {
+			deps := []resource.URN{result.State.URN}
+			outputs = resource.PropertyMap{}
+			for k, v := range result.State.Outputs {
+				var output resource.Output
+				if v.IsOutput() {
+					output = v.OutputValue()
+					output.Dependencies = append(output.Dependencies, result.State.URN)
+				} else if v.IsComputed() {
+					output = resource.Output{
+						Dependencies: deps,
+					}
+				} else if v.IsSecret() {
+					output = resource.Output{
+						Element:      v.SecretValue().Element,
+						Known:        true,
+						Secret:       true,
+						Dependencies: deps,
+					}
+				} else {
+					output = resource.Output{
+						Element:      v,
+						Known:        true,
+						Secret:       false,
+						Dependencies: deps,
+					}
+				}
+				outputs[k] = resource.NewOutputProperty(output)
+			}
+		}
 	}
 
 	if !custom && result != nil && result.State != nil && result.State.URN != "" {
@@ -1597,9 +1674,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			rm.componentProviders[result.State.URN] = req.GetProviders()
 		}()
 	}
-
-	// Filter out partially-known values if the requestor does not support them.
-	outputs := result.State.Outputs
 
 	// Local ComponentResources may contain unresolved resource refs, so ignore those outputs.
 	if !req.GetCustom() && !remote {
@@ -1614,6 +1688,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		outputs = resource.PropertyMap{}
 	}
 
+	// Filter out partially-known values if the requestor does not support them.
 	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
 		filtered := resource.PropertyMap{}
@@ -1669,10 +1744,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
 	obj, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-		Label:         label,
-		KeepUnknowns:  true,
-		KeepSecrets:   req.GetAcceptSecrets(),
-		KeepResources: req.GetAcceptResources(),
+		Label:            label,
+		KeepUnknowns:     true,
+		KeepSecrets:      req.GetAcceptSecrets(),
+		KeepResources:    req.GetAcceptResources(),
+		KeepOutputValues: req.GetAcceptOutputValues(),
 	})
 	if err != nil {
 		return nil, err
@@ -1929,4 +2005,100 @@ func addOutputDependencies(deps []resource.URN, v resource.PropertyValue) []reso
 		deps = addOutputDependencies(deps, v.SecretValue().Element)
 	}
 	return deps
+}
+
+func setOutputDependencies(
+	props resource.PropertyMap,
+	propertyDependencies map[resource.PropertyKey][]resource.URN,
+	dependencies []resource.URN,
+	remote bool,
+	usesOutputValues bool,
+) resource.PropertyMap {
+	// There are three cases for property dependencies:
+	//
+	// 1: Old SDKs that didn't send property dependencies at all. PropertyDependencies will be empty, remote and
+	// usesOutputValues will be false.
+	//
+	// 2: SDKs that do support property dependencies, but it's possible for PropertyDependencies to be empty in this
+	// case we _incorrectly_ backfill it with dependencies because we can't tell any better.
+	//
+	// 3: As above but when it is a remote resource. In this case we don't backfill because an SDK that supports remote
+	// should also support property dependencies.
+	//
+	// 4: SDKs that support output values fully, in which case "usesOutputValues" will be true and we don't need to even
+	// look at propertyDependencies which is just being set for compatibility with old engines. But we sanity check that
+	// the dependency sets are the same to help catch SDK bugs.
+	//
+	// In all cases we want to use the property dependencies if we think their valid to set dependencies on props. Later
+	// in this method we use the dependencies from props to set the resource propertyDepndencies field.
+
+	// legacy is true if we're using "dependencies" to backfill output dependencies.
+	legacy := len(propertyDependencies) == 0 && !remote && !usesOutputValues
+
+	addDependencies := func(pv resource.PropertyValue, deps []resource.URN) resource.PropertyValue {
+		// We should have upgraded all Computed and Secret values to Output before calling this.
+		contract.Assertf(!pv.IsSecret(), "unexpected Secret value in setOutputDependencies")
+		contract.Assertf(!pv.IsComputed(), "unexpected Computed value in setOutputDependencies")
+
+		if len(deps) == 0 {
+			return pv
+		}
+
+		if pv.IsOutput() {
+			output := pv.OutputValue()
+			return resource.NewOutputProperty(
+				resource.Output{
+					Element:      output.Element,
+					Known:        output.Known,
+					Secret:       output.Secret,
+					Dependencies: append(output.Dependencies, deps...),
+				})
+		}
+
+		return resource.NewOutputProperty(resource.Output{
+			Element:      pv,
+			Known:        true,
+			Secret:       false,
+			Dependencies: deps,
+		})
+	}
+
+	if usesOutputValues {
+		// Check dependencies map is the same set as the output property.
+		for k, v := range props {
+			setA := mapset.NewSet(propertyDependencies[k]...)
+			setB := mapset.NewSet(getPropertyDependencies(v)...)
+			if !setA.Equal(setB) {
+				// TODO Should this be a ctx warning? An error?
+				logging.V(1).Infof("PropertyDependencies and output property dependencies differ for property %s", k)
+			}
+		}
+		return props
+	}
+
+	result := make(resource.PropertyMap)
+	for k, v := range props {
+		if legacy {
+			result[k] = addDependencies(v, dependencies)
+		} else {
+			result[k] = addDependencies(v, propertyDependencies[k])
+		}
+	}
+	return result
+}
+
+func getPropertyDependencies(v resource.PropertyValue) []resource.URN {
+	if v.IsOutput() {
+		output := v.OutputValue()
+		return output.Dependencies
+	}
+	return nil
+}
+
+func getPropertiesDependencies(props resource.PropertyMap) map[resource.PropertyKey][]resource.URN {
+	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
+	for k, v := range props {
+		propertyDependencies[k] = getPropertyDependencies(v)
+	}
+	return propertyDependencies
 }

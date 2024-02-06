@@ -134,6 +134,9 @@ message RegisterResourceRequest {
     bool aliasSpecs = 28;
 
     SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
+
+    // true if this SDK uses output values rather than propertyDependencies and can accept them as a response.
+    bool accept_output_values = 31;
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

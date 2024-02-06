@@ -233,6 +233,8 @@ export class RegisterResourceRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): RegisterResourceRequest;
+    getAcceptOutputValues(): boolean;
+    setAcceptOutputValues(value: boolean): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -279,6 +281,7 @@ export namespace RegisterResourceRequest {
         deletedwith: string,
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        acceptOutputValues: boolean,
     }
 
 

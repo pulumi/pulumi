@@ -146,6 +146,7 @@ type ResourceOptions struct {
 	AliasSpecs              bool
 
 	SourcePosition            string
+	AcceptOutputValues        bool
 	DisableSecrets            bool
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
@@ -269,6 +270,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeletedWith:                string(opts.DeletedWith),
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
+		AcceptOutputValues:         opts.AcceptOutputValues,
 	}
 
 	ctx := context.Background()
