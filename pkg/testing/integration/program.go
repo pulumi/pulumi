@@ -2138,9 +2138,7 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 				entries := packageJSON[section].(map[string]interface{})
 				for entry := range entries {
 					if strings.HasPrefix(entry, "@pulumi") {
-						cmd := exec.Command("yarn", "add", entry+"@dev")
-						cmd.Dir = cwd
-						err := cmd.Run()
+						err := pt.runYarnCommand("yarn-add", []string{"add", entry + "@dev"}, cwd)
 						if err != nil {
 							return err
 						}
