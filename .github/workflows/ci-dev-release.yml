@@ -144,8 +144,11 @@ jobs:
           mkdir -p artifacts
           (
             cd artifacts.tmp/artifacts-nodejs-sdk
+            version="${{ inputs.version }}"
+            dev_version="${{ needs.gather-info.outputs.dev-version }}"
             for file in *.tgz ; do
-              mv -vT "$file" "../../artifacts/sdk-nodejs-$file"
+              name=${file//$version/$dev_version}
+              mv -vT "$file" "../../artifacts/sdk-nodejs-$name"
             done
           )
       - name: Set up Node ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
@@ -186,12 +189,13 @@ jobs:
           mkdir -p artifacts
           version="${{ inputs.version }}"
           # Python dev versions have a suffix of "a<sha>".
-          dev_version="a${{ needs.gather-info.outputs.dev-sha }}"
+          dev_version=${{ needs.gather-info.outputs.dev-sha }}
+          dev_version="${version}a${dev_version}"
           mkdir -p artifacts
           (
             cd artifacts.tmp/artifacts-python-sdk
             for file in *.whl ; do
-              new_name="${file//-$version/$dev_version}"
+              new_name="${file//$version/$dev_version}"
               mv -vT "$file" "../../artifacts/sdk-python-$new_name"
             done
           )
