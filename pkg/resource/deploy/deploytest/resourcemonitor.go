@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type ResourceMonitor struct {
@@ -150,6 +151,18 @@ type ResourceOptions struct {
 	GrpcRequestHeaders        map[string]string
 }
 
+func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
+	// Note that `Keep*` flags are set to `true` so the caller can detect secrets, resource refs, etc that are
+	// erroneously returned (e.g. secrets/resource refs that are returned even though the caller has not set
+	// the relevant `Accept*` to `true` above).
+	return plugin.UnmarshalProperties(props, plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+}
+
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
 	options ...ResourceOptions,
 ) (resource.URN, resource.ID, resource.PropertyMap, error) {
@@ -163,9 +176,10 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   rm.supportsSecrets,
-		KeepResources: rm.supportsResourceReferences,
+		KeepUnknowns:     true,
+		KeepSecrets:      rm.supportsSecrets,
+		KeepResources:    rm.supportsResourceReferences,
+		KeepOutputValues: opts.Remote,
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -268,15 +282,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		return "", "", nil, err
 	}
 	// unmarshal outputs
-	//
-	// Note that `KeepSecrets` and `KeepResources` are set to `true` so the caller can detect secrets and resource refs
-	// that are erroneously returned (e.g. secrets/resource refs that are returned even though the caller has not set
-	// `AcceptSecrets` or `AcceptResources` to `true` above).
-	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	outs, err := rm.unmarshalProperties(resp.Object)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -337,10 +343,7 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 	}
 
 	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Properties, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepResources: true,
-	})
+	outs, err := rm.unmarshalProperties(resp.Properties)
 	if err != nil {
 		return "", nil, err
 	}
@@ -377,10 +380,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepResources: true,
-	})
+	outs, err := rm.unmarshalProperties(resp.Return)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -420,12 +420,7 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 	}
 
 	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepResources:    true,
-		KeepSecrets:      true,
-		KeepOutputValues: true,
-	})
+	outs, err := rm.unmarshalProperties(resp.Return)
 	if err != nil {
 		return nil, nil, nil, err
 	}
