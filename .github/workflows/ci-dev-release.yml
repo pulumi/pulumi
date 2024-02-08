@@ -89,6 +89,16 @@ jobs:
       enable-coverage: false
     secrets: inherit
 
+  build-sdks:
+    name: Build SDKs
+    needs: [matrix]
+    uses: ./.github/workflows/ci-build-sdks.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ needs.gather-info.outputs.dev-version }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
+    secrets: inherit
+
   sign:
     name: sign
     needs: [build-release]
@@ -126,7 +136,7 @@ jobs:
 
 
   nodejs-dev-sdk-release:
-    needs: [gather-info, build-release, sdk-check-release, matrix]
+    needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-latest
 #    if: ${{ needs.sdk-check-release.outputs.nodejs-release }} #TODO: enable this after testing
     steps:
@@ -171,7 +181,7 @@ jobs:
 
 
   python-dev-sdk-release:
-    needs: [gather-info, build-release, sdk-check-release]
+    needs: [gather-info, build-build-sdks, sdk-check-release]
     runs-on: ubuntu-latest
 #    if: ${{ needs.sdk-check-release.outputs.python-release }} # TODO: enable this after testing
     steps:
@@ -188,8 +198,8 @@ jobs:
         run: |
           mkdir -p artifacts
           version="${{ inputs.version }}"
-          # Python dev versions have a suffix of "a<sha>".
-          dev_version=${{ needs.gather-info.outputs.dev-sha }}
+          # Python dev versions have a suffix of "a<epoch>".
+          dev_version=$(date +%s)
           dev_version="${version}a${dev_version}"
           mkdir -p artifacts
           (
