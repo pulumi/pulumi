@@ -24,10 +24,10 @@ func TestDuplicateURN(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		require.NoError(t, err)
 
-		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.Error(t, err)
 
 		// Reads use the same URN namespace as register so make sure this also errors
@@ -58,7 +58,7 @@ func TestDuplicateAlias(t *testing.T) {
 	}
 
 	program := func(monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	}
@@ -78,12 +78,12 @@ func TestDuplicateAlias(t *testing.T) {
 	assert.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			AliasURNs: []resource.URN{resURN},
 		})
 		require.NoError(t, err)
 
-		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			AliasURNs: []resource.URN{resURN},
 		})
 		assert.Error(t, err)
@@ -113,7 +113,7 @@ func TestSecretMasked(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"shouldBeSecret": resource.MakeSecret(resource.NewStringProperty("bar")),
 			},
@@ -151,7 +151,7 @@ func TestReadReplaceStep(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
 		}).
@@ -203,7 +203,7 @@ func TestRelinquishStep(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
 		}).
@@ -279,7 +279,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+					_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 					assert.NoError(t, err)
 					return nil
 				}).
@@ -328,7 +328,7 @@ func TestInitErrorsStep(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
 		}).
