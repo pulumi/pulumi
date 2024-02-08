@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/python
-  description: Update the default minimum required version of Python to 3.8 or greater for generated provider SDKs.

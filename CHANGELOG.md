@@ -1,5 +1,58 @@
 # Changelog
 
+## 3.105.0 (2024-02-07)
+
+
+### Features
+
+- [auto/go] Adds support for `--refresh` to Stack.Up(), Stack.Preview() and Stack.Destroy() via go automation api
+  [#15350](https://github.com/pulumi/pulumi/pull/15350)
+
+- [cli] Adds a `preview-only` flag to `pulumi refresh`.
+  [#15330](https://github.com/pulumi/pulumi/pull/15330)
+
+- [cli] Adds `preview-only` flag for `pulumi destroy` and `pulumi import`
+  [#15336](https://github.com/pulumi/pulumi/pull/15336)
+
+- [engine] Translate all Computed and Secret values to OutputValues for Construct and Call methods.
+  [#15362](https://github.com/pulumi/pulumi/pull/15362)
+
+- [cli/display] Add --suppress-progress option to not print dots
+  [#14690](https://github.com/pulumi/pulumi/pull/14690)
+
+- [sdk/go] Add `UpgradeToOutputValues` to `MarshalOptions`.
+  [#15349](https://github.com/pulumi/pulumi/pull/15349)
+
+- [cli/plugin] Add experimental `plugin run` command for running plugin binaries directly.
+  [#12613](https://github.com/pulumi/pulumi/pull/12613)
+
+- [sdkgen/python] Update the default minimum required version of Python to 3.8 or greater for generated provider SDKs.
+  [#15368](https://github.com/pulumi/pulumi/pull/15368)
+
+
+### Bug Fixes
+
+- [backend/diy] Fix an issue where state stored on a mounted device would result in errors
+  [#15375](https://github.com/pulumi/pulumi/pull/15375)
+
+- [cli/state] Fix a panic when trying to delete a provider from the state that's still referenced.
+  [#15322](https://github.com/pulumi/pulumi/pull/15322)
+
+- [cli/state] Fix a nil reference panic in the `state edit` command.
+  [#15354](https://github.com/pulumi/pulumi/pull/15354)
+
+
+### Miscellaneous
+
+- [docs] Add kubernetes as a supported pulumi convert language
+  [#15359](https://github.com/pulumi/pulumi/pull/15359)
+
+- [sdk/python] Require Python 3.8 or greater.
+  [#15363](https://github.com/pulumi/pulumi/pull/15363)
+
+- [sdk/python] Upgrade grpcio to 1.60.1
+  [#15366](https://github.com/pulumi/pulumi/pull/15366)
+
 ## 3.104.2 (2024-02-01)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/diy
-  description: Fix an issue where state stored on a mounted device would result in errors
