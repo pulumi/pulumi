@@ -26,7 +26,7 @@ type ResourceMonitorClient interface {
 	SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error)
 	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
 	StreamInvoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (ResourceMonitor_StreamInvokeClient, error)
-	Call(ctx context.Context, in *CallRequest, opts ...grpc.CallOption) (*CallResponse, error)
+	Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error)
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -90,7 +90,7 @@ func (x *resourceMonitorStreamInvokeClient) Recv() (*InvokeResponse, error) {
 	return m, nil
 }
 
-func (c *resourceMonitorClient) Call(ctx context.Context, in *CallRequest, opts ...grpc.CallOption) (*CallResponse, error) {
+func (c *resourceMonitorClient) Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error) {
 	out := new(CallResponse)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/Call", in, out, opts...)
 	if err != nil {
@@ -133,7 +133,7 @@ type ResourceMonitorServer interface {
 	SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error)
 	Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error)
 	StreamInvoke(*ResourceInvokeRequest, ResourceMonitor_StreamInvokeServer) error
-	Call(context.Context, *CallRequest) (*CallResponse, error)
+	Call(context.Context, *ResourceCallRequest) (*CallResponse, error)
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error)
@@ -153,7 +153,7 @@ func (UnimplementedResourceMonitorServer) Invoke(context.Context, *ResourceInvok
 func (UnimplementedResourceMonitorServer) StreamInvoke(*ResourceInvokeRequest, ResourceMonitor_StreamInvokeServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamInvoke not implemented")
 }
-func (UnimplementedResourceMonitorServer) Call(context.Context, *CallRequest) (*CallResponse, error) {
+func (UnimplementedResourceMonitorServer) Call(context.Context, *ResourceCallRequest) (*CallResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Call not implemented")
 }
 func (UnimplementedResourceMonitorServer) ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error) {
@@ -236,7 +236,7 @@ func (x *resourceMonitorStreamInvokeServer) Send(m *InvokeResponse) error {
 }
 
 func _ResourceMonitor_Call_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CallRequest)
+	in := new(ResourceCallRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func _ResourceMonitor_Call_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: "/pulumirpc.ResourceMonitor/Call",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceMonitorServer).Call(ctx, req.(*CallRequest))
+		return srv.(ResourceMonitorServer).Call(ctx, req.(*ResourceCallRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

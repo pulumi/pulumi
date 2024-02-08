@@ -34,7 +34,6 @@ import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
-import * as providerproto from "../proto/provider_pb";
 import * as resourceproto from "../proto/resource_pb";
 
 /**
@@ -427,7 +426,7 @@ async function createCallRequest(
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
 
-    const req = new providerproto.CallRequest();
+    const req = new resourceproto.ResourceCallRequest();
     req.setTok(tok);
     req.setArgs(obj);
     req.setProvider(provider || "");
@@ -441,7 +440,7 @@ async function createCallRequest(
             const urn = await dep.urn.promise();
             urns.add(urn);
         }
-        const deps = new providerproto.CallRequest.ArgumentDependencies();
+        const deps = new resourceproto.ResourceCallRequest.ArgumentDependencies();
         deps.setUrnsList(Array.from(urns));
         argDependencies.set(key, deps);
     }

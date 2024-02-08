@@ -35,17 +35,6 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_CallRequest(arg) {
-  if (!(arg instanceof pulumi_provider_pb.CallRequest)) {
-    throw new Error('Expected argument of type pulumirpc.CallRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_CallRequest(buffer_arg) {
-  return pulumi_provider_pb.CallRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_CallResponse(arg) {
   if (!(arg instanceof pulumi_provider_pb.CallResponse)) {
     throw new Error('Expected argument of type pulumirpc.CallResponse');
@@ -123,6 +112,17 @@ function deserialize_pulumirpc_RegisterResourceResponse(buffer_arg) {
   return pulumi_resource_pb.RegisterResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ResourceCallRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ResourceCallRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ResourceCallRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResourceCallRequest(buffer_arg) {
+  return pulumi_resource_pb.ResourceCallRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ResourceInvokeRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.ResourceInvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.ResourceInvokeRequest');
@@ -196,10 +196,10 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     path: '/pulumirpc.ResourceMonitor/Call',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_provider_pb.CallRequest,
+    requestType: pulumi_resource_pb.ResourceCallRequest,
     responseType: pulumi_provider_pb.CallResponse,
-    requestSerialize: serialize_pulumirpc_CallRequest,
-    requestDeserialize: deserialize_pulumirpc_CallRequest,
+    requestSerialize: serialize_pulumirpc_ResourceCallRequest,
+    requestDeserialize: deserialize_pulumirpc_ResourceCallRequest,
     responseSerialize: serialize_pulumirpc_CallResponse,
     responseDeserialize: deserialize_pulumirpc_CallResponse,
   },

@@ -41,7 +41,7 @@ class ResourceMonitorStub:
         pulumi.provider_pb2.InvokeResponse,
     ]
     Call: grpc.UnaryUnaryMultiCallable[
-        pulumi.provider_pb2.CallRequest,
+        pulumi.resource_pb2.ResourceCallRequest,
         pulumi.provider_pb2.CallResponse,
     ]
     ReadResource: grpc.UnaryUnaryMultiCallable[
@@ -81,7 +81,7 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     
     def Call(
         self,
-        request: pulumi.provider_pb2.CallRequest,
+        request: pulumi.resource_pb2.ResourceCallRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.CallResponse: ...
     

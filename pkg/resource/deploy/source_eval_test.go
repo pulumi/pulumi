@@ -2439,7 +2439,7 @@ func TestCall(t *testing.T) {
 	t.Run("bad version", func(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{}
-		_, err := rm.Call(context.Background(), &pulumirpc.CallRequest{
+		_, err := rm.Call(context.Background(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "bad-version",
 		})
@@ -2497,7 +2497,7 @@ func TestCall(t *testing.T) {
 			wg.Done()
 		}()
 
-		_, err = mon.Call(context.Background(), &pulumirpc.CallRequest{
+		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 		})
@@ -2577,11 +2577,11 @@ func TestCall(t *testing.T) {
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
-		_, err = mon.Call(context.Background(), &pulumirpc.CallRequest{
+		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 			Args:    args,
-			ArgDependencies: map[string]*pulumirpc.CallRequest_ArgumentDependencies{
+			ArgDependencies: map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies{
 				"test": {
 					Urns: []string{
 						"urn:pulumi:stack::project::type::dep1",
@@ -2650,11 +2650,11 @@ func TestCall(t *testing.T) {
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
-		_, err = mon.Call(context.Background(), &pulumirpc.CallRequest{
+		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 			Args:    args,
-			ArgDependencies: map[string]*pulumirpc.CallRequest_ArgumentDependencies{
+			ArgDependencies: map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies{
 				"test": {
 					Urns: []string{
 						"invalid urn",
@@ -2735,7 +2735,7 @@ func TestCall(t *testing.T) {
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
-		res, err := mon.Call(context.Background(), &pulumirpc.CallRequest{
+		res, err := mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 			Args:    args,
