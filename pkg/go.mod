@@ -30,7 +30,7 @@ require (
 	github.com/iancoleman/strcase v0.2.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/mitchellh/copystructure v1.2.0
-	github.com/moby/moby v23.0.3+incompatible
+	github.com/moby/moby v24.0.9+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
@@ -48,13 +48,13 @@ require (
 	// DO NOT UPDATE gocloud.dev until https://github.com/pulumi/pulumi/issues/11986 is resolved
 	gocloud.dev v0.36.0
 	gocloud.dev/secrets/hashivault v0.27.0
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/net v0.19.0
+	golang.org/x/crypto v0.19.0 // indirect
+	golang.org/x/net v0.21.0
 	golang.org/x/oauth2 v0.14.0
 	golang.org/x/sync v0.5.0
 	google.golang.org/api v0.151.0
 	google.golang.org/genproto v0.0.0-20231120223509-83a465c0220f
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.61.0
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.6.1
 )
@@ -97,7 +97,7 @@ require (
 	github.com/spf13/afero v1.9.5
 	go.pennock.tech/tabular v1.1.3
 	golang.org/x/mod v0.14.0
-	golang.org/x/term v0.15.0
+	golang.org/x/term v0.17.0
 	golang.org/x/text v0.14.0
 	google.golang.org/protobuf v1.31.0
 )
@@ -249,7 +249,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
