@@ -73,10 +73,6 @@ func (h *RuntimeOptionsLanguageHost) Pack(
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.1" {
-		return nil, fmt.Errorf("unexpected version %s", req.Version)
-	}
-
 	return &pulumirpc.PackResponse{
 		ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 	}, nil

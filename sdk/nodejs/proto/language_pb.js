@@ -4951,8 +4951,7 @@ proto.pulumirpc.PackRequest.prototype.toObject = function(opt_includeInstance) {
 proto.pulumirpc.PackRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     packageDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    destinationDirectory: jspb.Message.getFieldWithDefault(msg, 3, "")
+    destinationDirectory: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -4995,10 +4994,6 @@ proto.pulumirpc.PackRequest.deserializeBinaryFromReader = function(msg, reader) 
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setVersion(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
       msg.setDestinationDirectory(value);
       break;
     default:
@@ -5037,17 +5032,10 @@ proto.pulumirpc.PackRequest.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
-  f = message.getVersion();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
   f = message.getDestinationDirectory();
   if (f.length > 0) {
     writer.writeString(
-      3,
+      2,
       f
     );
   }
@@ -5073,10 +5061,10 @@ proto.pulumirpc.PackRequest.prototype.setPackageDirectory = function(value) {
 
 
 /**
- * optional string version = 2;
+ * optional string destination_directory = 2;
  * @return {string}
  */
-proto.pulumirpc.PackRequest.prototype.getVersion = function() {
+proto.pulumirpc.PackRequest.prototype.getDestinationDirectory = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -5085,26 +5073,8 @@ proto.pulumirpc.PackRequest.prototype.getVersion = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.PackRequest} returns this
  */
-proto.pulumirpc.PackRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string destination_directory = 3;
- * @return {string}
- */
-proto.pulumirpc.PackRequest.prototype.getDestinationDirectory = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.PackRequest} returns this
- */
 proto.pulumirpc.PackRequest.prototype.setDestinationDirectory = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

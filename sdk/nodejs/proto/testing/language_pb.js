@@ -442,7 +442,8 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.toObject = function(includeI
     languagePluginTarget: jspb.Message.getFieldWithDefault(msg, 2, ""),
     snapshotDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
     temporaryDirectory: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    coreSdkDirectory: jspb.Message.getFieldWithDefault(msg, 5, "")
+    coreSdkDirectory: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    coreSdkVersion: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -498,6 +499,10 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setCoreSdkDirectory(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCoreSdkVersion(value);
       break;
     default:
       reader.skipField();
@@ -560,6 +565,13 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
   if (f.length > 0) {
     writer.writeString(
       5,
+      f
+    );
+  }
+  f = message.getCoreSdkVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
       f
     );
   }
@@ -653,6 +665,24 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getCoreSdkDirector
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setCoreSdkDirectory = function(value) {
   return jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional string core_sdk_version = 6;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getCoreSdkVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setCoreSdkVersion = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 

@@ -25,6 +25,7 @@ import (
 
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/sdk/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -172,6 +173,7 @@ func TestLanguage(t *testing.T) {
 		TemporaryDirectory:   rootDir,
 		SnapshotDirectory:    "./testdata",
 		CoreSdkDirectory:     "../../lib",
+		CoreSdkVersion:       sdk.Version.String(),
 	})
 	require.NoError(t, err)
 

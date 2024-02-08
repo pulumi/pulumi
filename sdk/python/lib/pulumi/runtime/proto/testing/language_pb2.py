@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dpulumi/testing/language.proto\x12\x11pulumirpc.testing\x1a\x1bgoogle/protobuf/empty.proto\"\x19\n\x17GetLanguageTestsRequest\")\n\x18GetLanguageTestsResponse\x12\r\n\x05tests\x18\x01 \x03(\t\"\xb0\x01\n\x1bPrepareLanguageTestsRequest\x12\x1c\n\x14language_plugin_name\x18\x01 \x01(\t\x12\x1e\n\x16language_plugin_target\x18\x02 \x01(\t\x12\x1a\n\x12snapshot_directory\x18\x03 \x01(\t\x12\x1b\n\x13temporary_directory\x18\x04 \x01(\t\x12\x1a\n\x12\x63ore_sdk_directory\x18\x05 \x01(\t\"-\n\x1cPrepareLanguageTestsResponse\x12\r\n\x05token\x18\x01 \x01(\t\"5\n\x16RunLanguageTestRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0c\n\x04test\x18\x02 \x01(\t\"\\\n\x17RunLanguageTestResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x10\n\x08messages\x18\x02 \x03(\t\x12\x0e\n\x06stdout\x18\x03 \x01(\t\x12\x0e\n\x06stderr\x18\x04 \x01(\t2\xe4\x02\n\x0cLanguageTest\x12m\n\x10GetLanguageTests\x12*.pulumirpc.testing.GetLanguageTestsRequest\x1a+.pulumirpc.testing.GetLanguageTestsResponse\"\x00\x12y\n\x14PrepareLanguageTests\x12..pulumirpc.testing.PrepareLanguageTestsRequest\x1a/.pulumirpc.testing.PrepareLanguageTestsResponse\"\x00\x12j\n\x0fRunLanguageTest\x12).pulumirpc.testing.RunLanguageTestRequest\x1a*.pulumirpc.testing.RunLanguageTestResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/testingb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dpulumi/testing/language.proto\x12\x11pulumirpc.testing\x1a\x1bgoogle/protobuf/empty.proto\"\x19\n\x17GetLanguageTestsRequest\")\n\x18GetLanguageTestsResponse\x12\r\n\x05tests\x18\x01 \x03(\t\"\xca\x01\n\x1bPrepareLanguageTestsRequest\x12\x1c\n\x14language_plugin_name\x18\x01 \x01(\t\x12\x1e\n\x16language_plugin_target\x18\x02 \x01(\t\x12\x1a\n\x12snapshot_directory\x18\x03 \x01(\t\x12\x1b\n\x13temporary_directory\x18\x04 \x01(\t\x12\x1a\n\x12\x63ore_sdk_directory\x18\x05 \x01(\t\x12\x18\n\x10\x63ore_sdk_version\x18\x06 \x01(\t\"-\n\x1cPrepareLanguageTestsResponse\x12\r\n\x05token\x18\x01 \x01(\t\"5\n\x16RunLanguageTestRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0c\n\x04test\x18\x02 \x01(\t\"\\\n\x17RunLanguageTestResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x10\n\x08messages\x18\x02 \x03(\t\x12\x0e\n\x06stdout\x18\x03 \x01(\t\x12\x0e\n\x06stderr\x18\x04 \x01(\t2\xe4\x02\n\x0cLanguageTest\x12m\n\x10GetLanguageTests\x12*.pulumirpc.testing.GetLanguageTestsRequest\x1a+.pulumirpc.testing.GetLanguageTestsResponse\"\x00\x12y\n\x14PrepareLanguageTests\x12..pulumirpc.testing.PrepareLanguageTestsRequest\x1a/.pulumirpc.testing.PrepareLanguageTestsResponse\"\x00\x12j\n\x0fRunLanguageTest\x12).pulumirpc.testing.RunLanguageTestRequest\x1a*.pulumirpc.testing.RunLanguageTestResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/testingb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.testing.language_pb2', globals())
@@ -27,13 +27,13 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _GETLANGUAGETESTSRESPONSE._serialized_start=108
   _GETLANGUAGETESTSRESPONSE._serialized_end=149
   _PREPARELANGUAGETESTSREQUEST._serialized_start=152
-  _PREPARELANGUAGETESTSREQUEST._serialized_end=328
-  _PREPARELANGUAGETESTSRESPONSE._serialized_start=330
-  _PREPARELANGUAGETESTSRESPONSE._serialized_end=375
-  _RUNLANGUAGETESTREQUEST._serialized_start=377
-  _RUNLANGUAGETESTREQUEST._serialized_end=430
-  _RUNLANGUAGETESTRESPONSE._serialized_start=432
-  _RUNLANGUAGETESTRESPONSE._serialized_end=524
-  _LANGUAGETEST._serialized_start=527
-  _LANGUAGETEST._serialized_end=883
+  _PREPARELANGUAGETESTSREQUEST._serialized_end=354
+  _PREPARELANGUAGETESTSRESPONSE._serialized_start=356
+  _PREPARELANGUAGETESTSRESPONSE._serialized_end=401
+  _RUNLANGUAGETESTREQUEST._serialized_start=403
+  _RUNLANGUAGETESTREQUEST._serialized_end=456
+  _RUNLANGUAGETESTRESPONSE._serialized_start=458
+  _RUNLANGUAGETESTRESPONSE._serialized_end=550
+  _LANGUAGETEST._serialized_start=553
+  _LANGUAGETEST._serialized_end=909
 # @@protoc_insertion_point(module_scope)

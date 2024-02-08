@@ -472,6 +472,7 @@ type testToken struct {
 	TemporaryDirectory   string
 	SnapshotDirectory    string
 	CoreArtifact         string
+	CoreVersion          string
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -537,9 +538,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}
 
 	// Build the core SDK, use a slightly odd version so we can test dependencies later.
-	version := semver.MustParse("1.0.1")
 	coreArtifact, err := languageClient.Pack(
-		req.CoreSdkDirectory, version, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
 	if err != nil {
 		return nil, fmt.Errorf("pack core SDK: %w", err)
 	}
@@ -550,6 +550,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		TemporaryDirectory:   req.TemporaryDirectory,
 		SnapshotDirectory:    req.SnapshotDirectory,
 		CoreArtifact:         coreArtifact,
+		CoreVersion:          req.CoreSdkVersion,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -684,6 +685,8 @@ func (eng *languageTestServer) RunLanguageTest(
 		if diags.HasErrors() {
 			return nil, fmt.Errorf("bind schema for provider %s: %v", pkg, diags)
 		}
+		// Unconditionally set SupportPack
+		boundSpec.SupportPack = true
 
 		schemaBytes, err = boundSpec.MarshalJSON()
 		if err != nil {
@@ -712,7 +715,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 		// any intermediate build files don't end up getting captured in the snapshot folder.
-		sdkArtifact, err := languageClient.Pack(sdkTempDir, version, artifactsDir)
+		sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
 		if err != nil {
 			return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
 		}
@@ -810,9 +813,14 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 	}
-	expectedDependencies := []plugin.DependencyInfo{
-		{Name: "pulumi", Version: "1.0.1"},
+
+	expectedDependencies := []plugin.DependencyInfo{}
+	if token.CoreVersion != "" {
+		expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
+			Name: "pulumi", Version: token.CoreVersion,
+		})
 	}
+
 	for _, provider := range test.providers {
 		pkg := string(provider.Pkg())
 		version, err := getProviderVersion(provider)

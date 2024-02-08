@@ -23,6 +23,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
@@ -170,6 +171,7 @@ func TestLanguage(t *testing.T) {
 		TemporaryDirectory:   rootDir,
 		SnapshotDirectory:    "./testdata",
 		CoreSdkDirectory:     "../..",
+		CoreSdkVersion:       sdk.Version.String(),
 	})
 	require.NoError(t, err)
 

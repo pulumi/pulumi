@@ -270,21 +270,11 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		return nil, fmt.Errorf("create temporary directory: %w", err)
 	}
 
-	// translate the semver Version into a PEP440 version
-	version := "0.0.0"
-	if v, err := semver.Parse(req.Version); err == nil {
-		version = codegen.PypiVersion(v)
-	} else if req.Version != "" {
-		return nil, fmt.Errorf("invalid version: %w", err)
-	}
-
 	buildCmd, err := python.Command(ctx, "-m", "build", "--outdir", tmp)
 	if err != nil {
 		return nil, err
 	}
 	buildCmd.Dir = req.PackageDirectory
-	buildCmd.Env = os.Environ()
-	buildCmd.Env = append(buildCmd.Env, "PULUMI_PYTHON_VERSION="+version)
 
 	var stdout, stderr bytes.Buffer
 	buildCmd.Stdout = &stdout

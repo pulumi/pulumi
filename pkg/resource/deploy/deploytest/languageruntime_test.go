@@ -17,7 +17,6 @@ package deploytest
 import (
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -135,7 +134,7 @@ func TestLanguageRuntime(t *testing.T) {
 		})
 		t.Run("Pack", func(t *testing.T) {
 			t.Parallel()
-			_, err := p.Pack("", semver.Version{}, "")
+			_, err := p.Pack("", "")
 			assert.ErrorContains(t, err, "is not supported")
 		})
 	})

@@ -66,10 +66,13 @@
                     "description": "A regex that is used by the importer to extract a module name from the module portion of a type token. Packages that use the module format \"namespace1/namespace2/.../namespaceN\" do not need to specify a format. The regex must define one capturing group that contains the module name, which must be formatted as \"namespace1/namespace2/...namespaceN\".",
                     "type": "string",
                     "format": "regex"
+                },
+                "supportPack": {
+                    "description": "Write the package to support the pack command.",
+                    "type": "boolean"
                 }
             },
-            "additionalProperties": false,
-            "required": ["moduleFormat"]
+            "additionalProperties": false
         },
         "config": {
             "description": "The package's configuration variables.",

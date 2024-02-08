@@ -1,1 +1,1 @@
-../../../artifacts/pulumi-1.0.1-py3-none-any.whl
+../../../artifacts/pulumi-3.105.1-py3-none-any.whl

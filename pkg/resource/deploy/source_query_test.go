@@ -774,7 +774,6 @@ type mockLanguageRuntime struct {
 
 	PackF func(
 		packageDirectory string,
-		version semver.Version,
 		destinationDirectory string,
 	) (string, error)
 }
@@ -871,10 +870,10 @@ func (rt *mockLanguageRuntime) GenerateProgram(
 }
 
 func (rt *mockLanguageRuntime) Pack(
-	packageDirectory string, version semver.Version, destinationDirectory string,
+	packageDirectory string, destinationDirectory string,
 ) (string, error) {
 	if rt.PackF != nil {
-		return rt.PackF(packageDirectory, version, destinationDirectory)
+		return rt.PackF(packageDirectory, destinationDirectory)
 	}
 	panic("unimplemented")
 }

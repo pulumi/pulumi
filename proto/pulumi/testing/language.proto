@@ -48,6 +48,7 @@ message PrepareLanguageTestsRequest {
     string snapshot_directory = 3;
     string temporary_directory = 4;
     string core_sdk_directory = 5;
+    string core_sdk_version = 6;
 }
 
 message PrepareLanguageTestsResponse {
