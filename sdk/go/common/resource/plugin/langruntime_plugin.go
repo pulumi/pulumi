@@ -376,16 +376,9 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 
 	results := slice.Prealloc[DependencyInfo](len(resp.GetDependencies()))
 	for _, dep := range resp.GetDependencies() {
-		var version semver.Version
-		if v := dep.Version; v != "" {
-			version, err = semver.ParseTolerant(v)
-			if err != nil {
-				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", dep.Name, v)
-			}
-		}
 		results = append(results, DependencyInfo{
 			Name:    dep.Name,
-			Version: version,
+			Version: dep.Version,
 		})
 	}
 

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Engine no longer assumes program dependencies are specified as semantic versions.

@@ -151,9 +151,14 @@ type LanguageRuntime interface {
 	Pack(packageDirectory string, version semver.Version, destinationDirectory string) (string, error)
 }
 
+// DependencyInfo contains information about a dependency reported by a language runtime.
+// These are the languages dependencies, they are not necessarily Pulumi packages.
 type DependencyInfo struct {
-	Name    string
-	Version semver.Version
+	// The name of the dependency.
+	Name string
+	// The version of the dependency. Unlike most versions in the system this is not guaranteed to be a semantic
+	// version.
+	Version string
 }
 
 type AboutInfo struct {
