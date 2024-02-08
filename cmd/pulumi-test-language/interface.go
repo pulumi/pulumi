@@ -320,6 +320,7 @@ type testToken struct {
 	TemporaryDirectory   string
 	SnapshotDirectory    string
 	CoreArtifact         string
+	CoreVersion          string
 	SnapshotEdits        []replacement
 }
 
@@ -386,9 +387,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}
 
 	// Build the core SDK, use a slightly odd version so we can test dependencies later.
-	version := semver.MustParse("1.0.1")
 	coreArtifact, err := languageClient.Pack(
-		req.CoreSdkDirectory, version, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
 	if err != nil {
 		return nil, fmt.Errorf("pack core SDK: %w", err)
 	}
@@ -408,6 +408,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		TemporaryDirectory:   req.TemporaryDirectory,
 		SnapshotDirectory:    req.SnapshotDirectory,
 		CoreArtifact:         coreArtifact,
+		CoreVersion:          req.CoreSdkVersion,
 		SnapshotEdits:        edits,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
@@ -531,28 +532,6 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	for _, provider := range test.providers {
 		pkg := string(provider.Pkg())
-		version, err := getProviderVersion(provider)
-		if err != nil {
-			return nil, err
-		}
-
-		sdkName := fmt.Sprintf("%s-%s", pkg, version)
-		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-		_, err = os.Stat(sdkTempDir)
-		if err == nil {
-			// If the directory already exists then we don't need to regenerate the SDK
-			sdkArtifact, err := languageClient.Pack(sdkTempDir, version, artifactsDir)
-			if err != nil {
-				return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
-			}
-			localDependencies[pkg] = sdkArtifact
-			continue
-		}
-
-		err = os.MkdirAll(sdkTempDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create temp sdks dir: %w", err)
-		}
 
 		schemaBytes, err := provider.GetSchema(0)
 		if err != nil {
@@ -571,6 +550,26 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 		if diags.HasErrors() {
 			return nil, fmt.Errorf("bind schema for provider %s: %v", pkg, diags)
+		}
+		// Unconditionally set SupportPack
+		boundSpec.SupportPack = true
+
+		sdkName := fmt.Sprintf("%s-%s", pkg, spec.Version)
+		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+		_, err = os.Stat(sdkTempDir)
+		if err == nil {
+			// If the directory already exists then we don't need to regenerate the SDK
+			sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
+			if err != nil {
+				return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
+			}
+			localDependencies[pkg] = sdkArtifact
+			continue
+		}
+
+		err = os.MkdirAll(sdkTempDir, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("create temp sdks dir: %w", err)
 		}
 
 		schemaBytes, err = boundSpec.MarshalJSON()
@@ -611,7 +610,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 		// any intermediate build files don't end up getting captured in the snapshot folder.
-		sdkArtifact, err := languageClient.Pack(sdkTempDir, version, artifactsDir)
+		sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
 		if err != nil {
 			return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
 		}
@@ -747,8 +746,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 		}
-		expectedDependencies := []plugin.DependencyInfo{
-			{Name: "pulumi", Version: "1.0.1"},
+		expectedDependencies := []plugin.DependencyInfo{}
+		if token.CoreVersion != "" {
+			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
+				Name: "pulumi", Version: token.CoreVersion,
+			})
 		}
 		for _, provider := range test.providers {
 			pkg := string(provider.Pkg())

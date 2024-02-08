@@ -17,7 +17,7 @@
 import os
 from setuptools import find_packages, setup
 
-VERSION = os.getenv("PULUMI_PYTHON_VERSION", "3.0.0")
+VERSION = "3.111.2"
 
 def readme():
     try:

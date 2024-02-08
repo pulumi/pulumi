@@ -56,6 +56,8 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     setTemporaryDirectory(value: string): PrepareLanguageTestsRequest;
     getCoreSdkDirectory(): string;
     setCoreSdkDirectory(value: string): PrepareLanguageTestsRequest;
+    getCoreSdkVersion(): string;
+    setCoreSdkVersion(value: string): PrepareLanguageTestsRequest;
     clearSnapshotEditsList(): void;
     getSnapshotEditsList(): Array<PrepareLanguageTestsRequest.Replacement>;
     setSnapshotEditsList(value: Array<PrepareLanguageTestsRequest.Replacement>): PrepareLanguageTestsRequest;
@@ -78,6 +80,7 @@ export namespace PrepareLanguageTestsRequest {
         snapshotDirectory: string,
         temporaryDirectory: string,
         coreSdkDirectory: string,
+        coreSdkVersion: string,
         snapshotEditsList: Array<PrepareLanguageTestsRequest.Replacement.AsObject>,
     }
 

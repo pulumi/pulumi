@@ -52,16 +52,10 @@ func (h *L2DestroyLanguageHost) Pack(
 	}
 
 	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
-		if req.Version != "2.0.0" {
-			return nil, fmt.Errorf("unexpected version %s", req.Version)
-		}
 		return &pulumirpc.PackResponse{
 			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-2.0.0.sdk"),
 		}, nil
 	} else if req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "core") {
-		if req.Version != "1.0.1" {
-			return nil, fmt.Errorf("unexpected version %s", req.Version)
-		}
 		return &pulumirpc.PackResponse{
 			ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 		}, nil
