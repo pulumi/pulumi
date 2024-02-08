@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/plugin
-  description: Add experimental `plugin run` command for running plugin binaries directly.

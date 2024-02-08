@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Adds `preview-only` flag for `pulumi destroy` and `pulumi import`
