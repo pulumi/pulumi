@@ -2340,7 +2340,8 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     parallel: jspb.Message.getFieldWithDefault(msg, 11, 0),
     monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, ""),
-    organization: jspb.Message.getFieldWithDefault(msg, 14, "")
+    organization: jspb.Message.getFieldWithDefault(msg, 14, ""),
+    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 17, false)
   };
 
   if (includeInstance) {
@@ -2425,6 +2426,10 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 14:
       var value = /** @type {string} */ (reader.readString());
       msg.setOrganization(value);
+      break;
+    case 17:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -2524,6 +2529,13 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
   if (f.length > 0) {
     writer.writeString(
       14,
+      f
+    );
+  }
+  f = message.getAcceptsOutputValues();
+  if (f) {
+    writer.writeBool(
+      17,
       f
     );
   }
@@ -2927,6 +2939,24 @@ proto.pulumirpc.CallRequest.prototype.getOrganization = function() {
  */
 proto.pulumirpc.CallRequest.prototype.setOrganization = function(value) {
   return jspb.Message.setProto3StringField(this, 14, value);
+};
+
+
+/**
+ * optional bool accepts_output_values = 17;
+ * @return {boolean}
+ */
+proto.pulumirpc.CallRequest.prototype.getAcceptsOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 17, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.CallRequest} returns this
+ */
+proto.pulumirpc.CallRequest.prototype.setAcceptsOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 17, value);
 };
 
 
@@ -6764,7 +6794,8 @@ proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
     deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefined : f,
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
-    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false)
+    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false),
+    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
   };
 
   if (includeInstance) {
@@ -6904,6 +6935,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
     case 24:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRetainondelete(value);
+      break;
+    case 25:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -7092,6 +7127,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f) {
     writer.writeBool(
       24,
+      f
+    );
+  }
+  f = message.getAcceptsOutputValues();
+  if (f) {
+    writer.writeBool(
+      25,
       f
     );
   }
@@ -8037,6 +8079,24 @@ proto.pulumirpc.ConstructRequest.prototype.getRetainondelete = function() {
  */
 proto.pulumirpc.ConstructRequest.prototype.setRetainondelete = function(value) {
   return jspb.Message.setProto3BooleanField(this, 24, value);
+};
+
+
+/**
+ * optional bool accepts_output_values = 25;
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getAcceptsOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 25, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setAcceptsOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 25, value);
 };
 
 

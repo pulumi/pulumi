@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: components
+  description: Component providers can return output values in their response to the engine.

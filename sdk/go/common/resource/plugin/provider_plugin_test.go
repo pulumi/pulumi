@@ -479,6 +479,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			tt.want.Name = "name"
 			tt.want.Config = make(map[string]string)
 			tt.want.Inputs = &structpb.Struct{Fields: make(map[string]*structpb.Value)}
+			tt.want.AcceptsOutputValues = true
 
 			var got *pulumirpc.ConstructRequest
 			client := &stubClient{

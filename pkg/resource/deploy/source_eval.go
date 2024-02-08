@@ -865,14 +865,12 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
 	}
-	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
-		Label:         label,
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
+
+	if ret.ReturnDependencies == nil {
+		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
+	}
+	for k, v := range ret.Return {
+		ret.ReturnDependencies[k] = addOutputDependencies(ret.ReturnDependencies[k], v)
 	}
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
@@ -882,6 +880,16 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 			urns[i] = string(urn)
 		}
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
+	}
+
+	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+		Label:         label,
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
 
 	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(ret.Failures))
@@ -1492,6 +1500,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
+		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
+		// Secret but also add them to the outputDeps map.
+		if constructResult.OutputDependencies == nil {
+			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
+		}
+		for k, v := range result.State.Outputs {
+			constructResult.OutputDependencies[k] = addOutputDependencies(constructResult.OutputDependencies[k], v)
+		}
+
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
 		for k, deps := range constructResult.OutputDependencies {
 			urns := make([]string, len(deps))
@@ -1500,6 +1517,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
+
 	} else {
 		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
 		for _, name := range additionalSecretOutputs {
@@ -1883,4 +1901,32 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 		result[k] = downgradeOutputPropertyValue(pv)
 	}
 	return result
+}
+
+func addOutputDependencies(deps []resource.URN, v resource.PropertyValue) []resource.URN {
+	if v.IsOutput() {
+		output := v.OutputValue()
+		if output.Known {
+			deps = addOutputDependencies(deps, output.Element)
+		}
+		deps = append(deps, output.Dependencies...)
+	}
+	if v.IsResourceReference() {
+		ref := v.ResourceReferenceValue()
+		deps = addOutputDependencies(deps, ref.ID)
+	}
+	if v.IsObject() {
+		for _, elem := range v.ObjectValue() {
+			deps = addOutputDependencies(deps, elem)
+		}
+	}
+	if v.IsArray() {
+		for _, elem := range v.ArrayValue() {
+			deps = addOutputDependencies(deps, elem)
+		}
+	}
+	if v.IsSecret() {
+		deps = addOutputDependencies(deps, v.SecretValue().Element)
+	}
+	return deps
 }

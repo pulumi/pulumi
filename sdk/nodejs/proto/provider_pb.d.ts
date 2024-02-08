@@ -250,6 +250,8 @@ export class CallRequest extends jspb.Message {
     setMonitorendpoint(value: string): CallRequest;
     getOrganization(): string;
     setOrganization(value: string): CallRequest;
+    getAcceptsOutputValues(): boolean;
+    setAcceptsOutputValues(value: boolean): CallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallRequest.AsObject;
@@ -276,6 +278,7 @@ export namespace CallRequest {
         parallel: number,
         monitorendpoint: string,
         organization: string,
+        acceptsOutputValues: boolean,
     }
 
 
@@ -888,6 +891,8 @@ export class ConstructRequest extends jspb.Message {
     addReplaceonchanges(value: string, index?: number): string;
     getRetainondelete(): boolean;
     setRetainondelete(value: boolean): ConstructRequest;
+    getAcceptsOutputValues(): boolean;
+    setAcceptsOutputValues(value: boolean): ConstructRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
@@ -928,6 +933,7 @@ export namespace ConstructRequest {
         ignorechangesList: Array<string>,
         replaceonchangesList: Array<string>,
         retainondelete: boolean,
+        acceptsOutputValues: boolean,
     }
 
 
