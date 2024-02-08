@@ -151,7 +151,7 @@ func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.ResourceIn
 	panic("not implemented")
 }
 
-func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.CallRequest,
+func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.ResourceCallRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.CallResponse, error) {
 	panic("not implemented")

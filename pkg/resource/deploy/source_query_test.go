@@ -321,7 +321,7 @@ type mockResmon struct {
 		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
 
 	CallF func(ctx context.Context,
-		req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
+		req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 
 	ReadResourceF func(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
@@ -359,7 +359,7 @@ func (rm *mockResmon) Invoke(ctx context.Context,
 }
 
 func (rm *mockResmon) Call(ctx context.Context,
-	req *pulumirpc.CallRequest,
+	req *pulumirpc.ResourceCallRequest,
 ) (*pulumirpc.CallResponse, error) {
 	if rm.CallF != nil {
 		return rm.CallF(ctx, req)

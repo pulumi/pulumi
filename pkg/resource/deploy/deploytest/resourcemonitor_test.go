@@ -21,7 +21,7 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 	client := stubResourceMonitorClient{
 		// ResourceMonitorClient is unset
 		// so this will panic if an unexpected method is called.
-		CallFunc: func(req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+		CallFunc: func(req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 			res, err := structpb.NewStruct(map[string]interface{}{
 				"k3": "value3",
 				"k4": "value4",
@@ -115,13 +115,13 @@ func TestResourceMonitor_RegisterResource_customTimeouts(t *testing.T) {
 type stubResourceMonitorClient struct {
 	pulumirpc.ResourceMonitorClient
 
-	CallFunc             func(req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
+	CallFunc             func(req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	RegisterResourceFunc func(req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 }
 
 func (cl *stubResourceMonitorClient) Call(
 	ctx context.Context,
-	req *pulumirpc.CallRequest,
+	req *pulumirpc.ResourceCallRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.CallResponse, error) {
 	if cl.CallFunc != nil {

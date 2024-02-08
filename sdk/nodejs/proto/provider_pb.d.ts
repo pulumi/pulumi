@@ -231,15 +231,6 @@ export class CallRequest extends jspb.Message {
 
     getArgdependenciesMap(): jspb.Map<string, CallRequest.ArgumentDependencies>;
     clearArgdependenciesMap(): void;
-    getProvider(): string;
-    setProvider(value: string): CallRequest;
-    getVersion(): string;
-    setVersion(value: string): CallRequest;
-    getPlugindownloadurl(): string;
-    setPlugindownloadurl(value: string): CallRequest;
-
-    getPluginchecksumsMap(): jspb.Map<string, Uint8Array | string>;
-    clearPluginchecksumsMap(): void;
     getProject(): string;
     setProject(value: string): CallRequest;
     getStack(): string;
@@ -260,11 +251,6 @@ export class CallRequest extends jspb.Message {
     getOrganization(): string;
     setOrganization(value: string): CallRequest;
 
-    hasSourceposition(): boolean;
-    clearSourceposition(): void;
-    getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
-    setSourceposition(value?: pulumi_source_pb.SourcePosition): CallRequest;
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallRequest.AsObject;
     static toObject(includeInstance: boolean, msg: CallRequest): CallRequest.AsObject;
@@ -281,11 +267,6 @@ export namespace CallRequest {
         args?: google_protobuf_struct_pb.Struct.AsObject,
 
         argdependenciesMap: Array<[string, CallRequest.ArgumentDependencies.AsObject]>,
-        provider: string,
-        version: string,
-        plugindownloadurl: string,
-
-        pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         project: string,
         stack: string,
 
@@ -295,7 +276,6 @@ export namespace CallRequest {
         parallel: number,
         monitorendpoint: string,
         organization: string,
-        sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
     }
 
 

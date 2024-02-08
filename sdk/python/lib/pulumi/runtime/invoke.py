@@ -249,10 +249,12 @@ def call(
                     if urn is not None:
                         urns.add(urn)
                 property_dependencies[key] = (
-                    provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
+                    resource_pb2.ResourceCallRequest.ArgumentDependencies(
+                        urns=list(urns)
+                    )
                 )
 
-            req = provider_pb2.CallRequest(
+            req = resource_pb2.ResourceCallRequest(
                 tok=tok,
                 args=inputs,
                 argDependencies=property_dependencies,

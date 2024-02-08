@@ -416,7 +416,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		return nil, err
 	}
 
-	prepareCallRequest := func() (*pulumirpc.CallRequest, error) {
+	prepareCallRequest := func() (*pulumirpc.ResourceCallRequest, error) {
 		// Determine the provider, version and url to use.
 		var provider ProviderResource
 		var version string
@@ -480,7 +480,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		}
 
 		// Convert the arg dependencies map for RPC and remove duplicates.
-		rpcArgDeps := make(map[string]*pulumirpc.CallRequest_ArgumentDependencies)
+		rpcArgDeps := make(map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies)
 		for k, deps := range argDeps {
 			sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 
@@ -492,12 +492,12 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 				urns = append(urns, string(d))
 			}
 
-			rpcArgDeps[k] = &pulumirpc.CallRequest_ArgumentDependencies{
+			rpcArgDeps[k] = &pulumirpc.ResourceCallRequest_ArgumentDependencies{
 				Urns: urns,
 			}
 		}
 
-		return &pulumirpc.CallRequest{
+		return &pulumirpc.ResourceCallRequest{
 			Tok:               tok,
 			Args:              rpcArgs,
 			ArgDependencies:   rpcArgDeps,
@@ -543,7 +543,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		}()
 
 		// Prepare the RPC request.
-		var req *pulumirpc.CallRequest
+		var req *pulumirpc.ResourceCallRequest
 		req, err = prepareCallRequest()
 		if err != nil {
 			return

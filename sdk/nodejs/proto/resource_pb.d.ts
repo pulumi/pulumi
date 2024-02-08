@@ -472,3 +472,78 @@ export namespace ResourceInvokeRequest {
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
     }
 }
+
+export class ResourceCallRequest extends jspb.Message { 
+    getTok(): string;
+    setTok(value: string): ResourceCallRequest;
+
+    hasArgs(): boolean;
+    clearArgs(): void;
+    getArgs(): google_protobuf_struct_pb.Struct | undefined;
+    setArgs(value?: google_protobuf_struct_pb.Struct): ResourceCallRequest;
+
+    getArgdependenciesMap(): jspb.Map<string, ResourceCallRequest.ArgumentDependencies>;
+    clearArgdependenciesMap(): void;
+    getProvider(): string;
+    setProvider(value: string): ResourceCallRequest;
+    getVersion(): string;
+    setVersion(value: string): ResourceCallRequest;
+    getPlugindownloadurl(): string;
+    setPlugindownloadurl(value: string): ResourceCallRequest;
+
+    getPluginchecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginchecksumsMap(): void;
+
+    hasSourceposition(): boolean;
+    clearSourceposition(): void;
+    getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
+    setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceCallRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceCallRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceCallRequest): ResourceCallRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceCallRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceCallRequest;
+    static deserializeBinaryFromReader(message: ResourceCallRequest, reader: jspb.BinaryReader): ResourceCallRequest;
+}
+
+export namespace ResourceCallRequest {
+    export type AsObject = {
+        tok: string,
+        args?: google_protobuf_struct_pb.Struct.AsObject,
+
+        argdependenciesMap: Array<[string, ResourceCallRequest.ArgumentDependencies.AsObject]>,
+        provider: string,
+        version: string,
+        plugindownloadurl: string,
+
+        pluginchecksumsMap: Array<[string, Uint8Array | string]>,
+        sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+    }
+
+
+    export class ArgumentDependencies extends jspb.Message { 
+        clearUrnsList(): void;
+        getUrnsList(): Array<string>;
+        setUrnsList(value: Array<string>): ArgumentDependencies;
+        addUrns(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ArgumentDependencies.AsObject;
+        static toObject(includeInstance: boolean, msg: ArgumentDependencies): ArgumentDependencies.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ArgumentDependencies, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ArgumentDependencies;
+        static deserializeBinaryFromReader(message: ArgumentDependencies, reader: jspb.BinaryReader): ArgumentDependencies;
+    }
+
+    export namespace ArgumentDependencies {
+        export type AsObject = {
+            urnsList: Array<string>,
+        }
+    }
+
+}
