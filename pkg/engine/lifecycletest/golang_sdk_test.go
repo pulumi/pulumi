@@ -673,7 +673,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 					_, ok := inputs["bar"]
 					assert.False(t, ok)
 
-					urn, _, _, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
+					urn, _, _, _, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
 					require.NoError(t, err)
 
 					outs := resource.PropertyMap{}

@@ -64,7 +64,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		for _, s := range steps {
 			g := s.Goal()
-			urn, id, outs, err := resmon.RegisterResource(g.Type, g.Name, g.Custom, deploytest.ResourceOptions{
+			urn, id, outs, _, err := resmon.RegisterResource(g.Type, g.Name, g.Custom, deploytest.ResourceOptions{
 				Parent:       g.Parent,
 				Protect:      g.Protect,
 				Dependencies: g.Dependencies,
@@ -874,7 +874,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			give := tt.give
 			give.Remote = true
 			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
-				_, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, give)
+				_, _, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, give)
 				require.NoError(t, err, "register resource")
 				return nil
 			}

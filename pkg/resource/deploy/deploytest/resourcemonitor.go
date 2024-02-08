@@ -165,7 +165,7 @@ func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
 	options ...ResourceOptions,
-) (resource.URN, resource.ID, resource.PropertyMap, error) {
+) (resource.URN, resource.ID, resource.PropertyMap, map[resource.PropertyKey][]resource.URN, error) {
 	var opts ResourceOptions
 	if len(options) > 0 {
 		opts = options[0]
@@ -182,7 +182,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepOutputValues: opts.Remote,
 	})
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, nil, err
 	}
 
 	// marshal dependencies
@@ -234,7 +234,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.SourcePosition != "" {
 		sourcePosition, err = parseSourcePosition(opts.SourcePosition)
 		if err != nil {
-			return "", "", nil, err
+			return "", "", nil, nil, err
 		}
 	}
 
@@ -279,15 +279,25 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	// submit request
 	resp, err := rm.resmon.RegisterResource(ctx, requestInput)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, nil, err
 	}
 	// unmarshal outputs
 	outs, err := rm.unmarshalProperties(resp.Object)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, nil, err
 	}
 
-	return resource.URN(resp.Urn), resource.ID(resp.Id), outs, nil
+	// unmarshal dependencies
+	depsMap := make(map[resource.PropertyKey][]resource.URN)
+	for k, p := range resp.PropertyDependencies {
+		var urns []resource.URN
+		for _, urn := range p.Urns {
+			urns = append(urns, resource.URN(urn))
+		}
+		depsMap[resource.PropertyKey(k)] = urns
+	}
+
+	return resource.URN(resp.Urn), resource.ID(resp.Id), outs, depsMap, nil
 }
 
 func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
