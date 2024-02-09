@@ -30,7 +30,7 @@ PKG_VERSION="${PULUMI_VERSION}"
 # version string), use the tag of latest instead of
 # dev. NPM uses this tag as the default version to add, so we want it to mean
 # the newest released version.
-if [[ "${PKG_VERSION}" != *-g* ]]; then
+if [[ "${PKG_VERSION}" != *-alpha* ]]; then
     NPM_TAG="latest"
 fi
 

@@ -33,13 +33,12 @@ jobs:
       - name: strip prefix
         id: strip-prefix
         run: |
-          version="${{ steps.ghd.outputs.describe }}"
-          version="${version#v}"
+          short_sha="${{ steps.ghd.outputs.short-sha }}"
+          version="${{ inputs.version }}"
+          version="${version#v}-alpha.${short_sha}"
           echo dev-version="$version" >>"${GITHUB_OUTPUT}"
-          echo dev-sha="${{ steps.ghd.outputs.short-sha }}" >>"${GITHUB_OUTPUT}"
     outputs:
       dev-version: ${{ steps.strip-prefix.outputs.dev-version }}
-      dev-sha: ${{ steps.strip-prefix.outputs.dev-sha }}
       version: ${{ inputs.version }}
 
   matrix:
@@ -91,7 +90,7 @@ jobs:
 
   build-sdks:
     name: Build SDKs
-    needs: [matrix]
+    needs: [matrix, gather-info]
     uses: ./.github/workflows/ci-build-sdks.yml
     with:
       ref: ${{ inputs.ref }}
@@ -133,8 +132,6 @@ jobs:
       nodejs-release: ${{ steps.check-changes.outputs.nodejs-release }}
       python-release: ${{ steps.check-changes.outputs.python-release }}
 
-
-
   nodejs-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-latest
@@ -155,10 +152,8 @@ jobs:
           (
             cd artifacts.tmp/artifacts-nodejs-sdk
             version="${{ inputs.version }}"
-            dev_version="${{ needs.gather-info.outputs.dev-version }}"
-            for file in *.tgz ; do
-              name=${file//$version/$dev_version}
-              mv -vT "$file" "../../artifacts/sdk-nodejs-$name"
+            for file in *"${version}"-alpha*.tgz ; do
+              mv -vT "$file" "../../artifacts/sdk-nodejs-${file}"
             done
           )
       - name: Set up Node ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
@@ -172,6 +167,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish nodejs release
         run: |
+          find artifacts
           make -C sdk/nodejs publish
         env:
           PULUMI_VERSION: ${{ needs.gather-info.outputs.dev-version }}
@@ -181,7 +177,7 @@ jobs:
 
 
   python-dev-sdk-release:
-    needs: [gather-info, build-build-sdks, sdk-check-release]
+    needs: [gather-info, build-sdks, sdk-check-release]
     runs-on: ubuntu-latest
 #    if: ${{ needs.sdk-check-release.outputs.python-release }} # TODO: enable this after testing
     steps:
@@ -198,15 +194,11 @@ jobs:
         run: |
           mkdir -p artifacts
           version="${{ inputs.version }}"
-          # Python dev versions have a suffix of "a<epoch>".
-          dev_version=$(date +%s)
-          dev_version="${version}a${dev_version}"
           mkdir -p artifacts
           (
             cd artifacts.tmp/artifacts-python-sdk
-            for file in *.whl ; do
-              new_name="${file//$version/$dev_version}"
-              mv -vT "$file" "../../artifacts/sdk-python-$new_name"
+            for file in *"${version}a"*.whl ; do
+              mv -vT "$file" "../../artifacts/sdk-python-${file}"
             done
           )
       - name: Install Python deps
@@ -214,6 +206,7 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Publish python release
         run: |
+          find artifacts
           make -C sdk/python publish
         env:
           PYPI_USERNAME: __token__
