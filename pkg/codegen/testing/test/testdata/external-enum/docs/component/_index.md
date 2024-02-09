@@ -480,7 +480,7 @@ My<wbr>Enum<pulumi-choosable type="language" values="python,go" class="inline">,
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Pi</dt>
     <dd>3.1415</dd><dt>Small</dt>
     <dd>1e-07</dd></dl>

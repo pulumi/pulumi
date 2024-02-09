@@ -565,7 +565,7 @@ Enum<wbr>Overlay<pulumi-choosable type="language" values="python,go" class="inli
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Some<wbr>Enum<wbr>Value</dt>
     <dd>SOME_ENUM_VALUE</dd></dl>
 </pulumi-choosable>

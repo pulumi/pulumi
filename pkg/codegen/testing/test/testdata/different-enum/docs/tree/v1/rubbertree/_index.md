@@ -1131,7 +1131,7 @@ Container<wbr>Brightness<pulumi-choosable type="language" values="python,go" cla
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
     <dd>0.1</dd><dt>One</dt>
     <dd>1</dd></dl>
@@ -1186,7 +1186,7 @@ Container<wbr>Color<pulumi-choosable type="language" values="python,go" class="i
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Red</dt>
     <dd>red</dd><dt>Blue</dt>
     <dd>blue</dd><dt>Yellow</dt>
@@ -1244,7 +1244,7 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
@@ -1299,7 +1299,7 @@ Diameter<pulumi-choosable type="language" values="python,go" class="inline">, Di
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Sixinch</dt>
     <dd>6</dd><dt>Twelveinch</dt>
     <dd>12</dd></dl>
@@ -1351,7 +1351,7 @@ Farm<pulumi-choosable type="language" values="python,go" class="inline">, Farm<w
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
@@ -1406,7 +1406,7 @@ Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" 
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Burgundy</dt>
     <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
     <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
@@ -1464,7 +1464,7 @@ Tree<wbr>Size<pulumi-choosable type="language" values="python,go" class="inline"
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Small</dt>
     <dd>small</dd><dt>Medium</dt>
     <dd>medium</dd><dt>Large</dt>

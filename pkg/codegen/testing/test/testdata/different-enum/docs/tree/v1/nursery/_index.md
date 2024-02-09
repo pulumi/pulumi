@@ -483,7 +483,7 @@ Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" 
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Burgundy</dt>
     <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
     <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
@@ -541,7 +541,7 @@ Tree<wbr>Size<pulumi-choosable type="language" values="python,go" class="inline"
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Small</dt>
     <dd>small</dd><dt>Medium</dt>
     <dd>medium</dd><dt>Large</dt>
