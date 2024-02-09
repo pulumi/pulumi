@@ -385,12 +385,12 @@ func (r *treeRenderer) handleEvents() {
 						r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
 					}
 				}
-			case terminal.KeyUp:
+			case terminal.KeyUp, "k":
 				if r.treeTableOffset > 0 {
 					r.treeTableOffset--
 				}
 				r.markDirty()
-			case terminal.KeyDown:
+			case terminal.KeyDown, "j":
 				if r.treeTableOffset < r.maxTreeTableOffset {
 					r.treeTableOffset++
 				}
@@ -412,6 +412,16 @@ func (r *treeRenderer) handleEvents() {
 				if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
 					r.treeTableOffset += termHeight
 				} else {
+					r.treeTableOffset = r.maxTreeTableOffset
+				}
+				r.markDirty()
+			case terminal.KeyHome, "g":
+				if r.treeTableOffset > 0 {
+					r.treeTableOffset = 0
+				}
+				r.markDirty()
+			case terminal.KeyEnd, "G":
+				if r.treeTableOffset < r.maxTreeTableOffset {
 					r.treeTableOffset = r.maxTreeTableOffset
 				}
 				r.markDirty()

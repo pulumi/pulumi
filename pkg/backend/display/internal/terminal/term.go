@@ -259,6 +259,8 @@ const (
 	KeyCtrlC    = "ctrl+c"
 	KeyCtrlO    = "ctrl+o"
 	KeyDown     = "down"
+	KeyEnd      = "end"
+	KeyHome     = "home"
 	KeyPageDown = "page-down"
 	KeyPageUp   = "page-up"
 	KeyUp       = "up"
@@ -288,8 +290,12 @@ func (t *terminal) ReadKey() (string, error) {
 	switch d.kind {
 	case ansiKey:
 		switch d.final {
+		case 2: // Ctrl+B --- Vim key for page up (page back)
+			return KeyPageUp, nil
 		case 3: // ETX
 			return KeyCtrlC, nil
+		case 6: // Ctrl+F ---- Vim key for page down (page forward)
+			return KeyPageDown, nil
 		case 15: // SI
 			return KeyCtrlO, nil
 		}
@@ -304,9 +310,25 @@ func (t *terminal) ReadKey() (string, error) {
 		case 'B':
 			// CUD - Cursor Down: CSI (Pn) B
 			return KeyDown, nil
+		case 'F':
+			// Some terminals use CSI F for End, other use CSI 4 ~
+			// Historically this is the SCO mapping for a vt220
+			return KeyEnd, nil
+		case 'H':
+			// Some terminals use CSI H for home, other use CSI 1 ~
+			// in VT100 terms this is CUP (Pl; Pc) H
+			return KeyHome, nil
 		case '~':
 			// DECFNK - Function Key: CSI Ps1 (; Ps2) ~
 			switch string(d.params) {
+			case "1":
+				// Some terminals use CSI H for home, other use CSI 1 ~
+				// which is probably a reinterpretation of the DEC Find key
+				return KeyHome, nil
+			case "4":
+				// Some terminals use CSI F for End, other use CSI 4 ~
+				// which is probably a reinterpretation of the DEC Select key
+				return KeyEnd, nil
 			case "5":
 				// Page Up: CSI 5 ~
 				return KeyPageUp, nil

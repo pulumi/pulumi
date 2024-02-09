@@ -16,11 +16,13 @@ package display
 
 import (
 	"bytes"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/stretchr/testify/assert"
 )
 
 // Table Test using different terminal widths and heights to ensure that the display does not panic.
@@ -62,5 +64,67 @@ func TestTreeFrameSize(t *testing.T) {
 			// This should not panic.
 			treeRenderer.frame(false /* locked */, false /* done */)
 		})
+	}
+}
+
+func TestTreeKeyboardHandling(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 80, 24, true)
+	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
+		Color: colors.Always,
+	}).(*treeRenderer)
+
+	// Fill the renderer with too many rows of strings to fit in the terminal.
+	for i := 0; i < 1000; i++ {
+		// Fill the renderer with strings that are too long to fit in the terminal.
+		treeRenderer.systemMessages = append(treeRenderer.systemMessages, strings.Repeat("a", 1000))
+	}
+	treeRenderer.treeTableRows = treeRenderer.systemMessages
+
+	// Required to get the frame to render.
+	treeRenderer.markDirty()
+
+	// This should not panic.
+	treeRenderer.frame(false /* locked */, false /* done */)
+
+	// manually move the current position to the middle
+	treeRenderer.treeTableOffset = treeRenderer.maxTreeTableOffset / 2
+	treeRenderer.markDirty()
+	treeRenderer.frame(false /* locked */, false /* done */)
+
+	tests := []struct {
+		name             string
+		key              string
+		expectedChange   int
+		expectedAbsolute int
+	}{
+		{"up arrow", terminal.KeyUp, -1, 0},
+		{"VIM up", "k", -1, 0},
+		{"Down arrow", terminal.KeyDown, 1, 0},
+		{"VIM down", "j", 1, 0},
+		{"Page Up", terminal.KeyPageUp, -24, 0},
+		{"Page Down", terminal.KeyPageDown, 24, 0},
+		{"Home", terminal.KeyHome, 0, 0},
+		{"End", terminal.KeyEnd, 0, treeRenderer.maxTreeTableOffset},
+		{"VIM home", "g", 0, 0},
+		{"VIM end", "G", 0, treeRenderer.maxTreeTableOffset},
+	}
+
+	for _, tt := range tests {
+		initialValue := treeRenderer.treeTableOffset
+		treeRenderer.keys <- tt.key
+		// allow the key handler the opportunity to run
+		runtime.Gosched()
+		treeRenderer.frame(false /* locked */, false /* done */)
+
+		if tt.expectedChange != 0 {
+			assert.Equal(t, tt.expectedChange+initialValue, treeRenderer.treeTableOffset,
+				"Current line was not moved to the expected value of %d for %v", tt.expectedChange+initialValue, tt.name)
+		} else {
+			assert.Equal(t, tt.expectedAbsolute, treeRenderer.treeTableOffset,
+				"Current line was not moved to the expected value of %d for %v", tt.expectedAbsolute, tt.name)
+		}
 	}
 }
