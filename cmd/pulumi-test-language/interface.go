@@ -811,7 +811,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 	}
 	expectedDependencies := []plugin.DependencyInfo{
-		{Name: "pulumi", Version: semver.MustParse("1.0.1")},
+		{Name: "pulumi", Version: "1.0.1"},
 	}
 	for _, provider := range test.providers {
 		pkg := string(provider.Pkg())
@@ -821,7 +821,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 		expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
 			Name:    pkg,
-			Version: version,
+			Version: version.String(),
 		})
 	}
 	for _, expectedDependency := range expectedDependencies {
@@ -831,12 +831,12 @@ func (eng *languageTestServer) RunLanguageTest(
 		// found is the version we've found for this dependency, if any. We fuzzy match by name and then check version
 		// so this is just to give better error messages. For our main dependencies we should have a different version
 		// for every package, so the fuzzy check by name then exact check by version should be unique.
-		var found *semver.Version
+		var found *string
 		for _, actual := range dependencies {
 			actual := actual
 			if strings.Contains(strings.ToLower(actual.Name), strings.ToLower(expectedDependency.Name)) {
 				found = &actual.Version
-				if expectedDependency.Version.Equals(actual.Version) {
+				if expectedDependency.Version == actual.Version {
 					break
 				}
 			}
@@ -844,9 +844,9 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		if found == nil {
 			return makeTestResponse(fmt.Sprintf("missing expected dependency %s", expectedDependency.Name)), nil
-		} else if !expectedDependency.Version.Equals(*found) {
+		} else if expectedDependency.Version != *found {
 			return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
-				expectedDependency.Name, found, expectedDependency.Version)), nil
+				expectedDependency.Name, *found, expectedDependency.Version)), nil
 		}
 	}
 

@@ -170,7 +170,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 					for i, dep := range deps {
 						result.Dependencies[i] = programDependencyAbout{
 							Name:    dep.Name,
-							Version: dep.Version.String(),
+							Version: dep.Version,
 						}
 					}
 				}
