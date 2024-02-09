@@ -3,7 +3,7 @@
 {{- range $lang, $enums := . }}
 
 <div>
-<pulumi-choosable type="language" values="{{ print $lang }}">
+<pulumi-choosable type="language" values="{{- if eq $lang "nodejs" -}}{{ print "javascript,typescript" }}{{- else -}}{{ print $lang }}{{- end -}}">
 <dl class="tabular">
 {{- range . -}}
     <dt>{{- htmlSafe .DisplayName -}}</dt>
