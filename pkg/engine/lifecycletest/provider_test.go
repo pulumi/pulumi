@@ -46,8 +46,11 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 	}
 	p.Run(t, nil)
 
-	// We should have started the provider 10 times, twice for each of the steps in the basic lifecycle (one preview,
+	// We should have started the provider 14 times, twice for each of the steps in the basic lifecycle (one preview,
 	// one up), but zero for the last refresh step where the provider is not needed.
+	// Twice per resource step when we load the schema for the provider.
+	// TODO: this should be 10 times because schema loading should not startup a provider
+	// more times than necessary.
 	assert.Equal(t, 14, startupCount)
 }
 
