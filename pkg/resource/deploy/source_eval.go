@@ -1433,20 +1433,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	additionalSecretOutputs := req.GetAdditionalSecretOutputs()
-	if rm.loader != nil {
-		// try to load the package reference and infer which properties are supposed to be secret.
-		var version *semver.Version
-		if parsedVersion, err := semver.Parse(req.GetVersion()); err == nil {
-			version = &parsedVersion
-		}
-		if typeToken, err := tokens.ParseTypeToken(req.Type); err == nil {
-			packageName := typeToken.Package().String()
-			if pkgReference, err := rm.loader.LoadPackageReference(packageName, version); err == nil {
-				if resourceSchema, found, err := pkgReference.Resources().Get(req.Type); err == nil && found {
-					for _, outputProperty := range resourceSchema.Properties {
-						if outputProperty.Secret {
-							additionalSecretOutputs = append(additionalSecretOutputs, outputProperty.Name)
-						}
+
+	// try to load the package reference and infer which properties are supposed to be secret.
+	var version *semver.Version
+	if parsedVersion, err := semver.Parse(req.GetVersion()); err == nil {
+		version = &parsedVersion
+	}
+
+	if typeToken, err := tokens.ParseTypeToken(req.Type); err == nil {
+		packageName := typeToken.Package().String()
+		if pkgReference, err := rm.loader.LoadPackageReference(packageName, version); err == nil {
+			if resourceSchema, found, err := pkgReference.Resources().Get(req.Type); err == nil && found {
+				for _, outputProperty := range resourceSchema.Properties {
+					if outputProperty.Secret {
+						additionalSecretOutputs = append(additionalSecretOutputs, outputProperty.Name)
 					}
 				}
 			}

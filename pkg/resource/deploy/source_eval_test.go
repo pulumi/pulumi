@@ -3079,6 +3079,7 @@ func TestRegisterResource(t *testing.T) {
 			cancel := make(chan bool, 1)
 			cancel <- true
 			rm := &resmon{
+				loader: emptySchemaLoader(t),
 				cancel: cancel,
 			}
 			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
@@ -3094,6 +3095,7 @@ func TestRegisterResource(t *testing.T) {
 			}()
 
 			rm := &resmon{
+				loader:  emptySchemaLoader(t),
 				regChan: regChan,
 				cancel:  cancel,
 			}
@@ -3110,6 +3112,7 @@ func TestRegisterResource(t *testing.T) {
 			}()
 
 			rm := &resmon{
+				loader:  emptySchemaLoader(t),
 				regChan: regChan,
 				cancel:  cancel,
 			}
@@ -3144,7 +3147,7 @@ func TestRegisterResource(t *testing.T) {
 				State: &resource.State{},
 			}
 		}()
-		rm := &resmon{}
+		rm := &resmon{loader: emptySchemaLoader(t)}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type:    "foo:bar:some-type",
 			Version: "improper-version",
@@ -3163,7 +3166,7 @@ func TestRegisterResource(t *testing.T) {
 				State: &resource.State{},
 			}
 		}()
-		rm := &resmon{}
+		rm := &resmon{loader: emptySchemaLoader(t)}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type:    "pulumi:providers:some-type",
 			Version: "improper-version",
@@ -3175,7 +3178,7 @@ func TestRegisterResource(t *testing.T) {
 	})
 	t.Run("invalid alias URN", func(t *testing.T) {
 		t.Parallel()
-		rm := &resmon{}
+		rm := &resmon{loader: emptySchemaLoader(t)}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type: "pulumi:providers:some-type",
 			AliasURNs: []string{
@@ -3188,6 +3191,7 @@ func TestRegisterResource(t *testing.T) {
 	t.Run("invalid dependency on property", func(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{
+			loader: emptySchemaLoader(t),
 			defaultProviders: &defaultProviders{
 				defaultProviderInfo: map[tokens.Package]workspace.PluginSpec{},
 			},
@@ -3220,6 +3224,7 @@ func TestRegisterResource(t *testing.T) {
 				}
 			}()
 			rm := &resmon{
+				loader: emptySchemaLoader(t),
 				defaultProviders: &defaultProviders{
 					requests: requests,
 					config: &configSourceMock{
@@ -3254,6 +3259,7 @@ func TestRegisterResource(t *testing.T) {
 				}
 			}()
 			rm := &resmon{
+				loader: emptySchemaLoader(t),
 				defaultProviders: &defaultProviders{
 					requests: requests,
 					config: &configSourceMock{
@@ -3292,6 +3298,7 @@ func TestRegisterResource(t *testing.T) {
 				}
 			}()
 			rm := &resmon{
+				loader: emptySchemaLoader(t),
 				defaultProviders: &defaultProviders{
 					requests: requests,
 					config: &configSourceMock{
@@ -3328,6 +3335,7 @@ func TestRegisterResource(t *testing.T) {
 			}
 		}()
 		rm := &resmon{
+			loader: emptySchemaLoader(t),
 			defaultProviders: &defaultProviders{
 				requests: requests,
 				config: &configSourceMock{
@@ -3389,6 +3397,7 @@ func TestRegisterResource(t *testing.T) {
 				}
 			}()
 			rm := &resmon{
+				loader:  emptySchemaLoader(t),
 				regChan: regChan,
 				componentProviders: map[resource.URN]map[string]string{
 					"urn:pulumi:stack::project::type::foo": {
@@ -3445,6 +3454,7 @@ func TestRegisterResource(t *testing.T) {
 					}
 				}()
 				rm := &resmon{
+					loader:             emptySchemaLoader(t),
 					regChan:            regChan,
 					componentProviders: map[resource.URN]map[string]string{},
 				}
@@ -3466,6 +3476,7 @@ func TestRegisterResource(t *testing.T) {
 					}
 				}()
 				rm := &resmon{
+					loader:             emptySchemaLoader(t),
 					regChan:            regChan,
 					componentProviders: map[resource.URN]map[string]string{},
 				}
