@@ -416,7 +416,6 @@ func newPreviewCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),

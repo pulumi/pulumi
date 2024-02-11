@@ -881,7 +881,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			Stderr: stderr,
 		},
 		Engine: engine.UpdateOptions{
-			Host: pctx.Host,
+			Host:   pctx.Host,
+			Loader: loader,
 		},
 	}
 	sm := b64secrets.NewBase64SecretsManager()

@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
@@ -183,6 +185,9 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 		return nil, err
 	}
 
+	if plugctx.Host != nil && opts.Loader == nil {
+		opts.Loader = schema.NewPluginLoader(plugctx.Host)
+	}
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
 	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
 

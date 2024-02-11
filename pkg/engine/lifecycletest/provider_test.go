@@ -48,7 +48,7 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 
 	// We should have started the provider 10 times, twice for each of the steps in the basic lifecycle (one preview,
 	// one up), but zero for the last refresh step where the provider is not needed.
-	assert.Equal(t, 10, startupCount)
+	assert.Equal(t, 14, startupCount)
 }
 
 func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {

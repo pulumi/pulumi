@@ -26,6 +26,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -70,16 +72,22 @@ type EvalRunInfo struct {
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
-// a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
+// a configuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
-func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
-	defaultProviderInfo map[tokens.Package]workspace.PluginSpec, dryRun bool,
+func NewEvalSource(
+	plugctx *plugin.Context,
+	runinfo *EvalRunInfo,
+	defaultProviderInfo map[tokens.Package]workspace.PluginSpec,
+	dryRun bool,
+	loader schema.ReferenceLoader,
 ) Source {
+	contract.Requiref(loader != nil, "loader", "schema reference loader is required for EvalSource")
 	return &evalSource{
 		plugctx:             plugctx,
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
 		dryRun:              dryRun,
+		loader:              loader,
 	}
 }
 
@@ -88,6 +96,7 @@ type evalSource struct {
 	runinfo             *EvalRunInfo                            // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PluginSpec // the default provider versions for this source.
 	dryRun              bool                                    // true if this is a dry-run operation only.
+	loader              schema.ReferenceLoader                  // the loader to use for fetching schema information.
 }
 
 func (src *evalSource) Close() error {
@@ -539,6 +548,7 @@ type resmon struct {
 	done                      <-chan error                       // a channel that resolves when the server completes.
 	disableResourceReferences bool                               // true if resource references are disabled.
 	disableOutputValues       bool                               // true if output values are disabled.
+	loader                    schema.ReferenceLoader             // the loader to use for fetching schema information.
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -575,6 +585,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		cancel:                    cancel,
 		disableResourceReferences: opts.DisableResourceReferences,
 		disableOutputValues:       opts.DisableOutputValues,
+		loader:                    src.loader,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -1422,6 +1433,25 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	additionalSecretOutputs := req.GetAdditionalSecretOutputs()
+	if rm.loader != nil {
+		// try to load the package reference and infer which properties are supposed to be secret.
+		var version *semver.Version
+		if parsedVersion, err := semver.Parse(req.GetVersion()); err == nil {
+			version = &parsedVersion
+		}
+		if typeToken, err := tokens.ParseTypeToken(req.Type); err == nil {
+			packageName := typeToken.Package().String()
+			if pkgReference, err := rm.loader.LoadPackageReference(packageName, version); err == nil {
+				if resourceSchema, found, err := pkgReference.Resources().Get(req.Type); err == nil && found {
+					for _, outputProperty := range resourceSchema.Properties {
+						if outputProperty.Secret {
+							additionalSecretOutputs = append(additionalSecretOutputs, outputProperty.Name)
+						}
+					}
+				}
+			}
+		}
+	}
 
 	var deleteBeforeReplace *bool
 	if deleteBeforeReplaceValue || req.GetDeleteBeforeReplaceDefined() {
@@ -1484,7 +1514,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if deleteBeforeReplace != nil {
 			options.DeleteBeforeReplace = *deleteBeforeReplace
 		}
-
 		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
 		if err != nil {
 			return nil, err

@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"github.com/blang/semver"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
@@ -221,7 +223,9 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	noopSchemaLoader := emptySchemaLoader(t)
+	evaluationSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+	iter, err := evaluationSource.Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed := 0
@@ -254,6 +258,142 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	}
 
 	assert.Equal(t, len(steps), processed)
+}
+
+type testSchemaLoader struct {
+	loadSchemaF func(pkg string, version *semver.Version) (*schema.Package, error)
+}
+
+func (l *testSchemaLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
+	packageSchema, err := l.loadSchemaF(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return packageSchema, nil
+}
+
+func (l *testSchemaLoader) LoadPackageReference(
+	pkg string,
+	version *semver.Version,
+) (schema.PackageReference, error) {
+	packageSchema, err := l.loadSchemaF(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	reference := packageSchema.Reference()
+	return reference, nil
+}
+
+func createTestSchemaLoader(t *testing.T, spec schema.PackageSpec) schema.ReferenceLoader {
+	return &testSchemaLoader{
+		loadSchemaF: func(pkg string, version *semver.Version) (*schema.Package, error) {
+			if pkg != spec.Name {
+				return nil, errors.New("package not found")
+			}
+			boundSchema, diags, err := schema.BindSpec(spec, nil)
+			require.NoError(t, err)
+			require.Empty(t, diags)
+			return boundSchema, nil
+		},
+	}
+}
+
+// emptySchemaLoader returns a schema loader that loads a package with no resources or types.
+func emptySchemaLoader(t *testing.T) schema.ReferenceLoader {
+	return &testSchemaLoader{
+		loadSchemaF: func(pkg string, version *semver.Version) (*schema.Package, error) {
+			emptyPackageSpec := schema.PackageSpec{
+				Name:    "empty",
+				Version: "0.1.0",
+			}
+
+			boundSchema, diags, err := schema.BindSpec(emptyPackageSpec, nil)
+			require.NoError(t, err)
+			require.Empty(t, diags)
+			return boundSchema, nil
+		},
+	}
+}
+
+func TestRegisterResourceAugmentsAdditionalSecretKeysFromSchema(t *testing.T) {
+	t.Parallel()
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
+	}
+
+	// create a schema loader that loads a package with a resource that has a secret property called "superDuperSecret"
+	schemaLoader := createTestSchemaLoader(t, schema.PackageSpec{
+		Name:    "pkgA",
+		Version: "0.1.0",
+		Resources: map[string]schema.ResourceSpec{
+			"pkgA:moduleA:resourceA": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"superDuperSecret": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+							Secret:   true,
+						},
+					},
+				},
+			},
+		},
+	})
+
+	createEmptyPluginHost := deploytest.NewPluginHostF(nil, nil, nil)
+
+	plugctx, err := plugin.NewContext(
+		&deploytest.NoopSink{}, &deploytest.NoopSink{},
+		createEmptyPluginHost(),
+		nil, "", nil, false, nil)
+	assert.NoError(t, err)
+
+	providerRegChan := make(chan *registerResourceEvent, 1)
+
+	create := func(urn resource.URN, inputs resource.PropertyMap, timeout float64, preview bool) (
+		resource.ID, resource.PropertyMap, resource.Status, error,
+	) {
+		return resource.ID("id"), resource.PropertyMap{}, resource.StatusOK, nil
+	}
+
+	mon, err := newResourceMonitor(&evalSource{
+		runinfo: runInfo,
+		plugctx: plugctx,
+		loader:  schemaLoader,
+	}, &providerSourceMock{
+		Provider: &deploytest.Provider{
+			CreateF: create,
+		},
+	}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+	require.NoError(t, err)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	go func() {
+		evt := <-providerRegChan
+		// Assert that the additional secret outputs are correctly set on the desired resource state (i.e. the goal)
+		// These are augmented from the schema which was loaded in the resource monitor
+		assert.Equal(t, "pkgA:moduleA:resourceA", evt.goal.Type.String())
+		assert.Len(t, evt.goal.AdditionalSecretOutputs, 1)
+		assert.Equal(t, resource.PropertyKey("superDuperSecret"), evt.goal.AdditionalSecretOutputs[0])
+
+		evt.done <- &RegisterResult{State: &resource.State{}}
+		wg.Done()
+	}()
+
+	_, err = mon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
+		Type:    "pkgA:moduleA:resourceA",
+		Name:    "resA",
+		Version: "0.1.0",
+	})
+
+	// Ensure the channel is read from.
+	wg.Wait()
+	assert.NoError(t, err)
 }
 
 func TestRegisterDefaultProviders(t *testing.T) {
@@ -307,7 +447,9 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	noopLoader := emptySchemaLoader(t)
+	evaluationSource := NewEvalSource(ctx, runInfo, nil, false, noopLoader)
+	iter, err := evaluationSource.Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -423,7 +565,9 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, program)
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	noopSchemaLoader := emptySchemaLoader(t)
+	evaluationSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+	iter, err := evaluationSource.Iterate(context.Background(), Options{}, providerSource)
 	assert.NoError(t, err)
 
 	reads := 0
@@ -500,8 +644,9 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	assert.NoError(t, err)
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
-
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	noopSchemaLoader := emptySchemaLoader(t)
+	evaluationSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+	iter, err := evaluationSource.Iterate(context.Background(), Options{}, providerSource)
 	assert.NoError(t, err)
 
 	reads, registers := 0, 0
@@ -681,7 +826,9 @@ func TestDisableDefaultProviders(t *testing.T) {
 			ctx, err := newTestPluginContext(t, program)
 			assert.NoError(t, err)
 
-			iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+			noopSchemaLoader := emptySchemaLoader(t)
+			evaluationSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+			iter, err := evaluationSource.Iterate(context.Background(), Options{}, providerSource)
 			assert.NoError(t, err)
 
 			for {
@@ -722,7 +869,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 // Validates that a resource monitor appropriately propagates
 // resource options from a RegisterResourceRequest to a Construct call
 // for the remote component resource (MLC).
-func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
+func TestResourceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	t.Parallel()
 
 	// Helper to keep a some test cases simple.
@@ -881,7 +1028,8 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			pluginCtx, err := newTestPluginContext(t, program)
 			require.NoError(t, err, "build plugin context")
 
-			evalSource := NewEvalSource(pluginCtx, runInfo, nil, false)
+			noopSchemaLoader := emptySchemaLoader(t)
+			evalSource := NewEvalSource(pluginCtx, runInfo, nil, false, noopSchemaLoader)
 			defer func() {
 				assert.NoError(t, evalSource.Close(), "close eval source")
 			}()
