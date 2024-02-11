@@ -43,4 +43,5 @@ const bar = new kubernetes.core.v1.Pod("bar", {
         ],
     },
 });
+// Test that we can assign from a constant without type errors
 const kind = bar.kind;

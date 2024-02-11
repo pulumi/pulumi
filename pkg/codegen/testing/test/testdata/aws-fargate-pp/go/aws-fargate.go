@@ -12,6 +12,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		// Read the default VPC and public subnets, which we will use.
 		vpc, err := ec2.LookupVpc(ctx, &ec2.LookupVpcArgs{
 			Default: pulumi.BoolRef(true),
 		}, nil)
@@ -24,6 +25,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// Create a security group that permits HTTP ingress and unrestricted egress.
 		webSecurityGroup, err := ec2.NewSecurityGroup(ctx, "webSecurityGroup", &ec2.SecurityGroupArgs{
 			VpcId: pulumi.String(vpc.Id),
 			Egress: ec2.SecurityGroupEgressArray{
@@ -50,6 +52,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// Create an ECS cluster to run a container-based service.
 		cluster, err := ecs.NewCluster(ctx, "cluster", nil)
 		if err != nil {
 			return err
@@ -71,6 +74,7 @@ func main() {
 			return err
 		}
 		json0 := string(tmpJSON0)
+		// Create an IAM role that can be used by our service's task.
 		taskExecRole, err := iam.NewRole(ctx, "taskExecRole", &iam.RoleArgs{
 			AssumeRolePolicy: pulumi.String(json0),
 		})
@@ -84,6 +88,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// Create a load balancer to listen for HTTP traffic on port 80.
 		webLoadBalancer, err := elasticloadbalancingv2.NewLoadBalancer(ctx, "webLoadBalancer", &elasticloadbalancingv2.LoadBalancerArgs{
 			Subnets: toPulumiStringArray(subnets.Ids),
 			SecurityGroups: pulumi.StringArray{
@@ -132,6 +137,7 @@ func main() {
 			return err
 		}
 		json1 := string(tmpJSON1)
+		// Spin up a load balanced service running NGINX
 		appTask, err := ecs.NewTaskDefinition(ctx, "appTask", &ecs.TaskDefinitionArgs{
 			Family:      pulumi.String("fargate-task-definition"),
 			Cpu:         pulumi.String("256"),

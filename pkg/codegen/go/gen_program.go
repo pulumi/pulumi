@@ -260,6 +260,39 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 	g.Fgenf(w, "}\n\n")
 }
 
+// genLeadingTrivia generates the list of leading trivia assicated with a given token.
+func (g *generator) genLeadingTrivia(w io.Writer, token syntax.Token) {
+	// TODO(pdg): whitespace?
+	for _, t := range token.LeadingTrivia {
+		if c, ok := t.(syntax.Comment); ok {
+			g.genComment(w, c)
+		}
+	}
+}
+
+// genTrailingTrivia generates the list of trailing trivia assicated with a given token.
+func (g *generator) genTrailingTrivia(w io.Writer, token syntax.Token) {
+	// TODO(pdg): whitespace
+	for _, t := range token.TrailingTrivia {
+		if c, ok := t.(syntax.Comment); ok {
+			g.genComment(w, c)
+		}
+	}
+}
+
+// genTrivia generates the list of trivia assicated with a given token.
+func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
+	g.genLeadingTrivia(w, token)
+	g.genTrailingTrivia(w, token)
+}
+
+// genComment generates a comment into the output.
+func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
+	for _, l := range comment.Lines {
+		g.Fgenf(w, "%s//%s\n", g.Indent, l)
+	}
+}
+
 func (g *generator) genComponentType(w io.Writer, componentName string, component *pcl.Component) {
 	outputs := component.Program.OutputVariables()
 	componentTypeName := Title(componentName)
@@ -1057,6 +1090,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.Fgenf(w, "}\n")
 	}
 
+	g.genTrivia(w, r.Definition.Tokens.GetType(""))
+	for _, l := range r.Definition.Tokens.GetLabels(nil) {
+		g.genTrivia(w, l)
+	}
+	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 	if r.Options != nil && r.Options.Range != nil {
 		rangeType := model.ResolveOutputs(r.Options.Range.Type())
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType)
@@ -1380,6 +1418,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			assignment = "="
 		}
 	}
+	g.genTrivia(w, v.Definition.Tokens.Name)
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {

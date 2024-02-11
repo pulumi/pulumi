@@ -67,6 +67,7 @@ return await Deployment.RunAsync(() =>
         },
     });
 
+    // Test that we can assign from a constant without type errors
     var kind = bar.Kind;
 
 });

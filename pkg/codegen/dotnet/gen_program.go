@@ -1503,6 +1503,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 }
 
 func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariable) {
+	g.genTrivia(w, localVariable.Definition.Tokens.Name)
 	variableName := makeValidIdentifier(localVariable.Name())
 	value := localVariable.Definition.Value
 	functionSchema, isInvokeCall := g.isFunctionInvoke(localVariable)

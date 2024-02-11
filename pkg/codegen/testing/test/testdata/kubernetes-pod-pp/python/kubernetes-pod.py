@@ -42,4 +42,5 @@ bar = kubernetes.core.v1.Pod("bar",
             ),
         ],
     ))
+# Test that we can assign from a constant without type errors
 kind = bar.kind

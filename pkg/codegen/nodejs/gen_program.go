@@ -1254,7 +1254,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
-	// TODO(pdg): trivia
+	g.genTrivia(w, v.Definition.Tokens.Name)
 	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
 }
 

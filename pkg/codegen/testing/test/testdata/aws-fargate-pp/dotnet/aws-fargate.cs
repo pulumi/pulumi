@@ -6,6 +6,7 @@ using Aws = Pulumi.Aws;
 
 return await Deployment.RunAsync(() => 
 {
+    // Read the default VPC and public subnets, which we will use.
     var vpc = Aws.Ec2.GetVpc.Invoke(new()
     {
         Default = true,

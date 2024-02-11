@@ -13,6 +13,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		// VPC
 		eksVpc, err := ec2.NewVpc(ctx, "eksVpc", &ec2.VpcArgs{
 			CidrBlock:          pulumi.String("10.100.0.0/16"),
 			InstanceTenancy:    pulumi.String("default"),

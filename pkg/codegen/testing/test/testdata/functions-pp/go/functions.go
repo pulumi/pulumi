@@ -47,6 +47,7 @@ func main() {
 			decoded,
 			"2",
 		}, "-")
+		// tests that we initialize "var, err" with ":=" first, then "=" subsequently (Go specific)
 		_, err := aws.GetAvailabilityZones(ctx, nil, nil)
 		if err != nil {
 			return err
@@ -77,6 +78,7 @@ func main() {
 			return cwd
 		}(os.Getwd())
 		fileMimeType := mime.TypeByExtension(path.Ext("./base64.txt"))
+		// using the filebase64 function
 		_, err = s3.NewBucketObject(ctx, "first", &s3.BucketObjectArgs{
 			Bucket:      bucket.ID(),
 			Source:      pulumi.NewStringAsset(filebase64OrPanic("./base64.txt")),
@@ -90,6 +92,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// using the filebase64sha256 function
 		_, err = s3.NewBucketObject(ctx, "second", &s3.BucketObjectArgs{
 			Bucket: bucket.ID(),
 			Source: pulumi.NewStringAsset(filebase64sha256OrPanic("./base64.txt")),
@@ -97,6 +100,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// using the sha1 function
 		_, err = s3.NewBucketObject(ctx, "third", &s3.BucketObjectArgs{
 			Bucket: bucket.ID(),
 			Source: pulumi.NewStringAsset(sha1Hash("content")),

@@ -1133,7 +1133,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	value, temps := g.lowerExpression(v.Definition.Value, v.Type())
 	g.genTemps(w, temps)
 
-	// TODO(pdg): trivia
+	g.genTrivia(w, v.Definition.Tokens.Name)
 	g.Fgenf(w, "%s%s = %.v\n", g.Indent, PyName(v.Name()), value)
 }
 

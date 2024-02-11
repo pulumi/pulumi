@@ -45,6 +45,9 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// A contrived example to test that helper nested records ( `filters`
+		// below) generate correctly when using output-versioned function
+		// invoke forms.
 		_ = ec2.GetAmiIdsOutput(ctx, ec2.GetAmiIdsOutputArgs{
 			Owners: pulumi.StringArray{
 				bar.ID(),

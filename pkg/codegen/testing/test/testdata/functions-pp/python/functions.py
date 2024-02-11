@@ -17,6 +17,7 @@ joined = "-".join([
     decoded,
     "2",
 ])
+# tests that we initialize "var, err" with ":=" first, then "=" subsequently (Go specific)
 zone = aws.get_availability_zones()
 zone2 = aws.get_availability_zones()
 bucket = aws.s3.Bucket("bucket")

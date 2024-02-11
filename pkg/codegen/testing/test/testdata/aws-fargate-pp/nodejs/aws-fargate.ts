@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
+// Read the default VPC and public subnets, which we will use.
 const vpc = aws.ec2.getVpc({
     "default": true,
 });

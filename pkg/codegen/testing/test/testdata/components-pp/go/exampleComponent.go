@@ -63,6 +63,7 @@ func NewExampleComponent(
 	if err != nil {
 		return nil, err
 	}
+	// Example of iterating a list of objects
 	var serverPasswords []*random.RandomPassword
 	for index := 0; index < len(args.Servers); index++ {
 		key0 := index
@@ -77,6 +78,7 @@ func NewExampleComponent(
 		}
 		serverPasswords = append(serverPasswords, __res)
 	}
+	// Example of iterating a map of objects
 	var zonePasswords []*random.RandomPassword
 	for key0, val0 := range args.DeploymentZones {
 		__res, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-zonePasswords-%v", name, key0), &random.RandomPasswordArgs{

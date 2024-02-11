@@ -8,6 +8,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		// example
 		_, err := appsv1.NewDeployment(ctx, "argocd_serverDeployment", &appsv1.DeploymentArgs{
 			ApiVersion: pulumi.String("apps/v1"),
 			Kind:       pulumi.String("Deployment"),
