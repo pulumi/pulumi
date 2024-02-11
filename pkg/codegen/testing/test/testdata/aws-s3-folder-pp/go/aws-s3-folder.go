@@ -12,6 +12,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		// Create a bucket and expose a website index document
 		siteBucket, err := s3.NewBucket(ctx, "siteBucket", &s3.BucketArgs{
 			Website: &s3.BucketWebsiteArgs{
 				IndexDocument: pulumi.String("index.html"),
@@ -21,6 +22,7 @@ func main() {
 			return err
 		}
 		siteDir := "www"
+		// For each file in the directory, create an S3 object stored in `siteBucket`
 		files0, err := os.ReadDir(siteDir)
 		if err != nil {
 			return err
@@ -42,6 +44,7 @@ func main() {
 			}
 			files = append(files, __res)
 		}
+		// Set the access policy for the bucket so all objects are readable
 		_, err = s3.NewBucketPolicy(ctx, "bucketPolicy", &s3.BucketPolicyArgs{
 			Bucket: siteBucket.ID(),
 			Policy: siteBucket.ID().ApplyT(func(id string) (pulumi.String, error) {

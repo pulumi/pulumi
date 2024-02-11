@@ -18,6 +18,9 @@ private_s3_network_acl_rule = aws.ec2.NetworkAclRule("privateS3NetworkAclRule",
     cidr_block=private_s3_prefix_list.cidr_blocks[0],
     from_port=443,
     to_port=443)
+# A contrived example to test that helper nested records ( `filters`
+# below) generate correctly when using output-versioned function
+# invoke forms.
 amis = aws.ec2.get_ami_ids_output(owners=[bar.id],
     filters=[aws.ec2.GetAmiIdsFilterArgs(
         name=bar.id,

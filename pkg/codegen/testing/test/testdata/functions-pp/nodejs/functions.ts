@@ -19,6 +19,7 @@ const joined = [
     decoded,
     "2",
 ].join("-");
+// tests that we initialize "var, err" with ":=" first, then "=" subsequently (Go specific)
 const zone = aws.getAvailabilityZones({});
 const zone2 = aws.getAvailabilityZones({});
 const bucket = new aws.s3.Bucket("bucket", {});

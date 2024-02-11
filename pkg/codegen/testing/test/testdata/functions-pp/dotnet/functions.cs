@@ -41,6 +41,7 @@ return await Deployment.RunAsync(() =>
         "2",
     });
 
+    // tests that we initialize "var, err" with ":=" first, then "=" subsequently (Go specific)
     var zone = Aws.GetAvailabilityZones.Invoke();
 
     var zone2 = Aws.GetAvailabilityZones.Invoke();

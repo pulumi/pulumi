@@ -8,6 +8,7 @@ const securityGroup = new aws.ec2.SecurityGroup("securityGroup", {ingress: [{
     toPort: 0,
     cidrBlocks: ["0.0.0.0/0"],
 }]});
+// Get the ID for the latest Amazon Linux AMI.
 const ami = aws.getAmi({
     filters: [{
         name: "name",

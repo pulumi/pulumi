@@ -23,6 +23,9 @@ const privateS3NetworkAclRule = new aws.ec2.NetworkAclRule("privateS3NetworkAclR
     fromPort: 443,
     toPort: 443,
 });
+// A contrived example to test that helper nested records ( `filters`
+// below) generate correctly when using output-versioned function
+// invoke forms.
 const amis = aws.ec2.getAmiIdsOutput({
     owners: [bar.id],
     filters: [{

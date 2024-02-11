@@ -39,6 +39,9 @@ return await Deployment.RunAsync(() =>
         ToPort = 443,
     });
 
+    // A contrived example to test that helper nested records ( `filters`
+    // below) generate correctly when using output-versioned function
+    // invoke forms.
     var amis = Aws.Ec2.GetAmiIds.Invoke(new()
     {
         Owners = new[]

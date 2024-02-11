@@ -23,6 +23,7 @@ return await Deployment.RunAsync(() =>
         },
     });
 
+    // Get the ID for the latest Amazon Linux AMI.
     var ami = Aws.GetAmi.Invoke(new()
     {
         Filters = new[]

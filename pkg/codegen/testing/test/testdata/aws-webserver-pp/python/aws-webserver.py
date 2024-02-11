@@ -8,6 +8,7 @@ security_group = aws.ec2.SecurityGroup("securityGroup", ingress=[aws.ec2.Securit
     to_port=0,
     cidr_blocks=["0.0.0.0/0"],
 )])
+# Get the ID for the latest Amazon Linux AMI.
 ami = aws.get_ami(filters=[aws.GetAmiFilterArgs(
         name="name",
         values=["amzn-ami-hvm-*-x86_64-ebs"],

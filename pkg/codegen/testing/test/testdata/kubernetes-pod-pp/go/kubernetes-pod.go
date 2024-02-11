@@ -57,6 +57,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// Test that we can assign from a constant without type errors
 		_ := bar.Kind
 		return nil
 	})

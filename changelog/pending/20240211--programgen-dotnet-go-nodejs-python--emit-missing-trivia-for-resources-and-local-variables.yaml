@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet,go,nodejs,python
+  description: Emit missing trivia for resources and local variables

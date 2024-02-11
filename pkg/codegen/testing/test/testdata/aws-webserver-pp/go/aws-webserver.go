@@ -8,6 +8,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		// Create a new security group for port 80.
 		securityGroup, err := ec2.NewSecurityGroup(ctx, "securityGroup", &ec2.SecurityGroupArgs{
 			Ingress: ec2.SecurityGroupIngressArray{
 				&ec2.SecurityGroupIngressArgs{
@@ -23,6 +24,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// Get the ID for the latest Amazon Linux AMI.
 		ami, err := aws.GetAmi(ctx, &aws.GetAmiArgs{
 			Filters: []aws.GetAmiFilter{
 				{
@@ -40,6 +42,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// Create a simple web server using the startup script for the instance.
 		server, err := ec2.NewInstance(ctx, "server", &ec2.InstanceArgs{
 			Tags: pulumi.StringMap{
 				"Name": pulumi.String("web-server-www"),
