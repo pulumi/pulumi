@@ -480,7 +480,7 @@ Color<pulumi-choosable type="language" values="python,go" class="inline">, Color
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Blue</dt>
     <dd>blue</dd><dt>Red</dt>
     <dd>red</dd></dl>

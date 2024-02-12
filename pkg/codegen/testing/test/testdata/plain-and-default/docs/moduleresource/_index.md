@@ -1071,7 +1071,7 @@ Enum<wbr>Thing<pulumi-choosable type="language" values="python,go" class="inline
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Four</dt>
     <dd>4</dd><dt>Six</dt>
     <dd>6</dd><dt>Eight</dt>

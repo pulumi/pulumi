@@ -1274,7 +1274,7 @@ Output<wbr>Only<wbr>Enum<wbr>Type<pulumi-choosable type="language" values="pytho
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Foo</dt>
     <dd>foo</dd><dt>Bar</dt>
     <dd>bar</dd></dl>
@@ -1417,7 +1417,7 @@ Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" 
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Burgundy</dt>
     <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
     <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
