@@ -1,0 +1,130 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package pulumirpc.codegen;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
+
+// Core is a description of the core interfaces a Pulumi SDK needs to expose.
+message Core {
+    SDK sdk = 1;
+}
+
+enum PrimitiveType {
+    BOOL = 0;
+    BYTE = 1;
+    INT = 2;
+    STRING = 3;
+    DURATION = 4;
+    PROPERTY_VALUE = 5;
+}
+
+// Type is the type of a record field or interface method parameter
+message TypeReference {
+    oneof element {
+        PrimitiveType primitive = 1;
+        TypeReference array = 2;
+        TypeReference map = 3;
+        string ref = 4;
+    }
+}
+
+message EnumerationValue {
+    string name = 1;
+    string description = 2;
+    string protobuf_value = 4;
+}
+
+message Enumeration {
+    string name = 1;
+    string description = 2;
+    repeated EnumerationValue values = 3;
+    string protobuf_enum = 4;
+}
+
+message TypeDeclaration {
+    oneof element {
+        Record record = 1;
+        Interface interface = 2;
+        Enumeration enumeration = 3;
+    }
+}
+
+enum CustomPropertyMapping {
+    NONE = 0;
+    URN_NAME = 1;
+    URN_TYPE = 2;
+}
+
+message Property {
+    string name = 1;
+    string description = 2;
+    TypeReference type = 3;
+    string protobuf_field = 4;
+    CustomPropertyMapping protobuf_mapping = 5;
+    string protobuf_presence_field = 6;
+}
+
+message Record {
+    string name = 1;
+    string description = 2;
+    repeated Property properties = 3;
+    string protobuf_message = 4;
+}
+
+message Request {
+    string name = 1;
+    string description = 2;
+    string type = 3;
+}
+
+message Method {
+    string name = 1;
+    string description = 2;
+    Request request = 3;
+    string response_type = 4;
+    string grpc_method = 5;
+}
+
+enum GrpcKind {
+	KIND_BOTH = 0;
+    KIND_SERVER = 1;
+    KIND_CLIENT = 2;
+}
+
+message Interface {
+    string name = 1;
+    string description = 2;
+    repeated Method methods = 3;
+    string grpc_service = 4;
+    GrpcKind grpc_kind = 5;
+}
+
+// SDK is a collection of interfaces that the core SDK should contain.
+message SDK {
+    repeated TypeDeclaration type_declarations = 1;
+}
+
+// 1. Asset | Archive
+// 2. Assert => FileAsset / RemoteAsset / StringAsset
+// 3. Archive => FileAsset / RemoteAsset / AssetArchive
+
+// In typescript and python 1 is a union
+// In dotnet 1 is the base class for Asset and Archive
+// In Go 1 is an interface implemented by Asset and Archive
+
+// In typescript, python, and dotnet 2 and 3 are all separate classes
+// In Go 2 and 3 are two class Asset & Archive which covers _all_ the base types

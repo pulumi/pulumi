@@ -119,4 +119,7 @@ $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
 cd ..
 git diff --name-only --diff-filter D | grep __init__.py | xargs git restore
 
+# Generate the core.proto file
+cd proto/core && go run .
+
 echo "* Done."

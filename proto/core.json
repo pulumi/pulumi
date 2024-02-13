@@ -1,0 +1,1018 @@
+{
+  "sdk": {
+    "typeDeclarations": [
+      {
+        "enumeration": {
+          "name": "pulumi.experimental.providers.diff_changes",
+          "description": "TODO",
+          "values": [
+            {
+              "name": "unknown",
+              "description": "Unknown whether there are changes or not (legacy behavior).",
+              "protobufValue": "DIFF_UNKNOWN"
+            },
+            {
+              "name": "none",
+              "description": "The diff was performed, and no changes were detected that require an update.",
+              "protobufValue": "DIFF_NONE"
+            },
+            {
+              "name": "some",
+              "description": "The diff was performed, and changes were detected that require an update or replacement.",
+              "protobufValue": "DIFF_SOME"
+            }
+          ],
+          "protobufEnum": "pulumirpc.DiffResponse.DiffChanges"
+        }
+      },
+      {
+        "enumeration": {
+          "name": "pulumi.experimental.providers.property_diff_kind",
+          "description": "TODO",
+          "values": [
+            {
+              "name": "add",
+              "description": "This property was added.",
+              "protobufValue": "ADD"
+            },
+            {
+              "name": "add_replace",
+              "description": "This property was added, and this change requires a replace.",
+              "protobufValue": "ADD_REPLACE"
+            },
+            {
+              "name": "delete",
+              "description": "This property was removed.",
+              "protobufValue": "DELETE"
+            },
+            {
+              "name": "delete_replace",
+              "description": "This property was removed, and this change requires a replace.",
+              "protobufValue": "DELETE_REPLACE"
+            },
+            {
+              "name": "update",
+              "description": "This property's value was changed.",
+              "protobufValue": "UPDATE"
+            },
+            {
+              "name": "update_replace",
+              "description": "This property's value was changed, and this change requires a replace.",
+              "protobufValue": "UPDATE_REPLACE"
+            }
+          ],
+          "protobufEnum": "pulumirpc.PropertyDiff.Kind"
+        }
+      },
+      {
+        "enumeration": {
+          "name": "pulumi.experimental.providers.log_severity",
+          "description": "The severity level of a log message. Errors are fatal; all others are informational.",
+          "values": [
+            {
+              "name": "debug",
+              "description": "A debug-level message not displayed to end-users (the default).",
+              "protobufValue": "DEBUG"
+            },
+            {
+              "name": "info",
+              "description": "An informational message printed to output during resource operations.",
+              "protobufValue": "INFO"
+            },
+            {
+              "name": "warning",
+              "description": "A warning to indicate that something went wrong.",
+              "protobufValue": "WARNING"
+            },
+            {
+              "name": "error",
+              "description": "A fatal error indicating that the tool should stop processing subsequent resource operations.",
+              "protobufValue": "ERROR"
+            }
+          ],
+          "protobufEnum": "pulumirpc.LogSeverity"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.log_message",
+          "description": "A log message to be sent to the Pulumi engine.",
+          "properties": [
+            {
+              "name": "severity",
+              "description": "The logging level of this message.",
+              "type": {
+                "ref": "pulumi.experimental.providers.log_severity"
+              },
+              "protobufField": "severity"
+            },
+            {
+              "name": "message",
+              "description": "The contents of the logged message.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "message"
+            },
+            {
+              "name": "URN",
+              "description": "The (optional) resource urn this log is associated with.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "urn"
+            },
+            {
+              "name": "stream_id",
+              "description": "The (optional) stream id that a stream of log messages can be associated with. This allows clients to not have to buffer a large set of log messages that they all want to be conceptually connected.  Instead the messages can be sent as chunks (with the same stream id) and the end display can show the messages as they arrive, while still stitching them together into one total log message. 0 means do not associate with any stream.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "streamId"
+            },
+            {
+              "name": "ephemeral",
+              "description": "Optional value indicating whether this is a status message.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "ephemeral"
+            }
+          ],
+          "protobufMessage": "pulumirpc.LogRequest"
+        }
+      },
+      {
+        "interface": {
+          "name": "pulumi.experimental.providers.host",
+          "description": "An interface to the engine host running this plugin.",
+          "methods": [
+            {
+              "name": "log",
+              "description": "Send a log message to the host.",
+              "request": {
+                "name": "message",
+                "description": "TODO",
+                "type": "pulumi.experimental.providers.log_message"
+              },
+              "grpcMethod": "Log"
+            }
+          ],
+          "grpcService": "pulumirpc.Engine",
+          "grpcKind": "KIND_CLIENT"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.check_request",
+          "description": "A request to validate the inputs for a resource.",
+          "properties": [
+            {
+              "name": "URN",
+              "description": "The Pulumi URN for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "urn"
+            },
+            {
+              "name": "type",
+              "description": "The Pulumi type for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_TYPE"
+            },
+            {
+              "name": "name",
+              "description": "The Pulumi name for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_NAME"
+            },
+            {
+              "name": "olds",
+              "description": "The old Pulumi inputs for this resource, if any.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "olds"
+            },
+            {
+              "name": "news",
+              "description": "The new Pulumi inputs for this resource.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "news"
+            },
+            {
+              "name": "random_seed",
+              "description": "A deterministically random hash, primarily intended for global unique naming.",
+              "type": {
+                "array": {
+                  "primitive": "BYTE"
+                }
+              },
+              "protobufField": "randomSeed"
+            }
+          ],
+          "protobufMessage": "pulumirpc.CheckRequest"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.check_failure",
+          "description": "Indicates that a call to check failed; it contains the property and reason for the failure.",
+          "properties": [
+            {
+              "name": "property",
+              "description": "The property that failed validation.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "property"
+            },
+            {
+              "name": "reason",
+              "description": "The reason that the property failed validation.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "reason"
+            }
+          ],
+          "protobufMessage": "pulumirpc.CheckFailure"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.check_response",
+          "description": "The response from checking a resource.",
+          "properties": [
+            {
+              "name": "inputs",
+              "description": "The provider inputs for this resource.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "inputs"
+            },
+            {
+              "name": "failures",
+              "description": "Any validation failures that occurred.",
+              "type": {
+                "array": {
+                  "ref": "pulumi.experimental.providers.check_failure"
+                }
+              },
+              "protobufField": "failures"
+            }
+          ],
+          "protobufMessage": "pulumirpc.CheckResponse"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.diff_request",
+          "description": "A request to diff the inputs for a resource.",
+          "properties": [
+            {
+              "name": "id",
+              "description": "The ID of the resource to diff.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "id"
+            },
+            {
+              "name": "URN",
+              "description": "The Pulumi URN for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "urn"
+            },
+            {
+              "name": "type",
+              "description": "The Pulumi type for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_TYPE"
+            },
+            {
+              "name": "name",
+              "description": "The Pulumi name for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_NAME"
+            },
+            {
+              "name": "olds",
+              "description": "The old values of provider inputs to diff.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "olds"
+            },
+            {
+              "name": "news",
+              "description": "The new values of provider inputs to diff.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "news"
+            },
+            {
+              "name": "ignore_changes",
+              "description": "A set of property paths that should be treated as unchanged.",
+              "type": {
+                "array": {
+                  "primitive": "STRING"
+                }
+              },
+              "protobufField": "ignoreChanges"
+            }
+          ],
+          "protobufMessage": "pulumirpc.DiffRequest"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.property_diff",
+          "description": "TODO",
+          "properties": [
+            {
+              "name": "kind",
+              "description": "The kind of diff associated with this property.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "kind"
+            },
+            {
+              "name": "input_diff",
+              "description": "The difference is between old and new inputs, not old and new state.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "inputDiff"
+            }
+          ],
+          "protobufMessage": "pulumirpc.PropertyDiff"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.diff_response",
+          "description": "The response from diffing a resource.",
+          "properties": [
+            {
+              "name": "replaces",
+              "description": "If this update requires a replacement, the set of properties triggering it.",
+              "type": {
+                "array": {
+                  "primitive": "STRING"
+                }
+              },
+              "protobufField": "replaces"
+            },
+            {
+              "name": "stables",
+              "description": "An optional list of properties that will not ever change.",
+              "type": {
+                "array": {
+                  "primitive": "STRING"
+                }
+              },
+              "protobufField": "stables"
+            },
+            {
+              "name": "delete_before_replace",
+              "description": "If true, this resource must be deleted before replacing it.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "deleteBeforeReplace"
+            },
+            {
+              "name": "changes",
+              "description": "If true, this diff represents an actual difference and thus requires an update.",
+              "type": {
+                "ref": "pulumi.experimental.providers.diff_changes"
+              },
+              "protobufField": "changes"
+            },
+            {
+              "name": "diffs",
+              "description": "A list of the properties that changed.",
+              "type": {
+                "array": {
+                  "primitive": "STRING"
+                }
+              },
+              "protobufField": "diffs"
+            },
+            {
+              "name": "detailed_diff",
+              "description": "A detailed diff appropriate for display.",
+              "type": {
+                "map": {
+                  "ref": "pulumi.experimental.providers.property_diff"
+                }
+              },
+              "protobufField": "detailedDiff",
+              "protobufPresenceField": "hasDetailedDiff"
+            }
+          ],
+          "protobufMessage": "pulumirpc.DiffResponse"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.configure_request",
+          "description": "A request to configure a provider.",
+          "properties": [
+            {
+              "name": "variables",
+              "description": "A map of configuration keys to values.",
+              "type": {
+                "map": {
+                  "primitive": "STRING"
+                }
+              },
+              "protobufField": "variables"
+            },
+            {
+              "name": "args",
+              "description": "The input properties for the provider. Only filled in for newer providers.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "args"
+            },
+            {
+              "name": "accept_secrets",
+              "description": "When true, operations should return secrets as strongly typed.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "acceptSecrets"
+            },
+            {
+              "name": "accept_resources",
+              "description": "When true, operations should return resources as strongly typed values to the provider.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "acceptResources"
+            }
+          ],
+          "protobufMessage": "pulumirpc.ConfigureRequest"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.configure_response",
+          "description": "TODO",
+          "properties": [
+            {
+              "name": "accept_secrets",
+              "description": "When true, the engine should pass secrets as strongly typed values to the provider.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "acceptSecrets"
+            },
+            {
+              "name": "supports_preview",
+              "description": "When true, the engine should invoke create and update with preview=true during previews.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "supportsPreview"
+            },
+            {
+              "name": "accept_resources",
+              "description": "When true, the engine should pass resources as strongly typed values to the provider.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "acceptResources"
+            },
+            {
+              "name": "accept_outputs",
+              "description": "When true, the engine should pass output values to the provider.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "acceptOutputs"
+            }
+          ],
+          "protobufMessage": "pulumirpc.ConfigureResponse"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.create_request",
+          "description": "A request to create a resource.",
+          "properties": [
+            {
+              "name": "URN",
+              "description": "The Pulumi URN for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "urn"
+            },
+            {
+              "name": "type",
+              "description": "The Pulumi type for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_TYPE"
+            },
+            {
+              "name": "name",
+              "description": "The Pulumi name for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_NAME"
+            },
+            {
+              "name": "properties",
+              "description": "The provider inputs to set during creation.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "properties"
+            },
+            {
+              "name": "timeout",
+              "description": "The create request timeout.",
+              "type": {
+                "primitive": "DURATION"
+              },
+              "protobufField": "timeout"
+            },
+            {
+              "name": "preview",
+              "description": "true if this is a preview and the provider should not actually create the resource.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "preview"
+            }
+          ],
+          "protobufMessage": "pulumirpc.CreateRequest"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.create_response",
+          "description": "The response from creating a resource.",
+          "properties": [
+            {
+              "name": "id",
+              "description": "The ID of the created resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "id"
+            },
+            {
+              "name": "properties",
+              "description": "Any any properties that were computed during creation.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "properties"
+            }
+          ],
+          "protobufMessage": "pulumirpc.CreateResponse"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.read_request",
+          "description": "A request to read a resource.",
+          "properties": [
+            {
+              "name": "id",
+              "description": "The ID of the resource to read.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "id"
+            },
+            {
+              "name": "URN",
+              "description": "The Pulumi URN for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "urn"
+            },
+            {
+              "name": "type",
+              "description": "The Pulumi type for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_TYPE"
+            },
+            {
+              "name": "name",
+              "description": "The Pulumi name for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_NAME"
+            },
+            {
+              "name": "properties",
+              "description": "The current state (sufficiently complete to identify the resource).",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "properties"
+            },
+            {
+              "name": "inputs",
+              "description": "The current inputs, if any (only populated during refresh).",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "inputs"
+            }
+          ],
+          "protobufMessage": "pulumirpc.ReadRequest"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.read_response",
+          "description": "The response from reading a resource.",
+          "properties": [
+            {
+              "name": "id",
+              "description": "The ID of the resource read back (or empty if missing).",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "id"
+            },
+            {
+              "name": "properties",
+              "description": "The state of the resource read from the live environment.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "properties"
+            },
+            {
+              "name": "inputs",
+              "description": "The inputs for this resource that would be returned from Check.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "inputs"
+            }
+          ],
+          "protobufMessage": "pulumirpc.ReadResponse"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.update_request",
+          "description": "A request to update a resource.",
+          "properties": [
+            {
+              "name": "id",
+              "description": "The ID of the resource to update.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "id"
+            },
+            {
+              "name": "URN",
+              "description": "The Pulumi URN for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "urn"
+            },
+            {
+              "name": "type",
+              "description": "The Pulumi type for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_TYPE"
+            },
+            {
+              "name": "name",
+              "description": "The Pulumi name for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_NAME"
+            },
+            {
+              "name": "old",
+              "description": "The old values of provider inputs for the resource to update.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "old"
+            },
+            {
+              "name": "new",
+              "description": "The new values of provider inputs for the resource to update.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "new"
+            },
+            {
+              "name": "timeout",
+              "description": "The create request timeout.",
+              "type": {
+                "primitive": "DURATION"
+              },
+              "protobufField": "timeout"
+            },
+            {
+              "name": "ignore_changes",
+              "description": "A set of property paths that should be treated as unchanged.",
+              "type": {
+                "array": {
+                  "primitive": "STRING"
+                }
+              },
+              "protobufField": "ignoreChanges"
+            },
+            {
+              "name": "preview",
+              "description": "true if this is a preview and the provider should not actually update the resource.",
+              "type": {
+                "primitive": "BOOL"
+              },
+              "protobufField": "preview"
+            }
+          ],
+          "protobufMessage": "pulumirpc.UpdateRequest"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.update_response",
+          "description": "TODO",
+          "properties": [
+            {
+              "name": "properties",
+              "description": "Any properties that were computed during updating.",
+              "type": {
+                "map": {
+                  "primitive": "PROPERTY_VALUE"
+                }
+              },
+              "protobufField": "properties"
+            }
+          ],
+          "protobufMessage": "pulumirpc.UpdateResponse"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.providers.delete_request",
+          "description": "A request to delete a resource.",
+          "properties": [
+            {
+              "name": "id",
+              "description": "The ID of the resource to delete.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "id"
+            },
+            {
+              "name": "URN",
+              "description": "The Pulumi URN for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "urn"
+            },
+            {
+              "name": "type",
+              "description": "The Pulumi type for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_TYPE"
+            },
+            {
+              "name": "name",
+              "description": "The Pulumi name for this resource.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufMapping": "URN_NAME"
+            }
+          ],
+          "protobufMessage": "pulumirpc.DeleteRequest"
+        }
+      },
+      {
+        "interface": {
+          "name": "pulumi.experimental.providers.provider",
+          "description": "Provider presents a simple interface for orchestrating resource create, read, update, and delete operations. Each provider understands how to handle all of the resource types within a single package.\n\nIt is important to note that provider operations are not transactional (Some providers might decide to offer transactional semantics, but such a provider is a rare treat). As a result, failures in the operations below can range from benign to catastrophic (possibly leaving behind a corrupt resource). It is up to the provider to make a best effort to ensure catastrophes do not occur. The errors returned from mutating operations indicate both the underlying error condition in addition to a bit indicating whether the operation was successfully rolled back.",
+          "methods": [
+            {
+              "name": "check_config",
+              "description": "Validates the configuration for this resource provider.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.check_request"
+              },
+              "responseType": "pulumi.experimental.providers.check_response",
+              "grpcMethod": "CheckConfig"
+            },
+            {
+              "name": "diff_config",
+              "description": "Checks what impacts a hypothetical change to this provider's configuration will have on the provider.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.diff_request"
+              },
+              "responseType": "pulumi.experimental.providers.diff_response",
+              "grpcMethod": "DiffConfig"
+            },
+            {
+              "name": "configure",
+              "description": "Configures the resource provider with \"globals\" that control its behavior.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.configure_request"
+              },
+              "responseType": "pulumi.experimental.providers.configure_response",
+              "grpcMethod": "Configure"
+            },
+            {
+              "name": "check",
+              "description": "Validates that the given property bag is valid for a resource of the given type and returns the inputs that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider inputs returned by a call to Check should preserve the original representation of the properties as present in the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact the end-user experience, as the provider inputs are using for detecting and rendering diffs.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.check_request"
+              },
+              "responseType": "pulumi.experimental.providers.check_response",
+              "grpcMethod": "Check"
+            },
+            {
+              "name": "diff",
+              "description": "Checks what impacts a hypothetical update will have on the resource's properties.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.diff_request"
+              },
+              "responseType": "pulumi.experimental.providers.diff_response",
+              "grpcMethod": "Diff"
+            },
+            {
+              "name": "create",
+              "description": "Allocates a new instance of the provided resource and returns its unique ID afterwards. (The input ID must be blank.)  If this call fails, the resource must not have been created (i.e., it is \"transactional\").",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.create_request"
+              },
+              "responseType": "pulumi.experimental.providers.create_response",
+              "grpcMethod": "Create"
+            },
+            {
+              "name": "update",
+              "description": "Updates an existing resource with new values.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.update_request"
+              },
+              "responseType": "pulumi.experimental.providers.update_response",
+              "grpcMethod": "Update"
+            },
+            {
+              "name": "delete",
+              "description": "Tears down an existing resource with the given ID. If it fails, the resource is assumed to still exist.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.delete_request"
+              },
+              "grpcMethod": "Delete"
+            },
+            {
+              "name": "read",
+              "description": "Reads the current live state associated with a resource. Enough state must be include in the inputs to uniquely identify the resource; this is typically just the resource ID, but may also include some properties.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.read_request"
+              },
+              "responseType": "pulumi.experimental.providers.read_response",
+              "grpcMethod": "Read"
+            }
+          ],
+          "grpcService": "pulumirpc.ResourceProvider",
+          "grpcKind": "KIND_SERVER"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.codegen.get_mapping_request",
+          "description": "Allows the engine to return ecosystem specific information to allow the converter to be able to convert provider types from a source markup to Pulumi.",
+          "properties": [
+            {
+              "name": "provider",
+              "description": "The provider name for the mapping being requested.",
+              "type": {
+                "primitive": "STRING"
+              },
+              "protobufField": "provider"
+            }
+          ],
+          "protobufMessage": "pulumirpc.codegen.GetMappingRequest"
+        }
+      },
+      {
+        "record": {
+          "name": "pulumi.experimental.codegen.get_mapping_response",
+          "description": "Returns converter plugin specific data for the requested provider. This will normally be human readable JSON, but the engine doesn't mandate any form.",
+          "properties": [
+            {
+              "name": "data",
+              "description": "The conversion plugin specific data (if any).",
+              "type": {
+                "array": {
+                  "primitive": "BYTE"
+                }
+              },
+              "protobufField": "data"
+            }
+          ],
+          "protobufMessage": "pulumirpc.codegen.GetMappingResponse"
+        }
+      },
+      {
+        "interface": {
+          "name": "pulumi.experimental.codegen.mapper",
+          "description": "Mapper is a service for getting mappings from other ecosystems to Pulumi. This is currently unstable and experimental.",
+          "methods": [
+            {
+              "name": "get_mapping",
+              "description": "Tries to find a mapping for the given provider.",
+              "request": {
+                "name": "request",
+                "type": "pulumi.experimental.providers.get_mapping_request"
+              },
+              "responseType": "pulumi.experimental.codegen.get_mapping_response",
+              "grpcMethod": "GetMapping"
+            }
+          ],
+          "grpcService": "pulumirpc.codegen.Mapper",
+          "grpcKind": "KIND_CLIENT"
+        }
+      }
+    ]
+  }
+}
