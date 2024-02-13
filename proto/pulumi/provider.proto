@@ -104,6 +104,7 @@ message ConfigureRequest {
     bool acceptResources = 4;          // when true, operations should return resources as strongly typed values to the provider.
     bool sends_old_inputs = 5;         // when true, diff and update will be called with the old outputs and the old inputs.
     bool sends_old_inputs_to_delete = 6; // when true, delete will be called with the old outputs and the old inputs.
+    bool supports_metadata = 7; // when true, the engine supports provider metadata.
 }
 
 message ConfigureResponse {
@@ -188,11 +189,13 @@ message CheckRequest {
     reserved "sequenceNumber";
 
     bytes randomSeed = 5;            // a deterministically random hash, primarily intended for global unique naming.
+    google.protobuf.Struct metadata = 6; // private metadata previously filled in by the provider.
 }
 
 message CheckResponse {
     google.protobuf.Struct inputs = 1;  // the provider inputs for this resource.
     repeated CheckFailure failures = 2; // any validation failures that occurred.
+    google.protobuf.Struct metadata = 3; // private metadata filled in by the provider.
 }
 
 message CheckFailure {
@@ -207,6 +210,7 @@ message DiffRequest {
     google.protobuf.Struct news = 4;   // the new input values of resource to diff.
     repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
     google.protobuf.Struct old_inputs = 6;   // the old input values of the resource to diff.
+    google.protobuf.Struct metadata = 7; // private metadata previously filled in by the provider.
 }
 
 message PropertyDiff {
@@ -262,6 +266,7 @@ message DiffResponse {
     // - ["root key with a ."][100]
     map<string, PropertyDiff> detailedDiff = 6; // a detailed diff appropriate for display.
     bool hasDetailedDiff = 7; // true if this response contains a detailed diff.
+    google.protobuf.Struct metadata = 8; // private metadata filled in by the provider.
 
     enum DiffChanges {
         DIFF_UNKNOWN = 0; // unknown whether there are changes or not (legacy behavior).
@@ -275,6 +280,7 @@ message CreateRequest {
     google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
     double timeout = 3;                    // the create request timeout represented in seconds.
     bool preview = 4;                      // true if this is a preview and the provider should not actually create the resource.
+    google.protobuf.Struct metadata = 5;   // private metadata previously filled in by the provider.
 }
 
 message CreateResponse {
@@ -282,6 +288,7 @@ message CreateResponse {
 
     string id = 1;                         // the ID of the created resource.
     google.protobuf.Struct properties = 2; // any properties that were computed during creation.
+    google.protobuf.Struct metadata = 3;   // private metadata filled in by the provider.
 }
 
 message ReadRequest {
@@ -289,12 +296,14 @@ message ReadRequest {
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current state (sufficiently complete to identify the resource).
     google.protobuf.Struct inputs = 4;     // the current inputs, if any (only populated during refresh).
+    google.protobuf.Struct metadata = 5;   // private metadata previously filled in by the provider.
 }
 
 message ReadResponse {
     string id = 1;                         // the ID of the resource read back (or empty if missing).
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
     google.protobuf.Struct inputs = 3;     // the inputs for this resource that would be returned from Check.
+    google.protobuf.Struct metadata = 4;   // private metadata filled in by the provider.
 }
 
 message UpdateRequest {
@@ -308,10 +317,12 @@ message UpdateRequest {
     repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
     bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
     google.protobuf.Struct old_inputs = 8; // the old input values of the resource to diff.
+    google.protobuf.Struct metadata = 9; // private metadata previously filled in by the provider.
 }
 
 message UpdateResponse {
     google.protobuf.Struct properties = 1; // any properties that were computed during updating.
+    google.protobuf.Struct metadata = 2; // private metadata filled in by the provider.
 }
 
 message DeleteRequest {
@@ -320,6 +331,7 @@ message DeleteRequest {
     google.protobuf.Struct properties = 3; // the current properties on the resource.
     double timeout = 4;                    // the delete request timeout represented in seconds.
     google.protobuf.Struct old_inputs = 5; // the old input values of the resource to delete.
+    google.protobuf.Struct metadata = 6; // private metadata previously filled in by the provider.
 }
 
 message ConstructRequest {
