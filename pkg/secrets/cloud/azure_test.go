@@ -80,6 +80,7 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 	//nolint:lll // this is a base64 encoded key
 	encryptedKeyBase64 := "Ti1qQklqTnlPTWh4RFUtNmd2WmhxcTBHeUFDa0hlS1lmNERwb3dpRHhIRlFMekxyVEdvRTZ6aFV3Q2N1Q1NISmFOeXFqajd6QzY5VmNxQzF1Z0hxRExUQUtJQUhpbE00T0ZFeXU2aUdfeS1YVE9adjlPS0M5aHlYSXdJUGwyZk01Z2FRWmJhckZfQ1kyd3lWRHlXS3JQUDcwWGFQcFBZSWJnQWJuTm5KVF9ua3gyR3I0QnBTZDVabnVrd0ViM0w1NEpjOGFqc29paVZPNVZ6OURmQ0x3MXUzVDZxTHBGLXZpV1VMTlJoQnZTMjRHdzhRWGtmczRfTzZ1NTZWdmxJRWh5TUREOF9tb2YzYlpQY0V5NW1nZDVzVjJWWHhVQWdQQlYwVDFGT2p4cGxvN1VvTUdEWUd1Q1FMcmJBS0JxbEdNZmFtSFRZcDZlYXVTQ3pUd3ptYW93"
 	stackConfig := &workspace.ProjectStack{}
+	stackConfig.SecretsProvider = url
 	stackConfig.EncryptedKey = encryptedKeyBase64
 	manager, err := NewCloudSecretsManager(stackConfig, url, false)
 	require.NoError(t, err)
@@ -133,8 +134,9 @@ func TestAzureKeyEditProjectStack(t *testing.T) {
 	url := "azurekeyvault://" + keyName
 
 	//nolint:lll // this is a base64 encoded key
-	encryptedKeyBase64 := "cnNKWVp1N3Noa0xtT3pwcVhzdW9NcGhqeXBHc1dpc1B4M211UDNZQjU1dkpoZTZobkxLSVN1RUZoRS01ZzMza00xcHVfN3dWRE0tR211UUx4bmJBN0J3ZVRjaHFMUm02WldyQ1NwUmdONHhGN29YYlFUYkRCbzZ6YkNUaEIzNEE5bEdJMDFiVXhSMTU3Q01vY2hkanBDVkZfVjNGRm9VTXBrYUtHMEQzWWZUWDhHNTA0SjNETFlQVmFVOXkzUFhEUkoxdUpfcTZhMWo2djd3OXAxbHhINXhTSEhYaEZEVFRFQWRzOGFjSW9zYWRORnFiUjFHWlZ2b0dqaFVHS2ZKMnkxQVI1dnpNNDhHbnlHTlU4b2tEcTRrZVUtYXZ2QnptTzhHOWhkZUpnS3F3UjBDZFNqY1hPS1E0TnA5WlNfeT"
+	encryptedKeyBase64 := "cTNpdy1GazRQcklya0gzWFZ6N2hFQXRaOFVfZm1heVZKQVlxQmQwMGh1V0dGNGc4OHhJUXQxVUVmdmViY0xtY01ubEx0bW5tOExEZ0F1VEFLdHgzRjF6S1NDa3EyZ3RHdFFycHk0aUJQWDRFS2lpV2tKMl9WS0lCUnB4QmhmQTJacHBvT1ZUVVZQRWU0Zm1sV1pod3Y4REd5M2p3Vnh3OFFHM2ptdXRRNnJXUzRjVEZGTXpFd3JWeFE5dlo1YTcwWFBIV3o5UFU4SjBGX0dIdlJFSFJpSmJ5c3Q0bS1fenJ6T002RTZacFp0LTVZdl9IT1d5LUo1SkxpbG5VYnFHU2lvbFNpeE9iQ2hWdGk3R28zTlM4ZkQxS2lQVnVMeUJTTDZMNmdoSGZoQXBGdnpwdUJQMWRsTlRaaHZpY0VBa2RQblpYNGJXWVAxTk5yTG5DaHpWeDlB"
 	stackConfig := &workspace.ProjectStack{}
+	stackConfig.SecretsProvider = url
 	stackConfig.EncryptedKey = encryptedKeyBase64
 	manager, err := NewCloudSecretsManager(stackConfig, url, false)
 	require.NoError(t, err)
@@ -157,6 +159,7 @@ func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 	//nolint:lll // this is a base64 encoded key
 	encryptedKeyBase64 := "aHROMWFlam5qX0xjVTl3WVhQdzU1alJVbWVvaFU3UENfbzk3dDU2d2FRdUJvYWR1Z0pwdHhiRDU1akRuWFFUdFVPeWNMdlFlemh1UE9IN0txV21RU3NYZDJha0xscWp5RFFTNGQtQ2lhOXRJOGgtSnd0ZHAyOWdkNEx1ejBjVmRvY3NSUlZhdnhtZkNnMTd2TG9vZ0tfbG02Wi1VYnl2Z0xraGNRVzl0T0s2c3BScjdQX2E4NzRaMV8zeTQyb3lLUWx6U1RlYnNmS0xRRDBoZENsT0VSaGlTTHRxazlzMnlKTGpEZ2Q4VUVTSnFzaG9XY2JkVFBnX2NXcWpnQVVjSTRhOEllckE2Z0Y5YXh1eW9DVndoaS1GNGJiN1NPRW5MTEVhZUtIVTZjVFFHeGFoLV9FeVlwTEZKX3dxYzNsRDZ4aU1RdVh0blQ2WG9tZXQ0V3NQMmVn"
 	stackConfig := &workspace.ProjectStack{}
+	stackConfig.SecretsProvider = url
 	stackConfig.EncryptedKey = encryptedKeyBase64
 	manager, err := NewCloudSecretsManager(stackConfig, url, false)
 	require.NoError(t, err)
