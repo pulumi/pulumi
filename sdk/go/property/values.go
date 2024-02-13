@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -26,8 +28,8 @@ type (
 	MapKey            tokens.Name
 	Array             = []Value
 	Map               = map[MapKey]Value
-	Asset             = *resource.Asset
-	Archive           = *resource.Archive
+	Asset             = *asset.Asset
+	Archive           = *archive.Archive
 	ResourceReference = resource.ResourceReference
 )
 
