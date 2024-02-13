@@ -82,7 +82,6 @@ func TestGeneratePackageTreeNested(t *testing.T) {
 	}
 
 	testCases := []testCase{
-
 		{
 			"index top module",
 			schema.PackageSpec{
