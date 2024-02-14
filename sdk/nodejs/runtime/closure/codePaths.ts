@@ -15,13 +15,27 @@
 /* eslint-disable max-len */
 
 import * as fs from "fs";
+import { glob } from "glob";
 import normalize from "normalize-package-data";
 import readPackageTree from "read-package-tree";
 import * as upath from "upath";
+import { promisify } from "util";
 import { log } from "../..";
 import * as asset from "../../asset";
 import { ResourceError } from "../../errors";
 import { Resource } from "../../resource";
+
+const pGlob = promisify(glob);
+const pReadPackageTree = async (dir: string): Promise<readPackageTree.Node> =>
+    new Promise((resolve, reject) => {
+        readPackageTree(dir, (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
 
 /**
  * Options for controlling what gets returned by [computeCodePaths].
@@ -179,81 +193,116 @@ function searchUp(currentDir: string, fileToFind: string): string | null {
     return searchUp(parentDir, fileToFind);
 }
 
+/**
+ * findWorkspaceRoot detects if we are in a yarn/npm workspace setup, and
+ * returns the root of the workspace. If we are not in a workspace setup, it
+ * returns null.
+ */
+async function findWorkspaceRoot(programDirectory: string): Promise<string | null> {
+    let currentDir = upath.dirname(programDirectory);
+    let nextDir = upath.dirname(currentDir);
+    while (currentDir !== nextDir) {
+        const p = upath.join(currentDir, "package.json");
+        if (!fs.existsSync(p)) {
+            currentDir = nextDir;
+            nextDir = upath.dirname(currentDir);
+            continue;
+        }
+        const workspaces = parseWorkspaces(p);
+        for (const workspace of workspaces) {
+            const files = await pGlob(upath.join(currentDir, workspace));
+            const normalized = upath.normalizeTrim(programDirectory);
+            if (files.map((f) => upath.normalizeTrim(f)).includes(normalized)) {
+                return currentDir;
+            }
+        }
+        return null;
+    }
+    return null;
+}
+
+function parseWorkspaces(packageJsonPath: string): string[] {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    if (packageJson.workspaces && Array.isArray(packageJson.workspaces)) {
+        return packageJson.workspaces;
+    }
+    if (packageJson.workspaces?.packages && Array.isArray(packageJson.workspaces.packages)) {
+        return packageJson.workspaces.packages;
+    }
+    return [];
+}
+
 // allFolders computes the set of package folders that are transitively required by the root
 // 'dependencies' node in the client's project.json file.
-function allFoldersForPackages(
+async function allFoldersForPackages(
     includedPackages: Set<string>,
     excludedPackages: Set<string>,
     logResource: Resource | undefined,
 ): Promise<Set<string>> {
-    return new Promise((resolve, reject) => {
-        // the working directory is the directory containing the package.json file
-        let workingDir = searchUp(".", "package.json");
-        if (workingDir === null) {
-            // we couldn't find a directory containing package.json
-            // searching up from the current directory
-            throw new ResourceError("Failed to find package.json.", logResource);
+    // the working directory is the directory containing the package.json file
+    let workingDir = searchUp(".", "package.json");
+    if (workingDir === null) {
+        // we couldn't find a directory containing package.json
+        // searching up from the current directory
+        throw new ResourceError("Failed to find package.json.", logResource);
+    }
+    // Ensure workingDir is a relative path so we get relative paths in the
+    // output. If we have absolute paths, AWS lambda might not find the
+    // dependencies.
+    workingDir = upath.relative(upath.resolve("."), workingDir);
+
+    // This is the core starting point of the algorithm.  We read the
+    // package.json information for this project, and then we start by walking
+    // the .dependencies node in that package.  Importantly, we do not look at
+    // things like .devDependencies or or .peerDependencies.  These are not
+    // what are considered part of the final runtime configuration of the app
+    // and should not be uploaded.
+    const referencedPackages = new Set<string>(includedPackages);
+    const packageJSON = computeDependenciesDirectlyFromPackageFile(upath.join(workingDir, "package.json"), logResource);
+    for (const depName of Object.keys(packageJSON.dependencies)) {
+        referencedPackages.add(depName);
+    }
+
+    // Find the workspace root, fallback to current working directory if we are not in a workspaces setup.
+    let workspaceRoot = (await findWorkspaceRoot(upath.resolve("."))) || workingDir;
+    workspaceRoot = upath.relative(upath.resolve("."), workspaceRoot);
+
+    // Read package tree from the workspace root to ensure we can find all
+    // packages in the workspace.  We then call addPackageAndDependenciesToSet
+    // to recursively add all the dependencies of the referenced packages.
+    const root = await pReadPackageTree(workspaceRoot);
+
+    // read-package-tree defers to read-package-json to parse the project.json file. If that
+    // fails, root.error is set to the underlying error.  Unfortunately, read-package-json is
+    // very finicky and can fail for reasons that are not relevant to us.  For example, it
+    // can fail if a "version" string is not a legal semver.  We still want to proceed here
+    // as this is not an actual problem for determining the set of dependencies.
+    if (root.error) {
+        if (!root.realpath) {
+            throw new ResourceError(
+                "Failed to parse package.json. Underlying issue:\n  " + root.error.toString(),
+                logResource,
+            );
         }
-        // Ensure workingDir is a relative path so we get relative paths in the output.
-        workingDir = upath.relative(upath.resolve("."), workingDir);
 
-        readPackageTree(workingDir, <any>undefined, (err: any, root: readPackageTree.Node) => {
-            try {
-                if (err) {
-                    return reject(err);
-                }
+        // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
+        root.package = computeDependenciesDirectlyFromPackageFile(upath.join(workingDir, "package.json"), logResource);
+    }
 
-                // read-package-tree defers to read-package-json to parse the project.json file. If that
-                // fails, root.error is set to the underlying error.  Unfortunately, read-package-json is
-                // very finicky and can fail for reasons that are not relevant to us.  For example, it
-                // can fail if a "version" string is not a legal semver.  We still want to proceed here
-                // as this is not an actual problem for determining the set of dependencies.
-                if (root.error) {
-                    if (!root.realpath) {
-                        throw new ResourceError(
-                            "Failed to parse package.json. Underlying issue:\n  " + root.error.toString(),
-                            logResource,
-                        );
-                    }
+    // package.json files can contain circularities.  For example es6-iterator depends
+    // on es5-ext, which depends on es6-iterator, which depends on es5-ext:
+    // https://github.com/medikoo/es6-iterator/blob/0eac672d3f4bb3ccc986bbd5b7ffc718a0822b74/package.json#L20
+    // https://github.com/medikoo/es5-ext/blob/792c9051e5ad9d7671dd4e3957eee075107e9e43/package.json#L29
+    //
+    // So keep track of the paths we've looked and don't recurse if we hit something again.
+    const seenPaths = new Set<string>();
 
-                    // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
-                    root.package = computeDependenciesDirectlyFromPackageFile(
-                        upath.join(workingDir, "package.json"),
-                        logResource,
-                    );
-                }
+    const normalizedPackagePaths = new Set<string>();
+    for (const pkg of referencedPackages) {
+        addPackageAndDependenciesToSet(root, pkg, seenPaths, normalizedPackagePaths, excludedPackages);
+    }
 
-                // This is the core starting point of the algorithm.  We use readPackageTree to get
-                // the package.json information for this project, and then we start by walking the
-                // .dependencies node in that package.  Importantly, we do not look at things like
-                // .devDependencies or or .peerDependencies.  These are not what are considered part
-                // of the final runtime configuration of the app and should not be uploaded.
-                const referencedPackages = new Set<string>(includedPackages);
-                if (root.package.dependencies) {
-                    for (const depName of Object.keys(root.package.dependencies)) {
-                        referencedPackages.add(depName);
-                    }
-                }
-
-                // package.json files can contain circularities.  For example es6-iterator depends
-                // on es5-ext, which depends on es6-iterator, which depends on es5-ext:
-                // https://github.com/medikoo/es6-iterator/blob/0eac672d3f4bb3ccc986bbd5b7ffc718a0822b74/package.json#L20
-                // https://github.com/medikoo/es5-ext/blob/792c9051e5ad9d7671dd4e3957eee075107e9e43/package.json#L29
-                //
-                // So keep track of the paths we've looked and don't recurse if we hit something again.
-                const seenPaths = new Set<string>();
-
-                const normalizedPackagePaths = new Set<string>();
-                for (const pkg of referencedPackages) {
-                    addPackageAndDependenciesToSet(root, pkg, seenPaths, normalizedPackagePaths, excludedPackages);
-                }
-
-                return resolve(normalizedPackagePaths);
-            } catch (error) {
-                return reject(error);
-            }
-        });
-    });
+    return normalizedPackagePaths;
 }
 
 function computeDependenciesDirectlyFromPackageFile(path: string, logResource: Resource | undefined): any {

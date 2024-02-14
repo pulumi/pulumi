@@ -1458,6 +1458,16 @@ func TestCodePathsNested(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsWorkspace(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "codepaths-workspaces"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		RelativeWorkDir: "infra",
+		Quick:           true,
+	})
+}
+
 // Test that the resource stopwatch doesn't contain a negative time.
 func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	if runtime.GOOS == WindowsOS {

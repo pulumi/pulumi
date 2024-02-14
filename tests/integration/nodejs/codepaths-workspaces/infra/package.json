@@ -1,0 +1,10 @@
+{
+    "name": "infra",
+    "main": "index.ts",
+    "version": "1.0.0",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.104.2",
+        "my-random": "1.0.0",
+        "semver": "^7.6.0"
+    }
+}

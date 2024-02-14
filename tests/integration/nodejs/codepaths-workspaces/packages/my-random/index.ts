@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as runtime from "@pulumi/pulumi/runtime"
+import * as pulumi from "@pulumi/pulumi";
 
-(async function () {
-    const deps = await runtime.computeCodePaths();
+export class MyRandom extends pulumi.ComponentResource {
+  public readonly randomID: pulumi.Output<string>;
 
-    const actual = JSON.stringify([...deps.keys()].sort());
-    const expected = `["../node_modules/lru-cache","../node_modules/semver","../node_modules/yallist"]`;
-
-    if (actual !== expected) {
-        throw new Error(`Got '${actual}' expected '${expected}'`)
-    }
-})();
+  constructor(name: string, opts: pulumi.ResourceOptions) {
+    super("pkg:index:MyRandom", name, {}, opts);
+    this.randomID = pulumi.output(`${name}-${Math.floor(Math.random() * 1000)}`);
+    this.registerOutputs({ randomID: this.randomID });
+  }
+}
