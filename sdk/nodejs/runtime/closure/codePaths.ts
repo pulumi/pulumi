@@ -188,12 +188,15 @@ function allFoldersForPackages(
 ): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
         // the working directory is the directory containing the package.json file
-        const workingDir = searchUp(".", "package.json");
+        let workingDir = searchUp(".", "package.json");
         if (workingDir === null) {
             // we couldn't find a directory containing package.json
             // searching up from the current directory
             throw new ResourceError("Failed to find package.json.", logResource);
         }
+        // Ensure workingDir is a relative path so we get relative paths in the output.
+        workingDir = upath.relative(upath.resolve("."), workingDir);
+
         readPackageTree(workingDir, <any>undefined, (err: any, root: readPackageTree.Node) => {
             try {
                 if (err) {

@@ -1448,6 +1448,16 @@ func TestNestedPackageJSON(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsNested(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "codepaths-nested"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		RelativeWorkDir: "nested",
+		Quick:           true,
+	})
+}
+
 // Test that the resource stopwatch doesn't contain a negative time.
 func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
