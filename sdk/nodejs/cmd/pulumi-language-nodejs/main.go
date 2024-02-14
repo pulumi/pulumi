@@ -847,21 +847,11 @@ func findWorkspaceRoot(programDirectory string) (string, error) {
 			}
 			return "", err
 		}
-
-		// Get the workspaces field from the package.json
-		pkgContents, err := os.ReadFile(p)
+		workspaces, err := parseWorkspaces(p)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to parse workspaces from %s: %w", p, err)
 		}
-		pkg := struct {
-			Workspaces []string `json:"workspaces"`
-		}{}
-		err = json.Unmarshal(pkgContents, &pkg)
-		if err != nil {
-			return "", err
-		}
-
-		for _, workspace := range pkg.Workspaces {
+		for _, workspace := range workspaces {
 			// See if any of the workspace glob results is the programDirectory.
 			paths, err := filepath.Glob(filepath.Join(currentDir, workspace))
 			if err != nil {
@@ -878,6 +868,46 @@ func findWorkspaceRoot(programDirectory string) (string, error) {
 		return "", errNotInWorkspace
 	}
 	return "", errNotInWorkspace
+}
+
+// parseWorkspaces reads a package.json file and returns the list of workspaces.
+// This supports the simple format for npm and yarn:
+//
+//	{
+//	  "workspaces": ["workspace-a", "workspace-b"]
+//	}
+//
+// As well as the extended format for yarn:
+//
+//	{
+//		"workspaces": {
+//			"packages": ["packages/*"],
+//			"nohoist": ["**/react-native", "**/react-native/**"]
+//		}
+//	}
+func parseWorkspaces(p string) ([]string, error) {
+	pkgContents, err := os.ReadFile(p)
+	if err != nil {
+		return []string{}, err
+	}
+	pkg := struct {
+		Workspaces []string `json:"workspaces"`
+	}{}
+	err = json.Unmarshal(pkgContents, &pkg)
+	if err == nil {
+		return pkg.Workspaces, nil
+	}
+	// Failed to parse the simple format, try to parse extended yarn workspaces format
+	pkgExtended := struct {
+		Workspaces struct {
+			Packages []string `json:"packages"`
+		} `json:"workspaces"`
+	}{}
+	err = json.Unmarshal(pkgContents, &pkgExtended)
+	if err != nil {
+		return []string{}, err
+	}
+	return pkgExtended.Workspaces.Packages, nil
 }
 
 func (host *nodeLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {

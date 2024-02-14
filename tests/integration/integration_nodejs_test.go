@@ -1383,6 +1383,36 @@ func TestYarnWorkspace(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
+//nolint:paralleltest // mutates environment variables
+func TestYarnWorkspaceNoHoist(t *testing.T) {
+	t.Setenv("PULUMI_PREFER_YARN", "true")
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with yarn
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "yarn-workspaces-nohoist"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+		NoParallel:      true, // mutates environment variables
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNestedPackageJSON(t *testing.T) {
 	preparePropject := func(projinfo *engine.Projinfo) error {
