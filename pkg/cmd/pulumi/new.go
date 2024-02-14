@@ -996,7 +996,7 @@ func promptForConfig(
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
 
-	sm, needsSave, err := getStackSecretsManager(stack, ps)
+	sm, needsSave, err := getStackSecretsManager(stack, ps, nil)
 	if err != nil {
 		return nil, err
 	}

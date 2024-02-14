@@ -1147,8 +1147,10 @@ func looksLikeSecret(k config.Key, v string) bool {
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
 }
 
-func getAndSaveSecretsManager(stack backend.Stack, workspaceStack *workspace.ProjectStack) (secrets.Manager, error) {
-	sm, needsSave, err := getStackSecretsManager(stack, workspaceStack)
+func getAndSaveSecretsManager(
+	stack backend.Stack, workspaceStack *workspace.ProjectStack, fallbackManager secrets.Manager,
+) (secrets.Manager, error) {
+	sm, needsSave, err := getStackSecretsManager(stack, workspaceStack, fallbackManager)
 	if err != nil {
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
@@ -1286,7 +1288,7 @@ func getStackConfigurationWithFallback(
 		}
 	}
 
-	sm, err := getAndSaveSecretsManager(stack, workspaceStack)
+	sm, err := getAndSaveSecretsManager(stack, workspaceStack, fallbackSecretsManager)
 	if err != nil {
 		if fallbackSecretsManager != nil {
 			sm = fallbackSecretsManager
