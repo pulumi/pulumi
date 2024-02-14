@@ -1435,6 +1435,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, p
 		IgnoreChanges:           options.IgnoreChanges,
 		ReplaceOnChanges:        options.ReplaceOnChanges,
 		RetainOnDelete:          options.RetainOnDelete,
+		AcceptsOutputValues:     true,
 	}
 	if ct := options.CustomTimeouts; ct != nil {
 		req.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{
@@ -1450,10 +1451,11 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, p
 	}
 
 	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
-		Label:         label + ".outputs",
-		KeepUnknowns:  info.DryRun,
-		KeepSecrets:   true,
-		KeepResources: true,
+		Label:            label + ".outputs",
+		KeepUnknowns:     info.DryRun,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1669,15 +1671,16 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 	}
 
 	resp, err := client.Call(p.requestContext(), &pulumirpc.CallRequest{
-		Tok:             string(tok),
-		Args:            margs,
-		ArgDependencies: argDependencies,
-		Project:         info.Project,
-		Stack:           info.Stack,
-		Config:          config,
-		DryRun:          info.DryRun,
-		Parallel:        int32(info.Parallel),
-		MonitorEndpoint: info.MonitorAddress,
+		Tok:                 string(tok),
+		Args:                margs,
+		ArgDependencies:     argDependencies,
+		Project:             info.Project,
+		Stack:               info.Stack,
+		Config:              config,
+		DryRun:              info.DryRun,
+		Parallel:            int32(info.Parallel),
+		MonitorEndpoint:     info.MonitorAddress,
+		AcceptsOutputValues: true,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1687,10 +1690,11 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 
 	// Unmarshal any return values.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label:         label + ".returns",
-		KeepUnknowns:  info.DryRun,
-		KeepSecrets:   true,
-		KeepResources: true,
+		Label:            label + ".returns",
+		KeepUnknowns:     info.DryRun,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
 	})
 	if err != nil {
 		return CallResult{}, err

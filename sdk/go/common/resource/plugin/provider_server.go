@@ -509,7 +509,9 @@ func (p *providerServer) Construct(ctx context.Context,
 		return nil, err
 	}
 
-	outputs, err := MarshalProperties(result.Outputs, p.marshalOptions("outputs"))
+	opts := p.marshalOptions("outputs")
+	opts.KeepOutputValues = req.AcceptsOutputValues
+	outputs, err := MarshalProperties(result.Outputs, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -628,12 +630,9 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		return nil, err
 	}
 
-	rpcResult, err := MarshalProperties(result.Return, MarshalOptions{
-		Label:         "result",
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	opts := p.marshalOptions("return")
+	opts.KeepOutputValues = req.AcceptsOutputValues
+	rpcResult, err := MarshalProperties(result.Return, opts)
 	if err != nil {
 		return nil, err
 	}

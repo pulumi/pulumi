@@ -164,6 +164,8 @@ message CallRequest {
     int32 parallel = 11;            // the degree of parallelism for resource operations (<=1 for serial).
     string monitorEndpoint = 12;    // the address for communicating back to the resource monitor.
     string organization = 14;       // the organization of the stack being deployed into.
+
+    bool accepts_output_values = 17; // the engine can be passed output values back, returnDependencies can be left blank if returning output values.
 }
 
 message CallResponse {
@@ -378,6 +380,8 @@ message ConstructRequest {
     repeated string ignoreChanges           = 22; // properties that should be ignored during a diff
     repeated string replaceOnChanges        = 23; // properties that, when changed, trigger a replacement
     bool retainOnDelete                     = 24; // whether to retain the resource in the cloud provider when it is deleted
+
+    bool accepts_output_values = 25; // the engine can be passed output values back, stateDependencies can be left blank if returning output values.
 }
 
 message ConstructResponse {
