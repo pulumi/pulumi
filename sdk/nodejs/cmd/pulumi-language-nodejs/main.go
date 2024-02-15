@@ -39,7 +39,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -88,8 +87,6 @@ const (
 	// one they can handle.
 	nodeJSProcessExitedAfterShowingUserActionableMessage = 32
 )
-
-var errNotInWorkspace = errors.New("not in a workspace")
 
 // Launches the language host RPC endpoint, which in turn fires
 // up an RPC server implementing the LanguageRuntimeServer RPC
@@ -811,10 +808,10 @@ func (host *nodeLanguageHost) InstallDependencies(
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	workspaceRoot := req.Info.ProgramDirectory
-	newWorkspaceRoot, err := findWorkspaceRoot(req.Info.ProgramDirectory)
+	newWorkspaceRoot, err := npm.FindWorkspaceRoot(req.Info.ProgramDirectory)
 	if err != nil {
 		// If we are not in a npm/yarn workspace, we will keep the current directory as the root.
-		if !errors.Is(err, errNotInWorkspace) {
+		if !errors.Is(err, npm.ErrNotInWorkspace) {
 			return fmt.Errorf("failure while trying to find workspace root: %w", err)
 		}
 	} else {
@@ -830,84 +827,6 @@ func (host *nodeLanguageHost) InstallDependencies(
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
 	return closer.Close()
-}
-
-func findWorkspaceRoot(programDirectory string) (string, error) {
-	currentDir := filepath.Dir(programDirectory)
-	nextDir := filepath.Dir(currentDir)
-	for currentDir != nextDir { // We're at the root when the nextDir is the same as the currentDir.
-		p := filepath.Join(currentDir, "package.json")
-		_, err := os.Stat(p)
-		if err != nil {
-			if os.IsNotExist(err) {
-				// No package.json in this directory, continue the search in the next directory up.
-				currentDir = nextDir
-				nextDir = filepath.Dir(currentDir)
-				continue
-			}
-			return "", err
-		}
-		workspaces, err := parseWorkspaces(p)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse workspaces from %s: %w", p, err)
-		}
-		for _, workspace := range workspaces {
-			// See if any of the workspace glob results is the programDirectory.
-			paths, err := filepath.Glob(filepath.Join(currentDir, workspace))
-			if err != nil {
-				return "", err
-			}
-			if paths != nil && slices.Contains(paths, programDirectory) {
-				return currentDir, nil
-			}
-		}
-		// None of the workspace globs matched the program directory, so we're
-		// in the slightly weird situation where a parent directory has a
-		// package.json with workspaces set up, but the program directory is
-		// not part of this.
-		return "", errNotInWorkspace
-	}
-	return "", errNotInWorkspace
-}
-
-// parseWorkspaces reads a package.json file and returns the list of workspaces.
-// This supports the simple format for npm and yarn:
-//
-//	{
-//	  "workspaces": ["workspace-a", "workspace-b"]
-//	}
-//
-// As well as the extended format for yarn:
-//
-//	{
-//		"workspaces": {
-//			"packages": ["packages/*"],
-//			"nohoist": ["**/react-native", "**/react-native/**"]
-//		}
-//	}
-func parseWorkspaces(p string) ([]string, error) {
-	pkgContents, err := os.ReadFile(p)
-	if err != nil {
-		return []string{}, err
-	}
-	pkg := struct {
-		Workspaces []string `json:"workspaces"`
-	}{}
-	err = json.Unmarshal(pkgContents, &pkg)
-	if err == nil {
-		return pkg.Workspaces, nil
-	}
-	// Failed to parse the simple format, try to parse extended yarn workspaces format
-	pkgExtended := struct {
-		Workspaces struct {
-			Packages []string `json:"packages"`
-		} `json:"workspaces"`
-	}{}
-	err = json.Unmarshal(pkgContents, &pkgExtended)
-	if err != nil {
-		return []string{}, err
-	}
-	return pkgExtended.Workspaces.Packages, nil
 }
 
 func (host *nodeLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {

@@ -109,6 +109,8 @@
         "tests/automation/remoteWorkspace.spec.ts",
         "tests/automation/util.ts",
 
-        "tests_with_mocks/mocks.spec.ts"
+        "tests_with_mocks/mocks.spec.ts",
+
+        "npm/testdata/nested/project/index.ts"
     ]
 }
