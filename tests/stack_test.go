@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
 //nolint:paralleltest // mutates environment variables
@@ -434,7 +435,7 @@ func TestStackBackups(t *testing.T) {
 }
 
 //nolint:paralleltest // mutates environment variables
-func TestDestroySetsEncryptedkey(t *testing.T) {
+func TestDestroySetsEncryptionsalt(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -443,6 +444,8 @@ func TestDestroySetsEncryptedkey(t *testing.T) {
 	}()
 
 	const stackName = "imulup"
+	stackFile := filepath.Join(e.RootPath, "Pulumi.imulup.yaml")
+	var expectedSalt string
 
 	// Set up the environment.
 	{
@@ -462,10 +465,15 @@ func TestDestroySetsEncryptedkey(t *testing.T) {
 
 		// Now run pulumi up.
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
-	}
 
-	wd := e.RootPath
-	stackFile := filepath.Join(wd, "Pulumi.imulup.yaml")
+		// See what the encryptionsalt is
+		stackYAML, err := os.ReadFile(stackFile)
+		require.NoError(t, err)
+		var stackConfig workspace.ProjectStack
+		err = yaml.Unmarshal(stackYAML, &stackConfig)
+		require.NoError(t, err)
+		expectedSalt = stackConfig.EncryptionSalt
+	}
 
 	// Remove `encryptionsalt` from `Pulumi.imulup.yaml`.
 	preamble := "secretsprovider: passphrase\n"
@@ -475,11 +483,13 @@ func TestDestroySetsEncryptedkey(t *testing.T) {
 	// Now run pulumi destroy.
 	e.RunCommand("pulumi", "destroy", "--non-interactive", "--yes", "--skip-preview")
 
-	// Check that the stack file has `encryptionsalt` set.
-	data, err := os.ReadFile(stackFile)
-	assert.NoError(t, err, "reading Pulumi.imulup.yaml")
-	s := string(data)
-	assert.Contains(t, s, "encryptionsalt", "should contain encryptionsalt")
+	// Check that the stack file has the right `encryptionsalt` set.
+	stackYAML, err := os.ReadFile(stackFile)
+	require.NoError(t, err)
+	var stackConfig workspace.ProjectStack
+	err = yaml.Unmarshal(stackYAML, &stackConfig)
+	require.NoError(t, err)
+	assert.Equal(t, expectedSalt, stackConfig.EncryptionSalt)
 
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
