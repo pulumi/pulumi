@@ -210,8 +210,8 @@ async function findWorkspaceRoot(programDirectory: string): Promise<string | nul
         }
         const workspaces = parseWorkspaces(p);
         for (const workspace of workspaces) {
-            const files = await pGlob(upath.join(currentDir, workspace));
-            const normalized = upath.normalizeTrim(programDirectory);
+            const files = await pGlob(upath.join(currentDir, workspace, "package.json"));
+            const normalized = upath.normalizeTrim(upath.join(programDirectory, "package.json"));
             if (files.map((f) => upath.normalizeTrim(f)).includes(normalized)) {
                 return currentDir;
             }
